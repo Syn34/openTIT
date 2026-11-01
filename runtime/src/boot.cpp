@@ -73,6 +73,7 @@ u32 build_argv(const std::vector<std::string>& args, u32* envp) {
 
 int boot_main(int argc, char** argv) {
     if (argc < 2) return usage();
+    rtm::install_crash_handler();
     auto& cfg = rtm::config();
     cfg.game_root = argv[1];
     cfg.hdd0 = (fs::current_path() / "dev_hdd0").string();

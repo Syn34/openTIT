@@ -57,6 +57,7 @@ target_link_libraries(opentit-recomp PRIVATE opentit_recomp_lib)
 # OBJECT library so the self-registering HLE modules are never dropped by the linker.
 add_library(opentit_runtime OBJECT
   runtime/src/boot.cpp
+  runtime/src/crash.cpp
   runtime/src/dispatch.cpp
   runtime/src/hle.cpp
   runtime/src/kernel.cpp
@@ -164,6 +165,9 @@ if(OPENTIT_GENERATED_DIR)
   list(LENGTH OPENTIT_GENERATED_SOURCES n)
   message(STATUS "openTIT: building game from ${n} generated sources")
   add_executable(opentit runtime/src/main.cpp ${OPENTIT_GENERATED_SOURCES} $<TARGET_OBJECTS:opentit_runtime>)
+  if(NOT MSVC AND NOT APPLE)
+    target_link_options(opentit PRIVATE -rdynamic)  # function names in crash backtraces
+  endif()
   target_link_libraries(opentit PRIVATE opentit_runtime)
   opentit_configure_generated(opentit)
 endif()

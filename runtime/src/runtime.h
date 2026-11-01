@@ -52,6 +52,7 @@ struct ThreadExit {
 PPUContext* current_ctx();
 void set_current_ctx(PPUContext* ctx);
 [[noreturn]] void exit_process(int code);
+void install_crash_handler();
 
 // ---- kernel
 void kernel_init();
