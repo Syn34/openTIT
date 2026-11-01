@@ -238,6 +238,34 @@ std::shared_ptr<SpuThreadObj> thread(u32 id) { return get<SpuThreadObj>(id); }
 
 }  // namespace
 
+s32 spu_image_import(u32 img, u32 src, u32 size) { return build_image(img, mem::ptr(src), size ? size : 0x41000); }
+
+s32 spu_elf_info(u32 elf, u32* entry, u32* nsegs, std::vector<u32>* seg_words) {
+    const u8* e = mem::ptr(elf);
+    if (std::memcmp(e, "\x7f" "ELF", 4) != 0 || load_be<u16>(e + 18) != 23) return -1;
+    const u32 phoff = load_be<u32>(e + 28);
+    const u16 phnum = load_be<u16>(e + 44);
+    u32 n = 0;
+    for (u16 k = 0; k < phnum; ++k) {
+        const u8* p = e + phoff + 32u * k;
+        const u32 type = load_be<u32>(p), off = load_be<u32>(p + 4), va = load_be<u32>(p + 8);
+        const u32 filesz = load_be<u32>(p + 16), memsz = load_be<u32>(p + 20);
+        auto add = [&](u32 t, u32 ls, u32 sz, u32 a) {
+            ++n;
+            if (seg_words) seg_words->insert(seg_words->end(), {t, ls, sz, a});
+        };
+        if (type == 1) {
+            if (filesz) add(SYS_SPU_SEGMENT_TYPE_COPY, va, filesz, elf + off);
+            if (memsz > filesz) add(SYS_SPU_SEGMENT_TYPE_FILL, va + filesz, memsz - filesz, 0);
+        } else if (type == 4) {
+            add(SYS_SPU_SEGMENT_TYPE_INFO, va, filesz, elf + off);
+        }
+    }
+    if (entry) *entry = load_be<u32>(e + 24);
+    if (nsegs) *nsegs = n;
+    return 0;
+}
+
 bool spu_syscall(PPUContext& c, u32 n, u64* result) {
     u64& r = *result;
     r = CELL_OK;

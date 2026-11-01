@@ -278,9 +278,30 @@ OPENTIT_HLE(cellGcmSys, cellGcmResetFlipStatus) {
     ret(ctx, CELL_OK);
 }
 
+// Calls the game's VBlank handler (void handler(u32 head)) at 60 Hz from its
+// own PPU context, like the LV2 interrupt thread does on hardware.
+static void vblank_thread() {
+    PPUContext vctx;
+    vctx.stack_size = 0x10000;
+    vctx.stack_addr = alloc_stack(vctx.stack_size);
+    vctx.gpr[13] = alloc_tls() + 0x7030;
+    set_current_ctx(&vctx);
+    auto next = std::chrono::steady_clock::now();
+    while (g.running) {
+        next += std::chrono::microseconds(16683);
+        std::this_thread::sleep_until(next);
+        const u32 handler = g.vblank_handler;
+        if (!handler) continue;
+        vctx.gpr[1] = vctx.stack_addr + vctx.stack_size - 0x100;
+        hle::call_guest(vctx, handler, {1});
+    }
+}
+
 OPENTIT_HLE(cellGcmSys, cellGcmSetVBlankHandler) {
+    static std::once_flag started;
     g.vblank_handler = arg32(ctx, 0);
-    hle::todo("cellGcmSetVBlankHandler (handler stored, not invoked yet)");
+    if (g.vblank_handler) std::call_once(started, [] { std::thread(vblank_thread).detach(); });
+    LOG_INFO("gcm", "VBlank handler 0x%08X", g.vblank_handler);
     ret(ctx, CELL_OK);
 }
 

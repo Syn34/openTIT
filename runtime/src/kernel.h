@@ -10,6 +10,7 @@
 #include <mutex>
 #include <optional>
 #include <unordered_map>
+#include <vector>
 
 #include "opentit/ppu_context.h"
 #include "runtime.h"
@@ -128,6 +129,13 @@ void register_main_thread(PPUContext& ctx, u32 id);
 void dispatch_syscall(PPUContext& ctx, u32 pc);
 // SPU syscalls (lv2_spu.cpp). Returns false if `n` is not an SPU syscall.
 bool spu_syscall(PPUContext& ctx, u32 n, u64* result);
+// SPU image helpers shared with sysPrxForUser (lv2_spu.cpp).
+s32 spu_image_import(u32 img, u32 src, u32 size);
+s32 spu_elf_info(u32 elf, u32* entry, u32* nsegs, std::vector<u32>* seg_words);
+
+// Microseconds since boot (sys_time_get_system_time clock).
+u64 system_time_us();
+
 // Post an event to a queue (false if the queue is full).
 bool send_event(EventQueue& q, u64 source, u64 d1, u64 d2, u64 d3);
 const char* syscall_name(u32 n);

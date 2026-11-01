@@ -194,6 +194,45 @@ u32 sys_semaphore_wait(PPUContext& c, bool try_only) {
     return CELL_OK;
 }
 
+// LV2 timer: fires events into a connected event queue.
+struct Timer : Object {
+    std::mutex m;
+    std::condition_variable cv;
+    std::weak_ptr<EventQueue> queue;
+    u64 name = 0, data1 = 0, data2 = 0;
+    u64 expire = 0, period = 0;
+    bool running = false;
+    bool destroyed = false;
+    std::thread host;
+
+    void loop() {
+        std::unique_lock<std::mutex> lk(m);
+        while (!destroyed) {
+            if (!running) {
+                cv.wait(lk);
+                continue;
+            }
+            const u64 now = system_time_us();
+            if (now < expire) {
+                cv.wait_for(lk, std::chrono::microseconds(expire - now));
+                continue;
+            }
+            const u64 fired = expire;
+            if (auto q = queue.lock()) send_event(*q, name, data1, data2, fired);
+            if (period) expire += period;
+            else running = false;
+        }
+    }
+    ~Timer() override {
+        {
+            std::lock_guard<std::mutex> lk(m);
+            destroyed = true;
+            cv.notify_all();
+        }
+        if (host.joinable()) host.join();
+    }
+};
+
 std::set<u32>& warned() {
     static std::set<u32> s;
     return s;
@@ -225,6 +264,7 @@ const char* syscall_name(u32 n) {
     case 49: return "sys_ppu_thread_get_stack_information";
     case 70: return "sys_timer_create";
     case 71: return "sys_timer_destroy";
+    case 72: return "sys_timer_get_information";
     case 73: return "_sys_timer_start";
     case 74: return "sys_timer_stop";
     case 75: return "sys_timer_connect_event_queue";
@@ -553,8 +593,66 @@ void dispatch_syscall(PPUContext& c, u32 pc) {
         break;
     }
 
-    // ---- timers / debug (not yet emulated - see docs/ROADMAP.md)
-    case 70: case 71: case 73: case 74: case 75: case 76:
+    // ---- timers
+    case 70: {  // sys_timer_create(u32* id)
+        auto t = std::make_shared<Timer>();
+        Timer* raw = t.get();
+        t->host = std::thread([raw] { raw->loop(); });
+        mem::w32(A32(c, 0), add_object(t));
+        break;
+    }
+    case 71: r = remove_object(A32(c, 0)) ? CELL_OK : CELL_ESRCH; break;
+    case 72: {  // sys_timer_get_information(id, {u64 next_expire, u64 period, u32 state, u32 pad})
+        auto t = get<Timer>(A32(c, 0));
+        if (!t) { r = CELL_ESRCH; break; }
+        std::lock_guard<std::mutex> lk(t->m);
+        mem::w64(A32(c, 1), t->expire);
+        mem::w64(A32(c, 1) + 8, t->period);
+        mem::w32(A32(c, 1) + 16, t->running ? 1 : 0);
+        break;
+    }
+    case 73: {  // _sys_timer_start(id, u64 basetime, u64 period)
+        auto t = get<Timer>(A32(c, 0));
+        if (!t) { r = CELL_ESRCH; break; }
+        std::lock_guard<std::mutex> lk(t->m);
+        const u64 base = A(c, 1), period = A(c, 2);
+        if (t->running) { r = CELL_EBUSY; break; }
+        if (t->queue.expired()) { r = 0x80010013; break; }  // ENOTCONN
+        t->period = period;
+        t->expire = base ? base : system_time_us() + period;
+        t->running = true;
+        t->cv.notify_all();
+        break;
+    }
+    case 74: {  // sys_timer_stop(id)
+        auto t = get<Timer>(A32(c, 0));
+        if (!t) { r = CELL_ESRCH; break; }
+        std::lock_guard<std::mutex> lk(t->m);
+        t->running = false;
+        t->cv.notify_all();
+        break;
+    }
+    case 75: {  // sys_timer_connect_event_queue(id, queue, name, data1, data2)
+        auto t = get<Timer>(A32(c, 0));
+        auto q = get<EventQueue>(A32(c, 1));
+        if (!t || !q) { r = CELL_ESRCH; break; }
+        std::lock_guard<std::mutex> lk(t->m);
+        t->queue = q;
+        t->name = A(c, 2) ? A(c, 2) : A32(c, 0);
+        t->data1 = A(c, 3);
+        t->data2 = A(c, 4);
+        break;
+    }
+    case 76: {
+        auto t = get<Timer>(A32(c, 0));
+        if (!t) { r = CELL_ESRCH; break; }
+        std::lock_guard<std::mutex> lk(t->m);
+        t->queue.reset();
+        t->running = false;
+        break;
+    }
+
+    // ---- debug (not yet emulated)
     case 988:
     default: {
         if (spu_syscall(c, n, &r)) break;

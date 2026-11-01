@@ -12,18 +12,20 @@ Rough order. Each milestone should leave the tests green and the game booting at
 - [ ] `--entries` workflow for any `indirect branch ... has no recompiled function` reports
 - [ ] Resolve the two remaining dynamic `bctr` (0x009BD2CC, 0x00AB3ECC)
 - [ ] `setjmp`/`longjmp` and any other code that manipulates LR or r1 non-locally
-- [ ] `sys_timer_*` (70–76): periodic events to event queues
-- [ ] VBlank and flip handlers invoked from a 60 Hz host thread
+- [x] `sys_timer_*` (70–76): periodic events to event queues
+- [x] VBlank handler invoked from a 60 Hz host thread
 - [ ] Save data (`cellSaveData*` callback flow) backed by `dev_hdd0/home/.../savedata`
 
 ## M2: SPU / SPURS
 
 Sly 4 imports 61 `cellSpurs` functions (job chains, tasksets, event flags, LF queues), so most of the engine's heavy lifting runs on SPUs.
 
-- [ ] SPU ELF extraction: find embedded SPU images in the PPU binary and in `Sly4.psarc`
-- [ ] SPU decoder + static recompiler (same approach: SPU → C++), including channel and MFC DMA ops
-- [ ] SPURS kernel emulation: workloads, tasksets, job chains, built on the recompiled SPU code
-- [ ] SPU thread groups (`sys_spu_thread_group_*` syscalls)
+- [x] SPU decoder, disassembler and interpreter (full ISA, channels, MFC DMA, lock-line atomics)
+- [x] Embedded SPU image discovery (`opentit-recomp spu-list`): 10 images incl. EDGE zlib and EDGE MLAA
+- [x] LV2 SPU syscalls: images, thread groups, LS/mailbox/SNR access, SPU events, receive_event
+- [x] PRX loader + recompile path for firmware modules
+- [ ] Run the real SPURS (firmware `libsre.prx`, user-supplied and decrypted) on the SPU core. RPCS3 also uses LLE libsre for this game, because job chains have no HLE.
+- [ ] SPU static recompiler (SPU -> C++) for the embedded images and the SPURS kernel (performance)
 
 ## M3: Graphics
 

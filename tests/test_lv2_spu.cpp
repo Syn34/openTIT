@@ -94,3 +94,23 @@ TEST(lv2_spu_thread_group_lifecycle) {
     CHECK_EQ(sys(c, 165, {thread, out + 20}), 0u);                   // exit status
     CHECK_EQ(mem::r32(out + 20), 15u);
 }
+
+TEST(lv2_timer_periodic_events) {
+    PPUContext c;
+    const u32 out = testgen::kScratch + 0x1F80;
+    CHECK_EQ(sys(c, 128, {out, 0, 0, 16}), 0u);       // queue
+    const u32 queue = mem::r32(out);
+    CHECK_EQ(sys(c, 70, {out + 4}), 0u);              // sys_timer_create
+    const u32 timer = mem::r32(out + 4);
+    CHECK_EQ(sys(c, 73, {timer, 0, 1000}), 0x80010013u);  // start before connecting -> ENOTCONN
+    CHECK_EQ(sys(c, 75, {timer, queue, 0xABCD, 11, 22}), 0u);
+    CHECK_EQ(sys(c, 73, {timer, 0, 1000}), 0u);       // every 1 ms
+    for (int k = 0; k < 2; ++k) {
+        CHECK_EQ(sys(c, 130, {queue, 0, 1000000}), 0u);
+        CHECK_EQ(c.gpr[4], 0xABCDull);
+        CHECK_EQ(c.gpr[5], 11ull);
+        CHECK_EQ(c.gpr[6], 22ull);
+    }
+    CHECK_EQ(sys(c, 74, {timer}), 0u);
+    CHECK_EQ(sys(c, 71, {timer}), 0u);
+}

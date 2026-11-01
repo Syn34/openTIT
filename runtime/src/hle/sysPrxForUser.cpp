@@ -49,11 +49,60 @@ OPENTIT_HLE(sysPrxForUser, sys_process_exit) { exit_process(static_cast<int>(arg
 
 OPENTIT_HLE(sysPrxForUser, sys_prx_exitspawn_with_level) { exit_process(0); }
 
-OPENTIT_HLE(sysPrxForUser, sys_time_get_system_time) {
+namespace opentit::kernel {
+u64 system_time_us() {
     static const auto t0 = std::chrono::steady_clock::now();
-    ret(ctx, static_cast<u64>(
-                 std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - t0).count()));
+    return static_cast<u64>(
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - t0).count());
 }
+}  // namespace opentit::kernel
+
+OPENTIT_HLE(sysPrxForUser, sys_time_get_system_time) { ret(ctx, kernel::system_time_us()); }
+
+// ---------------------------------------------------------------- SPU image helpers (used by libsre)
+OPENTIT_HLE(sysPrxForUser, sys_spu_image_import) {
+    // (sys_spu_image* img, u32 src, u32 type)
+    const u32 type = arg32(ctx, 2);
+    if (type > 1) {
+        ret(ctx, CELL_EINVAL);
+        return;
+    }
+    ret(ctx, kernel::spu_image_import(arg32(ctx, 0), arg32(ctx, 1), 0) == 0 ? CELL_OK : 0x8001000A);  // ENOEXEC
+}
+OPENTIT_HLE_OK(sysPrxForUser, sys_spu_image_close)
+
+OPENTIT_HLE(sysPrxForUser, sys_spu_elf_get_information) {
+    // (u32 elf, u32* entry, s32* nseg)
+    u32 entry = 0, n = 0;
+    if (kernel::spu_elf_info(arg32(ctx, 0), &entry, &n, nullptr) != 0) {
+        ret(ctx, 0x8001000A);
+        return;
+    }
+    mem::w32(arg32(ctx, 1), entry);
+    mem::w32(arg32(ctx, 2), n);
+    ret(ctx, CELL_OK);
+}
+
+OPENTIT_HLE(sysPrxForUser, sys_spu_elf_get_segments) {
+    // (u32 elf, sys_spu_segment* segs, s32 nseg)
+    std::vector<u32> w;
+    u32 n = 0;
+    if (kernel::spu_elf_info(arg32(ctx, 0), nullptr, &n, &w) != 0) {
+        ret(ctx, 0x8001000A);
+        return;
+    }
+    if (static_cast<s32>(n) > static_cast<s32>(arg32(ctx, 2))) {
+        ret(ctx, CELL_ENOMEM);
+        return;
+    }
+    for (std::size_t k = 0; k < w.size(); ++k) mem::w32(arg32(ctx, 1) + 4 * static_cast<u32>(k), w[k]);
+    ret(ctx, CELL_OK);
+}
+
+OPENTIT_HLE_OK(sysPrxForUser, _sys_spu_printf_attach_group)
+OPENTIT_HLE_OK(sysPrxForUser, _sys_spu_printf_detach_group)
+OPENTIT_HLE_OK(sysPrxForUser, _sys_spu_printf_attach_thread)
+OPENTIT_HLE_OK(sysPrxForUser, _sys_spu_printf_detach_thread)
 
 OPENTIT_HLE(sysPrxForUser, sys_process_is_stack) {
     const u32 a = arg32(ctx, 0);
