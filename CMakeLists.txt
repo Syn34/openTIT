@@ -68,11 +68,26 @@ add_library(opentit_runtime OBJECT
   runtime/src/rsx/vertex_program.cpp
   runtime/src/rsx/fragment_program.cpp
   runtime/src/rsx/shader_dump.cpp
+  runtime/src/rsx/glsl.cpp
+  runtime/src/rsx/glsl_compile.cpp
   runtime/src/hle/sysPrxForUser.cpp
   runtime/src/hle/sys_fs.cpp
 )
 target_include_directories(opentit_runtime PUBLIC runtime/include src)
 target_link_libraries(opentit_runtime PUBLIC opentit_core Threads::Threads)
+
+# Shader compiler for the RSX -> GLSL -> SPIR-V path (Vulkan SDK or distro glslang).
+if(DEFINED ENV{VULKAN_SDK})
+  list(APPEND CMAKE_PREFIX_PATH "$ENV{VULKAN_SDK}")
+endif()
+find_package(glslang CONFIG QUIET)
+if(glslang_FOUND)
+  target_link_libraries(opentit_runtime PUBLIC glslang::glslang glslang::SPIRV glslang::glslang-default-resource-limits)
+  target_compile_definitions(opentit_runtime PUBLIC OPENTIT_HAS_GLSLANG)
+  message(STATUS "openTIT: glslang found - shader translation enabled")
+else()
+  message(STATUS "openTIT: glslang not found - shaders cannot be compiled (install the Vulkan SDK)")
+endif()
 
 # Settings for generated guest code: it is huge, so keep optimisation
 # moderate and make sure FP semantics stay IEEE (no fast-math).

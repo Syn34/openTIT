@@ -389,3 +389,130 @@ TEST(RsxShaderDump) {
     CHECK_EQ(files, std::size_t(2));
     std::filesystem::remove_all(dir);
 }
+
+// ---------------------------------------------------------------- GLSL translation
+#include "../runtime/src/rsx/glsl.h"
+
+namespace {
+namespace glsl = opentit::rsx::glsl;
+
+bool compiles(bool vertex, const std::string& src) {
+    if (!glsl::have_compiler()) return true;  // built without glslang: translation only
+    std::vector<u32> spv;
+    std::string log;
+    const bool ok = glsl::compile(vertex, src, &spv, &log);
+    if (!ok) std::printf("---- GLSL ----\n%s\n---- log ----\n%s\n", src.c_str(), log.c_str());
+    return ok && !spv.empty() && spv[0] == 0x07230203u;
+}
+}  // namespace
+
+TEST(RsxGlslVertexAllOps) {
+    std::vector<u32> ucode(512 * 4, 0);
+    u32 slot = 0;
+    const u32 xxxx = 0;  // swizzle .xxxx
+    for (u32 op : {vp::VEC_MOV, vp::VEC_MUL, vp::VEC_ADD, vp::VEC_MAD, vp::VEC_DP3, vp::VEC_DPH, vp::VEC_DP4,
+                   vp::VEC_DST, vp::VEC_MIN, vp::VEC_MAX, vp::VEC_SLT, vp::VEC_SGE, vp::VEC_ARL, vp::VEC_FRC,
+                   vp::VEC_FLR, vp::VEC_SEQ, vp::VEC_SFL, vp::VEC_SGT, vp::VEC_SLE, vp::VEC_SNE, vp::VEC_STR,
+                   vp::VEC_SSG, vp::VEC_TXL}) {
+        VpBuilder b;
+        b.vec(op).input(slot & 15).cnst(slot).src0(vsrc(vp::REG_INPUT)).src1(vsrc(vp::REG_CONST))
+            .src2(vsrc(vp::REG_TEMP, slot % 8)).tmp(slot % 8, 0xF);
+        b.put(ucode.data(), slot++);
+    }
+    for (u32 op : {vp::SCA_MOV, vp::SCA_RCP, vp::SCA_RCC, vp::SCA_RSQ, vp::SCA_EXP, vp::SCA_LOG, vp::SCA_LIT,
+                   vp::SCA_LG2, vp::SCA_EX2, vp::SCA_SIN, vp::SCA_COS}) {
+        VpBuilder().sca(op).src2(vsrc(vp::REG_TEMP, 1, xxxx)).stmp(2, 0xF).put(ucode.data(), slot++);
+    }
+    // indexed constant, saturate, conditional write with CC update
+    {
+        VpBuilder b;
+        b.vec(vp::VEC_MOV).cnst(10).src0(vsrc(vp::REG_CONST)).out(1, 0xF);
+        b.i.d[3] |= 2;          // index_const
+        b.i.d[0] |= 1u << 26;   // saturate
+        b.i.d[0] |= (1u << 13) | (3u << 10) | (3u << 2) | (2u << 4) | (1u << 6);  // cond test LE, cc swizzle xyzw
+        b.i.d[0] |= 1u << 14;   // update CC
+        b.put(ucode.data(), slot++);
+    }
+    VpBuilder().vec(vp::VEC_DP4).cnst(0).src0(vsrc(vp::REG_TEMP, 0)).src1(vsrc(vp::REG_CONST)).out(0, 8).end()
+        .put(ucode.data(), slot++);
+    const vp::Program p = vp::analyze(ucode.data(), 0);
+    CHECK(p.has_end);
+    const std::string src = glsl::vertex(p);
+    CHECK(src.find("gl_Position") != std::string::npos);
+    CHECK(compiles(true, src));
+}
+
+TEST(RsxGlslVertexBranches) {
+    std::vector<u32> ucode(512 * 4, 0);
+    VpBuilder().vec(vp::VEC_MOV).input(0).src0(vsrc(vp::REG_INPUT)).tmp(0, 0xF).put(ucode.data(), 0);
+    VpBuilder().sca(vp::SCA_CAL).target(4).put(ucode.data(), 1);
+    {
+        VpBuilder b;  // BRB 6 if b3
+        b.sca(vp::SCA_BRB).target(6);
+        b.i.d[3] |= (3u << 23) | (1u << 28);
+        b.put(ucode.data(), 2);
+    }
+    VpBuilder().vec(vp::VEC_MOV).input(0).src0(vsrc(vp::REG_INPUT)).out(0, 0xF).end().put(ucode.data(), 3);
+    VpBuilder().vec(vp::VEC_ADD).src0(vsrc(vp::REG_TEMP, 0)).src2(vsrc(vp::REG_TEMP, 0)).tmp(0, 0xF).put(ucode.data(), 4);
+    VpBuilder().sca(vp::SCA_RET).put(ucode.data(), 5);
+    VpBuilder().vec(vp::VEC_MOV).src0(vsrc(vp::REG_TEMP, 0)).out(0, 0xF).end().put(ucode.data(), 6);
+    const vp::Program p = vp::analyze(ucode.data(), 0);
+    CHECK_EQ(p.insns.size(), std::size_t(7));
+    CHECK_EQ(p.branch_targets.size(), std::size_t(2));
+    const std::string src = glsl::vertex(p);
+    CHECK(src.find("switch (pc_)") != std::string::npos);
+    CHECK(compiles(true, src));
+}
+
+TEST(RsxGlslFragmentAllOps) {
+    FpWriter w;
+    const u32 ops[] = {fp::MOV, fp::MUL, fp::ADD, fp::MAD, fp::DP3, fp::DP4, fp::DST, fp::MIN, fp::MAX, fp::SLT,
+                       fp::SGE, fp::SLE, fp::SGT, fp::SNE, fp::SEQ, fp::FRC, fp::FLR, fp::PK4, fp::UP4, fp::DDX,
+                       fp::DDY, fp::TEX, fp::TXP, fp::TXD, fp::RCP, fp::RSQ, fp::EX2, fp::LG2, fp::LIT, fp::LRP,
+                       fp::STR, fp::SFL, fp::COS, fp::SIN, fp::PK2, fp::UP2, fp::POW, fp::PKB, fp::UPB, fp::PK16,
+                       fp::UP16, fp::PKG, fp::UPG, fp::DP2A, fp::TXL, fp::TXB, fp::DP2, fp::NRM, fp::DIV, fp::DIVSQ,
+                       fp::REFL};
+    u32 n = 0;
+    for (u32 op : ops) {
+        const u32 d = fdst(op, n % 8, 0xF, (n & 1) != 0, fp::IN_TEX0 + n % 10, n % 4) | (op >> 6 ? 0 : 0);
+        u32 s1 = fsrc(fp::REG_TEMP, 3);
+        if (op & 0x40) s1 |= 1u << 31;
+        w.insn(d | (n % 3 == 0 ? 1u << 31 : 0u), fsrc(fp::REG_INPUT), s1, fsrc(fp::REG_TEMP, 4, true));
+        ++n;
+    }
+    // MUL with an inline constant, scale x2 and fx12 precision
+    w.insn(fdst(fp::MUL, 0, 0xF) | (2u << 22), fsrc(fp::REG_TEMP, 0), fsrc(fp::REG_CONST) | (1u << 28));
+    w.constant(1.0f, 0.5f, 0.25f, -1.0f);
+    // set CC, then IFE (else at slot+2, end at slot+3) with a conditional KIL inside
+    w.insn(fdst(fp::MOV, 5, 0xF) | (1u << 8), fsrc(fp::REG_TEMP, 0));
+    const u32 here = static_cast<u32>(w.bytes.size() / 16) - 1;  // index of the MOVC (leading slot 0 counts)
+    w.insn(fdst(fp::IFE, 0, 0), fsrc(fp::REG_TEMP, 0), (here + 3) | (1u << 31), here + 4);
+    w.word(fdst(fp::KIL, 0, 0)); w.word((1u << 18) | (1u << 23) | (2u << 25) | (3u << 27)); w.word(0); w.word(0);
+    w.insn(fdst(fp::MOV, 0, 0xF), fsrc(fp::REG_TEMP, 1));
+    // REP 4 { ADD; BRK (cond) }
+    w.insn(fdst(fp::REP, 0, 0), 0, (4u << 2) | (1u << 31), here + 7);
+    w.insn(fdst(fp::ADD, 0, 0xF), fsrc(fp::REG_TEMP, 0), fsrc(fp::REG_TEMP, 0));
+    w.word(fdst(fp::BRK, 0, 0)); w.word((4u << 18) | (1u << 23) | (2u << 25) | (3u << 27)); w.word(1u << 31); w.word(0);
+    w.insn(fdst(fp::MOV, 1, 0x4, false, 0, 0, true), fsrc(fp::REG_INPUT));  // R1.z = WPOS
+    const fp::Program p = fp::parse(w.bytes.data(), static_cast<u32>(w.bytes.size()));
+    CHECK(!p.truncated);
+    CHECK(p.has_kill);
+    CHECK(p.has_branches);
+    CHECK(p.writes_depth);
+    glsl::FragmentOptions o;
+    o.depth_export = true;
+    o.alpha_test = true;
+    o.two_sided_color = true;
+    o.textures[1] = glsl::TexDim::D3;
+    o.textures[2] = glsl::TexDim::Cube;
+    o.textures[3] = glsl::TexDim::D1;
+    const std::string src = glsl::fragment(p, o);
+    const auto kil = src.find("discard;"), els = src.find("} else {"), mov = src.find("// MOVR R0, R1");
+    const auto loop = src.find("for (int i"), add = src.find("// ADDR R0"), brk = src.find("break;", loop);
+    const auto last = src.find("// MOVR R1.z");
+    CHECK(kil < els && els < mov && mov < loop && loop < add && add < brk && brk < last);
+    CHECK(src.find("}", brk) < last);  // the loop closes before the final MOV
+    CHECK(compiles(false, src));
+    o.r_exports = false;
+    CHECK(compiles(false, glsl::fragment(p, o)));
+}
