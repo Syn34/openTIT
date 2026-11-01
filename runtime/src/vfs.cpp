@@ -48,7 +48,18 @@ fs::path resolve_case(const fs::path& base, const std::string& rel) {
     return cur;
 }
 
+fs::path g_hdd1;
+
 }  // namespace
+
+bool mount_hdd1(const std::string& dir) {
+    const fs::path root = fs::path(rtm::config().hdd0).parent_path() / "dev_hdd1" / "caches" / dir;
+    std::error_code ec;
+    const bool existed = fs::exists(root, ec);
+    fs::create_directories(root, ec);
+    g_hdd1 = root;
+    return existed;
+}
 
 std::optional<fs::path> translate(const std::string& guest) {
     const auto& cfg = rtm::config();
@@ -61,7 +72,7 @@ std::optional<fs::path> translate(const std::string& guest) {
         return resolve_case(cfg.hdd0, rest);
     }
     if (starts_with(guest, "/dev_hdd1", &rest)) {
-        const fs::path hdd1 = fs::path(cfg.hdd0).parent_path() / "dev_hdd1";
+        const fs::path hdd1 = g_hdd1.empty() ? fs::path(cfg.hdd0).parent_path() / "dev_hdd1" : g_hdd1;
         std::error_code ec;
         fs::create_directories(hdd1, ec);
         return resolve_case(hdd1, rest);

@@ -31,6 +31,8 @@ enum : u32 {
     SPU_RdSigNotify2 = 4,
     SPU_WrDec = 7,
     SPU_RdDec = 8,
+    MFC_WrMSSyncReq = 9,
+    MFC_RdTagMask = 12,
     SPU_RdEventMask = 11,
     SPU_RdMachStat = 13,
     SPU_WrSRR0 = 14,

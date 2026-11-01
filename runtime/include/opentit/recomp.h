@@ -7,6 +7,9 @@
 //   * `sc` goes through ppu_syscall()
 #pragma once
 
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
 #include <atomic>
 #include <cmath>
 #include <cstdint>

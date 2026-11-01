@@ -157,16 +157,15 @@ OPENTIT_HLE_OK(cellSysutil, cellMsgDialogClose)
 OPENTIT_HLE_OK(cellSysutil, cellMsgDialogAbort)
 
 OPENTIT_HLE(cellSysutil, cellSysCacheMount) {
-    // CellSysCacheParam { char cacheId[32]; char getCachePath[1024]; u32 reserved }
+    // CellSysCacheParam { char cacheId[32]; char getCachePath[1056]; u32 reserved }
+    // As on hardware, /dev_hdd1 itself becomes the game's cache directory.
     const u32 p = arg32(ctx, 0);
     const std::string id = mem::read_string(p, 32);
-    const std::string path = "/dev_hdd1/caches/" + id;
-    if (auto host = vfs::translate(path)) {
-        std::error_code ec;
-        std::filesystem::create_directories(*host, ec);
-    }
-    write_cstr(p + 32, path, 1024);
-    ret(ctx, 0);  // CELL_SYSCACHE_RET_OK_CLEARED
+    const std::string dir = sfo_string("TITLE_ID") + "_" + id;
+    const bool existed = vfs::mount_hdd1(dir);
+    write_cstr(p + 32, "/dev_hdd1", 1056);
+    LOG_INFO("sysutil", "system cache '%s' mounted at /dev_hdd1 (%s)", dir.c_str(), existed ? "existing" : "new");
+    ret(ctx, existed ? 1 : 0);  // CELL_SYSCACHE_RET_OK_RELAYED / _CLEARED
 }
 
 // ---------------------------------------------------------------- cellGame

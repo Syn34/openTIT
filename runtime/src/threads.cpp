@@ -13,7 +13,7 @@ thread_local PPUContext* t_ctx = nullptr;
 thread_local u32 t_thread_id = 0;
 std::mutex g_threads_mutex;
 std::unordered_map<u32, std::shared_ptr<kernel::Thread>> g_threads;
-std::atomic<u32> g_next_thread_id{0x01000000};
+std::atomic<u32> g_next_thread_id{0x01000100};  // 0x01000000 is the main thread
 }  // namespace
 
 namespace rtm {

@@ -62,6 +62,7 @@ add_library(opentit_runtime OBJECT
   runtime/src/spu/lv2_spu.cpp
   runtime/src/hle/cellGcmSys.cpp
   runtime/src/hle/cellSysutil.cpp
+  runtime/src/hle/libc.cpp
   runtime/src/hle/misc.cpp
   runtime/src/hle/sysPrxForUser.cpp
   runtime/src/hle/sys_fs.cpp

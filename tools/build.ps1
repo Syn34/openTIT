@@ -25,10 +25,11 @@ try {
     .\build\opentit-recomp.exe recompile $eboot -o $Gen
 
     # Optional LLE firmware modules (decrypted with RPCS3), e.g. firmware\libsre.prx
-    $fw = Join-Path $Dump "firmware"
-    if (Test-Path $fw) {
-        $base = 0x01800000
-        foreach ($prx in Get-ChildItem $fw -Filter *.prx | Sort-Object Name) {
+    $base = 0x01800000
+    $prxs = @(Get-ChildItem (Join-Path $Dump "firmware") -Filter *.prx -ErrorAction SilentlyContinue) +
+            @(Get-ChildItem $Dump -Filter *.prx -ErrorAction SilentlyContinue)
+    if ($prxs.Count -gt 0) {
+        foreach ($prx in $prxs | Sort-Object Name -Unique) {
             $name = $prx.BaseName
             .\build\opentit-recomp.exe recompile $prx.FullName -o (Join-Path $Gen "modules\$name") --base ('{0:X}' -f $base) --name $name
             $base += 0x00400000

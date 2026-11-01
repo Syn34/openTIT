@@ -198,6 +198,7 @@ u32 rdch(SPUThread& t, u32 ch) {
     }
     case SPU_RdDec: return dec_now(t);
     case SPU_RdEventMask: return t.event_mask;
+    case MFC_RdTagMask: return t.tag_mask;
     case SPU_RdMachStat: return 0;
     case SPU_RdSRR0: return t.srr0;
     case MFC_RdTagStat: return t.tag_mask;  // every DMA completes synchronously
@@ -242,6 +243,7 @@ void wrch(SPUThread& t, u32 ch, u32 v) {
     case MFC_WrTagMask: t.tag_mask = v; return;
     case MFC_WrTagUpdate: t.tag_update = v; return;
     case MFC_WrListStallAck: return;
+    case MFC_WrMSSyncReq: std::atomic_thread_fence(std::memory_order_seq_cst); return;
     case SPU_WrOutMbox: {
         std::unique_lock<std::mutex> lk(t.m);
         wait(t, lk, [&] { return t.out_mbox.empty(); });

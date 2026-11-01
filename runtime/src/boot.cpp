@@ -110,7 +110,9 @@ int boot_main(int argc, char** argv) {
     // Recompiled firmware modules (LLE). Each must be loaded at the base it was recompiled for.
     static std::vector<std::unique_ptr<loader::Elf>> modules;
     for (const auto& mt : rtm::module_tables()) {
-        const fs::path path = fs::path(cfg.firmware) / (std::string(mt.name) + ".prx");
+        fs::path path = fs::path(cfg.firmware) / (std::string(mt.name) + ".prx");
+        std::error_code ec;
+        if (!fs::exists(path, ec)) path = fs::path(cfg.game_root) / (std::string(mt.name) + ".prx");  // dump root
         std::string merr;
         auto m = loader::Elf::load_prx(path.string(), mt.base, &merr);
         if (!m) {

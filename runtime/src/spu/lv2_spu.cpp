@@ -238,7 +238,25 @@ std::shared_ptr<SpuThreadObj> thread(u32 id) { return get<SpuThreadObj>(id); }
 
 }  // namespace
 
-s32 spu_image_import(u32 img, u32 src, u32 size) { return build_image(img, mem::ptr(src), size ? size : 0x41000); }
+// Extent of an SPU ELF in memory, from its program and section headers.
+static u32 spu_elf_extent(const u8* e) {
+    if (std::memcmp(e, "\x7f" "ELF", 4) != 0) return 0;
+    u32 end = 52;
+    const u32 phoff = load_be<u32>(e + 28), shoff = load_be<u32>(e + 32);
+    const u16 phnum = load_be<u16>(e + 44), shnum = load_be<u16>(e + 48);
+    end = std::max(end, phoff + 32u * phnum);
+    for (u16 k = 0; k < phnum; ++k) {
+        const u8* p = e + phoff + 32u * k;
+        end = std::max(end, load_be<u32>(p + 4) + load_be<u32>(p + 16));
+    }
+    if (shoff && shnum < 64) end = std::max<u32>(end, shoff + 40u * shnum);
+    return end;
+}
+
+s32 spu_image_import(u32 img, u32 src, u32 size) {
+    if (!size) size = spu_elf_extent(mem::ptr(src));
+    return build_image(img, mem::ptr(src), size);
+}
 
 s32 spu_elf_info(u32 elf, u32* entry, u32* nsegs, std::vector<u32>* seg_words) {
     const u8* e = mem::ptr(elf);
@@ -284,9 +302,7 @@ bool spu_syscall(PPUContext& c, u32 n, u64* result) {
     }
     case 157: {  // _sys_spu_image_import(img*, src ea, size, arg)
         const u32 src = A32(c, 1);
-        u32 size = A32(c, 2);
-        if (!size) size = 0x40000 + 0x1000;
-        r = build_image(A32(c, 0), mem::ptr(src), size) == 0 ? CELL_OK : CELL_EINVAL;
+        r = spu_image_import(A32(c, 0), src, A32(c, 2)) == 0 ? CELL_OK : CELL_EINVAL;
         return true;
     }
     case 158: return true;  // _sys_spu_image_close

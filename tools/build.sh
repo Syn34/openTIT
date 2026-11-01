@@ -21,7 +21,7 @@ cmake --build build
 
 # Optional LLE firmware modules (decrypted with RPCS3), e.g. firmware/libsre.prx
 base=$((0x01800000))
-for prx in "$dump"/firmware/*.prx; do
+for prx in "$dump"/firmware/*.prx "$dump"/*.prx; do
   [[ -f "$prx" ]] || continue
   name="$(basename "$prx" .prx)"
   ./build/opentit-recomp recompile "$prx" -o "$gen/modules/$name" --base "$(printf '%X' $base)" --name "$name"
