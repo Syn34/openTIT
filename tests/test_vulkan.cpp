@@ -212,3 +212,82 @@ TEST(VulkanTextureAndDepth) {
     CHECK((dz >> 8) > 0x180000u && (dz >> 8) < 0x200000u);  // ~0.1 * 2^24
     CHECK_EQ(mem::r32(kVkLocal + kDepth + 8 * kPitch + 8 * 4) >> 8, 0x800000u);  // 0.5 where only quad 0 drew
 }
+
+TEST(VulkanRenderToTexture) {
+    if (!rsx::have_vulkan()) return;
+    std::string err;
+    auto vk = rsx::create_vulkan_backend([](u32 off, bool local) { return (local ? kVkLocal : kVkIo) + off; }, &err);
+    if (!vk) return;
+    mem::commit(kVkIo, 0x100000);
+    mem::commit(kVkLocal, 0x100000);
+    mem::commit(kVkCtl, 0x1000);
+    rsx::Environment env;
+    env.to_ea = [](u32 off, bool local) { return (local ? kVkLocal : kVkIo) + off; };
+    env.label_base = kVkCtl + 0x100;
+    rsx::Decoder d(env, vk.get());
+
+    constexpr u32 Wd = 64, Ht = 64, kScreen = 0x10000, kOff = 0x50000, kPitch = Wd * 4;
+    const u32 fsrc_in = 1u | (1u << 11) | (2u << 13) | (3u << 15) | (7u << 18) | (1u << 23) | (2u << 25) | (3u << 27);
+    // FP at 0x8000: MOV R0, f[COL0];  FP at 0x8100: TEX R0, f[TEX0], TEX0
+    const u32 mov = 1u | (0xFu << 9) | (1u << 13) | (1u << 24), tex = 1u | (0xFu << 9) | (4u << 13) | (0x17u << 24);
+    for (u32 k = 0; k < 4; ++k) {
+        fp_word(kVkLocal + 0x8000 + 4 * k, k == 0 ? mov : k == 1 ? fsrc_in : 0);
+        fp_word(kVkLocal + 0x8100 + 4 * k, k == 0 ? tex : k == 1 ? fsrc_in : 0);
+    }
+    auto vp_mov = [](u32 input, u32 out, bool end) {
+        const u32 src = 2u | (3u << 8) | (2u << 10) | (1u << 12);
+        return std::array<u32, 4>{(0x3Fu << 15) | (1u << 30), (1u << 22) | (input << 8) | (src >> 9),
+                                  (src & 0x1FF) << 23, (end ? 1u : 0u) | (out << 2) | (0x3Fu << 7) | (0xFu << 13)};
+    };
+    const auto p0 = vp_mov(0, 0, false), p1 = vp_mov(3, 1, false), p2 = vp_mov(8, 7, true);
+    // Full-screen quad: position, colour (green), uv
+    const float px[4] = {-1, 1, 1, -1}, py[4] = {-1, -1, 1, 1}, uu[4] = {0, 1, 1, 0}, vv[4] = {0, 0, 1, 1};
+    for (u32 v = 0; v < 4; ++v) {
+        const u32 b = kVkIo + 0x40000 + 16 * v;
+        mem::w32(b, fbits(px[v])); mem::w32(b + 4, fbits(py[v])); mem::w32(b + 8, fbits(0)); mem::w32(b + 12, fbits(1));
+        mem::w32(kVkIo + 0x41000 + 4 * v, 0x00FF00FFu);  // r=0 g=255 b=0 a=255
+        mem::w32(kVkIo + 0x42000 + 8 * v, fbits(uu[v]));
+        mem::w32(kVkIo + 0x42004 + 8 * v, fbits(vv[v]));
+    }
+    W w;
+    auto surface = [&](u32 offset) {
+        w.m(rsx::NV4097_SET_SURFACE_FORMAT, {(6u << 24) | (6u << 16) | (1u << 8) | 8u});
+        w.m(rsx::NV4097_SET_SURFACE_CLIP_HORIZONTAL, {Wd << 16, Ht << 16});
+        w.m(rsx::NV4097_SET_SURFACE_PITCH_A, {kPitch, offset});
+        w.m(rsx::NV4097_SET_SURFACE_COLOR_TARGET, {1});
+    };
+    w.m(0x0324, {0x01010101});
+    w.m(0x1D60, {0x40});
+    w.f(0x0A20, {Wd / 2.0f, Ht / 2.0f, 0.5f, 0.0f, Wd / 2.0f, Ht / 2.0f, 0.5f, 0.0f});
+    w.m(rsx::NV4097_SET_TRANSFORM_PROGRAM_LOAD, {0});
+    w.m(rsx::NV4097_SET_TRANSFORM_PROGRAM, {p0[0], p0[1], p0[2], p0[3], p1[0], p1[1], p1[2], p1[3], p2[0], p2[1], p2[2], p2[3]});
+    w.m(rsx::NV4097_SET_TRANSFORM_PROGRAM_START, {0});
+    w.m(rsx::NV4097_SET_VERTEX_DATA_ARRAY_FORMAT + 0, {(16u << 8) | (4u << 4) | 2u});
+    w.m(rsx::NV4097_SET_VERTEX_DATA_ARRAY_FORMAT + 12, {(4u << 8) | (4u << 4) | 4u});
+    w.m(rsx::NV4097_SET_VERTEX_DATA_ARRAY_FORMAT + 32, {(8u << 8) | (2u << 4) | 2u});
+    w.m(rsx::NV4097_SET_VERTEX_DATA_ARRAY_OFFSET + 0, {0x80000000u | 0x40000});
+    w.m(rsx::NV4097_SET_VERTEX_DATA_ARRAY_OFFSET + 12, {0x80000000u | 0x41000});
+    w.m(rsx::NV4097_SET_VERTEX_DATA_ARRAY_OFFSET + 32, {0x80000000u | 0x42000});
+    // Pass 1: green into the offscreen target
+    surface(kOff);
+    w.m(rsx::NV4097_SET_SHADER_PROGRAM, {0x8000 | 1});
+    w.m(rsx::NV4097_SET_BEGIN_END, {8}).m(rsx::NV4097_DRAW_ARRAYS, {3u << 24}).m(rsx::NV4097_SET_BEGIN_END, {0});
+    // Pass 2: sample it onto the screen (linear A8R8G8B8, pitch 256)
+    surface(kScreen);
+    w.m(rsx::NV4097_SET_SHADER_PROGRAM, {0x8100 | 1});
+    w.m(rsx::NV4097_SET_TEXTURE_OFFSET, {kOff, 1u | (2u << 4) | ((0x85u | 0x20u) << 8) | (1u << 16), 3u | (3u << 8) | (3u << 16),
+                                         0x80000000u | (0xFFFu << 7), 0xAAE4, (1u << 16) | (1u << 24), (Wd << 16) | Ht});
+    w.m(0x1840, {kPitch});  // TEXTURE_CONTROL3: pitch
+    w.m(rsx::NV4097_SET_BEGIN_END, {8}).m(rsx::NV4097_DRAW_ARRAYS, {3u << 24}).m(rsx::NV4097_SET_BEGIN_END, {0});
+    w.m(rsx::GCM_FLIP_COMMAND, {0});
+    mem::w32(kVkCtl + 4, 0);
+    mem::w32(kVkCtl, w.at);
+    rsx::Fifo fifo(d, kVkCtl);
+    CHECK(fifo.run_until_idle([](u32 io) { return kVkIo + io; }));
+    CHECK_EQ(vk->stats().draws, 2u);
+    CHECK_EQ(vk->stats().rt_samples, 1u);  // sampled straight from the GPU target
+    CHECK_EQ(vk->stats().textures, 0u);    // nothing decoded from guest memory
+    CHECK_EQ(vk->stats().flushes, 1u);     // the only write-back is at the flip
+    CHECK_EQ(mem::r32(kVkLocal + kScreen + 32 * kPitch + 32 * 4), 0xFF00FF00u);
+    CHECK_EQ(mem::r32(kVkLocal + kOff + 5 * kPitch + 5 * 4), 0xFF00FF00u);  // and the offscreen target reached memory at flip
+}

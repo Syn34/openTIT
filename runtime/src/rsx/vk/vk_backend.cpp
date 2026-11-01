@@ -222,6 +222,20 @@ void pixel_from_guest(u32 rsx, const u8* g, u8* v) {
     }
 }
 
+// 64-bit multiply/xorshift hash over 8-byte words: ~10x faster than byte FNV.
+u64 fast_hash(const u8* p, std::size_t n) {
+    u64 h = 0x9E3779B97F4A7C15ull ^ n;
+    std::size_t k = 0;
+    for (; k + 8 <= n; k += 8) {
+        u64 w;
+        std::memcpy(&w, p + k, 8);
+        h = (h ^ w) * 0xFF51AFD7ED558CCDull;
+        h ^= h >> 32;
+    }
+    for (; k < n; ++k) h = (h ^ p[k]) * 0x100000001B3ull;
+    return h;
+}
+
 u32 log2u(u32 v) {
     u32 r = 0;
     while ((1u << r) < v) ++r;
@@ -269,7 +283,8 @@ private:
         Image image;
         u32 ea = 0, pitch = 0, rsx_format = 0;
         bool depth = false, swizzled = false;
-        bool loaded = false;  // contents valid on the GPU for this epoch
+        bool loaded = false;  // GPU contents valid
+        std::map<u32, VkImageView> sample_views;  // by TEXTURE_CONTROL1 remap
         bool dirty = false;   // GPU contents newer than guest memory
         u64 last_used = 0;
         u32 bytes() const { return pitch * image.height; }
@@ -309,6 +324,7 @@ private:
     VkPipeline pipeline(const State& s, VkShaderModule vs, VkShaderModule fs, Topology topo, u32 attr_mask,
                         u32 const_mask, bool restart);
     VkImageView texture_view(const State& s, int unit, glsl::TexDim* dim);
+    VkImageView target_as_texture(const TextureDesc& d, u32 ea, glsl::TexDim dim);
     VkSampler sampler(const State& s, int unit);
 
     std::function<u32(u32, bool)> to_ea_;
@@ -357,7 +373,10 @@ Impl::~Impl() {
         return;
     }
     vkDeviceWaitIdle(dev_);
-    for (auto& [k, t] : targets_) destroy(t.image);
+    for (auto& [k, t] : targets_) {
+        for (auto& [r, v] : t.sample_views) vkDestroyImageView(dev_, v, nullptr);
+        destroy(t.image);
+    }
     for (auto& [k, t] : textures_) destroy(t.image);
     for (auto& d : dummy_) destroy(d);
     for (auto& [k, m] : vs_cache_) if (m) vkDestroyShaderModule(dev_, m, nullptr);
@@ -739,12 +758,29 @@ void Impl::flush() {
             const u32 texel = vk_texel_bytes(t.image.format);
             const u32 bpp = color_format(t.rsx_format).bytes;
             const u32 lw = log2u(w), lh = log2u(h);
-            for (u32 y = 0; y < h; ++y)
-                for (u32 x = 0; x < w; ++x) {
-                    const u32 off = t.swizzled ? swizzle_offset(x, y, 0, lw, lh, 0) * bpp : y * t.pitch + x * bpp;
-                    pixel_to_guest(t.rsx_format, src + (static_cast<std::size_t>(y) * w + x) * texel,
-                                   mem::ptr(t.ea + off));
+            if (!t.swizzled && (t.rsx_format == 8 || t.rsx_format == 4 || t.rsx_format == 5)) {
+                const u8 fixed_a = t.rsx_format == 4 ? 0 : 255;
+                for (u32 y = 0; y < h; ++y) {
+                    const u8* in = src + static_cast<std::size_t>(y) * w * 4;
+                    u8* out = mem::ptr(t.ea + y * t.pitch);
+                    if (t.rsx_format == 8) {
+                        for (u32 x = 0; x < w; ++x) {
+                            out[4 * x] = in[4 * x + 3]; out[4 * x + 1] = in[4 * x]; out[4 * x + 2] = in[4 * x + 1]; out[4 * x + 3] = in[4 * x + 2];
+                        }
+                    } else {
+                        for (u32 x = 0; x < w; ++x) {
+                            out[4 * x] = fixed_a; out[4 * x + 1] = in[4 * x]; out[4 * x + 2] = in[4 * x + 1]; out[4 * x + 3] = in[4 * x + 2];
+                        }
+                    }
                 }
+            } else {
+                for (u32 y = 0; y < h; ++y)
+                    for (u32 x = 0; x < w; ++x) {
+                        const u32 off = t.swizzled ? swizzle_offset(x, y, 0, lw, lh, 0) * bpp : y * t.pitch + x * bpp;
+                        pixel_to_guest(t.rsx_format, src + (static_cast<std::size_t>(y) * w + x) * texel,
+                                       mem::ptr(t.ea + off));
+                    }
+            }
         }
         t.dirty = false;
     }
@@ -777,11 +813,23 @@ void Impl::load_target(Target& t) {
     if (static_cast<VkDeviceSize>(w) * h * texel > staging_.size) return;
     u8* dst = staging_.map;
     const u32 lw = log2u(w), lh = log2u(h);
-    for (u32 y = 0; y < h; ++y)
-        for (u32 x = 0; x < w; ++x) {
-            const u32 g = t.swizzled ? swizzle_offset(x, y, 0, lw, lh, 0) * bpp : y * t.pitch + x * bpp;
-            pixel_from_guest(t.rsx_format, mem::ptr(t.ea + g), dst + (static_cast<std::size_t>(y) * w + x) * texel);
+    if (!t.swizzled && (t.rsx_format == 8 || t.rsx_format == 4 || t.rsx_format == 5)) {
+        const bool alpha = t.rsx_format == 8;
+        for (u32 y = 0; y < h; ++y) {
+            const u8* in = mem::ptr(t.ea + y * t.pitch);
+            u8* out = dst + static_cast<std::size_t>(y) * w * 4;
+            for (u32 x = 0; x < w; ++x) {
+                out[4 * x] = in[4 * x + 1]; out[4 * x + 1] = in[4 * x + 2]; out[4 * x + 2] = in[4 * x + 3];
+                out[4 * x + 3] = alpha ? in[4 * x] : 255;
+            }
         }
+    } else {
+        for (u32 y = 0; y < h; ++y)
+            for (u32 x = 0; x < w; ++x) {
+                const u32 g = t.swizzled ? swizzle_offset(x, y, 0, lw, lh, 0) * bpp : y * t.pitch + x * bpp;
+                pixel_from_guest(t.rsx_format, mem::ptr(t.ea + g), dst + (static_cast<std::size_t>(y) * w + x) * texel);
+            }
+    }
     transition(t.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, full);
     VkBufferImageCopy r{};
     r.bufferOffset = 0;
@@ -850,9 +898,9 @@ bool Impl::bind_targets(const State& s, bool need_depth) {
 
     const bool same = rendering_ && colors == bound_color_ && depth == bound_depth_;
     if (same) return true;
-    // A different set of targets: the previous pass's results go back to guest memory.
+    // A different set of targets. The previous pass's results stay on the GPU;
+    // they reach guest memory only when something there reads them.
     end_rendering();
-    for (Target* t : bound_color_) if (std::find(colors.begin(), colors.end(), t) == colors.end() && t->dirty) { flush(); break; }
     for (Target* t : colors) load_target(*t);
     if (depth) load_target(*depth);
     begin_commands();
@@ -1110,7 +1158,9 @@ VkImageView Impl::texture_view(const State& s, int unit, glsl::TexDim* dim) {
     const u32 ea = to_ea_(t.offset, t.local);
     if (!ea) return dummy_[dummy].view;
     const u32 size = texture_size(d);
-    // A render target the texture reads from must reach guest memory first.
+    // Render-to-texture: sample the target image itself when it matches.
+    if (VkImageView rv = target_as_texture(d, ea, *dim)) return rv;
+    // Otherwise a render target the texture overlaps must reach guest memory first.
     for (auto& [k, rt] : targets_)
         if (rt.dirty && ea < rt.ea + rt.bytes() && rt.ea < ea + size) { flush(); break; }
 
@@ -1119,7 +1169,7 @@ VkImageView Impl::texture_view(const State& s, int unit, glsl::TexDim* dim) {
     Texture& tex = textures_[key];
     tex.last_used = ++tick_;
     if (tex.image.img && tex.checked_epoch == epoch_) return tex.image.view;
-    const u64 content = fnv1a(mem::ptr(ea), size);
+    const u64 content = fast_hash(mem::ptr(ea), size);
     tex.checked_epoch = epoch_;
     if (tex.image.img && tex.hash == content) return tex.image.view;
     tex.hash = content;
@@ -1169,6 +1219,64 @@ VkImageView Impl::texture_view(const State& s, int unit, glsl::TexDim* dim) {
         bound_depth_ = nullptr;
     }
     return tex.image.view;
+}
+
+VkImageView Impl::target_as_texture(const TextureDesc& d, u32 ea, glsl::TexDim dim) {
+    if (dim != glsl::TexDim::D2 || d.mipmaps > 1 || d.cubemap) return VK_NULL_HANDLE;
+    const u32 base = d.base_format();
+    for (auto& [k, t] : targets_) {
+        if (t.ea != ea || t.depth || !t.loaded) continue;
+        if (t.image.width != d.width || t.image.height != d.height) continue;
+        if (t.swizzled == d.linear()) continue;
+        if (d.linear() && d.pitch && d.pitch != t.pitch) continue;
+        // How texture input channels (A, R, G, B) are found in the image.
+        VkComponentSwizzle in[4];
+        switch (base) {
+        case TEX_A8R8G8B8: case TEX_D8R8G8B8:
+            if (t.rsx_format != 8 && t.rsx_format != 4 && t.rsx_format != 5) continue;
+            in[0] = VK_COMPONENT_SWIZZLE_A; in[1] = VK_COMPONENT_SWIZZLE_R; in[2] = VK_COMPONENT_SWIZZLE_G; in[3] = VK_COMPONENT_SWIZZLE_B;
+            if (base == TEX_D8R8G8B8 || t.rsx_format != 8) in[0] = VK_COMPONENT_SWIZZLE_ONE;
+            break;
+        case TEX_W16_Z16_Y16_X16_FLOAT: case TEX_W32_Z32_Y32_X32_FLOAT:
+            if (t.rsx_format != (base == TEX_W16_Z16_Y16_X16_FLOAT ? 11u : 12u)) continue;
+            in[0] = VK_COMPONENT_SWIZZLE_A; in[1] = VK_COMPONENT_SWIZZLE_R; in[2] = VK_COMPONENT_SWIZZLE_G; in[3] = VK_COMPONENT_SWIZZLE_B;
+            break;
+        case TEX_X32_FLOAT: case TEX_B8:
+            if (t.rsx_format != (base == TEX_X32_FLOAT ? 13u : 9u)) continue;
+            in[0] = in[1] = in[2] = in[3] = VK_COMPONENT_SWIZZLE_R;
+            break;
+        default:
+            continue;
+        }
+        auto vit = t.sample_views.find(d.remap);
+        if (vit == t.sample_views.end()) {
+            VkComponentSwizzle out[4];  // A, R, G, B
+            for (int o = 0; o < 4; ++o) {
+                const u32 sel = (d.remap >> (2 * o)) & 3, ctl = (d.remap >> (8 + 2 * o)) & 3;
+                out[o] = ctl == 0 ? VK_COMPONENT_SWIZZLE_ZERO : ctl == 1 ? VK_COMPONENT_SWIZZLE_ONE : in[sel];
+            }
+            VkImageViewCreateInfo vci{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+            vci.image = t.image.img;
+            vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            vci.format = t.image.format;
+            vci.components = {out[1], out[2], out[3], out[0]};
+            vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            VkImageView v = VK_NULL_HANDLE;
+            if (vkCreateImageView(dev_, &vci, nullptr, &v) != VK_SUCCESS) return VK_NULL_HANDLE;
+            vit = t.sample_views.emplace(d.remap, v).first;
+        }
+        if (t.image.layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+            // Layout changes can't happen inside a rendering scope: close it.
+            begin_commands();
+            end_rendering();
+            bound_color_.clear();
+            bound_depth_ = nullptr;
+            transition(t.image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT);
+        }
+        ++stats_.rt_samples;
+        return vit->second;
+    }
+    return VK_NULL_HANDLE;
 }
 
 VkSampler Impl::sampler(const State& s, int unit) {
@@ -1411,8 +1519,8 @@ void Impl::flip(const State&, u32) {
     submit_and_wait();
     bound_color_.clear();
     bound_depth_ = nullptr;
-    // Next frame re-reads targets from guest memory (the CPU may have drawn into them).
-    for (auto& [k, t] : targets_) t.loaded = false;
+    // Targets keep their GPU contents across frames; writes by the copy
+    // engines invalidate them (invalidate()), anything else is not tracked.
     ++epoch_;
     // Drop resources not used for a while.
     if (textures_.size() > 2048) {

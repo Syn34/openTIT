@@ -1,12 +1,12 @@
 // Vulkan renderer for the RSX.
 //
 // Draws offscreen with dynamic rendering. RSX render targets are Vulkan
-// images keyed by their address and format. They are filled from guest
-// memory at first use in a frame, and written back to guest memory when
-// the game switches targets, before the copy engines run, when a texture
-// overlaps them, and at every flip. That keeps render-to-texture, the 2D
-// engines, the CPU and the display path all coherent through guest memory,
-// at the cost of a GPU->CPU readback per pass (to be optimised later).
+// images keyed by their address and format, filled from guest memory at
+// first use and kept on the GPU after that. A texture that matches a target
+// samples the target image directly (render-to-texture without a readback).
+// Targets go back to guest memory only when something there reads them:
+// before the copy engines run, when a texture overlaps them without
+// matching, and at each flip (once per frame for every target drawn).
 #pragma once
 
 #include <functional>
@@ -18,7 +18,7 @@
 namespace opentit::rsx {
 
 struct VulkanStats {
-    u64 draws = 0, clears = 0, flushes = 0, pipelines = 0, shaders = 0, textures = 0, shader_failures = 0;
+    u64 draws = 0, clears = 0, flushes = 0, pipelines = 0, shaders = 0, textures = 0, shader_failures = 0, rt_samples = 0;
 };
 
 class VulkanBackend : public Backend {
