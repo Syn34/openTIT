@@ -223,3 +223,73 @@ TEST(RsxReportsAndNames) {
     CHECK_STR(rsx::describe_method(0x1F08), "NV4097_SET_TRANSFORM_CONSTANT+2");
     CHECK_STR(rsx::describe_method(0xFEAC), "GCM_FLIP_COMMAND");
 }
+
+// ---------------------------------------------------------------- vertex programs
+#include "../runtime/src/rsx/vertex_program.h"
+
+namespace {
+namespace vp = opentit::rsx::vp;
+
+constexpr u32 kIdent = (3u << 8) | (2u << 10) | (1u << 12);  // swizzle .xyzw
+u32 vsrc(u32 type, u32 tmp = 0, u32 swz = kIdent, bool neg = false) {
+    return type | (tmp << 2) | swz | (neg ? 1u << 16 : 0);
+}
+struct VpBuilder {
+    vp::Insn i;
+    VpBuilder() {
+        i.d[0] = 0x3Fu << 15;                  // no temp destination
+        i.d[3] = (0x1Fu << 2) | (0x3Fu << 7);  // no output, no scalar temp
+    }
+    VpBuilder& vec(u32 op) { i.d[1] |= op << 22; return *this; }
+    VpBuilder& sca(u32 op) { i.d[1] |= op << 27; return *this; }
+    VpBuilder& input(u32 n) { i.d[1] |= n << 8; return *this; }
+    VpBuilder& cnst(u32 n) { i.d[1] |= n << 12; return *this; }
+    VpBuilder& src0(u32 s) { i.d[1] |= s >> 9; i.d[2] |= (s & 0x1FF) << 23; return *this; }
+    VpBuilder& src1(u32 s) { i.d[2] |= s << 6; return *this; }
+    VpBuilder& src2(u32 s) { i.d[2] |= s >> 11; i.d[3] |= (s & 0x7FF) << 21; return *this; }
+    VpBuilder& out(u32 o, u32 mask) { i.d[0] |= 1u << 30; i.d[3] = (i.d[3] & ~(0x1Fu << 2)) | (o << 2) | (mask << 13); return *this; }
+    VpBuilder& tmp(u32 r, u32 mask) { i.d[0] = (i.d[0] & ~(0x3Fu << 15)) | (r << 15); i.d[3] |= mask << 13; return *this; }
+    VpBuilder& stmp(u32 r, u32 mask) { i.d[3] = (i.d[3] & ~(0x3Fu << 7)) | (r << 7) | (mask << 17); return *this; }
+    VpBuilder& target(u32 t) { i.d[0] |= ((t >> 9) & 1) << 23; i.d[2] |= ((t >> 3) & 0x3F); i.d[3] |= (t & 7) << 29; return *this; }
+    VpBuilder& end() { i.d[3] |= 1; return *this; }
+    void put(u32* ucode, u32 slot) const { for (int k = 0; k < 4; ++k) ucode[slot * 4 + k] = i.d[k]; }
+};
+}  // namespace
+
+TEST(RsxVertexProgramDisasm) {
+    const vp::Insn dp4 = VpBuilder().vec(vp::VEC_DP4).input(0).cnst(4).src0(vsrc(vp::REG_INPUT)).src1(vsrc(vp::REG_CONST))
+                             .out(0, 8).end().i;
+    CHECK_STR(vp::disasm(dp4), "DP4 o[HPOS].x, v0, c[4]  END");
+    CHECK_EQ(dp4.src(1).index, 4u);
+    CHECK(dp4.end());
+
+    const u32 wwww = (3u << 8) | (3u << 10) | (3u << 12) | (3u << 14);
+    const vp::Insn dual = VpBuilder().vec(vp::VEC_MUL).sca(vp::SCA_RSQ).input(2).cnst(1)
+                              .src0(vsrc(vp::REG_INPUT)).src1(vsrc(vp::REG_CONST, 0, kIdent, true))
+                              .src2(vsrc(vp::REG_TEMP, 5, wwww)).tmp(0, 0xE).stmp(1, 8).i;
+    CHECK_STR(vp::disasm(dual), "MUL R0.xyz, v2, -c[1]; RSQ R1.x, R5.w");
+
+    const vp::Insn add = VpBuilder().vec(vp::VEC_ADD).src0(vsrc(vp::REG_TEMP, 3)).src2(vsrc(vp::REG_TEMP, 7)).out(7, 0xF).i;
+    CHECK_STR(vp::disasm(add), "ADD o[TEX0], R3, R7");  // ADD reads src0 and src2
+}
+
+TEST(RsxVertexProgramAnalyze) {
+    std::vector<u32> ucode(512 * 4, 0);
+    // slot 10: MOV R2, v3          slot 11: BRA 14
+    // slot 12: (skipped code)      slot 14: DP4 o[HPOS].x, R2, c[7]  END
+    VpBuilder().vec(vp::VEC_MOV).input(3).src0(vsrc(vp::REG_INPUT)).tmp(2, 0xF).put(ucode.data(), 10);
+    VpBuilder().sca(vp::SCA_BRA).target(14).put(ucode.data(), 11);
+    VpBuilder().vec(vp::VEC_MOV).input(8).src0(vsrc(vp::REG_INPUT)).out(7, 0xF).put(ucode.data(), 12);
+    VpBuilder().vec(vp::VEC_DP4).cnst(7).src0(vsrc(vp::REG_TEMP, 2)).src1(vsrc(vp::REG_CONST)).out(0, 8).end()
+        .put(ucode.data(), 14);
+    const vp::Program p = vp::analyze(ucode.data(), 10);
+    CHECK(p.has_end);
+    CHECK_EQ(p.insns.size(), std::size_t(5));       // 10..14 inclusive
+    CHECK_EQ(p.branch_targets.count(14), std::size_t(1));
+    CHECK_EQ(vp::fetch(ucode.data(), 11).branch_target(), 14u);
+    CHECK_EQ(p.inputs_read, (1u << 3) | (1u << 8));  // the skipped slot is still inside the range
+    CHECK_EQ(p.outputs_written, 1u | (1u << 7));
+    CHECK_EQ(p.constants.count(7), std::size_t(1));
+    CHECK(!p.indexed_constants);
+    CHECK_EQ(p.temps_used, 1ull << 2);
+}

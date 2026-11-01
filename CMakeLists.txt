@@ -65,6 +65,7 @@ add_library(opentit_runtime OBJECT
   runtime/src/hle/libc.cpp
   runtime/src/hle/misc.cpp
   runtime/src/rsx/rsx.cpp
+  runtime/src/rsx/vertex_program.cpp
   runtime/src/hle/sysPrxForUser.cpp
   runtime/src/hle/sys_fs.cpp
 )
