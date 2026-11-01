@@ -30,6 +30,7 @@ int usage() {
                  "  --firmware <dir>      decrypted firmware modules, e.g. libsre.prx (default: <dump>/firmware)\n"
                  "  --log <level>         trace | debug | info | warn | error\n"
                  "  --strict              abort on the first unimplemented HLE function\n"
+                 "  --dump-shaders <dir>  write every distinct vertex/fragment program's disassembly\n"
                  "  -- <args...>          pass the remaining arguments to the game (argv)\n");
     return 2;
 }
@@ -80,6 +81,7 @@ int boot_main(int argc, char** argv) {
         else if (a == "--hdd0" && k + 1 < argc) cfg.hdd0 = argv[++k];
         else if (a == "--firmware" && k + 1 < argc) cfg.firmware = argv[++k];
         else if (a == "--strict") cfg.strict = true;
+        else if (a == "--dump-shaders" && k + 1 < argc) cfg.shader_dump = argv[++k];
         else if (a == "--log" && k + 1 < argc) {
             const std::string l = argv[++k];
             log::set_level(l == "trace" ? log::Level::Trace

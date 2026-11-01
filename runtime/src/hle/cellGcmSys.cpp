@@ -13,6 +13,8 @@
 #include "../hle.h"
 #include "../log.h"
 #include "../rsx/rsx.h"
+#include "../rsx/shader_dump.h"
+#include "../runtime.h"
 
 using namespace opentit;
 using namespace opentit::rtm;
@@ -156,6 +158,11 @@ OPENTIT_HLE(cellGcmSys, _cellGcmInitBody) {
     mem::w32(kControlAddr + 8, 0xFFFFFFFF);
     for (u32 k = 0; k < 256; ++k) mem::w32(kLabelAddr + 16 * k, 0);
 
+    if (!rtm::config().shader_dump.empty()) {
+        static rsx::ShaderDumpBackend dump(rtm::config().shader_dump, offset_to_ea);
+        decoder().set_backend(&dump);
+        LOG_INFO("gcm", "dumping shaders to %s", rtm::config().shader_dump.c_str());
+    }
     if (!g.running.exchange(true)) std::thread(fifo_thread).detach();
     LOG_INFO("gcm", "init: cmd 0x%X bytes, io 0x%08X+0x%X (null RSX running)", cmd_size, io_address, io_size);
     ret(ctx, CELL_OK);

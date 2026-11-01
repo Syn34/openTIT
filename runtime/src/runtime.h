@@ -18,6 +18,7 @@ struct Config {
     std::string hdd0;       // host folder backing /dev_hdd0
     std::string firmware;   // folder with decrypted firmware PRX modules (default: <game_root>/firmware)
     bool strict = false;    // abort on unimplemented HLE functions
+    std::string shader_dump;  // write vertex/fragment program disassembly here (debug)
 };
 
 Config& config();

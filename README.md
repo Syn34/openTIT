@@ -19,9 +19,9 @@ Early, but the whole pipeline runs end to end:
 | C++ emitter (integer, FPU, VMX, CR, reservations, syscalls) | ✅ every reachable instruction emitted, no fallbacks |
 | Full EBOOT → C++ | ✅ 2.77 M instructions → 223 files in ~3 s |
 | Runtime: memory, dispatcher, threads, LV2 syscalls, HLE modules | 🟡 boot-path subset (see below) |
-| End-to-end tests (synthetic PPC program, recompiled and run) | ✅ 36 tests / 328 checks |
+| Tests (recompiled PPC program, SPU, LV2, RSX) | ✅ 47 tests / 454 checks |
 | Native boot of the recompiled game | 🟡 runs `main`, GCM + 720p, SPURS, FIOS, and opens the data files |
-| RSX graphics | 🔴 null GPU: the FIFO is consumed, nothing is drawn |
+| RSX graphics | 🟡 command decoder, state tracker, copy engines and shader decoders done. No renderer yet |
 | SPU / SPURS (jobs, tasks) | 🟡 SPU interpreter + LV2 SPU groups. Real `libsre` recompiled and running LLE |
 | Audio / input | 🔴 null audio device, one idle pad |
 

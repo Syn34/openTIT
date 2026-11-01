@@ -30,8 +30,9 @@ Sly 4 imports 61 `cellSpurs` functions (job chains, tasksets, event flags, LF qu
 
 ## M3: Graphics
 
-- [ ] RSX method decoder (NV4097) and state tracker on top of the null-RSX FIFO consumer
-- [ ] Vertex/fragment program translation (RSX microcode → SPIR-V / HLSL)
+- [x] RSX method decoder (NV4097) and state tracker. Draws, program/constant uploads, reports, and NV0039/NV3089/NV308A copies run through `runtime/src/rsx`
+- [x] Vertex and fragment program decoders and disassemblers (`--dump-shaders <dir>` writes every program the game uses)
+- [ ] Vertex/fragment program translation (RSX microcode → GLSL/SPIR-V)
 - [ ] Texture formats, tiling and swizzling, render targets, and `GCM_FLIP` to a swapchain
 - [ ] Backend: Vulkan first (Windows + Linux), D3D12 optional
 

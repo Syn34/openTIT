@@ -293,3 +293,99 @@ TEST(RsxVertexProgramAnalyze) {
     CHECK(!p.indexed_constants);
     CHECK_EQ(p.temps_used, 1ull << 2);
 }
+
+// ---------------------------------------------------------------- fragment programs
+#include "../runtime/src/rsx/fragment_program.h"
+
+namespace {
+namespace fp = opentit::rsx::fp;
+
+constexpr u32 kFpIdent = (1u << 11) | (2u << 13) | (3u << 15);           // .xyzw
+constexpr u32 kFpExecAll = (7u << 18) | (1u << 23) | (2u << 25) | (3u << 27);  // TR, cond .xyzw
+u32 fdst(u32 op, u32 reg, u32 mask, bool half = false, u32 attr = 0, u32 tex = 0, bool end = false) {
+    return (end ? 1u : 0u) | (reg << 1) | (half ? 1u << 7 : 0u) | (mask << 9) | (attr << 13) | (tex << 17) |
+           ((op & 0x3F) << 24);
+}
+u32 fsrc(u32 type, u32 reg = 0, bool neg = false) { return type | (reg << 2) | kFpIdent | (neg ? 1u << 17 : 0u); }
+
+struct FpWriter {
+    std::vector<u8> bytes;
+    void word(u32 v) {  // stored with halfwords swapped, big endian
+        const u32 stored = (v << 16) | (v >> 16);
+        u8 b[4];
+        store_be<u32>(b, stored);
+        bytes.insert(bytes.end(), b, b + 4);
+    }
+    void insn(u32 d, u32 s0, u32 s1 = 0, u32 s2 = 0) { word(d); word(s0 | kFpExecAll); word(s1); word(s2); }
+    void constant(float a, float b, float c, float d) {
+        for (float f : {a, b, c, d}) { u32 v; std::memcpy(&v, &f, 4); word(v); }
+    }
+};
+}  // namespace
+
+TEST(RsxFragmentProgramParse) {
+    FpWriter w;
+    w.insn(fdst(fp::NOP, 0, 0), 0);  // leading NOP, skipped
+    w.insn(fdst(fp::TEX, 0, 0xF, false, fp::IN_TEX0, 0), fsrc(fp::REG_INPUT));
+    w.insn(fdst(fp::MUL, 0, 0xF), fsrc(fp::REG_TEMP, 0), fsrc(fp::REG_CONST));
+    w.constant(0.5f, 0.25f, 1.0f, 2.0f);
+    w.insn(fdst(fp::MOV, 2, 0x3, true, 0, 0, true), fsrc(fp::REG_TEMP, 0, true));
+    w.bytes.resize(w.bytes.size() + 64, 0xEE);  // garbage after END must not be read
+    const fp::Program p = fp::parse(w.bytes.data(), static_cast<u32>(w.bytes.size()));
+    CHECK(!p.truncated);
+    CHECK_EQ(p.start, 16u);
+    CHECK_EQ(p.size, 64u);
+    CHECK_EQ(p.insns.size(), std::size_t(3));
+    CHECK_EQ(p.textures, 1u);
+    CHECK_EQ(p.inputs, 1u << fp::IN_TEX0);
+    CHECK_EQ(p.temps_written, 1u);
+    CHECK_EQ(p.halves_written, 1u << 2);
+    CHECK(!p.writes_depth);
+    CHECK(p.insns[1].has_constant);
+    CHECK_EQ(p.insns[2].offset, 48u);
+    CHECK_STR(fp::disasm(p.insns[0]), "TEXR R0, f[TEX0], TEX0");
+    CHECK_STR(fp::disasm(p.insns[1]), "MULR R0, R0, {0.5, 0.25, 1, 2}");
+    CHECK_STR(fp::disasm(p.insns[2]), "MOVR H2.xy, -R0  END");
+}
+
+TEST(RsxFragmentProgramTruncated) {
+    FpWriter w;
+    w.insn(fdst(fp::MOV, 0, 0xF), fsrc(fp::REG_TEMP, 1));  // no END
+    const fp::Program p = fp::parse(w.bytes.data(), static_cast<u32>(w.bytes.size()));
+    CHECK(p.truncated);
+    CHECK_EQ(p.insns.size(), std::size_t(1));
+}
+
+// ---------------------------------------------------------------- shader dump
+#include <filesystem>
+
+#include "../runtime/src/rsx/shader_dump.h"
+
+TEST(RsxShaderDump) {
+    setup();
+    const std::string dir = (std::filesystem::temp_directory_path() / "opentit_shader_dump_test").string();
+    std::filesystem::remove_all(dir);
+    rsx::ShaderDumpBackend dump(dir, [](u32 off, bool local) { return (local ? kLocal : kIoEa) + off; });
+    rsx::Decoder d(env(), &dump);
+
+    FpWriter fw;
+    fw.insn(fdst(fp::MOV, 0, 0xF, false, 0, 0, true), fsrc(fp::REG_INPUT));
+    for (std::size_t k = 0; k < fw.bytes.size(); ++k) mem::w8(kLocal + 0x8000 + static_cast<u32>(k), fw.bytes[k]);
+    const vp::Insn mov = VpBuilder().vec(vp::VEC_MOV).src0(vsrc(vp::REG_INPUT)).out(0, 0xF).end().i;
+
+    Writer w{0};
+    w.m(rsx::NV4097_SET_TRANSFORM_PROGRAM_LOAD, {0});
+    w.m(rsx::NV4097_SET_TRANSFORM_PROGRAM, {mov.d[0], mov.d[1], mov.d[2], mov.d[3]});
+    w.m(rsx::NV4097_SET_TRANSFORM_PROGRAM_START, {0});
+    w.m(rsx::NV4097_SET_SHADER_PROGRAM, {0x8000 | 1});
+    for (int rep = 0; rep < 3; ++rep)  // same programs three times: dumped once
+        w.m(rsx::NV4097_SET_BEGIN_END, {5}).m(rsx::NV4097_DRAW_ARRAYS, {2u << 24}).m(rsx::NV4097_SET_BEGIN_END, {0});
+    run(d, w.at);
+    CHECK_EQ(d.draw_count(), 3u);
+    CHECK_EQ(dump.vertex_programs(), std::size_t(1));
+    CHECK_EQ(dump.fragment_programs(), std::size_t(1));
+    std::size_t files = 0;
+    for (const auto& e : std::filesystem::directory_iterator(dir)) files += e.is_regular_file();
+    CHECK_EQ(files, std::size_t(2));
+    std::filesystem::remove_all(dir);
+}
