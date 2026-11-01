@@ -226,9 +226,11 @@ void Decoder::method(u32 reg, u32 v) {
 
     // ---- 2D engines
     case NV0039_BUFFER_NOTIFY:
+        backend_->sync();
         nv0039_copy();
         break;
     case NV3089_IMAGE_IN:
+        backend_->sync();
         nv3089_blit();
         break;
 
@@ -339,6 +341,11 @@ void Decoder::nv0039_copy() {
             for (u32 x = 0; x < len; ++x) mem::w8(di + x * out_inc, mem::r8(si + x * in_inc));
         }
     }
+    if (lines) {
+        const s64 span = static_cast<s64>(pitch_out) * (lines - 1);
+        const u32 lo = span < 0 ? dst + static_cast<u32>(span) : dst;
+        backend_->invalidate(lo, static_cast<u32>(span < 0 ? -span : span) + len * out_inc);
+    }
 }
 
 namespace {
@@ -400,6 +407,7 @@ void Decoder::nv3089_blit() {
             mem::copy(dst + dy * out_pitch + dx * bpp_out, src + sy * in_pitch + sx * bpp_in, bpp);
         }
     }
+    backend_->invalidate(dst + oy0 * out_pitch, oh * out_pitch);
 }
 
 void Decoder::nv308a_color(u32 index, u32 v) {
@@ -414,6 +422,7 @@ void Decoder::nv308a_color(u32 index, u32 v) {
     if (bpp == 4) {
         const u32 x = x0 + index % w, y = y0 + index / w;
         mem::w32(dst + y * pitch + x * 4, v);
+        if (index == 0) backend_->invalidate(dst + y0 * pitch, (s_.reg(NV308A_SIZE_IN) >> 16) * pitch + pitch);
     } else {
         // 16-bit destinations pack two pixels per word, high half first.
         for (u32 k = 0; k < 2; ++k) {

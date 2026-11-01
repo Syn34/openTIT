@@ -211,6 +211,11 @@ public:
     virtual void draw(const State&, const DrawCall&) {}
     virtual void clear(const State&, u32 /*mask*/) {}
     virtual void flip(const State&, u32 /*buffer*/) {}
+    // Make guest memory current (write back GPU-side render targets) before
+    // the copy engines read it.
+    virtual void sync() {}
+    // Guest memory [ea, ea + size) was written by a copy engine.
+    virtual void invalidate(u32 /*ea*/, u32 /*size*/) {}
 };
 
 // Where the decoder reads and writes guest memory.

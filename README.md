@@ -19,9 +19,9 @@ Early, but the whole pipeline runs end to end:
 | C++ emitter (integer, FPU, VMX, CR, reservations, syscalls) | ✅ every reachable instruction emitted, no fallbacks |
 | Full EBOOT → C++ | ✅ 2.77 M instructions → 223 files in ~3 s |
 | Runtime: memory, dispatcher, threads, LV2 syscalls, HLE modules | 🟡 boot-path subset (see below) |
-| Tests (recompiled PPC program, SPU, LV2, RSX) | ✅ 47 tests / 454 checks |
+| Tests (recompiled PPC program, SPU, LV2, RSX, Vulkan) | ✅ 59 tests / 545 checks |
 | Native boot of the recompiled game | 🟡 runs `main`, GCM + 720p, SPURS, FIOS, and opens the data files |
-| RSX graphics | 🟡 command decoder, state tracker, copy engines and shader decoders done. No renderer yet |
+| RSX graphics | 🟡 Vulkan renderer: shader translation, textures, depth/stencil, blending, render-to-texture via guest memory. Not yet tried on game content |
 | SPU / SPURS (jobs, tasks) | 🟡 SPU interpreter + LV2 SPU groups. Real `libsre` recompiled and running LLE |
 | Audio / input | 🔴 null audio device, one idle pad |
 
@@ -35,7 +35,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for what's next and [docs/ARCHITECTURE.md
 
 ## Quick start
 
-You need CMake ≥ 3.20, a C++20 compiler (MSVC 2022, clang 15+, or GCC 12+), and Ninja (recommended).
+You need CMake ≥ 3.20, a C++20 compiler (MSVC 2022, clang 15+, or GCC 12+), Ninja (recommended), and for graphics the [Vulkan SDK](https://vulkan.lunarg.com) (Vulkan + glslang; on Linux the distro packages `libvulkan-dev glslang-dev` work). SDL2 provides the window; if it isn't installed, CMake downloads it.
 
 ### 1. Dump and decrypt
 
@@ -78,6 +78,8 @@ cmake -S . -B build-game -G Ninja -DOPENTIT_GENERATED_DIR=$PWD/gen -DOPENTIT_BUI
 cmake --build build-game
 ./build-game/opentit <dump> --log info
 ./build-game/opentit <dump> --log info -- -T      # pass switches to the game's own argv parser
+./build-game/opentit <dump> --renderer null       # no GPU work (debugging)
+./build-game/opentit <dump> --dump-shaders shaders  # write every shader the game uses
 ```
 
 On Windows, `tools\build.ps1 -Dump "C:\path\to\dump"` does steps 2–4.

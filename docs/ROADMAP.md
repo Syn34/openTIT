@@ -33,8 +33,12 @@ Sly 4 imports 61 `cellSpurs` functions (job chains, tasksets, event flags, LF qu
 - [x] RSX method decoder (NV4097) and state tracker. Draws, program/constant uploads, reports, and NV0039/NV3089/NV308A copies run through `runtime/src/rsx`
 - [x] Vertex and fragment program decoders and disassemblers (`--dump-shaders <dir>` writes every program the game uses)
 - [x] Vertex/fragment program translation (RSX microcode → GLSL 450 → SPIR-V via glslang), covering every opcode, conditions, and VP branches/calls. Also FP IFE/LOOP/REP/BRK/RET
-- [ ] Texture formats, tiling and swizzling, render targets, and `GCM_FLIP` to a swapchain
-- [ ] Backend: Vulkan first (Windows + Linux), D3D12 optional
+- [x] Texture formats (all RSX formats incl. DXT, swizzled/linear, cubemaps, 3D, remap), render targets, and flips shown in an SDL2 window
+- [x] Vulkan backend (dynamic rendering): pipelines from RSX state, depth/stencil, blending, MRT, scissor, viewport, Z16/Z24S8; end-to-end tests on lavapipe
+- [ ] Performance: keep render targets on the GPU when sampled as textures instead of writing them back through guest memory
+- [ ] Tiled surfaces (cellGcmSetTileInfo) and MSAA surfaces
+- [ ] Native float/depth texture formats instead of RGBA8 decode
+- [ ] Partial-channel clears, occlusion queries (reports are faked as visible), shadow samplers
 
 ## M4: Platform
 

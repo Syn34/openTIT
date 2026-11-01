@@ -14,6 +14,8 @@
 #include "../log.h"
 #include "../rsx/rsx.h"
 #include "../rsx/shader_dump.h"
+#include "../rsx/vk/vk_backend.h"
+#include "../video.h"
 #include "../runtime.h"
 
 using namespace opentit;
@@ -79,7 +81,11 @@ rsx::Decoder& decoder() {
         env.label_base = kLabelAddr;
         env.local_report_base = kReportAddr;
         env.on_reference = [](u32 v) { mem::w32(kControlAddr + 8, v); };
-        env.on_flip = [](u32) {
+        env.on_flip = [](u32 id) {
+            if (id < 8 && g.display_buffers[id][2]) {
+                const u32* b = g.display_buffers[id];  // offset, pitch, width, height
+                video::present(mem::ptr(mem::kRsxLocalBase + b[0]), b[1], b[2], b[3]);
+            }
             g.flips++;
             g.flip_status = 0;  // CELL_GCM_DISPLAY_FLIP_STATUS_DONE
         };
@@ -158,13 +164,23 @@ OPENTIT_HLE(cellGcmSys, _cellGcmInitBody) {
     mem::w32(kControlAddr + 8, 0xFFFFFFFF);
     for (u32 k = 0; k < 256; ++k) mem::w32(kLabelAddr + 16 * k, 0);
 
-    if (!rtm::config().shader_dump.empty()) {
-        static rsx::ShaderDumpBackend dump(rtm::config().shader_dump, offset_to_ea);
+    const auto& cfg = rtm::config();
+    if (!cfg.shader_dump.empty()) {
+        static rsx::ShaderDumpBackend dump(cfg.shader_dump, offset_to_ea);
         decoder().set_backend(&dump);
-        LOG_INFO("gcm", "dumping shaders to %s", rtm::config().shader_dump.c_str());
+        LOG_INFO("gcm", "dumping shaders to %s (no rendering)", cfg.shader_dump.c_str());
+    } else if (cfg.renderer != "null") {
+        std::string why;
+        static std::unique_ptr<rsx::VulkanBackend> vk = rsx::create_vulkan_backend(offset_to_ea, &why);
+        if (vk) {
+            decoder().set_backend(vk.get());
+        } else {
+            LOG_WARN("gcm", "Vulkan renderer unavailable (%s): nothing will be drawn", why.c_str());
+        }
     }
+    if (!cfg.headless) video::start("openTIT - Sly Cooper: Thieves in Time", cfg.scale);
     if (!g.running.exchange(true)) std::thread(fifo_thread).detach();
-    LOG_INFO("gcm", "init: cmd 0x%X bytes, io 0x%08X+0x%X (null RSX running)", cmd_size, io_address, io_size);
+    LOG_INFO("gcm", "init: cmd 0x%X bytes, io 0x%08X+0x%X", cmd_size, io_address, io_size);
     ret(ctx, CELL_OK);
 }
 

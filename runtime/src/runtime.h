@@ -19,6 +19,9 @@ struct Config {
     std::string firmware;   // folder with decrypted firmware PRX modules (default: <game_root>/firmware)
     bool strict = false;    // abort on unimplemented HLE functions
     std::string shader_dump;  // write vertex/fragment program disassembly here (debug)
+    std::string renderer = "auto";  // auto | vulkan | null
+    bool headless = false;    // no window
+    int scale = 2;            // window size in half-720p steps (2 = 1280x720)
 };
 
 Config& config();

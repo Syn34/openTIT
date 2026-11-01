@@ -2,7 +2,9 @@
 #
 #   .\tools\build.ps1 -Dump "D:\Dumps\Sly 4"
 #
-# Requires: Visual Studio 2022 (Desktop C++), CMake, Ninja on PATH.
+# Requires: Visual Studio 2022 (Desktop C++), CMake, Ninja on PATH, and the
+# Vulkan SDK (https://vulkan.lunarg.com - provides Vulkan + glslang for the
+# renderer). SDL2 is downloaded automatically if it is not installed.
 # Run from a "Developer PowerShell for VS 2022" so cl.exe is available.
 param(
     [Parameter(Mandatory = $true)][string]$Dump,
@@ -18,6 +20,9 @@ try {
         throw "Decrypted executable not found: $eboot`nDecrypt EBOOT.BIN with RPCS3 (Utilities > Decrypt PS3 Binaries) and save it as EBOOT.elf."
     }
 
+    if (-not $env:VULKAN_SDK) {
+        Write-Warning "VULKAN_SDK is not set: the game will build without its renderer (nothing will be drawn). Install the Vulkan SDK and reopen the shell."
+    }
     cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=$Config
     cmake --build build
     .\build\opentit_tests.exe

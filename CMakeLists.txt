@@ -72,6 +72,8 @@ add_library(opentit_runtime OBJECT
   runtime/src/rsx/glsl_compile.cpp
   runtime/src/rsx/texture.cpp
   runtime/src/rsx/geometry.cpp
+  runtime/src/rsx/vk/vk_backend.cpp
+  runtime/src/video.cpp
   runtime/src/hle/sysPrxForUser.cpp
   runtime/src/hle/sys_fs.cpp
 )
@@ -87,7 +89,42 @@ if(glslang_FOUND)
   target_link_libraries(opentit_runtime PUBLIC glslang::glslang glslang::SPIRV glslang::glslang-default-resource-limits)
   target_compile_definitions(opentit_runtime PUBLIC OPENTIT_HAS_GLSLANG)
   message(STATUS "openTIT: glslang found - shader translation enabled")
-else()
+endif()
+find_package(Vulkan QUIET)
+if(Vulkan_FOUND AND glslang_FOUND)
+  target_link_libraries(opentit_runtime PUBLIC Vulkan::Vulkan)
+  target_compile_definitions(opentit_runtime PUBLIC OPENTIT_HAS_VULKAN)
+  message(STATUS "openTIT: Vulkan found - RSX renderer enabled")
+endif()
+find_package(SDL2 CONFIG QUIET)
+# On machines without SDL2 installed (typical on Windows), download it.
+option(OPENTIT_FETCH_SDL2 "Download and build SDL2 if it is not installed" ON)
+if(NOT SDL2_FOUND AND OPENTIT_FETCH_SDL2)
+  include(FetchContent)
+  message(STATUS "openTIT: SDL2 not installed - fetching it")
+  set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+  set(SDL_STATIC ON CACHE BOOL "" FORCE)
+  set(SDL_TEST OFF CACHE BOOL "" FORCE)
+  FetchContent_Declare(sdl2 GIT_REPOSITORY https://github.com/libsdl-org/SDL.git GIT_TAG release-2.30.9 GIT_SHALLOW TRUE)
+  FetchContent_MakeAvailable(sdl2)
+  if(TARGET SDL2::SDL2-static)
+    add_library(opentit_sdl2 INTERFACE)
+    target_link_libraries(opentit_sdl2 INTERFACE SDL2::SDL2-static)
+    add_library(SDL2::SDL2 ALIAS opentit_sdl2)
+    set(SDL2_FOUND TRUE)
+  endif()
+endif()
+if(SDL2_FOUND)
+  if(TARGET SDL2::SDL2)
+    target_link_libraries(opentit_runtime PUBLIC SDL2::SDL2)
+  else()
+    target_include_directories(opentit_runtime PUBLIC ${SDL2_INCLUDE_DIRS})
+    target_link_libraries(opentit_runtime PUBLIC ${SDL2_LIBRARIES})
+  endif()
+  target_compile_definitions(opentit_runtime PUBLIC OPENTIT_HAS_SDL2 SDL_MAIN_HANDLED)
+  message(STATUS "openTIT: SDL2 found - game window enabled")
+endif()
+if(NOT glslang_FOUND)
   message(STATUS "openTIT: glslang not found - shaders cannot be compiled (install the Vulkan SDK)")
 endif()
 
@@ -140,6 +177,7 @@ if(OPENTIT_BUILD_TESTS)
     tests/test_prx.cpp
     tests/test_rsx.cpp
     tests/test_rsx_cpu.cpp
+    tests/test_vulkan.cpp
     "${TEST_GEN_DIR}/ppu_0000.cpp"
     "${TEST_GEN_DIR}/ppu_table.cpp"
     $<TARGET_OBJECTS:opentit_runtime>)

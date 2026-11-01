@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include "opentit/boot.h"
 
 #include <cstdio>
@@ -31,6 +32,9 @@ int usage() {
                  "  --log <level>         trace | debug | info | warn | error\n"
                  "  --strict              abort on the first unimplemented HLE function\n"
                  "  --dump-shaders <dir>  write every distinct vertex/fragment program's disassembly\n"
+                 "  --renderer <name>     auto (default) | vulkan | null\n"
+                 "  --headless            no window\n"
+                 "  --scale <n>           window size: 1 = 640x360, 2 = 1280x720, 3 = 1920x1080\n"
                  "  -- <args...>          pass the remaining arguments to the game (argv)\n");
     return 2;
 }
@@ -82,6 +86,9 @@ int boot_main(int argc, char** argv) {
         else if (a == "--firmware" && k + 1 < argc) cfg.firmware = argv[++k];
         else if (a == "--strict") cfg.strict = true;
         else if (a == "--dump-shaders" && k + 1 < argc) cfg.shader_dump = argv[++k];
+        else if (a == "--renderer" && k + 1 < argc) cfg.renderer = argv[++k];
+        else if (a == "--headless") cfg.headless = true;
+        else if (a == "--scale" && k + 1 < argc) cfg.scale = std::atoi(argv[++k]);
         else if (a == "--log" && k + 1 < argc) {
             const std::string l = argv[++k];
             log::set_level(l == "trace" ? log::Level::Trace
