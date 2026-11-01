@@ -59,6 +59,7 @@ add_library(opentit_runtime OBJECT
   runtime/src/threads.cpp
   runtime/src/vfs.cpp
   runtime/src/spu/spu_thread.cpp
+  runtime/src/spu/lv2_spu.cpp
   runtime/src/hle/cellGcmSys.cpp
   runtime/src/hle/cellSysutil.cpp
   runtime/src/hle/misc.cpp
@@ -112,6 +113,7 @@ if(OPENTIT_BUILD_TESTS)
     tests/test_decoder.cpp
     tests/test_vmx.cpp
     tests/test_spu.cpp
+    tests/test_lv2_spu.cpp
     "${TEST_GEN_DIR}/ppu_0000.cpp"
     "${TEST_GEN_DIR}/ppu_table.cpp"
     $<TARGET_OBJECTS:opentit_runtime>)

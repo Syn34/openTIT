@@ -30,11 +30,6 @@ struct Semaphore : Object {
     s32 value = 0, max = 0;
 };
 
-struct EventFlag : Object {
-    std::mutex m;
-    std::condition_variable cv;
-    u64 pattern = 0;
-};
 
 struct RwLock : Object {
     std::mutex m;
@@ -206,6 +201,14 @@ std::set<u32>& warned() {
 
 }  // namespace
 
+bool send_event(EventQueue& q, u64 source, u64 d1, u64 d2, u64 d3) {
+    std::lock_guard<std::mutex> lk(q.m);
+    if (q.destroyed || q.events.size() >= q.size) return false;
+    q.events.push_back({source, d1, d2, d3});
+    q.cv.notify_one();
+    return true;
+}
+
 const char* syscall_name(u32 n) {
     switch (n) {
     case 1: return "sys_process_getpid";
@@ -270,11 +273,39 @@ const char* syscall_name(u32 n) {
     case 144: return "sys_time_get_timezone";
     case 145: return "sys_time_get_current_time";
     case 147: return "sys_time_get_timebase_frequency";
+    case 155: return "_sys_spu_image_get_information";
     case 156: return "sys_spu_image_open";
+    case 157: return "_sys_spu_image_import";
+    case 158: return "_sys_spu_image_close";
+    case 159: return "_sys_spu_image_get_segments";
+    case 165: return "sys_spu_thread_get_exit_status";
+    case 166: return "sys_spu_thread_set_argument";
     case 169: return "sys_spu_initialize";
+    case 170: return "sys_spu_thread_group_create";
+    case 171: return "sys_spu_thread_group_destroy";
+    case 172: return "sys_spu_thread_initialize";
+    case 173: return "sys_spu_thread_group_start";
+    case 174: return "sys_spu_thread_group_suspend";
+    case 175: return "sys_spu_thread_group_resume";
+    case 176: return "sys_spu_thread_group_yield";
+    case 177: return "sys_spu_thread_group_terminate";
+    case 178: return "sys_spu_thread_group_join";
+    case 179: return "sys_spu_thread_group_set_priority";
+    case 180: return "sys_spu_thread_group_get_priority";
     case 181: return "sys_spu_thread_write_ls";
     case 182: return "sys_spu_thread_read_ls";
+    case 184: return "sys_spu_thread_write_snr";
+    case 185: return "sys_spu_thread_group_connect_event";
+    case 186: return "sys_spu_thread_group_disconnect_event";
+    case 187: return "sys_spu_thread_set_spu_cfg";
+    case 188: return "sys_spu_thread_get_spu_cfg";
     case 190: return "sys_spu_thread_write_spu_mb";
+    case 191: return "sys_spu_thread_connect_event";
+    case 192: return "sys_spu_thread_disconnect_event";
+    case 193: return "sys_spu_thread_bind_queue";
+    case 194: return "sys_spu_thread_unbind_queue";
+    case 251: return "sys_spu_thread_group_connect_event_all_threads";
+    case 252: return "sys_spu_thread_group_disconnect_event_all_threads";
     case 260: return "sys_spu_image_open_by_fd";
     case 330: return "sys_mmapper_allocate_address";
     case 331: return "sys_mmapper_free_address";
@@ -522,16 +553,11 @@ void dispatch_syscall(PPUContext& c, u32 pc) {
         break;
     }
 
-    // ---- SPU (not yet emulated - see docs/ROADMAP.md)
-    case 156:
-    case 169:
-    case 181:
-    case 182:
-    case 190:
-    case 260:
+    // ---- timers / debug (not yet emulated - see docs/ROADMAP.md)
     case 70: case 71: case 73: case 74: case 75: case 76:
     case 988:
     default: {
+        if (spu_syscall(c, n, &r)) break;
         bool first;
         {
             static std::mutex m;
@@ -541,7 +567,7 @@ void dispatch_syscall(PPUContext& c, u32 pc) {
         if (first)
             LOG_WARN("syscall", "unimplemented syscall %u (%s) at 0x%08X, r3=0x%llX", n, syscall_name(n), pc,
                      (unsigned long long)c.gpr[3]);
-        r = (n == 169 || n == 988) ? CELL_OK : CELL_ENOSYS;
+        r = n == 988 ? CELL_OK : CELL_ENOSYS;
         break;
     }
     }

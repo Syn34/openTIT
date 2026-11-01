@@ -93,6 +93,12 @@ struct EventQueue : Object {
     bool destroyed = false;
 };
 
+struct EventFlag : Object {
+    std::mutex m;
+    std::condition_variable cv;
+    u64 pattern = 0;
+};
+
 struct EventPort : Object {
     u64 name = 0;
     std::weak_ptr<EventQueue> queue;
@@ -120,6 +126,10 @@ void register_main_thread(PPUContext& ctx, u32 id);
 
 // ---------------------------------------------------------------- syscalls
 void dispatch_syscall(PPUContext& ctx, u32 pc);
+// SPU syscalls (lv2_spu.cpp). Returns false if `n` is not an SPU syscall.
+bool spu_syscall(PPUContext& ctx, u32 n, u64* result);
+// Post an event to a queue (false if the queue is full).
+bool send_event(EventQueue& q, u64 source, u64 d1, u64 d2, u64 d3);
 const char* syscall_name(u32 n);
 
 }  // namespace opentit::kernel
