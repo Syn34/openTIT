@@ -175,6 +175,12 @@ struct State {
     std::array<u32, 468 * 4> vp_const{};  // vertex constants: 468 x vec4 (float bits)
     u32 vp_write = 0;                     // word index of the next TRANSFORM_PROGRAM write
     u32 vp_const_write = 0;               // word index of the next TRANSFORM_CONSTANT write
+    // Immediate attribute values (SET_VERTEX_DATA*_M), used when an array is disabled.
+    std::array<std::array<float, 4>, 16> vertex_regs = [] {
+        std::array<std::array<float, 4>, 16> r{};
+        for (auto& v : r) v = {0.0f, 0.0f, 0.0f, 1.0f};
+        return r;
+    }();
 
     u32 reg(u32 method) const { return regs[(method & 0xFFFC) >> 2]; }
 
@@ -239,6 +245,7 @@ private:
     void nv0039_copy();
     void nv3089_blit();
     void nv308a_color(u32 index, u32 value);
+    bool vertex_data(u32 reg, u32 value);
     void get_report(u32 value);
     u32 ea(u32 offset, bool local) const;
 

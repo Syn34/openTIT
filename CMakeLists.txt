@@ -70,6 +70,8 @@ add_library(opentit_runtime OBJECT
   runtime/src/rsx/shader_dump.cpp
   runtime/src/rsx/glsl.cpp
   runtime/src/rsx/glsl_compile.cpp
+  runtime/src/rsx/texture.cpp
+  runtime/src/rsx/geometry.cpp
   runtime/src/hle/sysPrxForUser.cpp
   runtime/src/hle/sys_fs.cpp
 )
@@ -137,6 +139,7 @@ if(OPENTIT_BUILD_TESTS)
     tests/test_lv2_spu.cpp
     tests/test_prx.cpp
     tests/test_rsx.cpp
+    tests/test_rsx_cpu.cpp
     "${TEST_GEN_DIR}/ppu_0000.cpp"
     "${TEST_GEN_DIR}/ppu_table.cpp"
     $<TARGET_OBJECTS:opentit_runtime>)

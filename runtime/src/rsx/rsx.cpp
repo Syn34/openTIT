@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <cstring>
 #include <thread>
 
 #include "../log.h"
@@ -141,6 +142,7 @@ void Decoder::method(u32 reg, u32 v) {
         s_.vp_const[s_.vp_const_write++ % s_.vp_const.size()] = v;
         return;
     }
+    if (vertex_data(reg, v)) return;
     if (reg >= NV308A_COLOR && reg < NV308A_COLOR + 0x700 * 4) {
         nv308a_color((reg - NV308A_COLOR) >> 2, v);
         return;
@@ -242,6 +244,48 @@ void Decoder::method(u32 reg, u32 v) {
     default:
         break;
     }
+}
+
+namespace {
+float bits_f32(u32 v) {
+    float f;
+    std::memcpy(&f, &v, 4);
+    return f;
+}
+}  // namespace
+
+// SET_VERTEX_DATA{1F,2F,3F,4F,2S,4S,4UB,SCALED4S}_M: immediate attribute values.
+bool Decoder::vertex_data(u32 reg, u32 v) {
+    auto& r = s_.vertex_regs;
+    if (reg >= 0x1C00 && reg < 0x1D00) {  // 4F: 16 x 4 floats
+        r[(reg - 0x1C00) / 16][((reg - 0x1C00) / 4) % 4] = bits_f32(v);
+    } else if (reg >= 0x1500 && reg < 0x15C0) {  // 3F
+        const u32 a = (reg - 0x1500) / 12, c = ((reg - 0x1500) / 4) % 3;
+        r[a][c] = bits_f32(v);
+        r[a][3] = 1.0f;
+    } else if (reg >= 0x1880 && reg < 0x1900) {  // 2F
+        const u32 a = (reg - 0x1880) / 8;
+        r[a][((reg - 0x1880) / 4) % 2] = bits_f32(v);
+        r[a][2] = 0.0f;
+        r[a][3] = 1.0f;
+    } else if (reg >= 0x1E40 && reg < 0x1E80) {  // 1F
+        const u32 a = (reg - 0x1E40) / 4;
+        r[a] = {bits_f32(v), 0.0f, 0.0f, 1.0f};
+    } else if (reg >= 0x1940 && reg < 0x1980) {  // 4UB (normalised; x in the top byte)
+        const u32 a = (reg - 0x1940) / 4;
+        for (int c = 0; c < 4; ++c) r[a][c] = static_cast<float>((v >> (24 - 8 * c)) & 0xFF) / 255.0f;
+    } else if (reg >= 0x1900 && reg < 0x1940) {  // 2S
+        const u32 a = (reg - 0x1900) / 4;
+        r[a] = {static_cast<float>(static_cast<s16>(v >> 16)), static_cast<float>(static_cast<s16>(v)), 0.0f, 1.0f};
+    } else if ((reg >= 0x1980 && reg < 0x1A00) || (reg >= 0x0A80 && reg < 0x0B00)) {  // 4S / SCALED4S
+        const u32 base = reg >= 0x1980 ? 0x1980u : 0x0A80u;
+        const u32 a = (reg - base) / 8, half = ((reg - base) / 4) % 2;
+        r[a][half * 2] = static_cast<float>(static_cast<s16>(v >> 16));
+        r[a][half * 2 + 1] = static_cast<float>(static_cast<s16>(v));
+    } else {
+        return false;
+    }
+    return true;
 }
 
 void Decoder::end_draw() {
