@@ -26,6 +26,7 @@ enum Fn : std::uint32_t {
     TailCall,     // r3 = n: tail-calls SumToN(n + 1)
     AtomicInc,    // r3 = word address: lwarx/stwcx. increment, returns new value
     Indirect,     // r3 = n: calls SumToN through its descriptor with bctrl
+    BackEntry,    // r3 = n: entry stub branches back to shared code placed *before* it; returns n + 6
     Count
 };
 

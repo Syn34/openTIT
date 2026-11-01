@@ -209,6 +209,12 @@ TEST(indirect_call_through_descriptor) {
     CHECK_EQ(c.gpr[2], u64(kTocBase));
 }
 
+TEST(entry_above_shared_body) {
+    auto& c = fresh();
+    c.gpr[3] = 10;
+    CHECK_EQ(call(BackEntry, c), 16ull);
+}
+
 int main() {
     std::string err;
     g_elf = loader::Elf::load(OPENTIT_TEST_ELF, &err);

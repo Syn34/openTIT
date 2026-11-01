@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <set>
 
 #include "ppu/ppu_disasm.h"
@@ -757,7 +758,12 @@ std::string FunctionEmitter::run() {
     out_ += "    u64* const r = ctx.gpr; f64* const f = ctx.fpr; v128* const v = ctx.vr; u8* const cr = ctx.cr;\n";
     out_ += "    (void)r; (void)f; (void)v; (void)cr;\n";
 
-    const bool start_is_target = fn_.labels.count(fn_.start) != 0;
+    // Bodies are emitted in address order, but the entry is not always the
+    // lowest address (e.g. an entry stub that branches back into shared code
+    // placed before it). In that case jump to the entry first.
+    const bool entry_not_first = !fn_.insns.empty() && fn_.insns.front() != fn_.start;
+    const bool start_is_target = fn_.labels.count(fn_.start) != 0 || entry_not_first;
+    if (entry_not_first) out_ += S("    goto L_%08X;\n", fn_.start);
     for (std::size_t k = 0; k < fn_.insns.size(); ++k) {
         const u32 pc = fn_.insns[k];
         const u32 raw = elf_.read_u32(pc);
@@ -800,6 +806,22 @@ const char* kFileHeader =
     "#endif\n"
     "using namespace opentit;\n\n";
 
+// Write only when the content changed, so re-running the recompiler doesn't
+// force a full rebuild of ~200 large translation units.
+bool write_if_changed(const std::string& path, const std::string& content) {
+    {
+        std::ifstream in(path, std::ios::binary);
+        if (in) {
+            std::string old((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            if (old == content) return true;
+        }
+    }
+    std::ofstream f(path, std::ios::binary);
+    if (!f) return false;
+    f << content;
+    return static_cast<bool>(f);
+}
+
 }  // namespace
 
 bool emit_program(const loader::Elf& elf, const analysis::Program& prog, const EmitOptions& opts, EmitStats* stats,
@@ -811,11 +833,7 @@ bool emit_program(const loader::Elf& elf, const analysis::Program& prog, const E
         if (error) *error = "cannot create " + opts.out_dir + ": " + ec.message();
         return false;
     }
-    // Remove stale outputs so a smaller re-run doesn't leave orphans behind.
-    for (const auto& e : fs::directory_iterator(opts.out_dir, ec)) {
-        const auto name = e.path().filename().string();
-        if (name.rfind("ppu_", 0) == 0 && e.path().extension() == ".cpp") fs::remove(e.path(), ec);
-    }
+    std::set<std::string> written;
 
     std::size_t file_index = 0;
     std::string body;
@@ -829,12 +847,11 @@ bool emit_program(const loader::Elf& elf, const analysis::Program& prog, const E
         // later in this same file).
         for (const auto& [addr, _] : referenced) decls += S("OPENTIT_FN(%08X);\n", addr);
         const std::string path = S("%s/ppu_%04zu.cpp", opts.out_dir.c_str(), file_index++);
-        std::ofstream f(path, std::ios::binary);
-        if (!f) {
+        if (!write_if_changed(path, std::string(kFileHeader) + decls + "\n" + body)) {
             if (error) *error = "cannot write " + path;
             return false;
         }
-        f << kFileHeader << decls << "\n" << body;
+        written.insert(fs::path(path).filename().string());
         body.clear();
         referenced.clear();
         insns_in_file = 0;
@@ -853,17 +870,22 @@ bool emit_program(const loader::Elf& elf, const analysis::Program& prog, const E
     // Function table used by the runtime's indirect-call dispatcher.
     {
         const std::string path = opts.out_dir + "/ppu_table.cpp";
-        std::ofstream f(path, std::ios::binary);
-        if (!f) {
+        std::string t = kFileHeader;
+        for (const auto& [addr, _] : prog.functions) t += S("OPENTIT_FN(%08X);\n", addr);
+        t += "\nnamespace opentit {\nconst FunctionEntry g_recompiled_functions[] = {\n";
+        for (const auto& [addr, _] : prog.functions) t += S("    {0x%08X, f_%08X},\n", addr, addr);
+        t += "};\nconst std::size_t g_recompiled_function_count = sizeof(g_recompiled_functions) / "
+             "sizeof(g_recompiled_functions[0]);\n}  // namespace opentit\n";
+        if (!write_if_changed(path, t)) {
             if (error) *error = "cannot write " + path;
             return false;
         }
-        f << kFileHeader;
-        for (const auto& [addr, _] : prog.functions) f << S("OPENTIT_FN(%08X);\n", addr);
-        f << "\nnamespace opentit {\nconst FunctionEntry g_recompiled_functions[] = {\n";
-        for (const auto& [addr, _] : prog.functions) f << S("    {0x%08X, f_%08X},\n", addr, addr);
-        f << "};\nconst std::size_t g_recompiled_function_count = sizeof(g_recompiled_functions) / "
-             "sizeof(g_recompiled_functions[0]);\n}  // namespace opentit\n";
+        written.insert("ppu_table.cpp");
+    }
+    // Remove stale outputs left by an earlier, larger run.
+    for (const auto& e : fs::directory_iterator(opts.out_dir, ec)) {
+        const auto name = e.path().filename().string();
+        if (name.rfind("ppu_", 0) == 0 && e.path().extension() == ".cpp" && !written.count(name)) fs::remove(e.path(), ec);
     }
     return true;
 }

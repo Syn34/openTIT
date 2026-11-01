@@ -335,6 +335,14 @@ int main(int argc, char** argv) {
     a.mtlr(0);
     a.blr();
 
+    // BackEntry: the body sits at a lower address than the entry point.
+    a.label("back_body");
+    a.addi(3, 3, 5);
+    a.blr();
+    func(BackEntry, "back_entry");
+    a.addi(3, 3, 1);
+    a.b("back_body");
+
     a.resolve();
 
     // ------------------------------------------------------------ ELF image
