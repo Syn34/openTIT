@@ -64,6 +64,8 @@ add_library(opentit_runtime OBJECT
   runtime/src/hle/cellSysutil.cpp
   runtime/src/hle/libc.cpp
   runtime/src/hle/misc.cpp
+  runtime/src/hle/cellSaveData.cpp
+  runtime/src/hle/offline.cpp
   runtime/src/rsx/rsx.cpp
   runtime/src/rsx/vertex_program.cpp
   runtime/src/rsx/fragment_program.cpp
@@ -180,6 +182,7 @@ if(OPENTIT_BUILD_TESTS)
     tests/test_rsx.cpp
     tests/test_rsx_cpu.cpp
     tests/test_vulkan.cpp
+    tests/test_savedata.cpp
     "${TEST_GEN_DIR}/ppu_0000.cpp"
     "${TEST_GEN_DIR}/ppu_table.cpp"
     $<TARGET_OBJECTS:opentit_runtime>)

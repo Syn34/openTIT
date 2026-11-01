@@ -245,9 +245,12 @@ OPENTIT_HLE(cellNetCtl, cellNetCtlGetInfo) { ret(ctx, 0x80130106); }  // CELL_NE
 
 OPENTIT_HLE_OK(sys_net, sys_net_initialize_network_ex)
 OPENTIT_HLE_OK(sys_net, sys_net_finalize_network)
-OPENTIT_HLE(sys_net, _sys_net_errno_loc) {
+namespace opentit::hle {
+u32 net_errno_addr() {
     static u32 loc = 0;
     if (!loc) loc = alloc_guest(4, 4);
-    ret(ctx, loc);
+    return loc;
 }
+}  // namespace opentit::hle
+OPENTIT_HLE(sys_net, _sys_net_errno_loc) { ret(ctx, hle::net_errno_addr()); }
 OPENTIT_HLE(sys_net, socket) { ret(ctx, static_cast<u64>(-1)); }

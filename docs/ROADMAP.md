@@ -15,7 +15,8 @@ Rough order. Each milestone should leave the tests green and the game booting at
 - [ ] `setjmp`/`longjmp` and any other code that manipulates LR or r1 non-locally
 - [x] `sys_timer_*` (70–76): periodic events to event queues
 - [x] VBlank handler invoked from a 60 Hz host thread
-- [ ] Save data (`cellSaveData*` callback flow) backed by `dev_hdd0/home/.../savedata`
+- [x] Save data (`cellSaveData*2` auto/list/fixed callback flows) backed by `dev_hdd0/home/00000001/savedata/<dir>/` with a real PARAM.SFO
+- [x] Every EBOOT import implemented (offline answers for PSN, TUS, sockets, HTTP/SSL)
 
 ## M2: SPU / SPURS
 

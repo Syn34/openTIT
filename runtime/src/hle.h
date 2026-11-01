@@ -20,6 +20,9 @@ struct Registrar {
     Registrar(const char* library, const char* name, HleFn fn);
 };
 
+// The implementation registered under `name` (tests, internal calls).
+HleFn find(const char* name);
+
 // Log an unimplemented-but-harmless call once per function.
 void todo(const char* name);
 
@@ -31,6 +34,7 @@ u64 call_guest(PPUContext& ctx, u32 opd, std::initializer_list<u64> args);
 // Create a callable HLE function that is not an import (e.g. the GCM
 // command-buffer callback). Returns the address of its function descriptor.
 u32 make_internal_function(const char* name, HleFn fn);
+void commit_descriptors();  // make the HLE descriptor region usable (done on first use)
 
 }  // namespace opentit::hle
 

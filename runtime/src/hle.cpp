@@ -46,6 +46,11 @@ Registrar::Registrar(const char* library, const char* name, HleFn fn) {
     registry()[loader::compute_nid(name)] = {library, name, fn};
 }
 
+HleFn find(const char* name) {
+    auto it = registry().find(loader::compute_nid(name));
+    return it == registry().end() ? nullptr : it->second.fn;
+}
+
 u64 call_guest(PPUContext& ctx, u32 opd, std::initializer_list<u64> args) {
     const u64 saved_r2 = ctx.gpr[2];
     const u64 saved_lr = ctx.lr;
@@ -68,7 +73,13 @@ void todo(const char* name) {
     if (seen.insert(name).second) LOG_WARN("hle", "%s: partial stub", name);
 }
 
+void commit_descriptors() {
+    static std::once_flag once;
+    std::call_once(once, [] { mem::commit(kOpdBase, 0x00800000); });
+}
+
 u32 make_internal_function(const char* name, HleFn fn) {
+    commit_descriptors();
     std::lock_guard<std::mutex> lk(g_bind_mutex);
     const u32 index = static_cast<u32>(g_bound.size());
     const u32 opd = kOpdBase + index * 8;
@@ -89,11 +100,7 @@ namespace opentit::rtm {
 
 void hle_bind_imports(const loader::Elf& elf, const std::function<u32(const loader::Import&)>& resolve) {
     using namespace hle;
-    static bool committed = false;
-    if (!committed) {
-        mem::commit(kOpdBase, 0x00800000);
-        committed = true;
-    }
+    commit_descriptors();
     std::size_t implemented = 0, linked = 0;
     static u32 var_cursor = kVarBase;
     for (const auto& im : elf.imports()) {
@@ -123,6 +130,7 @@ void hle_bind_imports(const loader::Elf& elf, const std::function<u32(const load
         auto it = registry().find(im.nid);
         b.fn = it != registry().end() ? it->second.fn : nullptr;
         implemented += b.fn != nullptr;
+        if (!b.fn) LOG_DEBUG("hle", "not implemented: %s::%s", b.library.c_str(), b.name.c_str());
         g_bound.push_back(std::move(b));
     }
     LOG_INFO("hle", "%s: %zu imports -> %zu linked to modules, %zu HLE (%zu implemented)",

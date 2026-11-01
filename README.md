@@ -13,7 +13,7 @@ Early, but the whole pipeline runs end to end:
 | Stage | State |
 |---|---|
 | ELF loader: segments, TLS, process param, OPD scan, PRX import tables | ✅ |
-| Import identification (NID → name, SHA-1 verified) | ✅ 250 / 251 imports named |
+| Import identification (NID → name, SHA-1 verified) | ✅ 250 / 251 imports named; all 187 HLE imports implemented |
 | PPU decoder: full PowerPC 64 + VMX + Cell `lvlx`/`stvlx` family | ✅ 0 undecodable reachable words |
 | Function discovery (recursive descent, tail calls, jump tables) | ✅ 24,163 functions, 175 switch tables |
 | C++ emitter (integer, FPU, VMX, CR, reservations, syscalls) | ✅ every reachable instruction emitted, no fallbacks |
