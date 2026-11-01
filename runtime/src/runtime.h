@@ -1,7 +1,9 @@
 // Internal runtime interfaces shared by the kernel, HLE modules and boot code.
 #pragma once
 
+#include <functional>
 #include <string>
+#include <vector>
 
 #include "common/types.h"
 #include "loader/elf.h"
@@ -14,6 +16,7 @@ struct Config {
     std::string game_root;  // folder containing PS3_GAME/ (the disc dump)
     std::string eboot;      // decrypted EBOOT.elf
     std::string hdd0;       // host folder backing /dev_hdd0
+    std::string firmware;   // folder with decrypted firmware PRX modules (default: <game_root>/firmware)
     bool strict = false;    // abort on unimplemented HLE functions
 };
 
@@ -24,6 +27,7 @@ void set_elf(const loader::Elf* e);
 // ---- dispatcher
 void init_dispatch(const FunctionEntry* table, std::size_t count);
 GuestFn lookup(u32 code_addr);
+const std::vector<ModuleTable>& module_tables();
 
 // Run a guest function described by an OPD (sets r2 from the descriptor).
 void call_opd(PPUContext& ctx, u32 opd_addr);
@@ -31,7 +35,9 @@ void call_opd(PPUContext& ctx, u32 opd_addr);
 void call_code(PPUContext& ctx, u32 code_addr, u32 toc);
 
 // ---- HLE
-void hle_bind_imports(const loader::Elf& elf);
+// Bind every import of `elf`. `resolve` returns the address of a real
+// (LLE) export for an import, or 0 to fall back to the HLE implementation.
+void hle_bind_imports(const loader::Elf& elf, const std::function<u32(const loader::Import&)>& resolve);
 bool hle_try_call(PPUContext& ctx, u32 code_addr);
 
 // ---- threads

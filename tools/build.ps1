@@ -24,6 +24,17 @@ try {
 
     .\build\opentit-recomp.exe recompile $eboot -o $Gen
 
+    # Optional LLE firmware modules (decrypted with RPCS3), e.g. firmware\libsre.prx
+    $fw = Join-Path $Dump "firmware"
+    if (Test-Path $fw) {
+        $base = 0x01800000
+        foreach ($prx in Get-ChildItem $fw -Filter *.prx | Sort-Object Name) {
+            $name = $prx.BaseName
+            .\build\opentit-recomp.exe recompile $prx.FullName -o (Join-Path $Gen "modules\$name") --base ('{0:X}' -f $base) --name $name
+            $base += 0x00400000
+        }
+    }
+
     $genAbs = (Resolve-Path $Gen).Path
     cmake -S . -B build-game -G Ninja -DCMAKE_BUILD_TYPE=$Config -DOPENTIT_BUILD_TESTS=OFF "-DOPENTIT_GENERATED_DIR=$genAbs"
     cmake --build build-game

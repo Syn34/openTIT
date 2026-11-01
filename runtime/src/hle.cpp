@@ -87,12 +87,21 @@ u32 make_internal_function(const char* name, HleFn fn) {
 
 namespace opentit::rtm {
 
-void hle_bind_imports(const loader::Elf& elf) {
+void hle_bind_imports(const loader::Elf& elf, const std::function<u32(const loader::Import&)>& resolve) {
     using namespace hle;
-    mem::commit(kOpdBase, 0x00800000);
-    std::size_t implemented = 0;
-    u32 var_cursor = kVarBase;
+    static bool committed = false;
+    if (!committed) {
+        mem::commit(kOpdBase, 0x00800000);
+        committed = true;
+    }
+    std::size_t implemented = 0, linked = 0;
+    static u32 var_cursor = kVarBase;
     for (const auto& im : elf.imports()) {
+        if (const u32 real = resolve ? resolve(im) : 0) {
+            mem::w32(im.slot, real);  // LLE: point straight at the module's export
+            ++linked;
+            continue;
+        }
         if (im.is_variable) {
             // Give each imported variable 4 KiB of zeroed storage.
             mem::w32(im.slot, var_cursor);
@@ -116,8 +125,9 @@ void hle_bind_imports(const loader::Elf& elf) {
         implemented += b.fn != nullptr;
         g_bound.push_back(std::move(b));
     }
-    LOG_INFO("hle", "bound %zu imports (%zu implemented, %zu default stubs)", g_bound.size(), implemented,
-             g_bound.size() - implemented);
+    LOG_INFO("hle", "%s: %zu imports -> %zu linked to modules, %zu HLE (%zu implemented)",
+             elf.is_prx() ? elf.module_name().c_str() : "EBOOT", elf.imports().size(), linked,
+             elf.imports().size() - linked, implemented);
 }
 
 bool hle_try_call(PPUContext& ctx, u32 code_addr) {

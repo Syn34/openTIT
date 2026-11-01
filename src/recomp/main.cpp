@@ -10,6 +10,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <map>
 #include <string>
 #include <vector>
@@ -37,6 +39,7 @@ int usage() {
                  "  opentit-recomp funcs     <EBOOT.elf> [--entries file] [--list]\n"
                  "  opentit-recomp disasm    <EBOOT.elf> <hex addr> [count]\n"
                  "  opentit-recomp recompile <EBOOT.elf> -o <dir> [--entries file] [--no-annotate] [--per-file N]\n"
+                 "  opentit-recomp recompile <module.prx> -o <dir> [--base hex] [--name name]   (decrypted firmware PRX)\n"
                  "  opentit-recomp sfo       <PARAM.SFO>\n"
                  "  opentit-recomp spu-list   <EBOOT.elf>\n"
                  "  opentit-recomp spu-disasm <EBOOT.elf> <image #> <hex LS addr> [count]\n\n"
@@ -45,9 +48,30 @@ int usage() {
     return 2;
 }
 
+// PRX modules (firmware libraries) are relocated to a fixed base before
+// analysis; the runtime later loads the same file at the same base.
+constexpr u32 kDefaultPrxBase = 0x01800000;
+u32 g_prx_base = kDefaultPrxBase;
+std::string g_prx_name;
+
+bool is_prx_file(const char* path) {
+    std::ifstream f(path, std::ios::binary);
+    u8 h[18] = {};
+    f.read(reinterpret_cast<char*>(h), sizeof(h));
+    return f && std::memcmp(h, "\x7f" "ELF", 4) == 0 && h[16] == 0xFF && h[17] == 0xA4;
+}
+
 std::optional<loader::Elf> open_elf(const char* path) {
     std::string err;
-    auto e = loader::Elf::load(path, &err);
+    std::optional<loader::Elf> e;
+    if (is_prx_file(path)) {
+        e = loader::Elf::load_prx(path, g_prx_base, &err);
+        if (e && g_prx_name.empty()) g_prx_name = std::filesystem::path(path).stem().string();
+        if (e) std::fprintf(stderr, "PRX module '%s' (file name '%s') relocated to 0x%08X..0x%08X\n",
+                            e->module_name().c_str(), g_prx_name.c_str(), g_prx_base, e->image_end());
+    } else {
+        e = loader::Elf::load(path, &err);
+    }
     if (!e) std::fprintf(stderr, "error: %s\n", err.c_str());
     return e;
 }
@@ -84,6 +108,13 @@ int cmd_info(const loader::Elf& e) {
                                       (unsigned long long)t->filesz, (unsigned long long)t->memsz);
     std::printf("function descriptors (.opd): %zu\n", e.scan_opds().size());
     std::printf("imports: %zu\n", e.imports().size());
+    if (e.is_prx()) {
+        std::printf("PRX module '%s': toc 0x%08X, module_start OPD 0x%08X, %zu exports\n", e.module_name().c_str(),
+                    e.prx_toc(), e.module_start_opd(), e.exports().size());
+        std::map<std::string, std::size_t> libs;
+        for (const auto& x : e.exports()) libs[x.library]++;
+        for (const auto& [lib, n] : libs) std::printf("  exports %-24s %zu\n", lib.c_str(), n);
+    }
     return 0;
 }
 
@@ -170,6 +201,10 @@ int cmd_recompile(const loader::Elf& e, int argc, char** argv) {
         else if (!std::strcmp(argv[k], "--no-annotate")) eo.annotate = false;
         else if (!std::strcmp(argv[k], "--per-file") && k + 1 < argc) eo.insns_per_file = std::strtoul(argv[++k], nullptr, 0);
     }
+    if (e.is_prx()) {
+        eo.module_name = g_prx_name;
+        eo.module_base = g_prx_base;
+    }
     if (eo.out_dir.empty()) return usage();
     bool ok;
     auto opts = parse_analysis_opts(argc, argv, 3, &ok);
@@ -250,6 +285,10 @@ int cmd_sfo(const char* path) {
 int main(int argc, char** argv) {
     if (argc < 3) return usage();
     const std::string cmd = argv[1];
+    for (int k = 3; k < argc; ++k) {
+        if (!std::strcmp(argv[k], "--base") && k + 1 < argc) g_prx_base = static_cast<u32>(std::strtoul(argv[k + 1], nullptr, 16));
+        if (!std::strcmp(argv[k], "--name") && k + 1 < argc) g_prx_name = argv[k + 1];
+    }
     if (cmd == "sfo") return cmd_sfo(argv[2]);
     auto e = open_elf(argv[2]);
     if (!e) return 1;

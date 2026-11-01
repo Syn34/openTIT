@@ -846,7 +846,8 @@ bool emit_program(const loader::Elf& elf, const analysis::Program& prog, const E
         // Forward-declare everything referenced (including functions defined
         // later in this same file).
         for (const auto& [addr, _] : referenced) decls += S("OPENTIT_FN(%08X);\n", addr);
-        const std::string path = S("%s/ppu_%04zu.cpp", opts.out_dir.c_str(), file_index++);
+        const std::string path = S("%s/ppu_%s%04zu.cpp", opts.out_dir.c_str(),
+                                   opts.module_name.empty() ? "" : (opts.module_name + "_").c_str(), file_index++);
         if (!write_if_changed(path, std::string(kFileHeader) + decls + "\n" + body)) {
             if (error) *error = "cannot write " + path;
             return false;
@@ -869,18 +870,28 @@ bool emit_program(const loader::Elf& elf, const analysis::Program& prog, const E
 
     // Function table used by the runtime's indirect-call dispatcher.
     {
-        const std::string path = opts.out_dir + "/ppu_table.cpp";
+        const std::string table_name =
+            opts.module_name.empty() ? std::string("ppu_table.cpp") : "ppu_" + opts.module_name + "_table.cpp";
+        const std::string path = opts.out_dir + "/" + table_name;
         std::string t = kFileHeader;
         for (const auto& [addr, _] : prog.functions) t += S("OPENTIT_FN(%08X);\n", addr);
-        t += "\nnamespace opentit {\nconst FunctionEntry g_recompiled_functions[] = {\n";
-        for (const auto& [addr, _] : prog.functions) t += S("    {0x%08X, f_%08X},\n", addr, addr);
-        t += "};\nconst std::size_t g_recompiled_function_count = sizeof(g_recompiled_functions) / "
-             "sizeof(g_recompiled_functions[0]);\n}  // namespace opentit\n";
+        if (opts.module_name.empty()) {
+            t += "\nnamespace opentit {\nconst FunctionEntry g_recompiled_functions[] = {\n";
+            for (const auto& [addr, _] : prog.functions) t += S("    {0x%08X, f_%08X},\n", addr, addr);
+            t += "};\nconst std::size_t g_recompiled_function_count = sizeof(g_recompiled_functions) / "
+                 "sizeof(g_recompiled_functions[0]);\n}  // namespace opentit\n";
+        } else {
+            t += "\nnamespace {\nconst ::opentit::FunctionEntry kFunctions[] = {\n";
+            for (const auto& [addr, _] : prog.functions) t += S("    {0x%08X, f_%08X},\n", addr, addr);
+            t += S("};\nconst ::opentit::ModuleRegistrar kRegistrar(\"%s\", 0x%08X, kFunctions, "
+                   "sizeof(kFunctions) / sizeof(kFunctions[0]));\n}  // namespace\n",
+                   opts.module_name.c_str(), opts.module_base);
+        }
         if (!write_if_changed(path, t)) {
             if (error) *error = "cannot write " + path;
             return false;
         }
-        written.insert("ppu_table.cpp");
+        written.insert(table_name);
     }
     // Remove stale outputs left by an earlier, larger run.
     for (const auto& e : fs::directory_iterator(opts.out_dir, ec)) {

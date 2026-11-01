@@ -99,6 +99,7 @@ bool Elf::parse(std::string* error) {
     return true;
 }
 
+
 // prx_param layout: size, magic, version, unk0, libent_start, libent_end,
 //                   libstub_start, libstub_end, ...
 // Each libstub record: u8 size, u8 unk, u16 version, u16 attr, u16 num_func,
@@ -110,8 +111,11 @@ bool Elf::parse_imports(u32 pp, std::string* error) {
         if (error) *error = "unexpected prx_param magic";
         return false;
     }
-    const u32 start = read_u32(pp + 0x18);
-    const u32 end = read_u32(pp + 0x1C);
+    parse_stub_records(read_u32(pp + 0x18), read_u32(pp + 0x1C));
+    return true;
+}
+
+void Elf::parse_stub_records(u32 start, u32 end) {
     for (u32 va = start; va < end;) {
         const u8 rec = read_u8(va);
         if (rec == 0) break;
@@ -142,6 +146,179 @@ bool Elf::parse_imports(u32 pp, std::string* error) {
         }
         va += rec;
     }
+}
+
+std::optional<Elf> Elf::load_prx(const std::string& path, u32 base, std::string* error) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) {
+        if (error) *error = "cannot open " + path;
+        return std::nullopt;
+    }
+    std::vector<u8> d((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    return load_prx_from_memory(std::move(d), base, error);
+}
+
+std::optional<Elf> Elf::load_prx_from_memory(std::vector<u8> file, u32 base, std::string* error) {
+    Elf elf;
+    elf.data_ = std::move(file);
+    if (!elf.parse(error)) return std::nullopt;
+    if (!elf.relocate_prx(base, error)) return std::nullopt;
+    return elf;
+}
+
+u32 Elf::image_end() const {
+    u64 end = 0;
+    for (const auto& s : segments_)
+        if (s.type == PT_LOAD && s.memsz) end = std::max(end, s.vaddr + s.memsz);
+    return static_cast<u32>(end);
+}
+
+// PRX relocation (SCE_PPURELA, p_type 0x700000A4) record:
+//   u64 offset; u16 unk; u8 index_value; u8 index_addr; u32 type; u64 ptr
+bool Elf::relocate_prx(u32 base, std::string* error) {
+    const u8* d = data_.data();
+    if (load_be<u16>(d + 16) != 0xFFA4) {
+        if (error) *error = "not a PRX (expected e_type 0xFFA4)";
+        return false;
+    }
+    is_prx_ = true;
+    const u64 phoff = load_be<u64>(d + 32);
+    const u16 phnum = load_be<u16>(d + 56);
+
+    // 1. Lay out PT_LOAD segments and build the relocated image (memsz each).
+    struct Placed { std::size_t phdr_index; u32 addr; u32 memsz; std::size_t image_off; u64 p_offset, p_paddr; };
+    std::vector<Placed> placed;
+    std::vector<u8> image;
+    std::vector<Segment> new_segments;
+    u32 cursor = base;
+    for (std::size_t k = 0; k < segments_.size(); ++k) {
+        const Segment& s = segments_[k];
+        if (s.type != PT_LOAD) {
+            new_segments.push_back(s);
+            continue;
+        }
+        const u32 memsz = static_cast<u32>(s.memsz);
+        Placed p{k, cursor, memsz, image.size(), s.offset, load_be<u64>(d + phoff + 56 * k + 24)};
+        image.resize(image.size() + memsz, 0);
+        std::memcpy(image.data() + p.image_off, d + s.offset, s.filesz);
+        placed.push_back(p);
+        Segment ns = s;
+        ns.vaddr = cursor;
+        ns.offset = p.image_off;
+        ns.filesz = memsz;
+        new_segments.push_back(ns);
+        cursor += (memsz + 0xFFFF) & ~0xFFFFu;
+    }
+
+    // 2. Apply relocations.
+    auto seg_addr = [&](u8 index) -> std::optional<u32> {
+        if (index == 0xFF) return 0u;
+        if (index >= placed.size()) return std::nullopt;
+        return placed[index].addr;
+    };
+    for (u16 k = 0; k < phnum; ++k) {
+        const u8* ph = d + phoff + 56u * k;
+        if (load_be<u32>(ph) != 0x700000A4) continue;
+        const u64 off = load_be<u64>(ph + 8), filesz = load_be<u64>(ph + 32);
+        for (u64 i = 0; i + 24 <= filesz; i += 24) {
+            const u8* rel = d + off + i;
+            const u64 roff = load_be<u64>(rel);
+            const u8 index_value = rel[10];
+            const u8 index_addr = rel[11];
+            const u32 type = load_be<u32>(rel + 12);
+            const u64 ptr = load_be<u64>(rel + 16);
+            if (index_addr >= placed.size() || roff + 8 > placed[index_addr].memsz + 0x100) {
+                if (error) *error = "relocation outside of its segment";
+                return false;
+            }
+            const auto dbase = seg_addr(index_value);
+            if (!dbase) {
+                if (error) *error = "relocation references a missing segment";
+                return false;
+            }
+            const u32 raddr = placed[index_addr].addr + static_cast<u32>(roff);
+            const u64 v = *dbase + ptr;
+            u8* t = image.data() + placed[index_addr].image_off + roff;
+            switch (type) {
+            case 1: store_be<u32>(t, static_cast<u32>(v)); break;                                     // ADDR32
+            case 4: store_be<u16>(t, static_cast<u16>(v)); break;                                     // ADDR16_LO
+            case 5: store_be<u16>(t, static_cast<u16>(v >> 16)); break;                               // ADDR16_HI
+            case 6: store_be<u16>(t, static_cast<u16>((v >> 16) + ((v & 0x8000) ? 1 : 0))); break;    // ADDR16_HA
+            case 10: {                                                                                // REL24
+                const u32 w = load_be<u32>(t);
+                store_be<u32>(t, (w & 0xFC000003u) | ((static_cast<u32>(v - raddr)) & 0x03FFFFFCu));
+                break;
+            }
+            case 11: {                                                                                // REL14
+                const u32 w = load_be<u32>(t);
+                store_be<u32>(t, (w & 0xFFFF0003u) | ((static_cast<u32>(v - raddr)) & 0xFFFCu));
+                break;
+            }
+            case 38: store_be<u64>(t, v); break;                                                      // ADDR64
+            case 44: store_be<u64>(t, v - raddr); break;                                              // REL64
+            case 57: {                                                                                // ADDR16_LO_DS
+                const u16 h = load_be<u16>(t);
+                store_be<u16>(t, static_cast<u16>((h & 3) | (static_cast<u16>(v) & ~3u)));
+                break;
+            }
+            default:
+                if (error) *error = "unsupported PRX relocation type " + std::to_string(type);
+                return false;
+            }
+        }
+    }
+
+    data_ = std::move(image);
+    segments_ = std::move(new_segments);
+    sections_.clear();
+    tls_.reset();
+    for (const auto& s : segments_)
+        if (s.type == PT_TLS) tls_ = s;
+
+    // 3. Library info lives at seg0 + p_paddr - p_offset:
+    //    u16 attributes; u8 version[2]; char name[28]; u32 toc, exports_start, exports_end, imports_start, imports_end
+    if (placed.empty() || !placed[0].p_paddr) {
+        if (error) *error = "PRX has no module info";
+        return false;
+    }
+    const u32 info = placed[0].addr + static_cast<u32>(placed[0].p_paddr - placed[0].p_offset);
+    module_name_ = read_cstr(info + 4, 28);
+    prx_toc_ = read_u32(info + 32);
+    const u32 exports_start = read_u32(info + 36), exports_end = read_u32(info + 40);
+    const u32 imports_start = read_u32(info + 44), imports_end = read_u32(info + 48);
+
+    // Exports share the stub record layout (size, attributes, counts, name, nids, addrs).
+    for (u32 va = exports_start; va < exports_end;) {
+        const u8 rec = read_u8(va);
+        const u16 attr = read_u16(va + 4);
+        const u16 num_func = read_u16(va + 6);
+        const u16 num_var = read_u16(va + 8);
+        const u32 name_va = read_u32(va + 0x10);
+        const u32 nids = read_u32(va + 0x14);
+        const u32 addrs = read_u32(va + 0x18);
+        const bool library = attr & 1;
+        const bool management = !library && (attr & 0x8000);
+        for (u32 i = 0; i < u32(num_func) + num_var; ++i) {
+            const u32 nid = read_u32(nids + 4 * i);
+            const u32 addr = read_u32(addrs + 4 * i);
+            if (management) {
+                if (nid == 0xBC9A0086) module_start_ = addr;
+                if (nid == 0xAB779874) module_stop_ = addr;
+                continue;
+            }
+            if (!library) continue;
+            Export e;
+            e.library = name_va ? read_cstr(name_va) : module_name_;
+            e.nid = nid;
+            e.addr = addr;
+            e.is_variable = i >= num_func;
+            exports_.push_back(e);
+        }
+        va += rec ? rec : 0x1C;
+    }
+    imports_.clear();
+    parse_stub_records(imports_start, imports_end);
+    entry_ = module_start_ ? module_start_ : (exports_.empty() ? 0 : exports_.front().addr);
     return true;
 }
 

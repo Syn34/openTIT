@@ -82,7 +82,8 @@ endfunction()
 
 # ---------------------------------------------------------------- the game
 if(OPENTIT_GENERATED_DIR)
-  file(GLOB OPENTIT_GENERATED_SOURCES CONFIGURE_DEPENDS "${OPENTIT_GENERATED_DIR}/ppu_*.cpp")
+  # Game code plus any recompiled firmware modules (gen/modules/<name>/ppu_<name>_*.cpp).
+  file(GLOB_RECURSE OPENTIT_GENERATED_SOURCES CONFIGURE_DEPENDS "${OPENTIT_GENERATED_DIR}/ppu_*.cpp")
   if(NOT OPENTIT_GENERATED_SOURCES)
     message(FATAL_ERROR "No ppu_*.cpp in ${OPENTIT_GENERATED_DIR}. Run: opentit-recomp recompile <EBOOT.elf> -o <dir>")
   endif()
@@ -114,6 +115,7 @@ if(OPENTIT_BUILD_TESTS)
     tests/test_vmx.cpp
     tests/test_spu.cpp
     tests/test_lv2_spu.cpp
+    tests/test_prx.cpp
     "${TEST_GEN_DIR}/ppu_0000.cpp"
     "${TEST_GEN_DIR}/ppu_table.cpp"
     $<TARGET_OBJECTS:opentit_runtime>)

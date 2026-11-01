@@ -63,6 +63,14 @@ struct Import {
     bool is_variable = false;
 };
 
+// A function or variable exported by a PRX module.
+struct Export {
+    std::string library;
+    u32 nid = 0;
+    u32 addr = 0;  // functions: address of the OPD; variables: address of the data
+    bool is_variable = false;
+};
+
 // 32-bit PS3 function descriptor (.opd entry).
 struct Opd {
     u32 addr = 0;  // where the descriptor lives
@@ -74,6 +82,19 @@ class Elf {
 public:
     static std::optional<Elf> load(const std::string& path, std::string* error);
 
+    // Load a decrypted PRX (ET_SCE_PPURELEXEC) and relocate it so its first
+    // segment starts at `base`; later segments follow at 64 KiB alignment.
+    // The result behaves like an executable mapped at fixed addresses.
+    static std::optional<Elf> load_prx(const std::string& path, u32 base, std::string* error);
+    static std::optional<Elf> load_prx_from_memory(std::vector<u8> file, u32 base, std::string* error);
+
+    bool is_prx() const { return is_prx_; }
+    const std::string& module_name() const { return module_name_; }
+    const std::vector<Export>& exports() const { return exports_; }
+    u32 module_start_opd() const { return module_start_; }
+    u32 module_stop_opd() const { return module_stop_; }
+    u32 prx_toc() const { return prx_toc_; }
+    u32 image_end() const;  // highest mapped address + 1
     const std::vector<u8>& data() const { return data_; }
     u64 entry() const { return entry_; }
     const std::vector<Segment>& segments() const { return segments_; }
@@ -105,6 +126,8 @@ public:
 private:
     bool parse(std::string* error);
     bool parse_imports(u32 prx_param_va, std::string* error);
+    void parse_stub_records(u32 start, u32 end);
+    bool relocate_prx(u32 base, std::string* error);
 
     std::vector<u8> data_;
     u64 entry_ = 0;
@@ -113,6 +136,13 @@ private:
     ProcessParam proc_param_;
     std::vector<Import> imports_;
     std::optional<Segment> tls_;
+
+    bool is_prx_ = false;
+    std::string module_name_;
+    std::vector<Export> exports_;
+    u32 module_start_ = 0;
+    u32 module_stop_ = 0;
+    u32 prx_toc_ = 0;
 };
 
 }  // namespace opentit::loader

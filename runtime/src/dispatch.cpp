@@ -1,5 +1,6 @@
 // Indirect-call dispatcher, trap/illegal handlers and the timebase.
 #include <chrono>
+#include <algorithm>
 #include <cstdlib>
 #include <vector>
 
@@ -15,10 +16,20 @@ namespace {
 const loader::Elf* g_elf = nullptr;
 Config g_config;
 
-// Flat table indexed by (addr - g_lo) / 4: one load per indirect call.
-std::vector<GuestFn> g_flat;
-u32 g_lo = 0;
+// One flat table per code region (game + each module), indexed by (addr - lo) / 4.
+struct Region {
+    u32 lo = 0;
+    std::vector<GuestFn> flat;
+};
+std::vector<Region> g_regions;
+
+std::vector<ModuleTable>& modules() {
+    static std::vector<ModuleTable> m;
+    return m;
+}
 }  // namespace
+
+const std::vector<ModuleTable>& module_tables() { return modules(); }
 
 Config& config() { return g_config; }
 const loader::Elf& elf() { return *g_elf; }
@@ -31,16 +42,21 @@ void init_dispatch(const FunctionEntry* table, std::size_t count) {
         lo = std::min(lo, table[i].addr);
         hi = std::max(hi, table[i].addr);
     }
-    g_lo = lo;
-    g_flat.assign((hi - lo) / 4 + 1, nullptr);
-    for (std::size_t i = 0; i < count; ++i) g_flat[(table[i].addr - lo) / 4] = table[i].fn;
+    Region r;
+    r.lo = lo;
+    r.flat.assign((hi - lo) / 4 + 1, nullptr);
+    for (std::size_t i = 0; i < count; ++i) r.flat[(table[i].addr - lo) / 4] = table[i].fn;
+    g_regions.push_back(std::move(r));
     LOG_INFO("dispatch", "%zu recompiled functions (0x%08X..0x%08X)", count, lo, hi);
 }
 
 GuestFn lookup(u32 addr) {
-    const u32 idx = (addr - g_lo) / 4;
-    if (addr < g_lo || idx >= g_flat.size() || (addr & 3)) return nullptr;
-    return g_flat[idx];
+    if (addr & 3) return nullptr;
+    for (const auto& r : g_regions) {
+        const u32 idx = (addr - r.lo) / 4;
+        if (addr >= r.lo && idx < r.flat.size()) return r.flat[idx];
+    }
+    return nullptr;
 }
 
 void call_code(PPUContext& ctx, u32 code_addr, u32 toc) {
@@ -51,6 +67,8 @@ void call_code(PPUContext& ctx, u32 code_addr, u32 toc) {
 void call_opd(PPUContext& ctx, u32 opd) { call_code(ctx, mem::r32(opd), mem::r32(opd + 4)); }
 
 }  // namespace rtm
+
+void register_module_table(const ModuleTable& t) { rtm::modules().push_back(t); }
 
 void call_indirect(PPUContext& ctx, u32 target, u32 from) {
     if (GuestFn fn = rtm::lookup(target)) {

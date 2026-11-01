@@ -30,6 +30,22 @@ struct FunctionEntry {
 extern const FunctionEntry g_recompiled_functions[];
 extern const std::size_t g_recompiled_function_count;
 
+// Recompiled PRX modules (e.g. firmware libsre) register their tables at
+// static-initialisation time. The runtime loads <firmware>/<name>.prx at
+// `base` - the same address it was recompiled for.
+struct ModuleTable {
+    const char* name;
+    u32 base;
+    const FunctionEntry* functions;
+    std::size_t count;
+};
+void register_module_table(const ModuleTable& t);
+struct ModuleRegistrar {
+    ModuleRegistrar(const char* name, u32 base, const FunctionEntry* fns, std::size_t n) {
+        register_module_table({name, base, fns, n});
+    }
+};
+
 // Provided by the runtime.
 void call_indirect(PPUContext& ctx, u32 target, u32 from);
 void ppu_syscall(PPUContext& ctx, u32 pc);

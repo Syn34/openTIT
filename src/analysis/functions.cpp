@@ -361,6 +361,11 @@ Program Analyzer::run() {
         prog.import_stubs[im.initial] = im.library + "::" + loader::nid_display_name(im.library, im.nid);
     }
     for (u32 a : opts_.extra_entries) add_seed(a, entry.toc);
+    // PRX modules: every exported function and the module start/stop entries.
+    for (const auto& ex : elf_.exports())
+        if (!ex.is_variable && elf_.ptr(ex.addr, 8)) add_seed(elf_.read_u32(ex.addr), elf_.read_u32(ex.addr + 4));
+    for (u32 opd : {elf_.module_start_opd(), elf_.module_stop_opd()})
+        if (opd && elf_.ptr(opd, 8)) add_seed(elf_.read_u32(opd), elf_.read_u32(opd + 4));
 
     // Phase 1: discover all function starts.
     std::size_t rounds = 0;

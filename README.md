@@ -49,6 +49,10 @@ Dump your disc, then decrypt `PS3_GAME/USRDIR/EBOOT.BIN` with RPCS3 (*Utilities 
 ...
 ```
 
+### 1b. (Recommended) firmware SPURS module
+
+Sly 4 uses SPURS job chains, so openTIT runs Sony's real SPURS library, the same approach RPCS3 takes. In RPCS3, use *File → Install Firmware* (the `PS3_UPDATE/PS3UPDAT.PUP` from your dump works), then *Utilities → Decrypt PS3 Binaries* on `dev_flash/sys/external/libsre.sprx`, and save the result as `<dump>/firmware/libsre.prx`. The build scripts recompile anything in `firmware/` automatically. openTIT never ships keys or firmware.
+
 ### 2. Build the tools
 
 ```sh

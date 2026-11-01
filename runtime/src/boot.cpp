@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -25,6 +27,7 @@ int usage() {
                  "  <path to disc dump>   folder that contains PS3_GAME/\n"
                  "  --eboot <file>        decrypted executable (default: PS3_GAME/USRDIR/EBOOT.elf)\n"
                  "  --hdd0 <dir>          host folder for /dev_hdd0 (default: ./dev_hdd0)\n"
+                 "  --firmware <dir>      decrypted firmware modules, e.g. libsre.prx (default: <dump>/firmware)\n"
                  "  --log <level>         trace | debug | info | warn | error\n"
                  "  --strict              abort on the first unimplemented HLE function\n"
                  "  -- <args...>          pass the remaining arguments to the game (argv)\n");
@@ -75,6 +78,7 @@ int boot_main(int argc, char** argv) {
         }
         if (a == "--eboot" && k + 1 < argc) cfg.eboot = argv[++k];
         else if (a == "--hdd0" && k + 1 < argc) cfg.hdd0 = argv[++k];
+        else if (a == "--firmware" && k + 1 < argc) cfg.firmware = argv[++k];
         else if (a == "--strict") cfg.strict = true;
         else if (a == "--log" && k + 1 < argc) {
             const std::string l = argv[++k];
@@ -88,6 +92,7 @@ int boot_main(int argc, char** argv) {
         }
     }
     if (cfg.eboot.empty()) cfg.eboot = (fs::path(cfg.game_root) / "PS3_GAME" / "USRDIR" / "EBOOT.elf").string();
+    if (cfg.firmware.empty()) cfg.firmware = (fs::path(cfg.game_root) / "firmware").string();
 
     std::string err;
     static std::optional<loader::Elf> elf = loader::Elf::load(cfg.eboot, &err);
@@ -101,7 +106,33 @@ int boot_main(int argc, char** argv) {
     if (!load_segments(*elf)) return 1;
     rtm::kernel_init();
     rtm::init_dispatch(g_recompiled_functions, g_recompiled_function_count);
-    rtm::hle_bind_imports(*elf);
+
+    // Recompiled firmware modules (LLE). Each must be loaded at the base it was recompiled for.
+    static std::vector<std::unique_ptr<loader::Elf>> modules;
+    for (const auto& mt : rtm::module_tables()) {
+        const fs::path path = fs::path(cfg.firmware) / (std::string(mt.name) + ".prx");
+        std::string merr;
+        auto m = loader::Elf::load_prx(path.string(), mt.base, &merr);
+        if (!m) {
+            LOG_WARN("boot", "module '%s' was recompiled but %s could not be loaded (%s) - using HLE instead", mt.name,
+                     path.string().c_str(), merr.c_str());
+            continue;
+        }
+        if (!load_segments(*m)) return 1;
+        rtm::init_dispatch(mt.functions, mt.count);
+        LOG_INFO("boot", "module '%s' (%s) at 0x%08X, %zu exports", mt.name, m->module_name().c_str(), mt.base,
+                 m->exports().size());
+        modules.push_back(std::make_unique<loader::Elf>(std::move(*m)));
+    }
+    std::map<std::pair<std::string, u32>, u32> exports;
+    for (const auto& m : modules)
+        for (const auto& x : m->exports()) exports[{x.library, x.nid}] = x.addr;
+    auto resolve = [&](const loader::Import& im) -> u32 {
+        auto it = exports.find({im.library, im.nid});
+        return it == exports.end() ? 0 : it->second;
+    };
+    rtm::hle_bind_imports(*elf, resolve);
+    for (const auto& m : modules) rtm::hle_bind_imports(*m, resolve);
 
     // Main PPU thread.
     static PPUContext ctx;
@@ -128,6 +159,21 @@ int boot_main(int argc, char** argv) {
     ctx.gpr[10] = tls ? tls->memsz : 0;
     ctx.gpr[11] = elf->entry();
     ctx.gpr[12] = pp.malloc_pagesize;
+
+    // module_start(argc = 0, argv = 0) for each LLE module, on its own context.
+    for (const auto& m : modules) {
+        if (!m->module_start_opd()) continue;
+        PPUContext mctx;
+        mctx.stack_size = 0x10000;
+        mctx.stack_addr = rtm::alloc_stack(mctx.stack_size);
+        mctx.gpr[1] = mctx.stack_addr + mctx.stack_size - 0x70;
+        mctx.gpr[13] = rtm::alloc_tls() + 0x7030;
+        mctx.thread_id = ctx.thread_id;
+        kernel::register_main_thread(mctx, ctx.thread_id);
+        rtm::call_opd(mctx, m->module_start_opd());
+        LOG_INFO("boot", "module_start(%s) returned 0x%llX", m->module_name().c_str(), (unsigned long long)mctx.gpr[3]);
+    }
+    kernel::register_main_thread(ctx, 0x01000000);
 
     LOG_INFO("boot", "entry 0x%08X toc 0x%08X, stack 0x%08X+0x%X", entry.func, entry.toc, ctx.stack_addr, stack_size);
     try {
