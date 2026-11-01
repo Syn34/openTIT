@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include "opentit/decomp.h"
 #include "opentit/spu_recomp.h"
 #include "opentit/boot.h"
 
@@ -35,6 +36,8 @@ int usage() {
                  "  --dump-shaders <dir>  write every distinct vertex/fragment program's disassembly\n"
                  "  --renderer <name>     auto (default) | vulkan | null\n"
                  "  --spu-record <file>   save SPU code the build has not compiled (feed it to spu-recompile)\n"
+                 "  --no-decomp           run the recompiled originals instead of decompiled functions\n"
+                 "  --decomp-off <a,b>    same for the listed functions (hex addresses)\n"
                  "  --headless            no window\n"
                  "  --scale <n>           window size: 1 = 640x360, 2 = 1280x720, 3 = 1920x1080\n"
                  "  -- <args...>          pass the remaining arguments to the game (argv)\n");
@@ -90,6 +93,17 @@ int boot_main(int argc, char** argv) {
         else if (a == "--strict") cfg.strict = true;
         else if (a == "--dump-shaders" && k + 1 < argc) cfg.shader_dump = argv[++k];
         else if (a == "--spu-record" && k + 1 < argc) cfg.spu_record = argv[++k];
+        else if (a == "--no-decomp") decomp::disable_all();
+        else if (a == "--decomp-off" && k + 1 < argc) {
+            // comma-separated hex addresses
+            std::string list = argv[++k];
+            std::size_t at = 0;
+            while (at < list.size()) {
+                const std::size_t c = list.find(',', at);
+                decomp::disable(static_cast<u32>(std::strtoul(list.substr(at, c - at).c_str(), nullptr, 16)));
+                at = c == std::string::npos ? list.size() : c + 1;
+            }
+        }
         else if (a == "--renderer" && k + 1 < argc) cfg.renderer = argv[++k];
         else if (a == "--headless") cfg.headless = true;
         else if (a == "--scale" && k + 1 < argc) cfg.scale = std::atoi(argv[++k]);

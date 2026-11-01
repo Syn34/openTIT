@@ -47,6 +47,7 @@ add_library(opentit_recomp_lib STATIC
   src/analysis/functions.cpp
   src/recomp/emitter.cpp
   src/recomp/spu_emitter.cpp
+  src/recomp/symbols.cpp
 )
 target_link_libraries(opentit_recomp_lib PUBLIC opentit_core)
 
@@ -58,6 +59,7 @@ target_link_libraries(opentit-recomp PRIVATE opentit_recomp_lib)
 add_library(opentit_runtime OBJECT
   runtime/src/boot.cpp
   runtime/src/crash.cpp
+  runtime/src/decomp.cpp
   runtime/src/dispatch.cpp
   runtime/src/hle.cpp
   runtime/src/kernel.cpp
@@ -205,7 +207,8 @@ if(OPENTIT_BUILD_TESTS)
     COMMAND ${CMAKE_COMMAND} -E make_directory "${TEST_GEN_DIR}"
     COMMAND opentit-testgen "${TEST_GEN_DIR}/test.elf"
     COMMAND opentit-recomp recompile "${TEST_GEN_DIR}/test.elf" -o "${TEST_GEN_DIR}" --per-file 100000000
-    DEPENDS opentit-testgen opentit-recomp
+            --decomp "${CMAKE_SOURCE_DIR}/tests/decomp"
+    DEPENDS opentit-testgen opentit-recomp tests/decomp/sum.cpp
     COMMENT "Generating and recompiling the synthetic test ELF")
 
   add_executable(opentit-spu-testgen tests/spu_testgen.cpp)
@@ -235,6 +238,8 @@ if(OPENTIT_BUILD_TESTS)
     "${TEST_GEN_DIR}/spu/spu_0000.cpp"
     "${TEST_GEN_DIR}/spu/spu_table.cpp"
     tests/test_spu_recomp.cpp
+    tests/test_decomp.cpp
+    tests/decomp/sum.cpp
     $<TARGET_OBJECTS:opentit_runtime>)
   target_link_libraries(opentit_tests PRIVATE opentit_runtime opentit_recomp_lib)
   target_compile_definitions(opentit_tests PRIVATE OPENTIT_TEST_ELF="${TEST_GEN_DIR}/test.elf")

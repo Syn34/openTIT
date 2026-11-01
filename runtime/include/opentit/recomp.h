@@ -301,3 +301,5 @@ inline void mtfsf(PPUContext& ctx, u32 fm, u64 bits) {
 
 // Shorthand used by generated code.
 #define OPENTIT_FN(addr) void f_##addr(::opentit::PPUContext& ctx)
+// The recompiled body of a function that has a hand-written (decompiled) replacement.
+#define OPENTIT_FN_RECOMP(addr) void f_##addr##_recomp(::opentit::PPUContext& ctx)

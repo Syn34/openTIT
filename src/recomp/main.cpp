@@ -6,6 +6,10 @@
 //   opentit-recomp disasm    EBOOT.elf <hex addr> [count]
 //   opentit-recomp recompile EBOOT.elf -o <dir> [--entries extra.txt] [--no-annotate] [--per-file N]
 //   opentit-recomp sfo       PARAM.SFO
+#include <cctype>
+#include <optional>
+#include <algorithm>
+#include "recomp/symbols.h"
 #include <set>
 #include "spu/spu_analysis.h"
 #include "recomp/spu_emitter.h"
@@ -41,9 +45,10 @@ int usage() {
                  "  opentit-recomp imports   <EBOOT.elf>\n"
                  "  opentit-recomp funcs     <EBOOT.elf> [--entries file] [--list]\n"
                  "  opentit-recomp disasm    <EBOOT.elf> <hex addr> [count]\n"
-                 "  opentit-recomp recompile <EBOOT.elf> -o <dir> [--entries file] [--no-annotate] [--no-gpr-cache] [--per-file N]\n"
+                 "  opentit-recomp recompile <EBOOT.elf> -o <dir> [--entries file] [--no-annotate] [--no-gpr-cache] [--decomp <dir>] [--per-file N]\n"
                  "  opentit-recomp recompile <module.prx> -o <dir> [--base hex] [--name name]   (decrypted firmware PRX)\n"
                  "  opentit-recomp sfo       <PARAM.SFO>\n"
+                 "  opentit-recomp funcinfo  <EBOOT.elf> <hex addr> [--symbols decomp/symbols.txt]\n"
                  "  opentit-recomp spu-list   <EBOOT.elf>\n"
                  "  opentit-recomp spu-disasm <EBOOT.elf> <image #> <hex LS addr> [count]\n"
                  "  opentit-recomp spu-recompile <EBOOT.elf|*.prx|*.spurec ...> -o <dir>\n\n"
@@ -204,6 +209,19 @@ int cmd_recompile(const loader::Elf& e, int argc, char** argv) {
         if (!std::strcmp(argv[k], "-o") && k + 1 < argc) eo.out_dir = argv[++k];
         else if (!std::strcmp(argv[k], "--no-annotate")) eo.annotate = false;
         else if (!std::strcmp(argv[k], "--no-gpr-cache")) eo.cache_gprs = false;
+        else if (!std::strcmp(argv[k], "--symbols") && k + 1 < argc) {
+            std::string err;
+            for (const auto& [a, sym] : recomp::read_symbols(argv[++k], &err)) eo.names[a] = sym.name;
+            if (!err.empty()) std::fprintf(stderr, "warning: %s\n", err.c_str());
+        }
+        else if (!std::strcmp(argv[k], "--decomp") && k + 1 < argc) {
+            std::string err;
+            eo.decompiled = recomp::scan_decomp_sources(argv[++k], &err);
+            if (!err.empty()) {
+                std::fprintf(stderr, "error: %s\n", err.c_str());
+                return 1;
+            }
+        }
         else if (!std::strcmp(argv[k], "--per-file") && k + 1 < argc) eo.insns_per_file = std::strtoul(argv[++k], nullptr, 0);
     }
     if (e.is_prx()) {
@@ -226,6 +244,13 @@ int cmd_recompile(const loader::Elf& e, int argc, char** argv) {
     const auto secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     std::printf("recompiled %zu functions / %zu instructions into %zu files in %.1fs -> %s\n", stats.functions,
                 stats.instructions, stats.files, secs, eo.out_dir.c_str());
+    if (!eo.decompiled.empty()) {
+        std::size_t found = 0;
+        for (u32 a : eo.decompiled) found += prog.functions.count(a);
+        std::printf("%zu decompiled functions replace their recompiled bodies", eo.decompiled.size());
+        if (found != eo.decompiled.size()) std::printf(" (%zu are not function starts!)", eo.decompiled.size() - found);
+        std::printf("\n");
+    }
     if (!stats.fallback_ops.empty()) {
         std::printf("instructions emitted as runtime fallbacks / no-ops:\n");
         for (const auto& [op, n] : stats.fallback_ops) std::printf("  %-10s %zu\n", ppu::op_name(op), n);
@@ -345,6 +370,148 @@ int cmd_spu_recompile(int argc, char** argv) {
     return 0;
 }
 
+// funcinfo <elf> <hex addr> [--symbols file]: everything useful for decompiling one function.
+int cmd_funcinfo(const loader::Elf& e, int argc, char** argv) {
+    if (argc < 4) return usage();
+    const u32 want = static_cast<u32>(std::strtoul(argv[3], nullptr, 16));
+    std::map<u32, recomp::Symbol> syms;
+    for (int k = 4; k < argc; ++k)
+        if (!std::strcmp(argv[k], "--symbols") && k + 1 < argc) {
+            std::string err;
+            syms = recomp::read_symbols(argv[++k], &err);
+            if (!err.empty()) std::fprintf(stderr, "warning: %s\n", err.c_str());
+        }
+    bool ok;
+    const auto prog = analysis::analyze(e, parse_analysis_opts(argc, argv, 4, &ok));
+    const analysis::Function* fn = nullptr;
+    for (const auto& [a, f] : prog.functions)
+        if (a == want || std::binary_search(f.insns.begin(), f.insns.end(), want)) {
+            if (!fn || a == want) fn = &f;
+        }
+    if (!fn) {
+        std::fprintf(stderr, "error: no function contains 0x%08X\n", want);
+        return 1;
+    }
+    auto name_of = [&](u32 a) -> std::string {
+        if (auto it = syms.find(a); it != syms.end()) return it->second.name;
+        if (auto it = prog.import_stubs.find(a); it != prog.import_stubs.end()) return it->second + " (import)";
+        char b[16];
+        std::snprintf(b, sizeof b, "f_%08X", a);
+        return b;
+    };
+    const u32 lo = fn->insns.front(), hi = fn->insns.back();
+    std::printf("%s  (f_%08X)\n", name_of(fn->start).c_str(), fn->start);
+    if (auto it = syms.find(fn->start); it != syms.end() && !it->second.note.empty()) std::printf("  note: %s\n", it->second.note.c_str());
+    std::printf("  %zu instructions, 0x%08X..0x%08X, toc 0x%08X, %zu jump tables\n", fn->insns.size(), lo, hi + 3, fn->toc,
+                fn->jump_tables.size());
+
+    std::printf("\ncalled by:\n");
+    int callers = 0;
+    for (const auto& [a, f] : prog.functions)
+        if (f.callees.count(fn->start)) {
+            std::printf("  %s\n", name_of(a).c_str());
+            if (++callers >= 40) { std::printf("  ...\n"); break; }
+        }
+    if (!callers) std::printf("  (no direct callers: entry point, callback or called through a pointer)\n");
+    std::printf("\ncalls:\n");
+    for (u32 c : fn->callees) std::printf("  %s\n", name_of(c).c_str());
+
+    // Constants and strings the function builds (lis/addi/ori, loads from the TOC).
+    auto string_at = [&](u32 a) -> std::string {
+        const u8* p = e.ptr(a, 4);
+        if (!p) return {};
+        std::string out;
+        for (u32 k = 0; k < 200; ++k) {
+            const u8* c = e.ptr(a + k, 1);
+            if (!c || !*c) break;
+            if (*c < 0x20 && *c != '\n' && *c != '\t') return {};
+            if (*c > 0x7E) return {};
+            out += static_cast<char>(*c);
+        }
+        if (out.size() < 4) return {};
+        // Mostly words, not packed binary data that happens to be printable.
+        std::size_t good = 0;
+        for (char c : out) good += std::isalnum(static_cast<unsigned char>(c)) || c == ' ' || c == '_' || c == '%' || c == '.' || c == '/';
+        return good * 10 >= out.size() * 8 ? out : std::string();
+    };
+    std::map<u32, std::string> refs;  // insn addr -> annotation
+    std::map<int, u32> k;
+    for (u32 pc : fn->insns) {
+        if (fn->labels.count(pc)) k.clear();
+        const u32 raw = e.read_u32(pc);
+        const ppu::Insn i(raw);
+        const ppu::Op op = ppu::decode(raw);
+        int dst = -1;
+        std::optional<u32> val;
+        switch (op) {
+        case ppu::Op::ADDIS:
+            dst = static_cast<int>(i.rd());
+            if (i.ra() == 0) val = static_cast<u32>(i.simm16()) << 16;
+            else if (k.count(static_cast<int>(i.ra()))) val = k[static_cast<int>(i.ra())] + (static_cast<u32>(i.simm16()) << 16);
+            break;
+        case ppu::Op::ADDI: case ppu::Op::ADDIC:
+            dst = static_cast<int>(i.rd());
+            if (i.ra() == 0) val = static_cast<u32>(i.simm16());
+            else if (i.ra() == 2) val = fn->toc + static_cast<u32>(i.simm16());
+            else if (k.count(static_cast<int>(i.ra()))) val = k[static_cast<int>(i.ra())] + static_cast<u32>(i.simm16());
+            break;
+        case ppu::Op::ORI:
+            dst = static_cast<int>(i.ra());
+            if (k.count(static_cast<int>(i.rs()))) val = k[static_cast<int>(i.rs())] | i.uimm16();
+            break;
+        case ppu::Op::LWZ: case ppu::Op::LD: {
+            dst = static_cast<int>(i.rd());
+            const s32 off = op == ppu::Op::LD ? i.ds() : i.simm16();
+            std::optional<u32> base;
+            if (i.ra() == 2) base = fn->toc;
+            else if (k.count(static_cast<int>(i.ra()))) base = k[static_cast<int>(i.ra())];
+            if (base && e.ptr(*base + static_cast<u32>(off), 4)) {
+                val = op == ppu::Op::LD ? e.read_u32(*base + static_cast<u32>(off) + 4) : e.read_u32(*base + static_cast<u32>(off));
+                if (i.ra() == 2) {
+                    char b[64];
+                    std::snprintf(b, sizeof b, "toc[%+d] = 0x%08X", off, *val);
+                    refs[pc] = b;
+                }
+            }
+            break;
+        }
+        default:
+            // Forget whatever the instruction may overwrite.
+            k.erase(static_cast<int>(i.rd()));
+            k.erase(static_cast<int>(i.ra()));
+            break;
+        }
+        if (dst >= 0) {
+            if (val) {
+                k[dst] = *val;
+                const std::string str = string_at(*val);
+                if (!str.empty()) refs[pc] = "\"" + str + "\"";
+                else if (prog.functions.count(*val)) refs[pc] = "&" + name_of(*val);
+            } else {
+                k.erase(dst);
+            }
+        }
+    }
+    std::printf("\nstrings / constants:\n");
+    for (const auto& [a, t] : refs)
+        if (t[0] == '"' || t[0] == '&') std::printf("  %08X  %s\n", a, t.c_str());
+
+    std::printf("\ndisassembly:\n");
+    for (u32 pc : fn->insns) {
+        const u32 raw = e.read_u32(pc);
+        std::string d = ppu::disasm(raw, pc);
+        const ppu::Insn i(raw);
+        if (ppu::decode(raw) == ppu::Op::B) {
+            const u32 t = i.aa() ? static_cast<u32>(i.li()) : pc + static_cast<u32>(i.li());
+            d += "    ; " + name_of(t);
+        } else if (auto it = refs.find(pc); it != refs.end()) {
+            d += "    ; " + it->second;
+        }
+        std::printf("%s%08X  %08X  %s\n", fn->labels.count(pc) ? ">" : " ", pc, raw, d.c_str());
+    }
+    return 0;
+}
+
 int cmd_sfo(const char* path) {
     std::string err;
     auto sfo = loader::read_sfo(path, &err);
@@ -377,6 +544,7 @@ int main(int argc, char** argv) {
     if (cmd == "funcs") return cmd_funcs(*e, argc, argv);
     if (cmd == "disasm") return cmd_disasm(*e, argc, argv);
     if (cmd == "recompile") return cmd_recompile(*e, argc, argv);
+    if (cmd == "funcinfo") return cmd_funcinfo(*e, argc, argv);
     if (cmd == "spu-list") return cmd_spu_list(*e);
     if (cmd == "spu-disasm") return cmd_spu_disasm(*e, argc, argv);
     return usage();

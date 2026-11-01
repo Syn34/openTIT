@@ -1,3 +1,4 @@
+#include <sstream>
 #include "recomp/emitter.h"
 
 #include <cctype>
@@ -866,7 +867,7 @@ std::string cache_gprs(const std::string& fn_text) {
         at = nl == std::string::npos ? body.size() : nl + 1;
         if (!header_done) {
             out += l + "\n";
-            if (l.rfind("OPENTIT_FN(", 0) == 0) {
+            if (l.rfind("OPENTIT_FN(", 0) == 0 || l.rfind("OPENTIT_FN_RECOMP(", 0) == 0) {
                 if (used) out += decl;
                 header_done = true;
             }
@@ -893,6 +894,39 @@ std::string cache_gprs(const std::string& fn_text) {
 }
 
 }  // namespace
+
+std::set<u32> scan_decomp_sources(const std::string& dir, std::string* error) {
+    namespace fs = std::filesystem;
+    std::set<u32> out;
+    std::error_code ec;
+    if (!fs::exists(dir, ec)) {
+        if (error) *error = "decomp folder not found: " + dir;
+        return out;
+    }
+    for (const auto& e : fs::recursive_directory_iterator(dir, ec)) {
+        const auto ext = e.path().extension().string();
+        if (!e.is_regular_file() || (ext != ".cpp" && ext != ".cc")) continue;
+        std::ifstream in(e.path(), std::ios::binary);
+        std::stringstream ss;
+        ss << in.rdbuf();
+        const std::string t = ss.str();
+        // DECOMP(XXXXXXXX, name) at the start of a line
+        for (std::size_t p = t.find("DECOMP("); p != std::string::npos; p = t.find("DECOMP(", p + 7)) {
+            if (p > 0 && t[p - 1] != '\n') continue;
+            std::size_t q = p + 7;
+            while (q < t.size() && t[q] == ' ') ++q;
+            u32 v = 0;
+            int digits = 0;
+            while (q < t.size() && std::isxdigit(static_cast<unsigned char>(t[q])) && digits < 8) {
+                v = v * 16 + static_cast<u32>(std::isdigit(static_cast<unsigned char>(t[q])) ? t[q] - '0' : (std::tolower(t[q]) - 'a' + 10));
+                ++q;
+                ++digits;
+            }
+            if (digits == 8) out.insert(v);
+        }
+    }
+    return out;
+}
 
 std::string emit_function(const loader::Elf& elf, const analysis::Program& prog, const analysis::Function& fn,
                           bool annotate, std::map<u32, bool>* referenced, EmitStats* stats, bool cache) {
@@ -968,7 +1002,15 @@ bool emit_program(const loader::Elf& elf, const analysis::Program& prog, const E
     };
 
     for (const auto& [addr, fn] : prog.functions) {
-        body += emit_function(elf, prog, fn, opts.annotate, &referenced, stats, opts.cache_gprs);
+        std::string text = emit_function(elf, prog, fn, opts.annotate, &referenced, stats, opts.cache_gprs);
+        if (opts.decompiled.count(addr)) {
+            // Keep the original for A/B testing; the decomp source defines f_XXXXXXXX.
+            const std::string head = S("OPENTIT_FN(%08X) {", addr);
+            if (text.compare(0, head.size(), head) == 0)
+                text.replace(0, head.size(), S("OPENTIT_FN_RECOMP(%08X) {", addr));
+        }
+        if (auto it = opts.names.find(addr); it != opts.names.end()) text = "// " + it->second + "\n" + text;
+        body += text;
         insns_in_file += fn.insns.size();
         if (stats) stats->functions++;
         if (insns_in_file >= opts.insns_per_file && !flush()) return false;
