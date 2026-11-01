@@ -12,7 +12,7 @@ Rough order. Each milestone should leave the tests green and the game booting at
 - [ ] Current stop (cloud test box only): `Sly4.psarc` missing there, so asset init fails. Next boot logs need a full dump on a real PC
 - [ ] `--entries` workflow for any `indirect branch ... has no recompiled function` reports
 - [x] Resolve the two remaining dynamic `bctr` (0x009BD2CC, 0x00AB3ECC): self-relative tables placed after the `bctr`
-- [ ] `setjmp`/`longjmp` and any other code that manipulates LR or r1 non-locally
+- [x] `setjmp`/`longjmp`: not used by this EBOOT (no exceptions or longjmp found)
 - [x] `sys_timer_*` (70–76): periodic events to event queues
 - [x] VBlank handler invoked from a 60 Hz host thread
 - [x] Save data (`cellSaveData*2` auto/list/fixed callback flows) backed by `dev_hdd0/home/00000001/savedata/<dir>/` with a real PARAM.SFO
@@ -39,10 +39,10 @@ Sly 4 imports 61 `cellSpurs` functions (job chains, tasksets, event flags, LF qu
 - [x] Texture formats (all RSX formats incl. DXT, swizzled/linear, cubemaps, 3D, remap), render targets, and flips shown in an SDL2 window
 - [x] Vulkan backend (dynamic rendering): pipelines from RSX state, depth/stencil, blending, MRT, scissor, viewport, Z16/Z24S8; end-to-end tests on lavapipe
 - [x] Render targets stay on the GPU; textures that match a target sample it directly (A8R8G8B8/X8R8G8B8, FP16/FP32, B8, with channel remap); write-back only at copies, overlapping texture reads and flips
-- [ ] Depth textures from depth targets (shadow maps) and shadow-compare samplers
+- [x] Depth textures from depth targets: shadow-compare samplers, depth values, Z24S8 bits read as xRGB8
 - [ ] Tiled surfaces (cellGcmSetTileInfo) and MSAA surfaces
 - [ ] Native float/depth texture formats instead of RGBA8 decode
-- [ ] Partial-channel clears, occlusion queries (reports are faked as visible), shadow samplers
+- [ ] Partial-channel clears, occlusion queries (reports are faked as visible)
 
 ## M4: Platform
 
