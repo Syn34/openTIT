@@ -328,6 +328,8 @@ private:
     VkImageView target_as_texture(const TextureDesc& d, u32 ea, glsl::TexDim dim);
     VkImageView depth_as_texture(const State& s, int unit, const TextureDesc& d, u32 ea, TexKind* kind);
     VkSampler sampler(const State& s, int unit, bool compare = false);
+    VkShaderModule module(bool vertex, const char* glsl);
+    VkPipeline clear_pipeline(u32 channel_mask);
 
     std::function<u32(u32, bool)> to_ea_;
     VulkanStats stats_;
@@ -366,6 +368,7 @@ private:
     std::unordered_map<u64, VkPipeline> pipe_cache_;
     std::unordered_map<u64, VkSampler> sampler_cache_;
     Image dummy_[4];  // 1D, 2D, 3D, cube
+    VkShaderModule clear_vs_ = VK_NULL_HANDLE, clear_fs_ = VK_NULL_HANDLE;
     VkSampler dummy_sampler_ = VK_NULL_HANDLE;
 };
 
@@ -381,6 +384,8 @@ Impl::~Impl() {
     }
     for (auto& [k, t] : textures_) destroy(t.image);
     for (auto& d : dummy_) destroy(d);
+    if (clear_vs_) vkDestroyShaderModule(dev_, clear_vs_, nullptr);
+    if (clear_fs_) vkDestroyShaderModule(dev_, clear_fs_, nullptr);
     for (auto& [k, m] : vs_cache_) if (m) vkDestroyShaderModule(dev_, m, nullptr);
     for (auto& [k, m] : fs_cache_) if (m) vkDestroyShaderModule(dev_, m, nullptr);
     for (auto& [k, p] : pipe_cache_) if (p) vkDestroyPipeline(dev_, p, nullptr);
@@ -1524,12 +1529,108 @@ void Impl::draw(const State& s, const DrawCall& c) {
     ++stats_.draws;
 }
 
+VkShaderModule Impl::module(bool vertex, const char* src) {
+    std::vector<u32> spv;
+    std::string log;
+    if (!glsl::compile(vertex, src, &spv, &log)) {
+        LOG_ERROR("vk", "internal shader failed: %s", log.c_str());
+        return VK_NULL_HANDLE;
+    }
+    VkShaderModuleCreateInfo ci{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
+    ci.codeSize = spv.size() * 4;
+    ci.pCode = spv.data();
+    VkShaderModule m = VK_NULL_HANDLE;
+    VKCHECK(vkCreateShaderModule(dev_, &ci, nullptr, &m));
+    return m;
+}
+
+// Full-screen triangle writing a push-constant colour through a channel mask,
+// for clears that only touch some colour channels.
+VkPipeline Impl::clear_pipeline(u32 channel_mask) {
+    if (!clear_vs_) {
+        clear_vs_ = module(true,
+                           "#version 450\n"
+                           "void main() {\n"
+                           "    vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);\n"
+                           "    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);\n"
+                           "}\n");
+        clear_fs_ = module(false,
+                           "#version 450\n"
+                           "layout(push_constant) uniform P { layout(offset = 80) vec4 c; } pc;\n"
+                           "layout(location = 0) out vec4 o0;\n"
+                           "layout(location = 1) out vec4 o1;\n"
+                           "layout(location = 2) out vec4 o2;\n"
+                           "layout(location = 3) out vec4 o3;\n"
+                           "void main() { o0 = pc.c; o1 = pc.c; o2 = pc.c; o3 = pc.c; }\n");
+    }
+    if (!clear_vs_ || !clear_fs_) return VK_NULL_HANDLE;
+    struct Key { u32 tag, mask, count; VkFormat colors[4]; VkFormat depth; } k;
+    std::memset(&k, 0, sizeof k);
+    k.tag = 0xC1EA4u;
+    k.mask = channel_mask;
+    k.count = static_cast<u32>(bound_color_.size());
+    for (u32 i = 0; i < k.count; ++i) k.colors[i] = bound_color_[i]->image.format;
+    k.depth = bound_depth_ ? bound_depth_->image.format : VK_FORMAT_UNDEFINED;
+    const u64 h = fnv1a(&k, sizeof k);
+    if (auto it = pipe_cache_.find(h); it != pipe_cache_.end()) return it->second;
+
+    VkPipelineShaderStageCreateInfo stages[2]{};
+    stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0, VK_SHADER_STAGE_VERTEX_BIT, clear_vs_, "main", nullptr};
+    stages[1] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0, VK_SHADER_STAGE_FRAGMENT_BIT, clear_fs_, "main", nullptr};
+    VkPipelineVertexInputStateCreateInfo vi{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+    VkPipelineInputAssemblyStateCreateInfo ia{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
+    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    VkPipelineViewportStateCreateInfo vp{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+    vp.viewportCount = vp.scissorCount = 1;
+    VkPipelineRasterizationStateCreateInfo rs{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+    rs.polygonMode = VK_POLYGON_MODE_FILL;
+    rs.cullMode = VK_CULL_MODE_NONE;
+    rs.lineWidth = 1.0f;
+    VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+    ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkPipelineDepthStencilStateCreateInfo ds{VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
+    std::array<VkPipelineColorBlendAttachmentState, 4> att{};
+    for (auto& a : att)
+        a.colorWriteMask = ((channel_mask & 0x10) ? VK_COLOR_COMPONENT_R_BIT : 0) | ((channel_mask & 0x20) ? VK_COLOR_COMPONENT_G_BIT : 0) |
+                           ((channel_mask & 0x40) ? VK_COLOR_COMPONENT_B_BIT : 0) | ((channel_mask & 0x80) ? VK_COLOR_COMPONENT_A_BIT : 0);
+    VkPipelineColorBlendStateCreateInfo cb{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+    cb.attachmentCount = k.count;
+    cb.pAttachments = att.data();
+    const VkDynamicState dyn[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo dy{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+    dy.dynamicStateCount = 2;
+    dy.pDynamicStates = dyn;
+    VkPipelineRenderingCreateInfo pr{VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO};
+    pr.colorAttachmentCount = k.count;
+    pr.pColorAttachmentFormats = k.colors;
+    pr.depthAttachmentFormat = k.depth;
+    pr.stencilAttachmentFormat = bound_depth_ && (aspect_of(k.depth) & VK_IMAGE_ASPECT_STENCIL_BIT) ? k.depth : VK_FORMAT_UNDEFINED;
+    VkGraphicsPipelineCreateInfo gp{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+    gp.pNext = &pr;
+    gp.stageCount = 2;
+    gp.pStages = stages;
+    gp.pVertexInputState = &vi;
+    gp.pInputAssemblyState = &ia;
+    gp.pViewportState = &vp;
+    gp.pRasterizationState = &rs;
+    gp.pMultisampleState = &ms;
+    gp.pDepthStencilState = &ds;
+    gp.pColorBlendState = &cb;
+    gp.pDynamicState = &dy;
+    gp.layout = pipe_layout_;
+    VkPipeline p = VK_NULL_HANDLE;
+    VKCHECK(vkCreateGraphicsPipelines(dev_, VK_NULL_HANDLE, 1, &gp, nullptr, &p));
+    pipe_cache_[h] = p;
+    return p;
+}
+
 void Impl::clear(const State& s, u32 mask) {
     begin_commands();
     const bool want_depth = (mask & 3) != 0;
     if (!bind_targets(s, want_depth || s.surface().depth_format != 0)) return;
     std::vector<VkClearAttachment> atts;
-    if (mask & 0xF0) {
+    const bool partial_color = (mask & 0xF0) && (mask & 0xF0) != 0xF0 && !bound_color_.empty();
+    if ((mask & 0xF0) && !partial_color) {
         const u32 v = s.reg(NV4097_SET_COLOR_CLEAR_VALUE);
         for (u32 k = 0; k < bound_color_.size(); ++k) {
             VkClearAttachment a{};
@@ -1542,10 +1643,6 @@ void Impl::clear(const State& s, u32 mask) {
             else a.clearValue.color = {{r, g, b, al}};
             atts.push_back(a);
         }
-        if ((mask & 0xF0) != 0xF0) {
-            static bool once = false;
-            if (!once) { once = true; LOG_WARN("vk", "partial colour clears (mask 0x%X) clear all channels", mask); }
-        }
     }
     if (want_depth && bound_depth_) {
         const u32 v = s.reg(NV4097_SET_ZSTENCIL_CLEAR_VALUE);
@@ -1557,7 +1654,7 @@ void Impl::clear(const State& s, u32 mask) {
         a.clearValue.depthStencil.stencil = v & 0xFF;
         if (a.aspectMask) atts.push_back(a);
     }
-    if (atts.empty()) return;
+    if (atts.empty() && !partial_color) return;
     const Surface sf = s.surface();
     const u32 w = bound_color_.empty() ? bound_depth_->image.width : bound_color_[0]->image.width;
     const u32 h = bound_color_.empty() ? bound_depth_->image.height : bound_color_[0]->image.height;
@@ -1566,8 +1663,21 @@ void Impl::clear(const State& s, u32 mask) {
     u32 x1 = std::min(w, sh >> 16 ? (sh & 0xFFFF) + (sh >> 16) : w), y1 = std::min(h, sv >> 16 ? (sv & 0xFFFF) + (sv >> 16) : h);
     if (x0 >= x1 || y0 >= y1) { x0 = 0; y0 = 0; x1 = w; y1 = h; }
     VkClearRect r{{{static_cast<s32>(x0), static_cast<s32>(y0)}, {x1 - x0, y1 - y0}}, 0, 1};
-    vkCmdClearAttachments(cmd_, static_cast<u32>(atts.size()), atts.data(), 1, &r);
-    for (Target* t : bound_color_) if (mask & 0xF0) t->dirty = true;
+    if (!atts.empty()) vkCmdClearAttachments(cmd_, static_cast<u32>(atts.size()), atts.data(), 1, &r);
+    if (partial_color) {
+        if (VkPipeline p = clear_pipeline(mask & 0xF0)) {
+            const u32 v = s.reg(NV4097_SET_COLOR_CLEAR_VALUE);
+            const float c[4] = {((v >> 16) & 0xFF) / 255.0f, ((v >> 8) & 0xFF) / 255.0f, (v & 0xFF) / 255.0f, (v >> 24) / 255.0f};
+            vkCmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, p);
+            vkCmdPushConstants(cmd_, pipe_layout_, VK_SHADER_STAGE_FRAGMENT_BIT, glsl::kFragmentPushOffset, 16, c);
+            VkViewport vpt{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+            vkCmdSetViewport(cmd_, 0, 1, &vpt);
+            vkCmdSetScissor(cmd_, 0, 1, &r.rect);
+            vkCmdDraw(cmd_, 3, 1, 0, 0);
+        }
+    }
+    for (Target* t : bound_color_)
+        if (mask & 0xF0) t->dirty = true;
     if (bound_depth_ && want_depth) bound_depth_->dirty = true;
     ++stats_.clears;
 }

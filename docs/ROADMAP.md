@@ -42,7 +42,8 @@ Sly 4 imports 61 `cellSpurs` functions (job chains, tasksets, event flags, LF qu
 - [x] Depth textures from depth targets: shadow-compare samplers, depth values, Z24S8 bits read as xRGB8
 - [ ] Tiled surfaces (cellGcmSetTileInfo) and MSAA surfaces
 - [ ] Native float/depth texture formats instead of RGBA8 decode
-- [ ] Partial-channel clears, occlusion queries (reports are faked as visible)
+- [x] Partial-channel clears (masked full-screen draw)
+- [ ] Occlusion queries (reports are faked as visible)
 
 ## M4: Platform
 

@@ -377,3 +377,36 @@ TEST(VulkanShadowMapCompare) {
     CHECK_EQ(left, 0x00000000u);   // 0.5 < 0.3 fails: in shadow
     CHECK_EQ(right, 0xFFFFFFFFu);  // 0.5 < 1.0 passes: lit
 }
+
+TEST(VulkanPartialChannelClear) {
+    if (!rsx::have_vulkan()) return;
+    std::string err;
+    auto vk = rsx::create_vulkan_backend([](u32 off, bool local) { return (local ? kVkLocal : kVkIo) + off; }, &err);
+    if (!vk) return;
+    mem::commit(kVkIo, 0x100000);
+    mem::commit(kVkLocal, 0x100000);
+    mem::commit(kVkCtl, 0x1000);
+    rsx::Environment env;
+    env.to_ea = [](u32 off, bool local) { return (local ? kVkLocal : kVkIo) + off; };
+    env.label_base = kVkCtl + 0x100;
+    rsx::Decoder d(env, vk.get());
+    constexpr u32 Wd = 32, Ht = 32, kScreen = 0x70000, kPitch = Wd * 4;
+    W w;
+    w.m(rsx::NV4097_SET_SURFACE_FORMAT, {(5u << 24) | (5u << 16) | (1u << 8) | 8u});
+    w.m(rsx::NV4097_SET_SURFACE_CLIP_HORIZONTAL, {Wd << 16, Ht << 16});
+    w.m(rsx::NV4097_SET_SURFACE_PITCH_A, {kPitch, kScreen});
+    w.m(rsx::NV4097_SET_SURFACE_COLOR_TARGET, {1});
+    w.m(rsx::NV4097_SET_COLOR_CLEAR_VALUE, {0xFF102030});
+    w.m(rsx::NV4097_CLEAR_SURFACE, {0xF0});
+    w.m(rsx::NV4097_SET_COLOR_CLEAR_VALUE, {0x80FFFFFF});
+    w.m(rsx::NV4097_CLEAR_SURFACE, {0x80});  // alpha only
+    w.m(rsx::NV4097_SET_COLOR_CLEAR_VALUE, {0x00000000});
+    w.m(rsx::NV4097_CLEAR_SURFACE, {0x40});  // blue only
+    w.m(rsx::GCM_FLIP_COMMAND, {0});
+    mem::w32(kVkCtl + 4, 0);
+    mem::w32(kVkCtl, w.at);
+    rsx::Fifo fifo(d, kVkCtl);
+    CHECK(fifo.run_until_idle([](u32 io) { return kVkIo + io; }));
+    CHECK_EQ(vk->stats().clears, 3u);
+    CHECK_EQ(mem::r32(kVkLocal + kScreen + 7 * kPitch + 9 * 4), 0x80102000u);
+}
