@@ -1,5 +1,6 @@
 // End-to-end tests: the synthetic ELF from testgen.cpp has been recompiled
 // to C++ at build time; here we load it into guest memory and run it.
+#include <chrono>
 #include <cstring>
 #include <optional>
 
@@ -65,6 +66,18 @@ TEST(ctr_loop_and_conditional_return) {
         c.gpr[3] = n;
         CHECK_EQ(call(SumToN, c), ref_sum(n));
     }
+}
+
+TEST(ppu_recompiled_speed) {
+    // Not a correctness check: prints the throughput of a recompiled ctr loop (MemOps adds stores).
+    auto& c = fresh();
+    const u64 n = 100000000;
+    c.gpr[3] = n;
+    const auto t0 = std::chrono::steady_clock::now();
+    const u64 r = call(SumToN, c);
+    const double s = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    CHECK_EQ(r, ref_sum(n));
+    std::printf("  PPU recompiled SumToN: %.0f M iterations/s\n", n / s / 1e6);
 }
 
 TEST(rotate_mask_shift_arith) {
