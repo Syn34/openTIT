@@ -19,17 +19,17 @@ Early, but the whole pipeline runs end to end:
 | C++ emitter (integer, FPU, VMX, CR, reservations, syscalls) | ✅ every reachable instruction emitted, no fallbacks |
 | Full EBOOT → C++ | ✅ 2.77 M instructions → 223 files in ~3 s |
 | Runtime: memory, dispatcher, threads, LV2 syscalls, HLE modules | 🟡 boot-path subset (see below) |
-| End-to-end tests (synthetic PPC program, recompiled and run) | ✅ 25 tests / 234 checks |
-| Native boot of the recompiled game | 🟡 runs CRT + static init + `main`, sets up GCM and 720p video, stops at SPURS init |
+| End-to-end tests (synthetic PPC program, recompiled and run) | ✅ 36 tests / 328 checks |
+| Native boot of the recompiled game | 🟡 runs `main`, GCM + 720p, SPURS, FIOS, and opens the data files |
 | RSX graphics | 🔴 null GPU: the FIFO is consumed, nothing is drawn |
-| SPU / SPURS (jobs, tasks) | 🔴 not started (next big milestone) |
+| SPU / SPURS (jobs, tasks) | 🟡 SPU interpreter + LV2 SPU groups. Real `libsre` recompiled and running LLE |
 | Audio / input | 🔴 null audio device, one idle pad |
 
 Numbers above come from the European disc release (`BCES01284`, v01.02). Other regions should work the same way. Run `opentit-recomp funcs` on your EBOOT to see its numbers.
 
 ### Where boot gets to today
 
-The whole game compiles to one ~56 MB native executable. It runs the game's own CRT startup and static constructors, then `main` and its command-line parsing. It prints the engine banner (`Versions:SNC:41001`), passes `cellGameBootCheck`/`ContentPermit`, initialises GCM with the null RSX, configures 1280x720, and registers both display buffers. It stops at an assertion in Sony's EDGE post-processing (`edgepost_mlaa_handler.cpp`) during SPURS task setup, which is the expected wall until SPU/SPURS support lands.
+The whole game compiles to one native executable, plus Sony's SPURS library (`libsre.prx`) recompiled the same way. Boot runs the game's CRT startup, static constructors and `main`, passes `cellGameBootCheck`/`ContentPermit`, and initialises GCM with the null RSX at 1280x720. It then starts SPURS: the four kernel SPUs (`ApeCoreCellSpursKernel1-4`) run on the SPU interpreter. FIOS I/O threads start, the system cache mounts, and the game opens `/dev_bdvd/PS3_GAME/USRDIR/Sly4.psarc`. That is as far as the development box gets, because it doesn't hold the 16 GB psarc. Boot logs from a full dump are the next step.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for what's next and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it works.
 

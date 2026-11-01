@@ -8,7 +8,8 @@ Rough order. Each milestone should leave the tests green and the game booting at
 - [x] HLE for the boot path: TLS, threads, lwmutex/lwcond, sys_fs, sysutil, cellGame, GCM init
 - [x] Boot through CRT, static constructors and `main` to GCM/video setup
 - [ ] Boot-log triage: run `opentit <dump> --log debug`, implement HLE functions in the order the game hits them
-- [ ] Current stop: EDGE MLAA asserts `3072 == context->saveConfigs[t].sizeContext` after `cellSpursTaskGetContextSaveAreaSize` (a SPURS stub)
+- [x] Past the EDGE MLAA SPURS assertion (fixed by running the real libsre)
+- [ ] Current stop (cloud test box only): `Sly4.psarc` missing there, so asset init fails. Next boot logs need a full dump on a real PC
 - [ ] `--entries` workflow for any `indirect branch ... has no recompiled function` reports
 - [ ] Resolve the two remaining dynamic `bctr` (0x009BD2CC, 0x00AB3ECC)
 - [ ] `setjmp`/`longjmp` and any other code that manipulates LR or r1 non-locally
@@ -24,7 +25,7 @@ Sly 4 imports 61 `cellSpurs` functions (job chains, tasksets, event flags, LF qu
 - [x] Embedded SPU image discovery (`opentit-recomp spu-list`): 10 images incl. EDGE zlib and EDGE MLAA
 - [x] LV2 SPU syscalls: images, thread groups, LS/mailbox/SNR access, SPU events, receive_event
 - [x] PRX loader + recompile path for firmware modules
-- [ ] Run the real SPURS (firmware `libsre.prx`, user-supplied and decrypted) on the SPU core. RPCS3 also uses LLE libsre for this game, because job chains have no HLE.
+- [x] Run the real SPURS (firmware `libsre.prx`, user-supplied and decrypted) on the SPU core. libsre is recompiled to C++ like the EBOOT and linked LLE (RPCS3 also uses LLE libsre for this game). The four SPURS kernel SPUs boot and service the workload
 - [ ] SPU static recompiler (SPU -> C++) for the embedded images and the SPURS kernel (performance)
 
 ## M3: Graphics
