@@ -40,8 +40,46 @@ struct RwLock : Object {
     std::mutex m;
     std::condition_variable cv;
     u32 readers = 0;
-    u32 writer = 0;
+    u32 writer = 0;  // owning thread id
 };
+
+u32 rwlock_op(PPUContext& c, u32 n) {
+    auto rw = get<RwLock>(A32(c, 0));
+    if (!rw) return CELL_ESRCH;
+    const u32 tid = current_thread_id();
+    std::unique_lock<std::mutex> lk(rw->m);
+    switch (n) {
+    case 122:  // rlock(id, timeout)
+        if (rw->writer == tid) return CELL_EDEADLK;
+        if (!wait_for(rw->cv, lk, A(c, 1), [&] { return rw->writer == 0; })) return CELL_ETIMEDOUT;
+        ++rw->readers;
+        return CELL_OK;
+    case 123:  // tryrlock
+        if (rw->writer) return CELL_EBUSY;
+        ++rw->readers;
+        return CELL_OK;
+    case 124:  // runlock
+        if (!rw->readers) return CELL_EPERM;
+        if (--rw->readers == 0) rw->cv.notify_all();
+        return CELL_OK;
+    case 125:  // wlock(id, timeout)
+        if (rw->writer == tid) return CELL_EDEADLK;
+        if (!wait_for(rw->cv, lk, A(c, 1), [&] { return rw->writer == 0 && rw->readers == 0; })) return CELL_ETIMEDOUT;
+        rw->writer = tid;
+        return CELL_OK;
+    case 126:  // trywlock
+        if (rw->writer || rw->readers) return CELL_EBUSY;
+        rw->writer = tid;
+        return CELL_OK;
+    case 127:  // wunlock
+        if (rw->writer != tid) return CELL_EPERM;
+        rw->writer = 0;
+        rw->cv.notify_all();
+        return CELL_OK;
+    default:
+        return CELL_ENOSYS;
+    }
+}
 
 u32 sys_mutex_create(PPUContext& c) {
     // (u32* mutex_id, sys_mutex_attribute_t* attr)  attr: protocol, recursive, pshared, adaptive, key, flags, name
@@ -210,6 +248,13 @@ const char* syscall_name(u32 n) {
     case 109: return "sys_cond_signal_all";
     case 118: return "sys_event_flag_clear";
     case 120: return "sys_rwlock_create";
+    case 121: return "sys_rwlock_destroy";
+    case 122: return "sys_rwlock_rlock";
+    case 123: return "sys_rwlock_tryrlock";
+    case 124: return "sys_rwlock_runlock";
+    case 125: return "sys_rwlock_wlock";
+    case 126: return "sys_rwlock_trywlock";
+    case 127: return "sys_rwlock_wunlock";
     case 128: return "sys_event_queue_create";
     case 129: return "sys_event_queue_destroy";
     case 130: return "sys_event_queue_receive";
@@ -248,6 +293,8 @@ const char* syscall_name(u32 n) {
 
 void dispatch_syscall(PPUContext& c, u32 pc) {
     const u32 n = static_cast<u32>(c.gpr[11]);
+    LOG_TRACE("syscall", "%s(%u) r3=0x%llX r4=0x%llX r5=0x%llX at 0x%08X", syscall_name(n), n,
+              (unsigned long long)c.gpr[3], (unsigned long long)c.gpr[4], (unsigned long long)c.gpr[5], pc);
     u64 r = CELL_OK;
     switch (n) {
     case 1: r = 0x01000500; break;
@@ -364,6 +411,8 @@ void dispatch_syscall(PPUContext& c, u32 pc) {
     case 108: r = sys_cond_signal(c, false); break;
     case 109: r = sys_cond_signal(c, true); break;
     case 120: mem::w32(A32(c, 0), add_object(std::make_shared<RwLock>())); break;
+    case 121: r = remove_object(A32(c, 0)) ? CELL_OK : CELL_ESRCH; break;
+    case 122: case 123: case 124: case 125: case 126: case 127: r = rwlock_op(c, n); break;
 
     // ---- event queues / ports
     case 128: r = sys_event_queue_create(c); break;

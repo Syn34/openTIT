@@ -4,6 +4,7 @@
 #include <cstring>
 #include <filesystem>
 #include <string>
+#include <vector>
 
 #include "kernel.h"
 #include "log.h"
@@ -25,7 +26,8 @@ int usage() {
                  "  --eboot <file>        decrypted executable (default: PS3_GAME/USRDIR/EBOOT.elf)\n"
                  "  --hdd0 <dir>          host folder for /dev_hdd0 (default: ./dev_hdd0)\n"
                  "  --log <level>         trace | debug | info | warn | error\n"
-                 "  --strict              abort on the first unimplemented HLE function\n");
+                 "  --strict              abort on the first unimplemented HLE function\n"
+                 "  -- <args...>          pass the remaining arguments to the game (argv)\n");
     return 2;
 }
 
@@ -42,13 +44,17 @@ bool load_segments(const loader::Elf& e) {
     return true;
 }
 
-// argv / envp for the main thread, laid out in kernel memory.
-u32 build_argv(const std::string& arg0, u32* envp) {
-    const u32 str = rtm::alloc_guest(static_cast<u32>(arg0.size() + 1), 16);
-    mem::write_bytes(str, arg0.c_str(), arg0.size() + 1);
-    const u32 argv = rtm::alloc_guest(16, 16);
-    mem::w32(argv, str);
-    mem::w32(argv + 4, 0);
+// argv / envp for the main thread, laid out in kernel memory (32-bit pointers).
+// Games launched from the XMB receive no arguments; Sly 4's own parser treats
+// anything starting with '-' or '/' as a switch, so argv[0] is not supplied.
+u32 build_argv(const std::vector<std::string>& args, u32* envp) {
+    const u32 argv = rtm::alloc_guest(static_cast<u32>(4 * (args.size() + 1)), 16);
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        const u32 str = rtm::alloc_guest(static_cast<u32>(args[i].size() + 1), 16);
+        mem::write_bytes(str, args[i].c_str(), args[i].size() + 1);
+        mem::w32(argv + 4 * static_cast<u32>(i), str);
+    }
+    mem::w32(argv + 4 * static_cast<u32>(args.size()), 0);
     *envp = rtm::alloc_guest(16, 16);
     return argv;
 }
@@ -60,8 +66,13 @@ int boot_main(int argc, char** argv) {
     auto& cfg = rtm::config();
     cfg.game_root = argv[1];
     cfg.hdd0 = (fs::current_path() / "dev_hdd0").string();
+    std::vector<std::string> game_args;
     for (int k = 2; k < argc; ++k) {
         const std::string a = argv[k];
+        if (a == "--") {
+            game_args.assign(argv + k + 1, argv + argc);
+            break;
+        }
         if (a == "--eboot" && k + 1 < argc) cfg.eboot = argv[++k];
         else if (a == "--hdd0" && k + 1 < argc) cfg.hdd0 = argv[++k];
         else if (a == "--strict") cfg.strict = true;
@@ -101,13 +112,13 @@ int boot_main(int argc, char** argv) {
     kernel::register_main_thread(ctx, 0x01000000);
 
     u32 envp = 0;
-    const u32 argvp = build_argv("/dev_bdvd/PS3_GAME/USRDIR/EBOOT.BIN", &envp);
+    const u32 argvp = build_argv(game_args, &envp);
     const auto tls = elf->tls();
     const auto entry = elf->entry_opd();
 
     // Register state at process entry (LV2 ABI).
     ctx.gpr[1] = ctx.stack_addr + stack_size - 0x70;
-    ctx.gpr[3] = 1;  // argc
+    ctx.gpr[3] = game_args.size();  // argc
     ctx.gpr[4] = argvp;
     ctx.gpr[5] = envp;
     ctx.gpr[6] = 0;

@@ -210,9 +210,9 @@ OPENTIT_HLE(cellGame, cellGameGetParamInt) {
     const u32 id = arg32(ctx, 0);
     u32 v = 0;
     switch (id) {
-    case 50: v = sfo_int("PARENTAL_LEVEL", 0); break;
-    case 60: v = sfo_int("RESOLUTION", 0); break;
-    case 70: v = sfo_int("SOUND_FORMAT", 0); break;
+    case 102: v = sfo_int("PARENTAL_LEVEL", 0); break;  // CELL_GAME_PARAMID_PARENTAL_LEVEL
+    case 103: v = sfo_int("RESOLUTION", 0); break;      // CELL_GAME_PARAMID_RESOLUTION
+    case 104: v = sfo_int("SOUND_FORMAT", 0); break;    // CELL_GAME_PARAMID_SOUND_FORMAT
     default: break;
     }
     mem::w32(arg32(ctx, 1), v);

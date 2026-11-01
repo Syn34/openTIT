@@ -19,12 +19,17 @@ Early, but the whole pipeline runs end to end:
 | C++ emitter (integer, FPU, VMX, CR, reservations, syscalls) | ✅ every reachable instruction emitted, no fallbacks |
 | Full EBOOT → C++ | ✅ 2.77 M instructions → 223 files in ~3 s |
 | Runtime: memory, dispatcher, threads, LV2 syscalls, HLE modules | 🟡 boot-path subset (see below) |
-| End-to-end tests (synthetic PPC program, recompiled and run) | ✅ 24 tests / 232 checks |
+| End-to-end tests (synthetic PPC program, recompiled and run) | ✅ 25 tests / 234 checks |
+| Native boot of the recompiled game | 🟡 runs CRT + static init + `main`, sets up GCM and 720p video, stops at SPURS init |
 | RSX graphics | 🔴 null GPU: the FIFO is consumed, nothing is drawn |
 | SPU / SPURS (jobs, tasks) | 🔴 not started (next big milestone) |
 | Audio / input | 🔴 null audio device, one idle pad |
 
 Numbers above come from the European disc release (`BCES01284`, v01.02). Other regions should work the same way. Run `opentit-recomp funcs` on your EBOOT to see its numbers.
+
+### Where boot gets to today
+
+The whole game compiles to one ~56 MB native executable. It runs the game's own CRT startup and static constructors, then `main` and its command-line parsing. It prints the engine banner (`Versions:SNC:41001`), passes `cellGameBootCheck`/`ContentPermit`, initialises GCM with the null RSX, configures 1280x720, and registers both display buffers. It stops at an assertion in Sony's EDGE post-processing (`edgepost_mlaa_handler.cpp`) during SPURS task setup, which is the expected wall until SPU/SPURS support lands.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for what's next and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it works.
 
@@ -68,6 +73,7 @@ cmake --build build
 cmake -S . -B build-game -G Ninja -DOPENTIT_GENERATED_DIR=$PWD/gen -DOPENTIT_BUILD_TESTS=OFF
 cmake --build build-game
 ./build-game/opentit <dump> --log info
+./build-game/opentit <dump> --log info -- -T      # pass switches to the game's own argv parser
 ```
 
 On Windows, `tools\build.ps1 -Dump "C:\path\to\dump"` does steps 2–4.

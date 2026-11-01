@@ -6,7 +6,9 @@ Rough order. Each milestone should leave the tests green and the game booting at
 
 - [x] Recompile 100% of reachable PPU code
 - [x] HLE for the boot path: TLS, threads, lwmutex/lwcond, sys_fs, sysutil, cellGame, GCM init
+- [x] Boot through CRT, static constructors and `main` to GCM/video setup
 - [ ] Boot-log triage: run `opentit <dump> --log debug`, implement HLE functions in the order the game hits them
+- [ ] Current stop: EDGE MLAA asserts `3072 == context->saveConfigs[t].sizeContext` after `cellSpursTaskGetContextSaveAreaSize` (a SPURS stub)
 - [ ] `--entries` workflow for any `indirect branch ... has no recompiled function` reports
 - [ ] Resolve the two remaining dynamic `bctr` (0x009BD2CC, 0x00AB3ECC)
 - [ ] `setjmp`/`longjmp` and any other code that manipulates LR or r1 non-locally
