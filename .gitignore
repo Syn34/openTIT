@@ -1,0 +1,50 @@
+# ---------------------------------------------------------------------------
+# NEVER commit game data or anything generated from it.
+# openTIT ships only its own source code. Bring your own legally dumped disc.
+# ---------------------------------------------------------------------------
+PS3_GAME/
+PS3_UPDATE/
+PS3_DISC.SFB
+*.BIN
+*.bin
+*.elf
+*.ELF
+*.self
+*.SELF
+*.sprx
+*.prx
+*.psarc
+*.PSARC
+*.bik
+*.at3
+*.AT3
+*.PUP
+*.pam
+*.PAM
+*.SFO
+*.TRP
+*.pkg
+*.iso
+*.ISO
+
+# Recompiler output: C++ derived from the game binary - keep it local.
+gen/
+generated/
+ppu_*.cpp
+!src/**/ppu_*.cpp
+!src/**/ppu_*.h
+
+# Runtime data folders created next to the executable
+dev_hdd0/
+dev_hdd1/
+
+# Build trees / IDE
+build*/
+out/
+cmake-build-*/
+.vs/
+.vscode/
+.idea/
+*.user
+compile_commands.json
+CMakeUserPresets.json
