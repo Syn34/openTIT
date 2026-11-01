@@ -38,6 +38,7 @@ int usage() {
                  "  --spu-record <file>   save SPU code the build has not compiled (feed it to spu-recompile)\n"
                  "  --no-decomp           run the recompiled originals instead of decompiled functions\n"
                  "  --decomp-off <a,b>    same for the listed functions (hex addresses)\n"
+                 "  --dump-mem <file>     write the game's data/bss to <file> on exit or crash (A/B checks)\n"
                  "  --headless            no window\n"
                  "  --scale <n>           window size: 1 = 640x360, 2 = 1280x720, 3 = 1920x1080\n"
                  "  -- <args...>          pass the remaining arguments to the game (argv)\n");
@@ -81,6 +82,7 @@ int boot_main(int argc, char** argv) {
     cfg.game_root = argv[1];
     cfg.hdd0 = (fs::current_path() / "dev_hdd0").string();
     std::vector<std::string> game_args;
+    std::string dump_mem;
     for (int k = 2; k < argc; ++k) {
         const std::string a = argv[k];
         if (a == "--") {
@@ -94,6 +96,7 @@ int boot_main(int argc, char** argv) {
         else if (a == "--dump-shaders" && k + 1 < argc) cfg.shader_dump = argv[++k];
         else if (a == "--spu-record" && k + 1 < argc) cfg.spu_record = argv[++k];
         else if (a == "--no-decomp") decomp::disable_all();
+        else if (a == "--dump-mem" && k + 1 < argc) dump_mem = argv[++k];
         else if (a == "--decomp-off" && k + 1 < argc) {
             // comma-separated hex addresses
             std::string list = argv[++k];
@@ -131,6 +134,14 @@ int boot_main(int argc, char** argv) {
 
     if (!mem::init()) return 1;
     if (!load_segments(*elf)) return 1;
+    if (!dump_mem.empty()) {
+        // The EBOOT's writable segments (data + bss): where game globals live.
+        std::vector<std::pair<u32, u32>> ranges;
+        for (const auto& sg : elf->segments())
+            if (sg.type == loader::PT_LOAD && (sg.flags & loader::PF_W) && sg.memsz)
+                ranges.emplace_back(static_cast<u32>(sg.vaddr), static_cast<u32>(sg.memsz));
+        rtm::set_exit_dump(dump_mem, std::move(ranges));
+    }
     rtm::kernel_init();
     rtm::init_dispatch(g_recompiled_functions, g_recompiled_function_count);
 

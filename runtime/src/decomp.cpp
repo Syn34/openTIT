@@ -34,9 +34,21 @@ void disable(u32 addr) {
 u64 call(PPUContext& ctx, u32 addr, std::initializer_list<u64> args) {
     int r = 3;
     for (u64 a : args) ctx.gpr[r++] = a;
+    // Callers of a decompiled function expect r2 (TOC) and LR as they left
+    // them; import stubs and cross-module calls switch r2.
+    // The call gets its own 112-byte linkage area, as if the decompiled
+    // function had a stack frame: stubs save r2 at 40(r1) and callees save
+    // LR at 16(r1), which must not land in our caller's frame.
     const u64 saved_lr = ctx.lr;
+    const u64 saved_r2 = ctx.gpr[2];
+    const u64 saved_r1 = ctx.gpr[1];
+    const u32 sp = (static_cast<u32>(saved_r1) - 112) & ~15u;
+    mem::w64(sp, saved_r1);  // back-chain
+    ctx.gpr[1] = sp;
     call_indirect(ctx, addr, 0);
+    ctx.gpr[1] = saved_r1;
     ctx.lr = saved_lr;
+    ctx.gpr[2] = saved_r2;
     return ctx.gpr[3];
 }
 
@@ -55,11 +67,19 @@ u64 call_ptr(PPUContext& ctx, u32 opd, std::initializer_list<u64> args) {
     return r;
 }
 
+u64 syscall(PPUContext& ctx, u32 num, std::initializer_list<u64> args) {
+    int r = 3;
+    for (u64 a : args) ctx.gpr[r++] = a;
+    ctx.gpr[11] = num;
+    ppu_syscall(ctx, 0);
+    return ctx.gpr[3];
+}
+
 Stack::Stack(PPUContext& ctx, u32 bytes) : ctx_(ctx), saved_r1_(ctx.gpr[1]) {
     // Space below a fresh 112-byte linkage area so callees can use their own frames.
     const u32 size = ((bytes + 15) & ~15u) + 112;
     const u32 sp = (static_cast<u32>(saved_r1_) - size) & ~15u;
-    mem::w32(sp, static_cast<u32>(saved_r1_));  // back-chain
+    mem::w64(sp, saved_r1_);  // back-chain (stdu stores 64 bits)
     ctx_.gpr[1] = sp;
     base_ = sp + 112;
 }

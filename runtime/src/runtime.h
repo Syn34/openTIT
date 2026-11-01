@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "common/types.h"
@@ -53,6 +54,10 @@ PPUContext* current_ctx();
 void set_current_ctx(PPUContext* ctx);
 [[noreturn]] void exit_process(int code);
 void install_crash_handler();
+// --dump-mem: write the given guest ranges to `path` when the process exits or
+// crashes, for comparing runs (e.g. with and without decompiled functions).
+void set_exit_dump(const std::string& path, std::vector<std::pair<u32, u32>> ranges);
+void write_exit_dump();
 
 // ---- kernel
 void kernel_init();

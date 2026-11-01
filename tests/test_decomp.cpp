@@ -61,3 +61,27 @@ TEST(DecompBigEndianViews) {
     CHECK_EQ(mem::rf32(ea + 4), 1.0f);
     CHECK_EQ(decomp::load<u16>(ea + 8), 0xBEEFu);
 }
+
+TEST(DecompCallKeepsCallerState) {
+    // call() from decompiled code: arguments in r3.., result from r3, and
+    // r1 / r2 / LR as they were, with the callee running below our r1.
+    static PPUContext c;
+    c.stack_size = 0x10000;
+    c.stack_addr = rtm::alloc_stack(c.stack_size);
+    const u64 sp = c.stack_addr + c.stack_size - 0x100;
+    c.gpr[1] = sp;
+    c.gpr[2] = 0x12345678;
+    c.lr = 0x00ABCDEF;
+    CHECK_EQ(decomp::call_ptr(c, opd(SumToN), {10}), 55u);  // through the descriptor
+    CHECK_EQ(c.gpr[1], sp);
+    CHECK_EQ(c.gpr[2], 0x12345678u);
+    CHECK_EQ(c.lr, 0x00ABCDEFu);
+    {
+        decomp::Stack frame(c, 20);
+        CHECK(frame.addr() + 20 <= sp);
+        CHECK_EQ(frame.addr() % 16, 0u);
+        CHECK_EQ(mem::r64(static_cast<u32>(c.gpr[1])), sp);  // back-chain
+        CHECK_EQ(decomp::call(c, mem::r32(opd(SumToN)), {4}), 10u);
+    }
+    CHECK_EQ(c.gpr[1], sp);
+}

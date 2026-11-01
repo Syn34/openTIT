@@ -76,6 +76,12 @@ template <typename T>
 T& ref(u32 ea) {
     return *reinterpret_cast<T*>(mem::ptr(ea));
 }
+// A field of a guest structure whose layout isn't written down yet:
+//     field<u32>(obj, 0x144) = 0x1F4000;
+template <typename T>
+be<T>& field(u32 base, u32 offset) {
+    return ref<be<T>>(base + offset);
+}
 template <typename T>
 T load(u32 ea) {
     return ref<be<T>>(ea).get();
@@ -114,6 +120,8 @@ u64 call(PPUContext& ctx, u32 addr, std::initializer_list<u64> args = {});
 f64 callf(PPUContext& ctx, u32 addr, std::initializer_list<u64> args, std::initializer_list<f64> fargs);
 // Call through a function descriptor (OPD) such as a function pointer read from guest memory.
 u64 call_ptr(PPUContext& ctx, u32 opd, std::initializer_list<u64> args = {});
+// LV2 system call `num` (the `sc` instruction with r11 = num); returns r3.
+u64 syscall(PPUContext& ctx, u32 num, std::initializer_list<u64> args = {});
 
 // Guest stack space for the lifetime of a scope, e.g. for out-parameters
 // passed to guest functions. Keeps the PPU ABI's 16-byte alignment and

@@ -25,6 +25,7 @@ void set_current_ctx(PPUContext* ctx) { t_ctx = ctx; }
 void exit_process(int code) {
     LOG_INFO("kernel", "process exit (%d)", code);
     spu::flush_recording();
+    write_exit_dump();
     std::fflush(stdout);
     std::fflush(stderr);
     std::_Exit(code);

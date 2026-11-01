@@ -31,6 +31,10 @@ Numbers above come from the European disc release (`BCES01284`, v01.02). Other r
 
 The whole game compiles to one native executable, plus Sony's SPURS library (`libsre.prx`) recompiled the same way. Boot runs the game's CRT startup, static constructors and `main`, passes `cellGameBootCheck`/`ContentPermit`, and initialises GCM with the null RSX at 1280x720. It then starts SPURS: the four kernel SPUs (`ApeCoreCellSpursKernel1-4`) run on the SPU interpreter. FIOS I/O threads start, the system cache mounts, and the game opens `/dev_bdvd/PS3_GAME/USRDIR/Sly4.psarc`. That is as far as the development box gets, because it doesn't hold the 16 GB psarc. Boot logs from a full dump are the next step.
 
+### Decompilation
+
+The decompilation lives in its own repository, [openTITs](https://github.com/Syn34/openTITs). It builds on this branch. Hand-written `DECOMP()` functions replace their recompiled versions when the code is generated with `opentit-recomp recompile ... --decomp <dir>` and the game is configured with `-DOPENTIT_DECOMP_DIR=<dir>`. `opentit --no-decomp` runs the recompiled originals for A/B checks, and `--dump-mem <file>` saves the game's data for comparing runs.
+
 See [docs/ROADMAP.md](docs/ROADMAP.md) for what's next and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it works.
 
 ## Quick start

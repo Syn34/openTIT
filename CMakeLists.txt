@@ -13,6 +13,8 @@ endif()
 option(OPENTIT_BUILD_TESTS "Build the end-to-end recompiler tests" ON)
 set(OPENTIT_GENERATED_DIR "" CACHE PATH
     "Folder produced by 'opentit-recomp recompile' from YOUR EBOOT.elf. When set, the game executable is built.")
+set(OPENTIT_DECOMP_DIR "" CACHE PATH
+    "Hand-decompiled functions (DECOMP() sources, e.g. the openTITs repository's src/). Recompile with --decomp <dir>.")
 
 if(MSVC)
   add_compile_options(/W3 /permissive- /Zc:__cplusplus /utf-8 /bigobj)
@@ -184,7 +186,25 @@ if(OPENTIT_GENERATED_DIR)
   list(APPEND OPENTIT_GENERATED_SOURCES ${OPENTIT_GENERATED_SPU})
   list(LENGTH OPENTIT_GENERATED_SOURCES n)
   message(STATUS "openTIT: building game from ${n} generated sources")
-  add_executable(opentit runtime/src/main.cpp ${OPENTIT_GENERATED_SOURCES} $<TARGET_OBJECTS:opentit_runtime>)
+  # Hand-decompiled functions (DECOMP() sources in OPENTIT_DECOMP_DIR) replace
+  # their recompiled bodies. The generated code must have been made with
+  # --decomp <same dir>; opentit_decomp_check stops the build if not.
+  set(OPENTIT_DECOMP_SOURCES "")
+  if(OPENTIT_DECOMP_DIR)
+    file(GLOB_RECURSE OPENTIT_DECOMP_SOURCES CONFIGURE_DEPENDS "${OPENTIT_DECOMP_DIR}/*.cpp")
+    list(LENGTH OPENTIT_DECOMP_SOURCES nd)
+    message(STATUS "openTIT: ${nd} decompiled sources from ${OPENTIT_DECOMP_DIR}")
+  endif()
+  add_executable(opentit runtime/src/main.cpp ${OPENTIT_GENERATED_SOURCES} ${OPENTIT_DECOMP_SOURCES}
+                         $<TARGET_OBJECTS:opentit_runtime>)
+  add_custom_target(opentit_decomp_check
+    COMMAND ${CMAKE_COMMAND} "-DDECOMP_DIR=${OPENTIT_DECOMP_DIR}" "-DGENERATED_DIR=${OPENTIT_GENERATED_DIR}"
+            -P ${PROJECT_SOURCE_DIR}/cmake/check_decomp.cmake
+    COMMENT "Checking decompiled functions against generated code" VERBATIM)
+  add_dependencies(opentit opentit_decomp_check)
+  if(NOT MSVC AND OPENTIT_DECOMP_SOURCES)
+    set_source_files_properties(${OPENTIT_DECOMP_SOURCES} PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra")
+  endif()
   if(UNIX AND NOT APPLE)
     target_link_options(opentit PRIVATE -rdynamic)  # function names in crash backtraces
   endif()
@@ -198,7 +218,7 @@ endif()
 # ---------------------------------------------------------------- tests
 if(OPENTIT_BUILD_TESTS)
   enable_testing()
-  set(TEST_GEN_DIR "${CMAKE_BINARY_DIR}/testgen")
+  set(TEST_GEN_DIR "${PROJECT_BINARY_DIR}/testgen")
   add_executable(opentit-testgen tests/testgen.cpp)
   target_link_libraries(opentit-testgen PRIVATE opentit_core)
 
@@ -207,7 +227,7 @@ if(OPENTIT_BUILD_TESTS)
     COMMAND ${CMAKE_COMMAND} -E make_directory "${TEST_GEN_DIR}"
     COMMAND opentit-testgen "${TEST_GEN_DIR}/test.elf"
     COMMAND opentit-recomp recompile "${TEST_GEN_DIR}/test.elf" -o "${TEST_GEN_DIR}" --per-file 100000000
-            --decomp "${CMAKE_SOURCE_DIR}/tests/decomp"
+            --decomp "${PROJECT_SOURCE_DIR}/tests/decomp"
     DEPENDS opentit-testgen opentit-recomp tests/decomp/sum.cpp
     COMMENT "Generating and recompiling the synthetic test ELF")
 

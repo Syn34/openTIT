@@ -3,6 +3,9 @@
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "opentit/memory.h"
 #include "opentit/ppu_context.h"
@@ -20,6 +23,9 @@
 namespace opentit::rtm {
 
 namespace {
+
+std::string g_dump_path;
+std::vector<std::pair<u32, u32>> g_dump_ranges;
 
 void report(const char* what, const void* addr) {
     std::fprintf(stderr, "\n==== openTIT crash: %s ====\n", what);
@@ -57,6 +63,7 @@ LONG WINAPI on_exception(EXCEPTION_POINTERS* e) {
                      static_cast<unsigned long long>(reinterpret_cast<std::uintptr_t>(frames[k]) -
                                                      reinterpret_cast<std::uintptr_t>(self)));
     spu::flush_recording();
+    write_exit_dump();
     std::fflush(stderr);
     return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -69,11 +76,27 @@ void on_signal(int sig, siginfo_t* info, void*) {
     std::fprintf(stderr, "host stack:\n");
     backtrace_symbols_fd(frames, n, 2);
     spu::flush_recording();
+    write_exit_dump();
     _exit(128 + sig);
 }
 #endif
 
 }  // namespace
+
+void set_exit_dump(const std::string& path, std::vector<std::pair<u32, u32>> ranges) {
+    g_dump_path = path;
+    g_dump_ranges = std::move(ranges);
+}
+
+void write_exit_dump() {
+    if (g_dump_path.empty()) return;
+    std::FILE* f = std::fopen(g_dump_path.c_str(), "wb");
+    if (!f) return;
+    for (const auto& [addr, size] : g_dump_ranges) std::fwrite(mem::ptr(addr), 1, size, f);
+    std::fclose(f);
+    std::fprintf(stderr, "guest memory written to %s\n", g_dump_path.c_str());
+    g_dump_path.clear();
+}
 
 void install_crash_handler() {
 #if defined(_WIN32)

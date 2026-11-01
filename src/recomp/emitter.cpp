@@ -1042,6 +1042,18 @@ bool emit_program(const loader::Elf& elf, const analysis::Program& prog, const E
         }
         written.insert(table_name);
     }
+    // Which functions were left to hand-written DECOMP() definitions. The game
+    // build compares this with decomp/src so the two can't drift apart.
+    if (opts.module_name.empty()) {
+        std::string list;
+        for (u32 a : opts.decompiled)
+            if (prog.functions.count(a)) list += S("%08X\n", a);
+        const std::string path = (fs::path(opts.out_dir) / "decomp.list").string();
+        if (!write_if_changed(path, list)) {
+            if (error) *error = "cannot write " + path;
+            return false;
+        }
+    }
     // Remove stale outputs left by an earlier, larger run.
     for (const auto& e : fs::directory_iterator(opts.out_dir, ec)) {
         const auto name = e.path().filename().string();

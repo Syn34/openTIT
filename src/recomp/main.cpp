@@ -503,7 +503,13 @@ int cmd_funcinfo(const loader::Elf& e, int argc, char** argv) {
         const ppu::Insn i(raw);
         if (ppu::decode(raw) == ppu::Op::B) {
             const u32 t = i.aa() ? static_cast<u32>(i.li()) : pc + static_cast<u32>(i.li());
-            d += "    ; " + name_of(t);
+            if (t >= fn->start && t <= hi && !prog.functions.count(t)) {
+                char b[24];
+                std::snprintf(b, sizeof b, "loc_%08X", t);  // branch inside this function
+                d += std::string("    ; ") + b;
+            } else {
+                d += "    ; " + name_of(t);
+            }
         } else if (auto it = refs.find(pc); it != refs.end()) {
             d += "    ; " + it->second;
         }
