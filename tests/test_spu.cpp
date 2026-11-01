@@ -1,4 +1,5 @@
 // SPU decoder + interpreter tests using hand-assembled programs.
+#include <chrono>
 #include <cstring>
 #include <vector>
 
@@ -230,4 +231,23 @@ TEST(spu_lock_line_reservation) {
     CHECK_EQ(t.gpr[27].uw(0), 0u);
     CHECK_EQ(t.gpr[28].uw(0), 1u);
     CHECK_EQ(mem::r32(ea), 6u);
+}
+
+TEST(spu_interpreter_speed) {
+    // Not a correctness check: prints the interpreter's throughput.
+    spu::SPUThread t;
+    std::vector<u32> p;
+    li32(p, 5, 20000000);                  // loop count
+    p.push_back(IL(3, 0));
+    p.push_back(A(3, 3, 5));               // loop:
+    p.push_back(AI(6, 3, 7));
+    p.push_back(SHUFB(7, 6, 3, 5));
+    p.push_back(AI(5, 5, -1));
+    p.push_back(BRNZ(5, -4));
+    p.push_back(STOP(1));
+    const auto t0 = std::chrono::steady_clock::now();
+    run_prog(t, p);
+    const double s = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    std::printf("  SPU interpreter: %.0f M instructions/s\n", 5 * 20.0 / s);
+    CHECK(s > 0);
 }

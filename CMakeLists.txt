@@ -19,6 +19,11 @@ if(MSVC)
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 else()
   add_compile_options(-Wall -Wextra -Wno-unused-parameter)
+  # x86-64-v2 (SSSE3/SSE4.2, any x86-64 CPU since ~2009): pshufb & co. for SPU/VMX shuffles.
+  option(OPENTIT_X86_64_V2 "Target x86-64-v2 on x86-64 hosts" ON)
+  if(OPENTIT_X86_64_V2 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
+    add_compile_options(-march=x86-64-v2)
+  endif()
 endif()
 
 find_package(Threads REQUIRED)
@@ -33,6 +38,7 @@ add_library(opentit_core STATIC
   src/ppu/ppu_decoder.cpp
   src/ppu/ppu_disasm.cpp
   src/spu/spu_decoder.cpp
+  src/spu/spu_analysis.cpp
 )
 target_include_directories(opentit_core PUBLIC src)
 
@@ -40,6 +46,7 @@ target_include_directories(opentit_core PUBLIC src)
 add_library(opentit_recomp_lib STATIC
   src/analysis/functions.cpp
   src/recomp/emitter.cpp
+  src/recomp/spu_emitter.cpp
 )
 target_link_libraries(opentit_recomp_lib PUBLIC opentit_core)
 
@@ -60,6 +67,7 @@ add_library(opentit_runtime OBJECT
   runtime/src/vfs.cpp
   runtime/src/spu/spu_thread.cpp
   runtime/src/spu/lv2_spu.cpp
+  runtime/src/spu/spu_dispatch.cpp
   runtime/src/hle/cellGcmSys.cpp
   runtime/src/hle/cellSysutil.cpp
   runtime/src/hle/libc.cpp
@@ -150,6 +158,9 @@ if(OPENTIT_GENERATED_DIR)
   if(NOT OPENTIT_GENERATED_SOURCES)
     message(FATAL_ERROR "No ppu_*.cpp in ${OPENTIT_GENERATED_DIR}. Run: opentit-recomp recompile <EBOOT.elf> -o <dir>")
   endif()
+  # Recompiled SPU code (opentit-recomp spu-recompile ... -o <generated>/spu), optional.
+  file(GLOB_RECURSE OPENTIT_GENERATED_SPU CONFIGURE_DEPENDS "${OPENTIT_GENERATED_DIR}/spu_*.cpp")
+  list(APPEND OPENTIT_GENERATED_SOURCES ${OPENTIT_GENERATED_SPU})
   list(LENGTH OPENTIT_GENERATED_SOURCES n)
   message(STATUS "openTIT: building game from ${n} generated sources")
   add_executable(opentit runtime/src/main.cpp ${OPENTIT_GENERATED_SOURCES} $<TARGET_OBJECTS:opentit_runtime>)
@@ -172,6 +183,17 @@ if(OPENTIT_BUILD_TESTS)
     DEPENDS opentit-testgen opentit-recomp
     COMMENT "Generating and recompiling the synthetic test ELF")
 
+  add_executable(opentit-spu-testgen tests/spu_testgen.cpp)
+  target_link_libraries(opentit-spu-testgen PRIVATE opentit_core)
+  target_include_directories(opentit-spu-testgen PRIVATE tests)
+  add_custom_command(
+    OUTPUT "${TEST_GEN_DIR}/spu/spu_0000.cpp" "${TEST_GEN_DIR}/spu/spu_table.cpp"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${TEST_GEN_DIR}/spu"
+    COMMAND opentit-spu-testgen "${TEST_GEN_DIR}/test.spurec"
+    COMMAND opentit-recomp spu-recompile "${TEST_GEN_DIR}/test.spurec" -o "${TEST_GEN_DIR}/spu"
+    DEPENDS opentit-spu-testgen opentit-recomp
+    COMMENT "Recompiling the SPU test programs")
+
   add_executable(opentit_tests
     tests/test_main.cpp
     tests/test_decoder.cpp
@@ -185,6 +207,9 @@ if(OPENTIT_BUILD_TESTS)
     tests/test_savedata.cpp
     "${TEST_GEN_DIR}/ppu_0000.cpp"
     "${TEST_GEN_DIR}/ppu_table.cpp"
+    "${TEST_GEN_DIR}/spu/spu_0000.cpp"
+    "${TEST_GEN_DIR}/spu/spu_table.cpp"
+    tests/test_spu_recomp.cpp
     $<TARGET_OBJECTS:opentit_runtime>)
   target_link_libraries(opentit_tests PRIVATE opentit_runtime opentit_recomp_lib)
   target_compile_definitions(opentit_tests PRIVATE OPENTIT_TEST_ELF="${TEST_GEN_DIR}/test.elf")

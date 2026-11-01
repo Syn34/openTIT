@@ -5,6 +5,7 @@
 #include "kernel.h"
 #include "log.h"
 #include "opentit/memory.h"
+#include "opentit/spu_recomp.h"
 
 namespace opentit {
 
@@ -23,6 +24,7 @@ void set_current_ctx(PPUContext* ctx) { t_ctx = ctx; }
 
 void exit_process(int code) {
     LOG_INFO("kernel", "process exit (%d)", code);
+    spu::flush_recording();
     std::fflush(stdout);
     std::fflush(stderr);
     std::_Exit(code);

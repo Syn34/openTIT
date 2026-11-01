@@ -28,6 +28,12 @@ for prx in "$dump"/firmware/*.prx "$dump"/*.prx; do
   base=$((base + 0x00400000))
 done
 
+# SPU code: images embedded in the EBOOT and firmware modules, plus anything
+# recorded with `opentit --spu-record <dump>/sly4.spurec`.
+spu_inputs=("$eboot")
+for f in "$dump"/firmware/*.prx "$dump"/*.prx "$dump"/*.spurec; do [[ -f "$f" ]] && spu_inputs+=("$f"); done
+./build/opentit-recomp spu-recompile "${spu_inputs[@]}" -o "$gen/spu"
+
 cmake -S . -B build-game -G Ninja -DCMAKE_BUILD_TYPE=Release -DOPENTIT_BUILD_TESTS=OFF \
       -DOPENTIT_GENERATED_DIR="$(cd "$gen" && pwd)"
 cmake --build build-game

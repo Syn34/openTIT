@@ -1,4 +1,5 @@
 // SPU interpreter, channels and MFC.
+#include "spu_dispatch.h"
 #include <chrono>
 #include <cstring>
 #include <new>
@@ -57,7 +58,10 @@ void dma(SPUThread& t, u32 cmd, u32 lsa, u32 ea, u32 size) {
     lsa &= kLsMask;
     if (lsa + size > kLsSize) size = kLsSize - lsa;
     const bool get = (cmd & 0x40) != 0;
-    if (get) std::memcpy(t.ls + lsa, mem::ptr(ea), size);
+    if (get) {
+        std::memcpy(t.ls + lsa, mem::ptr(ea), size);
+        t.touch(lsa, size);
+    }
     else std::memcpy(mem::ptr(ea), t.ls + lsa, size);
 }
 
@@ -94,6 +98,7 @@ void mfc_command(SPUThread& t, u32 cmd) {
         std::lock_guard<std::mutex> lk(g_reservation_mutex);
         std::memcpy(t.rdata, mem::ptr(ea), 128);
         std::memcpy(t.ls + (t.mfc_lsa & 0x3FF80), t.rdata, 128);
+        t.touch(t.mfc_lsa & 0x3FF80, 128);
         t.raddr = ea;
         t.rvalid = true;
         t.atomic_stat = MFC_GETLLAR_SUCCESS;
@@ -151,7 +156,10 @@ SPUThread::SPUThread() {
     for (auto& r : gpr) r = v128::zero();
 }
 
-SPUThread::~SPUThread() { ::operator delete(ls, std::align_val_t(128)); }
+SPUThread::~SPUThread() {
+    release_region_cache(*this);
+    ::operator delete(ls, std::align_val_t(128));
+}
 
 void SPUThread::push_in_mbox(u32 v) {
     std::lock_guard<std::mutex> lk(m);
@@ -284,13 +292,38 @@ u32 rchcnt(SPUThread& t, u32 ch) {
     }
 }
 
+u32 step(SPUThread& t, u32 pc) {
+    const u32 raw = load_be<u32>(t.ls + (pc & 0x3FFFC));
+    return kTable[static_cast<std::size_t>(decode(raw))](t, raw, pc) & 0x3FFFC;
+}
+
 u32 run(SPUThread& t) {
+    const bool regions = dispatch_enabled();
+    bool jumped = true;
     for (;;) {
         if (t.kill.load(std::memory_order_relaxed)) return t.stop_code;
-        const u32 raw = load_be<u32>(t.ls + (t.pc & 0x3FFFC));
-        const u32 pc = t.pc;
+        u32 pc = t.pc;
+        if (jumped && regions) {
+            jumped = false;
+            if (const CompiledRegion* r = find_region(t, pc)) {
+                t.pc = r->fn(t, pc) & 0x3FFFC;
+                jumped = true;
+                if (t.stopped) {
+                    t.stopped = false;
+                    if (t.stop_code >= 0x10000)
+                        LOG_WARN("spu", "%s: %s near LS 0x%05X", t.name.c_str(),
+                                 t.stop_code == 0x10000 ? "halt" : "invalid instruction", t.pc);
+                    if (t.on_stop && t.on_stop(t, t.stop_code)) continue;
+                    return t.stop_code;
+                }
+                continue;
+            }
+        }
+        const u32 raw = load_be<u32>(t.ls + (pc & 0x3FFFC));
         t.pc = kTable[static_cast<std::size_t>(decode(raw))](t, raw, pc) & 0x3FFFC;
+        jumped = t.pc != ((pc + 4) & 0x3FFFC);
         if (t.stopped) {
+            jumped = true;
             t.stopped = false;
             if (t.stop_code >= 0x10000)
                 LOG_WARN("spu", "%s: %s at LS 0x%05X (0x%08X)", t.name.c_str(),
@@ -321,6 +354,7 @@ u32 load_elf(SPUThread& t, const u8* e, std::size_t size, std::string* error) {
         if (va + memsz > kLsSize || off + filesz > size) return fail("segment does not fit");
         std::memcpy(t.ls + va, e + off, filesz);
         std::memset(t.ls + va + filesz, 0, memsz - filesz);
+        t.touch(va, memsz);
     }
     return entry;
 }

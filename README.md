@@ -22,7 +22,7 @@ Early, but the whole pipeline runs end to end:
 | Tests (recompiled PPC program, SPU, LV2, RSX, Vulkan) | ✅ 59 tests / 545 checks |
 | Native boot of the recompiled game | 🟡 runs `main`, GCM + 720p, SPURS, FIOS, and opens the data files |
 | RSX graphics | 🟡 Vulkan renderer: shader translation, textures, depth/stencil, blending, render-to-texture via guest memory. Not yet tried on game content |
-| SPU / SPURS (jobs, tasks) | 🟡 SPU interpreter + LV2 SPU groups. Real `libsre` recompiled and running LLE |
+| SPU / SPURS (jobs, tasks) | 🟡 SPU code recompiled to C++ (~1.3 G instructions/s), interpreter fallback; real `libsre` running LLE |
 | Audio / input | 🟡 cellAudio ports mixed to the host device (SDL2); DualShock 3 from any SDL controller or the keyboard |
 
 Numbers above come from the European disc release (`BCES01284`, v01.02). Other regions should work the same way. Run `opentit-recomp funcs` on your EBOOT to see its numbers.
@@ -83,6 +83,15 @@ cmake --build build-game
 ```
 
 On Windows, `tools\build.ps1 -Dump "C:\path\to\dump"` does steps 2–4.
+
+### 5. (Optional) make SPU code faster
+
+The build recompiles the SPU programs it can find in the EBOOT and libsre. SPURS also loads jobs at run time, and those run on the SPU interpreter until they are recorded:
+
+```sh
+./build-game/opentit <dump> --spu-record <dump>/sly4.spurec   # play for a while
+tools/build.sh <dump>                                          # picks up sly4.spurec
+```
 
 ### Controls
 

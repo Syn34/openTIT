@@ -12,6 +12,9 @@
 
 #include <cmath>
 #include <cstring>
+#if defined(__SSSE3__) || defined(__AVX__) || (defined(_MSC_VER) && (defined(_M_X64) || defined(_M_AMD64)))
+#include <tmmintrin.h>
+#endif
 
 #include "opentit/memory.h"
 #include "opentit/spu.h"
@@ -219,6 +222,24 @@ DEF(SELB) { const v128 a = T[RA(raw)], b = T[RB(raw)], c = T[RC(raw)]; T[RRR_RT(
 DEF(SHUFB) {
     const v128 a = T[RA(raw)], b = T[RB(raw)], c = T[RC(raw)];
     v128 r;
+#if defined(__SSSE3__) || defined(__AVX__) || (defined(_MSC_VER) && (defined(_M_X64) || defined(_M_AMD64)))
+    // Host byte k holds BE byte 15-k, so BE selector s picks host byte 15-(s&15) = ~s & 15.
+    const __m128i x = _mm_load_si128(reinterpret_cast<const __m128i*>(&c));
+    const __m128i va = _mm_load_si128(reinterpret_cast<const __m128i*>(&a));
+    const __m128i vb = _mm_load_si128(reinterpret_cast<const __m128i*>(&b));
+    const __m128i idx = _mm_andnot_si128(x, _mm_set1_epi8(0x0F));
+    const __m128i from_b = _mm_cmpeq_epi8(_mm_and_si128(x, _mm_set1_epi8(0x10)), _mm_set1_epi8(0x10));
+    __m128i v = _mm_or_si128(_mm_andnot_si128(from_b, _mm_shuffle_epi8(va, idx)), _mm_and_si128(from_b, _mm_shuffle_epi8(vb, idx)));
+    const __m128i hi3 = _mm_and_si128(x, _mm_set1_epi8(static_cast<char>(0xE0)));
+    const __m128i m00 = _mm_cmpeq_epi8(_mm_and_si128(x, _mm_set1_epi8(static_cast<char>(0xC0))), _mm_set1_epi8(static_cast<char>(0x80)));
+    const __m128i mFF = _mm_cmpeq_epi8(hi3, _mm_set1_epi8(static_cast<char>(0xC0)));
+    const __m128i m80 = _mm_cmpeq_epi8(hi3, _mm_set1_epi8(static_cast<char>(0xE0)));
+    v = _mm_andnot_si128(_mm_or_si128(m00, _mm_or_si128(mFF, m80)), v);
+    v = _mm_or_si128(v, _mm_or_si128(mFF, _mm_and_si128(m80, _mm_set1_epi8(static_cast<char>(0x80)))));
+    _mm_store_si128(reinterpret_cast<__m128i*>(&r), v);
+    T[RRR_RT(raw)] = r;
+    NEXT;
+#endif
     for (int i = 0; i < 16; ++i) {
         const u8 s = c.ub(i);
         if ((s & 0xC0) == 0x80) r.ub(i) = 0x00;

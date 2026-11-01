@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include "opentit/spu_recomp.h"
 #include "opentit/boot.h"
 
 #include <cstdio>
@@ -33,6 +34,7 @@ int usage() {
                  "  --strict              abort on the first unimplemented HLE function\n"
                  "  --dump-shaders <dir>  write every distinct vertex/fragment program's disassembly\n"
                  "  --renderer <name>     auto (default) | vulkan | null\n"
+                 "  --spu-record <file>   save SPU code the build has not compiled (feed it to spu-recompile)\n"
                  "  --headless            no window\n"
                  "  --scale <n>           window size: 1 = 640x360, 2 = 1280x720, 3 = 1920x1080\n"
                  "  -- <args...>          pass the remaining arguments to the game (argv)\n");
@@ -86,6 +88,7 @@ int boot_main(int argc, char** argv) {
         else if (a == "--firmware" && k + 1 < argc) cfg.firmware = argv[++k];
         else if (a == "--strict") cfg.strict = true;
         else if (a == "--dump-shaders" && k + 1 < argc) cfg.shader_dump = argv[++k];
+        else if (a == "--spu-record" && k + 1 < argc) cfg.spu_record = argv[++k];
         else if (a == "--renderer" && k + 1 < argc) cfg.renderer = argv[++k];
         else if (a == "--headless") cfg.headless = true;
         else if (a == "--scale" && k + 1 < argc) cfg.scale = std::atoi(argv[++k]);
@@ -186,6 +189,8 @@ int boot_main(int argc, char** argv) {
     }
     kernel::register_main_thread(ctx, 0x01000000);
 
+    LOG_INFO("boot", "%zu recompiled SPU regions", spu::registered_region_count());
+    if (!cfg.spu_record.empty()) spu::start_recording(cfg.spu_record);
     LOG_INFO("boot", "entry 0x%08X toc 0x%08X, stack 0x%08X+0x%X", entry.func, entry.toc, ctx.stack_addr, stack_size);
     try {
         rtm::call_code(ctx, entry.func, entry.toc);

@@ -6,6 +6,9 @@
 //   opentit-recomp disasm    EBOOT.elf <hex addr> [count]
 //   opentit-recomp recompile EBOOT.elf -o <dir> [--entries extra.txt] [--no-annotate] [--per-file N]
 //   opentit-recomp sfo       PARAM.SFO
+#include <set>
+#include "spu/spu_analysis.h"
+#include "recomp/spu_emitter.h"
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -42,7 +45,8 @@ int usage() {
                  "  opentit-recomp recompile <module.prx> -o <dir> [--base hex] [--name name]   (decrypted firmware PRX)\n"
                  "  opentit-recomp sfo       <PARAM.SFO>\n"
                  "  opentit-recomp spu-list   <EBOOT.elf>\n"
-                 "  opentit-recomp spu-disasm <EBOOT.elf> <image #> <hex LS addr> [count]\n\n"
+                 "  opentit-recomp spu-disasm <EBOOT.elf> <image #> <hex LS addr> [count]\n"
+                 "  opentit-recomp spu-recompile <EBOOT.elf|*.prx|*.spurec ...> -o <dir>\n\n"
                  "EBOOT.elf must be the decrypted executable from your own disc dump\n"
                  "(PS3_GAME/USRDIR/EBOOT.BIN decrypted with RPCS3).\n");
     return 2;
@@ -266,6 +270,80 @@ int cmd_spu_disasm(const loader::Elf& e, int argc, char** argv) {
     return 0;
 }
 
+// spu-recompile <inputs...> -o <dir>
+//   inputs: PPU ELFs/PRXs (their embedded SPU images are compiled), SPU ELFs,
+//   and .spurec files written by `opentit --spu-record`.
+int cmd_spu_recompile(int argc, char** argv) {
+    std::vector<std::string> inputs;
+    std::string out;
+    for (int k = 2; k < argc; ++k) {
+        if (!std::strcmp(argv[k], "-o") && k + 1 < argc) out = argv[++k];
+        else inputs.push_back(argv[k]);
+    }
+    if (out.empty() || inputs.empty()) return usage();
+    std::vector<spu::Region> regions;
+    std::vector<u8> ls(0x40000);
+    auto compile_image = [&](const u8* file, std::size_t size, const std::vector<loader::SpuSegment>& segs, u32 entry,
+                             const std::string& what) {
+        std::fill(ls.begin(), ls.end(), 0);
+        for (const auto& sg : segs) {
+            if (sg.ls_addr + sg.memsz > ls.size() || sg.file_offset + sg.filesz > size) continue;
+            std::memcpy(ls.data() + sg.ls_addr, file + sg.file_offset, sg.filesz);
+        }
+        // The entry, then every statically called function.
+        std::set<u32> done;
+        std::vector<u32> work{entry};
+        std::size_t n = 0;
+        while (!work.empty() && n < 4096) {
+            const u32 a = work.back() & 0x3FFFC;
+            work.pop_back();
+            if (!done.insert(a).second) continue;
+            spu::Region r = spu::discover(ls.data(), a);
+            if (r.instruction_count() == 0) continue;
+            for (u32 c : r.calls) work.push_back(c);
+            regions.push_back(std::move(r));
+            ++n;
+        }
+        std::printf("  %-40s entry %05X: %zu regions\n", what.c_str(), entry, n);
+    };
+    for (const auto& in : inputs) {
+        std::ifstream f(in, std::ios::binary);
+        char magic[8] = {};
+        f.read(magic, 8);
+        if (std::memcmp(magic, "OTSPUREC", 8) == 0) {
+            std::string err;
+            const std::size_t before = regions.size();
+            if (!spu::read_records(in, &regions, &err)) {
+                std::fprintf(stderr, "error: %s\n", err.c_str());
+                return 1;
+            }
+            std::printf("  %-40s %zu recorded regions\n", in.c_str(), regions.size() - before);
+            continue;
+        }
+        auto e = open_elf(in.c_str());
+        if (!e) return 1;
+        const auto imgs = loader::find_spu_images(*e);
+        for (std::size_t k = 0; k < imgs.size(); ++k) {
+            const auto& im = imgs[k];
+            std::vector<loader::SpuSegment> segs = im.segments;
+            for (auto& sg : segs) sg.file_offset += im.file_offset;
+            compile_image(e->data().data(), e->data().size(), segs, im.entry,
+                          in.substr(in.find_last_of("/\\") + 1) + " #" + std::to_string(k) + " " + im.hint.substr(0, 20));
+        }
+    }
+    std::string err;
+    recomp::SpuEmitOptions opt;
+    opt.out_dir = out;
+    if (!recomp::emit_spu(regions, opt, &err)) {
+        std::fprintf(stderr, "error: %s\n", err.c_str());
+        return 1;
+    }
+    u64 insns = 0;
+    for (const auto& r : regions) insns += r.instruction_count();
+    std::printf("%zu SPU regions (%llu instructions) -> %s\n", regions.size(), (unsigned long long)insns, out.c_str());
+    return 0;
+}
+
 int cmd_sfo(const char* path) {
     std::string err;
     auto sfo = loader::read_sfo(path, &err);
@@ -290,6 +368,7 @@ int main(int argc, char** argv) {
         if (!std::strcmp(argv[k], "--name") && k + 1 < argc) g_prx_name = argv[k + 1];
     }
     if (cmd == "sfo") return cmd_sfo(argv[2]);
+    if (cmd == "spu-recompile") return cmd_spu_recompile(argc, argv);
     auto e = open_elf(argv[2]);
     if (!e) return 1;
     if (cmd == "info") return cmd_info(*e);

@@ -27,7 +27,9 @@ Sly 4 imports 61 `cellSpurs` functions (job chains, tasksets, event flags, LF qu
 - [x] LV2 SPU syscalls: images, thread groups, LS/mailbox/SNR access, SPU events, receive_event
 - [x] PRX loader + recompile path for firmware modules
 - [x] Run the real SPURS (firmware `libsre.prx`, user-supplied and decrypted) on the SPU core. libsre is recompiled to C++ like the EBOOT and linked LLE (RPCS3 also uses LLE libsre for this game). The four SPURS kernel SPUs boot and service the workload
-- [ ] SPU static recompiler (SPU -> C++) for the embedded images and the SPURS kernel (performance)
+- [x] SPU static recompiler (SPU -> C++): regions keyed by entry + code hash, validated against local store by page write counters; embedded images compiled at build time, runtime code recorded with `--spu-record`
+- [x] SSE `shufb` (x86-64-v2 baseline)
+- [ ] Cache SPU registers in host locals inside a region; SSE paths for the float and quadword-shift ops
 
 ## M3: Graphics
 

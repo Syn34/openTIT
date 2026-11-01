@@ -129,6 +129,19 @@ struct SPUThread {
     u32 raddr = 0;
     bool rvalid = false;
 
+    // ---- local store write tracking (validates recompiled code)
+    u32 ls_gen[256] = {};  // per-1 KiB page write counters
+    void touch(u32 lsa, u32 size) {
+        if (!size) return;
+        const u32 first = (lsa & kLsMask) >> 10, last = ((lsa + size - 1) & kLsMask) >> 10;
+        for (u32 p = first;; p = (p + 1) & 255) {
+            ++ls_gen[p];
+            if (p == last) break;
+        }
+    }
+    struct RegionCache;
+    RegionCache* region_cache = nullptr;  // owned; see spu_dispatch.cpp
+
     // ---- hooks (installed by LV2 / SPURS emulation)
     // Return true to resume execution after the stop, false to leave the run loop.
     std::function<bool(SPUThread&, u32 code)> on_stop;
@@ -142,9 +155,15 @@ struct SPUThread {
 
     // Local store helpers (LS is big endian)
     u32 ls32(u32 a) const { return load_be<u32>(ls + (a & kLsMask & ~3u)); }
-    void set_ls32(u32 a, u32 v) { store_be<u32>(ls + (a & kLsMask & ~3u), v); }
+    void set_ls32(u32 a, u32 v) {
+        store_be<u32>(ls + (a & kLsMask & ~3u), v);
+        ++ls_gen[(a & kLsMask) >> 10];
+    }
     v128 lsq(u32 a) const { return vmx::load(ls + (a & 0x3FFF0)); }
-    void set_lsq(u32 a, const v128& v) { vmx::store(ls + (a & 0x3FFF0), v); }
+    void set_lsq(u32 a, const v128& v) {
+        vmx::store(ls + (a & 0x3FFF0), v);
+        ++ls_gen[(a & kLsMask) >> 10];
+    }
 };
 
 // Channel access (blocking where the hardware blocks).
@@ -155,6 +174,8 @@ u32 rchcnt(SPUThread& t, u32 ch);
 // Interpreter entry: runs from t.pc until a stop the hooks don't resume, or
 // until t.kill is set. Returns the final stop code.
 u32 run(SPUThread& t);
+// Interpret one instruction at `pc`; returns the next pc.
+u32 step(SPUThread& t, u32 pc);
 
 // Load an SPU ELF image into the LS. Returns the entry point (0 on failure).
 u32 load_elf(SPUThread& t, const u8* elf, std::size_t size, std::string* error);

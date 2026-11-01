@@ -41,6 +41,12 @@ try {
         }
     }
 
+    # SPU code: images embedded in the EBOOT and firmware modules, plus anything
+    # recorded with `opentit --spu-record <dump>\sly4.spurec`.
+    $spuInputs = @($eboot) + @($prxs | ForEach-Object { $_.FullName }) +
+                 @(Get-ChildItem $Dump -Filter *.spurec -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
+    .\build\opentit-recomp.exe spu-recompile @spuInputs -o (Join-Path $Gen "spu")
+
     $genAbs = (Resolve-Path $Gen).Path
     cmake -S . -B build-game -G Ninja -DCMAKE_BUILD_TYPE=$Config -DOPENTIT_BUILD_TESTS=OFF "-DOPENTIT_GENERATED_DIR=$genAbs"
     cmake --build build-game

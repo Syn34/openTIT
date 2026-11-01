@@ -108,6 +108,7 @@ void apply_image(spu::SPUThread& t, u32 img) {
         const u32 s = segs + 16 * static_cast<u32>(k);
         const u32 type = mem::r32(s), ls = mem::r32(s + 4), size = mem::r32(s + 8), v = mem::r32(s + 12);
         if (ls + size > spu::kLsSize) continue;
+        t.touch(ls, size);
         if (type == SYS_SPU_SEGMENT_TYPE_COPY) std::memcpy(t.ls + ls, mem::ptr(v), size);
         else if (type == SYS_SPU_SEGMENT_TYPE_FILL)
             for (u32 o = 0; o + 4 <= size; o += 4) store_be<u32>(t.ls + ls + o, v);
@@ -431,6 +432,7 @@ bool spu_syscall(PPUContext& c, u32 n, u64* result) {
         if (!th) { r = CELL_ESRCH; return true; }
         const u32 lsa = A32(c, 1) & spu::kLsMask;
         const u64 v = A(c, 2);
+        th->spu.touch(lsa, 8);
         switch (A32(c, 3)) {
         case 1: th->spu.ls[lsa] = static_cast<u8>(v); break;
         case 2: store_be<u16>(th->spu.ls + lsa, static_cast<u16>(v)); break;
