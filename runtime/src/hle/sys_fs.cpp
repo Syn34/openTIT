@@ -108,7 +108,7 @@ OPENTIT_HLE(sys_fs, cellFsOpen) {
     }
     std::FILE* f = std::fopen(p->string().c_str(), mode);
     if (!f) {
-        LOG_DEBUG("fs", "cellFsOpen('%s') -> ENOENT", guest.c_str());
+        LOG_WARN("fs", "cellFsOpen('%s') -> not found", guest.c_str());
         ret(ctx, CELL_ENOENT);
         return;
     }
