@@ -29,8 +29,10 @@ add_library(opentit_core STATIC
   src/loader/elf.cpp
   src/loader/nid.cpp
   src/loader/sfo.cpp
+  src/loader/spu_images.cpp
   src/ppu/ppu_decoder.cpp
   src/ppu/ppu_disasm.cpp
+  src/spu/spu_decoder.cpp
 )
 target_include_directories(opentit_core PUBLIC src)
 
@@ -56,6 +58,7 @@ add_library(opentit_runtime OBJECT
   runtime/src/syscalls.cpp
   runtime/src/threads.cpp
   runtime/src/vfs.cpp
+  runtime/src/spu/spu_thread.cpp
   runtime/src/hle/cellGcmSys.cpp
   runtime/src/hle/cellSysutil.cpp
   runtime/src/hle/misc.cpp
@@ -108,6 +111,7 @@ if(OPENTIT_BUILD_TESTS)
     tests/test_main.cpp
     tests/test_decoder.cpp
     tests/test_vmx.cpp
+    tests/test_spu.cpp
     "${TEST_GEN_DIR}/ppu_0000.cpp"
     "${TEST_GEN_DIR}/ppu_table.cpp"
     $<TARGET_OBJECTS:opentit_runtime>)

@@ -18,9 +18,11 @@
 #include "loader/elf.h"
 #include "loader/nid.h"
 #include "loader/sfo.h"
+#include "loader/spu_images.h"
 #include "ppu/ppu_decoder.h"
 #include "ppu/ppu_disasm.h"
 #include "recomp/emitter.h"
+#include "spu/spu_decoder.h"
 
 using namespace opentit;
 
@@ -35,7 +37,9 @@ int usage() {
                  "  opentit-recomp funcs     <EBOOT.elf> [--entries file] [--list]\n"
                  "  opentit-recomp disasm    <EBOOT.elf> <hex addr> [count]\n"
                  "  opentit-recomp recompile <EBOOT.elf> -o <dir> [--entries file] [--no-annotate] [--per-file N]\n"
-                 "  opentit-recomp sfo       <PARAM.SFO>\n\n"
+                 "  opentit-recomp sfo       <PARAM.SFO>\n"
+                 "  opentit-recomp spu-list   <EBOOT.elf>\n"
+                 "  opentit-recomp spu-disasm <EBOOT.elf> <image #> <hex LS addr> [count]\n\n"
                  "EBOOT.elf must be the decrypted executable from your own disc dump\n"
                  "(PS3_GAME/USRDIR/EBOOT.BIN decrypted with RPCS3).\n");
     return 2;
@@ -189,6 +193,44 @@ int cmd_recompile(const loader::Elf& e, int argc, char** argv) {
     return 0;
 }
 
+int cmd_spu_list(const loader::Elf& e) {
+    const auto imgs = loader::find_spu_images(e);
+    std::printf("%zu embedded SPU images\n", imgs.size());
+    for (std::size_t k = 0; k < imgs.size(); ++k) {
+        const auto& im = imgs[k];
+        u32 code = 0, total = 0;
+        for (const auto& s : im.segments) {
+            total += s.memsz;
+            if (s.flags & 1) code += s.filesz;
+        }
+        std::printf("  #%zu  ea 0x%08X  file+0x%08X  %7u bytes  entry 0x%05X  code %6u  LS %6u  %s\n", k, im.vaddr,
+                    im.file_offset, im.size, im.entry, code, total, im.hint.c_str());
+    }
+    return 0;
+}
+
+int cmd_spu_disasm(const loader::Elf& e, int argc, char** argv) {
+    if (argc < 5) return usage();
+    const auto imgs = loader::find_spu_images(e);
+    const std::size_t idx = std::strtoul(argv[3], nullptr, 0);
+    if (idx >= imgs.size()) {
+        std::fprintf(stderr, "error: image #%zu does not exist (%zu images)\n", idx, imgs.size());
+        return 1;
+    }
+    const auto& im = imgs[idx];
+    u32 a = static_cast<u32>(std::strtoul(argv[4], nullptr, 16));
+    const u32 n = argc > 5 ? static_cast<u32>(std::strtoul(argv[5], nullptr, 0)) : 32;
+    for (u32 k = 0; k < n; ++k, a += 4) {
+        const loader::SpuSegment* seg = nullptr;
+        for (const auto& s : im.segments)
+            if (a >= s.ls_addr && a + 4 <= s.ls_addr + s.filesz) seg = &s;
+        if (!seg) break;
+        const u32 w = load_be<u32>(e.data().data() + im.file_offset + seg->file_offset + (a - seg->ls_addr));
+        std::printf("%05X  %08X  %s\n", a, w, spu::disasm(w, a).c_str());
+    }
+    return 0;
+}
+
 int cmd_sfo(const char* path) {
     std::string err;
     auto sfo = loader::read_sfo(path, &err);
@@ -216,5 +258,7 @@ int main(int argc, char** argv) {
     if (cmd == "funcs") return cmd_funcs(*e, argc, argv);
     if (cmd == "disasm") return cmd_disasm(*e, argc, argv);
     if (cmd == "recompile") return cmd_recompile(*e, argc, argv);
+    if (cmd == "spu-list") return cmd_spu_list(*e);
+    if (cmd == "spu-disasm") return cmd_spu_disasm(*e, argc, argv);
     return usage();
 }
