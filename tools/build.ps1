@@ -1,0 +1,35 @@
+# Build the tools, recompile your EBOOT and build the game (Windows / PowerShell).
+#
+#   .\tools\build.ps1 -Dump "D:\Dumps\Sly 4"
+#
+# Requires: Visual Studio 2022 (Desktop C++), CMake, Ninja on PATH.
+# Run from a "Developer PowerShell for VS 2022" so cl.exe is available.
+param(
+    [Parameter(Mandatory = $true)][string]$Dump,
+    [string]$Gen = "gen",
+    [string]$Config = "Release"
+)
+$ErrorActionPreference = "Stop"
+$root = Split-Path -Parent $PSScriptRoot
+Push-Location $root
+try {
+    $eboot = Join-Path $Dump "PS3_GAME\USRDIR\EBOOT.elf"
+    if (-not (Test-Path $eboot)) {
+        throw "Decrypted executable not found: $eboot`nDecrypt EBOOT.BIN with RPCS3 (Utilities > Decrypt PS3 Binaries) and save it as EBOOT.elf."
+    }
+
+    cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=$Config
+    cmake --build build
+    .\build\opentit_tests.exe
+
+    .\build\opentit-recomp.exe recompile $eboot -o $Gen
+
+    $genAbs = (Resolve-Path $Gen).Path
+    cmake -S . -B build-game -G Ninja -DCMAKE_BUILD_TYPE=$Config -DOPENTIT_BUILD_TESTS=OFF "-DOPENTIT_GENERATED_DIR=$genAbs"
+    cmake --build build-game
+
+    Write-Host "`nDone. Run:  .\build-game\opentit.exe `"$Dump`" --log info"
+}
+finally {
+    Pop-Location
+}
