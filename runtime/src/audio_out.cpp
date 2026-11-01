@@ -8,6 +8,12 @@
 
 #ifdef OPENTIT_HAS_SDL2
 #include <SDL.h>
+#elif defined(OPENTIT_HAS_WIN32_UI)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <mmsystem.h>
+#include <mutex>
+#include <vector>
 #endif
 
 namespace opentit::audio_out {
@@ -26,8 +32,44 @@ float be_float(const u8* p) {
 }
 }  // namespace
 
+#if !defined(OPENTIT_HAS_SDL2) && defined(OPENTIT_HAS_WIN32_UI)
+// waveOut: a ring of buffers, each 1024 stereo float frames.
+namespace {
+constexpr int kBufs = 6;
+constexpr u32 kFrames = 1024;
+HWAVEOUT g_wo = nullptr;
+WAVEHDR g_hdr[kBufs] = {};
+std::vector<float> g_data[kBufs];
+std::vector<float> g_pending;
+std::mutex g_wm;
+}  // namespace
+#endif
+
 bool start() {
-#ifdef OPENTIT_HAS_SDL2
+#if !defined(OPENTIT_HAS_SDL2) && defined(OPENTIT_HAS_WIN32_UI)
+    if (g_on) return true;
+    if (rtm::config().headless) return false;
+    WAVEFORMATEX f{};
+    f.wFormatTag = 3;  // WAVE_FORMAT_IEEE_FLOAT
+    f.nChannels = 2;
+    f.nSamplesPerSec = 48000;
+    f.wBitsPerSample = 32;
+    f.nBlockAlign = 8;
+    f.nAvgBytesPerSec = 48000 * 8;
+    if (waveOutOpen(&g_wo, WAVE_MAPPER, &f, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR) {
+        LOG_WARN("audio", "could not open an audio device");
+        return false;
+    }
+    for (int k = 0; k < kBufs; ++k) {
+        g_data[k].assign(kFrames * 2, 0.0f);
+        g_hdr[k].lpData = reinterpret_cast<LPSTR>(g_data[k].data());
+        g_hdr[k].dwBufferLength = kFrames * 8;
+        g_hdr[k].dwFlags = WHDR_DONE;  // free
+    }
+    g_on = true;
+    LOG_INFO("audio", "audio output at 48000 Hz (waveOut)");
+    return true;
+#elif defined(OPENTIT_HAS_SDL2)
     if (g_on) return true;
     if (rtm::config().headless) return false;
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
@@ -54,7 +96,27 @@ bool start() {
 }
 
 void push(const float* stereo, u32 frames) {
-#ifdef OPENTIT_HAS_SDL2
+#if !defined(OPENTIT_HAS_SDL2) && defined(OPENTIT_HAS_WIN32_UI)
+    if (!g_on) return;
+    std::lock_guard<std::mutex> lk(g_wm);
+    g_pending.insert(g_pending.end(), stereo, stereo + 2 * frames);
+    while (g_pending.size() >= kFrames * 2) {
+        int free_buf = -1;
+        for (int k = 0; k < kBufs; ++k)
+            if (g_hdr[k].dwFlags & WHDR_DONE) { free_buf = k; break; }
+        if (free_buf < 0) {  // device behind: drop to keep latency bounded
+            g_pending.clear();
+            return;
+        }
+        WAVEHDR& h = g_hdr[free_buf];
+        if (h.dwFlags & WHDR_PREPARED) waveOutUnprepareHeader(g_wo, &h, sizeof h);
+        std::memcpy(g_data[free_buf].data(), g_pending.data(), kFrames * 8);
+        g_pending.erase(g_pending.begin(), g_pending.begin() + kFrames * 2);
+        h.dwFlags = 0;
+        waveOutPrepareHeader(g_wo, &h, sizeof h);
+        waveOutWrite(g_wo, &h, sizeof h);
+    }
+#elif defined(OPENTIT_HAS_SDL2)
     if (!g_on) return;
     // Keep latency bounded: drop audio if the device has fallen far behind.
     if (SDL_GetQueuedAudioSize(g_dev) > 48000 * 2 * 4 / 8) return;

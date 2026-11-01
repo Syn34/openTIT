@@ -84,6 +84,7 @@ add_library(opentit_runtime OBJECT
   runtime/src/rsx/texture.cpp
   runtime/src/rsx/geometry.cpp
   runtime/src/rsx/vk/vk_backend.cpp
+  runtime/src/rsx/vk/vk_loader.cpp
   runtime/src/video.cpp
   runtime/src/input.cpp
   runtime/src/audio_out.cpp
@@ -100,14 +101,22 @@ endif()
 find_package(glslang CONFIG QUIET)
 if(glslang_FOUND)
   target_link_libraries(opentit_runtime PUBLIC glslang::glslang glslang::SPIRV glslang::glslang-default-resource-limits)
-  target_compile_definitions(opentit_runtime PUBLIC OPENTIT_HAS_GLSLANG)
+  target_compile_definitions(opentit_runtime PRIVATE OPENTIT_HAS_GLSLANG)
   message(STATUS "openTIT: glslang found - shader translation enabled")
 endif()
-find_package(Vulkan QUIET)
-if(Vulkan_FOUND AND glslang_FOUND)
-  target_link_libraries(opentit_runtime PUBLIC Vulkan::Vulkan)
-  target_compile_definitions(opentit_runtime PUBLIC OPENTIT_HAS_VULKAN)
-  message(STATUS "openTIT: Vulkan found - RSX renderer enabled")
+# The renderer loads vulkan-1.dll / libvulkan.so.1 at run time, so only the
+# Vulkan headers are needed (Vulkan SDK, distro package, or OPENTIT_VULKAN_INCLUDE_DIR).
+set(OPENTIT_VULKAN_INCLUDE_DIR "" CACHE PATH "Folder containing vulkan/vulkan.h (default: search)")
+if(OPENTIT_VULKAN_INCLUDE_DIR)
+  set(opentit_vk_inc "${OPENTIT_VULKAN_INCLUDE_DIR}")
+else()
+  find_path(opentit_vk_inc vulkan/vulkan.h HINTS "$ENV{VULKAN_SDK}/Include" "$ENV{VULKAN_SDK}/include")
+endif()
+if(opentit_vk_inc AND EXISTS "${opentit_vk_inc}/vulkan/vulkan.h")
+  target_include_directories(opentit_runtime PRIVATE "${opentit_vk_inc}")
+  target_compile_definitions(opentit_runtime PRIVATE OPENTIT_HAS_VULKAN)
+  target_link_libraries(opentit_runtime PUBLIC ${CMAKE_DL_LIBS})
+  message(STATUS "openTIT: Vulkan headers found - RSX renderer enabled")
 endif()
 find_package(SDL2 CONFIG QUIET)
 # On machines without SDL2 installed (typical on Windows), download it.
@@ -134,11 +143,17 @@ if(SDL2_FOUND)
     target_include_directories(opentit_runtime PUBLIC ${SDL2_INCLUDE_DIRS})
     target_link_libraries(opentit_runtime PUBLIC ${SDL2_LIBRARIES})
   endif()
-  target_compile_definitions(opentit_runtime PUBLIC OPENTIT_HAS_SDL2 SDL_MAIN_HANDLED)
+  target_compile_definitions(opentit_runtime PRIVATE OPENTIT_HAS_SDL2 SDL_MAIN_HANDLED)
   message(STATUS "openTIT: SDL2 found - game window enabled")
 endif()
+if(WIN32 AND NOT SDL2_FOUND)
+  # Native window, XInput and waveOut instead of SDL2.
+  target_compile_definitions(opentit_runtime PRIVATE OPENTIT_HAS_WIN32_UI)
+  target_link_libraries(opentit_runtime PUBLIC user32 gdi32 winmm)
+  message(STATUS "openTIT: using the native Win32 window, input and audio")
+endif()
 if(NOT glslang_FOUND)
-  message(STATUS "openTIT: glslang not found - shaders cannot be compiled (install the Vulkan SDK)")
+  message(STATUS "openTIT: glslang not found - shaders will be compiled with shaderc_shared.dll from the Vulkan SDK at run time")
 endif()
 
 # Settings for generated guest code: it is huge, so keep optimisation
@@ -147,6 +162,9 @@ function(opentit_configure_generated target)
   if(MSVC)
     target_compile_options(${target} PRIVATE /bigobj /fp:precise)
   else()
+    if(MINGW)
+      target_compile_options(${target} PRIVATE -Wa,-mbig-obj)
+    endif()
     target_compile_options(${target} PRIVATE -fno-strict-aliasing -ffp-contract=off -Wno-unused-label
                                              -Wno-unused-variable -Wno-unused-but-set-variable)
   endif()
@@ -165,8 +183,11 @@ if(OPENTIT_GENERATED_DIR)
   list(LENGTH OPENTIT_GENERATED_SOURCES n)
   message(STATUS "openTIT: building game from ${n} generated sources")
   add_executable(opentit runtime/src/main.cpp ${OPENTIT_GENERATED_SOURCES} $<TARGET_OBJECTS:opentit_runtime>)
-  if(NOT MSVC AND NOT APPLE)
+  if(UNIX AND NOT APPLE)
     target_link_options(opentit PRIVATE -rdynamic)  # function names in crash backtraces
+  endif()
+  if(MINGW)
+    target_link_options(opentit PRIVATE -static -static-libgcc -static-libstdc++)  # no MinGW DLLs needed
   endif()
   target_link_libraries(opentit PRIVATE opentit_runtime)
   opentit_configure_generated(opentit)

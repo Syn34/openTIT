@@ -12,7 +12,7 @@ std::unique_ptr<VulkanBackend> create_vulkan_backend(std::function<u32(u32, bool
 
 #else
 
-#include <vulkan/vulkan.h>
+#include "vk_loader.h"
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
@@ -409,12 +409,14 @@ bool Impl::init(std::string* error) {
     };
     if (!glsl::have_compiler()) return fail("no shader compiler (build with glslang)");
 
+    if (!vkl::load_library()) return fail("no Vulkan driver (vulkan-1.dll / libvulkan.so.1 not found)");
     VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
     app.pApplicationName = "openTIT";
     app.apiVersion = VK_API_VERSION_1_3;
     VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     ici.pApplicationInfo = &app;
     if (vkCreateInstance(&ici, nullptr, &instance_) != VK_SUCCESS) return fail("vkCreateInstance failed");
+    vkl::load_instance(instance_);
 
     u32 n = 0;
     vkEnumeratePhysicalDevices(instance_, &n, nullptr);
