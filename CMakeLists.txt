@@ -74,6 +74,8 @@ add_library(opentit_runtime OBJECT
   runtime/src/rsx/geometry.cpp
   runtime/src/rsx/vk/vk_backend.cpp
   runtime/src/video.cpp
+  runtime/src/input.cpp
+  runtime/src/audio_out.cpp
   runtime/src/hle/sysPrxForUser.cpp
   runtime/src/hle/sys_fs.cpp
 )

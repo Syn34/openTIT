@@ -23,7 +23,7 @@ Early, but the whole pipeline runs end to end:
 | Native boot of the recompiled game | 🟡 runs `main`, GCM + 720p, SPURS, FIOS, and opens the data files |
 | RSX graphics | 🟡 Vulkan renderer: shader translation, textures, depth/stencil, blending, render-to-texture via guest memory. Not yet tried on game content |
 | SPU / SPURS (jobs, tasks) | 🟡 SPU interpreter + LV2 SPU groups. Real `libsre` recompiled and running LLE |
-| Audio / input | 🔴 null audio device, one idle pad |
+| Audio / input | 🟡 cellAudio ports mixed to the host device (SDL2); DualShock 3 from any SDL controller or the keyboard |
 
 Numbers above come from the European disc release (`BCES01284`, v01.02). Other regions should work the same way. Run `opentit-recomp funcs` on your EBOOT to see its numbers.
 
@@ -83,6 +83,21 @@ cmake --build build-game
 ```
 
 On Windows, `tools\build.ps1 -Dump "C:\path\to\dump"` does steps 2–4.
+
+### Controls
+
+Any controller SDL recognises (Xbox, DualShock 4, DualSense...) works as a DualShock 3. On the keyboard:
+
+| Keys | Pad |
+|---|---|
+| W A S D | left stick |
+| arrow keys | right stick (camera) |
+| I J K L | d-pad |
+| Space / F / C / R | Cross / Square / Circle / Triangle |
+| Q / E | L1 / R1 |
+| Left Shift / Left Ctrl | L2 / R2 |
+| Z / X | L3 / R3 |
+| Enter / Backspace | Start / Select |
 
 ## Layout
 

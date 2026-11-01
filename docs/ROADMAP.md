@@ -42,8 +42,9 @@ Sly 4 imports 61 `cellSpurs` functions (job chains, tasksets, event flags, LF qu
 
 ## M4: Platform
 
-- [ ] Input: XInput / SDL gamepad → `cellPad`, plus a keyboard mapping
-- [ ] Audio: cellAudio ports → WASAPI/SDL, and an ATRAC3 (`.at3`) decoder for streams
+- [x] Input: SDL game controller → `cellPad` (buttons, sticks, pressure), plus a keyboard mapping
+- [x] Audio: cellAudio ports (2/8 channels) mixed to stereo and played through SDL2
+- [ ] ATRAC3 (`.at3`) / MP3 decoding if the game hands compressed streams to libatrac/cellAdec (it decodes on SPU otherwise)
 - [ ] Bink (`.bik`) movies
 - [ ] `Sly4.psarc` reader (to load assets directly and to support mods)
 

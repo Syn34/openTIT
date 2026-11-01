@@ -213,3 +213,48 @@ TEST(RsxGeometryRangesRestartAndInline) {
     CHECK_EQ(ig.indices.size(), std::size_t(3));
     CHECK_EQ(ig.constant_attributes[1][3], 1.0f);
 }
+
+// ---------------------------------------------------------------- pad data layout
+#include "../runtime/src/input.h"
+
+TEST(PadDataLayout) {
+    mem::commit(kGeo, 0x10000);
+    input::Pad p;
+    p.digital1 = input::BTN_START | input::BTN_LEFT;
+    p.digital2 = input::BTN_CROSS;
+    p.lx = 0;
+    p.ry = 255;
+    p.pressure[6] = 255;
+    input::write_cell_pad_data(kGeo + 0x3000, p);
+    CHECK_EQ(mem::r32(kGeo + 0x3000), 24u);
+    CHECK_EQ(mem::r16(kGeo + 0x3004 + 2 * 2), 0x88u);  // digital1
+    CHECK_EQ(mem::r16(kGeo + 0x3004 + 2 * 3), 0x40u);  // digital2: cross
+    CHECK_EQ(mem::r16(kGeo + 0x3004 + 2 * 5), 255u);   // right Y
+    CHECK_EQ(mem::r16(kGeo + 0x3004 + 2 * 6), 0u);     // left X
+    CHECK_EQ(mem::r16(kGeo + 0x3004 + 2 * 7), 128u);   // left Y centred
+    CHECK_EQ(mem::r16(kGeo + 0x3004 + 2 * 14), 255u);  // cross pressure
+    input::Pad off;
+    off.connected = false;
+    input::write_cell_pad_data(kGeo + 0x3000, off);
+    CHECK_EQ(mem::r32(kGeo + 0x3000), 0u);
+}
+
+#include "../runtime/src/audio_out.h"
+
+TEST(AudioMixBlock) {
+    std::vector<u8> st(256 * 2 * 4), sur(256 * 8 * 4);
+    auto put = [](u8* p, float f) { u32 v; std::memcpy(&v, &f, 4); store_be<u32>(p, v); };
+    for (u32 f = 0; f < 256; ++f) {
+        put(&st[f * 8], 0.5f);
+        put(&st[f * 8 + 4], -0.25f);
+        put(&sur[f * 32 + 8], 1.0f);  // centre only
+    }
+    float out[512] = {};
+    audio_out::mix_block(st.data(), 2, 0.5f, out);
+    CHECK_EQ(out[0], 0.25f);
+    CHECK_EQ(out[511], -0.125f);
+    float out8[512] = {};
+    audio_out::mix_block(sur.data(), 8, 1.0f, out8);
+    CHECK(out8[0] > 0.70f && out8[0] < 0.71f);
+    CHECK_EQ(out8[0], out8[1]);
+}

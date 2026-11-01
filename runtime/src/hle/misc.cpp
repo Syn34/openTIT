@@ -6,14 +6,17 @@
 #include <thread>
 
 #include "../hle.h"
+#include "../audio_out.h"
+#include "../input.h"
 #include "../log.h"
 
 using namespace opentit;
 using namespace opentit::rtm;
 
 // ---------------------------------------------------------------- cellAudio
-// A null audio device: ports get real buffers and the read index advances in
-// real time (256 samples @ 48 kHz per block), so the game's mixer keeps going.
+// Ports get real buffers and the read index advances in real time (256
+// samples @ 48 kHz per block). Each tick, the block at the read index of
+// every started port is mixed to stereo and sent to the host device.
 namespace {
 struct AudioPort {
     bool open = false;
@@ -21,6 +24,7 @@ struct AudioPort {
     u32 channels = 2, blocks = 8;
     u32 buffer = 0;
     u32 read_index_addr = 0;
+    float level = 1.0f;
 };
 AudioPort g_ports[8];
 std::atomic<bool> g_audio_running{false};
@@ -30,14 +34,23 @@ u32 g_read_indices = 0;
 
 OPENTIT_HLE(cellAudio, cellAudioInit) {
     if (!g_read_indices) g_read_indices = alloc_guest(8 * 8, 0x80);
+    audio_out::start();
     if (!g_audio_running.exchange(true)) {
         g_audio_thread = std::thread([] {
             auto next = std::chrono::steady_clock::now();
             while (g_audio_running) {
                 next += std::chrono::microseconds(5333);
                 std::this_thread::sleep_until(next);
-                for (auto& p : g_ports)
-                    if (p.open && p.started) mem::w64(p.read_index_addr, (mem::r64(p.read_index_addr) + 1) % p.blocks);
+                float mix[512] = {};
+                for (auto& p : g_ports) {
+                    if (!p.open || !p.started) continue;
+                    const u64 idx = mem::r64(p.read_index_addr) % p.blocks;
+                    audio_out::mix_block(mem::ptr(p.buffer + static_cast<u32>(idx) * p.channels * 256 * 4), p.channels,
+                                         p.level, mix);
+                    mem::w64(p.read_index_addr, (idx + 1) % p.blocks);
+                }
+                for (float& v : mix) v = v > 1.0f ? 1.0f : v < -1.0f ? -1.0f : v;
+                audio_out::push(mix, 256);
             }
         });
         g_audio_thread.detach();
@@ -60,6 +73,9 @@ OPENTIT_HLE(cellAudio, cellAudioPortOpen) {
         port.channels = static_cast<u32>(mem::r64(p));
         port.blocks = static_cast<u32>(mem::r64(p + 8));
         if (!port.blocks) port.blocks = 8;
+        if (port.channels != 2 && port.channels != 8) port.channels = 2;
+        port.level = 1.0f;
+        if (mem::r64(p + 16) & 0x1000) port.level = mem::rf32(p + 24);  // CELL_AUDIO_PORTATTR_INITLEVEL
         port.buffer = alloc_guest(port.channels * port.blocks * 256 * 4, 0x100);
         port.read_index_addr = g_read_indices + i * 8;
         mem::w64(port.read_index_addr, 0);
@@ -102,7 +118,7 @@ OPENTIT_HLE(cellAudio, cellAudioPortClose) {
 }
 
 // ---------------------------------------------------------------- sys_io (pads)
-// One connected DualShock 3 with nothing pressed. Host input is a TODO.
+// One DualShock 3 on port 0, driven by host input (runtime/src/input.cpp).
 OPENTIT_HLE_OK(sys_io, cellPadInit)
 OPENTIT_HLE_OK(sys_io, cellPadSetPortSetting)
 OPENTIT_HLE_OK(sys_io, cellPadSetActDirect)
@@ -121,12 +137,12 @@ OPENTIT_HLE(sys_io, cellPadGetInfo2) {
 
 OPENTIT_HLE(sys_io, cellPadGetData) {
     // (port, CellPadData* {s32 len; u16 button[64]})
-    const u32 d = arg32(ctx, 1);
-    std::memset(mem::ptr(d), 0, 4 + 128);
-    if (arg32(ctx, 0) == 0) {
-        mem::w32(d, 24);
-        for (u32 k = 4; k < 8; ++k) mem::w16(d + 4 + k * 2, 0x80);  // centred analog sticks
+    const u32 port = arg32(ctx, 0);
+    if (port >= 7) {
+        ret(ctx, 0x80121104);  // CELL_PAD_ERROR_INVALID_PARAMETER
+        return;
     }
+    input::write_cell_pad_data(arg32(ctx, 1), input::pad(static_cast<int>(port)));
     ret(ctx, CELL_OK);
 }
 
