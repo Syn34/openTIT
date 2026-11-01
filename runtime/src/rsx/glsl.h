@@ -37,6 +37,8 @@ struct FragmentOptions {
     bool two_sided_color = false;  // back faces read BFC0/BFC1
     bool depth_export = false;     // R1.z -> gl_FragDepth
     bool alpha_test = false;       // compare against push-constant reference
+    u16 shadow_mask = 0;           // units sampled as depth with a compare (sampler2DShadow)
+    u16 depth_rgba_mask = 0;       // xRGB8 textures reading a depth buffer: 24 depth bits spread over channels
 };
 
 std::string vertex(const vp::Program& p);

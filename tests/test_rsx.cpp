@@ -515,4 +515,8 @@ TEST(RsxGlslFragmentAllOps) {
     CHECK(compiles(false, src));
     o.r_exports = false;
     CHECK(compiles(false, glsl::fragment(p, o)));
+    o.shadow_mask = 1u << 0;      // shadow compare on unit 0
+    o.depth_rgba_mask = 1u << 1;  // depth bits as colour on unit 1
+    o.textures[1] = glsl::TexDim::D2;
+    CHECK(compiles(false, glsl::fragment(p, o)));
 }

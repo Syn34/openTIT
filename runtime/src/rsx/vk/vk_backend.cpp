@@ -284,7 +284,7 @@ private:
         u32 ea = 0, pitch = 0, rsx_format = 0;
         bool depth = false, swizzled = false;
         bool loaded = false;  // GPU contents valid
-        std::map<u32, VkImageView> sample_views;  // by TEXTURE_CONTROL1 remap
+        std::map<u32, VkImageView> sample_views;  // by TEXTURE_CONTROL1 remap (depth: 0x10000 | kind)
         bool dirty = false;   // GPU contents newer than guest memory
         u64 last_used = 0;
         u32 bytes() const { return pitch * image.height; }
@@ -323,9 +323,11 @@ private:
     VkShaderModule fragment_shader(const State& s, const fp::Program& p, const glsl::FragmentOptions& o, u64* hash);
     VkPipeline pipeline(const State& s, VkShaderModule vs, VkShaderModule fs, Topology topo, u32 attr_mask,
                         u32 const_mask, bool restart);
-    VkImageView texture_view(const State& s, int unit, glsl::TexDim* dim);
+    enum TexKind { TEX_COLOR = 0, TEX_SHADOW, TEX_DEPTH_RGBA, TEX_DEPTH_VALUE };
+    VkImageView texture_view(const State& s, int unit, glsl::TexDim* dim, TexKind* kind);
     VkImageView target_as_texture(const TextureDesc& d, u32 ea, glsl::TexDim dim);
-    VkSampler sampler(const State& s, int unit);
+    VkImageView depth_as_texture(const State& s, int unit, const TextureDesc& d, u32 ea, TexKind* kind);
+    VkSampler sampler(const State& s, int unit, bool compare = false);
 
     std::function<u32(u32, bool)> to_ea_;
     VulkanStats stats_;
@@ -1005,7 +1007,8 @@ VkPipeline Impl::pipeline(const State& s, VkShaderModule vs, VkShaderModule fs, 
         VkFormat colors[4];
         VkFormat depth;
         u32 color_count;
-    } k{};
+    } k;
+    std::memset(&k, 0, sizeof k);  // hashed as bytes: padding must be zero
     k.vs = vs;
     k.fs = fs;
     k.topo = static_cast<u32>(topo);
@@ -1140,7 +1143,8 @@ VkPipeline Impl::pipeline(const State& s, VkShaderModule vs, VkShaderModule fs, 
 }
 
 // ---------------------------------------------------------------- textures
-VkImageView Impl::texture_view(const State& s, int unit, glsl::TexDim* dim) {
+VkImageView Impl::texture_view(const State& s, int unit, glsl::TexDim* dim, TexKind* kind) {
+    *kind = TEX_COLOR;
     const rsx::Texture t = s.texture(unit);
     *dim = t.cubemap ? glsl::TexDim::Cube : t.dimension == 1 ? glsl::TexDim::D1 : t.dimension == 3 ? glsl::TexDim::D3 : glsl::TexDim::D2;
     const int dummy = *dim == glsl::TexDim::D1 ? 0 : *dim == glsl::TexDim::D3 ? 2 : *dim == glsl::TexDim::Cube ? 3 : 1;
@@ -1160,12 +1164,15 @@ VkImageView Impl::texture_view(const State& s, int unit, glsl::TexDim* dim) {
     const u32 size = texture_size(d);
     // Render-to-texture: sample the target image itself when it matches.
     if (VkImageView rv = target_as_texture(d, ea, *dim)) return rv;
+    if (*dim == glsl::TexDim::D2)
+        if (VkImageView dv = depth_as_texture(s, unit, d, ea, kind)) return dv;
     // Otherwise a render target the texture overlaps must reach guest memory first.
     for (auto& [k, rt] : targets_)
         if (rt.dirty && ea < rt.ea + rt.bytes() && rt.ea < ea + size) { flush(); break; }
 
-    u64 key = fnv1a(&d, sizeof d);
-    key = fnv1a(&ea, 4, key);
+    // Hash the fields, not the struct (its padding is indeterminate).
+    const u32 fields[] = {d.format, d.width, d.height, d.depth, d.mipmaps, d.cubemap ? 1u : 0u, d.pitch, d.remap, ea};
+    const u64 key = fnv1a(fields, sizeof fields);
     Texture& tex = textures_[key];
     tex.last_used = ++tick_;
     if (tex.image.img && tex.checked_epoch == epoch_) return tex.image.view;
@@ -1219,6 +1226,47 @@ VkImageView Impl::texture_view(const State& s, int unit, glsl::TexDim* dim) {
         bound_depth_ = nullptr;
     }
     return tex.image.view;
+}
+
+// Depth buffers read as textures: shadow compares, depth values, or (for an
+// xRGB8 texture over a depth buffer) the 24 depth bits spread over channels.
+VkImageView Impl::depth_as_texture(const State& s, int unit, const TextureDesc& d, u32 ea, TexKind* kind) {
+    const u32 base = d.base_format();
+    const bool depth_fmt = base == TEX_DEPTH24_D8 || base == TEX_DEPTH24_D8_FLOAT || base == TEX_DEPTH16 || base == TEX_DEPTH16_FLOAT;
+    const bool argb = base == TEX_A8R8G8B8 || base == TEX_D8R8G8B8;
+    if ((!depth_fmt && !argb) || d.mipmaps > 1 || d.cubemap) return VK_NULL_HANDLE;
+    const u32 zfunc = (s.reg(NV4097_SET_TEXTURE_OFFSET + 0x20 * unit + 8) >> 28) & 0xF;
+    for (auto& [k, t] : targets_) {
+        if (t.ea != ea || !t.depth || !t.loaded) continue;
+        if (t.image.width != d.width || t.image.height != d.height) continue;
+        if (argb && t.rsx_format != 2) continue;  // only Z24S8 has bits to spread
+        const TexKind want = depth_fmt ? (zfunc ? TEX_SHADOW : TEX_DEPTH_VALUE) : TEX_DEPTH_RGBA;
+        const u32 key = 0x10000u | static_cast<u32>(want);
+        auto vit = t.sample_views.find(key);
+        if (vit == t.sample_views.end()) {
+            VkImageViewCreateInfo vci{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+            vci.image = t.image.img;
+            vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            vci.format = t.image.format;
+            if (want == TEX_DEPTH_VALUE)
+                vci.components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R};
+            vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+            VkImageView v = VK_NULL_HANDLE;
+            if (vkCreateImageView(dev_, &vci, nullptr, &v) != VK_SUCCESS) return VK_NULL_HANDLE;
+            vit = t.sample_views.emplace(key, v).first;
+        }
+        if (t.image.layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+            begin_commands();
+            end_rendering();
+            bound_color_.clear();
+            bound_depth_ = nullptr;
+            transition(t.image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, aspect_of(t.image.format));
+        }
+        *kind = want;
+        ++stats_.rt_samples;
+        return vit->second;
+    }
+    return VK_NULL_HANDLE;
 }
 
 VkImageView Impl::target_as_texture(const TextureDesc& d, u32 ea, glsl::TexDim dim) {
@@ -1279,10 +1327,12 @@ VkImageView Impl::target_as_texture(const TextureDesc& d, u32 ea, glsl::TexDim d
     return VK_NULL_HANDLE;
 }
 
-VkSampler Impl::sampler(const State& s, int unit) {
+VkSampler Impl::sampler(const State& s, int unit, bool compare) {
     const u32 b = NV4097_SET_TEXTURE_OFFSET + 0x20 * unit;
     const u32 addr = s.reg(b + 8), filter = s.reg(b + 0x14), c0 = s.reg(b + 0xC);
-    const u64 key = (static_cast<u64>(addr & 0xFFFFF) << 32) | (filter & 0xFF0F0000) | ((c0 >> 7) & 0xFFFF);
+    const u32 zfunc = compare ? (addr >> 28) & 0xF : 0;
+    const u64 key = (static_cast<u64>(addr & 0xFFFFF) << 32) | (static_cast<u64>(zfunc) << 52) | (compare ? 1ull << 56 : 0) |
+                    (filter & 0xFF0F0000) | ((c0 >> 7) & 0xFFFF);
     auto it = sampler_cache_.find(key);
     if (it != sampler_cache_.end()) return it->second;
     VkSamplerCreateInfo ci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
@@ -1297,7 +1347,11 @@ VkSampler Impl::sampler(const State& s, int unit) {
     ci.minLod = static_cast<float>((c0 >> 19) & 0xFFF) / 256.0f;
     ci.maxLod = (min == 1 || min == 2) ? ci.minLod + 0.25f : static_cast<float>((c0 >> 7) & 0xFFF) / 256.0f;
     if (ci.maxLod < ci.minLod) ci.maxLod = ci.minLod;
-    ci.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    ci.borderColor = compare ? VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE : VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    if (compare) {
+        ci.compareEnable = VK_TRUE;
+        ci.compareOp = compare_op(zfunc);  // CELL_GCM_TEXTURE_ZFUNC_* uses the same order
+    }
     VkSampler smp = VK_NULL_HANDLE;
     VKCHECK(vkCreateSampler(dev_, &ci, nullptr, &smp));
     sampler_cache_[key] = smp;
@@ -1313,6 +1367,7 @@ void Impl::draw(const State& s, const DrawCall& c) {
     if (f.truncated) return;
 
     glsl::FragmentOptions fo;
+    std::memset(&fo, 0, sizeof fo);  // hashed as bytes: no stray padding
     const u32 ctrl = s.reg(R_SHADER_CONTROL);
     fo.r_exports = (ctrl & 0x40) != 0;
     fo.depth_export = (ctrl & 0xE) != 0 && f.writes_depth;
@@ -1323,9 +1378,12 @@ void Impl::draw(const State& s, const DrawCall& c) {
         images[4 + u] = {dummy_sampler_, dummy_[1].view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         if (!(f.textures & (1u << u))) continue;
         glsl::TexDim dim;
-        const VkImageView view = texture_view(s, u, &dim);
+        TexKind kind;
+        const VkImageView view = texture_view(s, u, &dim, &kind);
         fo.textures[u] = dim;
-        images[4 + u] = {sampler(s, u), view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        if (kind == TEX_SHADOW) fo.shadow_mask |= static_cast<u16>(1u << u);
+        if (kind == TEX_DEPTH_RGBA) fo.depth_rgba_mask |= static_cast<u16>(1u << u);
+        images[4 + u] = {sampler(s, u, kind == TEX_SHADOW), view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
     }
     for (int u = 0; u < 4; ++u) images[u] = {dummy_sampler_, dummy_[1].view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
 

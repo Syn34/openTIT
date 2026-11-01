@@ -337,6 +337,16 @@ std::string fp_value(const fp::Insn& i, const FragmentOptions& opt) {
     const u32 t = i.tex_num();
     const std::string sampler = "tex" + std::to_string(t);
     const TexDim d = dim_of(opt, t);
+    if (i.is_texture() && (opt.shadow_mask & (1u << t))) {
+        // Depth compare against the coordinate's z (projected for TXP).
+        if (i.opcode() == fp::TXP || i.opcode() == fp::TXPBEM)
+            return "vec4(texture(" + sampler + ", vec3((" + a + ").xy / (" + a + ").w, (" + a + ").z / (" + a + ").w)))";
+        return "vec4(texture(" + sampler + ", vec3((" + a + ").xy, (" + a + ").z)))";
+    }
+    if (i.is_texture() && (opt.depth_rgba_mask & (1u << t))) {
+        const std::string c = i.opcode() == fp::TXP ? "(" + a + ").xy / (" + a + ").w" : "(" + a + ").xy";
+        return "_depth24_rgba(texture(" + sampler + ", " + c + ").r)";
+    }
     switch (i.opcode()) {
     case fp::MOV: return a;
     case fp::MUL: return "(" + a + " * " + b + ")";
@@ -401,6 +411,10 @@ std::string fp_cond(const fp::Insn& i) {
 }
 
 const char kFragmentHelpers[] =
+    "vec4 _depth24_rgba(float d) {\n"
+    "    uint v = uint(clamp(d, 0.0, 1.0) * 16777215.0 + 0.5);\n"
+    "    return vec4(float((v >> 8) & 255u), float(v & 255u), 255.0, float((v >> 16) & 255u)) / 255.0;\n"
+    "}\n"
     "vec4 _lit(vec4 s) {\n"
     "    float d = max(s.x, 0.0), n = max(s.y, 0.0), p = clamp(s.w, -127.9961, 127.9961);\n"
     "    return vec4(1.0, d, d > 0.0 ? exp2(p * log2(max(n, 1.0e-38))) : 0.0, 1.0);\n"
@@ -418,8 +432,9 @@ std::string fragment(const fp::Program& p, const FragmentOptions& opt) {
     for (u32 t = 0; t < 16; ++t) {
         if (!(p.textures & (1u << t))) continue;
         static const char* const kSampler[] = {"sampler2D", "sampler1D", "sampler2D", "sampler3D", "samplerCube"};
+        const bool shadow = opt.shadow_mask & (1u << t);
         h += fmt("layout(set = 0, binding = %u) uniform %s tex%u;\n", kFragmentTextureBinding + t,
-                 kSampler[static_cast<int>(dim_of(opt, t))], t);
+                 shadow ? "sampler2DShadow" : kSampler[static_cast<int>(dim_of(opt, t))], t);
     }
     for (u32 k = 0; k < 4; ++k) h += fmt("layout(location = %u) out vec4 frag%u;\n", k, k);
     h += kFragmentHelpers;

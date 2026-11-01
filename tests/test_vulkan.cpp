@@ -291,3 +291,89 @@ TEST(VulkanRenderToTexture) {
     CHECK_EQ(mem::r32(kVkLocal + kScreen + 32 * kPitch + 32 * 4), 0xFF00FF00u);
     CHECK_EQ(mem::r32(kVkLocal + kOff + 5 * kPitch + 5 * 4), 0xFF00FF00u);  // and the offscreen target reached memory at flip
 }
+
+TEST(VulkanShadowMapCompare) {
+    if (!rsx::have_vulkan()) return;
+    std::string err;
+    auto vk = rsx::create_vulkan_backend([](u32 off, bool local) { return (local ? kVkLocal : kVkIo) + off; }, &err);
+    if (!vk) return;
+    mem::commit(kVkIo, 0x100000);
+    mem::commit(kVkLocal, 0x100000);
+    mem::commit(kVkCtl, 0x1000);
+    rsx::Environment env;
+    env.to_ea = [](u32 off, bool local) { return (local ? kVkLocal : kVkIo) + off; };
+    env.label_base = kVkCtl + 0x100;
+    rsx::Decoder d(env, vk.get());
+
+    constexpr u32 Wd = 64, Ht = 64, kScreen = 0x10000, kShadow = 0x60000, kPitch = Wd * 4;
+    const u32 fsrc_in = 1u | (1u << 11) | (2u << 13) | (3u << 15) | (7u << 18) | (1u << 23) | (2u << 25) | (3u << 27);
+    const u32 mov = 1u | (0xFu << 9) | (1u << 13) | (1u << 24), tex = 1u | (0xFu << 9) | (4u << 13) | (0x17u << 24);
+    for (u32 k = 0; k < 4; ++k) {
+        fp_word(kVkLocal + 0x8000 + 4 * k, k == 0 ? mov : k == 1 ? fsrc_in : 0);
+        fp_word(kVkLocal + 0x8100 + 4 * k, k == 0 ? tex : k == 1 ? fsrc_in : 0);
+    }
+    auto vp_mov = [](u32 input, u32 out, bool end) {
+        const u32 src = 2u | (3u << 8) | (2u << 10) | (1u << 12);
+        return std::array<u32, 4>{(0x3Fu << 15) | (1u << 30), (1u << 22) | (input << 8) | (src >> 9),
+                                  (src & 0x1FF) << 23, (end ? 1u : 0u) | (out << 2) | (0x3Fu << 7) | (0xFu << 13)};
+    };
+    const auto p0 = vp_mov(0, 0, false), p1 = vp_mov(8, 7, true);
+    // Quad A: left half at clip z -0.4 (depth 0.3). Quad B: full screen, uv + reference 0.5 in tex0.z
+    auto quad = [&](u32 at, float x0, float x1, float z) {
+        const float px[4] = {x0, x1, x1, x0}, py[4] = {-1, -1, 1, 1}, uu[4] = {0, 1, 1, 0}, vv[4] = {0, 0, 1, 1};
+        for (u32 v = 0; v < 4; ++v) {
+            const u32 b = kVkIo + at + 16 * v;
+            mem::w32(b, fbits(px[v])); mem::w32(b + 4, fbits(py[v])); mem::w32(b + 8, fbits(z)); mem::w32(b + 12, fbits(1));
+            const u32 t = kVkIo + at + 0x100 + 16 * v;
+            mem::w32(t, fbits(uu[v])); mem::w32(t + 4, fbits(vv[v])); mem::w32(t + 8, fbits(0.5f)); mem::w32(t + 12, fbits(1));
+        }
+    };
+    quad(0x40000, -1, 0, -0.4f);
+    quad(0x41000, -1, 1, 0.0f);
+    W w;
+    w.m(0x0324, {0x01010101});
+    w.m(0x1D60, {0x40});
+    w.f(0x0A20, {Wd / 2.0f, Ht / 2.0f, 0.5f, 0.0f, Wd / 2.0f, Ht / 2.0f, 0.5f, 0.0f});
+    w.m(rsx::NV4097_SET_TRANSFORM_PROGRAM_LOAD, {0});
+    w.m(rsx::NV4097_SET_TRANSFORM_PROGRAM, {p0[0], p0[1], p0[2], p0[3], p1[0], p1[1], p1[2], p1[3]});
+    w.m(rsx::NV4097_SET_TRANSFORM_PROGRAM_START, {0});
+    w.m(rsx::NV4097_SET_VERTEX_DATA_ARRAY_FORMAT + 0, {(16u << 8) | (4u << 4) | 2u});
+    w.m(rsx::NV4097_SET_VERTEX_DATA_ARRAY_FORMAT + 32, {(16u << 8) | (4u << 4) | 2u});
+    // Pass 1: depth only (no colour target), Z24S8 at kShadow
+    w.m(rsx::NV4097_SET_SURFACE_FORMAT, {(6u << 24) | (6u << 16) | (1u << 8) | (2u << 5) | 8u});
+    w.m(rsx::NV4097_SET_SURFACE_CLIP_HORIZONTAL, {Wd << 16, Ht << 16});
+    w.m(rsx::NV4097_SET_SURFACE_ZETA_OFFSET, {kShadow});
+    w.m(rsx::NV4097_SET_SURFACE_PITCH_Z, {kPitch});
+    w.m(rsx::NV4097_SET_SURFACE_COLOR_TARGET, {0});
+    w.m(0x0A6C, {0x201, 1, 1});  // depth LESS, write, test
+    w.m(rsx::NV4097_SET_ZSTENCIL_CLEAR_VALUE, {0xFFFFFF00u});
+    w.m(rsx::NV4097_CLEAR_SURFACE, {0x03});
+    w.m(rsx::NV4097_SET_SHADER_PROGRAM, {0x8000 | 1});
+    w.m(rsx::NV4097_SET_VERTEX_DATA_ARRAY_OFFSET + 0, {0x80000000u | 0x40000});
+    w.m(rsx::NV4097_SET_VERTEX_DATA_ARRAY_OFFSET + 32, {0x80000000u | 0x40100});
+    w.m(rsx::NV4097_SET_BEGIN_END, {8}).m(rsx::NV4097_DRAW_ARRAYS, {3u << 24}).m(rsx::NV4097_SET_BEGIN_END, {0});
+    // Pass 2: colour only, sample the shadow map with a LESS compare
+    w.m(rsx::NV4097_SET_SURFACE_FORMAT, {(6u << 24) | (6u << 16) | (1u << 8) | 8u});
+    w.m(rsx::NV4097_SET_SURFACE_PITCH_A, {kPitch, kScreen});
+    w.m(rsx::NV4097_SET_SURFACE_COLOR_TARGET, {1});
+    w.m(0x0A74, {0});  // depth test off
+    w.m(rsx::NV4097_SET_SHADER_PROGRAM, {0x8100 | 1});
+    w.m(rsx::NV4097_SET_TEXTURE_OFFSET, {kShadow, 1u | (2u << 4) | ((0x90u | 0x20u) << 8) | (1u << 16),
+                                         3u | (3u << 8) | (3u << 16) | (1u << 28),  // clamp, zfunc LESS
+                                         0x80000000u | (0xFFFu << 7), 0xAAE4, (1u << 16) | (1u << 24), (Wd << 16) | Ht});
+    w.m(0x1840, {kPitch});
+    w.m(rsx::NV4097_SET_VERTEX_DATA_ARRAY_OFFSET + 0, {0x80000000u | 0x41000});
+    w.m(rsx::NV4097_SET_VERTEX_DATA_ARRAY_OFFSET + 32, {0x80000000u | 0x41100});
+    w.m(rsx::NV4097_SET_BEGIN_END, {8}).m(rsx::NV4097_DRAW_ARRAYS, {3u << 24}).m(rsx::NV4097_SET_BEGIN_END, {0});
+    w.m(rsx::GCM_FLIP_COMMAND, {0});
+    mem::w32(kVkCtl + 4, 0);
+    mem::w32(kVkCtl, w.at);
+    rsx::Fifo fifo(d, kVkCtl);
+    CHECK(fifo.run_until_idle([](u32 io) { return kVkIo + io; }));
+    CHECK_EQ(vk->stats().shader_failures, 0u);
+    CHECK_EQ(vk->stats().rt_samples, 1u);
+    const u32 left = mem::r32(kVkLocal + kScreen + 32 * kPitch + 8 * 4), right = mem::r32(kVkLocal + kScreen + 32 * kPitch + 56 * 4);
+    std::printf("  shadow: left 0x%08X right 0x%08X\n", left, right);
+    CHECK_EQ(left, 0x00000000u);   // 0.5 < 0.3 fails: in shadow
+    CHECK_EQ(right, 0xFFFFFFFFu);  // 0.5 < 1.0 passes: lit
+}
