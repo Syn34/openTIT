@@ -55,7 +55,8 @@ Sly 4 imports 61 `cellSpurs` functions (job chains, tasksets, event flags, LF qu
 
 ## Performance (any time)
 
-- [ ] Cache GPRs in locals within a function and flush them at calls/returns (big win for the compiler)
+- [x] Cache GPRs in locals within a function, synced with ctx at calls, returns, syscalls and traps (`--no-gpr-cache` to disable)
+- [ ] Same for FPRs/VRs and CR bits
 - [ ] SSE/NEON intrinsics in `vmx.h`
 - [ ] Direct calls into HLE functions, bypassing the import trampoline
 - [ ] Guard-page or fastmem tricks for `dcbz` and large memcpy paths

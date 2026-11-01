@@ -41,7 +41,7 @@ int usage() {
                  "  opentit-recomp imports   <EBOOT.elf>\n"
                  "  opentit-recomp funcs     <EBOOT.elf> [--entries file] [--list]\n"
                  "  opentit-recomp disasm    <EBOOT.elf> <hex addr> [count]\n"
-                 "  opentit-recomp recompile <EBOOT.elf> -o <dir> [--entries file] [--no-annotate] [--per-file N]\n"
+                 "  opentit-recomp recompile <EBOOT.elf> -o <dir> [--entries file] [--no-annotate] [--no-gpr-cache] [--per-file N]\n"
                  "  opentit-recomp recompile <module.prx> -o <dir> [--base hex] [--name name]   (decrypted firmware PRX)\n"
                  "  opentit-recomp sfo       <PARAM.SFO>\n"
                  "  opentit-recomp spu-list   <EBOOT.elf>\n"
@@ -203,6 +203,7 @@ int cmd_recompile(const loader::Elf& e, int argc, char** argv) {
     for (int k = 3; k < argc; ++k) {
         if (!std::strcmp(argv[k], "-o") && k + 1 < argc) eo.out_dir = argv[++k];
         else if (!std::strcmp(argv[k], "--no-annotate")) eo.annotate = false;
+        else if (!std::strcmp(argv[k], "--no-gpr-cache")) eo.cache_gprs = false;
         else if (!std::strcmp(argv[k], "--per-file") && k + 1 < argc) eo.insns_per_file = std::strtoul(argv[++k], nullptr, 0);
     }
     if (e.is_prx()) {

@@ -14,6 +14,7 @@ struct EmitOptions {
     std::string out_dir;
     std::size_t insns_per_file = 12000;
     bool annotate = true;  // emit the disassembly as a comment above each instruction
+    bool cache_gprs = true;  // keep GPRs in C++ locals, synced with ctx around calls and returns
     // For PRX modules: name + load base. The function table then registers
     // itself with the runtime instead of defining g_recompiled_functions.
     std::string module_name;
@@ -29,7 +30,7 @@ struct EmitStats {
 
 // Generates the C++ body for a single function (exposed for tests).
 std::string emit_function(const loader::Elf& elf, const analysis::Program& prog, const analysis::Function& fn,
-                          bool annotate, std::map<u32, bool>* referenced, EmitStats* stats);
+                          bool annotate, std::map<u32, bool>* referenced, EmitStats* stats, bool cache_gprs = true);
 
 bool emit_program(const loader::Elf& elf, const analysis::Program& prog, const EmitOptions& opts, EmitStats* stats,
                   std::string* error);

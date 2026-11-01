@@ -787,10 +787,117 @@ std::string FunctionEmitter::run() {
 
 }  // namespace
 
+// ---------------------------------------------------------------- GPR caching
+// Rewrites a function so its GPRs live in C++ locals (r[N] -> rN). Guest
+// memory stores go through byte pointers that might alias ctx.gpr, so with
+// the registers in ctx the compiler reloads them after every store; locals
+// can't alias. ctx.gpr is brought up to date before anything that can look
+// at it (calls, indirect branches, syscalls, traps, lswi/stswi, returns) and
+// reloaded after calls, so callees see and change registers as usual.
+namespace {
+
+bool word_char(char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '_'; }
+
+// r[N] occurrences: replace with rN; collect used/written registers.
+std::string rename_gprs(const std::string& in, u32* used, u32* written) {
+    std::string out;
+    out.reserve(in.size());
+    for (std::size_t k = 0; k < in.size(); ++k) {
+        if (in[k] == 'r' && k + 2 < in.size() && in[k + 1] == '[' && (k == 0 || !word_char(in[k - 1])) &&
+            std::isdigit(static_cast<unsigned char>(in[k + 2]))) {
+            std::size_t e = k + 2;
+            u32 n = 0;
+            while (e < in.size() && std::isdigit(static_cast<unsigned char>(in[e]))) n = n * 10 + static_cast<u32>(in[e++] - '0');
+            if (e < in.size() && in[e] == ']' && n < 32) {
+                *used |= 1u << n;
+                std::size_t a = e + 1;
+                while (a < in.size() && in[a] == ' ') ++a;
+                if (a + 1 < in.size() && in[a] == '=' && in[a + 1] != '=') *written |= 1u << n;
+                out += "r" + std::to_string(n);
+                k = e;
+                continue;
+            }
+        }
+        out += in[k];
+    }
+    return out;
+}
+
+bool has_call(const std::string& l) {
+    static const char* const kEscapes[] = {"call_indirect(ctx", "ppu_syscall(ctx", "trap(ctx", "illegal_instruction(ctx",
+                                           "rt::lswi(ctx", "rt::stswi(ctx"};
+    for (const char* e : kEscapes)
+        if (l.find(e) != std::string::npos) return true;
+    // direct calls: f_XXXXXXXX(ctx)
+    for (std::size_t p = l.find("f_"); p != std::string::npos; p = l.find("f_", p + 2))
+        if ((p == 0 || !word_char(l[p - 1])) && p + 15 <= l.size() && l.compare(p + 10, 5, "(ctx)") == 0) return true;
+    return false;
+}
+
+bool has_return(const std::string& l) {
+    for (std::size_t p = l.find("return"); p != std::string::npos; p = l.find("return", p + 6))
+        if ((p == 0 || !word_char(l[p - 1])) && (p + 6 >= l.size() || !word_char(l[p + 6]))) return true;
+    return false;
+}
+
+std::string cache_gprs(const std::string& fn_text) {
+    u32 used = 0, written = 0;
+    std::string body = rename_gprs(fn_text, &used, &written);
+    std::string store, reload;
+    for (u32 n = 0; n < 32; ++n) {
+        if (written & (1u << n)) store += "ctx.gpr[" + std::to_string(n) + "] = r" + std::to_string(n) + "; ";
+        if (used & (1u << n)) reload += "r" + std::to_string(n) + " = ctx.gpr[" + std::to_string(n) + "]; ";
+    }
+    std::string decl = "    u64 ";
+    bool first = true;
+    for (u32 n = 0; n < 32; ++n) {
+        if (!(used & (1u << n))) continue;
+        decl += (first ? "" : ", ") + std::string("r") + std::to_string(n) + " = ctx.gpr[" + std::to_string(n) + "]";
+        first = false;
+    }
+    decl += ";\n";
+    std::string out;
+    out.reserve(body.size() + body.size() / 4);
+    std::size_t at = 0;
+    bool header_done = false;
+    while (at < body.size()) {
+        const std::size_t nl = body.find('\n', at);
+        const std::string l = body.substr(at, nl == std::string::npos ? std::string::npos : nl - at);
+        at = nl == std::string::npos ? body.size() : nl + 1;
+        if (!header_done) {
+            out += l + "\n";
+            if (l.rfind("OPENTIT_FN(", 0) == 0) {
+                if (used) out += decl;
+                header_done = true;
+            }
+            continue;
+        }
+        if (l.find("u64* const r = ctx.gpr;") != std::string::npos) {
+            std::string m = l;
+            m.replace(m.find("u64* const r = ctx.gpr; "), 24, "");
+            out += m + "\n";
+            continue;
+        }
+        if (l.find("(void)r; ") != std::string::npos) {
+            std::string m = l;
+            m.replace(m.find("(void)r; "), 9, "");
+            out += m + "\n";
+            continue;
+        }
+        const bool call = has_call(l), ret = has_return(l);
+        if ((call || ret) && !store.empty()) out += "    { " + store + "}\n";
+        out += l + "\n";
+        if (call && !reload.empty()) out += "    { " + reload + "}\n";
+    }
+    return out;
+}
+
+}  // namespace
+
 std::string emit_function(const loader::Elf& elf, const analysis::Program& prog, const analysis::Function& fn,
-                          bool annotate, std::map<u32, bool>* referenced, EmitStats* stats) {
+                          bool annotate, std::map<u32, bool>* referenced, EmitStats* stats, bool cache) {
     FunctionEmitter e(elf, prog, fn, annotate, referenced, stats);
-    return e.run();
+    return cache ? cache_gprs(e.run()) : e.run();
 }
 
 namespace {
@@ -861,7 +968,7 @@ bool emit_program(const loader::Elf& elf, const analysis::Program& prog, const E
     };
 
     for (const auto& [addr, fn] : prog.functions) {
-        body += emit_function(elf, prog, fn, opts.annotate, &referenced, stats);
+        body += emit_function(elf, prog, fn, opts.annotate, &referenced, stats, opts.cache_gprs);
         insns_in_file += fn.insns.size();
         if (stats) stats->functions++;
         if (insns_in_file >= opts.insns_per_file && !flush()) return false;
