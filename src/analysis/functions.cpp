@@ -1,3 +1,4 @@
+#include <set>
 #include "analysis/functions.h"
 
 #include <algorithm>
@@ -82,12 +83,19 @@ private:
 std::optional<u32> Analyzer::const_value(int reg, u32 before, u32 floor, u32 toc, int depth) const {
     if (depth > 8) return std::nullopt;
     if (reg == 2) return toc;
-    for (u32 a = before; a >= floor && a + 64 > before; a -= 4) {
+    for (u32 a = before; a >= floor && a + 256 > before; a -= 4) {
         const u32 raw = word(a);
         const Insn i(raw);
         const Op op = ppu::decode(raw);
         const int dst = dest_gpr(op, i);
-        if (ppu::is_branch(op)) return std::nullopt;  // left the basic block
+        if (ppu::is_branch(op)) {
+            // On the fall-through path a definition above a conditional branch
+            // still holds; a call keeps non-volatile registers (r2, r13-r31).
+            const bool conditional = op == Op::BC && !i.lk();
+            const bool call_keeps = i.lk() && (reg == 2 || reg >= 13);
+            if (!conditional && !call_keeps) return std::nullopt;
+            continue;
+        }
         if (dst != reg) continue;
         const u32 prev = a - 4;
         switch (op) {
@@ -172,16 +180,28 @@ std::optional<JumpTable> Analyzer::resolve_jump_table(u32 bctr, u32 func_start, 
     int rel_base_reg = -1;
     int idx4_reg = -1, base_reg = -1;
     u32 load_at = 0;
+    int add_a = -1, add_b = -1;  // operands of `add ry, a, b`: one is the loaded entry
     for (u32 b = a - 4; b >= floor; b -= 4) {
         const Insn i(word(b));
         const Op op = ppu::decode(i.raw);
-        if (op == Op::ADD && static_cast<int>(i.rd()) == ry) {
+        const auto is_value = [&](int r) { return add_a >= 0 ? (r == add_a || r == add_b) : r == ry; };
+        if (op == Op::ADD && static_cast<int>(i.rd()) == ry && add_a < 0 && !relative) {
             relative = true;
-            rel_base_reg = static_cast<int>(i.ra()) == ry ? static_cast<int>(i.rb()) : static_cast<int>(i.ra());
+            add_a = static_cast<int>(i.ra());
+            add_b = static_cast<int>(i.rb());
             continue;
         }
-        if (op == Op::EXTSW && static_cast<int>(i.ra()) == ry) continue;
-        if ((op == Op::LWZX || op == Op::LWAX) && static_cast<int>(i.rd()) == ry) {
+        if (op == Op::EXTSW && is_value(static_cast<int>(i.ra()))) {
+            const int dst = static_cast<int>(i.ra()), src = static_cast<int>(i.rs());
+            if (add_a >= 0) {
+                rel_base_reg = dst == add_a ? add_b : add_a;
+                add_a = add_b = -1;
+            }
+            ry = src;
+            continue;
+        }
+        if ((op == Op::LWZX || op == Op::LWAX) && is_value(static_cast<int>(i.rd()))) {
+            if (add_a >= 0) rel_base_reg = static_cast<int>(i.rd()) == add_a ? add_b : add_a;
             load_at = b;
             idx4_reg = static_cast<int>(i.rb());
             base_reg = static_cast<int>(i.ra());
@@ -192,10 +212,11 @@ std::optional<JumpTable> Analyzer::resolve_jump_table(u32 bctr, u32 func_start, 
     if (!load_at) return std::nullopt;
 
     // Figure out which operand of lwzx is the constant table base.
-    std::optional<u32> base = const_value(base_reg, load_at - 4, floor, toc, 0);
+    const u32 cfloor = std::max(func_start, bctr >= 512 ? bctr - 512 : 0u);
+    std::optional<u32> base = const_value(base_reg, load_at - 4, cfloor, toc, 0);
     if (!base) {
         std::swap(base_reg, idx4_reg);
-        base = const_value(base_reg, load_at - 4, floor, toc, 0);
+        base = const_value(base_reg, load_at - 4, cfloor, toc, 0);
     }
     if (!base) {
         // Try both operands again against a function-wide unique definition.
@@ -205,10 +226,23 @@ std::optional<JumpTable> Analyzer::resolve_jump_table(u32 bctr, u32 func_start, 
             base = unique_def_value(base_reg, func_start, load_at, toc);
         }
     }
+    // Last resort for self-relative tables (target = table + entry) whose base
+    // register was set far away or went through a stack spill: SNC places
+    // such tables right after the bctr. Accepted only if, with a known bound,
+    // every entry lands on aligned code after the end of the table.
+    bool guessed_inline = false;
+    if (!base && relative && rel_base_reg == base_reg) {
+        base = bctr + 4;
+        guessed_inline = true;
+    } else if (!base && relative && rel_base_reg == idx4_reg) {
+        std::swap(base_reg, idx4_reg);
+        base = bctr + 4;
+        guessed_inline = true;
+    }
     if (!base) return std::nullopt;
     u32 rel_base = *base;
     if (relative && rel_base_reg != base_reg) {
-        auto rb = const_value(rel_base_reg, load_at - 4, floor, toc, 0);
+        auto rb = const_value(rel_base_reg, load_at - 4, cfloor, toc, 0);
         if (!rb) rb = unique_def_value(rel_base_reg, func_start, load_at, toc);
         if (!rb) return std::nullopt;
         rel_base = *rb;
@@ -226,12 +260,23 @@ std::optional<JumpTable> Analyzer::resolve_jump_table(u32 bctr, u32 func_start, 
         if (ppu::is_branch(op)) break;
     }
 
-    // Bound: nearest preceding cmplwi/cmpldi on the index register.
+    // Bound: nearest preceding cmplwi/cmpldi on the index register or a
+    // register it was copied from (`mr rI, rJ` after the compare).
     u32 count = 0;
     const u32 search_floor = std::max(func_start, bctr >= 512 ? bctr - 512 : 0u);
-    for (u32 b = load_at - 4; b >= search_floor && index_reg >= 0; b -= 4) {
+    std::set<int> aliases;
+    if (index_reg >= 0) aliases.insert(index_reg);
+    for (u32 b = load_at - 4; b >= search_floor && !aliases.empty(); b -= 4) {  // copies in either direction
         const Insn i(word(b));
-        if (ppu::decode(i.raw) == Op::CMPLI && static_cast<int>(i.ra()) == index_reg) {
+        if (ppu::decode(i.raw) == Op::OR && i.rs() == i.rb()) {
+            if (aliases.count(static_cast<int>(i.ra()))) aliases.insert(static_cast<int>(i.rs()));
+            else if (aliases.count(static_cast<int>(i.rs()))) aliases.insert(static_cast<int>(i.ra()));
+        }
+        if (ppu::is_branch(ppu::decode(i.raw)) && !(ppu::decode(i.raw) == Op::BC)) break;
+    }
+    for (u32 b = load_at - 4; b >= search_floor && !aliases.empty(); b -= 4) {
+        const Insn i(word(b));
+        if (ppu::decode(i.raw) == Op::CMPLI && aliases.count(static_cast<int>(i.ra()))) {
             count = i.uimm16() + 1;
             break;
         }
@@ -240,6 +285,18 @@ std::optional<JumpTable> Analyzer::resolve_jump_table(u32 bctr, u32 func_start, 
     const u32 table = *base;
     const bool inline_table = table > bctr && table < bctr + 0x100000;
     if (count == 0 && !inline_table) return std::nullopt;
+    if (guessed_inline) {
+        if (count == 0 || count > 4096) return std::nullopt;
+        const u32 table_end = table + 4 * count;
+        for (u32 k = 0; k < count; ++k) {
+            if (!elf_.ptr(table + 4 * k, 4)) return std::nullopt;
+            const u32 off = elf_.read_u32(table + 4 * k);
+            const u32 target = table + off;
+            const bool near = static_cast<s32>(off) > -0x100000 && static_cast<s32>(off) < 0x100000;
+            if (!near || !in_code(target) || (target & 3) || (target >= table && target < table_end))
+                return std::nullopt;
+        }
+    }
     if (count == 0 || count > 4096) count = 4096;
 
     JumpTable jt;

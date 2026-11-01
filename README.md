@@ -15,7 +15,7 @@ Early, but the whole pipeline runs end to end:
 | ELF loader: segments, TLS, process param, OPD scan, PRX import tables | ✅ |
 | Import identification (NID → name, SHA-1 verified) | ✅ 250 / 251 imports named; all 187 HLE imports implemented |
 | PPU decoder: full PowerPC 64 + VMX + Cell `lvlx`/`stvlx` family | ✅ 0 undecodable reachable words |
-| Function discovery (recursive descent, tail calls, jump tables) | ✅ 24,163 functions, 175 switch tables |
+| Function discovery (recursive descent, tail calls, jump tables) | ✅ 24,164 functions, 178 switch tables, no unresolved `bctr` |
 | C++ emitter (integer, FPU, VMX, CR, reservations, syscalls) | ✅ every reachable instruction emitted, no fallbacks |
 | Full EBOOT → C++ | ✅ 2.77 M instructions → 223 files in ~3 s |
 | Runtime: memory, dispatcher, threads, LV2 syscalls, HLE modules | 🟡 boot-path subset (see below) |
