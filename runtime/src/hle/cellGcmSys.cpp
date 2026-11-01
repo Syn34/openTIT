@@ -1,11 +1,10 @@
 // cellGcmSys + a "null RSX".
 //
-// There is no renderer yet. What this provides is everything the game needs
-// to *believe* a GPU exists: the GCM context and control registers, IO
-// mapping, labels, and a FIFO consumer thread that walks the command buffer,
-// follows jumps/calls, and services the semaphore/reference/flip methods the
-// CPU side waits on. Draw commands are parsed and discarded. A real backend
-// (Vulkan/D3D12) will replace the "discard" branch - see docs/ROADMAP.md.
+// This file is the libgcm side: the GCM context and control registers, IO
+// mapping, labels, display buffers, flip/VBlank handlers. Command processing
+// lives in runtime/src/rsx/ (FIFO walker, method decoder, state tracker); it
+// draws through an rsx::Backend, which is the null backend until a renderer
+// is attached - see docs/ROADMAP.md.
 #include <atomic>
 #include <chrono>
 #include <mutex>
@@ -13,6 +12,7 @@
 
 #include "../hle.h"
 #include "../log.h"
+#include "../rsx/rsx.h"
 
 using namespace opentit;
 using namespace opentit::rtm;
@@ -66,78 +66,43 @@ u32 offset_to_ea(u32 offset, bool local) {
     return (g.io_ea[page] << 20) | (offset & 0xFFFFF);
 }
 
-// ---------------------------------------------------------------- null FIFO consumer
-void fifo_thread() {
-    u32 call_stack[16];
-    int sp = 0;
-    u32 semaphore_offset = 0;  // NV406E
-    u32 be_semaphore_offset = 0;  // NV4097
-    while (g.running) {
-        const u32 put = mem::r32(kControlAddr);
-        u32 get = mem::r32(kControlAddr + 4);
-        if (get == put) {
-            std::this_thread::sleep_for(std::chrono::microseconds(50));
-            continue;
-        }
-        const u32 ea = offset_to_ea(get, false);
-        if (!ea) {
-            LOG_ERROR("rsx", "FIFO get 0x%08X is not mapped - stopping null RSX", get);
-            return;
-        }
-        const u32 cmd = mem::r32(ea);
-        if ((cmd & 0xE0000003) == 0x20000000) {  // old jump
-            mem::w32(kControlAddr + 4, cmd & 0x1FFFFFFC);
-            continue;
-        }
-        if ((cmd & 3) == 1) {  // new jump
-            mem::w32(kControlAddr + 4, cmd & 0xFFFFFFFC);
-            continue;
-        }
-        if ((cmd & 3) == 2) {  // call
-            if (sp < 16) call_stack[sp++] = get + 4;
-            mem::w32(kControlAddr + 4, cmd & 0xFFFFFFFC);
-            continue;
-        }
-        if (cmd == 0x00020000) {  // return
-            mem::w32(kControlAddr + 4, sp ? call_stack[--sp] : get + 4);
-            continue;
-        }
-        if (cmd == 0) {  // nop
-            mem::w32(kControlAddr + 4, get + 4);
-            continue;
-        }
-        const u32 count = (cmd >> 18) & 0x7FF;
-        const bool non_inc = (cmd & 0x40000000) != 0;
-        const u32 method = cmd & 0x1FFC;
-        for (u32 k = 0; k < count; ++k) {
-            const u32 m = non_inc ? method : method + 4 * k;
-            const u32 v = mem::r32(ea + 4 + 4 * k);
-            switch (m) {
-            case 0x0050: mem::w32(kControlAddr + 8, v); break;  // NV406E_SET_REFERENCE
-            case 0x0064: semaphore_offset = v; break;           // NV406E_SEMAPHORE_OFFSET
-            case 0x0068: {                                      // NV406E_SEMAPHORE_ACQUIRE
-                const u32 addr = kLabelAddr + semaphore_offset;
-                const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-                while (g.running && mem::r32(addr) != v && std::chrono::steady_clock::now() < deadline)
-                    std::this_thread::yield();
-                break;
-            }
-            case 0x006C: mem::w32(kLabelAddr + semaphore_offset, v); break;  // NV406E_SEMAPHORE_RELEASE
-            case 0x1D6C: be_semaphore_offset = v; break;                     // NV4097_SET_SEMAPHORE_OFFSET
-            case 0x1D70:                                                      // BACK_END_WRITE_SEMAPHORE_RELEASE
-                mem::w32(kLabelAddr + be_semaphore_offset, (v & 0xFF00FF00) | ((v & 0xFF) << 16) | ((v >> 16) & 0xFF));
-                break;
-            case 0x1D74: mem::w32(kLabelAddr + be_semaphore_offset, v); break;  // TEXTURE_READ_SEMAPHORE_RELEASE
-            default:
-                break;  // draw state / geometry: discarded by the null backend
-            }
-        }
-        // GCM_FLIP_COMMAND (0xFEAC) lives above the 0x1FFC method mask on subchannel 7.
-        if ((cmd & 0xFFFC) == 0xFEAC) {
+// ---------------------------------------------------------------- FIFO consumer
+// The RSX thread: walks the command buffer and feeds rsx::Decoder, which
+// tracks all GPU state and services labels, reports, copies and flips. With
+// no renderer attached the backend is the null one.
+rsx::Decoder& decoder() {
+    static rsx::Decoder d([] {
+        rsx::Environment env;
+        env.to_ea = [](u32 offset, bool local) { return offset_to_ea(offset, local); };
+        env.label_base = kLabelAddr;
+        env.local_report_base = kReportAddr;
+        env.on_reference = [](u32 v) { mem::w32(kControlAddr + 8, v); };
+        env.on_flip = [](u32) {
             g.flips++;
             g.flip_status = 0;  // CELL_GCM_DISPLAY_FLIP_STATUS_DONE
+        };
+        env.running = [] { return g.running.load(); };
+        return env;
+    }());
+    return d;
+}
+
+void fifo_thread() {
+    rsx::Fifo fifo(decoder(), kControlAddr);
+    const auto io_to_ea = [](u32 io) { return offset_to_ea(io, false); };
+    u64 last_report = 0;
+    while (g.running) {
+        if (!fifo.run_until_idle(io_to_ea)) {
+            LOG_ERROR("rsx", "stopping the RSX thread");
+            return;
         }
-        mem::w32(kControlAddr + 4, get + 4 + 4 * count);
+        const u64 f = decoder().flip_count();
+        if (f >= last_report + 600) {
+            last_report = f;
+            LOG_INFO("rsx", "%llu flips, %llu draws, %llu copies", (unsigned long long)f,
+                     (unsigned long long)decoder().draw_count(), (unsigned long long)decoder().copy_count());
+        }
+        std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
 }
 

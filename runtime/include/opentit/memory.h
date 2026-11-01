@@ -41,6 +41,7 @@ inline void w8(u32 ea, u8 v) { g_base[ea] = v; }
 inline void w16(u32 ea, u16 v) { store_be<u16>(g_base + ea, v); }
 inline void w32(u32 ea, u32 v) { store_be<u32>(g_base + ea, v); }
 inline void w64(u32 ea, u64 v) { store_be<u64>(g_base + ea, v); }
+inline void copy(u32 dst, u32 src, u32 n) { std::memmove(g_base + dst, g_base + src, n); }
 
 inline f32 rf32(u32 ea) {
     const u32 b = r32(ea);

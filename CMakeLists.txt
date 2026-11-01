@@ -64,6 +64,7 @@ add_library(opentit_runtime OBJECT
   runtime/src/hle/cellSysutil.cpp
   runtime/src/hle/libc.cpp
   runtime/src/hle/misc.cpp
+  runtime/src/rsx/rsx.cpp
   runtime/src/hle/sysPrxForUser.cpp
   runtime/src/hle/sys_fs.cpp
 )
@@ -117,6 +118,7 @@ if(OPENTIT_BUILD_TESTS)
     tests/test_spu.cpp
     tests/test_lv2_spu.cpp
     tests/test_prx.cpp
+    tests/test_rsx.cpp
     "${TEST_GEN_DIR}/ppu_0000.cpp"
     "${TEST_GEN_DIR}/ppu_table.cpp"
     $<TARGET_OBJECTS:opentit_runtime>)
