@@ -11,13 +11,13 @@ code, and no game data is included.
 
 <!-- progress:begin -->
 
-## Progress: **1.12%**
+## Progress: **1.17%**
 
-`░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░`  267 / 23931 functions (0.55% of code bytes)
+`░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░`  279 / 23931 functions (0.68% of code bytes)
 
 | Region | Functions done | Total | % (functions) | % (bytes) |
 |---|---:|---:|---:|---:|
-| Game + Ape engine | 267 | 17519 | 1.52% | 0.76% |
+| Game + Ape engine | 279 | 17519 | 1.59% | 0.95% |
 | Bink video (middleware) | 0 | 107 | 0.00% | 0.00% |
 | Havok 2011.3 (middleware) | 0 | 6305 | 0.00% | 0.00% |
 
