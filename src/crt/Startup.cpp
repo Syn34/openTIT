@@ -6,6 +6,7 @@
 // printf server and the heap, runs the static constructors (.init) and
 // finally calls the game's main(). On the PC the host C++ runtime has done
 // all of that by the time our main() runs, so only the hand-off remains.
+#include "crt/libc/Libc.h"
 #include "platform/Platform.h"
 
 #include <cstdlib>
@@ -34,6 +35,7 @@ namespace crt {
 // Calls the game's main() with the process arguments and exits with its result.
 [[noreturn]] void RuntimeStart(int argc, char** argv)
 {
+    InitSysLocks();
     const int result = sly::SlyMain(argc, argv);
     Exit(result);
 }
