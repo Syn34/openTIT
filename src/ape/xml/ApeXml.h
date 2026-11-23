@@ -17,7 +17,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace plat { class File; }
+namespace ape { namespace file { class File; } }
 
 namespace ape {
 namespace xml {
@@ -162,7 +162,7 @@ public:
     // Loads "<path without extension>.xmb".
     bool LoadFile(int flags = 0);
     // Reads a whole compiled document from an open file.
-    bool LoadFromStream(plat::File& file, const char* name);
+    bool LoadFromStream(ape::file::File& file, const char* name);
     // Takes ownership of an in-memory image (used by both of the above).
     bool LoadFromMemory(std::vector<uint8_t> image, const char* name);
 

@@ -4,6 +4,7 @@
 #include "ape/core/ApeString.h"
 #include <cstddef>
 #include <memory>
+#include "ape/file/ApeFile.h"
 #include "platform/Platform.h"
 
 #include <cstring>
@@ -20,16 +21,16 @@ uint32_t ReadBE32(const uint8_t* p)
 // @func 0x004F8450 StringTable::StringTable
 StringTable::StringTable(const char* path)
 {
-    // TODO: open through the engine file system (archives) once it exists.
-    std::unique_ptr<plat::File> file = plat::File::Open(path, plat::File::Mode::Read);
+    ape::file::File* file = ape::file::OpenFile(path, "rb");
     if (!file)
         return;
-    const int64_t size = file->Size();
-    if (size < (int64_t)sizeof(Header))
-        return;
-    m_image.resize((size_t)size);
-    if (file->Read(m_image.data(), (size_t)size) != (size_t)size)
-        m_image.clear();
+    const uint64_t size = file->GetSize();
+    if (size >= sizeof(Header)) {
+        m_image.resize((size_t)size);
+        if (file->Read(m_image.data(), size) != size)
+            m_image.clear();
+    }
+    file->Close();
 }
 
 // @func 0x004F85F0 StringTable::~StringTable

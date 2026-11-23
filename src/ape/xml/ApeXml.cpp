@@ -2,7 +2,7 @@
 #include "ape/xml/ApeXml.h"
 
 #include "ape/core/ApeString.h"
-#include "platform/Platform.h"
+#include "ape/file/ApeFile.h"
 
 #include <cassert>
 #include <cstring>
@@ -666,9 +666,9 @@ bool XmlDocument::LoadFromMemory(std::vector<uint8_t> image, const char* name)
 }
 
 // @func 0x004FACCC XmlDocument::LoadFromStream
-bool XmlDocument::LoadFromStream(plat::File& file, const char* name)
+bool XmlDocument::LoadFromStream(ape::file::File& file, const char* name)
 {
-    const int64_t size = file.Size();
+    const int64_t size = (int64_t)file.GetSize();
     if (size <= 0) {
         SetError(kXmlError_Empty);
         return false;
@@ -695,13 +695,14 @@ bool XmlDocument::LoadFile(int flags)
     std::strncat(path, ".xmb", sizeof(path) - std::strlen(path) - 1);
     StrCopyBounded(m_path, path, sizeof(m_path));
 
-    // TODO: open through the engine file system (archives) once it exists.
-    std::unique_ptr<plat::File> file = plat::File::Open(path, plat::File::Mode::Read);
+    ape::file::File* file = ape::file::OpenFile(path, "rb");
     if (!file) {
         SetError(kXmlError_ReadFailed);
         return false;
     }
-    return LoadFromStream(*file, path);
+    const bool ok = LoadFromStream(*file, path);
+    file->Close();
+    return ok;
 }
 
 } // namespace xml
