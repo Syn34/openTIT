@@ -31,6 +31,45 @@ namespace crt {
     std::_Exit(code);
 }
 
+// @func 0x004FC7D8 ClearExitSpawn
+// The console clears any pending "spawn another executable on exit" request
+// here. A PC process never chains executables, so there is nothing to do.
+void ClearExitSpawn()
+{
+}
+
+// @func 0x00726E50 RuntimeHook
+// Empty hook the runtime calls during shutdown.
+void RuntimeHook()
+{
+}
+
+// @func 0x004FC800 RuntimeShutdown
+// Closes every stdio stream and tears down the library locks. (The console
+// also destroys its private heap here; the host heap needs no teardown.)
+void RuntimeShutdown()
+{
+    CloseAllFiles();
+    RuntimeHook();
+    DestroySysLocks();
+}
+
+// @func 0x004FC84C RunFinalizers
+// Normal-exit path: atexit handlers, then the runtime shutdown.
+void RunFinalizers()
+{
+    ClearExitSpawn();
+    RunAtExitHandlers();
+    RuntimeShutdown();
+}
+
+// @func 0x004FC884 ProcessExit
+[[noreturn]] void ProcessExit(int code)
+{
+    RuntimeShutdown();
+    std::_Exit(code);
+}
+
 // @func 0x004FC8BC RuntimeStart
 // Calls the game's main() with the process arguments and exits with its result.
 [[noreturn]] void RuntimeStart(int argc, char** argv)
