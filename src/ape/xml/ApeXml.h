@@ -90,6 +90,11 @@ public:
     const char* GetDocumentPath();
     XmlDocument* GetDocument();
     const char* GetText() const;
+    // "<document path> <row>:<column>" for diagnostics (rows/columns are 1-based;
+    // compiled documents carry no positions so this prints 0:0).
+    const char* GetLocationString();
+    // Number of child elements, optionally only those with the given name.
+    int CountChildren(const char* name);
 
     // -- navigation (element-only variants skip non-element nodes) --------
     XmlElement* FirstChildNode();
@@ -136,6 +141,8 @@ protected:
                                           const void** outValue) const;
 
     bool m_isElement = true;           // false for the document object itself
+    int32_t m_row = -1;                // source position, unknown in compiled data
+    int32_t m_column = -1;
     XmlDocument* m_document = nullptr;
     uint32_t m_nameHash = 0;
     bool m_valid = false;

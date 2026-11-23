@@ -119,6 +119,26 @@ const char* XmlElement::GetText() const
     return m_document->At<char>(node->textOffset);
 }
 
+// @func 0x004F61C4 XmlElement::GetLocationString
+const char* XmlElement::GetLocationString()
+{
+    XmlDocument* doc = GetDocument();
+    const char* path = doc ? doc->GetDocumentPath() : nullptr;
+    return TempFormat("%s %d:%d", path ? path : "", m_row + 1, m_column + 1);
+}
+
+// @func 0x004F6234 XmlElement::CountChildren
+int XmlElement::CountChildren(const char* name)
+{
+    int count = 0;
+    XmlElement* child = name ? FirstChildElement(name) : FirstChildElement();
+    while (child) {
+        ++count;
+        child = name ? child->NextSiblingElement(name) : child->NextSiblingElement();
+    }
+    return count;
+}
+
 // -- navigation -------------------------------------------------------------
 
 // @func 0x004F899C XmlElement::FirstChildNode
