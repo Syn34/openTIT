@@ -28,6 +28,7 @@ TrophyManager::TrophyManager(const char* communicationId, const void* signature,
       m_buildNameTable(buildNameTable)
 {
     s_instance = this;
+    m_queue.SetGrowable(false);
     crt::pthread::MutexInit(&m_queueLock, nullptr);
     crt::pthread::MutexInit(&m_stateLock, nullptr);
 
@@ -69,11 +70,11 @@ bool TrophyManager::RequestUnlock(int32_t trophyId)
         return false;
     crt::pthread::MutexLock(&m_queueLock);
     bool queued = false;
-    if ((int32_t)m_queue.size() < kQueueCapacity) {
-        m_queue.push_back(trophyId);
+    if (m_queue.Count() < kQueueCapacity) {
+        m_queue.PushBack(trophyId);
         queued = true;
     }
-    m_queuedCount = (int32_t)m_queue.size();
+    m_queuedCount = m_queue.Count();
     crt::pthread::MutexUnlock(&m_queueLock);
     return queued;
 }
@@ -148,11 +149,11 @@ void TrophyManager::WorkerLoop()
         case kState_Process: {
             int32_t id = -1;
             crt::pthread::MutexLock(&m_queueLock);
-            if (!m_queue.empty()) {
-                id = m_queue.front();
-                m_queue.pop_front();
+            if (!m_queue.Empty()) {
+                id = m_queue.Front();
+                m_queue.PopFront();
             }
-            m_queuedCount = (int32_t)m_queue.size();
+            m_queuedCount = m_queue.Count();
             crt::pthread::MutexUnlock(&m_queueLock);
 
             if (id >= 0 && id < kMaxTrophies && !IsUnlocked((uint32_t)id)) {

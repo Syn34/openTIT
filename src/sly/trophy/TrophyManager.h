@@ -6,10 +6,10 @@
 // game's unlock callback is invoked exactly as on the console.
 #pragma once
 
+#include "ape/container/ApeTHandleList.h"
 #include "crt/pthread/Pthread.h"
 
 #include <cstdint>
-#include <deque>
 
 namespace sly {
 
@@ -53,7 +53,7 @@ private:
     bool m_buildNameTable;
 
     crt::pthread::Mutex m_queueLock;     // guards m_queue
-    std::deque<int32_t> m_queue;
+    ape::ApeTHandleList<int32_t> m_queue{ kQueueCapacity };
     int32_t m_queuedCount = 0;
 
     mutable crt::pthread::Mutex m_stateLock;   // guards m_unlocked
