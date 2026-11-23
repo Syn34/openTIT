@@ -79,7 +79,7 @@ public:
     }
     // Returns the value for `key`, or the default value's address if absent.
     V* Find(uint32_t key);
-    // Removes `key` (every match the search meets, like the original).
+    // Removes the entry for `key`, if present.
     void Remove(uint32_t key);
 
     Pair* Data() { return static_cast<Pair*>(m_data); }
@@ -149,6 +149,7 @@ void ApeTSortedMap<V>::Remove(uint32_t key)
         if (order == 0) {
             std::memmove(&data[mid], &data[mid + 1], (size_t)(m_count - 1 - mid) * sizeof(Pair));
             --m_count;
+            return;
         }
         lo = mid + 1;
     }
