@@ -73,7 +73,9 @@ float FastSin(float radians)
 }
 
 // @func 0x00734BA0 Vec3Copy
-// @func 0x00734D90 Vec3Copy (identical second copy)
+// @func 0x00734D90 Vec3Copy (copy 2)
+// @func 0x0074D080 Vec3Copy (copy 3)
+// @func 0x0074DBEC Vec3Copy (copy 4)
 void Vec3Copy(Vec3& out, const Vec3& v)
 {
     out.x = v.x;
@@ -106,6 +108,7 @@ void Vec3Scale(Vec3& out, const Vec3& v, float s)
 }
 
 // @func 0x007359E4 Vec3ScaleInPlace
+// @func 0x00755E08 Vec3ScaleInPlace (copy 2)
 void Vec3ScaleInPlace(float s, Vec3& v)
 {
     v.x *= s;
@@ -158,6 +161,8 @@ void Vec4FromVec3(float w, Vec4& out, const Vec3& v)
 }
 
 // @func 0x00734CC8 Matrix34Copy
+// @func 0x00748BB8 Matrix34Copy (copy 2)
+// @func 0x0076FFFC Matrix34Copy (copy 3)
 void Matrix34Copy(Matrix34& out, const Matrix34& m)
 {
     Vec3Copy(out.xAxis, m.xAxis);

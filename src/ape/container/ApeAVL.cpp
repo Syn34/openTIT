@@ -23,6 +23,8 @@ class ApeLevelDefXMLLoader;
 // AVL<unsigned int, unsigned int>
 // @func 0x00739DD4 AVL<uint,uint>::RotateRight
 // @func 0x00739F1C AVL<uint,uint>::RotateLeft
+// @func 0x00749D40 AVL<uint,uint>::RotateRight (identical copy of a further, unidentified pointer-valued instantiation)
+// @func 0x00749E88 AVL<uint,uint>::RotateLeft (identical copy of the same instantiation)
 // @func 0x0073A064 AVL<uint,uint>::ReplaceWithPredecessor
 // @func 0x0073A36C AVL<uint,uint>::RemoveFrom
 // @func 0x0073AF5C AVL<uint,uint>::Search
