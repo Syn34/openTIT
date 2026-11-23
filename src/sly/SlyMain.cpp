@@ -61,7 +61,7 @@ void PostFrameUpdate()
 }
 
 // TODO(0x0049AE40 RenderFrame): render-thread entry, draws the game world.
-void RenderFrame()
+void RenderFrame(void* userdata)
 {
 }
 
