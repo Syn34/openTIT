@@ -3,7 +3,8 @@
 #include "sly/LoadingScreen.h"
 
 #include "agl/AglRenderThread.h"
-#include "ape/core/ApeFileSystem.h"
+#include "ape/file/ApeFile.h"
+#include "ape/file/AsyncFile.h"
 #include "ape/core/ApeNetwork.h"
 #include "ape/core/ApeString.h"
 #include "ape/core/ApeSysUtil.h"
@@ -278,25 +279,31 @@ int SlyMain(int argc, char** argv)
         return 0;
 
     ape::NpInit(0x20000);
-    if (ape::FileExists("Sly4.psarc"))
-        ape::MountArchive("Sly4.psarc", 1, 0, 0);
+    if (ape::file::FileExists("Sly4.psarc")) {
+        ape::file::AsyncFileParams params;
+        params.flags = 0;
+        params.urgent = true;
+        ape::file::MountDeviceArchive("Sly4.psarc", params);
+    }
     if (!PollSystemState())
         return 0;
 
-    // Shaders are read from a zip that is mirrored into a RAM disk while the
-    // remaining subsystems (which compile/load shaders) start up.
-    char archiveInfo[16];
-    ape::Archive* shaders = ape::OpenArchive("System\\Shaders.Zip", archiveInfo);
+    // The shader archive is read into memory and exposed as an in-memory
+    // file ("RamDisk") while the remaining subsystems, which load shaders,
+    // start up.
+    uint32_t shadersSize = 0;
+    void* shaders = ape::file::LoadFile("System\\Shaders.Zip", &shadersSize);
     if (!PollSystemState())
         return 0;
 
-    ape::RamDisk* ramDisk = ape::CreateRamDisk(shaders, 0, "RamDisk");
+    ape::file::File* ramDisk = ape::file::CreateMemoryFile(shaders, shadersSize, "RamDisk");
     ape::SystemInit(ape::kInit_AllButCore);
     if (!PollSystemState())
         return 0;
 
-    ape::DestroyRamDisk(ramDisk);
-    ape::CloseArchive(shaders);
+    if (ramDisk)
+        ramDisk->Close();
+    ape::file::FreeFileData(shaders);
 
     agl::RenderThreadCreate(RenderFrame, nullptr);
     if (g_app.field_0B)
