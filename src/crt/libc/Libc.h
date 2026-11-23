@@ -199,4 +199,15 @@ short FloatUnscale(short* exponent, float* value);
 short DoubleScale(double* value, long exponent);
 short LongDoubleScale(double* value, long exponent);
 
+// single precision libm (FloatMath.cpp)
+float SqrtF(float x);
+float FModF(float x, float y);
+float TanF(float x);
+float ASinF(float x);
+float ACosF(float x);
+float ATanF(float x);
+float ATan2F(float y, float x);
+float ATanKernelF(float x, uint32_t octant);
+int FloatClassify(const float* value);
+
 } // namespace crt
