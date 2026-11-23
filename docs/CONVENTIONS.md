@@ -51,5 +51,8 @@ Game and engine code never calls an OS API directly. Console services map to `sr
 
 ## Regions
 
-`docs/functions.tsv` splits the executable into the game/engine code, the Bink video
-middleware and Havok 2011.3 middleware. Middleware is tracked separately in the README.
+`docs/functions.tsv` labels every function with the component it belongs to: the game and
+Ape engine code, the statically linked C runtime/SPU job support, Sony's audio libraries
+(989snd/SCREAM and MultiStream), NavPower navigation, Bink video and Havok 2011.3. The
+boundaries were derived from strings and call graphs and are approximate at the edges.
+Middleware is tracked separately in the README.

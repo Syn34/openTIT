@@ -65,13 +65,14 @@ def main():
     pct = 100.0 * ndone / total
     pct_b = 100.0 * ndone_b / total_b
 
-    labels = {'game': 'Game + Ape engine', 'bink': 'Bink video (middleware)', 'havok': 'Havok 2011.3 (middleware)'}
+    labels = {'game': 'Game + Ape engine', 'sdk': 'C runtime / SPU job support', 'sonyaudio': 'Sony audio (989snd, MultiStream)',
+              'navpower': 'NavPower navigation (middleware)', 'bink': 'Bink video (middleware)', 'havok': 'Havok 2011.3 (middleware)'}
     lines = [BEGIN, '',
              '## Progress: **%.2f%%**' % pct, '',
              bar(pct) + '  %d / %d functions (%.2f%% of code bytes)' % (ndone, total, pct_b), '',
              '| Region | Functions done | Total | % (functions) | % (bytes) |',
              '|---|---:|---:|---:|---:|']
-    for key in ('game', 'bink', 'havok'):
+    for key in ('game', 'sdk', 'sonyaudio', 'navpower', 'bink', 'havok'):
         if key in regions:
             n, b, d, db = regions[key]
             lines.append('| %s | %d | %d | %.2f%% | %.2f%% |' % (labels[key], d, n, 100.0 * d / n, 100.0 * db / b))
