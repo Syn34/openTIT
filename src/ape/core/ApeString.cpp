@@ -50,6 +50,18 @@ int StrNCmp(const char* a, const char* b, size_t count)
     return std::strncmp(a, b, count);
 }
 
+// @func 0x00555D70 StrICmp
+int StrICmp(const char* a, const char* b)
+{
+    for (;; ++a, ++b) {
+        int ca = (unsigned char)*a, cb = (unsigned char)*b;
+        if (ca >= 'A' && ca <= 'Z') ca += 'a' - 'A';
+        if (cb >= 'A' && cb <= 'Z') cb += 'a' - 'A';
+        if (ca != cb || ca == 0)
+            return ca - cb;
+    }
+}
+
 // @func 0x0056A710 HashNameNoCase
 uint32_t HashNameNoCase(const char* name)
 {

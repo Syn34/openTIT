@@ -17,6 +17,8 @@ int StrLen(const char* s);
 char* StrCopy(char* dst, const char* src);
 int StrCmp(const char* a, const char* b);
 int StrNCmp(const char* a, const char* b, size_t count);
+// Case-insensitive ASCII compare (stricmp).
+int StrICmp(const char* a, const char* b);
 
 // Case-insensitive 31-multiplier string hash used for all engine name lookups
 // (entity names, tuning keys, asset names). Lower-case ASCII letters are
