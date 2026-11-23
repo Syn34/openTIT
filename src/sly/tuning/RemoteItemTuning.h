@@ -36,11 +36,6 @@ extern ape::TuningFloat g_bRemoteDamageBlastImp;
 extern ape::TuningFloat g_bRemoteDamageEnvDmg;
 extern ape::TuningFloat g_bRemoteDamageEnvImp;
 extern ape::TuningFloat g_bRemoteDamageProjDmg;
-extern ape::TuningFloat g_bRemoteBombDamageExplosive;
-extern ape::TuningFloat g_bRemoteBombDamageSleep;
-extern ape::TuningFloat g_bRemoteBombDamageElectric;
-extern ape::TuningFloat g_bRemoteBombDamageConfusion;
-extern ape::TuningFloat g_bRemoteBombDamageShrink;
 extern ape::TuningFloat g_bRemoteBombImpulse;
 extern ape::TuningVec2 g_bRemoteBombRadius;
 extern ape::TuningFloat g_bRemoteBombSuperScalar;
@@ -62,5 +57,6 @@ extern ape::TuningFloat g_bRemoteFireAngleMax;
 extern ape::TuningFloat g_bRemoteReloadTime;
 extern ape::TuningVec3 g_bRemoteRocketRate;
 extern ape::TuningVec2 g_bRemoteRange;
+extern ape::TuningFloat g_bRemoteBombDamage[5];
 
 } // namespace sly

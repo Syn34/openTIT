@@ -4,7 +4,8 @@
 namespace sly {
 
 // @func 0x000C24E8 StaticInit_WestBossTuning
-// Compiler-generated initialiser for the globals of this file. (It also
+// @func 0x000C23FC StaticDestroy_WestBossTuning
+// Compiler-generated initialiser/destructor pair for the globals of this file. (It also
 // constructs a file-local zero vector pulled in from a shared header.)
 
 ape::TuningFloat g_westBossStuckCameraInterp("Entity.WestBoss.StuckCamera.Interp", 0.1f);

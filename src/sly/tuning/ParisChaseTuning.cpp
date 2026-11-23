@@ -4,7 +4,8 @@
 namespace sly {
 
 // @func 0x0043B0C0 StaticInit_ParisChaseTuning
-// Compiler-generated initialiser for the globals of this file. (It also
+// @func 0x0043AE5C StaticDestroy_ParisChaseTuning
+// Compiler-generated initialiser/destructor pair for the globals of this file. (It also
 // constructs a file-local zero vector pulled in from a shared header.)
 
 ape::TuningBool g_qTEDebugEnable("Goal.QTE.DebugEnable", false);

@@ -6,7 +6,8 @@
 namespace sly {
 
 // @func 0x0031C128 StaticInit_MegaKnightDragonTuning
-// Compiler-generated initialiser for the globals of this file. (It also
+// @func 0x0031B72C StaticDestroy_MegaKnightDragonTuning
+// Compiler-generated initialiser/destructor pair for the globals of this file. (It also
 // constructs a file-local zero vector pulled in from a shared header.)
 
 // File-local "unset" sentinel (quiet NaN) from a shared header (0x01068B80).

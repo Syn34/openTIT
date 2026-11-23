@@ -6,7 +6,8 @@
 namespace sly {
 
 // @func 0x00456710 StaticInit_AiSpawnTuning
-// Compiler-generated initialiser for the globals of this file. (It also
+// @func 0x004566D8 StaticDestroy_AiSpawnTuning
+// Compiler-generated initialiser/destructor pair for the globals of this file. (It also
 // constructs a file-local zero vector pulled in from a shared header.)
 
 // File-local "unset" sentinel (quiet NaN) from a shared header (0x010B16C0).

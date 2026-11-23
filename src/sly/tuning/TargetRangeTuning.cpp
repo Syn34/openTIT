@@ -6,7 +6,8 @@
 namespace sly {
 
 // @func 0x001F78C4 StaticInit_TargetRangeTuning
-// Compiler-generated initialiser for the globals of this file. (It also
+// @func 0x001F7288 StaticDestroy_TargetRangeTuning
+// Compiler-generated initialiser/destructor pair for the globals of this file. (It also
 // constructs a file-local zero vector pulled in from a shared header.)
 
 // File-local "unset" sentinel (quiet NaN) from a shared header (0x01052B80).

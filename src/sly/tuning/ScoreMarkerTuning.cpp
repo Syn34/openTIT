@@ -4,7 +4,8 @@
 namespace sly {
 
 // @func 0x0020BD08 StaticInit_ScoreMarkerTuning
-// Compiler-generated initialiser for the globals of this file. (It also
+// @func 0x0020BC08 StaticDestroy_ScoreMarkerTuning
+// Compiler-generated initialiser/destructor pair for the globals of this file. (It also
 // constructs a file-local zero vector pulled in from a shared header.)
 
 ape::TuningVec3 g_markerOffset("Entity.Marker.Offset", 0.0f, 0.5f, 0.0f);

@@ -4,7 +4,8 @@
 namespace sly {
 
 // @func 0x00426BB8 StaticInit_ReturnTreasureTuning
-// Compiler-generated initialiser for the globals of this file. (It also
+// @func 0x00426B24 StaticDestroy_ReturnTreasureTuning
+// Compiler-generated initialiser/destructor pair for the globals of this file. (It also
 // constructs a file-local zero vector pulled in from a shared header.)
 
 ape::TuningFloat g_returnTreasurePosInterpTime("Microgame.ReturnTreasure.PosInterpTime", 1.5f);

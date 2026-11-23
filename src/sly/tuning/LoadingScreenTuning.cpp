@@ -4,7 +4,8 @@
 namespace sly {
 
 // @func 0x000B2114 StaticInit_LoadingScreenTuning
-// Compiler-generated initialiser for the globals of this file. (It also
+// @func 0x000B1720 StaticDestroy_LoadingScreenTuning
+// Compiler-generated initialiser/destructor pair for the globals of this file. (It also
 // constructs a file-local zero vector pulled in from a shared header.)
 
 ape::TuningString g_loadingScreenSoundBank("Game.LoadingScreen.SoundBank", "Audio\\Load\\MUS_Load.bnk");

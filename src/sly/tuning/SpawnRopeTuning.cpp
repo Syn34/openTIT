@@ -6,7 +6,8 @@
 namespace sly {
 
 // @func 0x0009A108 StaticInit_SpawnRopeTuning
-// Compiler-generated initialiser for the globals of this file. (It also
+// @func 0x00099FA8 StaticDestroy_SpawnRopeTuning
+// Compiler-generated initialiser/destructor pair for the globals of this file. (It also
 // constructs a file-local zero vector pulled in from a shared header.)
 
 // File-local "unset" sentinel (quiet NaN) from a shared header (0x00F9CD30).

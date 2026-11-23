@@ -6,7 +6,8 @@
 namespace sly {
 
 // @func 0x003417D8 StaticInit_BinocucomGoalTuning
-// Compiler-generated initialiser for the globals of this file. (It also
+// @func 0x00341694 StaticDestroy_BinocucomGoalTuning
+// Compiler-generated initialiser/destructor pair for the globals of this file. (It also
 // constructs a file-local zero vector pulled in from a shared header.)
 
 // File-local "unset" sentinel (quiet NaN) from a shared header (0x0106B2E0).

@@ -4,7 +4,8 @@
 namespace sly {
 
 // @func 0x002096F4 StaticInit_RemoteItemTuning
-// Compiler-generated initialiser for the globals of this file. (It also
+// @func 0x00209240 StaticDestroy_RemoteItemTuning
+// Compiler-generated initialiser/destructor pair for the globals of this file. (It also
 // constructs a file-local zero vector pulled in from a shared header.)
 
 ape::TuningFloat g_itemTargetingScoreBias("Entity.Item.TargetingScoreBias", 7.5f);
@@ -38,11 +39,14 @@ ape::TuningFloat g_bRemoteDamageBlastImp("Entity.BRemote.Damage.BlastImp", 0.01f
 ape::TuningFloat g_bRemoteDamageEnvDmg("Entity.BRemote.Damage.EnvDmg", 0.0f);
 ape::TuningFloat g_bRemoteDamageEnvImp("Entity.BRemote.Damage.EnvImp", 1.0f);
 ape::TuningFloat g_bRemoteDamageProjDmg("Entity.BRemote.Damage.ProjDmg", 0.0f);
-ape::TuningFloat g_bRemoteBombDamageExplosive("Entity.BRemote.Bomb.Damage.Explosive", 5e+01f);
-ape::TuningFloat g_bRemoteBombDamageSleep("Entity.BRemote.Bomb.Damage.Sleep", 1.0f);
-ape::TuningFloat g_bRemoteBombDamageElectric("Entity.BRemote.Bomb.Damage.Electric", 5e+01f);
-ape::TuningFloat g_bRemoteBombDamageConfusion("Entity.BRemote.Bomb.Damage.Confusion", 1.0f);
-ape::TuningFloat g_bRemoteBombDamageShrink("Entity.BRemote.Bomb.Damage.Shrink", 1.0f);
+// Indexed by bomb type (explosive, sleep, electric, confusion, shrink).
+ape::TuningFloat g_bRemoteBombDamage[5] = {
+    { "Entity.BRemote.Bomb.Damage.Explosive", 5e+01f },
+    { "Entity.BRemote.Bomb.Damage.Sleep", 1.0f },
+    { "Entity.BRemote.Bomb.Damage.Electric", 5e+01f },
+    { "Entity.BRemote.Bomb.Damage.Confusion", 1.0f },
+    { "Entity.BRemote.Bomb.Damage.Shrink", 1.0f },
+};
 ape::TuningFloat g_bRemoteBombImpulse("Entity.BRemote.Bomb.Impulse", 15.0f);
 ape::TuningVec2 g_bRemoteBombRadius("Entity.BRemote.Bomb.Radius", 2.5f, 2.5f);
 ape::TuningFloat g_bRemoteBombSuperScalar("Entity.BRemote.Bomb.SuperScalar", 2.0f);
