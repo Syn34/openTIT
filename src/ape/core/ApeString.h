@@ -15,6 +15,8 @@ char* StrCopyBounded(char* dst, const char* src, size_t dstSize);
 // Thin wrappers over the C library kept by the engine's string module.
 int StrLen(const char* s);
 char* StrCopy(char* dst, const char* src);
+int StrCmp(const char* a, const char* b);
+int StrNCmp(const char* a, const char* b, size_t count);
 
 // Case-insensitive 31-multiplier string hash used for all engine name lookups
 // (entity names, tuning keys, asset names). Lower-case ASCII letters are

@@ -38,6 +38,18 @@ char* StrCopy(char* dst, const char* src)
     return std::strcpy(dst, src);
 }
 
+// @func 0x00555D94 StrCmp
+int StrCmp(const char* a, const char* b)
+{
+    return std::strcmp(a, b);
+}
+
+// @func 0x00555DB8 StrNCmp
+int StrNCmp(const char* a, const char* b, size_t count)
+{
+    return std::strncmp(a, b, count);
+}
+
 // @func 0x0056A710 HashNameNoCase
 uint32_t HashNameNoCase(const char* name)
 {
