@@ -427,3 +427,90 @@ public:
 
 } // namespace goals
 } // namespace sly
+
+namespace sly {
+namespace goals {
+
+// "GoalFollow" (vtable 0x00B1EA08): stay within range of an entity; fails
+// after too long too far away, completes after long enough close by.
+class GoalFollow : public Goal {
+public:
+    enum FollowFlags : uint32_t {
+        kFollow_TooFar     = 0x01000000,   // warning currently shown
+        kFollow_ShowMarker = 0x80000000,   // (XML 0x76E96977)
+    };
+
+    // 0x0033162C (the factory's constructor).
+    GoalFollow(const GoalDesc* desc, const float offset[3], uint32_t target, float minDistance,
+               float maxDistance, float failTime, float completeTime, uint32_t options);
+    ~GoalFollow() override;
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
+    uint8_t Update(int player, const GameEvent& e) override;
+    void ResetHints(bool stopHintScript) override;
+    void ReapplyHints(Goal* owner) override;
+    void CollectMarkers(GoalMarkerList* list) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+
+    ape::Vec3 offset;               // +0xA10 marker offset
+    uint32_t target = 0;            // +0xA20 entity to follow
+    float minDistanceSq = 0.0f;     // +0xA24
+    float maxDistanceSq = 0.0f;     // +0xA28
+    float failTime = 0.0f;          // +0xA2C too far for longer than this fails (< 0: never)
+    float completeTime = -1.0f;     // +0xA30 close for this long completes (<= 0: never)
+    uint32_t followFlags = 0;       // +0xA34 FollowFlags (+ option bits 25-30)
+    void* entity = nullptr;         // +0xA38
+    float farTime = 0.0f;           // +0xA3C
+    float nearTime = 0.0f;          // +0xA40
+    float lastDistanceSq = -1.0f;   // +0xA44
+};
+
+// "GoalHealthMonitor" (vtable 0x00B1EA80; destructor outside this range):
+// plays "Threshold<n>_Passed" on the hint script when an entity's health
+// drops past each threshold. Never holds up its job.
+class GoalHealthMonitor : public Goal {
+public:
+    // 0x0033273C (the factory's constructor).
+    GoalHealthMonitor(const GoalDesc* desc, const ape::ApeTArray<float>& thresholds,
+                      uint32_t target, bool percent);
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
+    uint8_t Update(int player, const GameEvent& e) override;
+    void ResetHints(bool stopHintScript) override;
+    void ReapplyHints(Goal* owner) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+
+    ape::ApeTArray<float> thresholds;   // +0xA0C highest first
+    uint32_t target = 0;                // +0xA20
+    bool percent = false;               // +0xA24 thresholds are fractions of the maximum
+    void* entity = nullptr;             // +0xA28
+    float lastHealth = 0.0f;            // +0xA2C
+};
+
+// Element hash 0x5F3BC8F0 (a vocabulary search matched "GoalLifoHop",
+// probably a collision; vtable 0x00B1EAF8): shows a marker on an entity
+// while active. Never holds up its job.
+class GoalMarkEntity : public Goal {
+public:
+    enum MarkFlags : uint32_t {
+        kMark_HideWhileTargeted = 0x02000000,   // option bit 25
+    };
+
+    // 0x00332E28 (the factory's constructor).
+    GoalMarkEntity(const GoalDesc* desc, uint32_t target, const float offset[3], uint32_t options,
+                   uint32_t field_A10);
+    ~GoalMarkEntity() override;
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
+    uint8_t Update(int player, const GameEvent& e) override;
+    void ResetHints(bool stopHintScript) override;
+    void ReapplyHints(Goal* owner) override;
+    void CollectMarkers(GoalMarkerList* list) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+
+    uint32_t target = 0;        // +0xA0C
+    uint32_t field_A10 = 0;     // +0xA10 (XML 0x6E6EDD6B)
+    ape::Vec3 offset;           // +0xA20
+    uint32_t markFlags = 0;     // +0xA30 option bits 25-31
+    void* entity = nullptr;     // +0xA34
+};
+
+} // namespace goals
+} // namespace sly

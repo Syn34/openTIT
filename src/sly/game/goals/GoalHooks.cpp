@@ -76,6 +76,14 @@ void GoalAddEntityMarker(GoalMarkerList*, void*) {}
 void* GoalFindEntity(uint32_t) { return nullptr; }
 void* EntityFindDescendant(void*, uint32_t) { return nullptr; }
 
+bool GoalEntityAlive(const void*) { return false; }
+float GoalEntityHealth(const void*) { return 0.0f; }
+float GoalEntityMaxHealth(const void*) { return 0.0f; }
+bool GoalEntityIsActor(const void*) { return false; }
+void JobOwnerUntarget(const Job*, uint32_t) {}
+bool GoalEntityMarkerSuppressed(const void*) { return false; }
+bool GoalEntityAllowsMarker(const void*) { return false; }
+void HudSetFollowWarning(bool) {}
 void GoalEntityAddRef(void*) {}
 void GoalEntityRelease(void*) {}
 uint32_t GoalEntityName(const void*) { return 0; }

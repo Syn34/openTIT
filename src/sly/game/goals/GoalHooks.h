@@ -136,6 +136,22 @@ void* GoalFindEntity(uint32_t name);
 // 0x000DB290: descendant of an entity by name (null if none).
 void* EntityFindDescendant(void* entity, uint32_t name);
 
+// Entity field_AC bit 18: alive / registered.
+bool GoalEntityAlive(const void* entity);
+// Entity health (+0x15C) and maximum health (+0x158).
+float GoalEntityHealth(const void* entity);
+float GoalEntityMaxHealth(const void* entity);
+// field_C0 bit 1: an actor (has health).
+bool GoalEntityIsActor(const void* entity);
+// Targeting component of the job owner (Job +0x08, 0x000D949C): drops
+// `entityName` from its targets (0x0029F510).
+void JobOwnerUntarget(const Job* job, uint32_t entityName);
+// Marker filters: field_C0 bit 22 with +0x19C >= 0 (the entity hides its
+// marker while targeted), and class bit 35 (+0xB8): markers allowed.
+bool GoalEntityMarkerSuppressed(const void* entity);
+bool GoalEntityAllowsMarker(const void* entity);
+// The "too far" warning on the follow HUD (0x00368A48 on 0x00F64D3C, then 0x00384750).
+void HudSetFollowWarning(bool on);
 // Entity reference count (+0xB2) and virtual slot 10 (release).
 void GoalEntityAddRef(void* entity);
 void GoalEntityRelease(void* entity);
