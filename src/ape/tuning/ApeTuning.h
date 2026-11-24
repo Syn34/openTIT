@@ -92,6 +92,7 @@ private:
 
 class TuningVec2 final : public TuningVar {
 public:
+    // @func 0x0074E990 TuningVec2::TuningVec2
     TuningVec2(const char* name, float x, float y) : TuningVar(name), m_value{ x, y } {}
     ~TuningVec2() override;
     Type GetType() const override;
