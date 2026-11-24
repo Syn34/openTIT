@@ -3,7 +3,7 @@
 
 #include "sly/camera/CameraMode.h"
 
-namespace ape::world { class ApeCameraDef; class ApeSplineInstance; }
+namespace ape::world { class ApeCameraDef; class ApeObj; class ApeSplineInstance; }
 
 namespace sly {
 namespace camera {
@@ -130,6 +130,137 @@ public:
     float idleTime = 0.0f;           // 0x70
     bool lookLocked = false;         // 0x74 bit 31 (toggled by the pad)
     PanState panState = kPan_Stick;  // 0x74 bits 29-30
+};
+
+// "Spotlight" (type 8, vtable 0x00B13EB8, 0xE0 bytes): the player steers a
+// searchlight entity with the right stick and the camera rides on it.
+// NOTE: the constructor (0x00111FE0) has undecodable instruction data in
+// the reference and is not ported.
+class SpotlightCameraMode : public CameraMode {
+public:
+    explicit SpotlightCameraMode(GameCamera* owner) : CameraMode(owner) {}
+    // Puts the searchlight back where it was.
+    ~SpotlightCameraMode() override;
+    int32_t GetType() const override { return kCamMode_Spotlight; }
+    const char* GetName() const override { return "Spotlight"; }
+    void Update(float dt, CameraViewState& view) override;
+    // Stick steering (slot 5).
+    void UpdateStage2(float dt, CameraViewState& view) override;
+
+    Entity* player = nullptr;          // 0x0C
+    Entity* spotlight = nullptr;       // 0x10
+    ape::Matrix34 savedSpotlight = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 0 } };   // 0x20
+    ape::Vec3 field_60{};              // 0x60
+    ape::Matrix34 transform = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 0 } };        // 0x70
+    float pitchSpeed = 0.0f;           // 0xB0
+    float yawSpeed = 0.0f;             // 0xB4
+};
+
+// Settings of the over-the-shoulder camera (Camera.Shoulder.*).
+struct ShoulderSettings {
+    void LoadDefaults();               // 0x001072BC
+    ape::Vec3 offset{};                // 0x00
+    ape::Vec3 colOffset{};             // 0x10 collision probe position
+    float fov = 0.0f;                  // 0x20
+};
+
+// "Shoulder" (type 14, vtable 0x00B13C18, 0x60 bytes): over the target's
+// shoulder, with a sphere phantom probing for walls.
+class ShoulderCameraMode : public CameraMode {
+public:
+    ShoulderCameraMode(GameCamera* owner, Entity* target);   // 0x00107320
+    ~ShoulderCameraMode() override;
+    int32_t GetType() const override { return kCamMode_Shoulder; }
+    const char* GetName() const override { return "Shoulder"; }
+    void Update(float dt, CameraViewState& view) override;
+    void Activate() override;
+    void ActivateFrom(const CameraViewState& previous) override;
+    bool Tick(float dt, CameraViewState& view) override;
+
+    ShoulderSettings settings;         // 0x10
+    Entity* target = nullptr;          // 0x40 (not counted)
+    bool blocked = false;              // 0x44 NOTE: set while the probe hits something
+    float blockTime = 0.0f;            // 0x48
+    void* phantom = nullptr;           // 0x4C Havok sphere phantom
+    bool justActivated = false;        // 0x50 cleared after the first tick
+};
+
+// "Spline" (type 2, vtable 0x00B13CF0, 0x150 bytes): moves along a position
+// spline while looking at a target, both tunable per spline through tags.
+// NOTE: construction (0x00108AF8) and the update (0x00109B38) are not ported yet.
+class SplineCameraMode : public CameraMode {
+public:
+    explicit SplineCameraMode(GameCamera* owner) : CameraMode(owner) {}
+    ~SplineCameraMode() override;
+    int32_t GetType() const override { return kCamMode_Spline; }
+    const char* GetName() const override { return "Spline"; }
+    void Finish() override;
+    const char* GetDebugText() override;
+
+    Entity* target = nullptr;                          // 0x0C
+    Entity* lookAt = nullptr;                          // 0x10
+    ape::world::ApeObj* positionSpline = nullptr;      // 0x14
+    ape::world::ApeObj* targetSpline = nullptr;        // 0x18
+    float t = 0.0f;                                    // 0x60
+    float panH = 0.0f;                                 // 0x90
+    float panV = 0.0f;                                 // 0x94
+};
+
+// "Binocucom" (type 6, vtable 0x00B13DA0, 0x2B0 bytes): Bentley's binocucom
+// view. NOTE: only the small members are ported.
+class BinocucomCameraMode : public CameraMode {
+public:
+    explicit BinocucomCameraMode(GameCamera* owner) : CameraMode(owner) {}
+    int32_t GetType() const override { return kCamMode_Binocucom; }
+    const char* GetName() const override { return "Binocucom"; }
+    void Deactivate() override;
+    // Counts requests to hold the zoom; returns true while any is held (0x0010D9B0).
+    bool HoldZoom(bool hold);
+    // 0x0010DD60
+    void SetFocusEntity(Entity* entity);
+
+    Entity* player = nullptr;            // 0x0C
+    int16_t zoomHolds = 0;               // 0xB4
+    uint16_t zoomFlags = 0;              // 0xB6 bits 14-15 cleared by a new hold
+    float savedFov = 0.0f;               // 0xB8
+    Entity* focusEntity = nullptr;       // 0x250
+};
+
+// "Vehicle" (type 7, vtable 0x00B13E00, 0x260 bytes): chase camera of the
+// driving sections. NOTE: only teardown and the blend helpers are ported.
+class VehicleCameraMode : public CameraMode {
+public:
+    explicit VehicleCameraMode(GameCamera* owner) : CameraMode(owner) {}
+    ~VehicleCameraMode() override;
+    int32_t GetType() const override { return kCamMode_Vehicle; }
+    const char* GetName() const override { return "Vehicle"; }
+
+    // Settings that are still easing are flagged in a bit set; these step one
+    // flagged value toward its target and clear the flag once it arrived
+    // (0x0010EB20 / 0x0010EBE8).
+    static void EaseFlagged(float target, float rate, float dt, uint32_t* dirtyBits, uint32_t bit, float& value);
+    static void EaseFlagged(float rate, float dt, uint32_t* dirtyBits, uint32_t bit, ape::Vec3& value,
+                            const ape::Vec3& target);
+
+    Entity* target = nullptr;          // 0x250
+    void* phantom = nullptr;           // 0x254
+    void* body = nullptr;              // 0x258 NOTE: a Havok entity used for camera collision
+};
+
+// "Havok vehicle" (type 9, vtable 0x00B13E58, 0x110 bytes): uses Havok's
+// vehicle follow camera (constructed in place at +0x10).
+class HavokVehicleCameraMode : public CameraMode {
+public:
+    explicit HavokVehicleCameraMode(GameCamera* owner);
+    ~HavokVehicleCameraMode() override;
+    int32_t GetType() const override { return kCamMode_HavokVehicle; }
+    const char* GetName() const override { return "Havok vehicle"; }
+    // 0x0011135C
+    void SetTarget(Entity* entity);
+
+    Entity* target = nullptr;                       // 0x0C
+    alignas(16) uint8_t followCamera[0xC0] = {};    // 0x10 Havok vehicle follow camera
+    ape::Matrix34 transform = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 0 } };   // 0xD0
 };
 
 // "Track" (type 15, vtable 0x00B13FC8, 0xA0 bytes): follows a target at an

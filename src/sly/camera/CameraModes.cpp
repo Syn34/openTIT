@@ -428,6 +428,254 @@ void CrawlCameraMode::Finish()
 }
 
 // ===========================================================================
+// Spotlight
+// ===========================================================================
+
+// @func 0x001125D8 SpotlightCameraMode::~SpotlightCameraMode
+// @func 0x00112648 SpotlightCameraMode::~SpotlightCameraMode (deleting)
+SpotlightCameraMode::~SpotlightCameraMode()
+{
+    EntitySetWorldTransform(spotlight, savedSpotlight);
+}
+
+// @func 0x001126D4 SpotlightCameraMode::Update
+void SpotlightCameraMode::Update(float /*dt*/, CameraViewState& view)
+{
+    SetXYZ(view.transform.xAxis, transform.xAxis);
+    SetXYZ(view.transform.yAxis, transform.yAxis);
+    SetXYZ(view.transform.zAxis, transform.zAxis);
+    SetXYZ(view.transform.translation, transform.translation);
+
+    // The light hangs below the camera by the offset in its definition.
+    ape::Matrix34 light = transform;
+    const ape::Vec3 offset = SpotlightCameraOffset(spotlight);
+    light.translation.x -= transform.xAxis.x * offset.x + transform.yAxis.x * offset.y + transform.zAxis.x * offset.z;
+    light.translation.y -= transform.xAxis.y * offset.x + transform.yAxis.y * offset.y + transform.zAxis.y * offset.z;
+    light.translation.z -= transform.xAxis.z * offset.x + transform.yAxis.z * offset.y + transform.zAxis.z * offset.z;
+    EntitySetWorldTransform(spotlight, light);
+}
+
+// @func 0x00112870 SpotlightCameraMode::UpdateStage2
+void SpotlightCameraMode::UpdateStage2(float dt, CameraViewState& /*view*/)
+{
+    if (!(player->classBits & 1))   // only a player steers
+        return;
+    void* pad = PlayerPad(player);
+    const float stickY = PadAxis(pad, 3);
+    const float stickX = PadAxis(pad, 2);
+    const float* accel = g_cameraSpotlightRotationalAcceleration.Get();
+    const float* damping = g_cameraSpotlightRotationalDamping.Get();
+    const float* maxSpeed = g_cameraSpotlightRotationalMaxSpeed.Get();
+
+    // Squared stick response, then drag back toward rest, then a speed cap.
+    pitchSpeed += accel[0] * (stickY * std::fabs(stickY)) * dt;
+    pitchSpeed = ApproachExp(pitchSpeed, 0.0f, damping[0], dt);
+    if (std::fabs(pitchSpeed) > maxSpeed[0])
+        pitchSpeed *= maxSpeed[0] / std::fabs(pitchSpeed);
+    yawSpeed -= accel[1] * (stickX * std::fabs(stickX)) * dt;
+    yawSpeed = ApproachExp(yawSpeed, 0.0f, damping[1], dt);
+    if (std::fabs(yawSpeed) > maxSpeed[1])
+        yawSpeed *= maxSpeed[1] / std::fabs(yawSpeed);
+
+    // Turn about the camera's own position.
+    const ape::Vec3 pos = transform.translation;
+    ape::Matrix34 turn;
+    ape::Matrix34RotationY(yawSpeed * dt, turn);
+    ape::Matrix34 yawed;
+    ape::Matrix34MulRotation(yawed, transform, turn);
+    ape::Matrix34RotationX(pitchSpeed * dt, turn);
+    ape::Matrix34MulRotation(transform, yawed, turn);
+    SetXYZ(transform.translation, pos);
+}
+
+// ===========================================================================
+// Shoulder
+// ===========================================================================
+
+// @func 0x001072BC ShoulderSettings::LoadDefaults
+void ShoulderSettings::LoadDefaults()
+{
+    const float* o = g_cameraShoulderOffset.Get();
+    offset = { o[0], o[1], o[2], offset.pad };
+    const float* c = g_cameraShoulderColOffset.Get();
+    colOffset = { c[0], c[1], c[2], colOffset.pad };
+    fov = g_cameraShoulderFOV;
+}
+
+// @func 0x00107320 ShoulderCameraMode::ShoulderCameraMode
+ShoulderCameraMode::ShoulderCameraMode(GameCamera* owner, Entity* entity) : CameraMode(owner), target(entity)
+{
+    settings.LoadDefaults();
+    const uint32_t group = (entity && IsCharacterEntity(entity)) ? CharacterCollisionGroup(entity) : 0;
+    phantom = CreateSpherePhantom(g_cameraShoulderColRadius, (group << 16) | 0x10);
+}
+
+// @func 0x00107618 ShoulderCameraMode::~ShoulderCameraMode
+// @func 0x00107698 ShoulderCameraMode::~ShoulderCameraMode (deleting)
+ShoulderCameraMode::~ShoulderCameraMode()
+{
+    if (phantom) {
+        DestroyPhantom(phantom);
+        phantom = nullptr;
+    }
+}
+
+// TODO(0x00107890 ShoulderCameraMode::Update)
+void ShoulderCameraMode::Update(float /*dt*/, CameraViewState& /*view*/) {}
+
+// TODO(0x001082F0 ShoulderCameraMode::Activate)
+void ShoulderCameraMode::Activate() {}
+
+// @func 0x00108468 ShoulderCameraMode::ActivateFrom
+void ShoulderCameraMode::ActivateFrom(const CameraViewState& /*previous*/)
+{
+    blocked = false;
+    blockTime = 0.0f;
+    justActivated = true;
+}
+
+// @func 0x00107734 ShoulderCameraMode::Tick
+bool ShoulderCameraMode::Tick(float dt, CameraViewState& view)
+{
+    Update(dt, view);
+    UpdateStage2(dt, view);
+    UpdateStage3(dt, view);
+    justActivated = false;
+    return true;
+}
+
+// ===========================================================================
+// Spline
+// ===========================================================================
+
+// @func 0x001096C0 SplineCameraMode::~SplineCameraMode
+// @func 0x00109774 SplineCameraMode::~SplineCameraMode (deleting)
+SplineCameraMode::~SplineCameraMode()
+{
+    AssignEntity(target, nullptr);
+    AssignEntity(lookAt, nullptr);
+}
+
+// @func 0x0010B240 SplineCameraMode::Finish
+void SplineCameraMode::Finish()
+{
+    GameCamera* owner = camera;
+    CameraMode* below = owner->ModeBelow(this);
+    owner->RemoveMode(-1.0f, this);
+    if (below)
+        below->Finish();
+    delete this;
+}
+
+// @func 0x0010B574 SplineCameraMode::GetDebugText
+const char* SplineCameraMode::GetDebugText()
+{
+    return ape::TempFormat("Target: %s\nTgt Spline: %s\nPos Spline: %s\nT: %5.3f\npan: (%5.1f,%5.1f)",
+                           target ? EntityName(target) : "<none>",
+                           targetSpline ? targetSpline->GetName() : "<none>", positionSpline->GetName(), t, panH,
+                           panV);
+}
+
+// ===========================================================================
+// Binocucom
+// ===========================================================================
+
+// @func 0x0010D9A0 BinocucomCameraMode::Deactivate
+void BinocucomCameraMode::Deactivate()
+{
+    camera->fov = savedFov;
+}
+
+// @func 0x0010D9B0 BinocucomCameraMode::HoldZoom
+bool BinocucomCameraMode::HoldZoom(bool hold)
+{
+    if (hold) {
+        ++zoomHolds;
+        zoomFlags &= 0x3FFF;
+    } else if (zoomHolds > 0) {
+        --zoomHolds;
+    }
+    return zoomHolds > 0;
+}
+
+// @func 0x0010DD60 BinocucomCameraMode::SetFocusEntity
+void BinocucomCameraMode::SetFocusEntity(Entity* entity)
+{
+    AssignEntity(focusEntity, entity);
+    if (entity)
+        BinocucomRefreshFocus(this);
+}
+
+// ===========================================================================
+// Vehicle
+// ===========================================================================
+
+// @func 0x0010E9A4 VehicleCameraMode::~VehicleCameraMode
+// @func 0x0010EAD0 VehicleCameraMode::~VehicleCameraMode (deleting)
+VehicleCameraMode::~VehicleCameraMode()
+{
+    AssignEntity(target, nullptr);
+    DestroyPhantom(phantom);
+    phantom = nullptr;
+    if (body)
+        DestroyHavokEntity(body);
+}
+
+// @func 0x0010EB20 VehicleCameraMode::EaseFlagged
+void VehicleCameraMode::EaseFlagged(float goal, float rate, float dt, uint32_t* dirtyBits, uint32_t bit, float& value)
+{
+    uint32_t& word = dirtyBits[bit >> 5];
+    const uint32_t mask = 1u << (bit & 31);
+    if (!(word & mask))
+        return;
+    if (std::fabs(value - goal) < 1e-05f)
+        word &= ~mask;
+    else
+        value = ApproachExp(value, goal, rate, dt);
+}
+
+// @func 0x0010EBE8 VehicleCameraMode::EaseFlagged
+void VehicleCameraMode::EaseFlagged(float rate, float dt, uint32_t* dirtyBits, uint32_t bit, ape::Vec3& value,
+                                    const ape::Vec3& goal)
+{
+    uint32_t& word = dirtyBits[bit >> 5];
+    const uint32_t mask = 1u << (bit & 31);
+    if (!(word & mask))
+        return;
+    if (std::fabs(value.x - goal.x) >= 1e-05f || std::fabs(value.y - goal.y) >= 1e-05f ||
+        std::fabs(value.z - goal.z) >= 1e-05f) {
+        ape::Vec3 eased;
+        ApproachExp3(eased, rate, dt, value, goal);
+        SetXYZ(value, eased);
+    } else {
+        word &= ~mask;
+    }
+}
+
+// ===========================================================================
+// Havok vehicle
+// ===========================================================================
+
+HavokVehicleCameraMode::HavokVehicleCameraMode(GameCamera* owner) : CameraMode(owner)
+{
+    ConstructVehicleFollowCamera(followCamera);
+}
+
+// @func 0x00111840 HavokVehicleCameraMode::~HavokVehicleCameraMode
+// @func 0x001118C8 HavokVehicleCameraMode::~HavokVehicleCameraMode (deleting)
+HavokVehicleCameraMode::~HavokVehicleCameraMode()
+{
+    AssignEntity(target, nullptr);
+    DestroyVehicleFollowCamera(followCamera);
+}
+
+// @func 0x0011135C HavokVehicleCameraMode::SetTarget
+void HavokVehicleCameraMode::SetTarget(Entity* entity)
+{
+    AssignEntity(target, entity);
+}
+
+// ===========================================================================
 // Track
 // ===========================================================================
 

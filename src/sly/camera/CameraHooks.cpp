@@ -10,6 +10,8 @@ namespace camera {
 const char* EntityName(entity::Entity* entity) { (void)entity; return "<none>"; }
 // Entity virtual slot 39; forward once Entity declares it.
 ape::Vec3 EntityFocusPoint(entity::Entity* entity) { (void)entity; return {}; }
+void EntitySetWorldTransform(entity::Entity* entity, const ape::Matrix34& transform) { (void)entity; (void)transform; }
+ape::Vec3 SpotlightCameraOffset(entity::Entity* spotlight) { (void)spotlight; return {}; }
 bool IsCharacterEntity(const entity::Entity* entity) { (void)entity; return false; }
 bool IsVehicleEntity(const entity::Entity* entity) { (void)entity; return false; }
 bool Component03Flag31(entity::Entity* entity) { (void)entity; return false; }
@@ -34,6 +36,16 @@ void AnimCrossfadeClip(float blend, void* playing, void* clip, bool loop) { (voi
 bool AnimReachedEnd(void* playing) { (void)playing; return false; }
 
 void ResetObjectPivot(ape::world::ApeObj* object) { (void)object; }
+
+// TODO(0x0010DA30 BinocucomCameraMode::RefreshFocus)
+void BinocucomRefreshFocus(BinocucomCameraMode* mode) { (void)mode; }
+
+void* CreateSpherePhantom(float radius, uint32_t filterInfo) { (void)radius; (void)filterInfo; return nullptr; }
+void DestroyPhantom(void* phantom) { (void)phantom; }
+void DestroyHavokEntity(void* entity) { (void)entity; }
+uint32_t CharacterCollisionGroup(entity::Entity* entity) { (void)entity; return 0; }
+void ConstructVehicleFollowCamera(void* storage) { (void)storage; }
+void DestroyVehicleFollowCamera(void* storage) { (void)storage; }
 
 void SetDofEffectParams(agl::AglPostProcEffect* effect, float focus, float range, float blend, uint8_t iterations)
 {

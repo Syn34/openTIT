@@ -23,6 +23,10 @@ struct CameraSettings;
 const char* EntityName(entity::Entity* entity);
 // Position the entity wants to be looked at from (virtual slot 39, +0x9C).
 ape::Vec3 EntityFocusPoint(entity::Entity* entity);
+// Entity virtual slot 21 (+0x54): takes a new world transform.
+void EntitySetWorldTransform(entity::Entity* entity, const ape::Matrix34& transform);
+// Camera offset in a searchlight definition (+0x140) (0x001EB0BC).
+ape::Vec3 SpotlightCameraOffset(entity::Entity* spotlight);
 // Type word 0 bit 3 (+0xC0): a character.
 bool IsCharacterEntity(const entity::Entity* entity);
 // Type word 2 bit 10 (+0xC8): a vehicle. NOTE: named from the definition data it selects.
@@ -69,6 +73,25 @@ bool AnimReachedEnd(void* playing);
 // Puts the identity into the object's animated pivot (+0xA0) unless it uses the
 // shared default (0x01193010), and marks it dirty.
 void ResetObjectPivot(ape::world::ApeObj* object);
+
+class BinocucomCameraMode;
+// Re-reads the binocucom's focus entity (0x0010DA30).
+void BinocucomRefreshFocus(BinocucomCameraMode* mode);
+
+// -- physics ------------------------------------------------------------------------
+// Creates a sphere phantom of `radius` with the collision filter word and adds
+// it to the game physics world (hkpSphereShape 0x0089FE70, hkpSimpleShapePhantom
+// 0x0092A718, addPhantom 0x00931D10).
+void* CreateSpherePhantom(float radius, uint32_t filterInfo);
+// Takes a phantom out of its world (0x00931F00) and drops the reference (0x007D4EA8).
+void DestroyPhantom(void* phantom);
+// Removes a Havok entity from its world (0x0092FFC8 via 0x009D19C8) and drops it.
+void DestroyHavokEntity(void* entity);
+// Collision group of a character (skin component's shape filter word >> 16), 0 otherwise.
+uint32_t CharacterCollisionGroup(entity::Entity* entity);
+// Havok vehicle follow camera constructed in place (0x009F6BB0 / 0x009F6A60).
+void ConstructVehicleFollowCamera(void* storage);
+void DestroyVehicleFollowCamera(void* storage);
 
 // -- render ---------------------------------------------------------------------
 // Parameters of the depth-of-field effect (+0x18 focus, +0x1C range, +0x20
