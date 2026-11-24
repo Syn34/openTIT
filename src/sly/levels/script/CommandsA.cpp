@@ -117,6 +117,20 @@ void ScaleVec3(ape::Vec3& v, float s)
 }
 
 constexpr float kDegToRad = 0.017453292f;
+
+// Rotation quaternion (x, y, z, w) from XYZ Euler angles in radians.
+ape::Vec4 QuatFromEulerRadians(const ape::Vec3& angles)
+{
+    const float cx = ape::FastCos(angles.x * 0.5f), sx = ape::FastSin(angles.x * 0.5f);
+    const float cy = ape::FastCos(angles.y * 0.5f), sy = ape::FastSin(angles.y * 0.5f);
+    const float cz = ape::FastCos(angles.z * 0.5f), sz = ape::FastSin(angles.z * 0.5f);
+    ape::Vec4 q;
+    q.x = sy * sz * cx + cy * cz * sx;
+    q.y = cz * sy * cx + cy * sz * sx;
+    q.z = cy * sz * cx - cz * sy * sx;
+    q.w = cy * cz * cx - sy * sz * sx;
+    return q;
+}
 constexpr float kMinDuration = 1.0e-5f;
 const ape::Vec3 kZero = {0.0f, 0.0f, 0.0f, 0.0f};
 } // namespace
@@ -526,8 +540,46 @@ ApeAnimScriptCommand* AttachEntityCommand::Create(XmlElement* element) const
     return new AttachEntityCommand(element);
 }
 
-// TODO(0x0006D840 AttachEntityCommand::Execute) attaches through the entity's
-// carry component (0x000D9544, 0x002B91EC/0x002B9454) or the world transform.
+// @func 0x0006D840 AttachEntityCommand::Execute
+// Attaches "Child" to "Parent" (object variables or entity names). A parent
+// with a carry component that accepts the child picks it up instead.
+void AttachEntityCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* parent = ResolveEntity(instance, m_parent, m_parent);
+    if (!parent)
+        return;
+    WorldObject* child = ResolveEntity(instance, m_child, m_child);
+    if (!child)
+        return;
+    if (WorldObject* current = EntityAttachParent(child)) {
+        if (current == parent)
+            return;
+        EntityDetach(current, child);
+    }
+
+    void* carry = EntityCarryComponent(parent);
+    if (carry && CarryCanTake(carry, child)) {
+        CarryTake(carry, child);
+        return;
+    }
+
+    EntityAttachDesc desc;
+    desc.child = child;
+    desc.offset = m_parentOffset;
+    desc.rotation = QuatFromEulerRadians(m_parentRotation);
+    desc.parentPart = m_parentPart;
+    desc.childPart = m_childPart;
+    // Entities that forward their animation always sync the child.
+    desc.forwardAnim = EntityForwardsAnimation(parent) || m_syncAnimation;
+    desc.restoreState = m_flag75;
+    desc.flag28 = m_flag76;
+    desc.flag27 = m_flag79;
+    if (m_hasGravity)
+        desc.gravity = m_gravity;
+    EntityAttach(parent, desc);
+    if (m_flag77)
+        EntityUpdateTransform(parent);
+}
 
 // ---------------------------------------------------------------------------
 // Blast

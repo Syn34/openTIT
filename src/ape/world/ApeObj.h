@@ -150,6 +150,8 @@ public:
 
     // -- accessors -----------------------------------------------------------
     const Matrix34& GetLocal() const { return m_local; }
+    // Replaces the local transform (callers mark the object dirty).
+    void SetLocal(const Matrix34& local) { m_local = local; }
     const Matrix34& GetWorld() const { return m_world; }
     const Vec3& GetScale() const { return m_scale; }
     ApeDef* GetDef() const { return m_def; }

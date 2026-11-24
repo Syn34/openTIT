@@ -73,6 +73,7 @@ public:
     // NOTE: slot 11 (+0x2C); the flag's meaning depends on the component.
     virtual void SetOption(bool value) { (void)value; }
     virtual void SetVisible(bool visible, bool immediate) { (void)visible; (void)immediate; } // slot 12
+    virtual void SetAlpha(uint8_t alpha, bool children) { (void)alpha; (void)children; }      // slot 14
     virtual void OnTimeScale(uint32_t value, bool recurse) { (void)value; (void)recurse; }    // slot 15
 
     uint32_t id = 0;          // 0x04 per-entity identifier (name hash of the component)
@@ -124,6 +125,7 @@ enum EntityFlags : uint32_t {
     kEnt_08         = 0x00000008,  // transform owned by someone else (no child update)
     kEnt_80         = 0x00000080,  // slot 23
     kEnt_Visible    = 0x00000100,
+    kEnt_RestoreObject = 0x00000400,  // restore the world object's transform when destroyed
     kEnt_TransformChanged = 0x00000800,
     kEnt_4000       = 0x00004000,
     kEnt_8000       = 0x00008000,
@@ -136,10 +138,12 @@ enum EntityFlags : uint32_t {
 // Second flag word (+0xB0, 16 bits).
 enum EntityFlags2 : uint16_t {
     kEnt2_SoundsMuted     = 0x0010,
+    kEnt2_AlphaSet        = 0x0020,  // an opacity has been applied (later ones scale the geometry alpha)
     kEnt2_Highlight       = 0x0040,
     kEnt2_PendingVisible  = 0x0080,  // value applied with kEnt2_VisibilityPending
     kEnt2_VisibilityPending = 0x0100,
     kEnt2_NoUpdate        = 0x1000,
+    kEnt2_InListenerGroup = 0x2000,  // registered in an event listener group (0x0048F298 removes it)
 };
 
 // Class bits (+0xB8, 64 bits on the console).
@@ -176,7 +180,7 @@ struct SpawnParams {
 // Entity definition (registered by name in the definition map 0x01013B04).
 class EntityDef {
 public:
-    virtual ~EntityDef() = default;
+    virtual ~EntityDef();
     virtual Entity* Spawn(SpawnParams& params) { (void)params; return nullptr; }   // slot 7 (+0x1C)
 
     // Name for a new instance: the requested name, else the source object's
@@ -194,8 +198,10 @@ public:
     uint32_t field_28 = 0;                   // 0x28
     uint32_t nameHash = 0;                   // 0x34
     char name[0x20] = {};                    // 0x38
+    char* field_80 = nullptr;                // 0x80 NOTE: owned buffer, contents unknown
     ape::ApeTArray<SpawnAttachmentDesc>* attachments = nullptr;   // 0x88
 };
+void UnregisterEntityDef(EntityDef* def);
 
 class Entity {
 public:
@@ -216,15 +222,23 @@ public:
     virtual uint32_t GetRenderId();                                // slot 25
     virtual void SetRenderId(uint32_t id);                         // slot 26
     virtual void Detached(float blend);                            // slot 28 (+0x70)
+    // Opacity of the geometry (scaled by the geometry's own alpha unless
+    // `absolute`), optionally of the children too; components are told.
+    virtual void SetAlpha(uint8_t alpha, bool children, bool flag, bool absolute); // slot 29 (+0x74)
     virtual void SetHighlight(bool on, bool children);             // slot 31
     virtual void SetTimeScale(uint32_t value, bool children);      // slot 32
     virtual void* GetHudScript();                                  // slot 33
     virtual ape::world::ApeObj* GetRenderObject();                 // slot 36 (+0x90)
     virtual ape::Aabb GetBounds(bool world);                       // slot 40
+    virtual void HandleMessage(const struct EntityMessage& msg);   // slot 43 (+0xAC)
     virtual void SetActive(bool active);                           // slot 44
     // @func 0x007373A4 Entity::SetAttachParent
     virtual void SetAttachParent(Entity* parent) { attachParent = parent; }   // slot 46
     virtual void SetFlag1(bool on);                                // slot 45
+    // Animation clip registered under a name (slots 47/48; the hash form
+    // looks the clip up in the global clip registry).
+    virtual void* FindAnimClip(uint32_t nameHash);                 // slot 47 (+0xBC)
+    virtual void* FindAnimClipByName(const char* name);            // slot 48 (+0xC0)
     // Slot 53 (+0xD4): the base version only records the state (flags bit 6).
     // @func 0x007373AC Entity::SetActiveVisual
     virtual void SetActiveVisual(bool on) { flags = on ? (flags | 0x40u) : (flags & ~0x40u); }
@@ -281,6 +295,8 @@ public:
     void SetVisibilityDeferred(bool visible, bool deferred);
     void SetSuspended(bool suspended);
     void UpdateWorldTransform(bool children);
+    // Places the attached children (0x000D7A00).
+    void UpdateChildTransforms();
     void RemoveWatcher(void* watcher);
     bool HasTypeBit(uint32_t bit) const { return (typeBits[bit >> 5] & (1u << (bit & 31))) != 0; }
     void SetName(const char* name);
@@ -308,6 +324,9 @@ public:
     uint32_t SoundSlotCount() const { return (flags & kEnt_SoundCountMask) >> kEnt_SoundCountShift; }
 
     // -- data -------------------------------------------------------------------
+    // 0x20 local transform the world object had before the entity took it
+    // over; put back on destruction when kEnt_RestoreObject is set.
+    ape::Matrix34 objectRestoreTransform{};
     ape::Matrix34 transform;                       // 0x60 world transform (translation = position)
     ape::Vec3& Position() { return transform.translation; }   // 0x90
     const ape::Vec3& Position() const { return transform.translation; }
@@ -322,12 +341,21 @@ public:
     uint32_t renderId = 0;                         // 0xCC
     float cullDistance = 0.0f;                     // 0xD4
     EntityDef* def = nullptr;                      // 0xD8
+    void* field_DC = nullptr;                      // 0xDC NOTE: object driven by messages 0x21595665/0x00C73980
     class EntityListener* listener = nullptr;      // 0xF4
     ape::ApeTArray<EntityComponent*>* components = nullptr;   // 0xF8 (allocated on first add)
     ape::ApeTArray<void*>* watchers = nullptr;     // 0xFC NOTE: objects interested in this entity
     EntitySoundSlot sounds[4];                     // 0x100
     Entity* attachParent = nullptr;                // 0x150
     ape::ApeTArray<EntityChildLink>* children = nullptr;      // 0x154 (records of 0xF0 bytes)
+};
+
+// Message delivered to entities (id at +0x08, argument at +0x0C).
+struct EntityMessage {
+    uint32_t field_00 = 0;
+    uint32_t field_04 = 0;
+    uint32_t id = 0;          // +0x08
+    uint32_t argument = 0;    // +0x0C
 };
 
 // Receives the entity's messages (+0xF4, virtual slot 12).

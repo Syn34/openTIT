@@ -3,6 +3,7 @@
 #include "sly/levels/script/ScriptCommands.h"
 
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
 namespace sly {
@@ -268,6 +269,7 @@ class SetEntitySplineCommand : public ApeAnimScriptCommand {
 public:
     SetEntitySplineCommand();
     ~SetEntitySplineCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -297,8 +299,20 @@ ApeAnimScriptCommand* SetEntitySplineCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0009057C SetEntitySplineCommand::Execute) spline lookup (0x00734AC4) and the
-// entity's spline mover (0x001D3A68 / 0x001D3B00).
+// @func 0x0009057C SetEntitySplineCommand::Execute
+// Puts a sentry light on another patrol spline and/or reverses it.
+void SetEntitySplineCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_object, m_entity);
+    if (!entity || !EntityIsSentryLight(entity))
+        return;
+    if (m_spline != 0) {
+        if (void* spline = FindSplineDefByName(m_spline))
+            SentryLightSetSpline(entity, spline);
+    }
+    if (m_hasReverse)
+        SentryLightReverse(entity);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x908A1BE5 (name unknown): shows or hides an entity's (or a world
@@ -366,6 +380,7 @@ class SetLightSettingCommand : public ApeAnimScriptCommand {
 public:
     SetLightSettingCommand();
     ~SetLightSettingCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -373,6 +388,10 @@ private:
     ape::Vec3 m_direction = kDefaultLightDirection;  // +0x10 "LightDirection"
     bool m_hasSetting = false;                       // +0x20
     bool m_hasDirection = false;                     // +0x21
+
+    // Presets of the two shadow modes.
+    static void ApplyPresetMode0(SunLightSettings& light, uint32_t setting);
+    static void ApplyPresetMode1(SunLightSettings& light, uint32_t setting);
 };
 
 // @func 0x000909E4 SetLightSettingCommand::SetLightSettingCommand
@@ -394,10 +413,67 @@ ApeAnimScriptCommand* SetLightSettingCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00090DB0 SetLightSettingCommand::Execute) with its preset helpers
-// TODO(0x00090C00 SetLightSettingCommand::ApplyPresetMode1) and
-// TODO(0x00090D00 SetLightSettingCommand::ApplyPresetMode0): write light parameters of the
-// lighting object (+0x20 direction, +0x5C mode, sub-lights +4/+8).
+namespace {
+// Light presets. NOTE: only "Default" is a known name.
+constexpr uint32_t kLightPreset_67430483 = 0x67430483u;
+constexpr uint32_t kLightPreset_466CDEF5 = 0x466CDEF5u;
+constexpr uint32_t kLightPreset_9535758E = 0x9535758Eu;
+constexpr uint32_t kLightPresetDefault = 0x86DF6221u;   // "Default"
+} // namespace
+
+// @func 0x00090D00 SetLightSettingCommand::ApplyPresetMode0
+void SetLightSettingCommand::ApplyPresetMode0(SunLightSettings& light, uint32_t setting)
+{
+    if (setting != kLightPreset_9535758E)
+        return;
+    light.value100 = 60.0f;
+    SunLightSetRange(light, 75.0f);
+    light.value108 = 0.035f;
+    light.value10C = 0.4f;
+    if (light.cascade[0]) {
+        light.cascade[0]->depthMin = -60.0f;
+        light.cascade[0]->depthMax = 140.0f;
+    }
+}
+
+// @func 0x00090C00 SetLightSettingCommand::ApplyPresetMode1
+void SetLightSettingCommand::ApplyPresetMode1(SunLightSettings& light, uint32_t setting)
+{
+    if (setting == kLightPreset_67430483 || setting == kLightPreset_466CDEF5)
+        return;
+    if (setting == kLightPreset_9535758E) {
+        SunLightCascade* nearCascade = light.cascade[0];
+        SunLightCascade* farCascade = light.cascade[1];
+        SunLightSetRange(light, 60.0f);
+        nearCascade->splitStart = 0.0f;
+        nearCascade->splitEnd = 1.0f;
+        farCascade->splitStart = 1.0f;
+        farCascade->splitEnd = 0.0f;
+        nearCascade->depthMin = -60.0f;
+        nearCascade->depthMax = 140.0f;
+        farCascade->depthMin = -60.0f;
+        farCascade->depthMax = 140.0f;
+    } else if (setting == kLightPresetDefault) {
+        SunLightRestoreDefaults();
+    }
+}
+
+// @func 0x00090DB0 SetLightSettingCommand::Execute
+void SetLightSettingCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    SunLightSettings* light = GetSunLightSettings();
+    if (!light)
+        return;
+    if (m_hasSetting && m_setting != 0) {
+        if (light->mode == 0)
+            ApplyPresetMode0(*light, m_setting);
+        else if (light->mode == 1)
+            ApplyPresetMode1(*light, m_setting);
+    }
+    if (m_hasDirection)
+        light->direction = m_direction;
+}
+
 
 // ---------------------------------------------------------------------------
 // Hash 0x92C1D3B7 (name unknown): runs a script on a part of an entity's skin.

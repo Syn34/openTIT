@@ -129,3 +129,32 @@ destructors, Link, debug elements and most Execute functions), priority targets
   AI settings parser 0x00067738 (16 KB), AI spawn 0x00061810, anim events 0x000650B0 /
   0x00065290, AR targets 0x000A9768, loading screen 0x000ABBE0..
 * 0x0007AF18 (four-field clear inside the GetEntityFlag block; owner unknown).
+
+## Third pass (agent3)
+* `script/ScriptVars.*`: the game's eight script variable types registered by SlyGame
+  (sound 13, Trigger 15, String 16, Spawner 17, SpawnerGroup 18, Laser 19, LaserField 20,
+  LaserGroup 21; element name of the sound type unknown, hash 0x08D5E6EB).
+  `RegisterLevelScriptCommands()` now also registers them; `EntityVarValue` reads the
+  Trigger variable.
+* `LevelServices.h/.cpp`: services needed by the newly ported Execute functions (same
+  stub convention as GameServices/ScriptServices). Notable: laser manager lookups,
+  interaction components, screen filter fades, sun light settings, attach records,
+  targeting markers, track player.
+* Executes ported this pass: ActivateInteraction, ObjectMaterial, AnimLayerTime,
+  CameraShake, CharacterSpecial, AttachEntity, WaveDistort (+ `sly/gameplay/WaveDistortion`
+  table 0x010AA394), EnableCollision/Component/Laser/SentryLight/Spawner/SpawnerGroup,
+  EnqueueSound, EntityKillFx/GetCollectInfo/SetEnabled/SetScriptState/SetGadgetState/
+  SetNoTarget/SetVisible, the Fade* family, Gadget/GadgetTurret, GetAnimSpeed,
+  GetBinocucomVisible, GetEntityFlag, GetJobState, FxTypeQuery, GetRespawnInfo,
+  GetSafeState, HudHealthMeter, HudMessage, IfJob, InputMover, MsDecibel, Kill,
+  MapMaterialToVar, OverrideColor, ScanObject, AnimLayer (reverse), ScoreEvent,
+  EntityStateTarget, ChainParams, SetPlayerSpawn, SetMarker, WorldTrack, SetEntitySpline,
+  SetLightSetting (+ presets), SmokeBomb, ChildAnimLayer, SwapDef, SwapWeapon, DefFlags,
+  SeqLink, SeqCameraCut, SeqDamage, SeqPause, SeqShowPart.
+* Left as TODO (Ghidra reports bad instruction data or the argument lists of the
+  sequencer constructors could not be matched reliably): Blast, Impulse, PlaySound,
+  VehicleInput, ThrowPlayer, SpawnDebris, FxObjShake/FxTrail (effect descriptor blocks),
+  Damage, FireProjectile, Crossfade, GamePlayAnim, SpawnEntity/Rope/Request,
+  MapEntityToVar and most Seq* commands with long constructor argument lists.
+* `SpawnManager`: `SpawnerDespawnAndReset` is now visible and `SpawnManager::FindGroup`
+  was added for the spawner group command.

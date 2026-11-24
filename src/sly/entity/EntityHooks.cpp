@@ -1,6 +1,8 @@
 // openTIT - Entity layer calls into systems that are not ported yet (see EntityHooks.h).
 #include "sly/entity/EntityHooks.h"
 
+#include "ape/anim/ApeAnimScript.h"
+
 #include "ape/world/ApeObj.h"
 
 namespace sly {
@@ -68,6 +70,30 @@ void RenderNodeSetHidden(ape::world::ApeObj*, bool) {}
 bool ForwardVisibilityToComponents() { return false; }
 // TODO: component 0x20 byte +0x140 bit 7 (component class not modelled).
 bool ComponentHidesRender(EntityComponent*) { return false; }
+
+// TODO(0x0034xxxx) the animation controller is not ported.
+void AnimControllerDestroy(void* controller) { (void)controller; }
+// TODO(0x0048F298)
+void EntityLeaveListenerGroup(Entity* entity) { (void)entity; }
+void WorldObjectSetUserData(ape::world::ApeObj* object, uint32_t tag, uint32_t value)
+{
+    object->field_114 = reinterpret_cast<void*>(static_cast<uintptr_t>(tag));
+    object->field_118 = reinterpret_cast<void*>(static_cast<uintptr_t>(value));
+}
+
+// TODO(0x0034A398) the clip registry belongs to the animation module.
+void* AnimClipRegistryFind(uint32_t nameHash) { (void)nameHash; return nullptr; }
+
+void Component1DOnMessage(EntityComponent* component) { (void)component; }
+void EntityObjectDCStart(void* object) { (void)object; }
+void EntityObjectDCStop(void* object) { (void)object; }
+void ScriptInstanceSetState(void* instance, uint32_t stateName)
+{
+    static_cast<ape::ApeAnimScriptInstance*>(instance)->SetStateAndUpdate(stateName);
+}
+
+// TODO(0x00490518)
+void PropertySystemForgetDef(EntityDef* def) { (void)def; }
 
 } // namespace entity
 } // namespace sly

@@ -441,6 +441,7 @@ public:
     SetMarkerCommand();
     explicit SetMarkerCommand(XmlElement* element);
     ~SetMarkerCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -497,8 +498,41 @@ ApeAnimScriptCommand* SetMarkerCommand::Create(XmlElement* element) const
     return new SetMarkerCommand(element);
 }
 
-// TODO(0x00089678 SetMarkerCommand::Execute) resolves owner and target like the gadget
-// target command, then sets up the marker through 0x0029F760.
+// @func 0x00089678 SetMarkerCommand::Execute
+// Adds a marker on a target entity to the targeting gadget of the owner (a
+// player by index, else "object"/"Entity").
+void SetMarkerCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* owner = m_playerIdx >= 0 ? PlayerEntityByIndex(m_playerIdx) : nullptr;
+    if (!owner)
+        owner = ResolveEntity(instance, m_object, m_entity);
+    void* targeting = owner ? EntityTargetingGadget(owner) : nullptr;
+    if (!targeting) {
+        if (!m_ignoreWarnings)
+            ScriptWarning("SetMarker: no targeting owner %s", m_entity != 0 ? m_entity : m_object);
+        return;
+    }
+    WorldObject* target = ResolveEntity(instance, m_targetObject, m_targetEntity);
+    if (!target) {
+        if (!m_ignoreWarnings)
+            ScriptWarning("SetMarker: no target %s", m_targetEntity != 0 ? m_targetEntity : m_targetObject);
+        return;
+    }
+    TargetingMarker* marker = TargetingAddMarker(targeting);
+    if (!marker)
+        return;
+    marker->color = m_color;
+    marker->target = target;
+    marker->offset = m_offset;
+    marker->field_24 = 1;
+    marker->markerDef = m_markerDef;
+    marker->flag28 = m_flag3C;
+    marker->flag27 = m_flag38;
+    marker->flag26 = m_flag39;
+    marker->flag25 = m_flag3A;
+    marker->flag24 = m_flag3B;
+    marker->flag23 = m_flag3D;
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xDB38C585 (name unknown): sets a timer on every player character.

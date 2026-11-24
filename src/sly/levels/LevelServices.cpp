@@ -170,5 +170,27 @@ void CharacterResetAfterSwap(WorldObject* character) { (void)character; }
 
 WorldObject* FindCameraInstance(uint32_t nameHash) { (void)nameHash; return nullptr; }
 
+void EntityAttach(WorldObject* parent, const EntityAttachDesc& desc) { (void)parent; (void)desc; }
+bool EntityForwardsAnimation(const WorldObject* entity) { (void)entity; return false; }
+void EntityUpdateTransform(WorldObject* entity) { (void)entity; }
+void* EntityCarryComponent(WorldObject* entity) { (void)entity; return nullptr; }
+bool CarryCanTake(void* carry, WorldObject* entity) { (void)carry; (void)entity; return false; }
+void CarryTake(void* carry, WorldObject* entity) { (void)carry; (void)entity; }
+
+void* WorldTrackPlayer() { return nullptr; }
+void TrackPlayerSelect(void* player, uint32_t track) { (void)player; (void)track; }
+void TrackPlayerReset(void* player, uint32_t track) { (void)player; (void)track; }
+void TrackPlayerSetValue(void* player, float value) { (void)player; (void)value; }
+void* FindSplineDefByName(uint32_t nameHash) { (void)nameHash; return nullptr; }
+void SentryLightSetSpline(WorldObject* light, void* spline) { (void)light; (void)spline; }
+void SentryLightReverse(WorldObject* light) { (void)light; }
+void LevelAIAddSmoke(WorldObject* owner, float radius, float duration, int32_t mode, const ape::Vec3& position) { (void)owner; (void)radius; (void)duration; (void)mode; (void)position; }
+
+SunLightSettings* GetSunLightSettings() { return nullptr; }
+void SunLightSetRange(SunLightSettings& light, float range) { (void)light; (void)range; }
+void SunLightRestoreDefaults() {}
+
+TargetingMarker* TargetingAddMarker(void* targeting) { (void)targeting; return nullptr; }
+
 } // namespace levels
 } // namespace sly

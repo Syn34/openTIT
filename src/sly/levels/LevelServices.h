@@ -393,5 +393,92 @@ void CharacterResetAfterSwap(WorldObject* character);
 // Camera instance of the loaded level by name (sorted map of 0x00F8F134).
 WorldObject* FindCameraInstance(uint32_t nameHash);
 
+// ---------------------------------------------------------------------------
+// Attaching entities
+
+// Attach record handed to Entity::AttachChild (0x000D15C0; the console
+// record is EntityChildLink, 0xF0 bytes).
+struct EntityAttachDesc {
+    WorldObject* child = nullptr;   // +0xC0
+    ape::Vec3 offset{};             // +0x80
+    ape::Vec4 rotation{0.0f, 0.0f, 0.0f, 1.0f};  // +0x90
+    uint32_t parentPart = 0;        // +0xA0
+    uint32_t childPart = 0;         // +0xA8
+    bool forwardAnim = false;       // +0xB0 bit 31
+    bool restoreState = false;      // +0xB0 bit 25
+    bool flag28 = false;            // +0xB0 bit 28. NOTE: meaning unknown
+    bool flag27 = false;            // +0xB0 bit 27. NOTE: meaning unknown
+    float gravity = 0.0f;           // +0xE0
+};
+void EntityAttach(WorldObject* parent, const EntityAttachDesc& desc);
+// Entity flag 0x200 (+0xAC): the entity forwards its animation to children.
+bool EntityForwardsAnimation(const WorldObject* entity);
+// Entity virtual slot 12.
+void EntityUpdateTransform(WorldObject* entity);
+// Carry components (EntityCarry 0x000D9544): whether it can take an entity
+// (0x002B91EC) and picking it up at once (0x002B9454 with a zero offset).
+void* EntityCarryComponent(WorldObject* entity);
+bool CarryCanTake(void* carry, WorldObject* entity);
+void CarryTake(void* carry, WorldObject* entity);
+
+// ---------------------------------------------------------------------------
+// Track player, splines, level AI
+
+// The level's track player (game world +0x1281F8), may be null. Select:
+// 0x0031F8EC picks the track, its length 0x0031F8AC resets the position
+// (+0x34..+0x44); Reset: 0x0031F968(0, track); value: +0x40.
+void* WorldTrackPlayer();
+void TrackPlayerSelect(void* player, uint32_t track);
+void TrackPlayerReset(void* player, uint32_t track);
+void TrackPlayerSetValue(void* player, float value);
+// Spline definition by name (sorted map of 0x00F8F158).
+void* FindSplineDefByName(uint32_t nameHash);
+// Sentry lights: new patrol spline (0x001D3968), reverse (0x001D3A00).
+void SentryLightSetSpline(WorldObject* light, void* spline);
+void SentryLightReverse(WorldObject* light);
+// 0x0001B590 on the level AI object 0x00F557F0: a smoke cloud.
+void LevelAIAddSmoke(WorldObject* owner, float radius, float duration, int32_t mode, const ape::Vec3& position);
+
+// ---------------------------------------------------------------------------
+// Sun light / shadow settings (render object 0x00F66FD0)
+
+struct SunLightCascade {
+    float splitStart = 0.0f;   // +0x04
+    float splitEnd = 0.0f;     // +0x08
+    float depthMin = 0.0f;     // +0x14
+    float depthMax = 0.0f;     // +0x18
+};
+struct SunLightSettings {
+    SunLightCascade* cascade[2] = {};   // +0x04, +0x08
+    ape::Vec3 direction{};              // +0x20
+    int32_t mode = 0;                   // +0x5C shadow mode (0 or 1)
+    float value100 = 0.0f;              // +0x100 NOTE: meaning unknown
+    float value108 = 0.0f;              // +0x108 NOTE: meaning unknown
+    float value10C = 0.0f;              // +0x10C NOTE: meaning unknown
+};
+// The level's settings, or null.
+SunLightSettings* GetSunLightSettings();
+// Virtual slot 6 of the settings object: the shadow range.
+void SunLightSetRange(SunLightSettings& light, float range);
+// 0x0042A740: puts back the values saved when the level started.
+void SunLightRestoreDefaults();
+
+// Marker record of a targeting gadget (0x0029F760 adds one and returns it).
+// NOTE: flag meanings unknown; named after their bit in the word +0x78.
+struct TargetingMarker {
+    ape::xml::Color8 color{};     // +0x00
+    WorldObject* target = nullptr; // +0x08
+    ape::Vec3 offset{};           // +0x10
+    int32_t field_24 = 0;         // +0x24
+    uint32_t markerDef = 0;       // +0x28
+    bool flag28 = false;
+    bool flag27 = false;
+    bool flag26 = false;
+    bool flag25 = false;
+    bool flag24 = false;
+    bool flag23 = false;
+};
+TargetingMarker* TargetingAddMarker(void* targeting);
+
 } // namespace levels
 } // namespace sly

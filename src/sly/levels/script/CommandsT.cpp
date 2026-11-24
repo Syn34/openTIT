@@ -4,6 +4,7 @@
 
 #include "ape/core/ApeString.h"
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
 #include <cstring>
@@ -12,6 +13,8 @@ namespace sly {
 namespace levels {
 
 namespace {
+// Default position of the smoke cloud (shared vector 0x01164B40). NOTE: assumed zero.
+const ape::Vec3 kSmokeOrigin = {0.0f, 0.0f, 0.0f, 0.0f};
 constexpr uint32_t kAttrGlobalValue = 0xA016BE6Fu;   // NOTE: name unknown (float)
 constexpr uint32_t kAttrScale = AnimHash("Scale");
 constexpr uint32_t kAttrObject = AnimHash("object");
@@ -397,6 +400,7 @@ class SmokeBombCommand : public ApeAnimScriptCommand {
 public:
     SmokeBombCommand();
     ~SmokeBombCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -427,8 +431,17 @@ ApeAnimScriptCommand* SmokeBombCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00092EE4 SmokeBombCommand::Execute) adds a smoke cloud to the level AI object
-// (0x0001B590 on the pointer 0x00F557F0) at the object's position.
+// @func 0x00092EE4 SmokeBombCommand::Execute
+// Adds a smoke cloud to the level AI at the object's position (the origin
+// when there is none), owned by the entity of "owner".
+void SmokeBombCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    ape::Vec3 position = kSmokeOrigin;
+    if (ape::ApeRefCounted* object = ObjectFromVar(instance, m_object))
+        position = ObjectWorldPosition(object);
+    WorldObject* owner = EntityFromVar(instance, m_owner);
+    LevelAIAddSmoke(owner, m_radius, m_duration, m_mode, position);
+}
 
 // ---------------------------------------------------------------------------
 

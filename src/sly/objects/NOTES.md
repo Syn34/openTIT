@@ -92,3 +92,18 @@
 ## Build state
 * All files here compile warning-free and the full tree builds and links (an earlier
   break was only in in-progress `src/sly/entity` files).
+
+## Third pass (agent3)
+* New trigger classes: `TriggerDeath.*` (death volumes; OnEnter 0x0021C8B8 still TODO),
+  `TriggerFx.*` (FX and push-block volumes; Update/OnEnter/OnExit TODO),
+  `TriggerWeather.*` (def and entity basics; per-player blend TODO),
+  `TriggerCameraBehavior.*` (entity side; def parsing needs the camera module).
+* Wind trigger instance (`TriggerEnv.cpp`): constructor, wind field calls, lifetime script
+  states ("Spawn", "OnEnter", "OnExit"), SetEnabled. The wind field object is a
+  `sly::WindSystem` built by the wind module (hooks `WindField*`).
+* Update-enable triggers track player characters (`UpdateEnableTrigger::Update/OnEnter/
+  OnExit`); job triggers offer their job on entry (prompt or immediate start).
+* Camera trigger OnEnter/OnExit/ReleaseCameraMode (camera mode calls are hooks).
+* `InheritDefDesc` (0x000C387C) is now tagged: the stand-in is the complete function.
+* New hooks in ObjectsHooks.h: entity scripts, script variables/states, volume shape
+  queries, wind fields, jobs, text display, camera modes, `EntityClass2`.

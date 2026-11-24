@@ -1,5 +1,6 @@
 // openTIT - Entity definitions: registry, spawning, deferred events.
 #include "sly/entity/Entity.h"
+#include "sly/entity/EntityHooks.h"
 
 #include "ape/container/ApeTSortedMap.h"
 #include "ape/core/ApeString.h"
@@ -27,6 +28,24 @@ std::vector<DeferredEntityEvent> g_deferred;
 void RegisterEntityDef(EntityDef* def)
 {
     DefMap().Add(def->nameHash, def);
+}
+
+void UnregisterEntityDef(EntityDef* def)
+{
+    DefMap().Remove(def->nameHash);
+}
+
+// @func 0x000C2BB0 EntityDef::~EntityDef
+// @func 0x000C2DA0 EntityDef::~EntityDef (copy 2)
+// @func 0x000C2C9C EntityDef::~EntityDef (deleting)
+EntityDef::~EntityDef()
+{
+    delete[] field_80;
+    field_80 = nullptr;
+    PropertySystemForgetDef(this);
+    UnregisterEntityDef(this);
+    delete attachments;
+    delete componentDescs;
 }
 
 // @func 0x000C9FC8 FindEntityDef

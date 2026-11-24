@@ -19,6 +19,7 @@ namespace entity {
 
 class Entity;
 class EntityComponent;
+class EntityDef;
 struct ComponentDesc;
 
 // -- game object base class (vtable 0x00B219D0, 0x00464xxx) -------------------
@@ -85,6 +86,29 @@ void RenderNodeSetHidden(ape::world::ApeObj* object, bool hidden);
 bool ForwardVisibilityToComponents();
 // Bit 7 of byte +0x140 of component 0x20. NOTE: read as "keep hidden".
 bool ComponentHidesRender(EntityComponent* component);
+
+// Animation controllers are deleted through their virtual slot 1.
+void AnimControllerDestroy(void* controller);
+// 0x0048F298 (entity, true): removes the entity from its event listener group.
+void EntityLeaveListenerGroup(Entity* entity);
+// User data tag a released world object keeps (with the entity's render id).
+constexpr uint32_t kUserTag_ReleasedEntity = 0x25431D90u;
+void WorldObjectSetUserData(ape::world::ApeObj* object, uint32_t tag, uint32_t value);
+
+// Global animation clip registry (sorted map 0x0106BBE8, 0x0034A398).
+void* AnimClipRegistryFind(uint32_t nameHash);
+
+// Message handlers outside the entity module: component 0x1D's reaction to
+// message 0x2FE47F7F (0x00257F10), and the two calls on the object at +0xDC
+// (virtual slots 6 and 7).
+void Component1DOnMessage(EntityComponent* component);
+void EntityObjectDCStart(void* object);
+void EntityObjectDCStop(void* object);
+// ApeAnimScriptInstance::SetStateAndUpdate by state name.
+void ScriptInstanceSetState(void* instance, uint32_t stateName);
+
+// 0x00490518: drops whatever the game property system keeps for a definition.
+void PropertySystemForgetDef(EntityDef* def);
 
 } // namespace entity
 } // namespace sly

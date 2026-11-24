@@ -6,6 +6,7 @@
 #include "ape/container/ApeTSortedMap.h"
 #include "ape/core/ApeString.h"
 #include "ape/world/ApeDef.h"
+#include "ape/world/ApeInstances.h"
 #include "ape/world/ApeObj.h"
 #include "ape/world/ApeRenderNode.h"
 #include "ape/world/ApeSkeleton.h"
@@ -168,14 +169,103 @@ Entity::Entity()
     transform.translation = { 0.0f, 0.0f, 0.0f, 1.0f };
 }
 
+// @func 0x000DF8B4 Entity::~Entity
+// @func 0x000DF8E0 Entity::~Entity (deleting)
+// @func 0x000D7024 Entity::~Entity (base part, vtable 0x00B12278)
+// Hands the world object back: its original transform is restored when the
+// entity had taken it over, it is hidden, tagged with the render id and
+// released. The component, watcher and child arrays are freed (the
+// components themselves are owned and released elsewhere).
 Entity::~Entity()
 {
-    if (components) {
-        for (EntityComponent* component : *components)
-            delete component;
-        delete components;
+    if (animController) {
+        AnimControllerDestroy(animController);
+        animController = nullptr;
+    }
+    if (flags2 & kEnt2_InListenerGroup)
+        EntityLeaveListenerGroup(this);
+    if (object) {
+        if (flags & kEnt_RestoreObject) {
+            object->SetLocal(objectRestoreTransform);
+            object->MarkDirty();
+            object->SetVisible(false, true);
+        }
+        WorldObjectSetUserData(object, kUserTag_ReleasedEntity, renderId);
+        object->Release();
     }
     delete children;
+    delete watchers;
+    delete components;
+}
+
+// @func 0x000DBCF8 Entity::FindAnimClip
+void* Entity::FindAnimClip(uint32_t nameHash)
+{
+    return AnimClipRegistryFind(nameHash);
+}
+
+// @func 0x000DBD20 Entity::FindAnimClipByName
+void* Entity::FindAnimClipByName(const char* name)
+{
+    return FindAnimClip(ape::HashNameNoCase(name));
+}
+
+// @func 0x000DA348 Entity::SetAlpha
+void Entity::SetAlpha(uint8_t alpha, bool includeChildren, bool flag, bool absolute)
+{
+    if (object && object->GetType() == ape::world::kObjType_GeomInstance) {
+        uint8_t value = alpha;
+        if ((flags2 & kEnt2_AlphaSet) && !absolute)
+            value = static_cast<uint8_t>((uint32_t)alpha * EntityGeomByteA8(this) / 0xFF);
+        object->VirtualSlot13(value, flag);
+        flags2 |= kEnt2_AlphaSet;
+    }
+    if (includeChildren && children) {
+        for (EntityChildLink& link : *children) {
+            if (link.child)
+                link.child->SetAlpha(alpha, includeChildren, absolute, false);
+        }
+    }
+    ForEachComponent(this, [alpha, includeChildren](EntityComponent* c) { c->SetAlpha(alpha, includeChildren); });
+}
+
+namespace {
+constexpr uint32_t kMsg_Ignored1 = 0x4F9AEC6Bu;
+constexpr uint32_t kMsg_Component1D = 0x2FE47F7Fu;
+constexpr uint32_t kMsg_Ignored2 = 0x2B68FE90u;
+constexpr uint32_t kMsg_StartDC = 0x21595665u;
+constexpr uint32_t kMsg_StopDC = 0x00C73980u;
+constexpr uint32_t kMsg_ScriptState = 0xD77F98D6u;   // argument: state of the entity's anim script
+} // namespace
+
+// @func 0x000DAF24 Entity::HandleMessage
+void Entity::HandleMessage(const EntityMessage& msg)
+{
+    switch (msg.id) {
+    case kMsg_Ignored1:
+    case kMsg_Ignored2:
+        break;
+    case kMsg_Component1D:
+        if (EntityComponent* component = GetComponent(kComp_1D))
+            Component1DOnMessage(component);
+        break;
+    case kMsg_StartDC:
+        if (field_DC)
+            EntityObjectDCStart(field_DC);
+        break;
+    case kMsg_StopDC:
+        if (field_DC)
+            EntityObjectDCStop(field_DC);
+        break;
+    case kMsg_ScriptState:
+        if (void* script = GetAnimScript())
+            ScriptInstanceSetState(script, msg.argument);
+        break;
+    default:
+        break;
+    }
+    if (listener)
+        listener->OnMessage(msg);
 }
 
 // @func 0x000D82BC Entity::OnSpawn
@@ -215,16 +305,38 @@ bool Entity::PostUpdate(float dt)
     return true;
 }
 
-// TODO(0x000D7A00 Entity::UpdateChildTransforms): places every attached child
-// from the parent's bone/locator matrices (vector heavy).
-// TODO(0x000D85A4 Entity::UpdateTransform): refreshes the world object and
-// calls UpdateChildTransforms when children may have moved.
+// @func 0x000D85A4 Entity::UpdateTransform
+// Refreshes the world object (when children hang off an object without a
+// render node), places the children unless nobody can see them, and applies
+// a deferred visibility change.
 void Entity::UpdateTransform()
 {
+    if (object && children && children->Count() != 0 && !object->GetRenderNode())
+        object->UpdateWorld(false, false);
+
+    if (object) {
+        bool placeChildren = true;
+        const bool geometry = object->GetType() == ape::world::kObjType_GeomInstance;
+        if (!(flags & kEnt_08) && geometry &&
+            !static_cast<const ape::world::ApeRenderObj*>(object)->IsDrawnThisFrame()) {
+            // Invisible geometry only needs its children placed when a
+            // visibility change, a highlight or a listener depends on them.
+            placeChildren = (flags2 & (kEnt2_VisibilityPending | kEnt2_Highlight)) || listener;
+        }
+        if (placeChildren)
+            UpdateChildTransforms();
+    }
+
     if (flags2 & kEnt2_VisibilityPending) {
         ApplyVisibility((flags2 & kEnt2_PendingVisible) != 0);
         flags2 &= uint16_t(~(kEnt2_VisibilityPending | kEnt2_PendingVisible));
     }
+}
+
+// TODO(0x000D7A00 Entity::UpdateChildTransforms): places every attached child
+// from the parent's bone/locator matrices (vector heavy).
+void Entity::UpdateChildTransforms()
+{
 }
 
 // @func 0x000D1288 Entity::GetComponent
