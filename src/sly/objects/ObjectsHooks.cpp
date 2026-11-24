@@ -269,5 +269,8 @@ bool WindFieldHasEntity(const WindSystem* field, const ObjEntity* entity) { (voi
 void WindFieldSetEnabled(WindSystem* field, bool enabled) { (void)field; (void)enabled; }
 uint16_t WindTriggerCapacity() { return 0x20; }
 
+void EntitySetVisibilityDeferred(ObjEntity* entity, bool visible, bool deferred) { (void)entity; (void)visible; (void)deferred; }
+float EntityHealth(const ObjEntity* entity) { (void)entity; return 0.0f; }
+
 } // namespace objects
 } // namespace sly

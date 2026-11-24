@@ -105,6 +105,7 @@ public:
     uint32_t instanceCounter = 0;  // 0x0C
     uint32_t classBits = 0;        // 0x14
     uint32_t typeBits = 0;         // 0x18
+    uint8_t options = 0;           // 0x20 bit 3: sleeps unless a player is near (update-enable volumes)
     uint32_t geomNameHash = 0;     // 0x2C
     uint32_t field_30 = 0;         // 0x30
     uint32_t nameHash = 0;         // 0x34

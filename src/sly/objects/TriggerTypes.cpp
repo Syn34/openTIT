@@ -525,6 +525,116 @@ UpdateEnableTrigger::UpdateEnableTrigger(const TriggerInstanceDesc& desc)
 // @func 0x0022576C UpdateEnableTrigger::~UpdateEnableTrigger (deleting)
 UpdateEnableTrigger::~UpdateEnableTrigger() = default;
 
+namespace {
+constexpr uint8_t kDefOption_SleepsAway = 0x08;   // EntityDef::options bit 3
+constexpr uint32_t kFlags2_Killable = 0x02;
+constexpr uint32_t kFlags2_Character = 0x08;
+constexpr uint32_t kFlags2_10 = 0x10;              // NOTE: excludes characters from tracking
+
+bool SleepsAway(const ObjEntity* entity)
+{
+    return entity->def && (entity->def->options & kDefOption_SleepsAway) != 0;
+}
+
+// Characters that could turn into the player are tracked even when they are not one.
+bool IsTrackedCharacter(const ObjEntity* entity)
+{
+    return (entity->flags2 & kFlags2_Character) && !(entity->flags2 & kFlags2_10);
+}
+} // namespace
+
+void UpdateEnableTrigger::WakeOccupants()
+{
+    for (ObjEntity* occupant : m_occupants) {
+        if (SleepsAway(occupant))
+            EntitySetVisibilityDeferred(occupant, true, false);
+    }
+}
+
+// @func 0x002257B4 UpdateEnableTrigger::PlayerLeft
+void UpdateEnableTrigger::PlayerLeft(ObjEntity* leaving)
+{
+    if (--m_playerCount != 0)
+        return;
+    for (ObjEntity* occupant : m_occupants) {
+        if (occupant != leaving && SleepsAway(occupant))
+            EntitySetVisibilityDeferred(occupant, false, false);
+    }
+}
+
+// @func 0x00225870 UpdateEnableTrigger::Update
+// Characters that became (or stopped being) the player since last frame enter
+// (or leave) the trigger's player bookkeeping.
+void UpdateEnableTrigger::Update(float dt)
+{
+    for (Tracked& tracked : m_tracked) {
+        const bool isPlayer = tracked.entity->IsPlayer();
+        if (tracked.isPlayer == isPlayer)
+            continue;
+        tracked.isPlayer = isPlayer;
+        if (isPlayer) {
+            TriggerBase::OnEnter(tracked.entity);
+            if (m_playerCount++ == 0)
+                WakeOccupants();
+        } else {
+            TriggerBase::OnExit(tracked.entity);
+            PlayerLeft(tracked.entity);
+        }
+    }
+    TriggerBase::Update(dt);
+}
+
+// @func 0x002259EC UpdateEnableTrigger::OnEnter
+void UpdateEnableTrigger::OnEnter(ObjEntity* entity)
+{
+    const bool isPlayer = entity->IsPlayer();
+    const bool character = IsTrackedCharacter(entity);
+    if (isPlayer || character) {
+        bool known = false;
+        for (const Tracked& tracked : m_tracked)
+            known = known || tracked.entity == entity;
+        if (!known)
+            m_tracked.push_back(Tracked{entity, isPlayer});
+        // Characters wait in the list until they become the player.
+        if (!isPlayer)
+            return;
+    }
+    TriggerBase::OnEnter(entity);
+    if (!isPlayer) {
+        if (SleepsAway(entity)) {
+            entity->SetBusy(true);
+            EntitySetVisibilityDeferred(entity, m_playerCount != 0, false);
+        }
+    } else if (m_playerCount++ == 0) {
+        WakeOccupants();
+    }
+}
+
+// @func 0x00225C88 UpdateEnableTrigger::OnExit
+void UpdateEnableTrigger::OnExit(ObjEntity* entity)
+{
+    TriggerBase::OnExit(entity);
+    if (IsTrackedCharacter(entity) || entity->IsPlayer()) {
+        for (size_t i = 0; i < m_tracked.size(); ++i) {
+            if (m_tracked[i].entity == entity) {
+                m_tracked[i] = m_tracked.back();
+                m_tracked.pop_back();
+                break;
+            }
+        }
+    }
+    if (entity->IsPlayer()) {
+        PlayerLeft(entity);
+        return;
+    }
+    if (!SleepsAway(entity))
+        return;
+    // Dead killables keep their state.
+    if ((entity->flags2 & kFlags2_Killable) && EntityHealth(entity) <= 0.0f)
+        return;
+    entity->SetBusy(false);
+}
+
 // @func 0x00225E50 UpdateEnableTrigger::IsDebugDisplayed
 bool UpdateEnableTrigger::IsDebugDisplayed() const
 {

@@ -184,5 +184,11 @@ void WindFieldSetEnabled(WindSystem* field, bool enabled);
 // Occupant capacity of wind triggers (global 0x00F64A30).
 uint16_t WindTriggerCapacity();
 
+// Entity::SetVisibilityDeferred (0x000DD02C): visible/awake state, optionally
+// applied later.
+void EntitySetVisibilityDeferred(ObjEntity* entity, bool visible, bool deferred);
+// Health of killable entities (+0x15C).
+float EntityHealth(const ObjEntity* entity);
+
 } // namespace objects
 } // namespace sly
