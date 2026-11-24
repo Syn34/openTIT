@@ -55,6 +55,7 @@ class SendEventCommand : public ApeAnimScriptCommand {
 public:
     SendEventCommand();
     explicit SendEventCommand(XmlElement* element);
+    ~SendEventCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -88,6 +89,10 @@ protected:
 
 // @func 0x0006E5CC SendEventCommand::SendEventCommand
 SendEventCommand::SendEventCommand() = default;
+
+// @func 0x0073BF00 SendEventCommand::~SendEventCommand
+// @func 0x0073BF30 SendEventCommand::~SendEventCommand (deleting)
+SendEventCommand::~SendEventCommand() = default;
 
 // @func 0x0006E63C SendEventCommand::SendEventCommand
 SendEventCommand::SendEventCommand(XmlElement* element)
@@ -150,6 +155,7 @@ public:
 
 private:
     explicit BroadcastEventCommand(XmlElement* element);
+    ~BroadcastEventCommand() override;
 
     uint32_t m_group = 0;      // +0x2C "Group"
     uint32_t m_filterDef = 0;  // +0x30 "FilterDef"
@@ -158,6 +164,10 @@ private:
 
 // @func 0x0006E9E4 BroadcastEventCommand::BroadcastEventCommand
 BroadcastEventCommand::BroadcastEventCommand() = default;
+
+// @func 0x0073BF88 BroadcastEventCommand::~BroadcastEventCommand
+// @func 0x0073BFB8 BroadcastEventCommand::~BroadcastEventCommand (deleting)
+BroadcastEventCommand::~BroadcastEventCommand() = default;
 
 BroadcastEventCommand::BroadcastEventCommand(XmlElement* element) : SendEventCommand(element)
 {

@@ -57,6 +57,7 @@ void* SplineFollowerOf(ApeAnimScriptInstance* instance, uint32_t objectName)
 class SplineFollowSetSplineCommand : public ApeAnimScriptCommand {
 public:
     SplineFollowSetSplineCommand();
+    ~SplineFollowSetSplineCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -67,6 +68,10 @@ private:
 
 // @func 0x00089D98 SplineFollowSetSplineCommand::SplineFollowSetSplineCommand
 SplineFollowSetSplineCommand::SplineFollowSetSplineCommand() = default;
+
+// @func 0x0073E798 SplineFollowSetSplineCommand::~SplineFollowSetSplineCommand
+// @func 0x0073E7C8 SplineFollowSetSplineCommand::~SplineFollowSetSplineCommand (deleting)
+SplineFollowSetSplineCommand::~SplineFollowSetSplineCommand() = default;
 
 // @func 0x00089DE0 SplineFollowSetSplineCommand::Create
 ApeAnimScriptCommand* SplineFollowSetSplineCommand::Create(XmlElement* element) const
@@ -90,6 +95,7 @@ void SplineFollowSetSplineCommand::Execute(ApeAnimScriptInstance* instance, ApeA
 class SplineFollowSetSpeedCommand : public ApeAnimScriptCommand {
 public:
     SplineFollowSetSpeedCommand();
+    ~SplineFollowSetSpeedCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -100,6 +106,10 @@ private:
 
 // @func 0x00089F3C SplineFollowSetSpeedCommand::SplineFollowSetSpeedCommand
 SplineFollowSetSpeedCommand::SplineFollowSetSpeedCommand() = default;
+
+// @func 0x0073E820 SplineFollowSetSpeedCommand::~SplineFollowSetSpeedCommand
+// @func 0x0073E850 SplineFollowSetSpeedCommand::~SplineFollowSetSpeedCommand (deleting)
+SplineFollowSetSpeedCommand::~SplineFollowSetSpeedCommand() = default;
 
 // @func 0x00089F8C SplineFollowSetSpeedCommand::Create
 ApeAnimScriptCommand* SplineFollowSetSpeedCommand::Create(XmlElement* element) const
@@ -123,6 +133,7 @@ void SplineFollowSetSpeedCommand::Execute(ApeAnimScriptInstance* instance, ApeAn
 class SplineFollowSetAxisCommand : public ApeAnimScriptCommand {
 public:
     SplineFollowSetAxisCommand();
+    ~SplineFollowSetAxisCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -135,6 +146,10 @@ private:
 
 // @func 0x0008A0E0 SplineFollowSetAxisCommand::SplineFollowSetAxisCommand
 SplineFollowSetAxisCommand::SplineFollowSetAxisCommand() = default;
+
+// @func 0x0073E8A8 SplineFollowSetAxisCommand::~SplineFollowSetAxisCommand
+// @func 0x0073E8D8 SplineFollowSetAxisCommand::~SplineFollowSetAxisCommand (deleting)
+SplineFollowSetAxisCommand::~SplineFollowSetAxisCommand() = default;
 
 // @func 0x0008A140 SplineFollowSetAxisCommand::Create
 ApeAnimScriptCommand* SplineFollowSetAxisCommand::Create(XmlElement* element) const
@@ -163,6 +178,7 @@ void SplineFollowSetAxisCommand::Execute(ApeAnimScriptInstance* instance, ApeAni
 class SplineFollowDetachCommand : public ApeAnimScriptCommand {
 public:
     SplineFollowDetachCommand();
+    ~SplineFollowDetachCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -173,6 +189,10 @@ private:
 
 // @func 0x00089BCC SplineFollowDetachCommand::SplineFollowDetachCommand
 SplineFollowDetachCommand::SplineFollowDetachCommand() = default;
+
+// @func 0x0073E710 SplineFollowDetachCommand::~SplineFollowDetachCommand
+// @func 0x0073E740 SplineFollowDetachCommand::~SplineFollowDetachCommand (deleting)
+SplineFollowDetachCommand::~SplineFollowDetachCommand() = default;
 
 // @func 0x00089C1C SplineFollowDetachCommand::Create
 ApeAnimScriptCommand* SplineFollowDetachCommand::Create(XmlElement* element) const
@@ -200,6 +220,7 @@ void SplineFollowDetachCommand::Execute(ApeAnimScriptInstance* instance, ApeAnim
 class SetEntityFlagCommand : public ApeAnimScriptCommand {
 public:
     SetEntityFlagCommand();
+    ~SetEntityFlagCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -212,6 +233,10 @@ private:
 
 // @func 0x0008A30C SetEntityFlagCommand::SetEntityFlagCommand
 SetEntityFlagCommand::SetEntityFlagCommand() = default;
+
+// @func 0x0073E930 SetEntityFlagCommand::~SetEntityFlagCommand
+// @func 0x0073E960 SetEntityFlagCommand::~SetEntityFlagCommand (deleting)
+SetEntityFlagCommand::~SetEntityFlagCommand() = default;
 
 // @func 0x0008A36C SetEntityFlagCommand::Create
 ApeAnimScriptCommand* SetEntityFlagCommand::Create(XmlElement* element) const
@@ -256,6 +281,7 @@ void SetEntityFlagCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScrip
 class EntitySwitchCommand : public ApeAnimScriptCommand {
 public:
     EntitySwitchCommand();
+    ~EntitySwitchCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -267,6 +293,10 @@ private:
 
 // @func 0x0008A5D0 EntitySwitchCommand::EntitySwitchCommand
 EntitySwitchCommand::EntitySwitchCommand() = default;
+
+// @func 0x0073E9B8 EntitySwitchCommand::~EntitySwitchCommand
+// @func 0x0073E9E8 EntitySwitchCommand::~EntitySwitchCommand (deleting)
+EntitySwitchCommand::~EntitySwitchCommand() = default;
 
 // @func 0x0008A628 EntitySwitchCommand::Create
 ApeAnimScriptCommand* EntitySwitchCommand::Create(XmlElement* element) const
@@ -300,6 +330,7 @@ void EntitySwitchCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScript
 class EntityCheckCommand : public ApeAnimScriptCommand {
 public:
     EntityCheckCommand();
+    ~EntityCheckCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -310,6 +341,10 @@ private:
 
 // @func 0x0008B508 EntityCheckCommand::EntityCheckCommand
 EntityCheckCommand::EntityCheckCommand() = default;
+
+// @func 0x0073EC60 EntityCheckCommand::~EntityCheckCommand
+// @func 0x0073EC90 EntityCheckCommand::~EntityCheckCommand (deleting)
+EntityCheckCommand::~EntityCheckCommand() = default;
 
 // @func 0x0008B558 EntityCheckCommand::Create
 ApeAnimScriptCommand* EntityCheckCommand::Create(XmlElement* element) const

@@ -32,6 +32,7 @@ class ActivateMixStateCommand : public ApeAnimScriptCommand {
 public:
     ActivateMixStateCommand();
     explicit ActivateMixStateCommand(XmlElement* element);
+    ~ActivateMixStateCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     void Link() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
@@ -131,6 +132,7 @@ class AttachEntityCommand : public ApeAnimScriptCommand {
 public:
     AttachEntityCommand();
     explicit AttachEntityCommand(XmlElement* element);
+    ~AttachEntityCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -180,6 +182,7 @@ private:
 class CameraClearEaseCommand : public ApeAnimScriptCommand {
 public:
     CameraClearEaseCommand();
+    ~CameraClearEaseCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 };
@@ -188,6 +191,7 @@ public:
 class CameraPlayAnimCommand : public ApeAnimScriptCommand {
 public:
     CameraPlayAnimCommand();
+    ~CameraPlayAnimCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -229,6 +233,7 @@ private:
 class CameraStopAnimCommand : public ApeAnimScriptCommand {
 public:
     CameraStopAnimCommand();
+    ~CameraStopAnimCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -240,6 +245,7 @@ private:
 class CloseBinocucomCommand : public ApeAnimScriptCommand {
 public:
     CloseBinocucomCommand();
+    ~CloseBinocucomCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 };
@@ -249,6 +255,7 @@ public:
 class CompleteGoalCommand : public ApeAnimScriptCommand {
 public:
     CompleteGoalCommand();
+    ~CompleteGoalCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -264,6 +271,7 @@ class CharacterSpecialCommand : public ApeAnimScriptCommand {
 public:
     CharacterSpecialCommand();
     explicit CharacterSpecialCommand(XmlElement* element);
+    ~CharacterSpecialCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
     // Values of "Command" (names unknown).
@@ -287,6 +295,7 @@ private:
 class EntityGameStateCommand : public ApeAnimScriptCommand {
 public:
     EntityGameStateCommand();
+    ~EntityGameStateCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -341,6 +350,7 @@ private:
 class DamageCommand : public ApeAnimScriptCommand {
 public:
     DamageCommand();
+    ~DamageCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -354,6 +364,7 @@ private:
 class DetachEntityCommand : public ApeAnimScriptCommand {
 public:
     DetachEntityCommand();
+    ~DetachEntityCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 

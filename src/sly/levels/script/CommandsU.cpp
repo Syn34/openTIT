@@ -85,6 +85,7 @@ class SpawnEntityCommand : public ApeAnimScriptCommand {
 public:
     SpawnEntityCommand();
     explicit SpawnEntityCommand(XmlElement* element);
+    ~SpawnEntityCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -107,6 +108,10 @@ private:
 
 // @func 0x00093054 SpawnEntityCommand::SpawnEntityCommand
 SpawnEntityCommand::SpawnEntityCommand() = default;
+
+// @func 0x0073F770 SpawnEntityCommand::~SpawnEntityCommand
+// @func 0x0073F7A0 SpawnEntityCommand::~SpawnEntityCommand (deleting)
+SpawnEntityCommand::~SpawnEntityCommand() = default;
 
 // @func 0x00093150 SpawnEntityCommand::SpawnEntityCommand
 SpawnEntityCommand::SpawnEntityCommand(XmlElement* element)
@@ -226,6 +231,7 @@ class SpawnRopeCommand : public ApeAnimScriptCommand {
 public:
     SpawnRopeCommand();
     explicit SpawnRopeCommand(XmlElement* element);
+    ~SpawnRopeCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -247,6 +253,10 @@ private:
 
 // @func 0x000951C0 SpawnRopeCommand::SpawnRopeCommand
 SpawnRopeCommand::SpawnRopeCommand() = default;
+
+// @func 0x0073F7F8 SpawnRopeCommand::~SpawnRopeCommand
+// @func 0x0073F828 SpawnRopeCommand::~SpawnRopeCommand (deleting)
+SpawnRopeCommand::~SpawnRopeCommand() = default;
 
 // @func 0x00095270 SpawnRopeCommand::SpawnRopeCommand
 SpawnRopeCommand::SpawnRopeCommand(XmlElement* element)
@@ -283,6 +293,7 @@ ApeAnimScriptCommand* SpawnRopeCommand::Create(XmlElement* element) const
 class HudShowTextCommand : public ApeAnimScriptCommand {
 public:
     HudShowTextCommand();
+    ~HudShowTextCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -298,6 +309,10 @@ private:
 
 // @func 0x00095F10 HudShowTextCommand::HudShowTextCommand
 HudShowTextCommand::HudShowTextCommand() = default;
+
+// @func 0x0073F880 HudShowTextCommand::~HudShowTextCommand
+// @func 0x0073F8B0 HudShowTextCommand::~HudShowTextCommand (deleting)
+HudShowTextCommand::~HudShowTextCommand() = default;
 
 // @func 0x00095F78 HudShowTextCommand::Create
 ApeAnimScriptCommand* HudShowTextCommand::Create(XmlElement* element) const
@@ -334,6 +349,7 @@ void HudShowTextCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class StopSoundsCommand : public ApeAnimScriptCommand {
 public:
     StopSoundsCommand();
+    ~StopSoundsCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -345,6 +361,10 @@ private:
 
 // @func 0x000961F0 StopSoundsCommand::StopSoundsCommand
 StopSoundsCommand::StopSoundsCommand() = default;
+
+// @func 0x0073F908 StopSoundsCommand::~StopSoundsCommand
+// @func 0x0073F938 StopSoundsCommand::~StopSoundsCommand (deleting)
+StopSoundsCommand::~StopSoundsCommand() = default;
 
 // @func 0x00096248 StopSoundsCommand::Create
 ApeAnimScriptCommand* StopSoundsCommand::Create(XmlElement* element) const
@@ -409,6 +429,7 @@ ApeAnimScriptCommand* ChildAnimLayerCommand::Create(XmlElement* element) const
 class HudStopCommand : public ApeAnimScriptCommand {
 public:
     HudStopCommand();
+    ~HudStopCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -420,6 +441,10 @@ private:
 
 // @func 0x000966D8 HudStopCommand::HudStopCommand
 HudStopCommand::HudStopCommand() = default;
+
+// @func 0x0073F990 HudStopCommand::~HudStopCommand
+// @func 0x0073F9C0 HudStopCommand::~HudStopCommand (deleting)
+HudStopCommand::~HudStopCommand() = default;
 
 // @func 0x00096730 HudStopCommand::Create
 ApeAnimScriptCommand* HudStopCommand::Create(XmlElement* element) const

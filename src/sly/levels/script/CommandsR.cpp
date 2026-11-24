@@ -84,7 +84,8 @@ void SetMusicCommand::Link()
     RefreshSound();
 }
 
-// The destructors live outside this module (0x0073EE80 / 0x0073EED8).
+// @func 0x0073EE80 SetMusicCommand::~SetMusicCommand
+// @func 0x0073EED8 SetMusicCommand::~SetMusicCommand (deleting)
 SetMusicCommand::~SetMusicCommand()
 {
     audio::SoundNameRelease(m_sound);
@@ -122,6 +123,7 @@ class SetMusicRegisterCommand : public ApeAnimScriptCommand {
 public:
     SetMusicRegisterCommand();
     explicit SetMusicRegisterCommand(XmlElement* element);
+    ~SetMusicRegisterCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -133,6 +135,10 @@ private:
 
 // @func 0x0008C6DC SetMusicRegisterCommand::SetMusicRegisterCommand
 SetMusicRegisterCommand::SetMusicRegisterCommand() = default;
+
+// @func 0x0073B800 SetMusicRegisterCommand::~SetMusicRegisterCommand
+// @func 0x0073EF4C SetMusicRegisterCommand::~SetMusicRegisterCommand (deleting)
+SetMusicRegisterCommand::~SetMusicRegisterCommand() = default;
 
 // @func 0x0008C72C SetMusicRegisterCommand::SetMusicRegisterCommand
 SetMusicRegisterCommand::SetMusicRegisterCommand(XmlElement* element)
@@ -163,11 +169,16 @@ void SetMusicRegisterCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState
 class NullCommand : public ApeAnimScriptCommand {
 public:
     NullCommand();
+    ~NullCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 };
 
 // @func 0x0008C8F0 NullCommand::NullCommand
 NullCommand::NullCommand() = default;
+
+// @func 0x0073B830 NullCommand::~NullCommand
+// @func 0x0073EFA8 NullCommand::~NullCommand (deleting)
+NullCommand::~NullCommand() = default;
 
 // @func 0x0008C938 NullCommand::Create
 ApeAnimScriptCommand* NullCommand::Create(XmlElement*) const
@@ -182,6 +193,7 @@ ApeAnimScriptCommand* NullCommand::Create(XmlElement*) const
 class EntityStatusBitCommand : public ApeAnimScriptCommand {
 public:
     EntityStatusBitCommand();
+    ~EntityStatusBitCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -195,6 +207,10 @@ private:
 
 // @func 0x0008C94C EntityStatusBitCommand::EntityStatusBitCommand
 EntityStatusBitCommand::EntityStatusBitCommand() = default;
+
+// @func 0x0073F000 EntityStatusBitCommand::~EntityStatusBitCommand
+// @func 0x0073F030 EntityStatusBitCommand::~EntityStatusBitCommand (deleting)
+EntityStatusBitCommand::~EntityStatusBitCommand() = default;
 
 // @func 0x0008C9A4 EntityStatusBitCommand::Create
 ApeAnimScriptCommand* EntityStatusBitCommand::Create(XmlElement* element) const
@@ -226,6 +242,7 @@ void EntityStatusBitCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScr
 class SetNotifyFlagCommand : public ApeAnimScriptCommand {
 public:
     SetNotifyFlagCommand();
+    ~SetNotifyFlagCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -237,6 +254,10 @@ private:
 
 // @func 0x0008CC60 SetNotifyFlagCommand::SetNotifyFlagCommand
 SetNotifyFlagCommand::SetNotifyFlagCommand() = default;
+
+// @func 0x0073F088 SetNotifyFlagCommand::~SetNotifyFlagCommand
+// @func 0x0073F0B8 SetNotifyFlagCommand::~SetNotifyFlagCommand (deleting)
+SetNotifyFlagCommand::~SetNotifyFlagCommand() = default;
 
 // @func 0x0008CCB8 SetNotifyFlagCommand::Create
 ApeAnimScriptCommand* SetNotifyFlagCommand::Create(XmlElement* element) const

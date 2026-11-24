@@ -35,6 +35,7 @@ constexpr uint32_t kBinocucomTypes[] = {AnimHash("Normal"), AnimHash("Thermal")}
 class SetBinocucomLockedCommand : public ApeAnimScriptCommand {
 public:
     SetBinocucomLockedCommand();
+    ~SetBinocucomLockedCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -44,6 +45,10 @@ private:
 
 // @func 0x00087034 SetBinocucomLockedCommand::SetBinocucomLockedCommand
 SetBinocucomLockedCommand::SetBinocucomLockedCommand() = default;
+
+// @func 0x0073E138 SetBinocucomLockedCommand::~SetBinocucomLockedCommand
+// @func 0x0073E168 SetBinocucomLockedCommand::~SetBinocucomLockedCommand (deleting)
+SetBinocucomLockedCommand::~SetBinocucomLockedCommand() = default;
 
 // @func 0x00087084 SetBinocucomLockedCommand::Create
 ApeAnimScriptCommand* SetBinocucomLockedCommand::Create(XmlElement* element) const
@@ -69,6 +74,7 @@ void SetBinocucomLockedCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptSta
 class SetBinocucomPowerCommand : public ApeAnimScriptCommand {
 public:
     SetBinocucomPowerCommand();
+    ~SetBinocucomPowerCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -78,6 +84,10 @@ private:
 
 // @func 0x000871B0 SetBinocucomPowerCommand::SetBinocucomPowerCommand
 SetBinocucomPowerCommand::SetBinocucomPowerCommand() = default;
+
+// @func 0x0073E1C0 SetBinocucomPowerCommand::~SetBinocucomPowerCommand
+// @func 0x0073E1F0 SetBinocucomPowerCommand::~SetBinocucomPowerCommand (deleting)
+SetBinocucomPowerCommand::~SetBinocucomPowerCommand() = default;
 
 // @func 0x00087210 SetBinocucomPowerCommand::Create
 ApeAnimScriptCommand* SetBinocucomPowerCommand::Create(XmlElement* element) const
@@ -99,6 +109,7 @@ void SetBinocucomPowerCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptStat
 class SetGlobalRateCommand : public ApeAnimScriptCommand {
 public:
     SetGlobalRateCommand();
+    ~SetGlobalRateCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -108,6 +119,10 @@ private:
 
 // @func 0x000872E8 SetGlobalRateCommand::SetGlobalRateCommand
 SetGlobalRateCommand::SetGlobalRateCommand() = default;
+
+// @func 0x0073E248 SetGlobalRateCommand::~SetGlobalRateCommand
+// @func 0x0073E278 SetGlobalRateCommand::~SetGlobalRateCommand (deleting)
+SetGlobalRateCommand::~SetGlobalRateCommand() = default;
 
 // @func 0x00087348 SetGlobalRateCommand::Create
 ApeAnimScriptCommand* SetGlobalRateCommand::Create(XmlElement* element) const

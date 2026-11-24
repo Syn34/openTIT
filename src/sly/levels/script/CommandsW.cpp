@@ -201,6 +201,7 @@ class SpawnRequestCommand : public ApeAnimScriptCommand {
 public:
     SpawnRequestCommand();
     explicit SpawnRequestCommand(XmlElement* element);
+    ~SpawnRequestCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -219,6 +220,10 @@ private:
 
 // @func 0x00098B4C SpawnRequestCommand::SpawnRequestCommand
 SpawnRequestCommand::SpawnRequestCommand() = default;
+
+// @func 0x0073FDA0 SpawnRequestCommand::~SpawnRequestCommand
+// @func 0x0073FDD0 SpawnRequestCommand::~SpawnRequestCommand (deleting)
+SpawnRequestCommand::~SpawnRequestCommand() = default;
 
 // @func 0x00098BE4 SpawnRequestCommand::SpawnRequestCommand
 SpawnRequestCommand::SpawnRequestCommand(XmlElement* element)
@@ -253,6 +258,7 @@ ApeAnimScriptCommand* SpawnRequestCommand::Create(XmlElement* element) const
 class ThrowPlayerCommand : public ApeAnimScriptCommand {
 public:
     ThrowPlayerCommand();
+    ~ThrowPlayerCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -266,6 +272,10 @@ private:
 
 // @func 0x00099074 ThrowPlayerCommand::ThrowPlayerCommand
 ThrowPlayerCommand::ThrowPlayerCommand() = default;
+
+// @func 0x0073FE28 ThrowPlayerCommand::~ThrowPlayerCommand
+// @func 0x0073FE58 ThrowPlayerCommand::~ThrowPlayerCommand (deleting)
+ThrowPlayerCommand::~ThrowPlayerCommand() = default;
 
 // @func 0x00099100 ThrowPlayerCommand::Create
 ApeAnimScriptCommand* ThrowPlayerCommand::Create(XmlElement* element) const

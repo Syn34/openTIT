@@ -351,6 +351,7 @@ void SeqDarkScreenCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class QueueEntityStateCommand : public ApeAnimScriptCommand {
 public:
     QueueEntityStateCommand();
+    ~QueueEntityStateCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -365,6 +366,10 @@ private:
 
 // @func 0x00099AFC QueueEntityStateCommand::QueueEntityStateCommand
 QueueEntityStateCommand::QueueEntityStateCommand() = default;
+
+// @func 0x0073FEB0 QueueEntityStateCommand::~QueueEntityStateCommand
+// @func 0x0073FEE0 QueueEntityStateCommand::~QueueEntityStateCommand (deleting)
+QueueEntityStateCommand::~QueueEntityStateCommand() = default;
 
 // @func 0x00099B64 QueueEntityStateCommand::Create
 ApeAnimScriptCommand* QueueEntityStateCommand::Create(XmlElement* element) const

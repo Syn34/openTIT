@@ -63,6 +63,7 @@ constexpr float kHalfPi = 1.5707964f;
 class DetachFromParentCommand : public ApeAnimScriptCommand {
 public:
     DetachFromParentCommand();
+    ~DetachFromParentCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -73,6 +74,10 @@ private:
 
 // @func 0x00071ED4 DetachFromParentCommand::DetachFromParentCommand
 DetachFromParentCommand::DetachFromParentCommand() = default;
+
+// @func 0x0073C4D8 DetachFromParentCommand::~DetachFromParentCommand
+// @func 0x0073C508 DetachFromParentCommand::~DetachFromParentCommand (deleting)
+DetachFromParentCommand::~DetachFromParentCommand() = default;
 
 // @func 0x00071F1C DetachFromParentCommand::Create
 ApeAnimScriptCommand* DetachFromParentCommand::Create(XmlElement* element) const
@@ -102,6 +107,7 @@ void DetachFromParentCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimSc
 class WaveDistortCommand : public ApeAnimScriptCommand {
 public:
     WaveDistortCommand();
+    ~WaveDistortCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -117,6 +123,10 @@ private:
 
 // @func 0x000720C0 WaveDistortCommand::WaveDistortCommand
 WaveDistortCommand::WaveDistortCommand() = default;
+
+// @func 0x0073C560 WaveDistortCommand::~WaveDistortCommand
+// @func 0x0073C590 WaveDistortCommand::~WaveDistortCommand (deleting)
+WaveDistortCommand::~WaveDistortCommand() = default;
 
 // @func 0x00072138 WaveDistortCommand::Create
 ApeAnimScriptCommand* WaveDistortCommand::Create(XmlElement* element) const
@@ -142,6 +152,7 @@ ApeAnimScriptCommand* WaveDistortCommand::Create(XmlElement* element) const
 class EnableCollisionCommand : public ApeAnimScriptCommand {
 public:
     EnableCollisionCommand();
+    ~EnableCollisionCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -154,6 +165,10 @@ private:
 
 // @func 0x0007240C EnableCollisionCommand::EnableCollisionCommand
 EnableCollisionCommand::EnableCollisionCommand() = default;
+
+// @func 0x0073C5E8 EnableCollisionCommand::~EnableCollisionCommand
+// @func 0x0073C618 EnableCollisionCommand::~EnableCollisionCommand (deleting)
+EnableCollisionCommand::~EnableCollisionCommand() = default;
 
 // @func 0x00072464 EnableCollisionCommand::Create
 ApeAnimScriptCommand* EnableCollisionCommand::Create(XmlElement* element) const
@@ -180,6 +195,7 @@ ApeAnimScriptCommand* EnableCollisionCommand::Create(XmlElement* element) const
 class EnableComponentCommand : public ApeAnimScriptCommand {
 public:
     EnableComponentCommand();
+    ~EnableComponentCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -192,6 +208,10 @@ private:
 
 // @func 0x000727DC EnableComponentCommand::EnableComponentCommand
 EnableComponentCommand::EnableComponentCommand() = default;
+
+// @func 0x0073C670 EnableComponentCommand::~EnableComponentCommand
+// @func 0x0073C6A0 EnableComponentCommand::~EnableComponentCommand (deleting)
+EnableComponentCommand::~EnableComponentCommand() = default;
 
 // @func 0x0007283C EnableComponentCommand::Create
 ApeAnimScriptCommand* EnableComponentCommand::Create(XmlElement* element) const
@@ -214,6 +234,7 @@ ApeAnimScriptCommand* EnableComponentCommand::Create(XmlElement* element) const
 class EnableWorldFlagCommand : public ApeAnimScriptCommand {
 public:
     EnableWorldFlagCommand();
+    ~EnableWorldFlagCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -223,6 +244,10 @@ private:
 
 // @func 0x00072B64 EnableWorldFlagCommand::EnableWorldFlagCommand
 EnableWorldFlagCommand::EnableWorldFlagCommand() = default;
+
+// @func 0x0073C6F8 EnableWorldFlagCommand::~EnableWorldFlagCommand
+// @func 0x0073C728 EnableWorldFlagCommand::~EnableWorldFlagCommand (deleting)
+EnableWorldFlagCommand::~EnableWorldFlagCommand() = default;
 
 // @func 0x00072BAC EnableWorldFlagCommand::Create
 ApeAnimScriptCommand* EnableWorldFlagCommand::Create(XmlElement* element) const
@@ -244,6 +269,7 @@ void EnableWorldFlagCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*
 class EnableDarkScreenCommand : public ApeAnimScriptCommand {
 public:
     EnableDarkScreenCommand();
+    ~EnableDarkScreenCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -256,6 +282,10 @@ private:
 
 // @func 0x00072C6C EnableDarkScreenCommand::EnableDarkScreenCommand
 EnableDarkScreenCommand::EnableDarkScreenCommand() = default;
+
+// @func 0x0073C780 EnableDarkScreenCommand::~EnableDarkScreenCommand
+// @func 0x0073C7B0 EnableDarkScreenCommand::~EnableDarkScreenCommand (deleting)
+EnableDarkScreenCommand::~EnableDarkScreenCommand() = default;
 
 // @func 0x00072CC8 EnableDarkScreenCommand::Create
 ApeAnimScriptCommand* EnableDarkScreenCommand::Create(XmlElement* element) const
@@ -282,6 +312,7 @@ void EnableDarkScreenCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState
 class EnableLaserCommand : public ApeAnimScriptCommand {
 public:
     EnableLaserCommand();
+    ~EnableLaserCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -298,6 +329,10 @@ private:
 
 // @func 0x00072E38 EnableLaserCommand::EnableLaserCommand
 EnableLaserCommand::EnableLaserCommand() = default;
+
+// @func 0x0073C808 EnableLaserCommand::~EnableLaserCommand
+// @func 0x0073C838 EnableLaserCommand::~EnableLaserCommand (deleting)
+EnableLaserCommand::~EnableLaserCommand() = default;
 
 // @func 0x00072EA8 EnableLaserCommand::Create
 ApeAnimScriptCommand* EnableLaserCommand::Create(XmlElement* element) const
@@ -324,6 +359,7 @@ ApeAnimScriptCommand* EnableLaserCommand::Create(XmlElement* element) const
 class EnableGlobalSwitchCommand : public ApeAnimScriptCommand {
 public:
     EnableGlobalSwitchCommand();
+    ~EnableGlobalSwitchCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -333,6 +369,10 @@ private:
 
 // @func 0x00073498 EnableGlobalSwitchCommand::EnableGlobalSwitchCommand
 EnableGlobalSwitchCommand::EnableGlobalSwitchCommand() = default;
+
+// @func 0x0073B5D8 EnableGlobalSwitchCommand::~EnableGlobalSwitchCommand
+// @func 0x0073C890 EnableGlobalSwitchCommand::~EnableGlobalSwitchCommand (deleting)
+EnableGlobalSwitchCommand::~EnableGlobalSwitchCommand() = default;
 
 // @func 0x000734E0 EnableGlobalSwitchCommand::Create
 ApeAnimScriptCommand* EnableGlobalSwitchCommand::Create(XmlElement* element) const
@@ -354,6 +394,7 @@ void EnableGlobalSwitchCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptSta
 class EnableSentryLightCommand : public ApeAnimScriptCommand {
 public:
     EnableSentryLightCommand();
+    ~EnableSentryLightCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -367,6 +408,10 @@ private:
 
 // @func 0x00073598 EnableSentryLightCommand::EnableSentryLightCommand
 EnableSentryLightCommand::EnableSentryLightCommand() = default;
+
+// @func 0x0073C8E8 EnableSentryLightCommand::~EnableSentryLightCommand
+// @func 0x0073C918 EnableSentryLightCommand::~EnableSentryLightCommand (deleting)
+EnableSentryLightCommand::~EnableSentryLightCommand() = default;
 
 // @func 0x00073600 EnableSentryLightCommand::Create
 ApeAnimScriptCommand* EnableSentryLightCommand::Create(XmlElement* element) const
@@ -389,6 +434,7 @@ ApeAnimScriptCommand* EnableSentryLightCommand::Create(XmlElement* element) cons
 class EnableSpawnerCommand : public ApeAnimScriptCommand {
 public:
     EnableSpawnerCommand();
+    ~EnableSpawnerCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -403,6 +449,10 @@ private:
 
 // @func 0x000738B0 EnableSpawnerCommand::EnableSpawnerCommand
 EnableSpawnerCommand::EnableSpawnerCommand() = default;
+
+// @func 0x0073C970 EnableSpawnerCommand::~EnableSpawnerCommand
+// @func 0x0073C9A0 EnableSpawnerCommand::~EnableSpawnerCommand (deleting)
+EnableSpawnerCommand::~EnableSpawnerCommand() = default;
 
 // @func 0x00073910 EnableSpawnerCommand::Create
 ApeAnimScriptCommand* EnableSpawnerCommand::Create(XmlElement* element) const
@@ -424,6 +474,7 @@ ApeAnimScriptCommand* EnableSpawnerCommand::Create(XmlElement* element) const
 class EnableSpawnerGroupCommand : public ApeAnimScriptCommand {
 public:
     EnableSpawnerGroupCommand();
+    ~EnableSpawnerGroupCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -438,6 +489,10 @@ private:
 
 // @func 0x00073CB8 EnableSpawnerGroupCommand::EnableSpawnerGroupCommand
 EnableSpawnerGroupCommand::EnableSpawnerGroupCommand() = default;
+
+// @func 0x0073CA28 EnableSpawnerGroupCommand::~EnableSpawnerGroupCommand
+// @func 0x0073CA58 EnableSpawnerGroupCommand::~EnableSpawnerGroupCommand (deleting)
+EnableSpawnerGroupCommand::~EnableSpawnerGroupCommand() = default;
 
 // @func 0x00073D18 EnableSpawnerGroupCommand::Create
 ApeAnimScriptCommand* EnableSpawnerGroupCommand::Create(XmlElement* element) const

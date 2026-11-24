@@ -98,6 +98,7 @@ ApeAnimScriptCommand* ImpulseCommand::Create(XmlElement* element) const
 class InputMoverCommand : public ApeAnimScriptCommand {
 public:
     InputMoverCommand();
+    ~InputMoverCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -111,6 +112,10 @@ private:
 
 // @func 0x0007FFA8 InputMoverCommand::InputMoverCommand
 InputMoverCommand::InputMoverCommand() = default;
+
+// @func 0x0073D3B8 InputMoverCommand::~InputMoverCommand
+// @func 0x0073D3E8 InputMoverCommand::~InputMoverCommand (deleting)
+InputMoverCommand::~InputMoverCommand() = default;
 
 // @func 0x00080010 InputMoverCommand::Create
 ApeAnimScriptCommand* InputMoverCommand::Create(XmlElement* element) const
@@ -135,6 +140,7 @@ class CameraWeightCommand : public ApeAnimScriptCommand {
 public:
     CameraWeightCommand();
     explicit CameraWeightCommand(XmlElement* element);
+    ~CameraWeightCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -146,6 +152,10 @@ private:
 
 // @func 0x000802E0 CameraWeightCommand::CameraWeightCommand
 CameraWeightCommand::CameraWeightCommand() = default;
+
+// @func 0x0073D440 CameraWeightCommand::~CameraWeightCommand
+// @func 0x0073D470 CameraWeightCommand::~CameraWeightCommand (deleting)
+CameraWeightCommand::~CameraWeightCommand() = default;
 
 // @func 0x00080340 CameraWeightCommand::CameraWeightCommand
 CameraWeightCommand::CameraWeightCommand(XmlElement* element)
@@ -211,6 +221,7 @@ ApeAnimScriptCommand* MsDecibelCommand::Create(XmlElement*) const
 class KillCommand : public ApeAnimScriptCommand {
 public:
     KillCommand();
+    ~KillCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -222,6 +233,10 @@ private:
 
 // @func 0x00080720 KillCommand::KillCommand
 KillCommand::KillCommand() = default;
+
+// @func 0x0073D4C8 KillCommand::~KillCommand
+// @func 0x0073D4F8 KillCommand::~KillCommand (deleting)
+KillCommand::~KillCommand() = default;
 
 // @func 0x00080778 KillCommand::Create
 ApeAnimScriptCommand* KillCommand::Create(XmlElement* element) const
@@ -242,6 +257,7 @@ ApeAnimScriptCommand* KillCommand::Create(XmlElement* element) const
 class KillSequenceCommand : public ApeAnimScriptCommand {
 public:
     KillSequenceCommand();
+    ~KillSequenceCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -251,6 +267,10 @@ private:
 
 // @func 0x00080A88 KillSequenceCommand::KillSequenceCommand
 KillSequenceCommand::KillSequenceCommand() = default;
+
+// @func 0x0073D550 KillSequenceCommand::~KillSequenceCommand
+// @func 0x0073D580 KillSequenceCommand::~KillSequenceCommand (deleting)
+KillSequenceCommand::~KillSequenceCommand() = default;
 
 // @func 0x00080AD0 KillSequenceCommand::Create
 ApeAnimScriptCommand* KillSequenceCommand::Create(XmlElement* element) const
@@ -272,6 +292,7 @@ void KillSequenceCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class LoadLevelCommand : public ApeAnimScriptCommand {
 public:
     LoadLevelCommand();
+    ~LoadLevelCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -281,6 +302,10 @@ private:
 
 // @func 0x00080B9C LoadLevelCommand::LoadLevelCommand
 LoadLevelCommand::LoadLevelCommand() = default;
+
+// @func 0x0073D5D8 LoadLevelCommand::~LoadLevelCommand
+// @func 0x0073D608 LoadLevelCommand::~LoadLevelCommand (deleting)
+LoadLevelCommand::~LoadLevelCommand() = default;
 
 // @func 0x00080BE4 LoadLevelCommand::Create
 ApeAnimScriptCommand* LoadLevelCommand::Create(XmlElement* element) const
@@ -309,6 +334,7 @@ class MapEntityToVarCommand : public ApeAnimScriptCommand {
 public:
     MapEntityToVarCommand();
     explicit MapEntityToVarCommand(XmlElement* element);
+    ~MapEntityToVarCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -327,6 +353,10 @@ private:
 
 // @func 0x00080CF8 MapEntityToVarCommand::MapEntityToVarCommand
 MapEntityToVarCommand::MapEntityToVarCommand() = default;
+
+// @func 0x0073D660 MapEntityToVarCommand::~MapEntityToVarCommand
+// @func 0x0073D690 MapEntityToVarCommand::~MapEntityToVarCommand (deleting)
+MapEntityToVarCommand::~MapEntityToVarCommand() = default;
 
 // @func 0x00080D68 MapEntityToVarCommand::MapEntityToVarCommand
 MapEntityToVarCommand::MapEntityToVarCommand(XmlElement* element)

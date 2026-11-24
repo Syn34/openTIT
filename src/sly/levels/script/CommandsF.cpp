@@ -131,6 +131,7 @@ ApeAnimScriptCommand* EntityKillFxCommand::Create(XmlElement* element) const
 class EntityGetCollectInfoCommand : public ApeAnimScriptCommand {
 public:
     EntityGetCollectInfoCommand();
+    ~EntityGetCollectInfoCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -141,6 +142,10 @@ private:
 
 // @func 0x000747D8 EntityGetCollectInfoCommand::EntityGetCollectInfoCommand
 EntityGetCollectInfoCommand::EntityGetCollectInfoCommand() = default;
+
+// @func 0x0073CAB0 EntityGetCollectInfoCommand::~EntityGetCollectInfoCommand
+// @func 0x0073CAE0 EntityGetCollectInfoCommand::~EntityGetCollectInfoCommand (deleting)
+EntityGetCollectInfoCommand::~EntityGetCollectInfoCommand() = default;
 
 // @func 0x00074838 EntityGetCollectInfoCommand::Create
 ApeAnimScriptCommand* EntityGetCollectInfoCommand::Create(XmlElement* element) const
@@ -163,6 +168,7 @@ ApeAnimScriptCommand* EntityGetCollectInfoCommand::Create(XmlElement* element) c
 class EntitySetEnabledCommand : public ApeAnimScriptCommand {
 public:
     EntitySetEnabledCommand();
+    ~EntitySetEnabledCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -175,6 +181,10 @@ private:
 
 // @func 0x00074CDC EntitySetEnabledCommand::EntitySetEnabledCommand
 EntitySetEnabledCommand::EntitySetEnabledCommand() = default;
+
+// @func 0x0073CB38 EntitySetEnabledCommand::~EntitySetEnabledCommand
+// @func 0x0073CB68 EntitySetEnabledCommand::~EntitySetEnabledCommand (deleting)
+EntitySetEnabledCommand::~EntitySetEnabledCommand() = default;
 
 // @func 0x00074D34 EntitySetEnabledCommand::Create
 ApeAnimScriptCommand* EntitySetEnabledCommand::Create(XmlElement* element) const
@@ -196,6 +206,7 @@ ApeAnimScriptCommand* EntitySetEnabledCommand::Create(XmlElement* element) const
 class EntitySetScriptStateCommand : public ApeAnimScriptCommand {
 public:
     EntitySetScriptStateCommand();
+    ~EntitySetScriptStateCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -209,6 +220,10 @@ private:
 
 // @func 0x000750DC EntitySetScriptStateCommand::EntitySetScriptStateCommand
 EntitySetScriptStateCommand::EntitySetScriptStateCommand() = default;
+
+// @func 0x0073CBC0 EntitySetScriptStateCommand::~EntitySetScriptStateCommand
+// @func 0x0073CBF0 EntitySetScriptStateCommand::~EntitySetScriptStateCommand (deleting)
+EntitySetScriptStateCommand::~EntitySetScriptStateCommand() = default;
 
 // @func 0x00075144 EntitySetScriptStateCommand::Create
 ApeAnimScriptCommand* EntitySetScriptStateCommand::Create(XmlElement* element) const
@@ -231,6 +246,7 @@ ApeAnimScriptCommand* EntitySetScriptStateCommand::Create(XmlElement* element) c
 class EntitySetGadgetStateCommand : public ApeAnimScriptCommand {
 public:
     EntitySetGadgetStateCommand();
+    ~EntitySetGadgetStateCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -242,6 +258,10 @@ private:
 
 // @func 0x00075424 EntitySetGadgetStateCommand::EntitySetGadgetStateCommand
 EntitySetGadgetStateCommand::EntitySetGadgetStateCommand() = default;
+
+// @func 0x0073CC48 EntitySetGadgetStateCommand::~EntitySetGadgetStateCommand
+// @func 0x0073CC78 EntitySetGadgetStateCommand::~EntitySetGadgetStateCommand (deleting)
+EntitySetGadgetStateCommand::~EntitySetGadgetStateCommand() = default;
 
 // @func 0x0007547C EntitySetGadgetStateCommand::Create
 ApeAnimScriptCommand* EntitySetGadgetStateCommand::Create(XmlElement* element) const
@@ -262,6 +282,7 @@ ApeAnimScriptCommand* EntitySetGadgetStateCommand::Create(XmlElement* element) c
 class EntitySetNoTargetCommand : public ApeAnimScriptCommand {
 public:
     EntitySetNoTargetCommand();
+    ~EntitySetNoTargetCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -273,6 +294,10 @@ private:
 
 // @func 0x00075710 EntitySetNoTargetCommand::EntitySetNoTargetCommand
 EntitySetNoTargetCommand::EntitySetNoTargetCommand() = default;
+
+// @func 0x0073CCD0 EntitySetNoTargetCommand::~EntitySetNoTargetCommand
+// @func 0x0073CD00 EntitySetNoTargetCommand::~EntitySetNoTargetCommand (deleting)
+EntitySetNoTargetCommand::~EntitySetNoTargetCommand() = default;
 
 // @func 0x00075768 EntitySetNoTargetCommand::Create
 ApeAnimScriptCommand* EntitySetNoTargetCommand::Create(XmlElement* element) const
@@ -293,6 +318,7 @@ ApeAnimScriptCommand* EntitySetNoTargetCommand::Create(XmlElement* element) cons
 class EntitySetVisibleCommand : public ApeAnimScriptCommand {
 public:
     EntitySetVisibleCommand();
+    ~EntitySetVisibleCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -307,6 +333,10 @@ private:
 
 // @func 0x00075A14 EntitySetVisibleCommand::EntitySetVisibleCommand
 EntitySetVisibleCommand::EntitySetVisibleCommand() = default;
+
+// @func 0x0073CD58 EntitySetVisibleCommand::~EntitySetVisibleCommand
+// @func 0x0073CD88 EntitySetVisibleCommand::~EntitySetVisibleCommand (deleting)
+EntitySetVisibleCommand::~EntitySetVisibleCommand() = default;
 
 // @func 0x00075A7C EntitySetVisibleCommand::Create
 ApeAnimScriptCommand* EntitySetVisibleCommand::Create(XmlElement* element) const
@@ -334,6 +364,7 @@ public:
 
     FadeDesaturationCommand();
     explicit FadeDesaturationCommand(XmlElement* element);
+    ~FadeDesaturationCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -350,6 +381,10 @@ private:
 
 // @func 0x00075D14 FadeDesaturationCommand::FadeDesaturationCommand
 FadeDesaturationCommand::FadeDesaturationCommand() = default;
+
+// @func 0x0073CDE0 FadeDesaturationCommand::~FadeDesaturationCommand
+// @func 0x0073CE10 FadeDesaturationCommand::~FadeDesaturationCommand (deleting)
+FadeDesaturationCommand::~FadeDesaturationCommand() = default;
 
 // @func 0x00075DD4 FadeDesaturationCommand::FadeDesaturationCommand
 FadeDesaturationCommand::FadeDesaturationCommand(XmlElement* element)
@@ -629,6 +664,7 @@ class FireProjectileCommand : public ApeAnimScriptCommand {
 public:
     FireProjectileCommand();
     explicit FireProjectileCommand(XmlElement* element);
+    ~FireProjectileCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -659,6 +695,10 @@ private:
 
 // @func 0x00077FE0 FireProjectileCommand::FireProjectileCommand
 FireProjectileCommand::FireProjectileCommand() = default;
+
+// @func 0x0073CE68 FireProjectileCommand::~FireProjectileCommand
+// @func 0x0073CE98 FireProjectileCommand::~FireProjectileCommand (deleting)
+FireProjectileCommand::~FireProjectileCommand() = default;
 
 // @func 0x000780D0 FireProjectileCommand::FireProjectileCommand
 FireProjectileCommand::FireProjectileCommand(XmlElement* element)
