@@ -33,7 +33,7 @@ public:
     void Update(float dt) override;
     void OnMessage(const entity::EntityMessage& msg) override;
     float FacingLockRadius() override;
-    bool AllowsInteraction() override { return state != kState_Dead; }
+    bool AllowsInteraction() override;
     const char* StateName(int s) override;
     void ExitState() override;
     void OnProxyPointReached() override;

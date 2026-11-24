@@ -10,6 +10,7 @@
 #include "sly/game/WorldInterface.h"
 #include "sly/levels/ai/AIHooks.h"
 #include "sly/levels/ai/AIProxyPoints.h"
+#include "sly/levels/ai/AITuning.h"
 
 #include <cmath>
 #include <limits>
@@ -284,6 +285,7 @@ void AIController::Attach(Entity* newEntity)
         manager->Register(this);
 }
 
+// @func 0x00012460 AIController::DropTarget
 void AIController::DropTarget()
 {
     if (!target)
@@ -939,6 +941,67 @@ Entity* AIManager::PickTarget(const AIController* controller) const
         }
     }
     return best;
+}
+
+// @func 0x0001B2F4 AIManager::SetEntitiesVisible
+void AIManager::SetEntitiesVisible(bool visible)
+{
+    for (int i = 0; i < controllerCount; ++i) {
+        if (!controllers[i]->IsAlly())
+            controllers[i]->entity->SetVisibilityDeferred(visible, false);
+    }
+}
+
+// @func 0x0001B3BC AIManager::BroadcastScriptCommand
+void AIManager::BroadcastScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2)
+{
+    for (int i = 0; i < activeCount; ++i)
+        active[i]->OnScriptCommand(command, arg1, arg2);
+}
+
+// @func 0x0001B4A0 AlertEnemies
+void AlertEnemies(Entity* source, int noise, bool loud)
+{
+    constexpr uint32_t kGroup_Enemies = 0xCB186A06u;
+    constexpr uint32_t kEvent_Noise = 0x795BCF46u;       // NOTE: event names unknown
+    constexpr uint32_t kEvent_LoudNoise = 0x39EE3E3Au;
+    float range = 0.0f;
+    if (noise == kNoise_Normal)
+        range = 15.0f;
+    else if (noise == kNoise_Footsteps)
+        range = g_aiAudioAlertRangeFootsteps;
+    else if (noise == kNoise_Bottle)
+        range = g_aiAudioAlertRangeBottle;
+    BroadcastInRange(source, range, kGroup_Enemies, loud ? kEvent_LoudNoise : kEvent_Noise, 0);
+}
+
+// @func 0x0001BE50 AIThreatState::ConsumeChaseVO
+bool AIThreatState::ConsumeChaseVO()
+{
+    const bool ready = chaseVOTimer < 0.0f;
+    if (ready)
+        chaseVOTimer = g_aiChaseVOFrequency;
+    return ready;
+}
+
+// @func 0x0001BE8C AIThreatState::RestartAttackRecovery
+void AIThreatState::RestartAttackRecovery()
+{
+    attackRecovery = g_aiAttackPlayerRecoveryTime;
+}
+
+// @func 0x0001BEA0 AIThreatState::NotifyListener
+void AIThreatState::NotifyListener()
+{
+    if (listener)
+        listener->OnNotify();
+}
+
+// @func 0x0001BEE8 AIThreatState::NotifyListener (value)
+void AIThreatState::NotifyListener(uint32_t value)
+{
+    if (listener)
+        listener->OnValue(value);
 }
 
 // @func 0x0001AC68 AIManager::ClearSightings

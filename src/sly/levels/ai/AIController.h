@@ -309,6 +309,11 @@ public:
     // height (0x000191B0).
     void OnLevelLoaded();
     void ClearSightings();       // 0x0001AC68
+    // Shows or hides every non-ally AI entity (0x0001B2F4).
+    void SetEntitiesVisible(bool visible);
+    // Hands a script command to every controller in the active list
+    // (0x0001B3BC).
+    void BroadcastScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2);
     // Target for an enemy: the nearest priority target, else the nearest of
     // the player and the allies (0x0001AC80).
     Entity* PickTarget(const AIController* controller) const;
@@ -331,6 +336,38 @@ public:
 // The level's AI manager (null between levels).
 AIManager* GetAIManager();
 void SetAIManager(AIManager* manager);
+
+// Noise the enemies may hear (AlertEnemies kinds).
+enum AINoise : int {
+    kNoise_Normal = 0,      // fixed 15 m
+    kNoise_Footsteps = 1,   // AI.AudioAlertRangeFootsteps
+    kNoise_Bottle = 2,      // AI.AudioAlertRangeBottle
+};
+// Tells the enemies within the noise's range of `source` (0x0001B4A0).
+// NOTE: the console passes an unused first argument.
+void AlertEnemies(Entity* source, int noise, bool loud);
+
+// Per-player threat timers (NOTE: owner and name unknown; the character
+// module and the game loop use them).
+struct AIThreatState {
+    // True (and restarted) when the chase voice-over may play (0x0001BE50).
+    bool ConsumeChaseVO();
+    // Restarts the recovery time after the player was attacked (0x0001BE8C).
+    void RestartAttackRecovery();
+    // Forwards to the listener (slots 9/8) (0x0001BEA0 / 0x0001BEE8).
+    void NotifyListener();
+    void NotifyListener(uint32_t value);
+
+    class Listener {
+    public:
+        virtual ~Listener() = default;
+        virtual void OnValue(uint32_t value) { (void)value; }   // slot 8
+        virtual void OnNotify() {}                             // slot 9
+    };
+    Listener* listener = nullptr;    // +0x24
+    float attackRecovery = 0.0f;     // +0x44
+    float chaseVOTimer = 0.0f;       // +0x48
+};
 
 // Point on segment [a, b] closest to p (0x00013E40).
 ape::Vec3 ClosestPointOnSegment(const ape::Vec3& a, const ape::Vec3& b, const ape::Vec3& p);
