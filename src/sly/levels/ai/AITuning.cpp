@@ -13,6 +13,12 @@ ape::TuningFloat g_aiAudioAlertRangeNormal("AI.AudioAlertRangeNormal", 15.0f);
 ape::TuningFloat g_aiAudioAlertRangeFootsteps("AI.AudioAlertRangeFootsteps", 7.5f);
 ape::TuningFloat g_aiAudioAlertRangeBottle("AI.AudioAlertRangeBottle", 15.0f);
 
+ape::TuningFloat g_bismarqueTargetPointDistanceWeight("Entity.Bismarque.Movement.TargetPointDistanceWeight", -0.1f);
+ape::TuningFloat g_bismarqueTargetPointAngleWeight("Entity.Bismarque.Movement.TargetPointAngleWeight", -1.0f);
+ape::TuningFloat g_bismarqueTargetPointDeltaOrientationWeight(
+    "Entity.Bismarque.Movement.TargetPointDeltaOrientationWeight", -1.0f);
+ape::TuningFloat g_bismarqueCounterAttackDistMin("Entity.Bismarque.Counter.AttackDistMin", 3.0f);
+
 } // namespace ai
 } // namespace levels
 } // namespace sly

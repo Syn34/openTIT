@@ -18,6 +18,12 @@ extern ape::TuningFloat g_aiAudioAlertRangeNormal;      // 0x00F9CC10
 extern ape::TuningFloat g_aiAudioAlertRangeFootsteps;   // 0x00F9CC5C
 extern ape::TuningFloat g_aiAudioAlertRangeBottle;      // 0x00F9CCA8
 
+// Bismarque boss.
+extern ape::TuningFloat g_bismarqueTargetPointDistanceWeight;          // 0x00F95538
+extern ape::TuningFloat g_bismarqueTargetPointAngleWeight;             // 0x00F95584
+extern ape::TuningFloat g_bismarqueTargetPointDeltaOrientationWeight;  // 0x00F955D0
+extern ape::TuningFloat g_bismarqueCounterAttackDistMin;               // 0x00F96164
+
 } // namespace ai
 } // namespace levels
 } // namespace sly

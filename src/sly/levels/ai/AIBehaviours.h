@@ -10,7 +10,7 @@
 #include "sly/levels/ai/AIController.h"
 #include "sly/levels/ai/AIHooks.h"
 
-namespace ape::world { class ApeSplineInstance; }
+namespace ape::world { class ApeObj; class ApeSplineInstance; }
 
 namespace sly {
 namespace levels {
@@ -244,6 +244,23 @@ public:
 // Bosses (vtables 0x00B0E888, 0x00B0E9C0, 0x00B0EAF8, 0x00B0EC30).
 class BismarqueAI : public AIController {
 public:
+    ape::Vec3 GetTargetPosition() override;
+    bool Think(float dt) override;
+    float GravitySpeed() override;
+
+    // Moves the two ground markers to their anchors (0x0004399C).
+    void UpdateMarkers();
+    // Shows or hides the two ground markers (0x00043A80).
+    void SetMarkersVisible(bool first, bool second);
+    // Weight of moving to `point` facing `direction`: lower distance and
+    // turning count better with the default (negative) weights (0x00044318).
+    float ScoreTargetPoint(const ape::Vec3& point, const ape::Vec3& direction) const;
+    // Counter attack cool-down ran out and the player is close (0x00046638).
+    bool CounterAttackReady(float dt);
+
+    ape::world::ApeObj* markers[2] = {};   // +0x290
+    ape::world::ApeObj* anchors[2] = {};   // +0x298
+    float counterCooldown = 0.0f;          // +0x2EC
 };
 class ElJefeAI : public AIController {
 public:
