@@ -291,7 +291,10 @@ struct AIDamageInfo {
 // One remembered sighting (0x50 bytes on the console; eight per block).
 struct AISighting {
     Entity* entity = nullptr;                    // +0x00
-    uint8_t data[0x4C] = {};                     // NOTE: rest not decoded
+    uint32_t field_04 = 0;                       // +0x04
+    uint32_t kind = 0;                           // +0x08
+    int32_t bone = -1;                           // +0x0C bone of the entity it refers to
+    uint8_t data[0x40] = {};                     // NOTE: rest not decoded
 };
 
 // The level's AI manager (console pointer 0x00F557F0).
@@ -309,6 +312,12 @@ public:
     void Unregister(AIController* controller);
     // Forgets the sighting of `entity` (0x0001285C).
     void ForgetSighting(Entity* entity);
+    // Forgets the sightings of `entity` of the given kind whose bone still
+    // exists (0x0001BCF4).
+    void ForgetSighting(Entity* entity, uint32_t kind);
+    // Nearest listed, living enemy within `radius` of `position` (optionally
+    // only engaged ones) (0x0001AE6C).
+    Entity* FindNearestEnemy(float radius, const ape::Vec3& position, bool engagedOnly) const;
     // Drops priority targets that are no longer alive (0x0001A7C0).
     void PrunePriorityTargets();
     // Level start: links the proxy point patrol chains and sets the kill

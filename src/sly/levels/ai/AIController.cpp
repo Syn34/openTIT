@@ -353,6 +353,39 @@ void AIManager::ForgetSighting(Entity* forget)
     }
 }
 
+// @func 0x0001BCF4 AIManager::ForgetSighting (kind)
+void AIManager::ForgetSighting(Entity* forget, uint32_t kind)
+{
+    for (int i = 0; i < sightingCount; ++i) {
+        AISighting* sighting = sightings[i];
+        if (sighting->entity == forget && forget->GetBone(sighting->bone) && sighting->kind == kind) {
+            --sightingCount;
+            std::swap(sightings[i], sightings[sightingCount]);
+            --i;
+        }
+    }
+}
+
+// @func 0x0001AE6C AIManager::FindNearestEnemy
+Entity* AIManager::FindNearestEnemy(float radius, const ape::Vec3& position, bool engagedOnly) const
+{
+    Entity* best = nullptr;
+    float bestDist = radius * radius;
+    for (int i = 0; i < controllerCount; ++i) {
+        AIController* controller = controllers[i];
+        if (!controller->IsListedActive() || controller->IsCharacterDead())
+            continue;
+        if (engagedOnly && !controller->IsEngaged())
+            continue;
+        const float d = DistanceSq(position, controller->entity->Position());
+        if (d < bestDist) {
+            bestDist = d;
+            best = controller->entity;
+        }
+    }
+    return best;
+}
+
 // @func 0x00012928 AIController::Detach
 void AIController::Detach()
 {
