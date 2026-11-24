@@ -31,6 +31,9 @@ void GameWorldSetState(int, int) {}
 void GameWorldSetStateData(uint32_t, uint32_t) {}
 uint32_t UnlockableCount() { return 0; }
 uint32_t UnlockableKey(uint32_t) { return 0; }
+Unlockable* UnlockableAt(uint32_t) { return nullptr; }
+uint32_t UnlockableGroup(uint32_t) { return 0; }
+bool CurrentLevelJobValue(uint32_t*) { return false; }
 void TargetingSetEnabled(void*, bool) {}
 
 // @func 0x002E1220 JobManager::FindEpisode
@@ -261,6 +264,32 @@ void JobManager::FinishJobInstance()
             episodeFlags = static_cast<uint16_t>(episodeFlags | 0x20u);
     }
     ResetRunningJob();
+}
+
+// @func 0x002E2740 JobManager::IsJobValueFlagged
+bool JobManager::IsJobValueFlagged(uint32_t value) const
+{
+    const PlayerProgress& progress = CurrentProgress();
+    if (value == 0)
+        return (progress.episodes[currentJob->episode].flags & 0x20u) != 0;
+    uint32_t levelValue = 0;
+    if (CurrentLevelJobValue(&levelValue) && levelValue == value)
+        return true;
+    for (uint32_t i = 0; i < jobCount; ++i) {
+        if (jobs[i].field_32C == value)
+            return (progress.episodes[jobs[i].episode].flags & 0x20u) != 0;
+    }
+    return false;
+}
+
+// @func 0x002E6FC0 CollectUnlockables
+void CollectUnlockables(uint32_t group, ape::ApeTArray<Unlockable*>& out)
+{
+    const uint32_t count = UnlockableCount();
+    for (uint32_t i = 0; i < count; ++i) {
+        if (UnlockableGroup(i) == group)
+            out.PushBack(UnlockableAt(i));
+    }
 }
 
 // @func 0x002E2874 UnlockByKey

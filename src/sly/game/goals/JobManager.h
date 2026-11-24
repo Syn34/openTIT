@@ -106,6 +106,9 @@ public:
     // Ends the running job instance, first updating its episode's flag 0x20
     // (0x002E5060).
     void FinishJobInstance();
+    // The job with value `value` (0: the current job) has its episode's
+    // flag 0x20; the running level's own job counts as flagged (0x002E2740).
+    bool IsJobValueFlagged(uint32_t value) const;
 
     Job* jobs = nullptr;             // +0x14
     uint32_t jobCount = 0;           // +0x18
@@ -157,6 +160,14 @@ void UnlockByKey(uint32_t key);
 // Unlockables (array 0x010681FC, count 0x01068204; key at record +0x60).
 uint32_t UnlockableCount();
 uint32_t UnlockableKey(uint32_t index);
+struct Unlockable;
+Unlockable* UnlockableAt(uint32_t index);
+uint32_t UnlockableGroup(uint32_t index);   // record +0x68
+// Appends the unlockables of `group` to `out` (0x002E6FC0).
+void CollectUnlockables(uint32_t group, ape::ApeTArray<Unlockable*>& out);
+// Job value of the running level (game world +0x128164 level object +0x15A4,
+// unless its +0x15C4 bit 27 is set); false when there is none.
+bool CurrentLevelJobValue(uint32_t* value);
 
 // Enables or disables the targeting component of every local player
 // (0x002E4A0C).
