@@ -103,6 +103,8 @@ public:
 
     ApeAnimScriptCallRandomCommand();
     explicit ApeAnimScriptCallRandomCommand(xml::XmlElement* element);
+    // @func 0x00794264 ApeAnimScriptCallRandomCommand::~ApeAnimScriptCallRandomCommand
+    // @func 0x00794324 ApeAnimScriptCallRandomCommand::~ApeAnimScriptCallRandomCommand (deleting)
     ~ApeAnimScriptCallRandomCommand() override = default;
 
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
