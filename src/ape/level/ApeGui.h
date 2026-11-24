@@ -8,6 +8,7 @@
 // Objects are addressed by dotted paths of their names ("Menu.Title").
 #pragma once
 
+#include "ape/math/ApeMath.h"
 #include "ape/xml/ApeXml.h"
 
 #include <cstdint>
@@ -100,28 +101,143 @@ void SetGuiLanguagePath(const char* path);
 // ---------------------------------------------------------------------------
 
 enum GuiObjectType : int32_t {
-    kGuiObject_Text = 3,
+    kGuiObject_Type0 = 0,   // NOTE: class names unknown except text; see ApeGuiObject.cpp
+    kGuiObject_Type1 = 1,
+    kGuiObject_Type2 = 2,
+    kGuiObject_Text  = 3,
+    kGuiObject_Type5 = 5,
+    kGuiObject_Type6 = 6,
+    kGuiObject_Type7 = 7,
+    kGuiObject_Type8 = 8,
+    kGuiObject_Type9 = 9,
 };
 
-// NOTE: only the tree/name part of the GUI object class is reconstructed;
-// the PS3 class derives from a large engine base (vtable 0x00B22710).
+// Horizontal (bits 0-1) and vertical (bits 4-5) parts of the "anchor" and
+// "align" attributes: L/C/R and T/M/B.
+enum GuiAlign : uint32_t {
+    kGuiAlign_Left = 0x00, kGuiAlign_Center = 0x01, kGuiAlign_Right = 0x02,
+    kGuiAlign_Top = 0x00, kGuiAlign_Middle = 0x10, kGuiAlign_Bottom = 0x20,
+};
+
+// "blend" attribute: "av", "ad", "su".
+enum GuiBlendMode : uint32_t {
+    kGuiBlend_Average = 0, kGuiBlend_Add = 1, kGuiBlend_Subtract = 2,
+};
+
+class ApeGuiObject;
+
+// Construction description filled by the GUI file reader (a stack struct on
+// the console).
+struct GuiObjectDesc {
+    const char* name = nullptr;          // +0x00
+    Matrix34 transform{};                // +0x10 axes and position
+    Vec3 scale{};                        // +0x50
+    xml::Color8 color{};                 // +0x60
+    uint32_t blendMode = kGuiBlend_Average; // +0x64
+    ApeGuiObject* parent = nullptr;      // +0x68
+    void* owner = nullptr;               // +0x6C GUI file
+    uint32_t align = 0;                  // +0x70 GuiAlign bits
+    uint32_t anchor = 0;                 // +0x74 GuiAlign bits
+    bool visible = true;                 // +0x78 "visible"
+    bool flag30 = false;                 // +0x79 attribute 0xFFD1EC91
+    bool flag29 = false;                 // +0x7A attribute 0x7ABBD29A
+    bool inheritScale = true;            // +0x7B "inheritscale"
+    bool inheritRgb = true;              // +0x7C "inheritrgb"
+    bool inheritAlpha = true;            // +0x7D "inheritalpha"
+    bool render3d = false;               // +0x7E "render3d"
+};
+
+// Base of every GUI object (vtable 0x00B22710, 0xA8 bytes). Objects form a
+// tree: each has a parent, a first child and a next sibling; root objects
+// are chained from GuiRootObjects().
 class ApeGuiObject {
 public:
-    ApeGuiObject() = default;
-    virtual ~ApeGuiObject() = default;
+    // Flags word (+0x88).
+    enum Flags : uint32_t {
+        kFlag_Render3d     = 1u << 5,
+        kFlag_Detached     = 1u << 24,   // not linked into the tree (default construction)
+        kFlag_Dirty        = 1u << 25,   // set by Invalidate()
+        kFlag_InheritAlpha = 1u << 26,
+        kFlag_InheritRgb   = 1u << 27,
+        kFlag_InheritScale = 1u << 28,
+        kFlag_29           = 1u << 29,   // attribute 0x7ABBD29A
+        kFlag_30           = 1u << 30,   // attribute 0xFFD1EC91
+        kFlag_Visible      = 1u << 31,
+    };
+
+    ApeGuiObject();
+    explicit ApeGuiObject(const GuiObjectDesc& desc);
+    virtual ~ApeGuiObject();
     ApeGuiObject(const ApeGuiObject&) = delete;
     ApeGuiObject& operator=(const ApeGuiObject&) = delete;
 
-    virtual int32_t GetType() const { return 0; }
+    // NOTE: slot 2 returns 0 in every class seen; its meaning is unknown.
+    virtual void* VirtualSlot2() const;
+    virtual int32_t GetType() const = 0;
+
+    virtual const Matrix34& GetTransform() const;
+    virtual void SetTransform(const Matrix34& transform);
+    virtual const Vec3& GetPosition() const;
+    virtual void SetPosition(const Vec3& position);
+    // Rotation about the Z axis in degrees (keeps the position).
+    virtual void SetRotation(float degrees);
+    virtual const Vec3& GetScale() const;
+    virtual void SetScale(const Vec3& scale);
+    // Size of the object's content; zero for the base class.
+    virtual void GetSize(float out[2]) const;
+    virtual void SetSize(const float size[2]);
+    virtual xml::Color8 GetColor() const;
+    virtual void SetColor(xml::Color8 color);
+    virtual uint32_t GetBlendMode() const;
+    virtual void SetBlendMode(uint32_t mode);
+    virtual uint32_t GetAlign() const;
+    virtual void SetAlign(uint32_t align);
+    virtual uint32_t GetAnchor() const;
+    virtual void SetAnchor(uint32_t anchor);
+    virtual bool IsVisible() const;
+    virtual void SetVisible(bool visible);
+    virtual bool GetFlag30() const;
+    virtual void SetFlag30(bool value);
+    virtual bool GetFlag29() const;
+    virtual void SetFlag29(bool value);
+    virtual bool GetInheritScale() const;
+    virtual void SetInheritScale(bool value);
+    virtual bool GetInheritRgb() const;
+    virtual void SetInheritRgb(bool value);
+    virtual bool GetInheritAlpha() const;
+    virtual void SetInheritAlpha(bool value);
+    virtual bool GetRender3d() const;
+    virtual void SetRender3d(bool value);
+    // Size used to place the object in its parent (alignment/anchoring).
+    virtual void GetLayoutSize(float out[2]) const;
+    // Marks the object and its subtree dirty.
+    virtual void Invalidate();
+    // Base implementations walk the visible subtree.
+    virtual void Render(void* context);
+    virtual void Update();
+    // Scale including the inherited parent scale (when kFlag_InheritScale).
+    virtual Vec3 GetWorldScale() const;
+    // Colour modulated by the parent's world colour (inherit rgb / alpha).
+    virtual xml::Color8 GetWorldColor() const;
+
     virtual void SetText(const char* text, bool translate) {}
 
+    bool HasFlag(uint32_t flag) const { return (flags & flag) != 0; }
+    void SetFlag(uint32_t flag, bool on) { flags = on ? (flags | flag) : (flags & ~flag); }
+
+    Matrix34 transform{};            // +0x10 (translation row = position)
+    Vec3 scale{};                    // +0x50
     char name[0x20] = {};            // +0x60
     uint32_t nameHash = 0;           // +0x80
+    xml::Color8 color{};             // +0x84
+    uint32_t flags = 0;              // +0x88 Flags; bits 22-23 blend, 14-21 align, 6-13 anchor
+    float layoutSize[2] = {};        // +0x8C
     ApeGuiObject* parent = nullptr;  // +0x94
     ApeGuiObject* firstChild = nullptr; // +0x98
     ApeGuiObject* nextSibling = nullptr; // +0x9C
     void* owner = nullptr;           // +0xA0 GUI file that created the object
-    const char* textId = nullptr;    // +0xC8 text objects: string table id
+    uint32_t field_A4 = 0;           // +0xA4
+    const char* textId = nullptr;    // text objects (+0xC8): string table id
 };
 
 // Head of the root object list (0x00F66868).
