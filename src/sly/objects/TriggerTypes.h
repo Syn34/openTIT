@@ -46,6 +46,11 @@ class AlertTriggerDef : public TriggerDef {
 public:
     explicit AlertTriggerDef(const AlertTriggerDefDesc& desc);
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075AE44 AlertTriggerDef::~AlertTriggerDef (deleting)
+    ~AlertTriggerDef() override = default;
     bool ignoreDisguise = false;    // 0xB0
 };
 
@@ -68,6 +73,11 @@ class CrawlTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075B320 CrawlTriggerDef::~CrawlTriggerDef (deleting)
+    ~CrawlTriggerDef() override = default;
 };
 
 class CrawlTrigger : public TriggerBase {
@@ -94,12 +104,20 @@ class FilteredTriggerDef : public TriggerDef {
 public:
     FilteredTriggerDef(const TriggerDefDesc& desc, int state) : TriggerDef(desc), physicsState(state) {}
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075B5C8 FilteredTriggerDef::~FilteredTriggerDef (deleting)
+    ~FilteredTriggerDef() override = default;
     int physicsState = -1;          // 0xB0
 };
 
 class FilteredTriggerPlacement : public TriggerPlacement {
 public:
     explicit FilteredTriggerPlacement(const char* placementName);
+    // @func 0x00759AB0 FilteredTriggerPlacement::~FilteredTriggerPlacement
+    // @func 0x0075B620 FilteredTriggerPlacement::~FilteredTriggerPlacement (deleting)
+    ~FilteredTriggerPlacement() override = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
     int physicsState = -1;          // 0xBC
 };
@@ -145,11 +163,19 @@ class JobTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075B89C JobTriggerDef::~JobTriggerDef (deleting)
+    ~JobTriggerDef() override = default;
 };
 
 class JobTriggerPlacement : public TriggerPlacement {
 public:
     explicit JobTriggerPlacement(const char* placementName);
+    // @func 0x00759BBC JobTriggerPlacement::~JobTriggerPlacement
+    // @func 0x0075B8F4 JobTriggerPlacement::~JobTriggerPlacement (deleting)
+    ~JobTriggerPlacement() override = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
     uint32_t jobName = 0;           // 0xBC
     uint32_t startGoal = 0;         // 0xC0
@@ -174,9 +200,12 @@ public:
     explicit JobTrigger(const JobTriggerInstanceDesc& desc);
     ~JobTrigger() override;
     void Release(bool immediate) override;
+    void OnEnter(ObjEntity* entity) override;
     bool IsDebugDisplayed() const override;
     // The job this trigger belongs to (0x00221068) and its field +0x1E8 (0x0022104C).
-    void* GetJob() const { return m_job; }
+    void* GetJob() const;
+    // True while the job can be started (state 1, "available").
+    bool IsJobAvailable() const;
     uint32_t GetJobField1E8() const;
 
 private:
@@ -202,6 +231,11 @@ class JumpDirTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075B9AC JumpDirTriggerDef::~JumpDirTriggerDef (deleting)
+    ~JumpDirTriggerDef() override = default;
 };
 
 class JumpDirTrigger : public TriggerBase {
@@ -229,17 +263,37 @@ class UpdateEnableTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075BE68 UpdateEnableTriggerDef::~UpdateEnableTriggerDef (deleting)
+    ~UpdateEnableTriggerDef() override = default;
 };
 
 class UpdateEnableTrigger : public TriggerBase {
 public:
     explicit UpdateEnableTrigger(const TriggerInstanceDesc& desc);
     ~UpdateEnableTrigger() override;
+    void Update(float dt) override;
+    void OnEnter(ObjEntity* entity) override;
+    void OnExit(ObjEntity* entity) override;
     bool IsDebugDisplayed() const override;
 
 private:
-    uint32_t m_field1AC = 0;        // 0x1AC
-    std::vector<ObjEntity*> m_tracked;   // 0x1B0 (capacity 2)
+    // Characters and players inside, with whether each was a player when last
+    // seen (a character can become the player).
+    struct Tracked {
+        ObjEntity* entity = nullptr;
+        bool isPlayer = false;
+    };
+    // Wakes every occupant that sleeps without a player near.
+    void WakeOccupants();
+    // A player left: when none remain, the sleeping occupants (except `leaving`)
+    // are put back to sleep (0x002257B4).
+    void PlayerLeft(ObjEntity* leaving);
+
+    uint32_t m_playerCount = 0;          // 0x1AC players inside
+    std::vector<Tracked> m_tracked;      // 0x1B0 (capacity 2)
 };
 
 EntityDef* CreateUpdateEnableTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,

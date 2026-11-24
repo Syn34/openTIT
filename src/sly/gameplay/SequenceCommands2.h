@@ -26,7 +26,10 @@ public:
                           const ape::Vec3& offset, const ape::Vec3& rotation, uint32_t param40,
                           const ape::Vec3& vector50, const ape::Vec3& vector60, bool flagA,
                           bool flagB, bool flagC, bool flagD);
+    ~SeqPlaceEntityCommand() override;
     void Execute() override;
+    // @func 0x0077F7E0 SeqPlaceEntityCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     WorldObject* m_entity = nullptr;   // +0x0C
@@ -49,7 +52,10 @@ private:
 class SeqSetCameraViewCommand : public SequenceCommand {
 public:
     SeqSetCameraViewCommand(WorldObject* camera, WorldObject* locator, float fov);
+    ~SeqSetCameraViewCommand() override;
     void Execute() override;
+    // @func 0x0077F8F8 SeqSetCameraViewCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     WorldObject* m_camera = nullptr;    // +0x0C
@@ -61,6 +67,7 @@ private:
 class SeqCameraReleaseCommand : public SequenceCommand {
 public:
     SeqCameraReleaseCommand(float blendTime, bool blocking);
+    ~SeqCameraReleaseCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -80,6 +87,7 @@ class SeqCharacterAction1Command : public SequenceCommand {
 public:
     SeqCharacterAction1Command(float value, uint32_t entityHash, uint32_t target,
                                uint32_t param18, bool flag, bool blocking);
+    ~SeqCharacterAction1Command() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -98,6 +106,7 @@ class SeqCharacterAction2Command : public SequenceCommand {
 public:
     SeqCharacterAction2Command(float valueA, float valueB, uint32_t entityHash, uint32_t target,
                                uint32_t param18, bool flagA, bool flagB, bool blocking);
+    ~SeqCharacterAction2Command() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -117,6 +126,7 @@ class SeqCharacterAction3Command : public SequenceCommand {
 public:
     SeqCharacterAction3Command(uint32_t entityHash, uint32_t target, uint32_t param18, bool flag,
                                bool blocking);
+    ~SeqCharacterAction3Command() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -132,6 +142,7 @@ private:
 class SeqCharacterAction4Command : public SequenceCommand {
 public:
     SeqCharacterAction4Command(uint32_t entityHash, uint32_t target, bool blocking);
+    ~SeqCharacterAction4Command() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -147,7 +158,10 @@ class SeqHitEntityCommand : public SequenceCommand {
 public:
     SeqHitEntityCommand(float force, float lift, uint32_t entityHash, uint32_t partHash,
                         uint32_t param14, int32_t mode);
+    ~SeqHitEntityCommand() override;
     void Execute() override;
+    // @func 0x0077FB20 SeqHitEntityCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     uint32_t m_entityHash = 0;   // +0x0C
@@ -162,7 +176,10 @@ private:
 class SeqPlayerControlCommand : public SequenceCommand {
 public:
     SeqPlayerControlCommand(bool enable, bool refresh);
+    ~SeqPlayerControlCommand() override;
     void Execute() override;
+    // @func 0x0077FDE8 SeqPlayerControlCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     bool m_enable = false;    // +0x08 bit 23
@@ -174,6 +191,7 @@ class SeqHudScreenCommand : public SequenceCommand {
 public:
     SeqHudScreenCommand(uint32_t screenHash, bool show, bool setPersistent, bool persistent,
                         bool skipToEnd, bool restart, bool blocking);
+    ~SeqHudScreenCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -191,6 +209,7 @@ class SeqHudLayerCommand : public SequenceCommand {
 public:
     SeqHudLayerCommand(uint32_t layerHash, bool show, bool setPersistent, bool persistent,
                        bool restart, bool blocking);
+    ~SeqHudLayerCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -208,7 +227,10 @@ class SeqSkinAttachCommand : public SequenceCommand {
 public:
     SeqSkinAttachCommand(uint32_t hostHash, uint32_t childHash, EntitySkin* skin,
                          uint32_t socket, bool restore);
+    ~SeqSkinAttachCommand() override;
     void Execute() override;
+    // @func 0x00780288 SeqSkinAttachCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     uint32_t m_hostHash = 0;       // +0x0C
@@ -260,6 +282,7 @@ class SeqAnimScriptCommand : public SequenceCommand {
 public:
     SeqAnimScriptCommand(const std::vector<AnimScriptBinding>& bindings, uint32_t scriptHash,
                          uint32_t libraryHash, bool blocking, uint32_t param, bool flag);
+    ~SeqAnimScriptCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -283,7 +306,10 @@ bool MatchChildByName(WorldObject* node, void* search);
 class SeqSetRenderFlagCommand : public SequenceCommand {
 public:
     SeqSetRenderFlagCommand(WorldObject* entity, uint32_t childHash, bool value, bool flag30);
+    ~SeqSetRenderFlagCommand() override;
     void Execute() override;
+    // @func 0x00780F08 SeqSetRenderFlagCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     WorldObject* m_entity = nullptr;   // +0x0C
@@ -296,7 +322,10 @@ private:
 class SeqSetActiveCommand : public SequenceCommand {
 public:
     SeqSetActiveCommand(WorldObject* entity, uint32_t childHash, bool active, bool children);
+    ~SeqSetActiveCommand() override;
     void Execute() override;
+    // @func 0x00781478 SeqSetActiveCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     WorldObject* m_entity = nullptr;   // +0x0C
@@ -310,6 +339,7 @@ class SeqSwapAnimSetCommand : public SequenceCommand {
 public:
     SeqSwapAnimSetCommand(uint32_t entityHash, uint32_t animSetHash, bool permanent,
                           bool stopAction, bool blocking);
+    ~SeqSwapAnimSetCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 

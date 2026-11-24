@@ -98,16 +98,21 @@ public:
     // Reads the device, then records/replays the state and updates the
     // button change masks and rumble.
     virtual void Poll();
+    // @func 0x007A4D4C ApeInputDevice::VirtualSlot5
     virtual void VirtualSlot5() {}           // NOTE: empty in every device class
+    // @func 0x007A4D50 ApeInputDevice::VirtualSlot6
     virtual void VirtualSlot6() {}           // NOTE: empty in every device class
     // True while the motor fades out (positive intensity, negative rate).
     virtual bool IsRumbleActive(int motor) const;
     virtual void StopRumble(int motor);
     // Pausing disables rumble output (the state is kept).
     virtual void SetRumblePaused(bool paused);
+    // @func 0x007A4D54 ApeInputDevice::VirtualSlot10
     virtual int VirtualSlot10() { return 0; } // NOTE: returns 0 in every device class
+    // @func 0x007A4D5C ApeInputDevice::VirtualSlot11
     virtual void VirtualSlot11() {}          // NOTE: empty in every device class
     // NOTE: 0 for the base class, 1 for pads; exact meaning unknown.
+    // @func 0x007A4D60 ApeInputDevice::IsPad
     virtual int IsPad() const { return 0; }
 
     // Starts a rumble that fades from `intensity` (clamped to 0..1) to zero
@@ -169,6 +174,7 @@ public:
     bool IsRumbleActive(int motor) const override;
     void StopRumble(int motor) override;
     void SetRumblePaused(bool paused) override;
+    // @func 0x007A5DD4 ApePadDevice::IsPad
     int IsPad() const override { return 1; }
 
     // Engine button mask for a cellPad digital word (digital2 << 8 | digital1).

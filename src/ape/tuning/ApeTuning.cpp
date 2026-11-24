@@ -136,6 +136,7 @@ TuningVar::Type TuningColor::GetType() const { return kColor; }
 void TuningColor::SetColor(const xml::Color8* value) { m_value = *value; }
 
 // -- String ------------------------------------------------------------------
+// @func 0x0073644C TuningString::TuningString
 TuningString::TuningString(const char* name, const char* value) : TuningVar(name)
 {
     m_value[0] = '\0';

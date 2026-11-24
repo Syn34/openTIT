@@ -55,6 +55,17 @@ public:
     virtual XmlElement* ToElement() = 0;
     virtual void* ToText();
     virtual void* ToComment();
+    // NOTE: the remaining queries follow the TinyXML layout the class is
+    // modelled on (names guessed from that order); nothing here overrides
+    // the text/comment/unknown/declaration ones.
+    virtual void* ToUnknown();
+    virtual void* ToDeclaration();
+    virtual const XmlDocument* ToDocument() const = 0;
+    virtual const XmlElement* ToElement() const = 0;
+    virtual const void* ToText() const;
+    virtual const void* ToComment() const;
+    virtual const void* ToUnknown() const;
+    virtual const void* ToDeclaration() const;
 };
 
 // Raw layout of one element inside a loaded image. The structural fields
@@ -82,6 +93,8 @@ public:
     ~XmlElement() override;
     XmlDocument* ToDocument() override;
     XmlElement* ToElement() override;
+    const XmlDocument* ToDocument() const override;
+    const XmlElement* ToElement() const override;
 
     bool IsValid() const { return m_valid; }
     uint32_t GetNameHash() const { return m_nameHash; }
@@ -158,6 +171,8 @@ public:
     ~XmlDocument() override;
     XmlDocument* ToDocument() override;
     XmlElement* ToElement() override;
+    const XmlDocument* ToDocument() const override;
+    const XmlElement* ToElement() const override;
 
     // Loads "<path without extension>.xmb".
     bool LoadFile(int flags = 0);

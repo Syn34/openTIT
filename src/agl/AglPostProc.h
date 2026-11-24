@@ -13,7 +13,7 @@
 namespace agl {
 
 // Base of all effects (console vtable slots: 2 SetEnabled, 3 IsActive,
-// 4 Apply, 5 GetName).
+// 4 Apply, 5 CopySettings).
 class AglPostProcEffect {
 public:
     explicit AglPostProcEffect(const char* effectName);
@@ -22,8 +22,14 @@ public:
     AglPostProcEffect(const AglPostProcEffect&) = delete;
     AglPostProcEffect& operator=(const AglPostProcEffect&) = delete;
 
+    // @func 0x007A16BC AglPostProcEffect::SetEnabled
     virtual void SetEnabled(bool on) { enabled = on; }
+    // @func 0x007A16C4 AglPostProcEffect::IsActive
     virtual bool IsActive() const { return enabled; }
+    // Takes over the user settings of the same effect of another chain
+    // (the base part only copies the enable flag).
+    // @func 0x00788258 AglPostProcEffect::CopySettings
+    virtual void CopySettings(const AglPostProcEffect& other) { enabled = other.enabled; }
     // Draws the effect (render thread).
     virtual void Apply() {}
     // One-time set-up on first use (console vtable slot 6).
@@ -115,6 +121,9 @@ public:
 class AglMotionTrailEffect : public AglFadingEffect {
 public:
     AglMotionTrailEffect();
+    // @func 0x0079E6CC AglMotionTrailEffect::~AglMotionTrailEffect
+    // @func 0x007A36BC AglMotionTrailEffect::~AglMotionTrailEffect (deleting)
+    ~AglMotionTrailEffect() override = default;
     void Apply() override;
 
     float timeStep = 0.016f;       // 0x14
@@ -143,6 +152,9 @@ AglPostProcTuning& GetPostProcTuning();
 class AglGodRaysEffect : public AglPostProcEffect {
 public:
     AglGodRaysEffect() : AglPostProcEffect("GodRays") {}
+    // @func 0x0079E6BC AglGodRaysEffect::~AglGodRaysEffect
+    // @func 0x007A3678 AglGodRaysEffect::~AglGodRaysEffect (deleting)
+    ~AglGodRaysEffect() override = default;
     void Init() override;
     void LoadTuning() override;
 
@@ -153,17 +165,26 @@ public:
 class AglBlurEffect : public AglPostProcEffect {
 public:
     AglBlurEffect() : AglPostProcEffect("Blur") {}
+    // @func 0x0079E448 AglBlurEffect::~AglBlurEffect
+    // @func 0x007A3568 AglBlurEffect::~AglBlurEffect (deleting)
+    ~AglBlurEffect() override = default;
     void Init() override;
 };
 class AglDofEffect : public AglPostProcEffect {
 public:
     AglDofEffect() : AglPostProcEffect("DoF") {}
+    // @func 0x0079E488 AglDofEffect::~AglDofEffect
+    // @func 0x007A35F0 AglDofEffect::~AglDofEffect (deleting)
+    ~AglDofEffect() override = default;
     void Init() override;
 };
 
 class AglBloomNoiseEffect : public AglPostProcEffect {
 public:
     using AglPostProcEffect::AglPostProcEffect;
+    // @func 0x0079E4B8 AglBloomNoiseEffect::~AglBloomNoiseEffect
+    // @func 0x007A3634 AglBloomNoiseEffect::~AglBloomNoiseEffect (deleting)
+    ~AglBloomNoiseEffect() override = default;
     void LoadTuning() override;
     // Picks a new random offset into the noise texture.
     void RandomizeOffset();

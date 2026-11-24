@@ -27,6 +27,21 @@ struct alignas(16) Matrix34 {
 float Max(float a, float b);
 float Clamp(float value, float minValue, float maxValue);
 
+float Min(float a, float b);
+// Larger/smaller of two referenced values (std::max/std::min style).
+float MaxOf(const float& a, const float& b);
+float MinOf(const float& a, const float& b);
+// Clamps to [0, 1].
+float Saturate(float value);
+// acos() of a cosine, clamped to [-1, 1] first so rounding errors cannot
+// produce NaN.
+float SafeACos(float cosine);
+// Same with the value clamped twice (the original inlined a Clamp() in
+// front of SafeACos()).
+float AngleFromCosine(float cosine);
+// qsort comparator for floats, ascending.
+int CompareFloats(const void* a, const void* b);
+
 // Fast polynomial approximations used by gameplay code (accurate to ~1e-6).
 float FastCos(float radians);
 float FastSin(float radians);
@@ -43,6 +58,24 @@ float Vec3LengthSq(const Vec3& v);
 float Vec3Length(const Vec3& v);
 // Normalises in place. The caller guarantees a non-zero vector.
 void  Vec3Normalize(Vec3& v);
+void  Vec3AddInPlace(Vec3& a, const Vec3& b);
+void  Vec3SubInPlace(Vec3& a, const Vec3& b);
+// Component-wise product.
+void  Vec3Mul(Vec3& out, const Vec3& a, const Vec3& b);
+void  Vec3Divide(float s, Vec3& out, const Vec3& v);
+void  Vec3Negate(Vec3& out, const Vec3& v);
+void  Vec3Cross(Vec3& out, const Vec3& a, const Vec3& b);
+// a + (b - a) * t
+void  Vec3Lerp(float t, Vec3& out, const Vec3& a, const Vec3& b);
+// True when every component differs by less than `epsilon`.
+bool  Vec3NearlyEqual(float epsilon, const Vec3& a, const Vec3& b);
+
+// -- 2D vectors (two floats) -------------------------------------------------
+void  Vec2Add(float out[2], const float a[2], const float b[2]);
+void  Vec2AddInPlace(float a[2], const float b[2]);
+void  Vec2Scale(float s, float out[2], const float v[2]);
+void  Vec2ScaleInPlace(float s, float v[2]);
+float Vec2LengthSq(const float v[2]);
 
 // A sphere/plane style packed vector: xyz from `v`, w = s.
 void  Vec4FromVec3(float w, Vec4& out, const Vec3& v);
@@ -61,6 +94,8 @@ struct RandomState {
     uint32_t seed;
 };
 float RandomUnit(RandomState& state);
+// Uniform value in [minValue, maxValue] (one generator step).
+float RandomRange(float minValue, float maxValue, RandomState& state);
 // Random 2D direction built from two samples in [minValue, maxValue].
 float* RandomDirection2D(float minValue, float maxValue, RandomState& state, float out[2]);
 

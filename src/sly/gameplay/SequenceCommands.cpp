@@ -54,6 +54,10 @@ SeqMixStateCommand::SeqMixStateCommand(float blendTime, bool push, const audio::
 {
 }
 
+// @func 0x0077F6D0 SeqMixStateCommand::~SeqMixStateCommand
+// @func 0x0077F700 SeqMixStateCommand::~SeqMixStateCommand (deleting)
+SeqMixStateCommand::~SeqMixStateCommand() = default;
+
 // @func 0x0042CC80 SeqMixStateCommand::Execute
 void SeqMixStateCommand::Execute()
 {
@@ -75,6 +79,10 @@ SeqPostMessageCommand::SeqPostMessageCommand(uint32_t listenerKey, uint32_t mess
     : SequenceCommand(true), m_listenerKey(listenerKey), m_message(message), m_argument(argument)
 {
 }
+
+// @func 0x0077F7E8 SeqPostMessageCommand::~SeqPostMessageCommand
+// @func 0x0077F818 SeqPostMessageCommand::~SeqPostMessageCommand (deleting)
+SeqPostMessageCommand::~SeqPostMessageCommand() = default;
 
 // @func 0x0042D1AC SeqPostMessageCommand::Execute
 void SeqPostMessageCommand::Execute()
@@ -104,6 +112,10 @@ SeqCameraShakeCommand::SeqCameraShakeCommand(uint32_t entityHash, const CameraSh
     m_params.values[2] = params.values[1];
 }
 
+// @func 0x0077F988 SeqCameraShakeCommand::~SeqCameraShakeCommand
+// @func 0x0077F9B8 SeqCameraShakeCommand::~SeqCameraShakeCommand (deleting)
+SeqCameraShakeCommand::~SeqCameraShakeCommand() = default;
+
 // @func 0x0042D814 SeqCameraShakeCommand::Execute
 void SeqCameraShakeCommand::Execute()
 {
@@ -129,6 +141,10 @@ SeqAttachCommand::SeqAttachCommand(uint32_t childHash, uint32_t parentHash)
 {
 }
 
+// @func 0x0077FB28 SeqAttachCommand::~SeqAttachCommand
+// @func 0x0077FB58 SeqAttachCommand::~SeqAttachCommand (deleting)
+SeqAttachCommand::~SeqAttachCommand() = default;
+
 // @func 0x0042DE54 SeqAttachCommand::Execute
 void SeqAttachCommand::Execute()
 {
@@ -153,6 +169,10 @@ SeqEnableComponentCommand::SeqEnableComponentCommand(uint32_t entityHash, uint32
 {
 }
 
+// @func 0x0077FBB8 SeqEnableComponentCommand::~SeqEnableComponentCommand
+// @func 0x0077FBE8 SeqEnableComponentCommand::~SeqEnableComponentCommand (deleting)
+SeqEnableComponentCommand::~SeqEnableComponentCommand() = default;
+
 // @func 0x0042DF40 SeqEnableComponentCommand::Execute
 void SeqEnableComponentCommand::Execute()
 {
@@ -173,6 +193,10 @@ SeqScreenFadeCommand::SeqScreenFadeCommand(float red, float green, float target,
       m_start(1.0f), m_duration(duration), m_elapsed(0.0f)
 {
 }
+
+// @func 0x0077FC48 SeqScreenFadeCommand::~SeqScreenFadeCommand
+// @func 0x0077FC78 SeqScreenFadeCommand::~SeqScreenFadeCommand (deleting)
+SeqScreenFadeCommand::~SeqScreenFadeCommand() = default;
 
 // @func 0x0042E0E0 SeqScreenFadeCommand::Execute
 void SeqScreenFadeCommand::Execute()
@@ -210,6 +234,10 @@ SeqEnablePhysicsCommand::SeqEnablePhysicsCommand(uint32_t entityHash, bool enabl
 {
 }
 
+// @func 0x0077FCD0 SeqEnablePhysicsCommand::~SeqEnablePhysicsCommand
+// @func 0x0077FD00 SeqEnablePhysicsCommand::~SeqEnablePhysicsCommand (deleting)
+SeqEnablePhysicsCommand::~SeqEnablePhysicsCommand() = default;
+
 // @func 0x0042E27C SeqEnablePhysicsCommand::Execute
 void SeqEnablePhysicsCommand::Execute()
 {
@@ -230,6 +258,10 @@ SeqEndSequenceCommand::SeqEndSequenceCommand()
 {
 }
 
+// @func 0x0077FF00 SeqEndSequenceCommand::~SeqEndSequenceCommand
+// @func 0x0077FF30 SeqEndSequenceCommand::~SeqEndSequenceCommand (deleting)
+SeqEndSequenceCommand::~SeqEndSequenceCommand() = default;
+
 // @func 0x0042EA30 SeqEndSequenceCommand::Execute
 void SeqEndSequenceCommand::Execute()
 {
@@ -249,6 +281,10 @@ SeqPlayAnimationCommand::SeqPlayAnimationCommand(uint32_t entityHash, uint32_t a
       m_hideFirst(hideFirst)
 {
 }
+
+// @func 0x0077FF88 SeqPlayAnimationCommand::~SeqPlayAnimationCommand
+// @func 0x0077FFB8 SeqPlayAnimationCommand::~SeqPlayAnimationCommand (deleting)
+SeqPlayAnimationCommand::~SeqPlayAnimationCommand() = default;
 
 // @func 0x0042EAEC SeqPlayAnimationCommand::Execute
 void SeqPlayAnimationCommand::Execute()
@@ -276,6 +312,10 @@ SeqSuppressAudioCommand::SeqSuppressAudioCommand(uint32_t entityHash, bool suppr
     : SequenceCommand(false), m_entityHash(entityHash), m_suppress(suppress)
 {
 }
+
+// @func 0x0077F568 SeqSuppressAudioCommand::~SeqSuppressAudioCommand
+// @func 0x00780010 SeqSuppressAudioCommand::~SeqSuppressAudioCommand (deleting)
+SeqSuppressAudioCommand::~SeqSuppressAudioCommand() = default;
 
 // @func 0x0042EC20 SeqSuppressAudioCommand::Execute
 void SeqSuppressAudioCommand::Execute()
@@ -346,6 +386,10 @@ SeqColorFilterCommand::SeqColorFilterCommand(float red, float green, float blue,
 {
 }
 
+// @func 0x00780068 SeqColorFilterCommand::~SeqColorFilterCommand
+// @func 0x00780098 SeqColorFilterCommand::~SeqColorFilterCommand (deleting)
+SeqColorFilterCommand::~SeqColorFilterCommand() = default;
+
 // @func 0x0042F1D4 SeqColorFilterCommand::Execute
 void SeqColorFilterCommand::Execute()
 {
@@ -369,6 +413,10 @@ SeqDepthOfFieldCommand::SeqDepthOfFieldCommand(float nearStart, float nearEnd, f
     : SequenceCommand(blocking), m_values{nearStart, nearEnd, farStart, farEnd}, m_both(both)
 {
 }
+
+// @func 0x007800F0 SeqDepthOfFieldCommand::~SeqDepthOfFieldCommand
+// @func 0x00780120 SeqDepthOfFieldCommand::~SeqDepthOfFieldCommand (deleting)
+SeqDepthOfFieldCommand::~SeqDepthOfFieldCommand() = default;
 
 // @func 0x0042F2F4 SeqDepthOfFieldCommand::Execute
 void SeqDepthOfFieldCommand::Execute()
@@ -396,6 +444,10 @@ SeqFocusPullCommand::SeqFocusPullCommand(const float params[7], uint32_t targetH
     std::memcpy(m_params, params, sizeof(m_params));
 }
 
+// @func 0x00780178 SeqFocusPullCommand::~SeqFocusPullCommand
+// @func 0x007801A8 SeqFocusPullCommand::~SeqFocusPullCommand (deleting)
+SeqFocusPullCommand::~SeqFocusPullCommand() = default;
+
 // @func 0x0042F4BC SeqFocusPullCommand::Execute
 void SeqFocusPullCommand::Execute()
 {
@@ -418,6 +470,10 @@ SeqCameraEffectCommand::SeqCameraEffectCommand(const CameraEffectParams& params,
     : SequenceCommand(blocking), m_params(params), m_handle(0)
 {
 }
+
+// @func 0x00780290 SeqCameraEffectCommand::~SeqCameraEffectCommand
+// @func 0x007802C0 SeqCameraEffectCommand::~SeqCameraEffectCommand (deleting)
+SeqCameraEffectCommand::~SeqCameraEffectCommand() = default;
 
 // @func 0x0042F92C SeqCameraEffectCommand::Execute
 void SeqCameraEffectCommand::Execute()
@@ -443,6 +499,10 @@ SeqAmbientTintCommand::SeqAmbientTintCommand(float red, float green, float blue)
 {
 }
 
+// @func 0x00780318 SeqAmbientTintCommand::~SeqAmbientTintCommand
+// @func 0x00780348 SeqAmbientTintCommand::~SeqAmbientTintCommand (deleting)
+SeqAmbientTintCommand::~SeqAmbientTintCommand() = default;
+
 // @func 0x0042FA90 SeqAmbientTintCommand::Execute
 void SeqAmbientTintCommand::Execute()
 {
@@ -459,6 +519,10 @@ SeqRemoveEntityCommand::SeqRemoveEntityCommand(uint32_t entityHash, bool playDes
     : SequenceCommand(true), m_entityHash(entityHash), m_playDespawn(playDespawn)
 {
 }
+
+// @func 0x00780428 SeqRemoveEntityCommand::~SeqRemoveEntityCommand
+// @func 0x00780458 SeqRemoveEntityCommand::~SeqRemoveEntityCommand (deleting)
+SeqRemoveEntityCommand::~SeqRemoveEntityCommand() = default;
 
 // @func 0x0042FE28 SeqRemoveEntityCommand::Execute
 void SeqRemoveEntityCommand::Execute()
@@ -482,6 +546,10 @@ SeqWaitCommand::SeqWaitCommand(float duration)
     : SequenceCommand(true), m_duration(duration), m_elapsed(0.0f)
 {
 }
+
+// @func 0x00780650 SeqWaitCommand::~SeqWaitCommand
+// @func 0x00780680 SeqWaitCommand::~SeqWaitCommand (deleting)
+SeqWaitCommand::~SeqWaitCommand() = default;
 
 // @func 0x00431F4C SeqWaitCommand::Execute
 void SeqWaitCommand::Execute()
@@ -507,6 +575,10 @@ SeqHideHudCommand::SeqHideHudCommand(bool hide)
 {
 }
 
+// @func 0x007806D8 SeqHideHudCommand::~SeqHideHudCommand
+// @func 0x00780708 SeqHideHudCommand::~SeqHideHudCommand (deleting)
+SeqHideHudCommand::~SeqHideHudCommand() = default;
+
 // @func 0x00431FF8 SeqHideHudCommand::Execute
 void SeqHideHudCommand::Execute()
 {
@@ -520,6 +592,10 @@ SeqShowHudCommand::SeqShowHudCommand(bool show)
 {
 }
 
+// @func 0x00780760 SeqShowHudCommand::~SeqShowHudCommand
+// @func 0x00780790 SeqShowHudCommand::~SeqShowHudCommand (deleting)
+SeqShowHudCommand::~SeqShowHudCommand() = default;
+
 // @func 0x0043207C SeqShowHudCommand::Execute
 void SeqShowHudCommand::Execute()
 {
@@ -531,6 +607,10 @@ SeqLockInputCommand::SeqLockInputCommand(bool lock)
     : SequenceCommand(true), m_value(lock)
 {
 }
+
+// @func 0x007807E8 SeqLockInputCommand::~SeqLockInputCommand
+// @func 0x00780818 SeqLockInputCommand::~SeqLockInputCommand (deleting)
+SeqLockInputCommand::~SeqLockInputCommand() = default;
 
 // @func 0x00432100 SeqLockInputCommand::Execute
 void SeqLockInputCommand::Execute()
@@ -544,6 +624,10 @@ SeqHudCounterCommand::SeqHudCounterCommand(bool visible)
     : SequenceCommand(true), m_value(visible)
 {
 }
+
+// @func 0x00780870 SeqHudCounterCommand::~SeqHudCounterCommand
+// @func 0x007808A0 SeqHudCounterCommand::~SeqHudCounterCommand (deleting)
+SeqHudCounterCommand::~SeqHudCounterCommand() = default;
 
 // @func 0x00432184 SeqHudCounterCommand::Execute
 void SeqHudCounterCommand::Execute()
@@ -622,6 +706,10 @@ SeqWaitForButtonCommand::SeqWaitForButtonCommand(float timeout, int player, uint
 {
 }
 
+// @func 0x0077F598 SeqWaitForButtonCommand::~SeqWaitForButtonCommand
+// @func 0x00780AC8 SeqWaitForButtonCommand::~SeqWaitForButtonCommand (deleting)
+SeqWaitForButtonCommand::~SeqWaitForButtonCommand() = default;
+
 // @func 0x00434AB8 SeqWaitForButtonCommand::Execute
 void SeqWaitForButtonCommand::Execute()
 {
@@ -659,6 +747,10 @@ SeqTransitionPromptCommand::SeqTransitionPromptCommand(uint32_t target)
     : SequenceCommand(true), m_target(target), m_done(false)
 {
 }
+
+// @func 0x0077F5C8 SeqTransitionPromptCommand::~SeqTransitionPromptCommand
+// @func 0x00780B20 SeqTransitionPromptCommand::~SeqTransitionPromptCommand (deleting)
+SeqTransitionPromptCommand::~SeqTransitionPromptCommand() = default;
 
 // @func 0x00434D08 SeqTransitionPromptCommand::Execute
 void SeqTransitionPromptCommand::Execute()
@@ -700,6 +792,10 @@ SeqMoveEntityCommand::SeqMoveEntityCommand(float time, uint32_t entityHash, uint
 {
 }
 
+// @func 0x00780C60 SeqMoveEntityCommand::~SeqMoveEntityCommand
+// @func 0x00780C90 SeqMoveEntityCommand::~SeqMoveEntityCommand (deleting)
+SeqMoveEntityCommand::~SeqMoveEntityCommand() = default;
+
 // @func 0x00437ACC SeqMoveEntityCommand::Execute
 void SeqMoveEntityCommand::Execute()
 {
@@ -731,6 +827,10 @@ SeqEnableScriptedEntitiesCommand::SeqEnableScriptedEntitiesCommand(bool enable)
 {
 }
 
+// @func 0x00780CE8 SeqEnableScriptedEntitiesCommand::~SeqEnableScriptedEntitiesCommand
+// @func 0x00780D18 SeqEnableScriptedEntitiesCommand::~SeqEnableScriptedEntitiesCommand (deleting)
+SeqEnableScriptedEntitiesCommand::~SeqEnableScriptedEntitiesCommand() = default;
+
 // @func 0x00437C5C SeqEnableScriptedEntitiesCommand::Execute
 void SeqEnableScriptedEntitiesCommand::Execute()
 {
@@ -758,6 +858,10 @@ SeqMinigameControlCommand::SeqMinigameControlCommand(bool resetAll, bool resetSc
       m_resetRound(resetRound)
 {
 }
+
+// @func 0x00780D70 SeqMinigameControlCommand::~SeqMinigameControlCommand
+// @func 0x00780DA0 SeqMinigameControlCommand::~SeqMinigameControlCommand (deleting)
+SeqMinigameControlCommand::~SeqMinigameControlCommand() = default;
 
 // @func 0x00437E08 SeqMinigameControlCommand::Execute
 void SeqMinigameControlCommand::Execute()
@@ -791,6 +895,10 @@ SeqHudTimerCommand::SeqHudTimerCommand(float seconds)
 {
 }
 
+// @func 0x00780F10 SeqHudTimerCommand::~SeqHudTimerCommand
+// @func 0x00780F40 SeqHudTimerCommand::~SeqHudTimerCommand (deleting)
+SeqHudTimerCommand::~SeqHudTimerCommand() = default;
+
 // @func 0x004384E8 SeqHudTimerCommand::Execute
 void SeqHudTimerCommand::Execute()
 {
@@ -806,6 +914,10 @@ SeqCutsceneFlagCommand::SeqCutsceneFlagCommand(bool value)
     : SequenceCommand(true), m_value(value)
 {
 }
+
+// @func 0x00780F98 SeqCutsceneFlagCommand::~SeqCutsceneFlagCommand
+// @func 0x00780FC8 SeqCutsceneFlagCommand::~SeqCutsceneFlagCommand (deleting)
+SeqCutsceneFlagCommand::~SeqCutsceneFlagCommand() = default;
 
 // @func 0x00438558 SeqCutsceneFlagCommand::Execute
 void SeqCutsceneFlagCommand::Execute()
@@ -827,6 +939,10 @@ SeqPausePlayerCommand::SeqPausePlayerCommand(bool value)
 {
 }
 
+// @func 0x00781020 SeqPausePlayerCommand::~SeqPausePlayerCommand
+// @func 0x00781050 SeqPausePlayerCommand::~SeqPausePlayerCommand (deleting)
+SeqPausePlayerCommand::~SeqPausePlayerCommand() = default;
+
 // @func 0x004385EC SeqPausePlayerCommand::Execute
 void SeqPausePlayerCommand::Execute()
 {
@@ -846,6 +962,10 @@ SeqPauseAiCommand::SeqPauseAiCommand(bool value)
     : SequenceCommand(true), m_value(value)
 {
 }
+
+// @func 0x007810A8 SeqPauseAiCommand::~SeqPauseAiCommand
+// @func 0x007810D8 SeqPauseAiCommand::~SeqPauseAiCommand (deleting)
+SeqPauseAiCommand::~SeqPauseAiCommand() = default;
 
 // @func 0x00438680 SeqPauseAiCommand::Execute
 void SeqPauseAiCommand::Execute()
@@ -879,6 +999,10 @@ SeqSetEntityCommand::SeqSetEntityCommand(WorldObject* entity, uint32_t alias, bo
         EntityAddRef(m_entity);
 }
 
+// @func 0x00781130 SeqSetEntityCommand::~SeqSetEntityCommand
+// @func 0x00781160 SeqSetEntityCommand::~SeqSetEntityCommand (deleting)
+SeqSetEntityCommand::~SeqSetEntityCommand() = default;
+
 // @func 0x004387DC SeqSetEntityCommand::Execute
 void SeqSetEntityCommand::Execute()
 {
@@ -911,6 +1035,10 @@ SeqEmitterParamCommand::SeqEmitterParamCommand(uint32_t entityHash, uint32_t val
     : SequenceCommand(true), m_entityHash(entityHash), m_value(value)
 {
 }
+
+// @func 0x007811C0 SeqEmitterParamCommand::~SeqEmitterParamCommand
+// @func 0x007811F0 SeqEmitterParamCommand::~SeqEmitterParamCommand (deleting)
+SeqEmitterParamCommand::~SeqEmitterParamCommand() = default;
 
 // @func 0x00438900 SeqEmitterParamCommand::Execute
 void SeqEmitterParamCommand::Execute()
@@ -961,6 +1089,10 @@ SeqSetEntityVisibleCommand::SeqSetEntityVisibleCommand(uint32_t entityHash, uint
 {
 }
 
+// @func 0x007812D0 SeqSetEntityVisibleCommand::~SeqSetEntityVisibleCommand
+// @func 0x00781300 SeqSetEntityVisibleCommand::~SeqSetEntityVisibleCommand (deleting)
+SeqSetEntityVisibleCommand::~SeqSetEntityVisibleCommand() = default;
+
 // @func 0x00438DDC SeqSetEntityVisibleCommand::Execute
 void SeqSetEntityVisibleCommand::Execute()
 {
@@ -982,6 +1114,10 @@ SeqSetEntityUpdateCommand::SeqSetEntityUpdateCommand(uint32_t entityHash, bool u
     : SequenceCommand(true), m_entityHash(entityHash), m_update(update)
 {
 }
+
+// @func 0x00781360 SeqSetEntityUpdateCommand::~SeqSetEntityUpdateCommand
+// @func 0x00781390 SeqSetEntityUpdateCommand::~SeqSetEntityUpdateCommand (deleting)
+SeqSetEntityUpdateCommand::~SeqSetEntityUpdateCommand() = default;
 
 // @func 0x00438FB4 SeqSetEntityUpdateCommand::Execute
 void SeqSetEntityUpdateCommand::Execute()
@@ -1005,6 +1141,10 @@ SeqStartAnimationCommand::SeqStartAnimationCommand(uint32_t entityHash, uint32_t
 {
 }
 
+// @func 0x00781510 SeqStartAnimationCommand::~SeqStartAnimationCommand
+// @func 0x00781540 SeqStartAnimationCommand::~SeqStartAnimationCommand (deleting)
+SeqStartAnimationCommand::~SeqStartAnimationCommand() = default;
+
 // @func 0x00439CB0 SeqStartAnimationCommand::Execute
 void SeqStartAnimationCommand::Execute()
 {
@@ -1024,6 +1164,10 @@ SeqTimeScaleCommand::SeqTimeScaleCommand(int kind, float scale)
 {
 }
 
+// @func 0x00781598 SeqTimeScaleCommand::~SeqTimeScaleCommand
+// @func 0x007815C8 SeqTimeScaleCommand::~SeqTimeScaleCommand (deleting)
+SeqTimeScaleCommand::~SeqTimeScaleCommand() = default;
+
 // @func 0x00439DA8 SeqTimeScaleCommand::Execute
 void SeqTimeScaleCommand::Execute()
 {
@@ -1041,6 +1185,10 @@ SeqLevelHeadlineCommand::SeqLevelHeadlineCommand()
 {
 }
 
+// @func 0x00781620 SeqLevelHeadlineCommand::~SeqLevelHeadlineCommand
+// @func 0x00781650 SeqLevelHeadlineCommand::~SeqLevelHeadlineCommand (deleting)
+SeqLevelHeadlineCommand::~SeqLevelHeadlineCommand() = default;
+
 // @func 0x00439E04 SeqLevelHeadlineCommand::Execute
 void SeqLevelHeadlineCommand::Execute()
 {
@@ -1057,6 +1205,10 @@ SeqStartSequenceCommand::SeqStartSequenceCommand(uint32_t sequenceHash)
     : SequenceCommand(true), m_sequenceHash(sequenceHash)
 {
 }
+
+// @func 0x00781740 SeqStartSequenceCommand::~SeqStartSequenceCommand
+// @func 0x00781770 SeqStartSequenceCommand::~SeqStartSequenceCommand (deleting)
+SeqStartSequenceCommand::~SeqStartSequenceCommand() = default;
 
 // @func 0x0043A670 SeqStartSequenceCommand::Execute
 void SeqStartSequenceCommand::Execute()
@@ -1080,6 +1232,10 @@ SeqStopSoundCommand::SeqStopSoundCommand(uint32_t categoryHash, uint32_t trackKe
 {
 }
 
+// @func 0x007817D0 SeqStopSoundCommand::~SeqStopSoundCommand
+// @func 0x00781800 SeqStopSoundCommand::~SeqStopSoundCommand (deleting)
+SeqStopSoundCommand::~SeqStopSoundCommand() = default;
+
 // @func 0x0043A74C SeqStopSoundCommand::Execute
 void SeqStopSoundCommand::Execute()
 {
@@ -1102,6 +1258,10 @@ SeqStopMusicCommand::SeqStopMusicCommand(bool release)
 {
 }
 
+// @func 0x0077F6A0 SeqStopMusicCommand::~SeqStopMusicCommand
+// @func 0x00781860 SeqStopMusicCommand::~SeqStopMusicCommand (deleting)
+SeqStopMusicCommand::~SeqStopMusicCommand() = default;
+
 // @func 0x0043A80C SeqStopMusicCommand::Execute
 void SeqStopMusicCommand::Execute()
 {
@@ -1118,6 +1278,10 @@ SeqWaitForSequencesCommand::SeqWaitForSequencesCommand(const std::vector<uint32_
     : SequenceCommand(true), m_sequenceHashes(sequenceHashes)
 {
 }
+
+// @func 0x00781940 SeqWaitForSequencesCommand::~SeqWaitForSequencesCommand
+// @func 0x007819A8 SeqWaitForSequencesCommand::~SeqWaitForSequencesCommand (deleting)
+SeqWaitForSequencesCommand::~SeqWaitForSequencesCommand() = default;
 
 // @func 0x0043ACB8 SeqWaitForSequencesCommand::Update
 bool SeqWaitForSequencesCommand::Update(float /*dt*/)
@@ -1143,6 +1307,10 @@ SeqWaitForSoundCommand::SeqWaitForSoundCommand(uint32_t categoryHash, uint32_t t
       m_trackKey(trackKey)
 {
 }
+
+// @func 0x00781A28 SeqWaitForSoundCommand::~SeqWaitForSoundCommand
+// @func 0x00781A58 SeqWaitForSoundCommand::~SeqWaitForSoundCommand (deleting)
+SeqWaitForSoundCommand::~SeqWaitForSoundCommand() = default;
 
 // @func 0x0043AE04 SeqWaitForSoundCommand::Update
 bool SeqWaitForSoundCommand::Update(float /*dt*/)

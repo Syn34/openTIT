@@ -129,7 +129,7 @@ ObjEntity* TriggerDef::Create(EntityPlacement* placement)
 // Placement
 // ===========================================================================
 
-// NOTE: console 0x00746148 lies outside this module's range; untagged here.
+// @func 0x00746148 TriggerPlacement::TriggerPlacement
 TriggerPlacement::TriggerPlacement(const char* placementName, EntityDef* ownerDef,
                                    TriggerVolume* triggerVolume, bool aabb, bool owns,
                                    bool start, bool players, bool all, bool skip)
@@ -480,7 +480,9 @@ void TriggerBase::Update(float dt)
     ObjEntity::Update(dt);
 }
 
-// Name of the trigger: the phantom's name (0x00759E30, outside this range).
+// Name of the trigger: the phantom's name (a Havok string pointer whose
+// low bit is a flag; VolumeGetName returns it with the bit cleared).
+// @func 0x00759E30 TriggerBase::GetName
 const char* TriggerBase::GetName() const
 {
     return VolumeGetName(m_volume);

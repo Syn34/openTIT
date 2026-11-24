@@ -51,6 +51,11 @@ class CameraTriggerDef : public TriggerDef {
 public:
     explicit CameraTriggerDef(const CameraTriggerDefDesc& desc);
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075B210 CameraTriggerDef::~CameraTriggerDef (deleting)
+    ~CameraTriggerDef() override = default;
     uint16_t allowedStates = 0xFFFF;   // 0xB0
     uint16_t excludedStates = 0;       // 0xB2
     uint32_t field_B4 = 0;             // 0xB4
@@ -59,6 +64,9 @@ public:
 class CameraTriggerPlacement : public TriggerPlacement {
 public:
     explicit CameraTriggerPlacement(const char* placementName);
+    // @func 0x007460D0 CameraTriggerPlacement::~CameraTriggerPlacement
+    // @func 0x0075B268 CameraTriggerPlacement::~CameraTriggerPlacement (deleting)
+    ~CameraTriggerPlacement() override = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
 
     uint32_t field_BC = 0;             // 0xBC
@@ -97,9 +105,20 @@ class CameraTrigger : public TriggerBase {
 public:
     explicit CameraTrigger(const CameraTriggerInstanceDesc& desc);
     ~CameraTrigger() override;
+    void OnEnter(ObjEntity* entity) override;
+    void OnExit(ObjEntity* entity) override;
     bool IsDebugDisplayed() const override;
+    // Removes this trigger's camera mode from the game camera and frees it
+    // (0x002169C0, called by the camera when it drops the mode).
+    void ReleaseCameraMode();
 
 private:
+    // TODO(0x0021612C CameraTrigger::ActivateCamera, 0x002163A8
+    // DeactivateCamera, 0x00215D98 BuildCameraMode, 0x0021652C Update): the
+    // camera modes live in the camera module (0x00100000..), not ported.
+    void ActivateCamera(ObjEntity* entity) { (void)entity; }
+    void DeactivateCamera(ObjEntity* entity) { (void)entity; }
+
     uint16_t m_allowedStates;          // 0x1AC
     uint16_t m_excludedStates;         // 0x1AE
     uint32_t m_behavior;               // 0x1B0

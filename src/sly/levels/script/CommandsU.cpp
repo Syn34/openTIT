@@ -3,6 +3,7 @@
 #include "sly/levels/script/ScriptCommands.h"
 
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
 #include <cstring>
@@ -394,6 +395,7 @@ class ChildAnimLayerCommand : public ApeAnimScriptCommand {
 public:
     ChildAnimLayerCommand();
     ~ChildAnimLayerCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -421,7 +423,20 @@ ApeAnimScriptCommand* ChildAnimLayerCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0009658C ChildAnimLayerCommand::Execute) entity/child lookup then 0x00254814.
+// @func 0x0009658C ChildAnimLayerCommand::Execute
+// Pauses an animation layer of an entity (or of one of its children).
+void ChildAnimLayerCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_object, m_entity);
+    if (entity && m_child != 0)
+        entity = EntityFindChild(entity, m_child);
+    if (!entity)
+        return;
+    if (void* character = EntityCharacter(entity))
+        CharacterPauseAnimLayer(character, m_layer);
+    else
+        EntitySetAnimPaused(entity, m_layer, true);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xF05E4B22 (name unknown): stops a HUD object's animation.
