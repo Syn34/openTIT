@@ -969,8 +969,9 @@ public:
 };
 
 class ProjTxrTechnique : public AglTechnique {
-    // TODO(0x005B0C78 ProjTxrTechnique::BeginMaterial)
     // TODO(0x005B0FB0 ProjTxrTechnique::Draw)
+public:
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class ProjTxrDeferredTechnique : public AglTechnique {
@@ -992,20 +993,22 @@ public:
 };
 
 class DiffuseTechnique : public AglTechnique {
-    // TODO(0x005B1E88 DiffuseTechnique::BeginMaterial)
     // TODO(0x005B1FA0 DiffuseTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
 };
 
 class DecalTechnique : public AglTechnique {
-    // TODO(0x005B30A0 DecalTechnique::BeginMaterial)
     // TODO(0x005B3148 DecalTechnique::Draw)
+public:
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class EnvMapTechnique : public AglTechnique {
-    // TODO(0x005B34C0 EnvMapTechnique::BeginMaterial)
     // TODO(0x005B3590 EnvMapTechnique::Draw)
+public:
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SelfLightTechnique : public AglTechnique {
@@ -1015,8 +1018,9 @@ public:
 };
 
 class AngleIndexTechnique : public AglTechnique {
-    // TODO(0x005B50A0 AngleIndexTechnique::BeginMaterial)
     // TODO(0x005B5150 AngleIndexTechnique::Draw)
+public:
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class WaterTechnique : public AglTechnique {
@@ -1057,24 +1061,27 @@ public:
 };
 
 class SacEnvMapTechnique : public AglTechnique {
-    // TODO(0x005B8DF0 SacEnvMapTechnique::BeginMaterial)
     // TODO(0x005B8EC0 SacEnvMapTechnique::Draw)
+public:
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class Sly2UVTechnique : public AglTechnique {
-    // TODO(0x005B9C80 Sly2UVTechnique::BeginMaterial)
     // TODO(0x005B9D0C Sly2UVTechnique::Draw)
+public:
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyCausticsTechnique : public AglTechnique {
-    // TODO(0x005BA7D0 SlyCausticsTechnique::BeginMaterial)
     // TODO(0x005BA8BC SlyCausticsTechnique::Draw)
+public:
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyCharacterTechnique : public AglTechnique {
-    // TODO(0x005BB408 SlyCharacterTechnique::BeginMaterial)
     // TODO(0x005BB4D8 SlyCharacterTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
 };
 
@@ -1114,9 +1121,9 @@ public:
 };
 
 class SlyCharacterCollectibleTechnique : public AglTechnique {
-    // TODO(0x005C27B0 SlyCharacterCollectibleTechnique::BeginMaterial)
     // TODO(0x005C2880 SlyCharacterCollectibleTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
 };
 
@@ -1131,8 +1138,9 @@ class SlyDecal4Technique : public AglTechnique {
 };
 
 class SlyEnvMapTechnique : public AglTechnique {
-    // TODO(0x005C56E0 SlyEnvMapTechnique::BeginMaterial)
     // TODO(0x005C57B0 SlyEnvMapTechnique::Draw)
+public:
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyHeightFogTechnique : public AglTechnique {
@@ -1141,13 +1149,15 @@ class SlyHeightFogTechnique : public AglTechnique {
 };
 
 class SlyMirrorTechnique : public AglTechnique {
-    // TODO(0x005C8268 SlyMirrorTechnique::BeginMaterial)
     // TODO(0x005C8338 SlyMirrorTechnique::Draw)
+public:
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyPanoramaTechnique : public AglTechnique {
-    // TODO(0x005C9898 SlyPanoramaTechnique::BeginMaterial)
     // TODO(0x005C9948 SlyPanoramaTechnique::Draw)
+public:
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyProjTxrTechnique : public AglTechnique {
@@ -1156,8 +1166,9 @@ public:
 };
 
 class SlyPropTechnique : public AglTechnique {
-    // TODO(0x005CAD48 SlyPropTechnique::BeginMaterial)
     // TODO(0x005CAE18 SlyPropTechnique::Draw)
+public:
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyScreenWarpTechnique : public AglTechnique {
@@ -1174,8 +1185,9 @@ public:
 };
 
 class SlyTerrainTechnique : public AglTechnique {
-    // TODO(0x005CC170 SlyTerrainTechnique::BeginMaterial)
     // TODO(0x005CC240 SlyTerrainTechnique::Draw)
+public:
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyTerrainSnowTechnique : public AglTechnique {
@@ -1241,6 +1253,159 @@ void GeoParticleTechnique::End(AglMaterial* material)
     const float bias = (material && material->constants) ? material->constants[4] : 0.0f;
     if (bias != 0.0f)
         Cmd().SetPolygonOffset(false, 0.0f, 0.0f);
+}
+
+// --- material constants shared by the BeginMaterial handlers --------------------
+
+// Material float constant `index`, or 0 when the material has none.
+static float MaterialConstant(const AglMaterial* material, int index)
+{
+    return material->constants ? material->constants[index] : 0.0f;
+}
+
+// NOTE: materials whose word 0x78 top nibble is 2 (the default) get 1.0 in
+// the slot the shaders use as a switch; its meaning is not decoded.
+static float MaterialSwitchValue(const AglMaterial* material)
+{
+    return material->field_78 == 2 ? 1.0f : 0.0f;
+}
+
+// Fragment constant 0 = material colour constants 0..2, w = 'w'.
+static void UploadMaterialColor(const AglMaterial* material, float w)
+{
+    const float value[4] = {MaterialConstant(material, 0), MaterialConstant(material, 1),
+                            MaterialConstant(material, 2), w};
+    SetShaderConstant(0, value);
+}
+
+// @func 0x005B0C78 ProjTxrTechnique::BeginMaterial
+void ProjTxrTechnique::BeginMaterial(AglMaterial* material)
+{
+    const float value[4] = {MaterialSwitchValue(material), 0.0f, 0.0f, 0.0f};
+    SetShaderConstant(0, value);
+}
+
+// @func 0x005B1E88 DiffuseTechnique::BeginMaterial
+void DiffuseTechnique::BeginMaterial(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, 0.0f);
+    // Constant 3 holds an integer alpha reference; a positive one turns on
+    // the alpha test.
+    if (material->constants) {
+        int32_t alphaRef = 0;
+        std::memcpy(&alphaRef, &material->constants[3], sizeof(alphaRef));
+        if (alphaRef > 0) {
+            Cmd().SetAlphaFunc(gpu::CompareFunc::GEqual, uint32_t(alphaRef));
+            Cmd().SetAlphaTestEnable(true);
+        }
+    }
+}
+
+// @func 0x005B30A0 DecalTechnique::BeginMaterial
+void DecalTechnique::BeginMaterial(AglMaterial* material)
+{
+    // Constants 0 and 1 scale the texture coordinates.
+    UploadUVTransform(material->anim, 4, MaterialConstant(material, 0), MaterialConstant(material, 1));
+    const float value[4] = {MaterialSwitchValue(material), 0.0f, 0.0f, 0.0f};
+    SetShaderConstant(0, value);
+}
+
+// @func 0x005B34C0 EnvMapTechnique::BeginMaterial
+void EnvMapTechnique::BeginMaterial(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005B50A0 AngleIndexTechnique::BeginMaterial
+void AngleIndexTechnique::BeginMaterial(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, 0.0f);
+}
+
+// @func 0x005B8DF0 SacEnvMapTechnique::BeginMaterial
+void SacEnvMapTechnique::BeginMaterial(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005B9C80 Sly2UVTechnique::BeginMaterial
+void Sly2UVTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    const float value[4] = {MaterialSwitchValue(material), 0.0f, 0.0f, 0.0f};
+    SetShaderConstant(0, value);
+}
+
+// @func 0x005BA7D0 SlyCausticsTechnique::BeginMaterial
+void SlyCausticsTechnique::BeginMaterial(AglMaterial* material)
+{
+    // Constants 0/1 scale the texture coordinates, 2/3 are periods sent
+    // as reciprocals. NOTE: a material without constants divides by zero, as
+    // on the console.
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, MaterialConstant(material, 0), MaterialConstant(material, 1));
+    const float value[4] = {1.0f / MaterialConstant(material, 2), 1.0f / MaterialConstant(material, 3),
+                            MaterialSwitchValue(material), 0.0f};
+    SetShaderConstant(0, value);
+}
+
+// @func 0x005BB408 SlyCharacterTechnique::BeginMaterial
+void SlyCharacterTechnique::BeginMaterial(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005C27B0 SlyCharacterCollectibleTechnique::BeginMaterial
+void SlyCharacterCollectibleTechnique::BeginMaterial(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005C56E0 SlyEnvMapTechnique::BeginMaterial
+void SlyEnvMapTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005C8268 SlyMirrorTechnique::BeginMaterial
+void SlyMirrorTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 8, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005C9898 SlyPanoramaTechnique::BeginMaterial
+void SlyPanoramaTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005CAD48 SlyPropTechnique::BeginMaterial
+void SlyPropTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005CC170 SlyTerrainTechnique::BeginMaterial
+void SlyTerrainTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
 }
 
 // @func 0x005B182C ProjTxrDeferredTechnique::BeginMaterial
