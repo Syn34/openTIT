@@ -174,3 +174,20 @@ per printf variant); each copy is tagged on the shared C++ function.
 | 0x0072B8E8 / 0x0072BCF8 / 0x0072CD10 / 0x0072D504 | scanf field converters (`_Getfld`, `_Getfloat`, `_Getint`, `_Getstr`) | Host scanf. |
 | 0x0072DB70 | printf/scanf floating-point helper (exact identity unconfirmed) | Host printf/scanf. |
 | 0x0071A080-0x0071A214 | WwsJob named-object registry, SPU job image accessors and the job exception handler printout | SPU job manager support, not libc. |
+
+## C++ runtime support (`CxxRuntime.cpp`)
+
+| Address | Name | Original | Notes |
+|---|---|---|---|
+| 0x007315EC | OperatorDelete | `operator delete` | `crt::Free`, null ignored. |
+| 0x00731620 | OperatorNewArrayAligned | `operator new[](size, align)` | Forwards to the scalar version. |
+| 0x00731648 | OperatorNewAligned | `operator new(size, align)` | `crt::MemAlign` + new-handler loop; reports bad_alloc and aborts. |
+| 0x00731800 | ReportUncaughtException | uncaught exception report | "exception: <what>" then abort. |
+| 0x007318A4 | PureVirtualCalled | `__cxa_pure_virtual` | Calls Terminate. |
+| 0x00732BCC | MemCpyAligned | aligned block copy | `memcpy`. |
+| 0x00732D44 | Terminate | `std::terminate` | Handler, then abort. |
+| 0x00732D84 | DefaultTerminateHandler | default terminate handler | Abort. |
+
+The std::exception / bad_alloc classes and the `__cxxabiv1` type_info classes
+(0x00731850-0x00732AE4, vtables 0x00F2D1B8-0x00F2D2A0) are the host runtime's
+own business and are not reproduced.
