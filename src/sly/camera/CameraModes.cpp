@@ -4,7 +4,12 @@
 #include "ape/world/ApeDefTypes.h"
 #include "ape/world/ApeInstances.h"
 #include "ape/world/ApeObj.h"
+#include "agl/AglRenderTarget.h"
+#include "ape/core/ApeString.h"
+#include "ape/math/ApeMatrixOps.h"
+#include "crt/libc/Libc.h"
 #include "sly/camera/CameraHooks.h"
+#include "sly/game/GameMath.h"
 #include "sly/entity/GameCamera.h"
 #include "sly/tuning/CameraTuning.h"
 
@@ -314,16 +319,262 @@ void ShooterCameraMode::Update(float dt, CameraViewState& view)
         rewinding = false;
 }
 
-// @func 0x00113350 ShooterCameraMode::Release
-void ShooterCameraMode::Release()
+// @func 0x00113350 ShooterCameraMode::Finish
+void ShooterCameraMode::Finish()
 {
     GameCamera* owner = camera;
     CameraMode* below = owner->ModeBelow(this);
     owner->RemoveMode(-1.0f, this);
-    // NOTE: the mode underneath is released together with this one.
+    // NOTE: the mode underneath is told to finish as well.
     if (below)
-        below->Release();
+        below->Finish();
     delete this;
+}
+
+// ===========================================================================
+// Crawl
+// ===========================================================================
+
+// @func 0x0010B6A8 CrawlCameraMode::Update
+void CrawlCameraMode::Update(float /*dt*/, CameraViewState& view)
+{
+    SetXYZ(view.transform.xAxis, transform.xAxis);
+    SetXYZ(view.transform.yAxis, transform.yAxis);
+    SetXYZ(view.transform.zAxis, transform.zAxis);
+    SetXYZ(view.transform.translation, transform.translation);
+    if (g_cameraCrawlFOV >= 0.0f)
+        view.fov = g_cameraCrawlFOV;
+    view.dofBlendAlpha = g_cameraCrawlDOFIntensity;
+    view.dofEnabled = g_cameraCrawlDOFEnable;
+    view.dofRange = g_cameraCrawlDOFRange;
+    view.dofIterations = 1;
+    view.focusDistance = g_cameraCrawlDOFFocalDist;
+}
+
+// @func 0x0010B790 CrawlCameraMode::UpdateStage2
+void CrawlCameraMode::UpdateStage2(float dt, CameraViewState& view)
+{
+    if (!player)
+        return;
+    void* pad = PlayerPad(player);
+    constexpr uint32_t kLookToggleButton = 0x2000;
+    if (PadButtonPressed(pad, kLookToggleButton))
+        lookLocked = !lookLocked;
+    const float moveX = PadAxis(pad, 0);
+    const float moveY = -PadAxis(pad, 1);
+    const float lookX = PadAxis(pad, 2);
+    const float lookY = -PadAxis(pad, 3);
+
+    // Any input (or a busy character) resets the idle timer.
+    const float* idleRange = g_cameraCrawlIdleTimeMinMax.Get();
+    if (lookLocked || moveX * moveX + moveY * moveY >= 0.0625f || lookX * lookX + lookY * lookY >= 0.0625f ||
+        Component03Flag31(player)) {
+        panState = kPan_Stick;
+        idleTime = 0.0f;
+        idleLimit = ape::RandomRange(idleRange[0], idleRange[1], ape::g_gameRandom);
+    } else {
+        idleTime += dt;
+    }
+
+    const float* panMax = g_cameraCrawlPanMax.Get();
+    if (idleLimit <= idleTime) {
+        // Glance somewhere at random for a while.
+        const float range = g_cameraCrawlLookRandMax;
+        panTargetYaw = ape::RandomRange(-range, range, ape::g_gameRandom) * panMax[0];
+        panTargetPitch = ape::RandomRange(-range, range, ape::g_gameRandom) * panMax[1];
+        idleTime = 0.0f;
+        panState = kPan_Glance;
+        const float* lookTime = g_cameraCrawlLookTimeMinMax.Get();
+        idleLimit = ape::RandomRange(lookTime[0], lookTime[1], ape::g_gameRandom);
+    } else if (panState == kPan_Stick && !lookLocked) {
+        panTargetYaw = lookX * panMax[0];
+        panTargetPitch = lookY * panMax[1];
+    }
+
+    panPitch = ApproachExp(panPitch, panTargetPitch, g_cameraCrawlPanInterp, dt);
+    panYaw = ApproachExp(panYaw, panTargetYaw, g_cameraCrawlPanInterp, dt);
+
+    // Turn the view about its own position: yaw, then pitch.
+    constexpr float kDegToRad = 0.017453292f;
+    const ape::Vec3 pos = view.transform.translation;
+    ape::Matrix34 turn;
+    ape::Matrix34RotationY(-panYaw * kDegToRad, turn);
+    ape::Matrix34 yawed;
+    ape::Matrix34MulRotation(yawed, view.transform, turn);
+    ape::Matrix34RotationX(-panPitch * kDegToRad, turn);
+    ape::Matrix34MulRotation(view.transform, yawed, turn);
+    SetXYZ(view.transform.translation, pos);
+}
+
+// @func 0x0010BCD8 CrawlCameraMode::Activate
+void CrawlCameraMode::Activate()
+{
+    agl::AglRenderTarget* target = MainRenderTarget();
+    savedNear = target->zNear;
+    target->SetNear(0.02f);
+}
+
+// @func 0x0010BD28 CrawlCameraMode::Deactivate
+void CrawlCameraMode::Deactivate()
+{
+    MainRenderTarget()->SetNear(savedNear);
+    camera->fov = savedFov;
+}
+
+// @func 0x0010BD7C CrawlCameraMode::Finish
+void CrawlCameraMode::Finish()
+{
+    savedNear = 0.0f;
+}
+
+// ===========================================================================
+// Track
+// ===========================================================================
+
+TrackCameraMode::~TrackCameraMode()
+{
+    AssignEntity(target, nullptr);
+}
+
+// @func 0x001138D8 TrackCameraMode::SetTarget
+void TrackCameraMode::SetTarget(Entity* entity)
+{
+    AssignEntity(target, entity);
+}
+
+// TODO(0x001139C0 TrackCameraMode::Update)
+void TrackCameraMode::Update(float /*dt*/, CameraViewState& /*view*/) {}
+
+// @func 0x00114130 TrackCameraMode::GetDebugText
+const char* TrackCameraMode::GetDebugText()
+{
+    constexpr float kRadToDeg = 57.295776f;
+    return ape::TempFormat("Target: %s\nOffsetPos: {%5.2f,%5.2f,%5.2f}\nOffsetRot: {%5.2f,%5.2f}\nInvertDir: %d",
+                           target ? EntityName(target) : "<none>", offsetPos.x, offsetPos.y, offsetPos.z,
+                           offsetYaw * kRadToDeg, offsetPitch * kRadToDeg, invertDir ? 1 : 0);
+}
+
+// ===========================================================================
+// Orbit
+// ===========================================================================
+
+// @func 0x00114298 OrbitCameraMode::OrbitCameraMode
+OrbitCameraMode::OrbitCameraMode(GameCamera* owner, Entity* entity, OrbitStyle orbitStyle)
+    : CameraMode(owner), style(orbitStyle)
+{
+    constexpr float kDegToRad = 0.017453292f;
+    const float* limit = g_cameraOrbitModeStandardGimbalLimit.Get();
+    gimbalLimit = { limit[0] * kDegToRad, limit[1] * kDegToRad, limit[2] * kDegToRad, 0.0f };
+    yaw = entity ? crt::ATan2F(entity->transform.zAxis.x, entity->transform.zAxis.z) : 0.0f;
+    pitch = gimbalLimit.z;
+
+    const bool sprint = orbitStyle == kOrbit_Sprint;
+    const float* offset = (sprint ? g_cameraOrbitModeSprintGimbalOffset : g_cameraOrbitModeStandardGimbalOffset).Get();
+    gimbalOffset = { offset[0], offset[1], offset[2], 0.0f };
+    radius = sprint ? g_cameraOrbitModeSprintRadius : g_cameraOrbitModeStandardRadius;
+    fov = sprint ? g_cameraOrbitModeSprintFOV : g_cameraOrbitModeStandardFOV;
+    snap = true;
+    AssignEntity(target, entity);
+}
+
+// @func 0x001144D0 OrbitCameraMode::~OrbitCameraMode
+// @func 0x0011454C OrbitCameraMode::~OrbitCameraMode (deleting)
+OrbitCameraMode::~OrbitCameraMode()
+{
+    AssignEntity(target, nullptr);
+}
+
+// @func 0x00114208 OrbitCameraMode::SetTarget
+void OrbitCameraMode::SetTarget(Entity* entity)
+{
+    AssignEntity(target, entity);
+}
+
+// TODO(0x00114650 OrbitCameraMode::Update)
+void OrbitCameraMode::Update(float /*dt*/, CameraViewState& /*view*/) {}
+
+// ===========================================================================
+// Strafe
+// ===========================================================================
+
+void StrafeSettings::LoadDefaults(float cameraHeight)
+{
+    interp = g_cameraStrafeInterp;
+    fovInterp = g_cameraFovInterpInterp;
+    fov = g_cameraStrafeFOV;
+    const float* adjust = g_cameraStrafePosAdjust.Get();
+    posAdjust = { adjust[0], adjust[1], adjust[2], 0.0f };
+    gimbalRadius = g_cameraStrafeGimbalRadius;
+    angleHome = g_cameraStrafeAngleHome;
+    angleMin = g_cameraStrafeAngleMin;
+    angleMax = g_cameraStrafeAngleMax;
+    height = cameraHeight;
+}
+
+// @func 0x00115900 StrafeSettings::BlendToward
+void StrafeSettings::BlendToward(float dt, const StrafeSettings& to)
+{
+    constexpr float kEpsilon = 1e-05f;
+    auto approach = [dt](float& value, float goal, float rate) {
+        if (std::fabs(value - goal) >= kEpsilon)
+            value = ApproachExp(value, goal, rate, dt);
+    };
+    approach(fov, to.fov, to.fovInterp);
+    if (std::fabs(posAdjust.x - to.posAdjust.x) >= kEpsilon || std::fabs(posAdjust.y - to.posAdjust.y) >= kEpsilon ||
+        std::fabs(posAdjust.z - to.posAdjust.z) >= kEpsilon) {
+        ape::Vec3 eased;
+        ApproachExp3(eased, to.interp, dt, posAdjust, to.posAdjust);
+        SetXYZ(posAdjust, eased);
+    }
+    approach(gimbalRadius, to.gimbalRadius, to.interp);
+    approach(angleHome, to.angleHome, to.interp);
+    approach(angleMin, to.angleMin, to.interp);
+    approach(angleMax, to.angleMax, to.interp);
+    height = to.height;
+}
+
+// @func 0x00115B90 StrafeCameraMode::StrafeCameraMode
+StrafeCameraMode::StrafeCameraMode(float height, GameCamera* owner, Entity* subjectEntity, Entity* opponentEntity)
+    : CameraMode(owner)
+{
+    current.LoadDefaults(height);
+    target.LoadDefaults(height);
+    AssignEntity(subject, subjectEntity);
+    AssignEntity(opponent, opponentEntity);
+}
+
+// @func 0x00115D2C StrafeCameraMode::~StrafeCameraMode
+// @func 0x00115DE0 StrafeCameraMode::~StrafeCameraMode (deleting)
+StrafeCameraMode::~StrafeCameraMode()
+{
+    AssignEntity(opponent, nullptr);
+    AssignEntity(subject, nullptr);
+}
+
+// @func 0x00115B0C StrafeCameraMode::SetSubject
+void StrafeCameraMode::SetSubject(Entity* entity)
+{
+    AssignEntity(subject, entity);
+}
+
+// @func 0x00115EB0 StrafeCameraMode::Tick
+bool StrafeCameraMode::Tick(float dt, CameraViewState& view)
+{
+    current.BlendToward(dt, target);
+    Update(dt, view);
+    UpdateStage2(dt, view);
+    UpdateStage3(dt, view);
+    return true;
+}
+
+// TODO(0x00115FB0 StrafeCameraMode::Update)
+void StrafeCameraMode::Update(float /*dt*/, CameraViewState& view)
+{
+    // Without both entities alive the stored transform is shown.
+    SetXYZ(view.transform.xAxis, transform.xAxis);
+    SetXYZ(view.transform.yAxis, transform.yAxis);
+    SetXYZ(view.transform.zAxis, transform.zAxis);
+    SetXYZ(view.transform.translation, transform.translation);
 }
 
 } // namespace camera

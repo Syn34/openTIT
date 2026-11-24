@@ -56,8 +56,10 @@ public:
     virtual void ActivateFrom(const CameraViewState& previous) { (void)previous; }
     // Another mode was pushed on top of this one, or this one was removed (slot 9).
     virtual void Deactivate() {}
-    // Takes the mode off its camera and destroys it (slot 10).
-    virtual void Release() {}
+    // Slot 10. Modes that end on their own (spline, shooter) take themselves
+    // off the camera, pass the call to the mode below and delete themselves;
+    // others only drop transient state.
+    virtual void Finish() {}
     // Back to the mode's default settings (slot 11).
     virtual void ResetSettings() {}
     // Runs the three stages (slot 12); false would keep the previous view.

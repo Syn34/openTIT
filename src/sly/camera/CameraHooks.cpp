@@ -12,6 +12,7 @@ const char* EntityName(entity::Entity* entity) { (void)entity; return "<none>"; 
 ape::Vec3 EntityFocusPoint(entity::Entity* entity) { (void)entity; return {}; }
 bool IsCharacterEntity(const entity::Entity* entity) { (void)entity; return false; }
 bool IsVehicleEntity(const entity::Entity* entity) { (void)entity; return false; }
+bool Component03Flag31(entity::Entity* entity) { (void)entity; return false; }
 const CameraSettings* CharacterCameraSettings(entity::Entity* character) { (void)character; return nullptr; }
 const CameraSettings* VehicleCameraSettings(entity::Entity* vehicle) { (void)vehicle; return nullptr; }
 const OrthoCameraDesc* VehicleOrthoCamera(entity::Entity* vehicle) { (void)vehicle; return nullptr; }
@@ -49,6 +50,11 @@ float ScreenHeight() { return 720.0f; }
 float SafeAreaWidth() { return -1.0f; }
 float SafeAreaHeight() { return -1.0f; }
 bool IsDisplay4x3() { return false; }
+
+agl::AglRenderTarget* MainRenderTarget() { return nullptr; }
+void* PlayerPad(entity::Entity* entity) { (void)entity; return nullptr; }
+float PadAxis(void* pad, int axis) { (void)pad; (void)axis; return 0.0f; }
+bool PadButtonPressed(void* pad, uint32_t mask) { (void)pad; (void)mask; return false; }
 
 bool IsGameTimeFrozen() { return false; }
 bool IsShooterSplineForcedToEnd() { return false; }

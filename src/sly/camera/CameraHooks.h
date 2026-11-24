@@ -9,7 +9,7 @@
 #include <cstdint>
 
 namespace ape::world { class ApeObj; }
-namespace agl { class AglPostProcEffect; }
+namespace agl { class AglPostProcEffect; class AglRenderTarget; }
 
 namespace sly {
 namespace entity { class Entity; }
@@ -27,6 +27,9 @@ ape::Vec3 EntityFocusPoint(entity::Entity* entity);
 bool IsCharacterEntity(const entity::Entity* entity);
 // Type word 2 bit 10 (+0xC8): a vehicle. NOTE: named from the definition data it selects.
 bool IsVehicleEntity(const entity::Entity* entity);
+// Bit 31 of word +0x28 of the entity's component of type 3 (false without one).
+// NOTE: meaning unknown; the crawl camera treats it like stick input.
+bool Component03Flag31(entity::Entity* entity);
 // Camera settings in a character definition (+0x3F0) or a vehicle definition (+0x1B0).
 const CameraSettings* CharacterCameraSettings(entity::Entity* character);
 const CameraSettings* VehicleCameraSettings(entity::Entity* vehicle);
@@ -85,6 +88,19 @@ float SafeAreaWidth();
 float SafeAreaHeight();
 // The display is 4:3 (0x0046C7B0 on the game world).
 bool IsDisplay4x3();
+
+// Render target of the main view (game world +0x128168).
+agl::AglRenderTarget* MainRenderTarget();
+
+// -- input ------------------------------------------------------------------------
+// Pad of the player slot that controls `entity` (the entity's player byte
+// +0xAC indexes the world player block, whose pad index picks one of the
+// 0x2EC0-byte pad blocks at 0x010B1A90).
+void* PlayerPad(entity::Entity* entity);
+// Stick axis 0..3 (left X/Y, right X/Y) in -1..1 (0x0045B160).
+float PadAxis(void* pad, int axis);
+// The button bits were pressed this frame (pad +0x08 & +0x0C).
+bool PadButtonPressed(void* pad, uint32_t mask);
 
 // -- game state -------------------------------------------------------------------
 // Frame time is frozen (short at +0x128214 of the world object 0x010B19E0).
