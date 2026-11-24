@@ -1,10 +1,40 @@
 // openTIT - Scripted actors (see ActorEntities.h).
 #include "sly/entity/ActorEntities.h"
 
+#include "ape/memory/ApeMem.h"
 #include "ape/world/ApeObj.h"
+#include "sly/camera/CameraHooks.h"
 
 namespace sly {
 namespace entity {
+
+// Minimal version of 0x000E281C (entity module).
+ActorDef::~ActorDef()
+{
+    if (parts) {
+        for (Part& part : *parts) {
+            if (part.havokObject)
+                camera::HavokRemoveReference(part.havokObject);
+        }
+        delete parts;
+    }
+}
+
+// @func 0x001AD158 SoundActorDef::~SoundActorDef
+// @func 0x001AD188 SoundActorDef::~SoundActorDef (deleting)
+SoundActorDef::~SoundActorDef() = default;
+
+// @func 0x001DC8B8 InteractivePropADef::~InteractivePropADef
+// @func 0x001DC910 InteractivePropADef::~InteractivePropADef (deleting)
+InteractivePropADef::~InteractivePropADef()
+{
+    if (buffer)
+        ape::FreeIfNotNull(buffer);
+}
+
+// @func 0x001E52E8 SafeDef::~SafeDef
+// @func 0x001E5318 SafeDef::~SafeDef (deleting)
+SafeDef::~SafeDef() = default;
 
 // @func 0x001DC04C InteractivePropA::~InteractivePropA
 // @func 0x001DC104 InteractivePropA::~InteractivePropA (deleting)

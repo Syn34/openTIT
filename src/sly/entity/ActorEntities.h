@@ -15,6 +15,42 @@ namespace ape::world { class ApeObj; }
 namespace sly {
 namespace entity {
 
+// Actor definition base (vtable 0x00B12838, destructor 0x000E281C in the
+// entity module; stand-in). Owns a table of 0xA0-byte part records, each
+// holding a Havok object reference at +0x20.
+class ActorDef : public EntityDef {
+public:
+    struct Part {
+        uint8_t field_00[0x20];
+        void* havokObject;          // +0x20
+        uint8_t field_24[0x7C];
+    };
+    ~ActorDef() override;
+    ape::ApeTArray<Part>* parts = nullptr;   // 0xC0 allocated on demand
+};
+
+// Definition of SoundActor and base of its subclasses' definitions
+// (vtable 0x00B15970; constructor 0x001AD7F0).
+class SoundActorDef : public ActorDef {
+public:
+    ~SoundActorDef() override;
+};
+
+// Definition of InteractivePropA (vtable 0x00B17DB0, 0x280 bytes).
+class InteractivePropADef : public ActorDef {
+public:
+    ~InteractivePropADef() override;
+    uint32_t bufferSize = 0;        // 0x254
+    void* buffer = nullptr;         // 0x258 owned
+};
+
+// Safe definition (vtable 0x00B17FF0, 0x1E0 bytes; the safe entity code
+// around 0x001E5398 plays "SafeA_*" animations).
+class SafeDef : public ActorDef {
+public:
+    ~SafeDef() override;
+};
+
 // Actor base (0x00B12898 + 0x00B12A44/0x00B12A6C at +0x17C/+0x180).
 class ActorEntity : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
