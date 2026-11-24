@@ -421,5 +421,23 @@ void* EntityCarryComponent(WorldObject* entity);
 bool CarryCanTake(void* carry, WorldObject* entity);
 void CarryTake(void* carry, WorldObject* entity);
 
+// ---------------------------------------------------------------------------
+// Track player, splines, level AI
+
+// The level's track player (game world +0x1281F8), may be null. Select:
+// 0x0031F8EC picks the track, its length 0x0031F8AC resets the position
+// (+0x34..+0x44); Reset: 0x0031F968(0, track); value: +0x40.
+void* WorldTrackPlayer();
+void TrackPlayerSelect(void* player, uint32_t track);
+void TrackPlayerReset(void* player, uint32_t track);
+void TrackPlayerSetValue(void* player, float value);
+// Spline definition by name (sorted map of 0x00F8F158).
+void* FindSplineDefByName(uint32_t nameHash);
+// Sentry lights: new patrol spline (0x001D3968), reverse (0x001D3A00).
+void SentryLightSetSpline(WorldObject* light, void* spline);
+void SentryLightReverse(WorldObject* light);
+// 0x0001B590 on the level AI object 0x00F557F0: a smoke cloud.
+void LevelAIAddSmoke(WorldObject* owner, float radius, float duration, int32_t mode, const ape::Vec3& position);
+
 } // namespace levels
 } // namespace sly

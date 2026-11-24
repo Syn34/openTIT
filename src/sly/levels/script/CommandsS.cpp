@@ -3,6 +3,7 @@
 #include "sly/levels/script/ScriptCommands.h"
 
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
 namespace sly {
@@ -268,6 +269,7 @@ class SetEntitySplineCommand : public ApeAnimScriptCommand {
 public:
     SetEntitySplineCommand();
     ~SetEntitySplineCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -297,8 +299,20 @@ ApeAnimScriptCommand* SetEntitySplineCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0009057C SetEntitySplineCommand::Execute) spline lookup (0x00734AC4) and the
-// entity's spline mover (0x001D3A68 / 0x001D3B00).
+// @func 0x0009057C SetEntitySplineCommand::Execute
+// Puts a sentry light on another patrol spline and/or reverses it.
+void SetEntitySplineCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_object, m_entity);
+    if (!entity || !EntityIsSentryLight(entity))
+        return;
+    if (m_spline != 0) {
+        if (void* spline = FindSplineDefByName(m_spline))
+            SentryLightSetSpline(entity, spline);
+    }
+    if (m_hasReverse)
+        SentryLightReverse(entity);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x908A1BE5 (name unknown): shows or hides an entity's (or a world

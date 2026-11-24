@@ -177,5 +177,14 @@ void* EntityCarryComponent(WorldObject* entity) { (void)entity; return nullptr; 
 bool CarryCanTake(void* carry, WorldObject* entity) { (void)carry; (void)entity; return false; }
 void CarryTake(void* carry, WorldObject* entity) { (void)carry; (void)entity; }
 
+void* WorldTrackPlayer() { return nullptr; }
+void TrackPlayerSelect(void* player, uint32_t track) { (void)player; (void)track; }
+void TrackPlayerReset(void* player, uint32_t track) { (void)player; (void)track; }
+void TrackPlayerSetValue(void* player, float value) { (void)player; (void)value; }
+void* FindSplineDefByName(uint32_t nameHash) { (void)nameHash; return nullptr; }
+void SentryLightSetSpline(WorldObject* light, void* spline) { (void)light; (void)spline; }
+void SentryLightReverse(WorldObject* light) { (void)light; }
+void LevelAIAddSmoke(WorldObject* owner, float radius, float duration, int32_t mode, const ape::Vec3& position) { (void)owner; (void)radius; (void)duration; (void)mode; (void)position; }
+
 } // namespace levels
 } // namespace sly

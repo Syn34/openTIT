@@ -3,6 +3,7 @@
 #include "sly/levels/script/ScriptCommands.h"
 
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
 #include <algorithm>
@@ -342,6 +343,7 @@ class WorldTrackCommand : public ApeAnimScriptCommand {
 public:
     WorldTrackCommand();
     ~WorldTrackCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -374,8 +376,21 @@ ApeAnimScriptCommand* WorldTrackCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0008BE18 WorldTrackCommand::Execute) drives the world object +0x1281F8
-// (0x0031F8EC / 0x0031F8AC / 0x0031F968) and its fields +0x34..+0x44.
+// @func 0x0008BE18 WorldTrackCommand::Execute
+// Controls the level's music/ambience track player (game world +0x1281F8):
+// switch track (optionally forcing a reset) and set its value.
+void WorldTrackCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    void* player = WorldTrackPlayer();
+    if (!player)
+        return;
+    if (m_forceReset)
+        TrackPlayerReset(player, m_hasTrack ? m_track : 0);
+    else if (m_hasTrack)
+        TrackPlayerSelect(player, m_track);
+    if (m_hasValue)
+        TrackPlayerSetValue(player, ResolveFloat(instance, m_valueVar, m_value));
+}
 
 // ---------------------------------------------------------------------------
 // "InstanceLightGroup" (NOTE: name from a hash match): sets and clears light
