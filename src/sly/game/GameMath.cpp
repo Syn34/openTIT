@@ -143,6 +143,8 @@ float SegmentSegmentDistanceSq(const ape::Vec3& a0, const ape::Vec3& a1, const a
         } else if (sN > sD) {
             sN = sD;
             tN = e + b;
+        } else {
+            tD = denom;
         }
     }
     if (tN < 0.0f) {
