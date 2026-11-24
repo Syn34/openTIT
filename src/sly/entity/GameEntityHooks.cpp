@@ -10,6 +10,11 @@ void OrphanAndReleaseAnimScript(void* script) { (void)script; }
 void SetAnimScriptPaused(void* script, bool paused) { (void)script; (void)paused; }
 ape::world::ApeObj* ComponentRenderObject(EntityComponent* component) { (void)component; return nullptr; }
 bool MinigameFlag30() { return false; }
+GameCamera* MainGameCamera() { return nullptr; }
+uint32_t CharacterDefWord3D4(const EntityDef* def) { (void)def; return 0; }
+uint32_t AnimDriverState(EntityComponent* driver) { (void)driver; return 0; }
+void AnimDriverStop(EntityComponent* driver, bool flag) { (void)driver; (void)flag; }
+void SetComponentWord1C(EntityComponent* component, uint32_t value) { (void)component; (void)value; }
 int EntityGetState(const Entity* entity, int layer) { (void)entity; (void)layer; return 0; }
 
 audio::VoiceId PlayEntitySound(audio::SoundName* sound, const ape::Vec3* position, const void* attachment)

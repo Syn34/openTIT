@@ -2,6 +2,8 @@
 #include "sly/entity/Character.h"
 
 #include "ape/memory/ApeMem.h"
+#include "sly/camera/CameraModes.h"
+#include "sly/entity/GameCamera.h"
 #include "sly/entity/GameEntityHooks.h"
 
 namespace sly {
@@ -61,8 +63,75 @@ ape::world::ApeObj* Character::GetRenderObject()
 // @func 0x0011BC50 CharacterDef::~CharacterDef (deleting)
 CharacterDef::~CharacterDef()
 {
-    if (field_588)
-        ape::FreeIfNotNull(field_588);
+    if (playerName)
+        ape::FreeIfNotNull(playerName);
+}
+
+// @func 0x00124370 Character::SetForceOpaque
+void Character::SetForceOpaque(bool on)
+{
+    if (on)
+        SetOpacity(0xFF);
+    flags3C8 = on ? (flags3C8 | 0x08) : (flags3C8 & ~0x08);
+}
+
+// TODO(0x001241A0 Character::SetOpacity)
+void Character::SetOpacity(uint8_t alpha)
+{
+    (void)alpha;
+}
+
+// @func 0x0012999C Character::IsVariant04318BE6
+bool Character::IsVariant04318BE6() const
+{
+    return (classBits & 0x20) && CharacterDefWord3D4(def) == 0x04318BE6u;
+}
+
+// @func 0x00129BC0 Character::StopScriptedAnimation
+void Character::StopScriptedAnimation()
+{
+    EntityComponent* driver = GetComponent(kComp_17);
+    if (driver && AnimDriverState(driver) == 7)
+        AnimDriverStop(driver, false);
+}
+
+// @func 0x0012BD5C Character::SetComponent0EMode
+void Character::SetComponent0EMode()
+{
+    if (EntityComponent* component = EntityComponent0E(this))
+        SetComponentWord1C(component, 0xCABDE7BAu);
+}
+
+// @func 0x0013AE28 Character::ReleaseCameraOverride
+void Character::ReleaseCameraOverride()
+{
+    GameCamera* camera = MainGameCamera();
+    if (camera && camera->HasMode(cameraMode)) {
+        cameraMode->RemoveOverride(&cameraSettings);
+        cameraMode = nullptr;
+    }
+}
+
+// @func 0x0011EFDC CharacterDef::GetDisplayName
+const char* CharacterDef::GetDisplayName() const
+{
+    return (playerName && *playerName) ? playerName : name;
+}
+
+// @func 0x00121B40 CharacterDef::LinkedDef
+EntityDef* CharacterDef::LinkedDef(uint32_t index) const
+{
+    return index < 4 ? linkedDefs[index] : nullptr;
+}
+
+// @func 0x00121B68 CharacterDef::FindLinkedDef
+int CharacterDef::FindLinkedDef(const EntityDef* linked) const
+{
+    for (int i = 0; i < 4 && linkedDefs[i]; ++i) {
+        if (linkedDefs[i] == linked)
+            return i;
+    }
+    return -1;
 }
 
 } // namespace entity

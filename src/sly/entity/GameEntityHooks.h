@@ -31,6 +31,17 @@ void SetAnimScriptPaused(void* script, bool paused);
 ape::world::ApeObj* ComponentRenderObject(EntityComponent* component);
 // The active minigame (game world +0x1281F4) has bit 30 of its word +0x34 set.
 bool MinigameFlag30();
+// The game camera (game world +0x1281E0).
+class GameCamera;
+GameCamera* MainGameCamera();
+// Word +0x3D4 of a character definition (not modelled yet).
+uint32_t CharacterDefWord3D4(const EntityDef* def);
+// Animation driver component (type 0x17): state (bits 25-29 of +0x18) and
+// stop (0x00276558).
+uint32_t AnimDriverState(EntityComponent* driver);
+void AnimDriverStop(EntityComponent* driver, bool flag);
+// Word +0x1C of a component of type 0x0E.
+void SetComponentWord1C(EntityComponent* component, uint32_t value);
 // Entity virtual slot 8 (+0x20): script state of a layer.
 int EntityGetState(const Entity* entity, int layer);
 
