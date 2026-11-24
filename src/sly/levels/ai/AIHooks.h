@@ -327,6 +327,8 @@ void NavAgentDestroy(NavAgent* agent);
 void NavAgentRequestGoal(NavAgent* agent, const ape::Vec3& goal);
 ape::Vec3 NavAgentGoal(NavAgent* agent);
 
+// 0x004705F8: sends a game event from one entity to another.
+void SendGameEvent(Entity* sender, Entity* receiver, uint32_t event, uint32_t data, bool immediate);
 // 0x0048F90C: posts `event` to the members of listener group `group` within
 // `range` of the sender.
 void BroadcastInRange(Entity* sender, float range, uint32_t group, uint32_t event, uint32_t argument);

@@ -192,7 +192,7 @@ public:
     ape::Vec3 FilterRootMotion(const ape::Vec3& step) override;
     void SetTarget(Entity* target) override;
     void UpdateMovement(float dt) override;
-    float VerticalBoost() override;
+    float GravitySpeed() override;
 
     // Lets go of the target and any claim when engaged (0x0002EC04).
     void Disengage();
@@ -221,6 +221,21 @@ public:
 // bytes; its code lies outside this range).
 class SentryAI : public AIController {
 public:
+    void Attach(Entity* entity) override;
+    void Update(float dt) override;
+    void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
+    float GravitySpeed() override;
+    bool CanBeSneakedUpOn() override;
+    bool IsSettled() override;
+    bool ShouldApplyGravity(const ape::Vec3& velocity) override;
+    void ExitState() override;
+
+    Entity* alertReceiver = nullptr;  // +0x138 told when the sentry is hit
+    uint8_t settled = 0;              // +0x13C
+    uint8_t field_13D = 0;            // +0x13D
+    uint8_t field_13E = 1;            // +0x13E
+    uint32_t idleClip = 0;            // +0x140
+    uint32_t field_144 = 0;           // +0x144
 };
 class SentryAIVariant : public SentryAI {
 public:

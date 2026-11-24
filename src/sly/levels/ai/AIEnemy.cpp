@@ -209,8 +209,8 @@ void EnemyAI::UpdateMovement(float dt)
         BodyRequestHold(body);
 }
 
-// @func 0x0003AA00 EnemyAI::VerticalBoost
-float EnemyAI::VerticalBoost()
+// @func 0x0003AA00 EnemyAI::GravitySpeed
+float EnemyAI::GravitySpeed()
 {
     if (state == 0x25 || state == 0x24)
         return -4.0f;

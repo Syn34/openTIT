@@ -53,6 +53,7 @@ int BodyMotionType(EntityComponent*) { return 0; }
 void BodyRequestVelocity(EntityComponent*, const ape::Vec3&) {}
 void BodyRequestStop(EntityComponent*) {}
 void BodyRequestHold(EntityComponent*) {}
+void SendGameEvent(Entity*, Entity*, uint32_t, uint32_t, bool) {}
 void BroadcastInRange(Entity*, float, uint32_t, uint32_t, uint32_t) {}
 
 void EntitySetScriptState(Entity*, uint32_t) {}

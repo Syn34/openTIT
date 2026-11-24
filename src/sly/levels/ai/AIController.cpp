@@ -873,9 +873,8 @@ void AIController::UpdateMovement(float dt)
     const float inv = 1.0f / dt;
     const ape::Vec3 bodyPos = BodyPosition(body);
     float vy = (transform.translation.y - bodyPos.y) * inv;
-    float boost = 0.0f;
-    if (HasVerticalBoost(&boost))
-        vy += VerticalBoost();
+    if (ShouldApplyGravity({0.0f, vy, 0.0f, 0.0f}))
+        vy += GravitySpeed();
     BodyRequestVelocity(body, {(transform.translation.x - bodyPos.x) * inv, vy,
                                (transform.translation.z - bodyPos.z) * inv, 0.0f});
     bodyMotion = BodyMotionType(body);

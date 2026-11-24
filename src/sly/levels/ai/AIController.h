@@ -112,9 +112,10 @@ public:
     virtual bool WritesEntityTransform() { return false; }
     // Slot 33 (+0x84): facing may tilt (flyers).
     virtual bool CanPitch() { return false; }
-    // Slot 44 (+0xB0): extra vertical speed applies (`out` is unused by the
-    // base). NOTE: name from use.
-    virtual bool HasVerticalBoost(float* out) { (void)out; return false; }
+    // Slot 44 (+0xB0): gravity applies to the body velocity being built
+    // (only its y is filled in at that point). The base version
+    // (0x00738690) applies it while not moving up.
+    virtual bool ShouldApplyGravity(const ape::Vec3& velocity) { return velocity.y < 1e-05f; }
     // Slot 11 (+0x2C): NOTE: event from outside (0 and 1 are handled by the
     // standard enemy).
     virtual void OnEvent(int kind) { (void)kind; }
@@ -124,6 +125,8 @@ public:
     virtual bool IsEngaged() { return (flags0 & kF0_Bit0) != 0; }
     virtual bool IsCalm() { return !(flags0 & kF0_Bit6); }
     virtual bool CanBeTakenDown() { return false; }
+    // Slot 26 (+0x68): NOTE: the player may sneak up on this one.
+    virtual bool CanBeSneakedUpOn() { return false; }
     // Slot 38 (+0x98): NOTE: true in the states where the enemy is helpless.
     virtual bool IsHelpless() { return false; }
     // Slot 39 (+0x9C): the controlled character has no health left.
@@ -192,8 +195,8 @@ public:
     virtual bool IsStateInterruptible(int state);
     // Slot 73 (+0x124): turning, root motion and body velocity.
     virtual void UpdateMovement(float dt);
-    // Slot 74 (+0x128): extra vertical speed (see HasVerticalBoost).
-    virtual float VerticalBoost() { return 0.0f; }
+    // Slot 74 (+0x128): vertical speed added when gravity applies.
+    virtual float GravitySpeed() { return 0.0f; }
 
     // -- helpers ----------------------------------------------------------------------
     // Turns the transform to face `direction` (horizontal part only, up axis
@@ -280,6 +283,9 @@ public:
 struct AIDamageInfo {
     uint32_t field_00 = 0;
     Entity* source = nullptr;    // +0x04
+    uint32_t field_08 = 0;
+    uint16_t field_0C = 0;
+    uint16_t flags = 0;          // +0x0E NOTE: bit 12 makes sentries react
 };
 
 // One remembered sighting (0x50 bytes on the console; eight per block).
