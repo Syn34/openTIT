@@ -9,6 +9,7 @@
 #include "sly/levels/GameServices.h"
 #include "sly/gameplay/SequenceCommands.h"
 #include "sly/gameplay/Sequencer.h"
+#include "sly/gameplay/SequenceCommands2.h"
 #include "sly/gameplay/SequenceUiCommands.h"
 #include "sly/levels/script/ScriptVars.h"
 #include "sly/levels/LevelServices.h"
@@ -295,13 +296,32 @@ ApeAnimScriptCommand* SeqPlayAnimCommand::Create(XmlElement* element) const
 class SeqDialogueCommand : public ApeAnimScriptCommand {
 public:
     SeqDialogueCommand();
+    explicit SeqDialogueCommand(XmlElement* element);
     ~SeqDialogueCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     void Link() override;
+    ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
+    char m_subtitle[0x44] = {};           // +0x0C "subtitle"
+    uint32_t m_hash50 = 0;                // +0x50 attribute 0x1050F752. NOTE: name unknown
     uint32_t m_soundName = 0;             // +0x54 "SoundName"
     uint32_t m_bank = 0;                  // +0x58 "Bank"
     audio::SoundName* m_sound = nullptr;  // +0x5C
+    float m_time = 0.0f;                  // +0x60 attribute 0xC05CEEB3 (negative = until the button)
+    bool m_blocking = true;               // +0x64
+    uint32_t m_hash68 = 0;                // +0x68 attribute 0x9518F698. NOTE: name unknown
+    uint32_t m_hash6C = 0;                // +0x6C attribute 0x4897260D. NOTE: name unknown
+    float m_displayRate = -1.0f;          // +0x70 "DisplayRate"
+    uint32_t m_buttonMask = 0;            // +0x74 button to continue (NOTE: unknown names leave it unset on the console)
+    bool m_flag78 = false;                // +0x78 attribute 0xD06EE4FE. NOTE: name unknown
+    bool m_flag79 = false;                // +0x79 attribute 0x91BAC895. NOTE: name unknown
+    uint32_t m_hash7C = 0xB7E98FE4u;      // +0x7C attribute 0xE2F075ED (default: console global 0x00F64D08)
+    char m_promptText[0x40] = {};         // +0x80 "promptText" or "<button> $STR_CONTINUE"
+    bool m_flagC0 = false;                // +0xC0 attribute 0x6D18DE7D. NOTE: name unknown
+    uint32_t m_exclusivityGroup = 0;      // +0xC4 "ExclusivityGroup"
+    int32_t m_exclusivityPriority = 0;    // +0xC8 "ExclusivityGroupPriority"
+    uint32_t m_entity = 0;                // +0xCC "Entity"
 };
 
 // @func 0x000A045C SeqDialogueCommand::SeqDialogueCommand
@@ -323,9 +343,108 @@ SeqDialogueCommand::~SeqDialogueCommand()
     audio::SoundNameRelease(m_sound);
 }
 
-// TODO(0x000A0558 SeqDialogueCommand::SeqDialogueCommand) parser (button prompt table,
-// subtitle text, timing) and TODO(0x000A0AAC SeqDialogueCommand::Create),
-// TODO(0x000A0B1C SeqDialogueCommand::Execute).
+namespace {
+constexpr uint32_t kAttrDialogueSoundName = AnimHash("SoundName");
+constexpr uint32_t kAttrDialogueBank = AnimHash("Bank");
+constexpr uint32_t kAttrDialogue50 = 0x1050F752u;        // NOTE: name unknown
+constexpr uint32_t kAttrDialogueTime = 0xC05CEEB3u;      // NOTE: name unknown
+constexpr uint32_t kAttrDialogueBlocking = 0x8488565Bu;  // NOTE: name unknown
+constexpr uint32_t kAttrDialogue68 = 0x9518F698u;        // NOTE: name unknown
+constexpr uint32_t kAttrDialogue6C = 0x4897260Du;        // NOTE: name unknown
+constexpr uint32_t kAttrDialogue78 = 0xD06EE4FEu;        // NOTE: name unknown
+constexpr uint32_t kAttrDialogue79 = 0x91BAC895u;        // NOTE: name unknown
+constexpr uint32_t kAttrDialogueBoth = 0x23D89F8Bu;      // NOTE: name unknown (sets both flags)
+constexpr uint32_t kAttrDialogueButton = 0x051086F8u;    // NOTE: name unknown
+constexpr uint32_t kAttrDialogue7C = 0xE2F075EDu;        // NOTE: name unknown
+constexpr uint32_t kAttrDialogueC0 = 0x6D18DE7Du;        // NOTE: name unknown
+
+// Continue buttons by name: mask bit and prompt text.
+struct DialogueButton {
+    uint32_t nameHash;
+    uint32_t mask;
+    const char* text;
+};
+constexpr DialogueButton kDialogueButtons[] = {
+    {AnimHash("UP"), 0x01, "$BUTTON_UP"},           {AnimHash("DOWN"), 0x02, "$BUTTON_DOWN"},
+    {AnimHash("LEFT"), 0x04, "$BUTTON_LEFT"},       {AnimHash("RIGHT"), 0x08, "$BUTTON_RIGHT"},
+    {AnimHash("TRIANGLE"), 0x10, "$BUTTON_TRIANGLE"}, {AnimHash("SQUARE"), 0x20, "$BUTTON_SQUARE"},
+    {AnimHash("CIRCLE"), 0x40, "$BUTTON_CIRCLE"},   {AnimHash("X"), 0x80, "$BUTTON_X"},
+    {AnimHash("CROSS"), 0x80, "$BUTTON_X"},
+};
+} // namespace
+
+// @func 0x000A0558 SeqDialogueCommand::SeqDialogueCommand (parsing)
+SeqDialogueCommand::SeqDialogueCommand(XmlElement* element)
+{
+    element->GetHash(kAttrDialogueSoundName, &m_soundName, 0);
+    element->GetHash(kAttrDialogueBank, &m_bank, 0);
+    element->GetHash(kAttrDialogue50, &m_hash50, m_hash50);
+    element->GetFloat(kAttrDialogueTime, &m_time, m_time);
+    element->GetBool(kAttrDialogueBlocking, &m_blocking, m_blocking);
+    element->GetFloat(AnimHash("DisplayRate"), &m_displayRate, -1.0f);
+    const char* subtitle = element->GetString("subtitle");
+    if (subtitle && subtitle[0] != '\0')
+        ape::StrCopyBounded(m_subtitle, subtitle, 0x40);
+    element->GetHash(kAttrDialogue68, &m_hash68, m_hash68);
+    element->GetHash(kAttrDialogue6C, &m_hash6C, m_hash6C);
+    element->GetBool(kAttrDialogue78, &m_flag78, false);
+    element->GetBool(kAttrDialogue79, &m_flag79, false);
+    bool both = false;
+    element->GetBool(kAttrDialogueBoth, &both, false);
+    if (both)
+        m_flag78 = m_flag79 = true;
+
+    const char* buttonText = "";
+    uint32_t button = 0;
+    if (element->GetHash(kAttrDialogueButton, &button, 0) == ape::xml::kQuery_Ok) {
+        for (const DialogueButton& entry : kDialogueButtons) {
+            if (entry.nameHash == button) {
+                m_buttonMask = entry.mask;
+                buttonText = entry.text;
+                break;
+            }
+        }
+    } else {
+        m_buttonMask = 0;
+    }
+    element->GetHash(kAttrDialogue7C, &m_hash7C, m_hash7C);
+    const char* prompt = element->GetString("promptText");
+    if (!prompt)
+        prompt = ape::TempFormat("%s $STR_CONTINUE", buttonText);
+    ape::StrNCopy(m_promptText, prompt, sizeof(m_promptText));
+    m_promptText[sizeof(m_promptText) - 1] = '\0';
+    element->GetBool(kAttrDialogueC0, &m_flagC0, m_flagC0);
+    element->GetHash(AnimHash("ExclusivityGroup"), &m_exclusivityGroup, m_exclusivityGroup);
+    element->GetInt(AnimHash("ExclusivityGroupPriority"), &m_exclusivityPriority, m_exclusivityPriority);
+    element->GetHash(kAttrEntity, &m_entity, m_entity);
+    // A line that waits for nothing has no time limit either.
+    if (m_time < 0.0f && m_buttonMask == 0)
+        m_time = 0.0f;
+    Link();
+}
+
+// @func 0x000A0AAC SeqDialogueCommand::Create
+ApeAnimScriptCommand* SeqDialogueCommand::Create(XmlElement* element) const
+{
+    return new SeqDialogueCommand(element);
+}
+
+// @func 0x000A0B1C SeqDialogueCommand::Execute
+void SeqDialogueCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    if (m_soundName != 0 && !audio::SoundNameHasDef(m_sound)) {
+        // Compiled-out warning naming the missing sound and bank.
+        (void)ape::TempHexString(m_soundName);
+        (void)ape::TempHexString(m_bank);
+    }
+    // NOTE: the console passes 19 values to 0x0043267C; the sequencer port
+    // models 17 of them (the prompt text pointer goes in twice and the
+    // blocking byte has no slot there). The mapping below is positional.
+    gameplay::AddSequenceCommand(new gameplay::SeqDialogStreamCommand(
+        m_time, m_displayRate, m_sound, m_subtitle, m_hash50, m_hash68, m_hash6C, m_blocking, m_buttonMask,
+        m_flag78, m_flag79, m_hash7C, m_promptText, m_flagC0, m_exclusivityGroup, uint32_t(m_exclusivityPriority),
+        m_entity));
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xE37F3CE5 (name unknown): runs a script as part of the sequence,
@@ -574,7 +693,7 @@ void RegisterScriptCommandsAA()
     prototypes.Add(0x2D43CE4Cu, new SeqShowHudCommand());
     prototypes.Add(AnimHash("PauseHavok"), new SeqPauseHavokCommand());
     prototypes.Add(AnimHash("SeqPlayAnim"), new SeqPlayAnimCommand());
-    // #227 (0x780316BB) is not registered until its parser is ported.
+    prototypes.Add(0x780316BBu, new SeqDialogueCommand());
     prototypes.Add(0xE37F3CE5u, new SeqRunScriptCommand());
     prototypes.Add(0x93C95D39u, new SeqHudElementCommand());
     prototypes.Add(0x661993C7u, new SeqSpeakerDialogScriptCommand());
