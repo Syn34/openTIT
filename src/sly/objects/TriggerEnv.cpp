@@ -7,6 +7,9 @@
 
 #include "ape/math/ApeMath.h"
 #include "ape/xml/ApeXml.h"
+#include "ape/math/ApeMatrixOps.h"
+
+#include <cmath>
 
 namespace sly {
 namespace objects {
@@ -197,6 +200,117 @@ DamageTrigger::DamageTrigger(const DamageTriggerInstanceDesc& desc)
 
 // @func 0x0021B088 DamageTrigger::~DamageTrigger (deleting)
 DamageTrigger::~DamageTrigger() = default;
+
+uint32_t DamageTrigger::OccupantBit(const ObjEntity* entity) const
+{
+    // The console shifts by the index as a 64-bit amount, so "not found" (-1)
+    // and slots past 31 give no bit in the 32-bit mask.
+    int index = FindOccupant(entity);
+    return (index >= 0 && index < 32) ? (1u << index) : 0u;
+}
+
+// Hit direction: straight up when flag 1 is set; otherwise outwards from the
+// trigger at 60 degrees elevation, or along the trigger's oriented third axis
+// when it has an orientation (or flag 2 asks for it). Flag 0 makes that axis
+// two-sided: targets behind it get the axis turned half a turn about Y.
+// @func 0x0021B0E0 DamageTrigger::ApplyDamage
+bool DamageTrigger::ApplyDamage(ObjEntity* target, float amount, uint32_t reactType)
+{
+    if (!target || amount <= 0.0f)
+        return false;
+    if (!(target->flags2 & kEntFlag2_Highlightable))
+        return false;
+
+    const ape::Vec3 up = {0.0f, 1.0f, 0.0f, 0.0f};   // console global 0x01164B60
+    const ape::Vec3 zero = {0.0f, 0.0f, 0.0f, 0.0f}; // console global 0x01164B40
+    const ape::Vec4 identity = {0.0f, 0.0f, 0.0f, 1.0f};
+    ape::Vec3 dir = up;
+
+    // Third axis of the orientation applied to the trigger transform.
+    // NOTE: the console multiplies in place with 0x005541F0; the operand order
+    // (orientation first) is assumed.
+    auto orientedAxis = [&](const ape::Vec4& q) {
+        ape::Matrix34 rot, combined;
+        ape::Matrix34FromQuat(rot, q, zero);
+        ape::Matrix34MulRotation(combined, rot, transform);
+        return combined.zAxis;
+    };
+
+    if (!m_flags[1]) {
+        bool identityOrientation = m_orientation.x == identity.x && m_orientation.y == identity.y &&
+                                   m_orientation.z == identity.z && m_orientation.w == identity.w;
+        if (!m_flags[2] && identityOrientation) {
+            const float elevation = 1.0471976f;   // 60 degrees
+            float dx = target->Position().x - Position().x;
+            float dz = target->Position().z - Position().z;
+            float scale = (1.0f / std::sqrt(dx * dx + dz * dz)) * ape::FastCos(elevation);
+            dir.x = dx * scale;
+            dir.y = ape::FastSin(elevation);
+            dir.z = dz * scale;
+        } else {
+            dir = orientedAxis(m_orientation);
+            if (m_flags[0]) {
+                float side = (target->Position().x - Position().x) * dir.x +
+                             (target->Position().y - Position().y) * dir.y +
+                             (target->Position().z - Position().z) * dir.z;
+                if (side < 0.0f) {
+                    const ape::Vec3 halfTurn = {0.0f, 3.1415927f, 0.0f, 0.0f};
+                    ape::Vec4 turned;
+                    ape::QuatMul(turned, m_orientation, QuaternionFromEuler(halfTurn));
+                    dir = orientedAxis(turned);
+                }
+            }
+        }
+    }
+
+    EntityHit hit;
+    hit.source = this;
+    hit.reactType = reactType;
+    hit.kind = 3;
+    hit.fromPlayer = IsPlayer();
+    hit.flag11 = m_flags[3];
+    hit.flag10 = m_flags[4];
+    hit.direction = dir;
+    hit.amount = amount;
+    hit.knockback = m_knockback;
+    EntityTakeHit(target, hit);
+    return hit.accepted;
+}
+
+// @func 0x0021B5E0 DamageTrigger::Update
+void DamageTrigger::Update(float dt)
+{
+    // NOTE: the console skips the rest when the base update reports failure;
+    // the ported base does not report one.
+    TriggerBase::Update(dt);
+    if (!m_enabled)
+        return;
+    float perFrame = m_value2 * dt;   // damage per second
+    for (int i = 0; i < OccupantCount(); ++i) {
+        uint32_t bit = i < 32 ? (1u << i) : 0u;
+        ObjEntity* occupant = Occupant(i);
+        if ((m_pendingHits & bit) && ApplyDamage(occupant, m_amount, m_reactType))
+            m_pendingHits &= ~bit;
+        if (perFrame > 0.0f)
+            ApplyDamage(occupant, perFrame, m_reactType);
+    }
+}
+
+// The entry hit is owed until a frame where the target accepts it.
+// @func 0x0021B738 DamageTrigger::OnEnter
+void DamageTrigger::OnEnter(ObjEntity* entity)
+{
+    TriggerBase::OnEnter(entity);
+    if (m_amount > 0.0f)
+        m_pendingHits |= OccupantBit(entity);
+}
+
+// @func 0x0021B7F4 DamageTrigger::OnExit
+void DamageTrigger::OnExit(ObjEntity* entity)
+{
+    m_pendingHits &= ~OccupantBit(entity);
+    TriggerBase::OnExit(entity);
+}
 
 // ===========================================================================
 // Wind

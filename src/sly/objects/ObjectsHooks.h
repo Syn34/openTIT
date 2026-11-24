@@ -219,5 +219,22 @@ uint32_t EntityClass2(const ObjEntity* entity);
 void CameraRemoveMode(void* mode, float blendTime);
 void CameraModeDelete(void* mode);
 
+// Hit record an entity receives through its virtual slot 86 (record vtable
+// 0x00B0DADC, the same layout as gameplay::HitInfo).
+struct EntityHit {
+    ObjEntity* source = nullptr;     // +0x04
+    uint32_t reactType = 0;          // +0x08
+    uint16_t field_0C = 0;           // +0x0C
+    uint8_t kind = 3;                // +0x0E bits 13-15
+    bool fromPlayer = false;         // bit 12
+    bool flag11 = false;             // bit 11 NOTE: meaning unknown
+    bool flag10 = false;             // bit 10 NOTE: meaning unknown
+    bool accepted = false;           // bit 8: set by the receiver when the hit landed
+    ape::Vec3 direction = {0.0f, 0.0f, 0.0f, 0.0f};  // +0x10
+    float amount = 0.0f;             // +0x20
+    float knockback = 0.0f;          // +0x24
+};
+void EntityTakeHit(ObjEntity* target, EntityHit& hit);
+
 } // namespace objects
 } // namespace sly
