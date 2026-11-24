@@ -64,6 +64,10 @@ void NavAgentDestroy(NavAgent*) {}
 void NavAgentRequestGoal(NavAgent*, const ape::Vec3&) {}
 ape::Vec3 NavAgentGoal(NavAgent*) { return {}; }
 
+void HudSetContext(Entity*, const char*) {}
+void HudSetContext(Entity*, uint32_t) {}
+
+ape::ApeRefCounted* EntityScriptObject(const Entity*) { return nullptr; }
 void ReleaseAnimScript(ape::ApeAnimScriptInstance*) {}
 
 Entity* PlayerCharacter() { return nullptr; }

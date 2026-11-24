@@ -9,7 +9,7 @@
 
 #include <cstdint>
 
-namespace ape { class ApeAnimScriptInstance; }
+namespace ape { class ApeAnimScriptInstance; class ApeRefCounted; }
 
 namespace sly {
 class WorldObject;
@@ -192,7 +192,17 @@ void NavAgentDestroy(NavAgent* agent);
 void NavAgentRequestGoal(NavAgent* agent, const ape::Vec3& goal);
 ape::Vec3 NavAgentGoal(NavAgent* agent);
 
+// -- HUD -----------------------------------------------------------------------------
+// hud::SetContextByString (0x00369D14) / hud::SetContext (0x00369D00) with
+// the entity as the context value (a 32-bit pointer on the console).
+void HudSetContext(Entity* entity, const char* name);
+void HudSetContext(Entity* entity, uint32_t nameHash);
+
 // -- anim scripts ------------------------------------------------------------------
+// The entity's world object (+0xA0) as an anim script object reference.
+// NOTE: the engine's world objects and the anim script reference type are
+// separate classes in this port.
+ape::ApeRefCounted* EntityScriptObject(const Entity* entity);
 // 0x004D0280: stops an instance and queues it for deletion.
 void ReleaseAnimScript(ape::ApeAnimScriptInstance* instance);
 

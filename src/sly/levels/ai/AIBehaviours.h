@@ -106,6 +106,18 @@ public:
 // 0x00B0E2F0, 0x180 bytes).
 class PatternBossAI : public AIController {
 public:
+    void Update(float dt) override;
+    void PreUpdate(float dt) override;
+    void OnMessage(const entity::EntityMessage& msg) override;
+    void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
+    void ChooseState() override;
+    bool Think(float dt) override;
+    void ExitState() override;
+
+    // Starts or stops the looping effect script (0x00027E98).
+    void SetLoopScript(bool on);
+
+    ape::ApeAnimScriptInstance* loopScript = nullptr;   // +0x164
 };
 
 // Scripted opponent ("CPU"; vtable 0x00B0E428, 0x170 bytes).

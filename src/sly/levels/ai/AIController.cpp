@@ -90,7 +90,7 @@ void BindEntityScript(ape::ApeAnimScriptInstance* instance, Entity* entity)
     ape::ApeAnimScriptVar* var = instance->FindVar(kScriptVar_This);
     if (var && var->GetType() == ape::AnimScriptVarType::Object)
         static_cast<ape::ApeAnimScriptObjectVar*>(var)->SetObject(
-            reinterpret_cast<ape::ApeRefCounted*>(entity->object));
+            EntityScriptObject(entity));
     var = instance->FindVar(kScriptVar_Transform);
     if (var && var->GetType() == ape::AnimScriptVarType::Matrix)
         static_cast<ape::ApeAnimScriptMatrixVar*>(var)->SetMatrix(entity->transform);
