@@ -5,6 +5,10 @@
 #include "ape/core/ApeString.h"
 #include "sly/game/AudioSystem.h"
 #include "sly/levels/GameServices.h"
+#include "sly/game/WorldInterface.h"
+#include "sly/gameplay/SequenceCommands2.h"
+#include "sly/gameplay/Sequencer.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
 namespace sly {
@@ -515,6 +519,7 @@ class SeqShowPartCommand : public ApeAnimScriptCommand {
 public:
     SeqShowPartCommand();
     ~SeqShowPartCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -542,8 +547,15 @@ ApeAnimScriptCommand* SeqShowPartCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x000A5950 SeqShowPartCommand::Execute) builds the sequence part visibility command
-// (0x004390AC).
+// @func 0x000A5950 SeqShowPartCommand::Execute
+// Appends a step that shows or hides a part of a level instance.
+void SeqShowPartCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    if (m_name == 0)
+        return;
+    if (WorldObject* instance = FindLevelInstance(m_name))
+        gameplay::AddSequenceCommand(new gameplay::SeqSetActiveCommand(instance, m_part, m_visible, m_recursive));
+}
 
 // ---------------------------------------------------------------------------
 // "SetPosition" (NOTE: name from a hash match): places an entity in the sequence.
