@@ -116,9 +116,15 @@ public:
     // The anim script is paused while the actor is inactive.
     void SetActive(bool active) override;
 
+    // Switches the anim script to the state of slot `index`, running it at
+    // once when `immediate` (slot 113, 0x001AF40C).
+    virtual void SetSlotState(int index, bool immediate);
+
     struct SoundSlot {
         audio::SoundName* sound = nullptr;
-        uint32_t field_04[3] = {};
+        uint32_t field_04 = 0;
+        ape::ApeAnimScriptState* state = nullptr;   // +0x08
+        uint32_t field_0C = 0;
     };
     SoundSlot sounds[7];                      // 0x1A8
 };

@@ -1,6 +1,7 @@
 // openTIT - Scripted actors (see ActorEntities.h).
 #include "sly/entity/ActorEntities.h"
 
+#include "ape/anim/ApeAnimScript.h"
 #include "ape/memory/ApeMem.h"
 #include "ape/world/ApeObj.h"
 #include "sly/camera/CameraHooks.h"
@@ -118,6 +119,16 @@ void SoundActor::SetActive(bool active)
     if (animScript)
         SetAnimScriptPaused(animScript, !active);
     ActorEntity::SetActive(active);
+}
+
+// @func 0x001AF40C SoundActor::SetSlotState
+void SoundActor::SetSlotState(int index, bool immediate)
+{
+    ape::ApeAnimScriptState* state = sounds[index].state;
+    if (immediate)
+        animScript->SetStateAndUpdate(state);
+    else
+        animScript->SetState(state);
 }
 
 // @func 0x001C33C4 SoundActorB16B48::~SoundActorB16B48
