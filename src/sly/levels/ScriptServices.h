@@ -399,6 +399,9 @@ void SequenceAddTransitionPrompt(int32_t playerNum);
 void SequenceAddArcQte(float value, float arcAngle, float lookTime, int32_t playerNum);
 // Sequence Paris chase QTE (0x004360CC).
 void SequenceAddParisChaseQte(uint32_t hash, bool flag10, bool flag11);
+// 0x00439E4C (spawn sequence command, not ported in sly/gameplay).
+void SequenceAddSpawnEntity(void* def, const char* entityName, WorldObject* point, uint32_t hash60, uint32_t part,
+                            const ape::Vec3& offsetPos, const ape::Vec3& offsetRot, const bool flags[6]);
 // 0x0043554C (100-byte sequence command, not ported in sly/gameplay).
 void SequenceAddActorQte(int32_t player, uint32_t button, float value28, float value2C, float value30,
                          float value34);

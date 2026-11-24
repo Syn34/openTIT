@@ -218,6 +218,11 @@ void SequenceAddWaitForButton(float waitTime, int32_t playerNum, uint32_t button
 void SequenceAddTransitionPrompt(int32_t playerNum) { (void)playerNum; }
 void SequenceAddArcQte(float value, float arcAngle, float lookTime, int32_t playerNum) { (void)value; (void)arcAngle; (void)lookTime; (void)playerNum; }
 void SequenceAddParisChaseQte(uint32_t hash, bool flag10, bool flag11) { (void)hash; (void)flag10; (void)flag11; }
+void SequenceAddSpawnEntity(void* def, const char* entityName, WorldObject* point, uint32_t hash60, uint32_t part,
+                            const ape::Vec3& offsetPos, const ape::Vec3& offsetRot, const bool flags[6])
+{
+    (void)def; (void)entityName; (void)point; (void)hash60; (void)part; (void)offsetPos; (void)offsetRot; (void)flags;
+}
 void SequenceAddActorQte(int32_t player, uint32_t button, float value28, float value2C, float value30, float value34)
 {
     (void)player; (void)button; (void)value28; (void)value2C; (void)value30; (void)value34;
