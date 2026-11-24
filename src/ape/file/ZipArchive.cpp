@@ -606,6 +606,8 @@ ArchiveFile::ArchiveFile(const char* name, ZipArchive* archive, std::unique_ptr<
 {
 }
 
+// @func 0x007A4DF8 ArchiveFile::~ArchiveFile
+// @func 0x007A4E08 ArchiveFile::~ArchiveFile (deleting)
 ArchiveFile::~ArchiveFile() = default;
 
 // Ends the entry; fails when the data was read to the end and its CRC does
