@@ -11,6 +11,8 @@
 #include "sly/game/AudioSystem.h"
 #include "ape/memory/ApeTArray.h"
 
+namespace ape::world { class ApeObj; }
+
 namespace sly {
 namespace entity {
 
@@ -93,6 +95,24 @@ class ChainDef : public EntityDef {
 public:
     ~ChainDef() override;
     audio::SoundName* sounds[5] = {};  // 0xAC
+};
+
+// A physics chain built from ChainDef (vtable 0x00B151A0, 0x780 bytes;
+// constructor 0x001A7180 builds the "Spline_Chain_%s" spline and one world
+// object per link).
+class ChainEntity : public Entity {
+public:
+    static constexpr int kMaxLinks = 15;
+    struct Link {
+        ape::world::ApeObj* object = nullptr;   // +0x00 counted reference
+        uint8_t field_04[0x5C] = {};
+    };
+    ~ChainEntity() override;
+
+    Link links[kMaxLinks];                       // 0x1B0
+    uint16_t linkCount = 0;                      // 0x760
+    ape::world::ApeObj* spline = nullptr;        // 0x768 NOTE: the chain's spline instance
+    ape::world::ApeObj* field_76C = nullptr;     // 0x76C
 };
 
 // Scripted entity owning eleven sub-objects and two Havok pointer arrays

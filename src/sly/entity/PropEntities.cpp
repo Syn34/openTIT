@@ -1,6 +1,7 @@
 // openTIT - Entity classes built from a definition's collision object (see PropEntities.h).
 #include "sly/entity/PropEntities.h"
 
+#include "ape/world/ApeObj.h"
 #include "sly/camera/CameraHooks.h"
 
 namespace sly {
@@ -96,6 +97,22 @@ ChainDef::~ChainDef()
 {
     for (audio::SoundName* sound : sounds)
         audio::SoundNameRelease(sound);
+}
+
+// @func 0x001A7D8C ChainEntity::~ChainEntity
+// @func 0x001A7EA8 ChainEntity::~ChainEntity (deleting)
+ChainEntity::~ChainEntity()
+{
+    if (!spline)
+        return;
+    field_76C->Release();
+    field_76C = nullptr;
+    spline->Release();
+    spline = nullptr;
+    for (uint32_t i = 0; i < linkCount; ++i) {
+        links[i].object->Release();
+        links[i].object = nullptr;
+    }
 }
 
 // @func 0x0016EC4C CompoundEntity::~CompoundEntity
