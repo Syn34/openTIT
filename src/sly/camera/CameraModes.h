@@ -285,14 +285,62 @@ public:
     void Deactivate() override;
     // Counts requests to hold the zoom; returns true while any is held (0x0010D9B0).
     bool HoldZoom(bool hold);
-    // 0x0010DD60
-    void SetFocusEntity(Entity* entity);
 
     Entity* player = nullptr;            // 0x0C
     int16_t zoomHolds = 0;               // 0xB4
     uint16_t zoomFlags = 0;              // 0xB6 bits 14-15 cleared by a new hold
     float savedFov = 0.0f;               // 0xB8
-    Entity* focusEntity = nullptr;       // 0x250
+};
+
+// Settings of the vehicle chase camera (Camera.Vehicle.*; vehicle definitions
+// carry their own copy at +0x100). Console block of 0xA8 bytes.
+struct VehicleChaseSettings {
+    // From the tuning variables; the heading-return fields are left alone.
+    void LoadTuningDefaults();
+
+    float fov = 0.0f;                        // 0x00
+    ape::Vec3 localLookAtOffset{};           // 0x10
+    float horzInputRotScalar = 0.0f;         // 0x20
+    float horzInputRotInterp = 0.0f;         // 0x24
+    float lookAtXZInterp = 0.0f;             // 0x28
+    float lookAtYUpInterp = 0.0f;            // 0x2C
+    float lookAtYDownInterp = 0.0f;          // 0x30
+    float gimbalRadius = 0.0f;               // 0x34
+    float vertGimbalMin = 0.0f;              // 0x38
+    float vertGimbalMax = 0.0f;              // 0x3C
+    float vertGimbalRestShift = 0.0f;        // 0x40
+    ape::Vec3 gimbalOffset{};                // 0x50
+    float vertInputRotScalar = 0.0f;         // 0x60
+    float vertInputRotAccelInterp = 0.0f;    // 0x64
+    float vertInputRotVelInterp = 0.0f;      // 0x68
+    float gimbalReturnInterp = 0.0f;         // 0x6C
+    float colRadius = 0.0f;                  // 0x70
+    float colFractHS = 0.0f;                 // 0x74
+    float colInterp = 0.0f;                  // 0x78
+    float colConeMin = 0.0f;                 // 0x7C
+    float colMomentMax = 0.0f;               // 0x80
+    float colRetract = 0.0f;                 // 0x84
+    float headingReturnMinTimeDefault = 0.0f;   // 0x88
+    float headingReturnMinTimeFwd = 0.0f;       // 0x8C
+    float headingReturnMinTimeReverse = 0.0f;   // 0x90
+    float headingReturnLowMaxRotSpeed = 0.0f;   // 0x94
+    float headingReturnHighMaxRotSpeed = 0.0f;  // 0x98
+    float headingReturnLowSin = 0.0f;           // 0x9C sine of the low angle
+    float headingReturnHighSin = 0.0f;          // 0xA0 sine of the high angle
+    float headingReturnFullSpeedElapsedTime = 0.0f;   // 0xA4
+};
+// Vehicle definition data the camera reads (definition +0x100, angles in
+// degrees at +0x19C/+0x1A0 where the settings keep their sines).
+struct VehicleCameraDesc {
+    float fov;
+    float pad04[3];
+    ape::Vec3 localLookAtOffset;
+    float values20[12];          // 0x20..0x4C
+    ape::Vec3 gimbalOffset;      // 0x50
+    float values60[15];          // 0x60..0x98
+    float headingReturnLowAngle;    // 0x9C
+    float headingReturnHighAngle;   // 0xA0
+    float headingReturnFullSpeedElapsedTime;   // 0xA4
 };
 
 // "Vehicle" (type 7, vtable 0x00B13E00, 0x260 bytes): chase camera of the
@@ -303,6 +351,10 @@ public:
     ~VehicleCameraMode() override;
     int32_t GetType() const override { return kCamMode_Vehicle; }
     const char* GetName() const override { return "Vehicle"; }
+    // Follows `entity` and takes its camera settings (0x0010DD60).
+    void SetTarget(Entity* entity);
+    // Target settings from the vehicle definition, or the tuning defaults (0x0010DA30).
+    void LoadTargetSettings();
 
     // Settings that are still easing are flagged in a bit set; these step one
     // flagged value toward its target and clear the flag once it arrived
@@ -311,6 +363,8 @@ public:
     static void EaseFlagged(float rate, float dt, uint32_t* dirtyBits, uint32_t bit, ape::Vec3& value,
                             const ape::Vec3& target);
 
+    VehicleChaseSettings targetSettings;    // 0x10
+    VehicleChaseSettings current;           // 0xB8
     Entity* target = nullptr;          // 0x250
     void* phantom = nullptr;           // 0x254
     void* body = nullptr;              // 0x258 NOTE: a Havok entity used for camera collision
