@@ -19,6 +19,8 @@ AglPostProcEffect::AglPostProcEffect(const char* effectName)
 {
 }
 
+// @func 0x007A1668 AglPostProcEffect::~AglPostProcEffect
+// @func 0x007A1678 AglPostProcEffect::~AglPostProcEffect (deleting)
 AglPostProcEffect::~AglPostProcEffect() = default;
 
 // @func 0x0051F09C AglFadingEffect::SetEnabled
