@@ -1,6 +1,8 @@
 // openTIT - Camera behaviour trigger volumes.
 #include "sly/objects/TriggerCameraBehavior.h"
 
+#include "ape/memory/ApeMem.h"
+
 #include "sly/objects/TriggerTuning.h"
 #include "sly/objects/TriggerTypes.h"
 
@@ -9,6 +11,18 @@ namespace objects {
 
 namespace {
 constexpr uint32_t kFlags2_Character = 0x08;
+}
+
+// @func 0x002172A8 CameraBehaviorTriggerDef::~CameraBehaviorTriggerDef
+// @func 0x00217374 CameraBehaviorTriggerDef::~CameraBehaviorTriggerDef (deleting)
+CameraBehaviorTriggerDef::~CameraBehaviorTriggerDef()
+{
+    for (void*& block : m_behaviorBlocks) {
+        if (block) {
+            ape::MemFree(block, 0);
+            block = nullptr;
+        }
+    }
 }
 
 // @func 0x00218980 CameraBehaviorTriggerDef::Create

@@ -459,6 +459,12 @@ void UnregisterComponentTemplate(uint32_t name)
     ComponentTemplates().Remove(name);
 }
 
+ComponentDesc::ComponentDesc(uint32_t nameHash, uint32_t componentType)
+    : name(nameHash), type(componentType)
+{
+    RegisterComponentTemplate(name, this);
+}
+
 // @func 0x007374D8 ComponentDesc::~ComponentDesc
 // @func 0x0073751C ComponentDesc::~ComponentDesc (deleting)
 ComponentDesc::~ComponentDesc()
