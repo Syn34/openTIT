@@ -63,6 +63,9 @@ public:
 class DamageTriggerPlacement : public TriggerPlacement {
 public:
     explicit DamageTriggerPlacement(const char* placementName);
+    // @func 0x007599D0 DamageTriggerPlacement::~DamageTriggerPlacement
+    // @func 0x0075B400 DamageTriggerPlacement::~DamageTriggerPlacement (deleting)
+    ~DamageTriggerPlacement() override = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
     DamageParams params;         // 0xC0..0xE3
 };

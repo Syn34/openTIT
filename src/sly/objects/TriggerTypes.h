@@ -115,6 +115,9 @@ public:
 class FilteredTriggerPlacement : public TriggerPlacement {
 public:
     explicit FilteredTriggerPlacement(const char* placementName);
+    // @func 0x00759AB0 FilteredTriggerPlacement::~FilteredTriggerPlacement
+    // @func 0x0075B620 FilteredTriggerPlacement::~FilteredTriggerPlacement (deleting)
+    ~FilteredTriggerPlacement() override = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
     int physicsState = -1;          // 0xBC
 };
@@ -170,6 +173,9 @@ public:
 class JobTriggerPlacement : public TriggerPlacement {
 public:
     explicit JobTriggerPlacement(const char* placementName);
+    // @func 0x00759BBC JobTriggerPlacement::~JobTriggerPlacement
+    // @func 0x0075B8F4 JobTriggerPlacement::~JobTriggerPlacement (deleting)
+    ~JobTriggerPlacement() override = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
     uint32_t jobName = 0;           // 0xBC
     uint32_t startGoal = 0;         // 0xC0
