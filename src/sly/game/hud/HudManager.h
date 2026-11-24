@@ -33,6 +33,22 @@ enum HudTypeFlags : uint32_t {
     kHud_Type20000 = 0x00020000,
 };
 
+// Screen corner an element is stacked in (HudObjectDef::anchor).
+enum HudAnchor : int32_t {
+    kAnchor_TopLeft     = 0,   // NOTE: corner names follow the mirroring in AnchorMirror()
+    kAnchor_TopRight    = 1,
+    kAnchor_BottomRight = 2,
+    kAnchor_BottomLeft  = 3,
+    kAnchor_Count       = 4,   // four stacks; 4 itself is not stacked
+    kAnchor_None        = 5,
+};
+
+// Definition of an element (shared by its instances).
+struct HudObjectDef {
+    int32_t anchor = kAnchor_None;   // +0x54 HudAnchor
+    float offset[3] = {};            // +0x60 space the element takes in its stack
+};
+
 class HudObject {
 public:
     virtual ~HudObject() = default;
@@ -46,28 +62,38 @@ public:
     // 0x00362F1C / 0x00362B40: plays the element's intro / outro.
     void PlayIntro(bool a, bool b);
     void PlayOutro(bool a, bool b);
+    // 0x0036325C: intro or outro unless suppressed.
+    void Show(bool a, bool intro, bool b);
+    // 0x003626E8: moves the element to a stack offset.
+    void SetStackOffset(const float offset[3], bool immediate);
+    // 0x003628B4: offset of the element in its anchor stack (sum of the
+    // elements before it, mirrored for the corner).
+    void StackOffset(float out[3]) const;
+    // 0x003629D8: leaves its anchor stack and moves the elements after it up.
+    void LeaveStack();
 
     bool Suppressed() const { return (stateFlags & kState_Suppressed) != 0; }
 
     enum StateFlags : uint32_t {
         kState_Suppressed = 0x02000000,   // bit 25: show/hide requests are ignored
+        kState_Leaving    = 0x04000000,   // bit 26: outro requested
+        kState_Bit27      = 0x08000000,
+        kState_OutroB     = 0x10000000,   // bit 28
+        kState_OutroA     = 0x20000000,   // bit 29
+        kState_Shown      = 0x40000000,   // bit 30
     };
 
     uint32_t typeFlags = 0;        // +0x04 HudTypeFlags
+    HudObjectDef* def = nullptr;   // +0x08
     void* gui = nullptr;           // +0x18 GUI instance of the element
+    uint32_t animState = 0;        // +0xA0 (state = value >> 1; 0 idle, 4 NOTE: looping)
+    bool field_A4 = false;         // +0xA4
     uint32_t updateFlags = 0;      // +0xD0 bit 31 cleared by ResetUpdateFlags()
     float targetValue = 0.0f;      // +0xD8
     float shownValue = 0.0f;       // +0xDC
     uint32_t stateFlags = 0;       // +0x18C StateFlags
 };
 
-// One entry of the per-player name lists (4 lists at 0x0106C2D4, 0x14
-// apart): the element at +0x08 of each item has the name at +0x54.
-struct HudNamedItem {
-    void* field_00 = nullptr;
-    void* field_04 = nullptr;
-    struct Target { uint8_t pad[0x54]; uint32_t name; }* target = nullptr;   // +0x08
-};
 
 // Module state (the globals around 0x0106C228).
 struct HudManagerState {
@@ -82,7 +108,7 @@ struct HudManagerState {
     uint32_t fallbackType200Name = 0;            // 0x00F64D10
     HudObject* meterA = nullptr;                 // 0x00F64CB8
     HudObject* meterB = nullptr;                 // 0x00F64CBC
-    ape::ApeTArray<HudNamedItem*> namedLists[4]; // 0x0106C2D4
+    ape::ApeTArray<HudObject*> stacks[kAnchor_Count];   // 0x0106C2D4 elements per corner
 };
 
 HudManagerState& Hud();
@@ -111,7 +137,9 @@ void SetSuppressed(HudObject* object, bool suppressed);              // 0x003675
 void ShowTextByName(float fade, uint32_t name, const char* text, bool flag);   // 0x0036735C
 void ShowByName(uint32_t name, bool a, bool intro, bool b);          // 0x0036742C
 void ShowType4000ByName(uint32_t name, bool a, bool intro, bool b);  // 0x00367B28
-int CountNamedItems(uint32_t name);                                  // 0x00367134
+int CountElementsAtAnchor(int32_t anchor);                           // 0x00367134
+// 0x00362830: mirrors an offset for a corner.
+void AnchorMirror(float out[3], int32_t anchor, const float in[3]);
 void SetContext(uint32_t value, uint32_t name);                      // 0x00369D00
 void SetContextByString(uint32_t value, const char* name);           // 0x00369D14
 void RequestScreen(bool skip, const char* name);                     // 0x0036960C

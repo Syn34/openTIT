@@ -51,11 +51,111 @@ void HudObject::PlayIntro(bool a, bool b)
     (void)b;
 }
 
-// TODO(0x00362B40 HudObject::PlayOutro)
+// @func 0x00362B40 HudObject::PlayOutro
 void HudObject::PlayOutro(bool a, bool b)
 {
-    (void)a;
-    (void)b;
+    if (Suppressed() || !(stateFlags & kState_Shown) || (stateFlags & kState_Leaving))
+        return;
+    const uint32_t state = animState >> 1;
+    if (state == 0 || state == 4) {
+        // Idle (or looping): only an idle element with a reason to leave goes.
+        const bool reason = (stateFlags & kState_OutroA) || a || (stateFlags & kState_OutroB) || b;
+        if (reason && state == 0) {
+            field_A4 = false;
+            stateFlags = (stateFlags & ~kState_Bit27) | kState_Leaving;
+        }
+    } else {
+        // Busy: remember the request and leave when the animation allows.
+        field_A4 = false;
+        stateFlags &= ~(kState_Bit27 | kState_OutroB | kState_OutroA);
+        if (b)
+            stateFlags |= kState_OutroB;
+        if (a)
+            stateFlags |= kState_OutroA;
+        stateFlags |= kState_Leaving;
+    }
+}
+
+// @func 0x0036325C HudObject::Show
+void HudObject::Show(bool a, bool intro, bool b)
+{
+    if (Suppressed())
+        return;
+    if (intro)
+        PlayIntro(a, b);
+    else
+        PlayOutro(a, b);
+}
+
+// TODO(0x003626E8 HudObject::SetStackOffset)
+void HudObject::SetStackOffset(const float offset[3], bool immediate)
+{
+    (void)offset;
+    (void)immediate;
+}
+
+// @func 0x00362830 hud::AnchorMirror
+void AnchorMirror(float out[3], int32_t anchor, const float in[3])
+{
+    out[0] = in[0];
+    out[1] = in[1];
+    out[2] = in[2];
+    switch (anchor) {
+    case kAnchor_TopLeft:
+        out[1] = -out[1];
+        break;
+    case kAnchor_TopRight:
+        out[0] = -out[0];
+        out[1] = -out[1];
+        break;
+    case kAnchor_BottomLeft:
+        out[0] = -out[0];
+        break;
+    default:
+        break;
+    }
+}
+
+// @func 0x003628B4 HudObject::StackOffset
+void HudObject::StackOffset(float out[3]) const
+{
+    float sum[3] = {0.0f, 0.0f, 0.0f};
+    int32_t anchor = kAnchor_None;
+    if (def && def->anchor != kAnchor_None) {
+        anchor = def->anchor;
+        for (HudObject* other : Hud().stacks[anchor]) {
+            if (other == this)
+                break;
+            if (other->def) {
+                sum[0] += other->def->offset[0];
+                sum[1] += other->def->offset[1];
+                sum[2] += other->def->offset[2];
+            }
+        }
+    }
+    AnchorMirror(out, anchor, sum);
+}
+
+// @func 0x003629D8 HudObject::LeaveStack
+void HudObject::LeaveStack()
+{
+    if (!def || def->anchor == kAnchor_None)
+        return;
+    ape::ApeTArray<HudObject*>& stack = Hud().stacks[def->anchor];
+    for (uint32_t i = 0; i < stack.Count(); ++i) {
+        if (stack[i] != this)
+            continue;
+        // Keep the order: shift the rest down, then move each of them up.
+        for (uint32_t j = i; j + 1 < stack.Count(); ++j)
+            stack[j] = stack[j + 1];
+        stack.PopBack();
+        for (uint32_t j = i; j < stack.Count(); ++j) {
+            float offset[3];
+            stack[j]->StackOffset(offset);
+            stack[j]->SetStackOffset(offset, false);
+        }
+        return;
+    }
 }
 
 // @func 0x003568E0 hud::Find
@@ -112,13 +212,8 @@ void ShowTextByName(float fade, uint32_t name, const char* text, bool flag)
 namespace {
 void ShowTyped(uint32_t name, uint32_t type, bool a, bool intro, bool b)
 {
-    HudObject* object = FindTyped(name, type);
-    if (!object || object->Suppressed())
-        return;
-    if (intro)
-        object->PlayIntro(a, b);
-    else
-        object->PlayOutro(a, b);
+    if (HudObject* object = FindTyped(name, type))
+        object->Show(a, intro, b);
 }
 } // namespace
 
@@ -134,13 +229,13 @@ void ShowType4000ByName(uint32_t name, bool a, bool intro, bool b)
     ShowTyped(name, kHud_Type4000, a, intro, b);
 }
 
-// @func 0x00367134 hud::CountNamedItems
-int CountNamedItems(uint32_t name)
+// @func 0x00367134 hud::CountElementsAtAnchor
+int CountElementsAtAnchor(int32_t anchor)
 {
     int count = 0;
-    for (auto& list : Hud().namedLists)
-        for (HudNamedItem* item : list)
-            if (item->target->name == name)
+    for (auto& stack : Hud().stacks)
+        for (HudObject* object : stack)
+            if (object->def->anchor == anchor)
                 ++count;
     return count;
 }
