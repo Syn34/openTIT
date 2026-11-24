@@ -210,7 +210,7 @@ bool Spawner::Update(float dt)
 
 // @func 0x0045477C Spawner::DespawnAndReset
 // Used as the Reset override of tracking spawners.
-static void SpawnerDespawnAndReset(Spawner& spawner)
+void SpawnerDespawnAndReset(Spawner& spawner)
 {
     spawner.DespawnAll(false);
     spawner.Reset();
