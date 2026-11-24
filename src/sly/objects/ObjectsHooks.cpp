@@ -234,5 +234,19 @@ void MixStatePop(MixState* mix, float fadeTime)
     (void)fadeTime;
 }
 
+// TODO(0x000DCA20) entity script instances live in the entity module.
+void* EntityStartScript(ObjEntity* entity, void* script)
+{
+    (void)entity;
+    (void)script;
+    return nullptr;
+}
+
+void ScriptInstanceSetPaused(void* instance, bool paused)
+{
+    (void)instance;
+    (void)paused;
+}
+
 } // namespace objects
 } // namespace sly

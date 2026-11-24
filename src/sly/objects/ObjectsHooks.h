@@ -145,5 +145,13 @@ void SoundZoneSetWeight(SoundZone* zone, float weight); // 0x00441D18
 void MixStatePush(MixState* mix, float fadeTime);     // 0x0044D5BC
 void MixStatePop(MixState* mix, float fadeTime);      // 0x0044D614
 
+// ---------------------------------------------------------------------------
+// Anim scripts run by entities
+// ---------------------------------------------------------------------------
+// Starts `script` on the entity (0x000DCA20 with (0, 1)) and returns the
+// instance; bit 9 of the instance word +0x88 pauses it.
+void* EntityStartScript(ObjEntity* entity, void* script);
+void ScriptInstanceSetPaused(void* instance, bool paused);
+
 } // namespace objects
 } // namespace sly
