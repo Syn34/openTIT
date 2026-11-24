@@ -26,6 +26,8 @@ public:
     void Remove(WorldObject* entity);
     // Empties the list (0x0001B2E8).
     void Clear();
+    // Drops targets that are no longer alive (part of 0x0001A7C0).
+    void RemoveDead();
 
     int Count() const { return m_count; }
     WorldObject* At(int index) const { return (index >= 0 && index < m_count) ? m_targets[index] : nullptr; }
