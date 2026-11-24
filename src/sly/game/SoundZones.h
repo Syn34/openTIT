@@ -13,6 +13,7 @@ struct MixState;
 // game code touches are modelled.
 struct SoundZone {
     float radius = 0.0f;              // +0x00
+    float fadeCurve = 1.0f;           // +0x04 exponent of the trigger fade-in curve. NOTE: default assumed
     float fadeDistance = 0.0f;        // +0x10
     float weight = 0.0f;              // +0x60 blend weight set by triggers
     bool active = false;              // +0x64 linked in the active list

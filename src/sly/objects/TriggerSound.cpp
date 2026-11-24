@@ -6,8 +6,10 @@
 
 #include "sly/game/AudioSystem.h"
 
+#include "ape/math/ApeBounds.h"
 #include "ape/xml/ApeXml.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace sly {
@@ -38,21 +40,23 @@ void PolledTrigger::RebuildVolume()
 {
 }
 
-// TODO(0x0020FD30 PolledTrigger::IsInside) the box branch is vector code that the
-// disassembler could not decode; it is reconstructed here as a local-space test.
+// @func 0x0020FD30 PolledTrigger::IsInside
+// Sphere volumes compare the squared distance with the squared radius (strict);
+// box volumes bring the point into the trigger's frame (transposed rotation of
+// the world transform) and test it against the local box (inclusive).
 bool PolledTrigger::IsInside(const ape::Vec3& point) const
 {
     const ape::Vec3& p = Position();
-    float dx = point.x - p.x, dy = point.y - p.y, dz = point.z - p.z;
+    const float dx = point.x - p.x, dy = point.y - p.y, dz = point.z - p.z;
     if (m_shapeKind == kVolumeShape_Sphere)
         return dx * dx + dy * dy + dz * dz < m_radiusSq;
     if (m_shapeKind == kVolumeShape_Box) {
         const ape::Matrix34& m = transform;
-        float lx = dx * m.xAxis.x + dy * m.xAxis.y + dz * m.xAxis.z;
-        float ly = dx * m.yAxis.x + dy * m.yAxis.y + dz * m.yAxis.z;
-        float lz = dx * m.zAxis.x + dy * m.zAxis.y + dz * m.zAxis.z;
-        return lx >= m_boxMin.x && lx <= m_boxMax.x && ly >= m_boxMin.y && ly <= m_boxMax.y &&
-               lz >= m_boxMin.z && lz <= m_boxMax.z;
+        const ape::Vec3 local = { dx * m.xAxis.x + dy * m.xAxis.y + dz * m.xAxis.z,
+                                  dx * m.yAxis.x + dy * m.yAxis.y + dz * m.yAxis.z,
+                                  dx * m.zAxis.x + dy * m.zAxis.y + dz * m.zAxis.z, 0.0f };
+        const ape::Aabb box = { m_boxMin, m_boxMax };
+        return ape::AabbContainsPoint(box, local);
     }
     return false;
 }
@@ -214,12 +218,65 @@ void AmbientSoundTrigger::OnCreated()
     PolledTrigger::OnCreated();
 }
 
-// TODO(0x00210D80 AmbientSoundTrigger::ComputeSoundParams) vector code the
-// disassembler could not decode; the emitter is placed at the trigger.
-void AmbientSoundTrigger::ComputeSoundParams(ape::Vec3& position, float& volume) const
+// @func 0x00210D80 AmbientSoundTrigger::ComputeSoundParams
+// Sphere: the sound comes from the centre; outside the inner radius its spread
+// narrows to the angle the inner sphere covers. Box: inside the inner box the
+// sound is at the listener; outside it comes from the nearest point of the
+// inner box and its spread shrinks with the cube of the remaining falloff.
+void AmbientSoundTrigger::ComputeSoundParams(ape::Vec3& position, float& volume, float& spread)
 {
-    position = Position();
     volume = 1.0f;
+    spread = 360.0f;
+
+    // Listener in the trigger's frame.
+    const ape::Matrix34& m = transform;
+    const ape::Vec3& origin = Position();
+    const float dx = position.x - origin.x, dy = position.y - origin.y, dz = position.z - origin.z;
+    float local[3] = { dx * m.xAxis.x + dy * m.xAxis.y + dz * m.xAxis.z,
+                       dx * m.yAxis.x + dy * m.yAxis.y + dz * m.yAxis.z,
+                       dx * m.zAxis.x + dy * m.zAxis.y + dz * m.zAxis.z };
+
+    if (m_shapeKind == kVolumeShape_Box) {
+        const float innerMin[3] = { m_innerMin.x, m_innerMin.y, m_innerMin.z };
+        const float innerMax[3] = { m_innerMax.x, m_innerMax.y, m_innerMax.z };
+        const ape::Aabb inner = { m_innerMin, m_innerMax };
+        const ape::Vec3 localPoint = { local[0], local[1], local[2], 0.0f };
+        if (ape::AabbContainsPoint(inner, localPoint)) {
+            // Inside: the sound surrounds the listener (position unchanged).
+            m_falloff = 0.0f;
+        } else {
+            const float falloffMax[3] = { m_falloffMax.x, m_falloffMax.y, m_falloffMax.z };
+            const float falloffMin[3] = { m_falloffMin.x, m_falloffMin.y, m_falloffMin.z };
+            float falloff = 0.0f;
+            for (int i = 0; i < 3; ++i) {
+                float t = 0.0f;
+                if (falloffMax[i] > 0.0f && local[i] > innerMax[i])
+                    t = (local[i] - innerMax[i]) / falloffMax[i];
+                else if (falloffMin[i] < 0.0f && local[i] < innerMin[i])
+                    t = (local[i] - innerMin[i]) / falloffMin[i];
+                if (t > falloff)
+                    falloff = t;
+            }
+            for (int i = 0; i < 3; ++i)
+                local[i] = std::min(std::max(local[i], innerMin[i]), innerMax[i]);
+            position = { origin.x + local[0] * m.xAxis.x + local[1] * m.yAxis.x + local[2] * m.zAxis.x,
+                         origin.y + local[0] * m.xAxis.y + local[1] * m.yAxis.y + local[2] * m.zAxis.y,
+                         origin.z + local[0] * m.xAxis.z + local[1] * m.yAxis.z + local[2] * m.zAxis.z, 0.0f };
+            const float remaining = 1.0f - falloff;
+            spread = remaining * remaining * remaining * 360.0f;
+            m_falloff = falloff;
+        }
+    } else if (m_shapeKind == kVolumeShape_Sphere) {
+        const float distance = std::sqrt(local[0] * local[0] + local[1] * local[1] + local[2] * local[2]);
+        float falloff = 0.0f;
+        if (distance > m_innerRadius) {
+            spread = std::atan(m_innerRadius / distance) * 4.0f * 57.2957764f;
+            falloff = (distance - m_innerRadius) / (m_outerRadius - m_innerRadius);
+        }
+        position = origin;
+        m_falloff = falloff;
+    }
+    volume = std::min(std::max(volume, 0.0f), 1.0f);
 }
 
 // @func 0x002112C8 AmbientSoundTrigger::Update
@@ -228,9 +285,10 @@ void AmbientSoundTrigger::Update(float dt)
     if (!m_enabled)
         return;
     if (audio::SoundNameHasDef(SoundDef()->soundName) && audio::IsVoiceValid(m_voice)) {
-        ape::Vec3 position;
-        float volume;
-        ComputeSoundParams(position, volume);
+        ape::Vec3 position = GetListenerPosition();
+        float volume, spread;
+        // NOTE: the spread angle is not passed on by the voice hooks yet.
+        ComputeSoundParams(position, volume, spread);
         SetVoice3D(m_voice, position, volume);
     }
     if (!IsPolled()) {
@@ -248,9 +306,9 @@ void AmbientSoundTrigger::OnEnter(ObjEntity* entity)
         return;
     audio::StopVoice(m_voice, true);
     if (audio::SoundNameHasDef(SoundDef()->soundName)) {
-        ape::Vec3 position;
-        float volume;
-        ComputeSoundParams(position, volume);
+        ape::Vec3 position = GetListenerPosition();
+        float volume, spread;
+        ComputeSoundParams(position, volume, spread);
         if (!g_audioOptimizationDisableVolumetricSounds.Get())
             m_voice = PlaySound3D(SoundDef()->soundName, position, volume, m_bus);
     }
@@ -357,10 +415,62 @@ void SoundZoneTrigger::UnlinkActive()
     m_linked = false;
 }
 
-// TODO(0x00213870 SoundZoneTrigger::ComputeFadeWeight) not reimplemented.
-float SoundZoneTrigger::ComputeFadeWeight() const
+// @func 0x00213870 SoundZoneTrigger::ComputeFadeWeight
+// 1 inside the inner volume, falling to 0 at the outer edge as
+// 1 - f^curve, f being how far into the fade region the listener is (the
+// largest axis fraction for boxes).
+// NOTE: the console evaluates the power with the bit-pattern approximation
+// (exponent arithmetic on the double's bits); std::pow is used here.
+float SoundZoneTrigger::ComputeFadeWeight(const ape::Vec3& listener) const
 {
-    return 1.0f;
+    const SoundZoneTriggerDef* zoneDef = ZoneDef();
+    const float curve = zoneDef && zoneDef->zone ? SoundZoneFadeCurve(zoneDef->zone) : 1.0f;
+
+    const ape::Matrix34& m = transform;
+    const ape::Vec3& origin = Position();
+    const float dx = listener.x - origin.x, dy = listener.y - origin.y, dz = listener.z - origin.z;
+    const float local[3] = { dx * m.xAxis.x + dy * m.xAxis.y + dz * m.xAxis.z,
+                             dx * m.yAxis.x + dy * m.yAxis.y + dz * m.yAxis.z,
+                             dx * m.zAxis.x + dy * m.zAxis.y + dz * m.zAxis.z };
+
+    float fraction = 0.0f;
+    if (m_shapeKind == kVolumeShape_Box) {
+        const ape::Aabb inner = { m_innerMin, m_innerMax };
+        if (ape::AabbContainsPoint(inner, { local[0], local[1], local[2], 0.0f }))
+            return 1.0f;
+        const float innerMin[3] = { m_innerMin.x, m_innerMin.y, m_innerMin.z };
+        const float innerMax[3] = { m_innerMax.x, m_innerMax.y, m_innerMax.z };
+        const float falloffMax[3] = { m_falloffMax.x, m_falloffMax.y, m_falloffMax.z };
+        const float falloffMin[3] = { m_falloffMin.x, m_falloffMin.y, m_falloffMin.z };
+        for (int i = 0; i < 3; ++i) {
+            float t = 0.0f;
+            if (falloffMax[i] > 0.0f && local[i] > innerMax[i])
+                t = (local[i] - innerMax[i]) / falloffMax[i];
+            else if (falloffMin[i] < 0.0f && local[i] < innerMin[i])
+                t = (local[i] - innerMin[i]) / falloffMin[i];
+            fraction = std::max(fraction, t);
+        }
+    } else if (m_shapeKind == kVolumeShape_Sphere) {
+        const float distance = std::sqrt(local[0] * local[0] + local[1] * local[1] + local[2] * local[2]);
+        if (distance <= m_innerRadius)
+            return 1.0f;
+        fraction = (distance - m_innerRadius) / (m_outerRadius - m_innerRadius);
+    } else {
+        return 0.0f;
+    }
+
+    if (fraction >= 1.0f)
+        return 0.0f;
+    float scaled;
+    if (std::fabs(fraction - 1.0f) < 1e-05f)
+        scaled = fraction;
+    else if (curve == 0.0f)
+        scaled = 1.0f;
+    else if (fraction == 0.0f)
+        scaled = 0.0f;
+    else
+        scaled = std::pow(fraction, curve);
+    return 1.0f - scaled;
 }
 
 namespace {
@@ -385,7 +495,7 @@ void SoundZoneTrigger::OnEnter(ObjEntity* entity)
         float fade = ZoneFadeTime(zoneDef ? zoneDef->zone : nullptr);
         m_weight = std::fabs(fade) < kFadeEpsilon ? 1.0f : 0.0f;
     } else {
-        m_weight = ComputeFadeWeight();
+        m_weight = ComputeFadeWeight(GetListenerPosition());
     }
     if (zoneDef && zoneDef->zone && !m_linked)
         LinkActive();
