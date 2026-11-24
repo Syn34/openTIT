@@ -1,0 +1,54 @@
+// openTIT - Run-time state of the application object that SlyApp.h does not
+// model yet: the per-frame scratch stack, the two local players' pads and
+// cursors, and a few flags written by the game shell.
+//
+// On the console these live inside the SlyApp global (0x010B19E0) at the
+// offsets given in the comments; they are kept separately here so SlyApp.h
+// (owned by another module) does not have to change.
+#pragma once
+
+#include <cstdint>
+
+namespace ape { class ApeMemStack; class ApeGuiObject; }
+namespace ape::input { class ApePadDevice; }
+
+namespace sly {
+
+struct SlyApp;
+
+constexpr int kLocalPlayerCount = 2;
+
+struct AppPlayer {
+    uint8_t index = 0;                        // +0xB4 (stride 0x2EC0)
+    uint32_t inputFlags = 0;                  // +0xB8
+    uint32_t inputMask = 0;                   // +0xBC
+    ape::input::ApePadDevice* pad = nullptr;  // +0xCC
+};
+
+struct AppRuntime {
+    ape::ApeMemStack* frameStack = nullptr;   // +0xA0
+    float frameTime = 1.0f / 60.0f;           // +0xA4
+    AppPlayer players[kLocalPlayerCount];
+    ape::ApeGuiObject* cursors[kLocalPlayerCount] = {}; // +0x5E30
+    uint32_t pauseValue = 0;                  // +0x5E38
+    bool pauseRequested = false;              // +0x5E3C
+};
+
+AppRuntime& GetAppRuntime();
+
+// Set when shutdown starts (0x010C5A45).
+bool AppIsShuttingDown();
+void SetAppShuttingDown(bool value);
+
+// Shuts the application down and terminates the process.
+[[noreturn]] void AppExit();
+
+// Records a pause request from the system layer.
+void AppSetPauseRequest(bool requested, uint32_t value);
+
+// True if any local player holds the "skip" input (bit 6 of both the input
+// flags and mask). Only checked while the gate flag (0x00F65C84) is set.
+bool AnyPlayerRequestsSkip();
+void SetSkipCheckEnabled(bool enabled);
+
+} // namespace sly
