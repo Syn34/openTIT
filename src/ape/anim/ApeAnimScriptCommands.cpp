@@ -277,6 +277,8 @@ xml::XmlElement* ApeAnimScriptCallCommand::CreateDebugElement() const
 // ---------------------------------------------------------------------------
 // StopChildScript
 
+// @func 0x00794400 ApeAnimScriptStopChildScriptCommand::~ApeAnimScriptStopChildScriptCommand
+// @func 0x00794410 ApeAnimScriptStopChildScriptCommand::~ApeAnimScriptStopChildScriptCommand (deleting)
 ApeAnimScriptStopChildScriptCommand::~ApeAnimScriptStopChildScriptCommand() = default;
 
 // @func 0x004C8DB4 ApeAnimScriptStopChildScriptCommand::Create
