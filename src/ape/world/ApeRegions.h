@@ -12,6 +12,7 @@
 
 #include "ape/math/ApeBounds.h"
 #include "ape/sys/ApeGeometry.h"
+#include "ape/world/ApeBase.h"
 
 #include <cstdint>
 
@@ -43,17 +44,33 @@ enum ApeRegionFlags : uint8_t {
 
 constexpr int kMaxRegions = 32;
 
-struct ApeRegionSet {
-    uint8_t field_00[0x10];
-    uint8_t count;         // 0x10 regions loaded
-    uint8_t groupBase;     // 0x11 first region of the group being loaded
-    uint8_t groupCount;    // 0x12 groups loaded
-    uint8_t pad13[0x0D];
+// The level's regions. A reference counted engine object (type 0x12).
+class ApeRegionSet : public ApeBase {
+public:
+    ApeRegionSet();
+    ~ApeRegionSet() override;
+    void Release() override;
+
+    // Mask of the regions containing the object's world box (an oriented
+    // region must contain all eight corners).
+    uint32_t ComputeObjectMask(const ApeObj& object) const;
+    // Finds the regions containing `point` and stores the union of their
+    // visibility masks in visibleMask (every region when there is none).
+    // Returns whether the point is inside any region.
+    bool UpdateVisibleMask(const Vec3& point);
+
+    uint8_t count = 0;         // 0x10 regions loaded
+    uint8_t groupBase = 0;     // 0x11 first region of the group being loaded
+    uint8_t groupCount = 0;    // 0x12 groups loaded
+    uint32_t visibleMask = 0;  // 0x14 regions visible from the camera
     ApeRegion regions[kMaxRegions];   // 0x20
 };
 
 // The level's region set (0x01193084); null when the level has no regions.
 extern ApeRegionSet* g_regionSet;
+
+// World bounding box of an object (its definition's bounds transformed).
+Aabb& GetObjectWorldBounds(const ApeObj& object, Aabb& out);
 
 // Mask of the regions whose volume contains a world box.
 uint32_t ComputeRegionMask(const ApeRegionSet& set, const Aabb& worldBox);

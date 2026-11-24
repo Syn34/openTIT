@@ -4,6 +4,10 @@
 #include "ape/core/ApeString.h"
 #include "ape/memory/ApeMem.h"
 #include "ape/sys/ApeIff.h"
+#include "ape/world/ApeDef.h"
+#include "ape/world/ApeObj.h"
+
+#include <cfloat>
 
 #include <cstring>
 
@@ -28,6 +32,100 @@ void BuildRegionVolume(ApeRegion& region, const Vec3& minPoint, const Vec3& maxP
 }
 
 } // namespace
+
+// @func 0x0057711C ApeRegionSet::ApeRegionSet
+ApeRegionSet::ApeRegionSet() : ApeBase(kObjType_RegionSet)
+{
+    for (ApeRegion& region : regions) {
+        region.id = 0xFF;
+        region.group = 0;
+        region.flags = 0;
+        region.visibleMask = 0xFFFFFFFFu;
+        region.bounds.min = {FLT_MAX, FLT_MAX, FLT_MAX, 0.0f};
+        region.bounds.max = {-FLT_MAX, -FLT_MAX, -FLT_MAX, 0.0f};
+        region.name[0] = '\0';
+        region.nameHash = 0;
+        region.field_B4[0] = 0;
+    }
+}
+
+// @func 0x00577200 ApeRegionSet::~ApeRegionSet
+// @func 0x00577230 ApeRegionSet::~ApeRegionSet (deleting)
+ApeRegionSet::~ApeRegionSet() = default;
+
+// @func 0x00577288 ApeRegionSet::Release
+void ApeRegionSet::Release()
+{
+    if (DropRef())
+        delete this;
+}
+
+// @func 0x00577338 ApeRegionSet::ComputeObjectMask
+uint32_t ApeRegionSet::ComputeObjectMask(const ApeObj& object) const
+{
+    const Aabb& localBounds = object.GetDef()->m_bounds;
+    Vec3 corners[8];
+    AabbTransformCorners(localBounds, corners, object.GetWorld());
+    Aabb worldBox;
+    AabbTransform(worldBox, localBounds, object.GetWorld());
+
+    uint32_t mask = 0;
+    for (uint32_t i = 0; i < count; ++i) {
+        const ApeRegion& region = regions[i];
+        bool inside = true;
+        if (region.flags & kRegionFlag_Oriented) {
+            for (const Vec3& corner : corners) {
+                for (const Plane& plane : region.planes) {
+                    if (plane.x * corner.x + plane.y * corner.y + plane.z * corner.z + plane.w < 0.0f) {
+                        inside = false;
+                        break;
+                    }
+                }
+                if (!inside)
+                    break;
+            }
+        } else {
+            inside = AabbContainsBox(region.bounds, worldBox);
+        }
+        if (inside)
+            mask |= 1u << (region.id & 0x3F);
+    }
+    return mask;
+}
+
+// @func 0x00577520 ApeRegionSet::UpdateVisibleMask
+bool ApeRegionSet::UpdateVisibleMask(const Vec3& point)
+{
+    bool found = false;
+    uint32_t mask = 0;
+    for (uint32_t i = 0; i < count; ++i) {
+        const ApeRegion& region = regions[i];
+        if (!AabbContainsPoint(region.bounds, point))
+            continue;
+        bool inside = true;
+        if (region.flags & kRegionFlag_Oriented) {
+            for (const Plane& plane : region.planes) {
+                if (plane.x * point.x + plane.y * point.y + plane.z * point.z + plane.w < 0.0f) {
+                    inside = false;
+                    break;
+                }
+            }
+        }
+        if (inside) {
+            found = true;
+            mask |= region.visibleMask;
+        }
+    }
+    visibleMask = found ? mask : 0xFFFFFFFFu;
+    return found;
+}
+
+// @func 0x005772E4 GetObjectWorldBounds
+Aabb& GetObjectWorldBounds(const ApeObj& object, Aabb& out)
+{
+    AabbTransform(out, object.GetDef()->m_bounds, object.GetWorld());
+    return out;
+}
 
 uint32_t ComputeRegionMask(const ApeRegionSet& set, const Aabb& worldBox)
 {
