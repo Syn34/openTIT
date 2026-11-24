@@ -6,6 +6,7 @@
 #include "sly/components/ComponentTuning.h"
 #include "sly/components/InventoryDescs.h"
 #include "sly/entity/Abilities.h"
+#include "sly/levels/ai/AIComponent.h"
 
 #include "ape/core/ApeString.h"
 #include "ape/memory/ApeMem.h"
@@ -788,7 +789,7 @@ const ComponentParserEntry kComponentParsers[] = {
     {0x8E8B9E25u, ParseControlAIComponentDesc},        // "ControlAI"
     {0x42E85720u, nullptr},                            // "ControlNet"
     {0x42E837A4u, nullptr},                            // "ControlExt"
-    {0x00000828u, ParseAIComponentDescHook},           // "AI"
+    {0x00000828u, levels::ai::ParseAIComponentDesc},           // "AI"
     {0xF7B7E98Bu, ParseAnimMapComponentDesc},          // "AnimMap"
     {0xF2BABA67u, ParseProcAnimComponentDesc},         // "ProcAnim"
     {0xF2BCB4B8u, ParseProcEyesComponentDesc},         // "ProcEyes"
