@@ -223,6 +223,17 @@ constexpr uint32_t kAttr_SlowTimeD0      = 0x4F113DAEu;   // NOTE: name unknown
 constexpr uint32_t kAttr_SlowTimeD4      = 0x173BA787u;   // NOTE: name unknown
 constexpr uint32_t kAttr_SlowTimeD8      = 0x4E1FBF3Au;   // NOTE: name unknown
 
+constexpr uint32_t kAttr_ChairType       = 0xF4EF8B5Fu;
+constexpr uint32_t kAttr_ChairBone       = 0xF4E736E9u;
+constexpr uint32_t kAttr_WheelBoneL      = 0x7F6B2FADu;
+constexpr uint32_t kAttr_WheelBoneR      = 0x7F6B2FB3u;
+constexpr uint32_t kAttr_Wheelchair24    = 0xCF9ADB4Cu;   // NOTE: name unknown
+constexpr uint32_t kAttr_Parent          = 0x8C3DFCAAu;
+constexpr uint32_t kTag_Arm              = 0x0000FE3Cu;
+constexpr uint32_t kTag_Slave            = 0x04B529B7u;
+constexpr uint32_t kTag_Root             = 0x002678E2u;
+constexpr uint32_t kTag_Bone             = 0x001F32C4u;
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -720,6 +731,60 @@ ComponentDesc* ParseJumpRopeComponentDesc(XmlElement* root, XmlElement* elem, ui
 ComponentDesc* ParseAeSplineComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
 {
     return NewNamedDesc<AeSplineComponentDesc>(root, elem, scope);
+}
+
+// @func 0x002BC208 ParseWheelchairComponentDesc
+ComponentDesc* ParseWheelchairComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    const char* name = elem->GetString("name");
+    if (!name) {
+        (void)root->GetDocumentPath();
+        return nullptr;
+    }
+    WheelchairComponentDesc* desc = new WheelchairComponentDesc(ape::HashNameNoCase(name));
+    desc->scope = scope;
+    elem->GetInt(kAttr_ChairType, &desc->chairType, desc->chairType);
+    elem->GetHash(kAttr_ChairBone, &desc->chairBone, 0);
+    elem->GetHash(kAttr_WheelBoneL, &desc->wheelBoneL, 0);
+    elem->GetHash(kAttr_WheelBoneR, &desc->wheelBoneR, 0);
+    elem->GetHash(kAttr_Wheelchair24, &desc->hash24, 0);
+    uint32_t arm = 0;
+    for (XmlElement* armElem = elem->FirstChildElement(kTag_Arm); armElem;
+         armElem = armElem->NextSiblingElement(kTag_Arm), ++arm) {
+        if (arm > 1)
+            break;   // a third arm ends the parse
+        uint32_t boneCount = 0, slaveCount = 0;
+        for (XmlElement* child = armElem->FirstChildElement(); child; child = child->NextSiblingElement()) {
+            switch (child->GetNameHash()) {
+            case kTag_Slave:
+                if (slaveCount < 8) {
+                    WheelchairSlave& slave = desc->armSlaves[arm][slaveCount++];
+                    child->GetHash(kAttr_Name, &slave.name, 0);
+                    child->GetHash(kAttr_Parent, &slave.parent, 0);
+                } else {
+                    ape::TempFormat("EntityCompWheelchair '%s': max # slaves is %d, extra definitions ignored.",
+                                    name, 8);
+                }
+                break;
+            case kTag_Root:
+                if (desc->armRoot[arm] != 0)
+                    ape::TempFormat("EntityCompWheelchair '%s': multiple Arm Root definitions.", name);
+                child->GetHash(kAttr_Name, &desc->armRoot[arm], 0);
+                break;
+            case kTag_Bone:
+                if (boneCount < 16) {
+                    child->GetHash(kAttr_Name, &desc->armIkBones[arm][boneCount++], 0);
+                } else {
+                    ape::TempFormat("EntityCompWheelchair '%s': max # IK bones is %d, extra definitions ignored.",
+                                    name, 16);
+                }
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    return desc;
 }
 
 // @func 0x002CBB40 ParseTrackerComponentDesc

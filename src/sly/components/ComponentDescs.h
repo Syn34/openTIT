@@ -47,6 +47,7 @@ enum ComponentDescType : uint32_t {
     kCompDesc_JumpRope       = 0x21,
     kCompDesc_AeSpline       = 0x22,
     kCompDesc_Buoyancy       = 0x20,
+    kCompDesc_Wheelchair     = 0x24,
     kCompDesc_Tracker        = 0x26,
     kCompDesc_Vortex         = 0x27,
     kCompDesc_Scoring        = 0x28,
@@ -336,6 +337,25 @@ struct AeSplineComponentDesc : ComponentDesc {
     explicit AeSplineComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_AeSpline) {}
 };
 
+// <Wheelchair> (vtable 0x00B1CFC8, 0x130 bytes): Bentley's wheelchair, with
+// up to two <Arm> elements (root bone, IK bones, slave bones).
+struct WheelchairSlave {
+    uint32_t name = 0;           // +0x00
+    uint32_t parent = 0;         // +0x04
+};
+struct WheelchairComponentDesc : ComponentDesc {
+    explicit WheelchairComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Wheelchair) {}
+    int32_t chairType = 0;       // 0x14
+    uint32_t chairBone = 0;      // 0x18
+    uint32_t wheelBoneL = 0;     // 0x1C
+    uint32_t wheelBoneR = 0;     // 0x20
+    uint32_t hash24 = 0;         // 0x24 attribute 0xCF9ADB4C. NOTE: name unknown
+    uint32_t armRoot[2] = {};    // 0x28
+    uint32_t armIkBones[2][16] = {};   // 0x30
+    // 0xB0. NOTE: not cleared by the console (unused slots stay uninitialised).
+    WheelchairSlave armSlaves[2][8] = {};
+};
+
 // <tracker> (vtable 0x00B1D0F0, 0x2C bytes).
 struct TrackerComponentDesc : ComponentDesc {
     explicit TrackerComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Tracker) {}
@@ -494,6 +514,7 @@ ComponentDesc* ParseOffscreenMarkerComponentDesc(ape::xml::XmlElement* root, ape
 ComponentDesc* ParseSimplePhysicsComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseJumpRopeComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseAeSplineComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseWheelchairComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseTrackerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseVortexComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseScoringComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
