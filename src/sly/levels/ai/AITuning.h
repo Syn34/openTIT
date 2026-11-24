@@ -1,28 +1,398 @@
-// openTIT - "AI.*" tuning variables used by the level AI.
+// openTIT - Tuning variables of the level AI and boss module.
 //
-// On the console these are constructed by the large static initialiser
-// 0x00067738 (AI settings and boss tuning, outside this range); only the
-// ones this directory reads are defined here, with the defaults that
-// initialiser passes. Whoever ports 0x00067738 should take them over.
+// Built by the module's static initialiser 0x00067738 (see AITuning.cpp); the
+// values are the defaults, Scripts/Tuning.xml may override them.
 #pragma once
 
+#include "ape/math/ApeMath.h"
 #include "ape/tuning/ApeTuning.h"
 
 namespace sly {
 namespace levels {
 namespace ai {
 
-extern ape::TuningFloat g_aiChaseVOFrequency;           // 0x00F9CB78
-extern ape::TuningFloat g_aiAttackPlayerRecoveryTime;   // 0x00F9CBC4
-extern ape::TuningFloat g_aiAudioAlertRangeNormal;      // 0x00F9CC10
-extern ape::TuningFloat g_aiAudioAlertRangeFootsteps;   // 0x00F9CC5C
-extern ape::TuningFloat g_aiAudioAlertRangeBottle;      // 0x00F9CCA8
+extern ape::TuningBool g_cheatUndetectable;
 
-// Bismarque boss.
-extern ape::TuningFloat g_bismarqueTargetPointDistanceWeight;          // 0x00F95538
-extern ape::TuningFloat g_bismarqueTargetPointAngleWeight;             // 0x00F95584
-extern ape::TuningFloat g_bismarqueTargetPointDeltaOrientationWeight;  // 0x00F955D0
-extern ape::TuningFloat g_bismarqueCounterAttackDistMin;               // 0x00F96164
+extern ape::TuningBool g_aiLoadBalance;
+
+extern ape::TuningFloat g_bismarqueHealth;
+extern ape::TuningFloat g_bismarqueTurnAnimMinAngle;
+extern ape::TuningFloat g_bismarqueMovementAnimChoiceSplineLookAheadTime;
+extern ape::TuningFloat g_bismarqueTargetPointDistanceWeight;
+extern ape::TuningFloat g_bismarqueTargetPointAngleWeight;
+extern ape::TuningFloat g_bismarqueTargetPointDeltaOrientationWeight;
+extern ape::TuningFloat g_bismarqueMovementPathSwitchPointIterations;
+extern ape::TuningFloat g_bismarqueMovementDeltaPathSwitchPointDistance;
+extern ape::TuningFloat g_bismarqueStunTime;
+extern ape::TuningFloat g_bismarqueBeatdownSmackDamage;
+extern ape::TuningFloat g_bismarqueThrownEntityDamage;
+extern ape::TuningFloat g_bismarqueNormalMeleeDamage;
+extern ape::TuningFloat g_bismarqueRepelPlayerGroundForce;
+extern ape::TuningFloat g_bismarqueRepelPlayerUpAngle;
+extern ape::TuningFloat g_bismarqueRepelPlayerAirHeight;
+extern ape::TuningFloat g_bismarqueRepelPlayerAirForce;
+extern ape::TuningFloat g_bismarqueRepelPlayerMaxDist;
+extern ape::TuningFloat g_bismarqueWhaleSplashDamage;
+extern ape::TuningFloat g_bismarqueWhaleSplashImpulse;
+extern ape::TuningFloat g_bismarqueWhaleSplashRadius;
+extern ape::TuningFloat g_bismarqueWhaleSplashHeight;
+extern ape::TuningFloat g_bismarqueQTEGameGrizzTimeDelay;
+extern ape::TuningFloat g_bismarqueQTEGamePlyChaseFollowDist;
+extern ape::TuningFloat g_bismarqueQTEGameDetectBarInputBuffer;
+extern ape::TuningFloat g_bismarqueQTEGameDetectBarMoveSpeed;
+extern ape::TuningFloat g_bismarqueQTEGameDetectBarYOffset;
+extern ape::TuningFloat g_bismarqueQTEGameDetectBarStartXOffset;
+extern ape::TuningFloat g_bismarqueQTEGameIntroDelayTimeMax;
+extern ape::TuningFloat g_bismarqueQTEButtonShiftZPos;
+extern ape::TuningFloat g_bismarqueQTEButtonPressTimeMax;
+extern ape::TuningFloat g_bismarqueQTEButtonToPlyInterpTimeMax;
+extern ape::TuningFloat g_bismarqueQTEButtonToPlyInterpPercent1;
+extern ape::TuningFloat g_bismarqueQTEButtonToPlyInterpPercent2;
+extern ape::TuningFloat g_bismarqueQTEButtonToPlyInterpZ1;
+extern ape::TuningFloat g_bismarqueQTEButtonToPlyInterpZ2;
+extern ape::TuningFloat g_bismarqueQTEButtonToPlyQuestionMarkRevealTimeMax;
+extern ape::TuningFloat g_bismarqueQTEButtonToGrizzIntroInterpTimeMax;
+extern ape::TuningFloat g_bismarqueQTEButtonToGrizzOutroInterpTimeMax;
+extern ape::TuningFloat g_bismarqueQTEButtonToGrizzIntroDelayTimeMax;
+extern ape::TuningFloat g_bismarqueQTEButtonToGrizzOutroDelayTimeMax;
+extern ape::TuningFloat g_bismarqueQTEButtonToGrizzStartXOffset;
+extern ape::TuningFloat g_bismarqueQTEButtonToGrizzEndXOffset;
+extern ape::TuningFloat g_bismarqueSuperIceSliceAttackDistMin;
+extern ape::TuningFloat g_bismarqueCounterAttackDistMin;
+extern ape::TuningFloat g_bismarqueCounterAttackDelayTimeMax;
+extern ape::TuningBool g_bismarqueCounterEnabled;
+extern ape::TuningFloat g_bismarqueNormalCamFOV;
+extern ape::TuningFloat g_bismarqueNormalCamInterp;
+extern ape::TuningFloat g_bismarqueNormalCamFovInterp;
+extern ape::TuningFloat g_bismarqueNormalCamGimbalRadius;
+extern ape::TuningFloat g_bismarqueNormalCamAngleHome;
+extern ape::TuningVec3 g_bismarqueNormalCamTargetOffset;
+extern ape::TuningFloat g_bismarqueBeatdownCamFOV;
+extern ape::TuningFloat g_bismarqueBeatdownCamInterp;
+extern ape::TuningFloat g_bismarqueBeatdownCamFovInterp;
+extern ape::TuningFloat g_bismarqueBeatdownCamGimbalRadius;
+extern ape::TuningFloat g_bismarqueBeatdownCamAngleHome;
+extern ape::TuningVec3 g_bismarqueBeatdownCamTargetOffset;
+extern ape::TuningFloat g_bismarqueIceBarrierCamCloseFOV;
+extern ape::TuningFloat g_bismarqueIceBarrierCamCloseInterp;
+extern ape::TuningFloat g_bismarqueIceBarrierCamCloseFovInterp;
+extern ape::TuningFloat g_bismarqueIceBarrierCamCloseGimbalRadius;
+extern ape::TuningFloat g_bismarqueIceBarrierCamCloseAngleHome;
+extern ape::TuningVec3 g_bismarqueIceBarrierCamCloseTargetOffset;
+extern ape::TuningFloat g_bismarqueIceBarrierCamSwitchDist;
+extern ape::TuningFloat g_bismarqueIceBarrierCamFarFOV;
+extern ape::TuningFloat g_bismarqueIceBarrierCamFarInterp;
+extern ape::TuningFloat g_bismarqueIceBarrierCamFarFovInterp;
+extern ape::TuningFloat g_bismarqueIceBarrierCamFarGimbalRadius;
+extern ape::TuningFloat g_bismarqueIceBarrierCamFarAngleHome;
+extern ape::TuningVec3 g_bismarqueIceBarrierCamFarTargetOffset;
+extern ape::TuningFloat g_bismarqueStalactiteGroundOffset;
+extern ape::TuningColor g_bismarqueStalactiteGroundMarkerColorStart;
+extern ape::TuningColor g_bismarqueStalactiteGroundMarkerColorMid;
+extern ape::TuningColor g_bismarqueStalactiteGroundMarkerColorEnd;
+extern ape::TuningFloat g_bismarqueStalactiteGroundMarkerColorDuration;
+extern ape::TuningVec3 g_bismarqueStalactiteGroundMarkerScale;
+extern ape::TuningFloat g_bismarqueStalactitePredictFutureTime;
+extern ape::TuningFloat g_bismarqueStalactiteDiameter;
+extern ape::TuningFloat g_bismarqueStalactiteGroundFudgeOffset;
+extern ape::TuningFloat g_bismarquePlayfieldBoundRadius;
+extern ape::TuningFloat g_bismarqueAttackRingSpeed;
+extern ape::TuningFloat g_bismarqueAttackRingRange;
+extern ape::TuningFloat g_bismarqueAttackRingHeight;
+extern ape::TuningFloat g_bismarqueAttackRingRadius;
+extern ape::TuningFloat g_bismarqueAttackRingDamage;
+extern ape::TuningFloat g_bismarqueAttackRingImpulse;
+extern ape::TuningBool g_bismarqueDebugDrawAttackRing;
+extern ape::TuningFloat g_bismarqueGroundSmashStartDist;
+extern ape::TuningFloat g_bismarqueBeatdownPunchCooldownTimeMax;
+extern ape::TuningVec3 g_bismarqueHealthSpawnOffset;
+extern ape::TuningBool g_bismarqueEnableSkateBlur;
+extern ape::TuningFloat g_bismarqueIceBarrierYOffset;
+extern ape::TuningFloat g_bismarqueIceBarrierPieceThrowLifetimeMax;
+extern ape::TuningFloat g_bismarqueIceBarrierThrowOffsetTimemax;
+extern ape::TuningFloat g_bismarqueIceBarrierThrowRampupTimeMax;
+extern ape::TuningFloat g_bismarqueWindStrength;
+extern ape::TuningFloat g_bismarqueWindRampUp;
+extern ape::TuningFloat g_bismarqueWindRampDown;
+extern ape::TuningFloat g_bismarqueWindAirDampeningTime;
+extern ape::TuningFloat g_bismarqueWindAirDampeningPercent;
+extern ape::TuningBool g_bismarqueWindDebugDraw;
+extern ape::TuningBool g_bismarqueDebugDrawPathSwitchPoints;
+extern ape::TuningBool g_bismarqueDebugToMinigameState;
+extern ape::TuningBool g_bismarqueDebugToBeatdownState;
+extern ape::TuningBool g_bismarqueDebugToBeatdownFinalState;
+extern ape::TuningBool g_bismarqueDebugDrawStalactite;
+extern ape::TuningBool g_bismarqueFootTrailEnable;
+extern ape::TuningVec3 g_bismarqueFootTrailOffsetLeft;
+extern ape::TuningVec3 g_bismarqueFootTrailOffsetRight;
+extern ape::TuningFloat g_bismarqueFootTrailLength;
+extern ape::TuningFloat g_bismarqueFootTrailFPS;
+extern ape::TuningColor g_bismarqueFootTrailColor;
+extern ape::TuningFloat g_bismarqueFootTrailWidth;
+extern ape::TuningFloat g_bismarqueFootTrailAlphaSpeed;
+extern ape::TuningFloat g_bismarqueFootTrailWorldIcePos;
+extern ape::TuningFloat g_bismarqueFootTrailWorldIcePosThreshold;
+
+extern ape::TuningBool g_elJefeDrawAttackCollision;
+extern ape::TuningFloat g_elJefeFireRingSpeed;
+extern ape::TuningFloat g_elJefeFireRingHeight;
+extern ape::TuningFloat g_elJefeFireRingRadius;
+extern ape::TuningFloat g_elJefeFireRingRange;
+extern ape::TuningFloat g_elJefeFireRingDamage;
+extern ape::TuningFloat g_elJefeFireRingImpulse;
+extern ape::TuningFloat g_elJefeLargeFireRingSpeed;
+extern ape::TuningFloat g_elJefeLargeFireRingHeight;
+extern ape::TuningFloat g_elJefeLargeFireRingRadius;
+extern ape::TuningFloat g_elJefeLargeFireRingRange;
+extern ape::TuningFloat g_elJefeLargeFireRingDamage;
+extern ape::TuningFloat g_elJefeLargeFireRingImpulse;
+extern ape::TuningFloat g_elJefeElectricBeamRange;
+extern ape::TuningFloat g_elJefeElectricBeamRadius;
+extern ape::TuningFloat g_elJefeElectricBeamDamage;
+extern ape::TuningFloat g_elJefeTowerCamGimbalRadius;
+extern ape::TuningFloat g_elJefeTowerCamTargetYOffset;
+extern ape::TuningFloat g_elJefeTowerCamAngle;
+extern ape::TuningFloat g_elJefeTowerCamInterp;
+extern ape::TuningFloat g_elJefeElectricCamGimbalRadius;
+extern ape::TuningFloat g_elJefeElectricCamTargetYOffset;
+extern ape::TuningFloat g_elJefeElectricCamAngle;
+extern ape::TuningFloat g_elJefeElectricCamInterp;
+extern ape::TuningFloat g_elJefeFireBallCamGimbalRadius;
+extern ape::TuningFloat g_elJefeFireBallCamTargetYOffset;
+extern ape::TuningFloat g_elJefeFireBallCamAngle;
+extern ape::TuningFloat g_elJefeFireBallCamInterp;
+extern ape::TuningFloat g_elJefeFireRingCamGimbalRadius;
+extern ape::TuningFloat g_elJefeFireRingCamTargetYOffset;
+extern ape::TuningFloat g_elJefeFireRingCamAngle;
+extern ape::TuningFloat g_elJefeFireRingCamInterp;
+extern ape::TuningFloat g_elJefeStunnedCamGimbalRadius;
+extern ape::TuningFloat g_elJefeStunnedCamTargetYOffset;
+extern ape::TuningFloat g_elJefeStunnedCamAngle;
+extern ape::TuningFloat g_elJefeStunnedCamInterp;
+extern ape::TuningFloat g_elJefeLightningMinTime;
+extern ape::TuningFloat g_elJefeLightningMaxTime;
+extern ape::TuningBool g_elJefeDisableDualTargetCam;
+extern ape::TuningHash g_elJefeStage1;
+extern ape::TuningHash g_elJefeStage2;
+extern ape::TuningHash g_elJefeStage3;
+extern ape::TuningHash g_elJefeStage4;
+extern ape::TuningHash g_elJefeStage5;
+extern ape::TuningHash g_elJefeStage6;
+extern ape::TuningHash g_elJefeStage7;
+extern ape::TuningHash g_elJefeStage8;
+extern ape::TuningHash g_elJefeStage9;
+extern ape::TuningHash g_elJefeStage10;
+extern ape::TuningHash g_elJefeStage11;
+extern ape::TuningHash g_elJefeStage12;
+extern ape::TuningHash g_elJefeStage13;
+extern ape::TuningHash g_elJefeStage14;
+extern ape::TuningHash g_elJefeStage15;
+extern ape::TuningHash g_elJefeStage16;
+extern ape::TuningHash g_elJefeStage17;
+extern ape::TuningHash g_elJefeStage18;
+extern ape::TuningHash g_elJefeStage19;
+extern ape::TuningHash g_elJefeStage20;
+extern ape::TuningFloat g_elJefeHealth;
+extern ape::TuningFloat g_elJefeSpawnHealthRate;
+extern ape::TuningInt g_elJefeHitsToDizzy;
+extern ape::TuningFloat g_elJefeStunnedTimeTower1;
+extern ape::TuningFloat g_elJefeStunnedTimeTower2;
+extern ape::TuningFloat g_elJefeStunnedTimeTower3;
+extern ape::TuningFloat g_elJefeTower1Threshold;
+extern ape::TuningFloat g_elJefeTower2Threshold;
+extern ape::TuningFloat g_elJefeTower3Threshold;
+extern ape::TuningFloat g_elJefeGridAttackRate;
+extern ape::TuningFloat g_elJefeGridAttackArcDuration;
+extern ape::TuningFloat g_elJefeGridAttackTellDuration;
+extern ape::TuningFloat g_elJefeGridAttackDamageDuration;
+extern ape::TuningFloat g_elJefeGridAttackDamage;
+extern ape::TuningString g_elJefeGridPatternTower2;
+extern ape::TuningString g_elJefeGridPatternTower3;
+extern ape::TuningString g_elJefeTower1Pattern;
+extern ape::TuningString g_elJefeTower2Pattern;
+extern ape::TuningString g_elJefeTower3Pattern;
+extern ape::TuningFloat g_elJefeTower1IdleSpeedMul;
+extern ape::TuningFloat g_elJefeTower2IdleSpeedMul;
+extern ape::TuningFloat g_elJefeTower3IdleSpeedMul;
+extern ape::TuningFloat g_elJefePairedActionDist;
+extern ape::TuningFloat g_elJefePairedActionDamage;
+extern ape::TuningFloat g_elJefeRoarKnockback;
+
+extern ape::TuningFloat g_msDecibelHealth;
+extern ape::TuningFloat g_msDecibelPlatform1HealthThreshold;
+extern ape::TuningFloat g_msDecibelPlatform2HealthThreshold;
+extern ape::TuningFloat g_msDecibelPlatform3HealthThreshold;
+extern ape::TuningBool g_msDecibelJumboTronPosTypeCamera;
+extern ape::TuningFloat g_msDecibelJumboTronCamOffset;
+extern ape::TuningFloat g_msDecibelJumboTronMaxSpeed;
+extern ape::TuningBool g_msDecibelJumboTronDebugDraw;
+extern ape::TuningColor g_msDecibelJumboTronBGColor0;
+extern ape::TuningColor g_msDecibelJumboTronBGColor1;
+extern ape::TuningBool g_msDecibelDrawAttackCollision;
+extern ape::TuningBool g_msDecibelUseTriggersForPlatformCombat;
+extern ape::TuningFloat g_msDecibelBeatdownTime1;
+extern ape::TuningFloat g_msDecibelBeatdownTime2;
+extern ape::TuningFloat g_msDecibelBeatdownTime3;
+extern ape::TuningFloat g_msDecibelProjectileTime;
+extern ape::TuningFloat g_msDecibelGlassShatterSequenceTime;
+extern ape::TuningFloat g_msDecibelGlassShatterTimeVariance;
+extern ape::TuningFloat g_msDecibelGlassResonateTime;
+extern ape::TuningFloat g_msDecibelGlassResonateAmplitude;
+extern ape::TuningFloat g_msDecibelGlassResonateFrequency;
+extern ape::TuningFloat g_msDecibelGlassResetTime;
+extern ape::TuningBool g_msDecibelGlassResetAllAtOnce;
+extern ape::TuningBool g_msDecibelGlassUseSequences;
+extern ape::TuningBool g_msDecibelGlassUseSafeGroup;
+extern ape::TuningBool g_msDecibelGlassDebug;
+extern ape::TuningString g_msDecibelGlassRow1;
+extern ape::TuningString g_msDecibelGlassRow2;
+extern ape::TuningString g_msDecibelGlassRow3;
+extern ape::TuningString g_msDecibelGlassRow4;
+extern ape::TuningString g_msDecibelGlassRow5;
+extern ape::TuningString g_msDecibelGlassRow6;
+extern ape::TuningString g_msDecibelGlassRow7;
+extern ape::TuningFloat g_msDecibelMusicV;
+extern ape::TuningFloat g_msDecibelMusicStep;
+extern ape::TuningFloat g_msDecibelMusicAnimOffset;
+extern ape::TuningBool g_msDecibelMusicCamEnabled;
+extern ape::TuningBool g_msDecibelMusicCamUsePlayerY;
+extern ape::TuningFloat g_msDecibelMusicCamGimbalRadius;
+extern ape::TuningFloat g_msDecibelMusicCamHeight;
+extern ape::TuningFloat g_msDecibelMusicCamTargetYOffset;
+extern ape::TuningFloat g_msDecibelMusicCamLookAhead;
+extern ape::TuningFloat g_msDecibelMusicCamInterp;
+extern ape::TuningFloat g_msDecibelMusicSpeed;
+extern ape::TuningFloat g_msDecibelMusicTempoBPM;
+extern ape::TuningFloat g_msDecibelMusicSpeed2;
+extern ape::TuningFloat g_msDecibelMusicTempoBPM2;
+extern ape::TuningFloat g_msDecibelMusicFadeDist;
+extern ape::TuningFloat g_msDecibelMusicIntroSpeedScale;
+extern ape::TuningFloat g_msDecibelPlatformShieldCamGimbalRadius;
+extern ape::TuningFloat g_msDecibelPlatformShieldCamTargetYOffset;
+extern ape::TuningFloat g_msDecibelPlatformShieldCamAngle;
+extern ape::TuningFloat g_msDecibelPlatformShieldCamInterp;
+extern ape::TuningFloat g_msDecibelPlatformStunnedCamGimbalRadius;
+extern ape::TuningFloat g_msDecibelPlatformStunnedCamTargetYOffset;
+extern ape::TuningFloat g_msDecibelPlatformStunnedCamAngle;
+extern ape::TuningFloat g_msDecibelPlatformStunnedCamInterp;
+extern ape::TuningFloat g_msDecibelPlatformProjectileRotationRate;
+extern ape::TuningFloat g_msDecibelPlatformCounterAttackDist;
+extern ape::TuningInt g_msDecibelPlatformPlatform1HitsToDizzy;
+extern ape::TuningInt g_msDecibelPlatformPlatform2HitsToDizzy;
+extern ape::TuningInt g_msDecibelPlatformPlatform3HitsToDizzy;
+extern ape::TuningInt g_msDecibelFinalHitsToCharge;
+extern ape::TuningFloat g_msDecibelFinalCamGimbalRadius;
+extern ape::TuningFloat g_msDecibelFinalCamTargetYOffset;
+extern ape::TuningFloat g_msDecibelFinalCamAngle;
+extern ape::TuningFloat g_msDecibelFinalCamInterp;
+extern ape::TuningFloat g_msDecibelFinalBounceCamGimbalRadius;
+extern ape::TuningFloat g_msDecibelFinalBounceCamTargetYOffset;
+extern ape::TuningFloat g_msDecibelFinalBounceCamAngle;
+extern ape::TuningFloat g_msDecibelFinalBounceCamInterp;
+extern ape::TuningFloat g_msDecibelFinalSatCamInterp;
+extern ape::TuningFloat g_msDecibelFinalSatCamInterpOut;
+extern ape::TuningFloat g_msDecibelFinalSatCamOffsetY;
+extern ape::TuningFloat g_msDecibelFinalSatCamOffsetZ;
+extern ape::TuningFloat g_msDecibelFinalSatCamZMulSpread;
+extern ape::TuningFloat g_msDecibelFinalSatCamZMulSly;
+extern ape::TuningFloat g_msDecibelFinalSatCamDist;
+extern ape::TuningFloat g_msDecibelFinalDashStopAngle;
+extern ape::TuningFloat g_msDecibelFinalDashCloseAngle;
+extern ape::TuningFloat g_msDecibelFinalDashCloseDist;
+extern ape::TuningFloat g_msDecibelFinalShockWaveSpeed;
+extern ape::TuningFloat g_msDecibelFinalShockWaveHeight;
+extern ape::TuningFloat g_msDecibelFinalShockWaveRadius;
+extern ape::TuningFloat g_msDecibelFinalShockWaveRange;
+extern ape::TuningFloat g_msDecibelFinalShockWaveDamage;
+extern ape::TuningFloat g_msDecibelFinalMusicNoteDamage;
+extern ape::TuningFloat g_msDecibelFinalProjectileRotationRate;
+extern ape::TuningFloat g_msDecibelFinalTrunkSwipeDist;
+extern ape::TuningString g_msDecibelPatternPlatform1;
+extern ape::TuningString g_msDecibelPatternPlatform2;
+extern ape::TuningString g_msDecibelPatternPlatform3;
+extern ape::TuningString g_msDecibelPatternFinal1;
+extern ape::TuningString g_msDecibelPatternFinal2;
+extern ape::TuningString g_msDecibelPatternFinal3;
+extern ape::TuningString g_msDecibelPatternFinal4;
+extern ape::TuningBool g_msDecibelDebugTrunkSwipe;
+extern ape::TuningBool g_msDecibelDebugProjectiles;
+extern ape::TuningBool g_msDecibelDebugGroundSmash;
+extern ape::TuningFloat g_msDecibelShieldSpawnRate;
+extern ape::TuningFloat g_msDecibelShieldSpinRate;
+extern ape::TuningFloat g_msDecibelShieldCycleDuration;
+extern ape::TuningFloat g_msDecibelShieldSpeedBase;
+extern ape::TuningFloat g_msDecibelShieldSpeedAddMin;
+extern ape::TuningFloat g_msDecibelShieldSpeedAddMax;
+extern ape::TuningFloat g_msDecibelShieldOffset1;
+extern ape::TuningFloat g_msDecibelShieldOffset2;
+extern ape::TuningFloat g_msDecibelShieldOffset3;
+extern ape::TuningFloat g_msDecibelShieldSpread;
+extern ape::TuningBool g_msDecibelShieldLines;
+
+extern ape::TuningFloat g_paradoxDamageToSly;
+extern ape::TuningFloat g_paradoxDamageToParadox;
+extern ape::TuningBool g_paradoxPunishIncorrectInput;
+extern ape::TuningFloat g_paradoxAttackTellTimeScale;
+extern ape::TuningFloat g_paradoxTraversalDist;
+extern ape::TuningFloat g_paradoxGrindSpeed;
+extern ape::TuningFloat g_paradoxGrindJumpLead;
+extern ape::TuningFloat g_paradoxGrindInitialLead;
+extern ape::TuningBool g_paradoxCameraUseRandom;
+extern ape::TuningFloat g_paradoxCameraDist;
+extern ape::TuningFloat g_paradoxCameraXOffset;
+extern ape::TuningFloat g_paradoxCameraZoomDist;
+extern ape::TuningFloat g_paradoxCameraZoomInterpTime;
+extern ape::TuningBool g_paradoxCameraZoomDuringParryWindow;
+extern ape::TuningFloat g_paradoxCameraHeight;
+extern ape::TuningFloat g_paradoxCameraTargetHeight;
+extern ape::TuningFloat g_paradoxCameraFOV;
+extern ape::TuningFloat g_paradoxCameraInterp;
+extern ape::TuningBool g_paradoxDebugEnabled;
+extern ape::TuningBool g_paradoxDebugTestSequence;
+extern ape::TuningBool g_paradoxDebugFastInputs;
+extern ape::TuningBool g_paradoxDebugSlowInputs;
+
+extern ape::TuningBool g_aiThrownObjDamageEnable;
+extern ape::TuningFloat g_aiThrownObjDamageAmount;
+extern ape::TuningFloat g_aiImpactDamage;
+extern ape::TuningColor g_aiStealthTargetColor;
+extern ape::TuningFloat g_aiStealthTargetPulseRate;
+extern ape::TuningFloat g_aiFailCamTargetDist;
+extern ape::TuningFloat g_aiFailCamFOVScaler;
+extern ape::TuningFloat g_aiShrinkTime;
+extern ape::TuningFloat g_aiShrinkInterpTime;
+extern ape::TuningFloat g_aiShrinkScale;
+extern ape::TuningFloat g_aiConfuseTime;
+extern ape::TuningFloat g_aiScareTime;
+extern ape::TuningFloat g_aiFatalFallDist;
+extern ape::TuningFloat g_aiSneakAttackWindow;
+
+extern ape::TuningBool g_bismarqueIceCaveSearchTowardsPlayer;
+extern ape::TuningFloat g_bismarqueIceCaveMinTimeBetweenActions;
+extern ape::TuningFloat g_bismarqueIceCaveMaxTimeBetweenActions;
+extern ape::TuningHash g_bismarqueIceCaveDiggingMachineInst;
+extern ape::TuningFloat g_bismarqueIceCaveImpatientAnimationWeight;
+extern ape::TuningFloat g_bismarqueIceCaveLookForPlayerWeight;
+extern ape::TuningFloat g_bismarqueIceCaveApproachPlayerWeight;
+extern ape::TuningHash g_bismarqueIceCaveButtBone;
+extern ape::TuningHash g_bismarqueIceCaveDartDef;
+extern ape::TuningFloat g_bismarqueIceCaveButtRadius;
+extern ape::TuningFloat g_bismarqueIceCaveButtLength;
+extern ape::TuningBool g_bismarqueIceCaveDebugButt;
+
+extern ape::TuningFloat g_aiAttackFrequency;
+extern ape::TuningFloat g_aiChaseVOFrequency;
+extern ape::TuningFloat g_aiAttackPlayerRecoveryTime;
+extern ape::TuningFloat g_aiAudioAlertRangeNormal;
+extern ape::TuningFloat g_aiAudioAlertRangeFootsteps;
+extern ape::TuningFloat g_aiAudioAlertRangeBottle;
+
+// Two fixed frames built at the end of the initialiser (0x00F9BB60 / 0x00F9BBA0):
+// axes (1,0,0),(0,0,-1),(0,1,0) and (1,0,0),(0,0,1),(0,-1,0), no translation.
+// NOTE: used by the Bismarque ice-cave code (not ported); read as +/-90 degree
+// rotations about X.
+extern const ape::Matrix34 g_aiFrameXRotNeg90;
+extern const ape::Matrix34 g_aiFrameXRotPos90;
 
 } // namespace ai
 } // namespace levels
