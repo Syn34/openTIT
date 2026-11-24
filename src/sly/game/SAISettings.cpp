@@ -386,13 +386,60 @@ void AddLaserCommon(SettingDef& def, LaserCommonParams& p)
     def.AddParam(p.sound);
 }
 
-// NOTE: on the console each definition creates a setting subclass with its own
-// vtable (0x00B214A0, 0x00B214FC, ...); they add nothing to Setting, so the
-// definitions here create plain Settings (the hot spot one is 4 bytes larger).
+// The setting class of each definition (0x24 bytes, one vtable per definition on
+// the console). They add nothing to Setting; the spawner settings derive from the
+// spawner base's setting class.
+template <class Def, class Base = Setting>
+class SAISetting final : public Base {
+public:
+    using Base::Base;
+    // @func 0x00781B10 SAISetting<T>::~SAISetting (copy 1, AINavJumpLinkSetting)
+    // @func 0x00781B70 SAISetting<T>::~SAISetting (copy 2, Sly_AIProxyPoint)
+    // @func 0x00781C30 SAISetting<T>::~SAISetting (copy 3, Sly_EntitySpawner)
+    // @func 0x00781C90 SAISetting<T>::~SAISetting (copy 4, Sly_AISpawner)
+    // @func 0x00781CF0 SAISetting<T>::~SAISetting (copy 5, CameraShakeSetting)
+    // @func 0x00781DB0 SAISetting<T>::~SAISetting (copy 6, Sly_LaserGroup)
+    // @func 0x00781E10 SAISetting<T>::~SAISetting (copy 7, Sly_LaserFixed)
+    // @func 0x00781E70 SAISetting<T>::~SAISetting (copy 8, Sly_LaserAnchor)
+    // @func 0x00781ED0 SAISetting<T>::~SAISetting (copy 9, Sly_LaserSpline)
+    // @func 0x00781F30 SAISetting<T>::~SAISetting (copy 10, Sly_LaserField)
+    // @func 0x00781F90 SAISetting<T>::~SAISetting (copy 11, Sly_SpawnerGroup)
+    // @func 0x00781FF0 SAISetting<T>::~SAISetting (copy 12, Sly_Teleporter)
+    // @func 0x00782050 SAISetting<T>::~SAISetting (copy 13, Sly_SentryLight)
+    // @func 0x00782294 SAISetting<T>::~SAISetting (deleting, copy 1, AINavJumpLinkSetting)
+    // @func 0x007823CC SAISetting<T>::~SAISetting (deleting, copy 2, Sly_AIProxyPoint)
+    // @func 0x007825C0 SAISetting<T>::~SAISetting (deleting, copy 3, Sly_EntitySpawner)
+    // @func 0x007826F0 SAISetting<T>::~SAISetting (deleting, copy 4, Sly_AISpawner)
+    // @func 0x00782824 SAISetting<T>::~SAISetting (deleting, copy 5, CameraShakeSetting)
+    // @func 0x00782AA4 SAISetting<T>::~SAISetting (deleting, copy 6, Sly_LaserGroup)
+    // @func 0x00782BDC SAISetting<T>::~SAISetting (deleting, copy 7, Sly_LaserFixed)
+    // @func 0x00782D14 SAISetting<T>::~SAISetting (deleting, copy 8, Sly_LaserAnchor)
+    // @func 0x00782E4C SAISetting<T>::~SAISetting (deleting, copy 9, Sly_LaserSpline)
+    // @func 0x00782F84 SAISetting<T>::~SAISetting (deleting, copy 10, Sly_LaserField)
+    // @func 0x007830BC SAISetting<T>::~SAISetting (deleting, copy 11, Sly_SpawnerGroup)
+    // @func 0x007831F4 SAISetting<T>::~SAISetting (deleting, copy 12, Sly_Teleporter)
+    // @func 0x0078332C SAISetting<T>::~SAISetting (deleting, copy 13, Sly_SentryLight)
+    ~SAISetting() override = default;
+};
+
+// Setting class shared by the two spawner definitions (vtable 0x00B21548).
+class SpawnerSetting : public Setting {
+public:
+    using Setting::Setting;
+    // @func 0x00781BD0 SpawnerSetting::~SpawnerSetting
+    // @func 0x00782490 SpawnerSetting::~SpawnerSetting (deleting)
+    ~SpawnerSetting() override = default;
+};
 
 class AINavJumpLinkSettingDef final : public SettingDef {
 public:
+    // @func 0x00781AE0 AINavJumpLinkSettingDef::~AINavJumpLinkSettingDef
+    // @func 0x0078223C AINavJumpLinkSettingDef::~AINavJumpLinkSettingDef (deleting)
+    ~AINavJumpLinkSettingDef() override = default;
+
+    // @func 0x007821B4 AINavJumpLinkSettingDef::GetName
     const char* GetName() const override { return "AINavJumpLinkSetting"; }
+    // @func 0x007821C0 AINavJumpLinkSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0xD3124ACD; }
 
     // @func 0x0043B450 AINavJumpLinkSettingDef::InitParams
@@ -410,13 +457,19 @@ public:
     }
 
     // @func 0x0043B778 AINavJumpLinkSettingDef::CreateSetting
-    Setting* CreateSetting(const char* name) override { return new Setting(this, name); }
+    Setting* CreateSetting(const char* name) override { return new SAISetting<AINavJumpLinkSettingDef>(this, name); }
 };
 static_assert(NameHash("AINavJumpLinkSetting") == 0xD3124ACD, "type hash");
 
 class AIProxyPointSettingDef final : public SettingDef {
 public:
+    // @func 0x00781B40 AIProxyPointSettingDef::~AIProxyPointSettingDef
+    // @func 0x00782374 AIProxyPointSettingDef::~AIProxyPointSettingDef (deleting)
+    ~AIProxyPointSettingDef() override = default;
+
+    // @func 0x007822EC AIProxyPointSettingDef::GetName
     const char* GetName() const override { return "Sly_AIProxyPoint"; }
+    // @func 0x007822F8 AIProxyPointSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0xF066BEC9; }
 
     // @func 0x0043B800 AIProxyPointSettingDef::InitParams
@@ -435,17 +488,32 @@ public:
     }
 
     // @func 0x0043BBD0 AIProxyPointSettingDef::CreateSetting
-    Setting* CreateSetting(const char* name) override { return new Setting(this, name); }
+    Setting* CreateSetting(const char* name) override { return new SAISetting<AIProxyPointSettingDef>(this, name); }
 };
 static_assert(NameHash("Sly_AIProxyPoint") == 0xF066BEC9, "type hash");
 
-// @func 0x0043BC58 AddSpawnerParams
+// Base of the two spawner definitions (vtable 0x00B21518). It is never
+// registered itself: its name is null and its type hash 0.
+class SpawnerSettingDef : public SettingDef {
+public:
+    // @func 0x00781BA0 SpawnerSettingDef::~SpawnerSettingDef
+    // @func 0x00782438 SpawnerSettingDef::~SpawnerSettingDef (deleting)
+    ~SpawnerSettingDef() override = default;
+
+    // @func 0x00782424 SpawnerSettingDef::GetName
+    const char* GetName() const override { return nullptr; }
+    // @func 0x00782430 SpawnerSettingDef::GetTypeHash
+    uint32_t GetTypeHash() const override { return 0; }
+    void InitParams() override;
+};
+
+// @func 0x0043BC58 SpawnerSettingDef::InitParams
 // The parameters both spawner definitions end with.
-void AddSpawnerParams(SettingDef& def)
+void SpawnerSettingDef::InitParams()
 {
     for (SettingParam* p : { &SpawnObjName, &SpawnEffectName, &SpawnDelayTime, &RandomSpawnTime, &SpawnProbability,
                              &NumOfSpawnBurst, &LimitSpawnCount, &RespawnDelayTime, &MovementBoxName, &SpawnMode })
-        def.AddParam(*p);
+        AddParam(*p);
     AddEnumNames(SpawnMode, kSpawnModeNames);
     for (SettingParam* p :
          { &IsSpawnField, &UseSpawnFieldCenterPlane, &UseSpawnerGroupSpawnField, &IsKeepRespawn, &NoCull,
@@ -454,12 +522,18 @@ void AddSpawnerParams(SettingDef& def)
            &SpawnAngularVelocityVarianceX, &SpawnAngularVelocityVarianceY, &SpawnAngularVelocityVarianceZ,
            &SpawnScatterRangeX, &SpawnScatterRangeY, &SpawnScatterRangeZ, &LockToWorldY, &LinkedObject,
            &SpawnerGroup })
-        def.AddParam(*p);
+        AddParam(*p);
 }
 
-class EntitySpawnerSettingDef final : public SettingDef {
+class EntitySpawnerSettingDef final : public SpawnerSettingDef {
 public:
+    // @func 0x00781C00 EntitySpawnerSettingDef::~EntitySpawnerSettingDef
+    // @func 0x00782568 EntitySpawnerSettingDef::~EntitySpawnerSettingDef (deleting)
+    ~EntitySpawnerSettingDef() override = default;
+
+    // @func 0x007824E8 EntitySpawnerSettingDef::GetName
     const char* GetName() const override { return "Sly_EntitySpawner"; }
+    // @func 0x007824F4 EntitySpawnerSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0xC9064726; }
 
     // @func 0x0043C070 EntitySpawnerSettingDef::InitParams
@@ -467,18 +541,24 @@ public:
     {
         for (SettingParam* p : { &EntityDefName, &SettingName, &SettingNameAlt1, &SettingNameAlt2, &EntitySpawnerPad })
             AddParam(*p);
-        AddSpawnerParams(*this);
+        SpawnerSettingDef::InitParams();
         FinishDef(*this, "SEntitySpawner_", &AssociateEntitySpawner);
     }
 
     // @func 0x0043C128 EntitySpawnerSettingDef::CreateSetting
-    Setting* CreateSetting(const char* name) override { return new Setting(this, name); }
+    Setting* CreateSetting(const char* name) override { return new SAISetting<EntitySpawnerSettingDef, SpawnerSetting>(this, name); }
 };
 static_assert(NameHash("Sly_EntitySpawner") == 0xC9064726, "type hash");
 
-class AISpawnerSettingDef final : public SettingDef {
+class AISpawnerSettingDef final : public SpawnerSettingDef {
 public:
+    // @func 0x00781C60 AISpawnerSettingDef::~AISpawnerSettingDef
+    // @func 0x00782698 AISpawnerSettingDef::~AISpawnerSettingDef (deleting)
+    ~AISpawnerSettingDef() override = default;
+
+    // @func 0x00782618 AISpawnerSettingDef::GetName
     const char* GetName() const override { return "Sly_AISpawner"; }
+    // @func 0x00782624 AISpawnerSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0xFF76E7C1; }
 
     // @func 0x0043C1B0 AISpawnerSettingDef::InitParams
@@ -489,18 +569,24 @@ public:
              { &SpawnAISettingName, &AISettingNameAlt1, &AISettingNameAlt2, &PatrolProxyPointName, &ProjectorType })
             AddParam(*p);
         AddEnumNames(ProjectorType, kProjectorTypeNames);
-        AddSpawnerParams(*this);
+        SpawnerSettingDef::InitParams();
         FinishDef(*this, "SAISpawner_", &AssociateAISpawner);
     }
 
     // @func 0x0043C35C AISpawnerSettingDef::CreateSetting
-    Setting* CreateSetting(const char* name) override { return new Setting(this, name); }
+    Setting* CreateSetting(const char* name) override { return new SAISetting<AISpawnerSettingDef, SpawnerSetting>(this, name); }
 };
 static_assert(NameHash("Sly_AISpawner") == 0xFF76E7C1, "type hash");
 
 class CameraShakeSettingDef final : public SettingDef {
 public:
+    // @func 0x00781CC0 CameraShakeSettingDef::~CameraShakeSettingDef
+    // @func 0x007827CC CameraShakeSettingDef::~CameraShakeSettingDef (deleting)
+    ~CameraShakeSettingDef() override = default;
+
+    // @func 0x00782748 CameraShakeSettingDef::GetName
     const char* GetName() const override { return "CameraShakeSetting"; }
+    // @func 0x00782754 CameraShakeSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0x5D1AFC2F; }
 
     // @func 0x0043C3E4 CameraShakeSettingDef::InitParams
@@ -514,7 +600,7 @@ public:
     }
 
     // @func 0x0043C46C CameraShakeSettingDef::CreateSetting
-    Setting* CreateSetting(const char* name) override { return new Setting(this, name); }
+    Setting* CreateSetting(const char* name) override { return new SAISetting<CameraShakeSettingDef>(this, name); }
 };
 static_assert(NameHash("CameraShakeSetting") == 0x5D1AFC2F, "type hash");
 
@@ -522,13 +608,24 @@ static_assert(NameHash("CameraShakeSetting") == 0x5D1AFC2F, "type hash");
 class HotSpotSetting final : public Setting {
 public:
     using Setting::Setting;
+    // @func 0x00781D50 HotSpotSetting::~HotSpotSetting
+    // @func 0x0078296C HotSpotSetting::~HotSpotSetting (deleting)
+    ~HotSpotSetting() override = default;
+
     uint32_t field_24 = 0;   // NOTE: never initialised or read by the console code seen
 };
 
 class HotSpotSettingDef final : public SettingDef {
 public:
+    // @func 0x00781D20 HotSpotSettingDef::~HotSpotSettingDef
+    // @func 0x00782914 HotSpotSettingDef::~HotSpotSettingDef (deleting)
+    ~HotSpotSettingDef() override = default;
+
+    // @func 0x0078287C HotSpotSettingDef::GetName
     const char* GetName() const override { return "HotSpotSetting"; }
+    // @func 0x00782888 HotSpotSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0xBC5EDCA1; }
+    // @func 0x00782904 HotSpotSettingDef::GetGroupHash
     uint32_t GetGroupHash() const override { return 0xC9D7446A; }
 
     // @func 0x0043C4F4 HotSpotSettingDef::InitParams
@@ -546,7 +643,13 @@ static_assert(NameHash("HotSpotSetting") == 0xBC5EDCA1, "type hash");
 
 class LaserGroupSettingDef final : public SettingDef {
 public:
+    // @func 0x00781D80 LaserGroupSettingDef::~LaserGroupSettingDef
+    // @func 0x00782A4C LaserGroupSettingDef::~LaserGroupSettingDef (deleting)
+    ~LaserGroupSettingDef() override = default;
+
+    // @func 0x007829C4 LaserGroupSettingDef::GetName
     const char* GetName() const override { return "Sly_LaserGroup"; }
+    // @func 0x007829D0 LaserGroupSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0xA2A8CB13; }
 
     // @func 0x0043C5DC LaserGroupSettingDef::InitParams
@@ -559,13 +662,19 @@ public:
     }
 
     // @func 0x0043C664 LaserGroupSettingDef::CreateSetting
-    Setting* CreateSetting(const char* name) override { return new Setting(this, name); }
+    Setting* CreateSetting(const char* name) override { return new SAISetting<LaserGroupSettingDef>(this, name); }
 };
 static_assert(NameHash("Sly_LaserGroup") == 0xA2A8CB13, "type hash");
 
 class LaserFixedSettingDef final : public SettingDef {
 public:
+    // @func 0x00781DE0 LaserFixedSettingDef::~LaserFixedSettingDef
+    // @func 0x00782B84 LaserFixedSettingDef::~LaserFixedSettingDef (deleting)
+    ~LaserFixedSettingDef() override = default;
+
+    // @func 0x00782AFC LaserFixedSettingDef::GetName
     const char* GetName() const override { return "Sly_LaserFixed"; }
+    // @func 0x00782B08 LaserFixedSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0xA296BC08; }
 
     // @func 0x0043C6EC LaserFixedSettingDef::InitParams
@@ -579,13 +688,19 @@ public:
     }
 
     // @func 0x0043C9C0 LaserFixedSettingDef::CreateSetting
-    Setting* CreateSetting(const char* name) override { return new Setting(this, name); }
+    Setting* CreateSetting(const char* name) override { return new SAISetting<LaserFixedSettingDef>(this, name); }
 };
 static_assert(NameHash("Sly_LaserFixed") == 0xA296BC08, "type hash");
 
 class LaserAnchorSettingDef final : public SettingDef {
 public:
+    // @func 0x00781E40 LaserAnchorSettingDef::~LaserAnchorSettingDef
+    // @func 0x00782CBC LaserAnchorSettingDef::~LaserAnchorSettingDef (deleting)
+    ~LaserAnchorSettingDef() override = default;
+
+    // @func 0x00782C34 LaserAnchorSettingDef::GetName
     const char* GetName() const override { return "Sly_LaserAnchor"; }
+    // @func 0x00782C40 LaserAnchorSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0xA7F58081; }
 
     // @func 0x0043CA48 LaserAnchorSettingDef::InitParams
@@ -609,13 +724,19 @@ public:
     }
 
     // @func 0x0043CEC0 LaserAnchorSettingDef::CreateSetting
-    Setting* CreateSetting(const char* name) override { return new Setting(this, name); }
+    Setting* CreateSetting(const char* name) override { return new SAISetting<LaserAnchorSettingDef>(this, name); }
 };
 static_assert(NameHash("Sly_LaserAnchor") == 0xA7F58081, "type hash");
 
 class LaserSplineSettingDef final : public SettingDef {
 public:
+    // @func 0x00781EA0 LaserSplineSettingDef::~LaserSplineSettingDef
+    // @func 0x00782DF4 LaserSplineSettingDef::~LaserSplineSettingDef (deleting)
+    ~LaserSplineSettingDef() override = default;
+
+    // @func 0x00782D6C LaserSplineSettingDef::GetName
     const char* GetName() const override { return "Sly_LaserSpline"; }
+    // @func 0x00782D78 LaserSplineSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0xC6CD059D; }
 
     // @func 0x0043CF48 LaserSplineSettingDef::InitParams
@@ -645,13 +766,19 @@ public:
     }
 
     // @func 0x0043D480 LaserSplineSettingDef::CreateSetting
-    Setting* CreateSetting(const char* name) override { return new Setting(this, name); }
+    Setting* CreateSetting(const char* name) override { return new SAISetting<LaserSplineSettingDef>(this, name); }
 };
 static_assert(NameHash("Sly_LaserSpline") == 0xC6CD059D, "type hash");
 
 class LaserFieldSettingDef final : public SettingDef {
 public:
+    // @func 0x00781F00 LaserFieldSettingDef::~LaserFieldSettingDef
+    // @func 0x00782F2C LaserFieldSettingDef::~LaserFieldSettingDef (deleting)
+    ~LaserFieldSettingDef() override = default;
+
+    // @func 0x00782EA4 LaserFieldSettingDef::GetName
     const char* GetName() const override { return "Sly_LaserField"; }
+    // @func 0x00782EB0 LaserFieldSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0xA296758E; }
 
     // @func 0x0043D508 LaserFieldSettingDef::InitParams
@@ -677,13 +804,19 @@ public:
     }
 
     // @func 0x0043D91C LaserFieldSettingDef::CreateSetting
-    Setting* CreateSetting(const char* name) override { return new Setting(this, name); }
+    Setting* CreateSetting(const char* name) override { return new SAISetting<LaserFieldSettingDef>(this, name); }
 };
 static_assert(NameHash("Sly_LaserField") == 0xA296758E, "type hash");
 
 class SpawnerGroupSettingDef final : public SettingDef {
 public:
+    // @func 0x00781F60 SpawnerGroupSettingDef::~SpawnerGroupSettingDef
+    // @func 0x00783064 SpawnerGroupSettingDef::~SpawnerGroupSettingDef (deleting)
+    ~SpawnerGroupSettingDef() override = default;
+
+    // @func 0x00782FDC SpawnerGroupSettingDef::GetName
     const char* GetName() const override { return "Sly_SpawnerGroup"; }
+    // @func 0x00782FE8 SpawnerGroupSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0xC0C6EED6; }
 
     // @func 0x0043DAAC SpawnerGroupSettingDef::InitParams
@@ -700,13 +833,19 @@ public:
     }
 
     // @func 0x0043DE30 SpawnerGroupSettingDef::CreateSetting
-    Setting* CreateSetting(const char* name) override { return new Setting(this, name); }
+    Setting* CreateSetting(const char* name) override { return new SAISetting<SpawnerGroupSettingDef>(this, name); }
 };
 static_assert(NameHash("Sly_SpawnerGroup") == 0xC0C6EED6, "type hash");
 
 class TeleporterSettingDef final : public SettingDef {
 public:
+    // @func 0x00781FC0 TeleporterSettingDef::~TeleporterSettingDef
+    // @func 0x0078319C TeleporterSettingDef::~TeleporterSettingDef (deleting)
+    ~TeleporterSettingDef() override = default;
+
+    // @func 0x00783114 TeleporterSettingDef::GetName
     const char* GetName() const override { return "Sly_Teleporter"; }
+    // @func 0x00783120 TeleporterSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0xBBE4F197; }
 
     // @func 0x0043DEB8 TeleporterSettingDef::InitParams
@@ -719,13 +858,19 @@ public:
     }
 
     // @func 0x0043DFB8 TeleporterSettingDef::CreateSetting
-    Setting* CreateSetting(const char* name) override { return new Setting(this, name); }
+    Setting* CreateSetting(const char* name) override { return new SAISetting<TeleporterSettingDef>(this, name); }
 };
 static_assert(NameHash("Sly_Teleporter") == 0xBBE4F197, "type hash");
 
 class SentryLightSettingDef final : public SettingDef {
 public:
+    // @func 0x00782020 SentryLightSettingDef::~SentryLightSettingDef
+    // @func 0x007832D4 SentryLightSettingDef::~SentryLightSettingDef (deleting)
+    ~SentryLightSettingDef() override = default;
+
+    // @func 0x0078324C SentryLightSettingDef::GetName
     const char* GetName() const override { return "Sly_SentryLight"; }
+    // @func 0x00783258 SentryLightSettingDef::GetTypeHash
     uint32_t GetTypeHash() const override { return 0xE51273D8; }
 
     // @func 0x0043E1D8 SentryLightSettingDef::InitParams
@@ -749,10 +894,25 @@ public:
     }
 
     // @func 0x0043E48C SentryLightSettingDef::CreateSetting
-    Setting* CreateSetting(const char* name) override { return new Setting(this, name); }
+    Setting* CreateSetting(const char* name) override { return new SAISetting<SentryLightSettingDef>(this, name); }
 };
 static_assert(NameHash("Sly_SentryLight") == 0xE51273D8, "type hash");
 
+// Definition factories (one per class, listed in the definition table).
+// @func 0x00782308 CreateDef<T> (copy 1, Sly_AIProxyPoint)
+// @func 0x00782634 CreateDef<T> (copy 2, Sly_AISpawner)
+// @func 0x007821D0 CreateDef<T> (copy 3, AINavJumpLinkSetting)
+// @func 0x00782FF8 CreateDef<T> (copy 4, Sly_SpawnerGroup)
+// @func 0x00782504 CreateDef<T> (copy 5, Sly_EntitySpawner)
+// @func 0x00782898 CreateDef<T> (copy 6, HotSpotSetting)
+// @func 0x00783130 CreateDef<T> (copy 7, Sly_Teleporter)
+// @func 0x00782760 CreateDef<T> (copy 8, CameraShakeSetting)
+// @func 0x007829E0 CreateDef<T> (copy 9, Sly_LaserGroup)
+// @func 0x00782B18 CreateDef<T> (copy 10, Sly_LaserFixed)
+// @func 0x00782C50 CreateDef<T> (copy 11, Sly_LaserAnchor)
+// @func 0x00782D88 CreateDef<T> (copy 12, Sly_LaserSpline)
+// @func 0x00782EC0 CreateDef<T> (copy 13, Sly_LaserField)
+// @func 0x00783268 CreateDef<T> (copy 14, Sly_SentryLight)
 template <class T>
 SettingDef* CreateDef()
 {
