@@ -108,7 +108,7 @@ bool SeqSpeakerDialogCommand::Update(float /*dt*/)
 
 // @func 0x00433B2C SeqDialogPagesCommand::SeqDialogPagesCommand
 SeqDialogPagesCommand::SeqDialogPagesCommand(const char (*pages)[0x80], int pageCount,
-                                             const int32_t pos[2], const int32_t size[2],
+                                             const float pos[2], const float size[2],
                                              ScriptCondition* condition, bool blocking,
                                              bool letterboxOn, const uint8_t colorA[4],
                                              const uint8_t colorB[4], bool restoreLetterbox,

@@ -2,9 +2,14 @@
 #include "sly/levels/script/ScriptCommand.h"
 #include "sly/levels/script/ScriptCommands.h"
 
+#include "ape/core/ApeString.h"
+
 #include "sly/levels/DeferredRequests.h"
 #include "sly/levels/GameServices.h"
 #include "sly/levels/ScriptServices.h"
+#include "sly/levels/LevelServices.h"
+#include "sly/gameplay/SequenceCommands.h"
+#include "sly/gameplay/Sequencer.h"
 
 namespace sly {
 namespace levels {
@@ -152,8 +157,95 @@ void SeqLevelHeadlineCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState
     SequenceAddLevelHeadline();
 }
 
-// TODO(0x000A63C0 SeqSpawnEntityCommand) "SeqSpawnEntity" (#260): parser 0x000A6478,
-// Execute 0x000A67E4.
+// ---------------------------------------------------------------------------
+// "SeqSpawnEntity" (#260): spawns an entity of a definition (literal or int
+// variable) at a level point (literal or int variable) in the sequence
+// (sequence command 0x00439E4C).
+
+namespace {
+constexpr uint32_t kAttrSpawnDef = AnimHash("EntityDef");
+constexpr uint32_t kAttrSpawnDefVar = 0xD2111EA5u;      // NOTE: name unknown (int variable)
+constexpr uint32_t kAttrSpawnPoint = 0xB2E59A9Fu;       // NOTE: name unknown
+constexpr uint32_t kAttrSpawnPointVar = 0x6D45B808u;    // NOTE: name unknown (int variable)
+constexpr uint32_t kAttrSpawn60 = 0xE7E52D0Du;          // NOTE: name unknown
+constexpr uint32_t kAttrSpawnFlags[6] = {0x36E7D729u, 0x3E3F7E94u, 0x639A3FE5u,
+                                         0x5D4879B3u, 0x3D1FC26Cu, 0x3E496BEBu};   // NOTE: names unknown
+} // namespace
+
+class SeqSpawnEntityCommand : public ApeAnimScriptCommand {
+public:
+    SeqSpawnEntityCommand();
+    explicit SeqSpawnEntityCommand(XmlElement* element);
+    ~SeqSpawnEntityCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
+    ApeAnimScriptCommand* Create(XmlElement* element) const override;
+
+private:
+    char m_entityName[0x44] = {};       // +0x0C "entityName"
+    uint32_t m_def = 0;                 // +0x50
+    uint32_t m_defVar = 0;              // +0x54
+    uint32_t m_point = 0;               // +0x58
+    uint32_t m_pointVar = 0;            // +0x5C
+    uint32_t m_hash60 = 0;              // +0x60
+    uint32_t m_part = 0;                // +0x64 "Part"
+    ape::Vec3 m_offsetPos = {0.0f, 0.0f, 0.0f, 0.0f};   // +0x70 "OffsetPos"
+    ape::Vec3 m_offsetRot = {0.0f, 0.0f, 0.0f, 0.0f};   // +0x80 "OffsetRot" (radians)
+    bool m_flags[6] = {};               // +0x90
+};
+
+// @func 0x000A63C0 SeqSpawnEntityCommand::SeqSpawnEntityCommand
+SeqSpawnEntityCommand::SeqSpawnEntityCommand() = default;
+
+// @func 0x000A6478 SeqSpawnEntityCommand::SeqSpawnEntityCommand (parsing)
+SeqSpawnEntityCommand::SeqSpawnEntityCommand(XmlElement* element)
+{
+    element->GetHash(kAttrSpawnDef, &m_def, 0);
+    element->GetHash(kAttrSpawnDefVar, &m_defVar, m_defVar);
+    element->GetHash(kAttrSpawnPoint, &m_point, m_point);
+    element->GetHash(kAttrSpawnPointVar, &m_pointVar, m_pointVar);
+    element->GetHash(kAttrSpawn60, &m_hash60, m_hash60);
+    element->GetHash(AnimHash("Part"), &m_part, m_part);
+    element->GetVec3(AnimHash("OffsetPos"), &m_offsetPos.x, &m_offsetPos.x);
+    element->GetVec3(AnimHash("OffsetRot"), &m_offsetRot.x, &m_offsetRot.x);
+    m_offsetRot.x *= 0.017453292f;
+    m_offsetRot.y *= 0.017453292f;
+    m_offsetRot.z *= 0.017453292f;
+    for (int i = 0; i < 6; ++i)
+        element->GetBool(kAttrSpawnFlags[i], &m_flags[i], m_flags[i]);
+    const char* name = element->GetString("entityName");
+    if (name && name[0] != '\0')
+        ape::StrCopyBounded(m_entityName, name, 0x40);
+}
+
+// NOTE: the destructors live at 0x0074xxxx (outside this range).
+SeqSpawnEntityCommand::~SeqSpawnEntityCommand() = default;
+
+// @func 0x000A6774 SeqSpawnEntityCommand::Create
+ApeAnimScriptCommand* SeqSpawnEntityCommand::Create(XmlElement* element) const
+{
+    return new SeqSpawnEntityCommand(element);
+}
+
+// @func 0x000A67E4 SeqSpawnEntityCommand::Execute
+void SeqSpawnEntityCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    const uint32_t defName = uint32_t(ResolveInt(instance, m_defVar, int32_t(m_def)));
+    if (defName == 0)
+        return;
+    void* def = FindEntityDefByName(defName);
+    if (!def) {
+        (void)ape::TempHexString(defName);   // compiled-out warning
+        return;
+    }
+    const uint32_t pointName = uint32_t(ResolveInt(instance, m_pointVar, int32_t(m_point)));
+    WorldObject* point = nullptr;
+    if (pointName != 0) {
+        point = FindPointInstance(pointName);
+        if (!point)
+            (void)ape::TempHexString(pointName);   // compiled-out warning
+    }
+    SequenceAddSpawnEntity(def, m_entityName, point, m_hash60, m_part, m_offsetPos, m_offsetRot, m_flags);
+}
 
 // ---------------------------------------------------------------------------
 // "StartSequence" (NOTE: name from a hash match)
@@ -162,6 +254,7 @@ class StartSequenceCommand : public ApeAnimScriptCommand {
 public:
     StartSequenceCommand();
     ~StartSequenceCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -185,8 +278,25 @@ ApeAnimScriptCommand* StartSequenceCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x000A6B4C StartSequenceCommand::Execute) starts or queues the named sequence
-// (0x0042BAE0 / 0x0042BD0C / 0x0042BF50).
+// @func 0x000A6B4C StartSequenceCommand::Execute
+// Restarts the named sequence: a running one of that name is stopped, a
+// start marker goes into the sequence being built and the new sequence is
+// opened for the commands that follow.
+void StartSequenceCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    uint32_t name = uint32_t(ResolveInt(instance, m_varName, 0));
+    if (name == 0)
+        name = m_name;
+    if (name == 0) {
+        // NOTE: default sequence name (hash 0x0A95F036, string unknown); the
+        // console also formats a compiled-out warning with the script name.
+        name = 0x0A95F036u;
+    }
+    if (gameplay::Sequence* running = gameplay::FindSequence(name))
+        gameplay::StopSequence(running);
+    gameplay::AddSequenceCommand(new gameplay::SeqStartSequenceCommand(name));
+    gameplay::BeginSequence(name);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xB89DA664 (name unknown): stops sounds in the sequence.
@@ -306,8 +416,52 @@ void SwitchCostumeCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
         SequenceAddSwapAnimSet(m_entity, m_def, m_flag14, m_flag15, m_wait);
 }
 
-// TODO(0x000A71EC SyncSequenceCommand) "SyncSequence" (#265): list of "Seq" child names;
-// parser 0x000A7244, Execute 0x000A7404.
+// ---------------------------------------------------------------------------
+// "SyncSequence" (#265): waits in the running sequence until every sequence
+// listed by the <Seq Name=...> children has finished.
+
+class SyncSequenceCommand : public ApeAnimScriptCommand {
+public:
+    SyncSequenceCommand();
+    explicit SyncSequenceCommand(XmlElement* element);
+    ~SyncSequenceCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
+    ApeAnimScriptCommand* Create(XmlElement* element) const override;
+
+private:
+    std::vector<uint32_t> m_sequences;   // +0x0C (console ApeArray of hashes, capacity 4)
+};
+
+// @func 0x000A71EC SyncSequenceCommand::SyncSequenceCommand
+SyncSequenceCommand::SyncSequenceCommand() { m_sequences.reserve(4); }
+
+// @func 0x000A7244 SyncSequenceCommand::SyncSequenceCommand (parsing)
+SyncSequenceCommand::SyncSequenceCommand(XmlElement* element) : SyncSequenceCommand()
+{
+    for (XmlElement* child = element->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        if (child->GetNameHash() != AnimHash("Seq"))
+            continue;
+        uint32_t name = 0;
+        child->GetHash(AnimHash("Name"), &name, 0);
+        m_sequences.push_back(name);
+    }
+}
+
+// NOTE: the destructors are at 0x007428E0 / 0x00742948 (outside this range).
+SyncSequenceCommand::~SyncSequenceCommand() = default;
+
+// @func 0x000A7394 SyncSequenceCommand::Create
+ApeAnimScriptCommand* SyncSequenceCommand::Create(XmlElement* element) const
+{
+    return new SyncSequenceCommand(element);
+}
+
+// @func 0x000A7404 SyncSequenceCommand::Execute
+void SyncSequenceCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    if (!m_sequences.empty())
+        gameplay::AddSequenceCommand(new gameplay::SeqWaitForSequencesCommand(m_sequences));
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x2D2232FC (name unknown): waits for a sound group in the sequence.
@@ -499,11 +653,12 @@ void RegisterScriptCommandsAD()
     prototypes.Add(0xDAD61703u, new SeqStartStateCommand());
     prototypes.Add(0x390D5F47u, new SeqGroupVolumeCommand());
     prototypes.Add(0x7EA392FCu, new SeqLevelHeadlineCommand());
-    // #260 "SeqSpawnEntity" (0x1BC5155F) and #265 "SyncSequence" (0xFD7AAF5C) are not ported yet.
+    prototypes.Add(AnimHash("SeqSpawnEntity"), new SeqSpawnEntityCommand());
     prototypes.Add(AnimHash("StartSequence"), new StartSequenceCommand());
     prototypes.Add(0xB89DA664u, new SeqStopSoundCommand());
     prototypes.Add(AnimHash("SeqStopMusic"), new SeqStopMusicCommand());
     prototypes.Add(AnimHash("SwitchCostume"), new SwitchCostumeCommand());
+    prototypes.Add(AnimHash("SyncSequence"), new SyncSequenceCommand());
     prototypes.Add(0x2D2232FCu, new SeqWaitForSoundCommand());
     prototypes.Add(0x7DE1DF64u, new SeqDarkScreenCommand());
     prototypes.Add(0x83F48558u, new QueueEntityStateCommand());

@@ -6,6 +6,8 @@
 #include "sly/levels/GameServices.h"
 #include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
+#include "sly/levels/script/ScriptVars.h"
+#include "sly/game/AudioSystem.h"
 
 #include <cstring>
 
@@ -44,8 +46,154 @@ constexpr uint32_t kTimeScaleTypes[] = {0x000008D2u, 0x76D1F2F4u};
 constexpr uint16_t kNoTimeScaleType = 0xFFFF;
 } // namespace
 
-// TODO(0x00091178 SetSoundRegisterCommand::SetSoundRegisterCommand) "SetSoundRegister" (#160):
-// register number/value parser with range warnings; Execute 0x0009170C.
+// ---------------------------------------------------------------------------
+// "SetSoundRegister" (#160): writes a sound register, either of one voice (a
+// sound variable, or the music voice) or one of the 64 global registers. The
+// value is a literal (regValueFloat 0..1 mapped onto the range, or
+// regValueInt) or comes from a variable (regValueVar).
+
+namespace {
+constexpr uint32_t kAttrRegSoundVar = 0x3404783Cu;      // NOTE: name unknown (sound variable)
+constexpr uint32_t kAttrRegisterNum = AnimHash("registerNum");
+constexpr uint32_t kAttrRegUnsigned = 0x688367CAu;      // NOTE: name unknown; range starts at 0 instead of -128
+constexpr uint32_t kAttrRegGlobal = AnimHash("global");
+constexpr uint32_t kAttrRegMusic = AnimHash("Music");
+constexpr uint32_t kAttrRegValueVar = AnimHash("regValueVar");
+constexpr uint32_t kAttrRegValueFloat = AnimHash("regValueFloat");
+constexpr uint32_t kAttrRegValueInt = AnimHash("regValueInt");
+constexpr uint32_t kAttrRegMin = 0x4C5F680Cu;           // NOTE: name unknown (lower bound for regValueVar)
+constexpr uint32_t kAttrRegMax = 0x2537A9BAu;           // NOTE: name unknown (upper bound for regValueVar)
+
+int ClampInt(int value, int lo, int hi) { return value < lo ? lo : (value > hi ? hi : value); }
+} // namespace
+
+class SetSoundRegisterCommand : public ApeAnimScriptCommand {
+public:
+    SetSoundRegisterCommand();
+    explicit SetSoundRegisterCommand(XmlElement* element);
+    ~SetSoundRegisterCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
+    ApeAnimScriptCommand* Create(XmlElement* element) const override;
+
+private:
+    int8_t RegisterValue(ApeAnimScriptInstance* instance) const;
+
+    uint32_t m_soundVar = 0;     // +0x0C
+    int32_t m_register = 0;      // +0x10 voice registers are stored 1-based
+    uint32_t m_valueVar = 0;     // +0x14 "regValueVar"
+    bool m_unsigned = false;     // +0x18
+    bool m_global = false;       // +0x19 "global"
+    bool m_music = false;        // +0x1A "Music"
+    int8_t m_value = 0;          // +0x1B literal value
+    bool m_hasMin = false;       // +0x1C
+    int8_t m_min = -128;         // +0x1D
+    bool m_hasMax = false;       // +0x1E
+    int8_t m_max = 127;          // +0x1F
+};
+
+// @func 0x000910F4 SetSoundRegisterCommand::SetSoundRegisterCommand
+SetSoundRegisterCommand::SetSoundRegisterCommand() = default;
+
+// @func 0x00091178 SetSoundRegisterCommand::SetSoundRegisterCommand (parsing)
+SetSoundRegisterCommand::SetSoundRegisterCommand(XmlElement* element)
+{
+    element->GetHash(kAttrRegSoundVar, &m_soundVar, 0);
+    element->GetInt(kAttrRegisterNum, &m_register, 0);
+    element->GetBool(kAttrRegUnsigned, &m_unsigned, false);
+    element->GetBool(kAttrRegGlobal, &m_global, false);
+    element->GetBool(kAttrRegMusic, &m_music, false);
+    if (!m_global) {
+        if (uint32_t(m_register) > 3) {
+            ape::TempFormat("SetSoundRegister specifies invalid sound register %d - valid values are %d - %d",
+                            m_register, 0, 3);
+        }
+        m_register = ClampInt(m_register, 0, 3);
+    } else {
+        if (m_register > 64 || m_register < 1) {
+            ape::TempFormat("SetSoundRegister specifies invalid global register %d - valid values are %d - %d",
+                            m_register, 1, 64);
+        }
+        m_register = ClampInt(m_register, 1, 64);
+    }
+    const int lower = m_unsigned ? 0 : -128;
+    if (element->GetHash(kAttrRegValueVar, &m_valueVar, 0) != ape::xml::kQuery_Ok) {
+        float valueFloat = 0.0f;
+        int32_t valueInt = 0;
+        if (element->GetFloat(kAttrRegValueFloat, &valueFloat, 0.0f) == ape::xml::kQuery_Ok) {
+            if (valueFloat < 0.0f || valueFloat > 1.0f)
+                ape::TempFormat("SetSoundRegister specifies invalid regValueFloat %f - valid values are 0.0 - 1.0",
+                                double(valueFloat));
+            m_value = int8_t(ClampInt(lower + int(valueFloat * float(127 - lower)), lower, 127));
+        } else if (element->GetInt(kAttrRegValueInt, &valueInt, 0) == ape::xml::kQuery_Ok) {
+            if (valueInt > 127 || valueInt < lower)
+                ape::TempFormat("SetSoundRegister specifies invalid regValueInt %d - valid values are %d - %d",
+                                valueInt, lower, 127);
+            m_value = int8_t(ClampInt(valueInt, lower, 127));
+        }
+    }
+    int32_t bound = 0;
+    if (element->GetInt(kAttrRegMin, &bound, 0) == ape::xml::kQuery_Ok) {
+        m_hasMin = true;
+        m_min = int8_t(ClampInt(bound, -128, 127));
+    }
+    if (element->GetInt(kAttrRegMax, &bound, 0) == ape::xml::kQuery_Ok) {
+        m_hasMax = true;
+        m_max = int8_t(ClampInt(bound, -128, 127));
+    }
+    if (!m_global)
+        ++m_register;
+}
+
+// @func 0x00091610 SetSoundRegisterCommand::~SetSoundRegisterCommand
+// @func 0x00091640 SetSoundRegisterCommand::~SetSoundRegisterCommand (deleting)
+SetSoundRegisterCommand::~SetSoundRegisterCommand() = default;
+
+// @func 0x00091698 SetSoundRegisterCommand::Create
+ApeAnimScriptCommand* SetSoundRegisterCommand::Create(XmlElement* element) const
+{
+    return new SetSoundRegisterCommand(element);
+}
+
+// Literal value, or the value variable mapped onto [min, max]: an int
+// variable is taken as is (only the lower bound applies), a float variable
+// in 0..1 is scaled onto the range.
+int8_t SetSoundRegisterCommand::RegisterValue(ApeAnimScriptInstance* instance) const
+{
+    ApeAnimScriptVar* var = m_valueVar ? instance->FindVar(m_valueVar) : nullptr;
+    if (!var)
+        return m_value;
+    const int lo = m_hasMin ? m_min : (m_unsigned ? 0 : -128);
+    const int hi = m_hasMax ? m_max : 127;
+    if (var->GetType() == ape::AnimScriptVarType::Int) {
+        const int value = int8_t(var->GetInt());
+        return int8_t(value > lo ? value : lo);
+    }
+    if (var->GetType() == ape::AnimScriptVarType::Float) {
+        const int value = lo + int(var->GetFloat() * float(hi - lo));
+        return int8_t(ClampInt(value, lo, hi));
+    }
+    return m_value;
+}
+
+// @func 0x0009170C SetSoundRegisterCommand::Execute
+void SetSoundRegisterCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_global) {
+        AudioSetGlobalRegister(m_register, RegisterValue(instance));
+        return;
+    }
+    audio::VoiceId voice = 0;
+    if (m_music) {
+        voice = AudioMusicVoice();
+    } else if (m_soundVar != 0) {
+        ApeAnimScriptVar* var = instance->FindVar(m_soundVar);
+        if (var && static_cast<int>(var->GetType()) == kAnimScriptVarType_Sound)
+            voice = static_cast<ScriptSoundVar*>(var)->GetVoice();
+    }
+    if (!audio::IsVoiceValid(voice))
+        return;
+    AudioSetVoiceRegister(voice, m_register, RegisterValue(instance));
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xB6CD6FF1 (name unknown): sets a global float (console 0x0108562C)
@@ -449,6 +597,7 @@ void RegisterScriptCommandsT()
 {
     auto& prototypes = ape::CommandPrototypes();
     // #160 "SetSoundRegister" (0x71814B90) is not ported yet.
+    prototypes.Add(AnimHash("SetSoundRegister"), new SetSoundRegisterCommand());
     prototypes.Add(0xB6CD6FF1u, new SetGlobalValueCommand());
     prototypes.Add(AnimHash("SetTimeScale"), new SetTimeScaleCommand());
     prototypes.Add(AnimHash("SetUVSpeed"), new SetUVSpeedCommand());
