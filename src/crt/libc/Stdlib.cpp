@@ -25,6 +25,14 @@ int Abs(int value)
     return std::abs(value);
 }
 
+// @func 0x0072F5F4 Div (copy 1)
+// @func 0x00730614 Div (copy 2)
+// div(): quotient and remainder (truncating, as on the host).
+std::div_t Div(int numerator, int denominator)
+{
+    return std::div(numerator, denominator);
+}
+
 // @func 0x0071B458 BSearch
 // bsearch(): binary search of a sorted array; the comparator is called as
 // compare(key, element).

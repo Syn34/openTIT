@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <ctime>
 #include <cwchar>
 #include <exception>
@@ -85,6 +86,7 @@ int WcToMb(char* dst, wchar_t wc, std::mbstate_t* state);
 // <stdlib.h>
 // ---------------------------------------------------------------------------
 int Abs(int value);
+std::div_t Div(int numerator, int denominator);
 using CompareFunc = int (*)(const void*, const void*);
 void* BSearch(const void* key, const void* base, size_t count, size_t size, CompareFunc compare);
 void QSort(void* base, size_t count, size_t size, CompareFunc compare);
