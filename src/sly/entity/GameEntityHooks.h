@@ -29,6 +29,8 @@ void OrphanAndReleaseAnimScript(void* script);
 void SetAnimScriptPaused(void* script, bool paused);
 // Render object of an entity's character/physics component (0x00252940).
 ape::world::ApeObj* ComponentRenderObject(EntityComponent* component);
+// The active minigame (game world +0x1281F4) has bit 30 of its word +0x34 set.
+bool MinigameFlag30();
 // Entity virtual slot 8 (+0x20): script state of a layer.
 int EntityGetState(const Entity* entity, int layer);
 

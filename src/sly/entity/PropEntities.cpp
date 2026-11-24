@@ -146,6 +146,64 @@ bool ChainEntity::Release(bool kill)
     return Entity::Release(kill);
 }
 
+// @func 0x00191E54 TargetableB::~TargetableB
+// @func 0x00191FEC TargetableB::~TargetableB (deleting)
+// @func 0x00192034 TargetableB::~TargetableB (deleting thunk, +0x180)
+// @func 0x00192080 TargetableB::~TargetableB (deleting thunk, +0x17C)
+// @func 0x001920CC TargetableB::~TargetableB (thunk, +0x180)
+// @func 0x001920F4 TargetableB::~TargetableB (thunk, +0x17C)
+TargetableB::~TargetableB()
+{
+    UnregisterEntity(kList_B, this);
+    if (MinigameFlag30()) {
+        if (parent && parent->IsAlive()) {
+            TargetableB* oldParent = parent;
+            parent = nullptr;
+            oldParent->DetachChild(this);
+        }
+        for (TargetableB* child : children) {
+            if (!child->IsAlive())
+                continue;
+            child->holder = nullptr;
+            child->parent = nullptr;
+            child->field_270 = 0;
+            if (child->freezeWhenOrphaned)
+                child->flags2 |= kEnt2_NoUpdate;
+        }
+    }
+    if (holder) {
+        holder->held = nullptr;
+        holder = nullptr;
+    }
+}
+
+// @func 0x0019324C TargetableB::InteractionOffer
+uint32_t TargetableB::InteractionOffer(int kind, Entity* /*other*/)
+{
+    return Def()->targetingFlags[kind];
+}
+
+// @func 0x00193234 TargetableB::InteractionNeeds
+uint32_t TargetableB::InteractionNeeds(int kind, Entity* /*other*/)
+{
+    return Def()->targetingFlags[kind];
+}
+
+// @func 0x00196768 TargetableB::Interface17CSlot5
+// @func 0x0019676C TargetableB::Interface17CSlot5 (thunk, +0x17C)
+void TargetableB::Interface17CSlot5() {}
+
+// TODO(0x00191944 TargetableB::DetachChild)
+void TargetableB::DetachChild(TargetableB* child)
+{
+    for (uint32_t i = 0; i < children.Count(); ++i) {
+        if (children[i] == child) {
+            children.RemoveAtSwap(i);
+            break;
+        }
+    }
+}
+
 // @func 0x0016EC4C CompoundEntity::~CompoundEntity
 // @func 0x0016EE20 CompoundEntity::~CompoundEntity (deleting)
 // @func 0x0016EE68 CompoundEntity::~CompoundEntity (deleting thunk, +0x180)
@@ -159,6 +217,14 @@ CompoundEntity::~CompoundEntity()
     for (Part* part : parts)
         delete part;
 }
+
+// @func 0x001728E8 CompoundEntity::Interface17CSlot5
+// @func 0x001728EC CompoundEntity::Interface17CSlot5 (thunk, +0x17C)
+void CompoundEntity::Interface17CSlot5() {}
+
+// @func 0x00172B70 CompoundEntity::Interface17CSlot6
+// @func 0x00172B74 CompoundEntity::Interface17CSlot6 (thunk, +0x17C)
+void CompoundEntity::Interface17CSlot6() {}
 
 } // namespace entity
 } // namespace sly

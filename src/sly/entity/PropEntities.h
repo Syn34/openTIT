@@ -74,6 +74,7 @@ public:
 
 class TargetableDefB : public ScriptedEntityDef {
 public:
+    uint8_t targetingFlags[6] = {};    // 0x11D
     // Entries of 0x3C bytes owned by the definition. NOTE: contents not decoded.
     struct Entry {
         uint8_t data[0x3C];
@@ -125,6 +126,37 @@ public:
     ape::world::ApeObj* field_76C = nullptr;     // 0x76C
 };
 
+class TargetableA;
+
+// Entity of TargetableDefB (vtable 0x00B14DE0 + 0x00B14F88/0x00B14FB0, 0x2C0
+// bytes; constructor 0x00190158). Instances link into parent/child stacks and
+// can be held by a TargetableA; the links only matter while the active
+// minigame has its bit 30 set.
+class TargetableB : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
+public:
+    ~TargetableB() override;
+    uint32_t InteractionOffer(int kind, Entity* other) override;
+    uint32_t InteractionNeeds(int kind, Entity* other) override;
+    // Empty override of the +0x17C interface's slot 5.
+    void Interface17CSlot5() override;
+    const TargetableDefB* Def() const { return static_cast<const TargetableDefB*>(def); }
+    // Takes `child` off this entity's child list and settles it (0x00191944).
+    void DetachChild(TargetableB* child);
+
+    ape::ApeTArray<TargetableB*> children;   // 0x254
+    TargetableB* parent = nullptr;           // 0x268
+    uint32_t field_270 = 0;                  // 0x270
+    TargetableA* holder = nullptr;           // 0x298
+    bool freezeWhenOrphaned = false;         // 0x2A0 NOTE: stops updating when its parent goes away
+};
+
+// Entity of TargetableDefA (vtable 0x00B14B98, 0x6C0 bytes; constructor
+// 0x0017DD90). Only the link to a held TargetableB is modelled.
+class TargetableA : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
+public:
+    TargetableB* held = nullptr;             // 0x520
+};
+
 // Scripted entity owning eleven sub-objects and two Havok pointer arrays
 // (vtable 0x00B14730 + 0x00B148CC/0x00B148F4). Registered in entity list B
 // and on the world's transform callback list while alive.
@@ -138,6 +170,9 @@ public:
     };
 
     ~CompoundEntity() override;
+    // Empty overrides of the +0x17C interface's slots 5 and 6.
+    void Interface17CSlot5() override;
+    void Interface17CSlot6() override;
 
     HkArray<void*> field_1FC;      // 0x1FC
     HkArray<void*> field_208;      // 0x208

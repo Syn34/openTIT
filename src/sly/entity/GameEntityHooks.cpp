@@ -9,6 +9,7 @@ void DetachAnimScript(void* script) { (void)script; }
 void OrphanAndReleaseAnimScript(void* script) { (void)script; }
 void SetAnimScriptPaused(void* script, bool paused) { (void)script; (void)paused; }
 ape::world::ApeObj* ComponentRenderObject(EntityComponent* component) { (void)component; return nullptr; }
+bool MinigameFlag30() { return false; }
 int EntityGetState(const Entity* entity, int layer) { (void)entity; (void)layer; return 0; }
 
 audio::VoiceId PlayEntitySound(audio::SoundName* sound, const ape::Vec3* position, const void* attachment)
