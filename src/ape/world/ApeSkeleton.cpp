@@ -32,7 +32,7 @@ ApeTFreeList<ApeSkeleton>& SkeletonPool()
     if (!s_pool) {
         s_pool = new ApeTFreeList<ApeSkeleton>();
         s_pool->SetName("ApeTMemClassFL<ApeSkeleton, 128>");
-        s_pool->Init(128, nullptr, false);
+        s_pool->Init(128);
     }
     return *s_pool;
 }
@@ -43,7 +43,7 @@ ApeTFreeList<ApeSkeletonDef>& SkeletonDefPool()
     if (!s_pool) {
         s_pool = new ApeTFreeList<ApeSkeletonDef>();
         s_pool->SetName("ApeTMemClassFL<ApeSkeletonDef, 64>");
-        s_pool->Init(64, nullptr, false);
+        s_pool->Init(64);
     }
     return *s_pool;
 }
