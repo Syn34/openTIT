@@ -62,9 +62,12 @@ public:
     uint32_t Read(void* dst, uint64_t bytes, bool* completed) override;
     uint32_t Write(const void* src, uint64_t bytes, bool* completed) override;
     int64_t Seek(int64_t offset, int origin) override;
+    // @func 0x007A4DF0 MemoryFile::GetSize
     uint64_t GetSize() override { return m_size; }
 
 private:
+    // @func 0x007A4D98 MemoryFile::~MemoryFile
+    // @func 0x007A4DA8 MemoryFile::~MemoryFile (deleting)
     ~MemoryFile() override = default;
 
     uint8_t* m_data;

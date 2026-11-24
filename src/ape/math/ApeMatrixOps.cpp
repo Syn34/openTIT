@@ -351,6 +351,13 @@ float Matrix44Determinant(const Matrix44& m)
     return t0 * s5 - t1 * s4 + t2 * s3 + t3 * s2 - t4 * s1 + t5 * s0;
 }
 
+// @func 0x007A430C Matrix44Copy
+void Matrix44Copy(Matrix44& out, const Matrix44& m)
+{
+    for (int i = 0; i < 4; ++i)
+        out.rows[i] = m.rows[i];
+}
+
 // @func 0x00554C28 Matrix44SetInverse
 Matrix44 Matrix44SetInverse(Matrix44& self, const Matrix44& m)
 {
@@ -391,8 +398,10 @@ Matrix44 Matrix44SetInverse(Matrix44& self, const Matrix44& m)
                   ( a[0] * c3 - a[1] * c1 + a[2] * c0) * inv,
                   (-d[0] * s3 + d[1] * s1 - d[2] * s0) * inv,
                   ( c[0] * s3 - c[1] * s1 + c[2] * s0) * inv };
-    self = r;
-    return r;
+    Matrix44Copy(self, r);
+    Matrix44 result;
+    Matrix44Copy(result, r);
+    return result;
 }
 
 // -- quaternions -----------------------------------------------------------------

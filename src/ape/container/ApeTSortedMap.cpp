@@ -3,10 +3,12 @@
 
 namespace ape {
 
+// Inlined into every map constructor on the console; without an allocator
+// the size-bucket pools are used.
 ApeCompactArrayBase::ApeCompactArrayBase(uint16_t elemSize, uint16_t capacity, ApeAllocator* allocator)
     : m_capacity(capacity), m_elemSizeAndDirty((uint16_t)(elemSize << 1))
 {
-    m_allocator = allocator ? allocator : GetDefaultAllocator();
+    m_allocator = allocator ? allocator : GetBucketAllocator();
     if (m_capacity)
         m_data = m_allocator->Alloc((size_t)m_capacity * elemSize, false, 0x10);
     OnInit();
@@ -244,6 +246,7 @@ int CompareSortedMapKeys(const void* a, const void* b)
 // @func 0x007A6A64 ApeTSortedMap<V>::Find (copy 77)
 // @func 0x007A6BEC ApeTSortedMap<V>::Find (copy 78)
 // @func 0x007A6D74 ApeTSortedMap<V>::Find (copy 79)
+// @func 0x007504F0 ApeTSortedMap<V>::Find (copy 80)
 // @func 0x007330C0 ApeTSortedMap<V>::Remove (copy 1)
 // @func 0x00744748 ApeTSortedMap<V>::Remove (copy 2)
 // @func 0x007597DC ApeTSortedMap<V>::Remove (copy 3)
@@ -278,6 +281,41 @@ int CompareSortedMapKeys(const void* a, const void* b)
 // @func 0x007A8D40 ApeTSortedMap<V>::Remove (copy 32)
 // @func 0x007A8F34 ApeTSortedMap<V>::Remove (copy 33)
 // @func 0x007A92F4 ApeTSortedMap<V>::Remove (copy 34)
+// @func 0x00786D94 ApeTSortedMap<V>::Remove (copy 35)
 template class ApeTSortedMap<uint32_t>;
+
+// The constructor with an explicit comparator was emitted out of line for
+// fourteen 4-byte-value maps (identical code).
+// @func 0x00761DC0 ApeTSortedMap<V>::ApeTSortedMap (copy 1)
+// @func 0x00761EC8 ApeTSortedMap<V>::ApeTSortedMap (copy 2)
+// @func 0x00761FA0 ApeTSortedMap<V>::ApeTSortedMap (copy 3)
+// @func 0x00762078 ApeTSortedMap<V>::ApeTSortedMap (copy 4)
+// @func 0x00762188 ApeTSortedMap<V>::ApeTSortedMap (copy 5)
+// @func 0x007622F0 ApeTSortedMap<V>::ApeTSortedMap (copy 6)
+// @func 0x00762440 ApeTSortedMap<V>::ApeTSortedMap (copy 7)
+// @func 0x00762548 ApeTSortedMap<V>::ApeTSortedMap (copy 8)
+// @func 0x00762650 ApeTSortedMap<V>::ApeTSortedMap (copy 9)
+// @func 0x00762758 ApeTSortedMap<V>::ApeTSortedMap (copy 10)
+// @func 0x00762860 ApeTSortedMap<V>::ApeTSortedMap (copy 11)
+// @func 0x00762968 ApeTSortedMap<V>::ApeTSortedMap (copy 12)
+// @func 0x007883B4 ApeTSortedMap<V>::ApeTSortedMap (copy 13)
+// @func 0x007884BC ApeTSortedMap<V>::ApeTSortedMap (copy 14)
+//
+// Sorted insertion, 4-byte values (copies 1-4) and an 8-byte value (copy 5).
+// @func 0x00759508 ApeTSortedMap<V>::Insert (copy 1)
+// @func 0x00784490 ApeTSortedMap<V>::Insert (copy 2)
+// @func 0x007A2BF4 ApeTSortedMap<V>::Insert (copy 3)
+// @func 0x007A2EC8 ApeTSortedMap<V>::Insert (copy 4)
+// @func 0x00784194 ApeTSortedMap<V>::Insert (copy 5, 8-byte value)
+//
+// Index lookup for 8-, 24- and 16-byte values.
+// @func 0x00784008 ApeTSortedMap<V>::FindIndex (copy 1, 8-byte value)
+// @func 0x0078987C ApeTSortedMap<V>::FindIndex (copy 2, 24-byte value)
+// @func 0x00789A1C ApeTSortedMap<V>::FindIndex (copy 3, 16-byte value)
+//
+// The tags above sit on the template members in ApeTSortedMap.h; this
+// explicit instantiation makes sure every one of them is compiled.
+struct ApeSortedMapValue8 { uint32_t a, b; };
+template class ApeTSortedMap<ApeSortedMapValue8>;
 
 } // namespace ape

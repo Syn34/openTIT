@@ -232,6 +232,9 @@ int64_t GetCategoryTotal(int category)
     return state.categoryTotal[ClampCategory(category)];
 }
 
+// @func 0x007A3DD8 ApeMemObject::operator new
+// The console inlines the memory system bring-up (MemSystemInit, global
+// scratch stack) in front of the allocation; MemAlloc does the same here.
 void* ApeMemObject::operator new(size_t size)
 {
     void* ptr = MemAlloc(size);

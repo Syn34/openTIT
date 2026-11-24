@@ -94,6 +94,9 @@ struct RandomState {
     uint32_t seed;
 };
 float RandomUnit(RandomState& state);
+// Integer in [minValue, maxValue] taken from the current seed (then one
+// generator step).
+int RandomInt(RandomState& state, int minValue, int maxValue);
 // Uniform value in [minValue, maxValue] (one generator step).
 float RandomRange(float minValue, float maxValue, RandomState& state);
 // Random 2D direction built from two samples in [minValue, maxValue].

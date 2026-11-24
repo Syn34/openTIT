@@ -275,6 +275,10 @@ public:
     void DetachChild(Entity* child);
     Entity* FindDescendant(uint32_t nameHash) const;
     void SetCullDistance(float distance, bool children);
+    // Sets or clears EntityClassBits, optionally on all attached children.
+    void SetClassBits(uint64_t bits, bool on, bool children);
+    // @func 0x0074B684 Entity::SetClassBit
+    void SetClassBit(uint64_t bits, bool on) { classBits = on ? (classBits | bits) : (classBits & ~bits); }
     void SetScale(const ape::Vec3& scale, bool children);
     void SetLocalTransform(const ape::Matrix34& transform);
 
@@ -310,6 +314,13 @@ public:
     // Player slot kept in the top byte of the flags (bits 24-29).
     uint32_t PlayerSlot() const { return (flags >> 24) & 0x3F; }
     bool IsAlive() const { return (flags & kEnt_Alive) != 0; }
+    // @func 0x0074B5A0 Entity::IsActive
+    bool IsActive() const { return (flags & kEnt_Active) != 0; }
+    // @func 0x0074D808 Entity::IsFlag80Set
+    bool IsFlag80Set() const { return (flags & kEnt_80) != 0; }
+    // Takes a reference (the counter Release() drops; interactions hold one).
+    // @func 0x0074CC74 Entity::AddRef
+    void AddRef() { ++interactionCount; }
     uint32_t SoundSlotCount() const { return (flags & kEnt_SoundCountMask) >> kEnt_SoundCountShift; }
 
     // -- data -------------------------------------------------------------------

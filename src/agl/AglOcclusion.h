@@ -47,6 +47,9 @@ public:
     };
 
     AglOcclusionQuery();
+    // @func 0x0079C404 AglOcclusionQuery::~AglOcclusionQuery
+    // @func 0x007A395C AglOcclusionQuery::~AglOcclusionQuery (deleting)
+    ~AglOcclusionQuery() override = default;
 
     // Sets the sphere and its transform and clears the results.
     void Init(AglSubMesh* mesh, const ape::Matrix34& transform);

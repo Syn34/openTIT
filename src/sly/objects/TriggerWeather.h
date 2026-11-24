@@ -29,6 +29,11 @@ class WeatherTriggerDef : public TriggerDef {
 public:
     explicit WeatherTriggerDef(const WeatherTriggerDefDesc& desc);
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075BABC WeatherTriggerDef::~WeatherTriggerDef (deleting)
+    ~WeatherTriggerDef() override = default;
 
     ape::ApeAnimScript* script = nullptr;   // 0xB0 looked up in the default library
     float blendTime = 15.0f;                // 0xB4
@@ -37,6 +42,9 @@ public:
 class WeatherTrigger : public TriggerBase {
 public:
     explicit WeatherTrigger(const TriggerInstanceDesc& desc);
+    // Nothing of its own to release (the base destructor does the work).
+    // @func 0x0075BC54 WeatherTrigger::~WeatherTrigger (deleting)
+    ~WeatherTrigger() override = default;
     void Release(bool immediate) override;
     bool IsDebugDisplayed() const override;
     // TODO(0x00222B18 Update, 0x00223890 OnEnter, 0x00223A7C OnExit and the

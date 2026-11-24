@@ -171,6 +171,8 @@ class NullCommand : public ApeAnimScriptCommand {
 public:
     NullCommand();
     ~NullCommand() override;
+    // @func 0x0073EFA4 NullCommand::Execute
+    void Execute(ApeAnimScriptInstance*, ApeAnimScriptState*) override {}
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 };
 

@@ -30,6 +30,11 @@ uint32_t NextHandleListSerial()
 template class ApeTHandleList<int32_t>;
 
 // @func 0x0079B55C ApeTHandleList<void*>::PushBack
+// Two further pointer-sized instantiations (the spawner's list and one in
+// the engine at 0x004F480C) compiled PushBack with the handle returned
+// through memory; the logic is the same.
+// @func 0x00785190 ApeTHandleList<void*>::PushBack (copy 2, spawner)
+// @func 0x0079A6D4 ApeTHandleList<void*>::PushBack (copy 3)
 template class ApeTHandleList<void*>;
 
 } // namespace ape

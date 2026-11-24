@@ -68,6 +68,8 @@ Vec4& Matrix44TransformPoint(Vec4& out, const Vec3& p, const Matrix44& m);
 // out = a * b. 'out' must not alias 'b'.
 Matrix44& Matrix44Mul(Matrix44& out, const Matrix44& a, const Matrix44& b);
 float Matrix44Determinant(const Matrix44& m);
+// Element-wise copy (the matrix copy the console emitted out of line).
+void Matrix44Copy(Matrix44& out, const Matrix44& m);
 // Stores the inverse of m in 'self' and also returns it. m must be invertible.
 Matrix44 Matrix44SetInverse(Matrix44& self, const Matrix44& m);
 

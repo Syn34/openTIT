@@ -39,6 +39,11 @@ public:
     DeathTriggerDef(const TriggerDefDesc& desc, uint32_t deathType, uint32_t scriptName,
                     int physicsState, float damage, bool flag0, bool flag1);
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075B4B8 DeathTriggerDef::~DeathTriggerDef (deleting)
+    ~DeathTriggerDef() override = default;
 
     uint32_t deathType = kDefaultDeathType; // 0xB0
     uint32_t scriptName = 0;                // 0xB4 "ScriptLifetime"
@@ -52,6 +57,9 @@ public:
 class DeathTriggerPlacement : public TriggerPlacement {
 public:
     explicit DeathTriggerPlacement(const char* placementName);
+    // @func 0x00759A40 DeathTriggerPlacement::~DeathTriggerPlacement
+    // @func 0x0075B510 DeathTriggerPlacement::~DeathTriggerPlacement (deleting)
+    ~DeathTriggerPlacement() override = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
 
     uint32_t deathType = 0;     // 0xBC

@@ -64,7 +64,13 @@ public:
     // the children; the reference count is handled by the instance types.
     void Release() override;
     void OnWorldTransformUpdated(bool moved) override;
+    // @func 0x007A9A1C ApeRenderObj::GetSkeleton
     ApeSkeleton* GetSkeleton() override { return m_skeleton; }
+    // The render object overrides keep the base behaviour.
+    // @func 0x007A9A24 ApeRenderObj::SetDef
+    void SetDef(ApeDef* def) override { ApeObj::SetDef(def); }
+    // @func 0x007A9A44 ApeRenderObj::SetBoundingRadius
+    void SetBoundingRadius(float radius) override { ApeObj::SetBoundingRadius(radius); }
     void SetVisible(bool visible, bool recurse) override;
     // Slot 12: sort offset; slot 13: the byte at 0x0A8 (redraws on change).
     void VirtualSlot12(uint32_t value, bool recurse) override;
@@ -195,14 +201,24 @@ class ApeCameraInstance : public ApeRenderObj {
 public:
     static constexpr uint32_t kInstanceType = kObjType_CameraInstance;
     ApeCameraInstance() : ApeRenderObj(kInstanceType) {}
+    // @func 0x007A8D14 ApeCameraInstance::~ApeCameraInstance
+    // @func 0x007A9EE4 ApeCameraInstance::~ApeCameraInstance (deleting)
+    ~ApeCameraInstance() override = default;
     void Release() override;
+    // @func 0x007A9EE0 ApeCameraInstance::OnWorldTransformUpdated
+    void OnWorldTransformUpdated(bool /*moved*/) override {}
 };
 
 class ApePointInstance : public ApeObj {
 public:
     static constexpr uint32_t kInstanceType = kObjType_PointInstance;
     ApePointInstance() : ApeObj(kInstanceType) {}
+    // @func 0x007A9F38 ApePointInstance::~ApePointInstance
+    // @func 0x007AA024 ApePointInstance::~ApePointInstance (deleting)
+    ~ApePointInstance() override = default;
     void Release() override;
+    // @func 0x007AA128 ApePointInstance::OnWorldTransformUpdated
+    void OnWorldTransformUpdated(bool /*moved*/) override {}
     // @func 0x005A6C28 ApePointInstance::VirtualSlot15
     void VirtualSlot15(int count, int arg) override { ApeObj::VirtualSlot15(count, arg); }
 };

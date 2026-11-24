@@ -262,6 +262,46 @@ private:
     uint32_t m_object = 0;        // "object": GUI variable
 };
 
+// "AttachObject": parents an object to another one (optionally at a bone
+// or locator, with an offset and rotation).
+// TODO(0x004B9ED8 ApeAnimScriptAttachObjectCommand::ApeAnimScriptAttachObjectCommand)
+// TODO(0x004C30C8 ApeAnimScriptAttachObjectCommand::ApeAnimScriptAttachObjectCommand(xml))
+// TODO(0x004C3658 ApeAnimScriptAttachObjectCommand::Create)
+// TODO(0x004C36D0 ApeAnimScriptAttachObjectCommand::Execute)
+class ApeAnimScriptAttachObjectCommand : public ApeAnimScriptCommand {
+public:
+    // @func 0x004C3604 ApeAnimScriptAttachObjectCommand::~ApeAnimScriptAttachObjectCommand
+    // @func 0x004C3614 ApeAnimScriptAttachObjectCommand::~ApeAnimScriptAttachObjectCommand (deleting)
+    ~ApeAnimScriptAttachObjectCommand() override = default;
+    // @func 0x004C3DB4 ApeAnimScriptAttachObjectCommand::CreateDebugElement
+    xml::XmlElement* CreateDebugElement() const override { return nullptr; }
+};
+
+// "MoveObject": moves an object along a path or towards a target.
+// TODO(0x004C4708 ApeAnimScriptMoveObjectCommand::ApeAnimScriptMoveObjectCommand(xml))
+// TODO(0x004C4D9C ApeAnimScriptMoveObjectCommand::Create)
+// TODO(0x004C586C ApeAnimScriptMoveObjectCommand::Execute)
+class ApeAnimScriptMoveObjectCommand : public ApeAnimScriptCommand {
+public:
+    // @func 0x004C4D48 ApeAnimScriptMoveObjectCommand::~ApeAnimScriptMoveObjectCommand
+    // @func 0x004C4D58 ApeAnimScriptMoveObjectCommand::~ApeAnimScriptMoveObjectCommand (deleting)
+    ~ApeAnimScriptMoveObjectCommand() override = default;
+    // @func 0x004C5BA0 ApeAnimScriptMoveObjectCommand::CreateDebugElement
+    xml::XmlElement* CreateDebugElement() const override { return nullptr; }
+};
+
+// "SetPostProc": changes the post-processing effects.
+// TODO(0x004B9CD8 ApeAnimScriptSetPostProcCommand::ApeAnimScriptSetPostProcCommand)
+// TODO(0x004CCF28 ApeAnimScriptSetPostProcCommand::ApeAnimScriptSetPostProcCommand(xml))
+// TODO(0x004CDC94 ApeAnimScriptSetPostProcCommand::Create)
+// TODO(0x004CEF20 ApeAnimScriptSetPostProcCommand::Execute)
+class ApeAnimScriptSetPostProcCommand : public ApeAnimScriptCommand {
+public:
+    // @func 0x004CDC34 ApeAnimScriptSetPostProcCommand::~ApeAnimScriptSetPostProcCommand
+    // @func 0x004CDC44 ApeAnimScriptSetPostProcCommand::~ApeAnimScriptSetPostProcCommand (deleting)
+    ~ApeAnimScriptSetPostProcCommand() override = default;
+};
+
 // Hooks into the entity system used by the commands above.
 struct AnimScriptObjectHooks {
     // Sub object `partHash` of `object` (borrowed) or null.

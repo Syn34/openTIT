@@ -78,13 +78,17 @@ public:
     ~ApeObj() override;
 
     // -- virtual interface (console vtable 0x00B24610) ----------------------
+    // @func 0x007A9924 ApeObj::GetName
     virtual const char* GetName() const { return m_name; }
     // Called after the world transform was recomputed; `moved` is true when
     // the world position changed.
+    // @func 0x007A9914 ApeObj::OnWorldTransformUpdated
     virtual void OnWorldTransformUpdated(bool moved) {}
     virtual void AttachChild(ApeObj* child, int16_t parentBone);
     virtual void DetachChild(ApeObj* child);
+    // @func 0x007A9918 ApeObj::GetSkeleton
     virtual ApeSkeleton* GetSkeleton() { return nullptr; }
+    // @func 0x007A9920 ApeObj::VirtualSlot8
     virtual void VirtualSlot8() {}
     // Pushes the world bounding sphere to the render node.
     virtual void OnBoundsChanged();

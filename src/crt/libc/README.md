@@ -35,6 +35,7 @@ Behavioural notes:
 | 0x0071AECC | FormatHex64 | (abort helper: 64-bit value to 16 hex digits) | Stdlib.cpp |
 | 0x0071AF0C | Abort | abort | Stdlib.cpp |
 | 0x0071B054 | Abs | abs | Stdlib.cpp |
+| 0x0072F5F4, 0x00730614 | Div | div (two copies) | Stdlib.cpp |
 | 0x0071B068 | AppendExitHandler | (atexit table: append entry) | Stdlib.cpp |
 | 0x0071B094 | RunAtExitHandlers | (exit: run atexit handlers) | Stdlib.cpp |
 | 0x0071B260 | GrowExitHandlerTable | (atexit table: grow) | Stdlib.cpp |

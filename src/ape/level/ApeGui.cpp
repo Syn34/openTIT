@@ -145,6 +145,7 @@ ApeGuiTexture::ApeGuiTexture(const char* name, const char* path, void* owner)
 {
 }
 
+// @func 0x0079503C ApeGuiTexture::~ApeGuiTexture (deleting)
 ApeGuiTexture::~ApeGuiTexture() = default;
 
 // TODO(0x004D5EAC ApeGuiTexture::Load) needs the render texture manager

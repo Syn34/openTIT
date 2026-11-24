@@ -187,6 +187,8 @@ protected:
 class Trigger : public TriggerBase {
 public:
     explicit Trigger(const TriggerInstanceDesc& desc) : TriggerBase(desc, 0x20, true) {}
+    // @func 0x00759FB4 Trigger::~Trigger (deleting)
+    ~Trigger() override = default;
 };
 
 // Whether a Create should skip a placement: placements flagged "optional" are only

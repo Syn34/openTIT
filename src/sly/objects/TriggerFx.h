@@ -68,6 +68,9 @@ public:
 class FxTriggerPlacement : public TriggerPlacement {
 public:
     explicit FxTriggerPlacement(const char* placementName);
+    // @func 0x00759B20 FxTriggerPlacement::~FxTriggerPlacement
+    // @func 0x0075B730 FxTriggerPlacement::~FxTriggerPlacement (deleting)
+    ~FxTriggerPlacement() override = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
     std::vector<TextField> texts;   // 0xBC (up to 16)
     FxTriggerParams params;         // 0xD0..0xEB
@@ -116,6 +119,11 @@ class PushBlockTriggerDef : public FxTriggerDef {
 public:
     using FxTriggerDef::FxTriggerDef;
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075BA34 PushBlockTriggerDef::~PushBlockTriggerDef (deleting)
+    ~PushBlockTriggerDef() override = default;
 };
 
 class PushBlockTrigger : public FxTrigger {

@@ -52,6 +52,7 @@ public:
     // through the renderer's deferred destruction queue.
     void Release() override = 0;
 
+    // @func 0x007A9A64 ApeDef::GetName
     virtual const char* GetName() const { return m_name; }
     // Copies the shared definition fields (bounds, name, hashes, locators).
     virtual void CopyFrom(const ApeDef& other);

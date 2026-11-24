@@ -95,6 +95,7 @@ void Spawner::Reset()
 
 void Spawner::Start() {}
 
+// @func 0x0077E89C Spawner::IsCharacterSpawner
 bool Spawner::IsCharacterSpawner() const
 {
     return false;

@@ -163,7 +163,7 @@ bool AglTexture::UseDefaultImage()
 }
 
 // Wrap modes live in sampler[3..5]; bit 1 of sampler[6] marks them as set.
-// (0x007A0E98, outside the Agl range.)
+// @func 0x007A0E98 AglTextureBase::SetWrap
 void AglTextureBase::SetWrap(uint16_t wrapS, uint16_t wrapT, uint16_t wrapR)
 {
     sampler[3] = wrapS;

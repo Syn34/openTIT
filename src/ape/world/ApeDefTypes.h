@@ -103,6 +103,10 @@ public:
 
     ApeLightDef();
     void Release() override;
+    // @func 0x005863EC ApeLightDef::VirtualSlot5
+    int VirtualSlot5(void* arg) override { return 0; }
+    // @func 0x0058643C ApeLightDef::VirtualSlot6
+    void VirtualSlot6(int arg) override {}
 
     // Default light: white, model 1, intensity 1, priority 127.
     void Reset();
@@ -162,6 +166,8 @@ public:
 
     ApePointDef();
     void Release() override;
+    // @func 0x007A9ED0 ApePointDef::VirtualSlot5
+    int VirtualSlot5(void* /*arg*/) override { return 0; }
     // @func 0x0059E204 ApePointDef::VirtualSlot6
     void VirtualSlot6(int arg) override {}
 
@@ -184,6 +190,8 @@ public:
     ApeSplineDef();
     ~ApeSplineDef() override;
     void Release() override;
+    // @func 0x007A9ED8 ApeSplineDef::VirtualSlot5
+    int VirtualSlot5(void* /*arg*/) override { return 0; }
     // @func 0x0059F5CC ApeSplineDef::VirtualSlot6
     void VirtualSlot6(int arg) override {}
 

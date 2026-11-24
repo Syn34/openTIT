@@ -290,6 +290,7 @@ int VSNPrintf(char* dst, size_t size, const char* fmt, va_list args)
 
 // @func 0x0071F3DC WriteToBoundedBuffer
 // @func 0x00724280 WriteToBoundedBuffer
+// @func 0x0072F570 WriteToBoundedBuffer (copy used by the SPU printf server)
 // Output sink of snprintf/vsnprintf: copies as much of `text` as still fits
 // and advances the buffer. Never fails, so formatting carries on counting.
 void* WriteToBoundedBuffer(void* state, const char* text, size_t length)
