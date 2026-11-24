@@ -230,6 +230,9 @@ public:
     ApeSplineDef* GetSplineDef() const;
 };
 
+// First direct child of `object` that is a spline instance, or null.
+ApeSplineInstance* FindChildSpline(const ApeObj& object);
+
 // Chunk handlers: the instance chunk (arg: parent object or null) and the
 // record chunk inside it (arg: the instance).
 int LoadGeomInstanceChunk(iff::IffReader* reader, void* arg);

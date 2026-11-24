@@ -666,4 +666,13 @@ int ParseGeomDefChunks(iff::IffReader* reader, void* arg)
     return isGeomDef;
 }
 
+// @func 0x004A22A4 FindChildSpline
+ApeSplineInstance* FindChildSpline(const ApeObj& object)
+{
+    for (ApeObj* child = object.GetFirstChild(); child; child = child->GetNextSibling())
+        if (child->GetType() == kObjType_SplineInstance)
+            return static_cast<ApeSplineInstance*>(child);
+    return nullptr;
+}
+
 } // namespace ape::world
