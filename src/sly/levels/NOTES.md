@@ -158,3 +158,44 @@ destructors, Link, debug elements and most Execute functions), priority targets
   MapEntityToVar and most Seq* commands with long constructor argument lists.
 * `SpawnManager`: `SpawnerDespawnAndReset` is now visible and `SpawnManager::FindGroup`
   was added for the spawner group command.
+
+## Level AI (agent2, 0x00010000-0x00060000)
+* `ai/AIController.*`: the AI controller base (vtable 0x00B0DC70; installs itself as the
+  entity's listener +0xF4) and the AI manager (0x00F557F0: controller/active/ally lists,
+  last player sighting, priority targets, sighting pool of 16). Virtual slots are
+  declared with their console slot numbers; the base defaults at 0x007383F8..0x007387A0
+  (outside the range) are written inline and not tagged.
+* `ai/AIComponent.*`: component type 0x0D that owns the controller (vtable 0x00B0DDC0),
+  its description parser (0x00017420) and the behaviour factory (0x000179C0). Type hashes:
+  "Critter", "Player" and nine unnamed ones (see `AIType`).
+* Behaviours (`ai/AIBehaviours.h`, one .cpp each): CritterAI, PlayerAI (buddy), PatternBossAI
+  (reads "Pattern" lists, "CPU" HUD context), RacerAI (+ spawner `RaceTracker`), EnemyAI
+  (default), SentryAI (+ variant at 0x00B0EDA0 outside the range), BismarqueAI, ElJefeAI,
+  MsDecibelAI, ParadoxAI. Names of the unnamed types come from tuning variables, strings and
+  settings they read. Only the small/medium overrides are ported; the big state machines
+  (EnterState/UpdateState/ChooseState/Think of each behaviour, 2-7 KB each) are not.
+* `ai/AICharacter.*`: character/definition classes of AI characters (0x00B0DE40/0x00B0DE10).
+* `ai/AISettingClasses.*`: the four setting classes (critter, buddy, enemy, sentry) that
+  register their property descriptors; descriptor names were recovered from the static
+  initialisers (`AIProp` in `ai/AIHooks.h` lists them with their globals).
+* `ai/AITuning.*`: the "AI.*" and Bismarque tuning variables used here. They are built by
+  0x00067738 (other range); whoever ports it should take them over.
+* `ai/AIHooks.*`: every outside call as a stub (property blocks, physics body, NavPower agent,
+  HUD, camera, game world). `GameStateNotify` now forwards to `game::JobManager`.
+* `nav/NavGraph.*`: jump link records, nav manager global, jump link object lookup
+  (0x00010238), nav manager reset, player nav mesh tracker (0x000104C8).
+* Not done: NavPower agent code (0x0001199C, 0x00014DA8, 0x00015040, 0x000147B8,
+  0x00015AAC, 0x00015C98), jump link creation (0x00010B18), manager tick (0x00019AF0, bad
+  instruction data) and constructor/teardown (0x000186CC/0x00018B30), line of sight
+  (0x000138B0), the big behaviour state machines, the boss level setup helpers.
+* Uncertain: slot names marked NOTE; the property block abstraction (`PropertyBlock`,
+  `PropString/PropBool/...`) stands for the console's value array indexed by the
+  attribute's slot; `AsEntity()` bridges the levels code's opaque `WorldObject` and
+  `entity::Entity`.
+
+## Job manager (agent2, 0x002E0000-0x002E8000)
+* `sly/game/goals/JobManager.*`: lookups and accessors of the job manager (0x00F64C20) and
+  the profile progress record they read (`PlayerProgress`, a stand-in instance until the game
+  world models its profile records). GoalHooks' IsGoalInLiveJob, JobManagerTrackedGoal,
+  JobManagerGoalAfterTracked, JobManagerBeforeFailSequence and JobManagerGroupAdvanced now
+  forward to it.
