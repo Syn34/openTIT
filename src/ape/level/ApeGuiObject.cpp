@@ -130,7 +130,7 @@ ApeGuiObject::ApeGuiObject(const GuiObjectDesc& desc)
     uint32_t f = flags & 0x1Fu;
     f |= desc.visible ? (uint32_t)kFlag_Visible : 0u;
     f |= desc.flag30 ? (uint32_t)kFlag_30 : 0u;
-    f |= desc.flag29 ? (uint32_t)kFlag_29 : 0u;
+    f |= desc.expand ? (uint32_t)kFlag_Expand : 0u;
     f |= desc.inheritScale ? (uint32_t)kFlag_InheritScale : 0u;
     f |= desc.inheritRgb ? (uint32_t)kFlag_InheritRgb : 0u;
     f |= desc.inheritAlpha ? (uint32_t)kFlag_InheritAlpha : 0u;
@@ -308,16 +308,16 @@ void ApeGuiObject::SetFlag30(bool value)
     SetFlag(kFlag_30, value);
 }
 
-// @func 0x00761CF8 ApeGuiObject::GetFlag29
-bool ApeGuiObject::GetFlag29() const
+// @func 0x00761CF8 ApeGuiObject::GetExpand
+bool ApeGuiObject::GetExpand() const
 {
-    return HasFlag(kFlag_29);
+    return HasFlag(kFlag_Expand);
 }
 
-// @func 0x00761D10 ApeGuiObject::SetFlag29
-void ApeGuiObject::SetFlag29(bool value)
+// @func 0x00761D10 ApeGuiObject::SetExpand
+void ApeGuiObject::SetExpand(bool value)
 {
-    SetFlag(kFlag_29, value);
+    SetFlag(kFlag_Expand, value);
 }
 
 // @func 0x00761D20 ApeGuiObject::GetInheritScale
@@ -478,16 +478,16 @@ void ApeGuiImage::SetSize(const float value[2])
     Invalidate();
 }
 
-// @func 0x007962F4 ApeGuiImage::GetFlag29
-bool ApeGuiImage::GetFlag29() const
+// @func 0x007962F4 ApeGuiImage::GetExpand
+bool ApeGuiImage::GetExpand() const
 {
-    return HasFlag(kFlag_29);
+    return HasFlag(kFlag_Expand);
 }
 
-// @func 0x0079630C ApeGuiImage::SetFlag29
-void ApeGuiImage::SetFlag29(bool value)
+// @func 0x0079630C ApeGuiImage::SetExpand
+void ApeGuiImage::SetExpand(bool value)
 {
-    SetFlag(kFlag_29, value);
+    SetFlag(kFlag_Expand, value);
     Invalidate();
 }
 

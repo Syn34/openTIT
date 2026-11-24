@@ -42,9 +42,13 @@ public:
     explicit ApeGuiImage(const GuiObjectDesc& desc) : ApeGuiObject(desc) {}
     int32_t GetType() const override;
     void SetSize(const float size[2]) override;
-    bool GetFlag29() const override;
-    void SetFlag29(bool value) override;
+    bool GetExpand() const override;
+    void SetExpand(bool value) override;
+    const GuiProperty* FindProperty(const char* name) const override;
+    const GuiProperty* FindProperty(const char* name, const void* type) const override;
 
+    float uv[2] = {};     // +0xB0 "uv"
+    float st[2] = {};     // +0xB8 "st"
     float size[2] = {};   // +0xC0
 };
 
@@ -71,6 +75,10 @@ public:
     int32_t GetType() const override;
     // The text shown ("" when none was set).
     const char* GetText() const;
+    const GuiProperty* FindProperty(const char* name) const override;
+    const GuiProperty* FindProperty(const char* name, const void* type) const override;
+
+    float tracking = 0.0f;  // +0xB0 "tracking" (letter spacing)
 
     // Owned text buffers (capacity/data pairs on the console).
     std::string text;       // +0xB8/+0xC0 displayed text

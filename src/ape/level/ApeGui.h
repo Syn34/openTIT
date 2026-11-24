@@ -125,6 +125,7 @@ enum GuiBlendMode : uint32_t {
 };
 
 class ApeGuiObject;
+class GuiProperty;
 
 // Construction description filled by the GUI file reader (a stack struct on
 // the console).
@@ -140,7 +141,7 @@ struct GuiObjectDesc {
     uint32_t anchor = 0;                 // +0x74 GuiAlign bits
     bool visible = true;                 // +0x78 "visible"
     bool flag30 = false;                 // +0x79 attribute 0xFFD1EC91
-    bool flag29 = false;                 // +0x7A attribute 0x7ABBD29A
+    bool expand = false;                 // +0x7A attribute 0x7ABBD29A ("expand" property)
     bool inheritScale = true;            // +0x7B "inheritscale"
     bool inheritRgb = true;              // +0x7C "inheritrgb"
     bool inheritAlpha = true;            // +0x7D "inheritalpha"
@@ -160,7 +161,7 @@ public:
         kFlag_InheritAlpha = 1u << 26,
         kFlag_InheritRgb   = 1u << 27,
         kFlag_InheritScale = 1u << 28,
-        kFlag_29           = 1u << 29,   // attribute 0x7ABBD29A
+        kFlag_Expand       = 1u << 29,   // fill the parent ("expand"; XML attribute 0x7ABBD29A)
         kFlag_30           = 1u << 30,   // attribute 0xFFD1EC91
         kFlag_Visible      = 1u << 31,
     };
@@ -198,8 +199,8 @@ public:
     virtual void SetVisible(bool visible);
     virtual bool GetFlag30() const;
     virtual void SetFlag30(bool value);
-    virtual bool GetFlag29() const;
-    virtual void SetFlag29(bool value);
+    virtual bool GetExpand() const;
+    virtual void SetExpand(bool value);
     virtual bool GetInheritScale() const;
     virtual void SetInheritScale(bool value);
     virtual bool GetInheritRgb() const;
@@ -219,6 +220,9 @@ public:
     virtual Vec3 GetWorldScale() const;
     // Colour modulated by the parent's world colour (inherit rgb / alpha).
     virtual xml::Color8 GetWorldColor() const;
+    // Animatable property by name (optionally of a given value type).
+    virtual const GuiProperty* FindProperty(const char* name) const;
+    virtual const GuiProperty* FindProperty(const char* name, const void* type) const;
 
     virtual void SetText(const char* text, bool translate) {}
 
