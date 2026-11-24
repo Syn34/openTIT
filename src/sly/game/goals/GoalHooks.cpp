@@ -84,8 +84,7 @@ void GameInstallMinigame(SlyGame*, gameplay::Minigame*) {}
 void GameEndActiveMinigame(SlyGame*) {}
 void MinigameStart(gameplay::Minigame*) {}
 void MinigameTick(gameplay::Minigame*) {}
-gameplay::Minigame* CreateBartenderMinigame(SlyGame*, Goal*, const void*, const void*) { return nullptr; }
-gameplay::Minigame* CreateBvpMinigame(SlyGame*, Goal*) { return nullptr; }
+gameplay::Minigame* CreateMinigame(MinigameKind, SlyGame*, const void*, Goal*) { return nullptr; }
 
 } // namespace goals
 } // namespace sly

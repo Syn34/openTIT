@@ -149,10 +149,23 @@ void GameInstallMinigame(SlyGame* game, gameplay::Minigame* minigame);  // 0x004
 void GameEndActiveMinigame(SlyGame* game);                              // 0x0047C490
 void MinigameStart(gameplay::Minigame* minigame);                       // virtual slot 2
 void MinigameTick(gameplay::Minigame* minigame);                        // virtual slot 13
-// Minigame constructors used by the minigame goals.
-gameplay::Minigame* CreateBartenderMinigame(SlyGame* game, Goal* goal, const void* config,
-                                            const void* params);         // 0x003A3B30
-gameplay::Minigame* CreateBvpMinigame(SlyGame* game, Goal* goal);        // 0x003B04F8
+// Minigame classes built by the minigame goals (their constructors take the
+// game, the goal's configuration block, the goal script library and the goal).
+enum class MinigameKind {
+    Bartender,           // 0x003A3B30 (also gets the goal's bartender parameters)
+    BentleyVsPenelope,   // 0x003B04F8 BvpBattle
+    PenguinBalance,      // 0x003F834C
+    PenguinDodge,        // 0x004015D0
+    PenguinPunch,        // 0x0040773C
+    PenguinSlingshot,    // 0x0040F244
+    PenguinSumo,         // 0x00416FA4
+    PenguinWhack,        // 0x0041BB54
+    Fencing,             // 0x003D8B34
+    Fishing,             // 0x003B3148
+    Qte,                 // 0x003D3704
+};
+gameplay::Minigame* CreateMinigame(MinigameKind kind, SlyGame* game, const void* config,
+                                   Goal* owner);
 
 } // namespace goals
 } // namespace sly
