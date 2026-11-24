@@ -359,12 +359,17 @@ bool GetNumericTypeShape(uint32_t type, uint32_t* rows, uint32_t* columns)
 }
 
 // @func 0x005E1814 cellGcmSetVertexProgramParameterDefault
+// @func 0x005E5334 cellGcmSetVertexProgramParameterDefault (unchecked)
 // Uploads the default value of one vertex program uniform to its constant
 // registers (one register per matrix row, unused components zero).
 void SetVertexParameterDefault(CommandList& list, const CgProgram& program, const CgParameter& param)
 {
     uint32_t rows = 0;
     uint32_t columns = 0;
+    // Parameters without a register (resource CG_UNDEFINED) are skipped.
+    constexpr uint32_t kCgResourceUndefined = 0xCB8;
+    if (param.resource == kCgResourceUndefined)
+        return;
     const float* values = GetParameterDefaults(&program, &param);
     if (!values || !GetNumericTypeShape(param.type, &rows, &columns))
         return;
@@ -378,6 +383,7 @@ void SetVertexParameterDefault(CommandList& list, const CgProgram& program, cons
 } // namespace
 
 // @func 0x005E20AC cellGcmSetVertexProgram
+// @func 0x005E5914 cellGcmSetVertexProgram (unchecked)
 void CommandList::SetVertexProgram(const CgProgram& program, const void* ucode)
 {
     VertexProgramDesc desc;
@@ -397,6 +403,7 @@ void CommandList::SetVertexProgram(const CgProgram& program, const void* ucode)
 }
 
 // @func 0x005E4124 cellGcmSetVertexProgramConstants
+// @func 0x005E5CB0 cellGcmSetVertexProgramConstants (unchecked)
 void CommandList::SetVertexProgramConstants(uint32_t first, uint32_t count, const float* values)
 {
     if (count == 0)
@@ -469,8 +476,11 @@ void CommandList::DrawIndexArray(PrimitiveType primitive, uint32_t count, IndexT
     Push(cmd::DrawIndexed{primitive, count, indexType, indices});
 }
 
+// @func 0x005E51AC cellGcmSetDrawInlineArray (unchecked)
 void CommandList::DrawInlineArray(PrimitiveType primitive, uint32_t dwordCount, const void* data)
 {
+    // The vertex cache is flushed first: inline vertices bypass the streams.
+    InvalidateVertexCache();
     if (dwordCount == 0)
         return;
     const size_t offset = PushData(data, dwordCount * 4);

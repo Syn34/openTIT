@@ -10,6 +10,8 @@
 #pragma once
 
 #include "agl/AglDeferred.h"
+#include "agl/AglTypes.h"
+#include "agl/gpu/GpuTypes.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -31,13 +33,41 @@ public:
 };
 
 // Console object sizes (bytes), used to size the placeholder payloads.
+// A drawable piece of a mesh: vertex and index buffers, the primitive
+// type, an optional bone table for skinning and a bounding sphere.
 class AglSubMesh : public AglResource {
 public:
+    AglSubMesh();
+    ~AglSubMesh() override;
+
     static AglSubMesh* Create();
     static void Destroy(void* object);
     void Release() override;
+    // Marks the buffers as being written by the CPU (nested).
+    // @func 0x004FCE70 AglSubMesh::Lock
+    void Lock() { ++lockCount; }
 
-    uint8_t field_8[0x74 - 8] = {};
+    uint16_t resourceFlags = 0;
+    uint32_t id = 0;
+    uint32_t field_C = 0;
+    AglResource* owner = nullptr;           // 0x10: released with the submesh
+    const char* name = "SubMeshName:Not set";
+    AglMemBlock vertices;                   // 0x18
+    uint32_t field_28 = 0;
+    AglMemBlock indices;                    // 0x2C
+    uint32_t field_3C = 1;
+    uint32_t field_40 = 0;
+    uint32_t field_44 = 0;
+    void* field_48 = nullptr;               // engine heap block owned by the submesh
+    uint32_t primitive = 6;                 // gpu::PrimitiveType (triangle strips by default)
+    uint32_t serial = 0;                    // creation order
+    void* skinMatrices = nullptr;           // 0x54: bone table, null when not skinned
+    float field_58 = 1.0f;
+    float boundCenter[3] = {};              // 0x5C
+    float boundRadius = 0.0f;               // 0x68
+    uint8_t field_6C = 0;
+    uint8_t lockCount = 0;                  // 0x6D
+    void* platformData = nullptr;           // 0x70: GPU side buffers (platform subclass)
 };
 
 class AglTopology : public AglResource {
@@ -49,13 +79,75 @@ public:
     uint8_t field_8[0x70 - 8] = {};
 };
 
+class AglShaderClass;
+struct AglMaterialAnim;
+
+constexpr int kMaxMaterialTextures = 5;
+
+// Surface description used when drawing: the shader class that draws it,
+// up to five textures, colors, the blend/depth/cull state and a block of
+// per-material float constants the shader class fills in.
 class AglMaterial : public AglResource {
 public:
+    AglMaterial();
+    ~AglMaterial() override;
+
     static AglMaterial* Create();
     static void Destroy(void* object);
     void Release() override;
+    // A new material drawn by 'shaderClass'.
+    static AglMaterial* CreateWithClass(AglShaderClass* shaderClass);
+    // A new material drawn by the shader class registered under 'classHash'
+    // (null if there is no such class).
+    static AglMaterial* CreateForClassHash(uint32_t classHash);
 
-    uint8_t field_8[0x90 - 8] = {};
+    // Replaces texture 'index' (reference counted).
+    void SetTexture(AglTexture* texture, int index);
+    // Appends a texture layer.
+    void AddTexture(AglTexture* texture);
+    // Address of float constant 'index', growing the constant block as needed.
+    float* GetConstant(uint32_t index);
+
+    enum Flags : uint8_t {
+        kFlag_08  = 0x08,
+        kFlag_10  = 0x10,       // NOTE: selects the "_Lit" variant of some classes
+        kFlag_20  = 0x20,
+        kFlag_40  = 0x40,
+        kFlag_Lit = 0x80,       // receives dynamic lights
+    };
+
+    uint16_t resourceFlags = 0;
+    uint32_t id = 0;
+    uint32_t field_C = 0;
+    AglShaderClass* shaderClass = nullptr;
+    AglTexture* textures[kMaxMaterialTextures] = {};
+    uint32_t field_28 = 0;
+    uint8_t textureCount = 0;              // texture layers in use
+    uint8_t field_2D = 0;
+    uint16_t sortKey = 0;                  // draw order key (creation order by default)
+    uint16_t textureSortKey = 0;           // serial of texture 0
+    float color0[4] = {};                  // 0x40
+    float color1[4] = {};                  // 0x50
+    float field_60 = 1.0f;
+    uint8_t flags = kFlag_20 | kFlag_40 | kFlag_Lit;
+    uint8_t field_65 = 0;
+    // Blend state (word 0x68 and the two halves at 0x6C).
+    bool blendEnable = false;
+    gpu::BlendFactor blendSrc = gpu::BlendFactor::SrcAlpha;
+    uint16_t field_68 = 0;                 // low bits of the blend word, not decoded
+    gpu::BlendEquation blendEquation = gpu::BlendEquation::Add;
+    gpu::BlendFactor blendDst = gpu::BlendFactor::OneMinusSrcAlpha;
+    // Depth state (word 0x70).
+    bool depthTest = true;
+    gpu::CompareFunc depthFunc = gpu::CompareFunc::LEqual;
+    uint16_t field_70 = 0;                 // low bits of the depth word, not decoded
+    // Front face that is culled away; 0 disables culling.
+    uint16_t cullFrontFace = static_cast<uint16_t>(gpu::FrontFace::CW);
+    uint8_t field_78 = 2;                  // NOTE: top nibble of word 0x78, meaning unknown
+    uint8_t constantCapacity = 0;          // floats allocated in 'constants'
+    float* constants = nullptr;
+    AglMaterialAnim* anim = nullptr;       // UV animation (selects the "_UVX" variants)
+    uint32_t field_84[3] = {};
 };
 
 // A set of render targets (color and/or depth surface) with its clear

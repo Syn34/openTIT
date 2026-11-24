@@ -127,6 +127,31 @@ uint32_t GetRegisterCount(const CgProgram* program);
 // Overrides the register count recorded in a fragment program image.
 void SetFragmentRegisterCount(CgProgram* program, uint8_t count);
 
+// --- cellGcmCg runtime -------------------------------------------------------
+//
+// The console linked Sony's small Cg runtime (cellGcmCg*). These are its
+// accessors as the game used them. They only understand the four RSX
+// profiles (sce_vp_rsx, sce_fp_rsx and their type D/C variants) and return 0
+// for anything else.
+
+// The profile, after the image has been fixed up (cellGcmCgInitProgram).
+uint32_t InitProgram(const CgProgram* program);
+uint32_t GetProgramProfile(const CgProgram* program);
+uint32_t GetTotalBinarySize(const CgProgram* program);
+uint32_t GetParameterType(const CgProgram* program, const CgParameter* param);
+uint32_t GetParameterResource(const CgProgram* program, const CgParameter* param);
+uint32_t GetParameterResourceIndex(const CgProgram* program, const CgParameter* param);
+// Vertex attributes a vertex program reads (0 for fragment programs).
+uint16_t GetVertexAttribInputMask(const CgProgram* program);
+// Interpolants written by a vertex program / read by a fragment program.
+uint32_t GetAttribOutputMask(const CgProgram* program);
+void SetAttribOutputMask(CgProgram* program, uint32_t mask);
+void SetRegisterCount(CgProgram* program, uint8_t count);
+// Number of microcode copies of an embedded fragment constant, and the
+// microcode offset of copy 'index' (0xFFFFFFFF when out of range).
+uint32_t GetEmbeddedConstCount(const CgProgram* program, const CgParameter* param);
+uint32_t GetEmbeddedConstOffset(const CgProgram* program, const CgParameter* param, uint32_t index);
+
 // Builds the fragment program description for the microcode copy at
 // 'ucode'. Fails for images that are not valid fragment programs.
 bool GetFragmentProgramDesc(const CgProgram* program, FragmentProgramDesc* desc, GpuPtr ucode);

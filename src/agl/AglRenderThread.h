@@ -5,6 +5,8 @@
 // WaitRenderStart (main -> render) and WaitRenderComplete (render -> main).
 #pragma once
 
+#include <cstdint>
+
 namespace agl {
 
 using RenderCallback = void (*)(void* userdata);
@@ -21,5 +23,10 @@ void ScheduleDeferredRelease(void* object);
 void* TakeDeferredRelease();
 // End-of-frame bookkeeping for the graphics layer (phase 0..3).
 void EndFrame(int phase);
+// Releases 'object' at the next end of frame (main thread part).
+void QueueEndOfFrameRelease(void* object);
+// Frame the render thread is drawing (materials update animations once per frame).
+uint32_t GetRenderFrame();
+void AdvanceFrame();
 
 } // namespace agl

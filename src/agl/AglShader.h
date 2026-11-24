@@ -55,7 +55,7 @@ struct AglVertexProgram {
     const void* ucode = nullptr;
     gpu::CgProgram* program = nullptr;
     uint16_t ucodeSize = 0;
-    uint16_t registerCount = 0;
+    uint16_t attributeInputMask = 0;   // vertex attributes the program reads
     int32_t refCount = 1;
     // Pre-recorded "load this program" block; binding calls it.
     gpu::CommandList commands{"AglVertexProgram"};
@@ -63,7 +63,11 @@ struct AglVertexProgram {
 
 // A vertex/fragment program pair as used by materials and passes.
 struct AglShader {
-    uint32_t field_0 = 0;
+    AglShader() = default;
+    virtual ~AglShader() = default;
+    AglShader(const AglShader&) = delete;
+    AglShader& operator=(const AglShader&) = delete;
+
     AglVertexProgram* vertexProgram = nullptr;
     AglFragmentProgram* fragmentProgram = nullptr;
     char name[32] = {};
@@ -85,6 +89,11 @@ void LoadShaderPrograms(AglVertexProgram** vp, AglFragmentProgram** fp, const ch
                         const AglGlobalShaderParam* extra);
 // Loads a shader pair; 'fragmentName' may be null to use 'name' for both.
 void ShaderLoad(AglShader* shader, const char* name, const char* fragmentName, const AglGlobalShaderParam* extra);
+
+// Routes the vertex program's outputs to the fragment program: the
+// fragment program reads every interpolant the vertex program writes,
+// except texture coordinates 0..5, which come from 'texCoordMask' (bits 6..11).
+void LinkShaderPrograms(AglShader* shader, uint32_t texCoordMask);
 
 // Sets constant 'slot' of the current fragment program.
 void SetShaderConstant(uint32_t slot, const float value[4]);

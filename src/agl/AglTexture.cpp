@@ -8,6 +8,7 @@
 #include "ape/memory/ApeTFreeList.h"
 
 #include <cstring>
+#include <map>
 #include <mutex>
 #include <vector>
 
@@ -159,6 +160,44 @@ bool AglTexture::UseDefaultImage()
     MemBlockMakeView(&image.mem, fallback->image.mem);
     image.surface = nullptr;
     return true;
+}
+
+// Wrap modes live in sampler[3..5]; bit 1 of sampler[6] marks them as set.
+// (0x007A0E98, outside the Agl range.)
+void AglTextureBase::SetWrap(uint16_t wrapS, uint16_t wrapT, uint16_t wrapR)
+{
+    sampler[3] = wrapS;
+    sampler[4] = wrapT;
+    sampler[5] = wrapR;
+    sampler[6] |= 2;
+}
+
+namespace {
+// Name hash -> texture (0x010DDAF4).
+std::map<uint32_t, AglTexture*>& TextureNames()
+{
+    static std::map<uint32_t, AglTexture*> names;
+    return names;
+}
+} // namespace
+
+void RegisterTextureName(AglTexture* texture)
+{
+    TextureNames()[texture->nameHash] = texture;
+}
+
+void UnregisterTextureName(AglTexture* texture)
+{
+    auto it = TextureNames().find(texture->nameHash);
+    if (it != TextureNames().end() && it->second == texture)
+        TextureNames().erase(it);
+}
+
+// @func 0x0050C398 FindTexture
+AglTexture* FindTexture(uint32_t nameHash)
+{
+    auto it = TextureNames().find(nameHash);
+    return it != TextureNames().end() ? it->second : nullptr;
 }
 
 // @func 0x0050A28C AglTextureBase::SetHeader

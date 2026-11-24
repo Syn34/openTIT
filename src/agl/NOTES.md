@@ -49,15 +49,18 @@ can tag them or point them at that file:
   not identified. `ResetRenderState` leaves the 0x1E98 write out, with a NOTE.
 * 0x005E1814 (parameter-default upload by Cg type, jump table) is implemented by type
   family (float and half vectors and matrices). The jump table was not decoded.
-* The `AglSubMesh/AglTopology/AglMaterial/AglRenderTarget` contents are
-  placeholders; only Create/Destroy/Release are reimplemented.
+* `AglTopology/AglRenderTarget` contents are still placeholders; only
+  Create/Destroy/Release are reimplemented. `AglMaterial` and `AglSubMesh` now have
+  their console layout (see below).
 * `AglTexture::sampler[7]` defaults are copied from the constructor. Their meaning is unknown.
 * Console-only mechanisms were dropped or turned into bookkeeping: memory tiles and
   z-cull (`SurfaceBindTile/BindZcull` keep the region indices only), jump-patching of
   command buffers (0x00537D5C/0x00537DD4), and the command ring buffer (0x00537F28,
   0x0052F670, 0x0052F780).
-* `AglRenderThread.cpp` (EndFrame, 0x005124F4) was not changed. EndFrame calls
-  `ProcessDeferredDestruction` (0x00512148), which is now in `AglDeferred.cpp`.
+* `EndFrame` (0x005124F4) is implemented. The engine services it calls outside Agl
+  (0x0056B4E8, 0x0056E038, 0x0056E1F0, 0x0056B2B8: debug draw and SPU job dispatch)
+  are local empty functions in `AglRenderThread.cpp`; the Agl ones it calls
+  (0x00548938, 0x00548A10, 0x00511F8C) are TODO stubs.
 
 ## Build state seen while working
 
@@ -65,3 +68,60 @@ The full link was failing because of files outside `src/agl`: missing
 `ape::world::Matrix34Mul/Matrix34FromBasis`, and `ape::FileData` in
 `sly/game/AudioSystem.cpp`. All `src/agl` sources build with no warnings
 (`cmake --build ... -- -k`).
+
+## Second pass (materials, shader classes, Cg runtime)
+
+### Files
+
+* `AglShaderClass.h/.cpp`: the material type system. `AglShaderClass` (console
+  object 0x20 bytes: vtable, name, name hash, technique array) owns techniques
+  (`AglTechnique`, an `AglShader` with BeginMaterial/Draw/End). Registry 0x010F0BA8,
+  `RegisterShaderClass` 0x0050AFEC, `RegisterShaderClasses` 0x0050B138 (four static
+  lists at 0x00F88A08/0x00F88A4C/0x00F88A68/0x00F88A8C, the last three gated by the
+  bytes 0x010C5ABC..0x010C5ABE), `FindShaderClass` 0x004FE990 (with four alias hashes).
+* `AglShaderClasses.cpp`: the 63 built-in classes (statics 0x01196A80..0x01197230).
+  Program names, the extra parameter tables and the variant tables were read from
+  the binary. Every class's `CreateTechniques` in 0x005B0000-0x005DF950 is done, most
+  `SelectTechnique`s, the simple `SetupMaterial`s and the empty technique methods.
+  The big technique `Draw` functions (VMX matrix uploads plus constant patching,
+  300-4000 bytes each) and the larger `BeginMaterial`/`SetupMaterial` ones are
+  listed as `TODO(...)` comments inside the class declarations (the base class does
+  nothing). `SlyWater2/3` and `SHO_NightBlend` selection are also TODO.
+* `AglMaterial.cpp`: `AglMaterial` (0x90 bytes) construction/destruction, textures,
+  the float constant block (0x0050C018) and the UV transform upload (0x0050BE5C,
+  0x0050D124). The material animation matrix (0x0050B980) is a TODO stub returning
+  identity.
+
+### Facts for other modules
+
+* Technique vtable slots: 2 = BeginMaterial(material) (called by the material
+  apply function 0x0079CD0C), 3 = Draw(renderItem), 4 = End(material or null).
+  Class vtable: 0 = CreateTechniques, 1 = SetupMaterial(material, desc), 2/3 dtors,
+  4 = SelectTechnique(material, renderItem). The renderer loop is 0x00512C30.
+* Material words decoded from 0x0079CD0C: 0x68 bit 31 = blend enable, bits 15..30 =
+  source factor; 0x6C = blend equation; 0x6E = destination factor; 0x70 bit 31 =
+  depth test, bits 15..30 = depth function; 0x74 = culled front face (0 = no culling).
+* Render items: +0x0C submesh, +0x1C material, +0x2C light set, +0x30 position,
+  +0x45 light mask written by SelectTechnique.
+* Functions outside the Agl ranges that this code needs (not tagged here):
+  0x007A0E98 (AglTextureBase::SetWrap, implemented untagged in `AglTexture.cpp`),
+  the `CreateTechniques` of Debug/Prim*/SimpleColor*/TextureWarp/ScreenWarp/
+  LineOutline/Outline (0x005AD...-0x005AFF0C, in the world range) and of the classes
+  whose code is at 0x007A.... (stubs with TODO in `AglShaderClasses.cpp`), and the
+  base class defaults 0x007A349C/0x007A3518.
+* 0x010DDAF4 is the texture name map (`FindTexture` 0x0050C398), not a mutex as the
+  first pass assumed; `RegisterTextureName` fills it (its console writer is unknown).
+* 0x005E6154 (floorf) and 0x005E61D4 (_FDint) are SN libc, not Agl: they belong in
+  `src/crt`.
+* 0x005D9810 (6240 bytes) and 0x005DB070..0x005DF294 at the end of range 1 are not
+  Agl material code (static initialisers and zlib inflate); not touched.
+
+### Uncertain
+
+* Technique class names for vtables whose class code is outside the range
+  (0x00B25220 ParticleMaterial, 0x00B25358 ProjTxrDeferred, 0x00B254B0 Decal,
+  0x00B25DC8 SlyScreenWarp) are guesses from their position in the binary.
+* `AglMaterialDesc` field names (0x04 diffuse hash, 0x10 texture hash, 0x4C wrap
+  mode, 0x54/0x58 parameters) come from the few SetupMaterial functions done.
+* The flag at 0x010C5AB8 (sign bit disables material parameters) is unexplained.
+* `AglLightSet::variant` is a 0/1 selector of every lit technique pair.

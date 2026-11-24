@@ -3,6 +3,7 @@
 
 #include "agl/AglTexture.h"
 
+#include "ape/memory/ApeMem.h"
 #include "ape/memory/ApeTFreeList.h"
 
 #include <mutex>
@@ -30,6 +31,41 @@ void PoolDelete(void* object, std::mutex& lock)
 } // namespace
 
 // --- AglSubMesh ---
+
+namespace {
+uint32_t g_nextSubMeshId = 0;       // shared resource id counter on the console (0x01164CD0)
+uint32_t g_nextSubMeshSerial = 0;   // 0x010DD580
+}
+
+// @func 0x004FCE88 AglSubMesh::AglSubMesh
+// @func 0x004FCFE8 AglSubMesh::AglSubMesh (base object copy)
+AglSubMesh::AglSubMesh()
+{
+    refCount = 1;
+    resourceFlags = 0x0800;
+    id = ++g_nextSubMeshId;
+    serial = g_nextSubMeshSerial++;
+}
+
+// @func 0x004FD008 AglSubMesh::~AglSubMesh
+// @func 0x004FD198 AglSubMesh::~AglSubMesh (base object copy)
+// @func 0x004FD150 AglSubMesh::~AglSubMesh (deleting)
+AglSubMesh::~AglSubMesh()
+{
+    MemBlockFree(&vertices);
+    vertices = AglMemBlock();
+    MemBlockFree(&indices);
+    if (field_48) {
+        ape::MemFree(field_48);
+        field_48 = nullptr;
+    }
+    if (skinMatrices) {
+        ape::MemFree(skinMatrices);
+        skinMatrices = nullptr;
+    }
+    if (owner)
+        owner->Release();
+}
 
 AglSubMesh* AglSubMesh::Create()
 {
@@ -70,11 +106,6 @@ void AglTopology::Release()
 }
 
 // --- AglMaterial ---
-
-AglMaterial* AglMaterial::Create()
-{
-    return PoolNew<AglMaterial>();
-}
 
 // @func 0x0051D058 AglMaterial::Destroy
 void AglMaterial::Destroy(void* object)

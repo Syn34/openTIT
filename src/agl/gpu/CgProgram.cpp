@@ -147,11 +147,14 @@ const char* GetParameterName(const CgProgram* program, const CgParameter* param)
     return param->name ? reinterpret_cast<const char*>(Bytes(program) + param->name) : "";
 }
 
+// @func 0x005E5E54 cellGcmCgGetNamedParameter
 const CgParameter* FindParameter(const CgProgram* program, const char* name)
 {
+    if (!program)
+        return nullptr;
     const CgParameter* params = GetParameters(program);
     for (uint32_t i = 0; i < program->parameterCount; ++i) {
-        if (params[i].name && std::strcmp(GetParameterName(program, &params[i]), name) == 0)
+        if (std::strcmp(GetParameterName(program, &params[i]), name) == 0)
             return &params[i];
     }
     return nullptr;
@@ -169,6 +172,7 @@ const CgEmbeddedConst* GetEmbeddedConsts(const CgProgram* program, const CgParam
         : nullptr;
 }
 
+// @func 0x005E5E28 cellGcmCgGetUCode
 const void* GetUCode(const CgProgram* program, uint32_t* outSize)
 {
     if (outSize)
@@ -190,19 +194,146 @@ const CgFragmentProgramHeader* GetFragmentHeader(const CgProgram* program)
         : nullptr;
 }
 
+namespace {
+
+// The profiles the Cg runtime accessors accept.
+bool IsRsxVertexProfile(uint32_t profile)
+{
+    return profile == kCgProfile_VertexRsx || profile == kCgProfile_VertexTypeD;
+}
+
+bool IsRsxFragmentProfile(uint32_t profile)
+{
+    return profile == kCgProfile_FragmentRsx || profile == kCgProfile_FragmentTypeC;
+}
+
+CgVertexProgramHeader* VertexHeader(CgProgram* program)
+{
+    return reinterpret_cast<CgVertexProgramHeader*>(Bytes(program) + program->program);
+}
+
+CgFragmentProgramHeader* FragmentHeader(CgProgram* program)
+{
+    return reinterpret_cast<CgFragmentProgramHeader*>(Bytes(program) + program->program);
+}
+
+const CgVertexProgramHeader* VertexHeader(const CgProgram* program)
+{
+    return reinterpret_cast<const CgVertexProgramHeader*>(Bytes(program) + program->program);
+}
+
+const CgFragmentProgramHeader* FragmentHeader(const CgProgram* program)
+{
+    return reinterpret_cast<const CgFragmentProgramHeader*>(Bytes(program) + program->program);
+}
+
+} // namespace
+
+// @func 0x005E5F38 cellGcmCgGetRegisterCount
 uint32_t GetRegisterCount(const CgProgram* program)
 {
-    if (const CgVertexProgramHeader* vp = GetVertexHeader(program))
-        return vp->registerCount;
-    if (const CgFragmentProgramHeader* fp = GetFragmentHeader(program))
-        return fp->registerCount;
+    if (IsRsxVertexProfile(program->profile))
+        return VertexHeader(program)->registerCount;
+    if (IsRsxFragmentProfile(program->profile))
+        return FragmentHeader(program)->registerCount;
     return 0;
+}
+
+// @func 0x005E5F9C cellGcmCgSetRegisterCount
+void SetRegisterCount(CgProgram* program, uint8_t count)
+{
+    if (IsRsxVertexProfile(program->profile))
+        VertexHeader(program)->registerCount = count;
+    else if (IsRsxFragmentProfile(program->profile))
+        FragmentHeader(program)->registerCount = count;
 }
 
 void SetFragmentRegisterCount(CgProgram* program, uint8_t count)
 {
-    if (IsFragmentProfile(program->profile))
-        reinterpret_cast<CgFragmentProgramHeader*>(Bytes(program) + program->program)->registerCount = count;
+    if (IsRsxFragmentProfile(program->profile))
+        SetRegisterCount(program, count);
+}
+
+// @func 0x005E5F28 cellGcmCgInitProgram
+uint32_t InitProgram(const CgProgram* program)
+{
+    // Images are used in place once FixupEndian has run; nothing is left to
+    // set up. The runtime hands back the profile.
+    return program->profile;
+}
+
+uint32_t GetProgramProfile(const CgProgram* program)
+{
+    return program->profile;
+}
+
+// @func 0x005E5F30 cellGcmCgGetTotalBinarySize
+uint32_t GetTotalBinarySize(const CgProgram* program)
+{
+    return program->totalSize;
+}
+
+// @func 0x005E5F10 cellGcmCgGetParameterType
+uint32_t GetParameterType(const CgProgram* /*program*/, const CgParameter* param)
+{
+    return param->type;
+}
+
+// @func 0x005E5F18 cellGcmCgGetParameterResource
+uint32_t GetParameterResource(const CgProgram* /*program*/, const CgParameter* param)
+{
+    return param->resource;
+}
+
+// @func 0x005E5F20 cellGcmCgGetParameterResourceIndex
+uint32_t GetParameterResourceIndex(const CgProgram* /*program*/, const CgParameter* param)
+{
+    return param->resourceIndex;
+}
+
+// @func 0x005E5FF0 cellGcmCgGetVertexAttribInputMask
+uint16_t GetVertexAttribInputMask(const CgProgram* program)
+{
+    if (!IsRsxVertexProfile(program->profile))
+        return 0;
+    // There are 16 vertex attributes; only the low half of the mask is used.
+    return static_cast<uint16_t>(VertexHeader(program)->attributeInputMask);
+}
+
+// @func 0x005E6028 cellGcmCgGetAttribOutputMask
+uint32_t GetAttribOutputMask(const CgProgram* program)
+{
+    if (IsRsxVertexProfile(program->profile))
+        return VertexHeader(program)->attributeOutputMask;
+    if (IsRsxFragmentProfile(program->profile))
+        return FragmentHeader(program)->attributeInputMask;
+    return 0;
+}
+
+// @func 0x005E608C cellGcmCgSetAttribOutputMask
+void SetAttribOutputMask(CgProgram* program, uint32_t mask)
+{
+    if (IsRsxVertexProfile(program->profile))
+        VertexHeader(program)->attributeOutputMask = mask;
+    else if (IsRsxFragmentProfile(program->profile))
+        FragmentHeader(program)->attributeInputMask = mask;
+}
+
+// @func 0x005E60DC cellGcmCgGetEmbeddedConstantCount
+uint32_t GetEmbeddedConstCount(const CgProgram* program, const CgParameter* param)
+{
+    if (!program || !param->embeddedConst)
+        return 0;
+    return GetEmbeddedConsts(program, param)->count;
+}
+
+// @func 0x005E610C cellGcmCgGetEmbeddedConstantOffset
+uint32_t GetEmbeddedConstOffset(const CgProgram* program, const CgParameter* param, uint32_t index)
+{
+    if (!program || !param->embeddedConst)
+        return 0xFFFFFFFFu;
+    const CgEmbeddedConst* table = GetEmbeddedConsts(program, param);
+    return index < table->count ? table->ucodeOffset[index] : 0xFFFFFFFFu;
 }
 
 // @func 0x005DF980 cgbGetFragmentProgramConfiguration

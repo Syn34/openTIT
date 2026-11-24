@@ -1,6 +1,8 @@
 // openTIT - Agl render thread control.
 #include "agl/AglRenderThread.h"
 
+#include "agl/AglDeferred.h"
+
 #include "ape/core/ApeThread.h"
 
 #include <condition_variable>
@@ -114,9 +116,101 @@ void* TakeDeferredRelease()
     return object;
 }
 
-// TODO(0x005124F4 EndFrame)
+namespace {
+
+// Frame numbering shared by the main and render threads (0x010DDA78..0x010DDA88).
+struct FrameCounters {
+    uint32_t frame = 0;              // advanced by the main thread
+    uint32_t renderFrame = 0;        // frame the render thread is drawing
+    uint32_t pendingFrame = 0;       // frame handed over at the last end of frame
+    uint32_t bufferIndex = 0;        // double buffered per-frame data being written
+    uint32_t renderBufferIndex = 0;  // ... and being read by the render thread
+};
+FrameCounters g_frames;
+
+// Objects whose release waits for the end of the frame (0x010E05D4, count at 0x010E0614).
+constexpr int kMaxEndOfFrameReleases = 16;
+void* g_endOfFrameReleases[kMaxEndOfFrameReleases] = {};
+uint32_t g_endOfFrameReleaseCount = 0;
+
+// TODO(0x00548938 ReleaseEndOfFrameObject)
+void ReleaseEndOfFrameObject(void* /*object*/)
+{
+}
+
+// TODO(0x00548A10 UpdateQueryRing)
+// Collects GPU report results of the 16 query rings.
+void UpdateQueryRings()
+{
+}
+
+// TODO(0x00511F8C AglRenderTarget::UpdateAll)
+void UpdateRenderTargets()
+{
+}
+
+// Engine services called at the end of a frame that live outside Agl
+// (0x0056B4E8, 0x0056E038, 0x0056E1F0, 0x0056B2B8: debug drawing and the
+// SPU job dispatcher). They are not connected yet.
+void FlushDebugDraw() {}
+void KickFrameJobs() {}
+void DispatchJobs() {}
+void ResetDebugDraw() {}
+
+} // namespace
+
+void QueueEndOfFrameRelease(void* object)
+{
+    if (g_endOfFrameReleaseCount < kMaxEndOfFrameReleases)
+        g_endOfFrameReleases[g_endOfFrameReleaseCount++] = object;
+}
+
+uint32_t GetRenderFrame()
+{
+    return g_frames.renderFrame;
+}
+
+void AdvanceFrame()
+{
+    ++g_frames.frame;
+}
+
+// @func 0x005124F4 EndFrame
 void EndFrame(int phase)
 {
+    // Phases: 0 = main thread part, 1 = render thread part, 2 = both
+    // (single threaded), 3 = while loading.
+    const bool mainPart = phase == 0 || phase == 2;
+    const bool renderPart = phase == 1 || phase == 2;
+
+    if (mainPart && g_endOfFrameReleaseCount != 0) {
+        for (uint32_t i = 0; i < g_endOfFrameReleaseCount; ++i)
+            ReleaseEndOfFrameObject(g_endOfFrameReleases[i]);
+        g_endOfFrameReleaseCount = 0;
+    }
+    if (renderPart)
+        UpdateQueryRings();
+    if (mainPart) {
+        UpdateRenderTargets();
+        FlushDebugDraw();
+    }
+    if (renderPart) {
+        KickFrameJobs();
+        DispatchJobs();
+        ProcessDeferredDestruction();
+        ResetDebugDraw();
+        // Hand the frame over: the render thread now works on what the
+        // main thread finished, and the double buffered data flips.
+        g_frames.renderBufferIndex = g_frames.bufferIndex;
+        g_frames.renderFrame = g_frames.pendingFrame;
+        g_frames.bufferIndex ^= 1;
+        g_frames.pendingFrame = g_frames.frame;
+    }
+    if (phase == 3) {
+        UpdateRenderTargets();
+        FlushDebugDraw();
+        ResetDebugDraw();
+    }
 }
 
 } // namespace agl

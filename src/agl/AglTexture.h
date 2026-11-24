@@ -42,6 +42,8 @@ public:
 
     // Name, hash and size from a level package header.
     void SetHeader(const AglTextureHeader& header);
+    // Texture coordinate wrap modes (gpu::TextureWrap values) for s, t, r.
+    void SetWrap(uint16_t wrapS, uint16_t wrapT, uint16_t wrapR);
 
     uint16_t resourceFlags = 0;
     uint32_t id = 0;
@@ -107,6 +109,11 @@ AglTexture* TextureCreateColorTarget(uint16_t width, uint16_t height, uint32_t f
 AglTexture* TextureCreateDepthTarget(uint16_t width, uint16_t height, uint32_t format);
 // A texture sharing another texture's image, rendered to through 'depth'.
 AglTexture* TextureCreateFromImage(const AglTextureImage& source, AglSurface* depth);
+
+// Textures known by name hash (the level texture dictionary).
+void RegisterTextureName(AglTexture* texture);
+void UnregisterTextureName(AglTexture* texture);
+AglTexture* FindTexture(uint32_t nameHash);
 
 // Package buffer used by ApplyHeader (set while a level package loads).
 void SetTexturePackBuffer(const uint8_t* buffer);

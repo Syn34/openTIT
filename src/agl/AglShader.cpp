@@ -161,7 +161,7 @@ AglVertexProgram* LoadVertexProgram(const char* name)
         return nullptr;
     AglVertexProgram* vp = CreateVertexProgram(image);
     g_vertexPrograms[hash] = vp;
-    vp->registerCount = static_cast<uint16_t>(gpu::GetRegisterCount(vp->program));
+    vp->attributeInputMask = gpu::GetVertexAttribInputMask(vp->program);
     return vp;
 }
 
@@ -195,6 +195,16 @@ void ShaderLoad(AglShader* shader, const char* name, const char* fragmentName, c
     ape::StrCopyBounded(shader->name, name, sizeof(shader->name));
     shader->vertexProgram = LoadVertexProgram(name);
     shader->fragmentProgram = LoadFragmentProgram(fragmentName ? fragmentName : name, extra);
+}
+
+// @func 0x0053ABB8 AglShader::LinkPrograms
+void LinkShaderPrograms(AglShader* shader, uint32_t texCoordMask)
+{
+    constexpr uint32_t kTexCoordBits = 0xFC0;
+    const uint32_t written = gpu::GetAttribOutputMask(shader->vertexProgram->program);
+    AglFragmentProgram* fp = shader->fragmentProgram;
+    gpu::SetAttribOutputMask(fp->program, (texCoordMask & kTexCoordBits) | (written & ~kTexCoordBits));
+    gpu::GetFragmentProgramDesc(fp->program, &fp->desc, fp->ucode.Ptr());
 }
 
 // @func 0x0052F270 AglShader::SetConstant
