@@ -158,3 +158,24 @@ destructors, Link, debug elements and most Execute functions), priority targets
   MapEntityToVar and most Seq* commands with long constructor argument lists.
 * `SpawnManager`: `SpawnerDespawnAndReset` is now visible and `SpawnManager::FindGroup`
   was added for the spawner group command.
+
+## Fourth pass (agent3)
+* New commands: SetSoundRegister (#160, 0x000910F4..0x0009170C), SyncSequence (#265), the
+  button QTE over actors (#238, hash 0x58A0F34C), entity state move (#240, 0xB39D2C46), dialog
+  pages (#232, 0x9F8D96A1), speaker dialog (#230, 0x661993C7), the dialogue line (#227,
+  0x780316BB: parser, Create, Execute) and SeqSpawnEntity (#260). New Executes: SeqPlayAnim,
+  SeqRunScript, StartSequence.
+* Sequencer constructors: on this ABI float arguments take a parameter slot (and skip a GPR),
+  so registers loaded only to be stored to the stack area are temporaries. With that rule the
+  sequencer port's argument lists of SeqDialogStream (0x0043267C) and SeqPlayClip
+  (0x004321A4) match the callers positionally; SeqDialogPages (0x00433B2C) takes float
+  scale/offset pairs and an int script variable as its "condition" (the gameplay port was
+  retyped accordingly), and SeqAnimScript's `param` is the running instance pointer (the
+  port's uint32 cannot hold it; 0 is passed).
+* New services: AudioSetVoiceRegister/AudioSetGlobalRegister/AudioMusicVoice,
+  SequenceAddActorQte (0x0043554C), SequenceAddSpawnEntity (0x00439E4C) — stubs until the
+  audio/sequencer ports provide them.
+* Still TODO: SetPos (#152, Euler/quaternion parser and two 2.6 KB Executes), SeqEnablePart /
+  SeqMoveTo Execute (the sequencer port takes a WorldObject*/uint32 where the console passes
+  an ape world object / point instance pointer), the AR debug server (0x000A85C0..0x000ABAD4,
+  vtable 0x00B11D80, render target "RenderTarget_SlyAR"), BossGrizz (0x00060100..0x00064B8C).
