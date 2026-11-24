@@ -567,6 +567,46 @@ void AIController::StartStateScript(uint32_t scriptHash)
     ape::ApeAnimScriptInstance::Register(stateScript);
 }
 
+// @func 0x00015944 AIController::SetHomePosition
+void AIController::SetHomePosition(const ape::Vec3& position)
+{
+    homePosition = position;
+    if ((flags0 & kF0_NavMoving) && navAgent) {
+        NavAgentRequestGoal(navAgent, position);
+        homePosition = NavAgentGoal(navAgent);
+    }
+}
+
+// @func 0x000159EC AIController::ReturnToProxyPoint
+void AIController::ReturnToProxyPoint()
+{
+    if (proxyPoint)
+        SetHomePosition(InstancePosition(proxyPoint->object));
+}
+
+// @func 0x00015F90 AIController::FaceDirection
+void AIController::FaceDirection(const ape::Vec3& direction)
+{
+    if (direction.x == 0.0f && direction.z == 0.0f)
+        return;
+    transform.yAxis = kUp;
+    const float inv = 1.0f / std::sqrt(direction.z * direction.z + direction.x * direction.x + 0.0f);
+    const ape::Vec3 z = {direction.x * inv, 0.0f * inv, direction.z * inv, 0.0f};
+    transform.zAxis = z;
+    // x = up x z, normalised.
+    const float xx = kUp.y * z.z - kUp.z * z.y;
+    const float xy = kUp.z * z.x - kUp.x * z.z;
+    const float xz = kUp.x * z.y - kUp.y * z.x;
+    const float xInv = 1.0f / std::sqrt(xz * xz + xx * xx + xy * xy);
+    transform.xAxis = {xInv * xx, xInv * xy, xInv * xz, 0.0f};
+}
+
+const char* AIController::StateName(int s)
+{
+    // The base version (0x00738574) lies outside this range.
+    return ape::TempFormat("%d", s);
+}
+
 // @func 0x000149D0 AIController::ChooseState
 void AIController::ChooseState() {}
 

@@ -16,8 +16,47 @@ namespace ai {
 // Ambient critters (vtable 0x00B0E028, 0x1A0 bytes; settings 0x00F94784..).
 class CritterAI : public AIController {
 public:
-    uint32_t field_198 = 0;    // +0x198
-    uint32_t field_19C = 0;    // +0x19C
+    // States (AIController::state). NOTE: names from use.
+    enum State {
+        kState_Spawn = 0,
+        kState_Idle = 1,
+        kState_Move = 3,
+        kState_Flee = 8,
+        kState_Dead = 0x0D,
+        kState_Hit = 0x13,
+    };
+
+    void Attach(Entity* entity) override;
+    void Update(float dt) override;
+    void OnMessage(const entity::EntityMessage& msg) override;
+    float FacingLockRadius() override;
+    bool AllowsInteraction() override { return state != kState_Dead; }
+    const char* StateName(int s) override;
+    void ExitState() override;
+    void OnProxyPointReached() override;
+    bool UsesNavigation() override;
+
+    // Clip played while moving (0x0001F330).
+    void SetMoveClip(uint32_t clipHash);
+    // Keeps the critter on the ground. TODO(0x0001D548): the ground probe
+    // (0x0001D1E0) has bad instruction data.
+    void SnapToGround(bool fromSpawnHeight);
+    // Point to run to, away from `away`. TODO(0x0001E420): bad instruction data.
+    ape::Vec3 FleePoint(const ape::Vec3& away);
+
+    float idleDelay = 0.0f;           // +0x138
+    uint32_t field_13C = 0;           // +0x13C
+    float quickTurnDelay = 0.0f;      // +0x140
+    uint32_t field_144 = 0;           // +0x144
+    float poiDelay = 0.0f;            // +0x148 time until the next point of interest
+    ape::Vec3 poiPosition{};          // +0x150
+    ape::Vec3 poiDirection{};         // +0x160
+    ape::Vec3 boundsMin{};            // +0x170
+    ape::Vec3 boundsMax{};            // +0x180
+    uint32_t moveClip = 0;            // +0x190
+    uint32_t idleClip = 0;            // +0x194
+    Entity* attacker = nullptr;       // +0x198 sender of the last hit
+    uint32_t hitArgument = 0;         // +0x19C
 };
 
 // Player buddies driven by the AI (vtable 0x00B0E1B8, 0x1B0 bytes; settings

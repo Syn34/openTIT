@@ -15,6 +15,13 @@ float PropFloat(const PropertyBlock*, AIProp) { return 0.0f; }
 const PropertyBlock* FindSettingObject(uint32_t) { return nullptr; }
 bool CharacterSpawnerSettings(const Entity*, uint32_t[3], const PropertyBlock*[3]) { return false; }
 
+bool SpawnerAltObjectBounds(const Entity*, ape::Vec3&, ape::Vec3&) { return false; }
+bool SpawnerIsSpawnField(const Entity*) { return false; }
+bool HasSpawner(const Entity* entity) { return entity && entity->field_DC; }
+void AddToListenerGroup(Entity*, uint32_t, bool) {}
+
+Entity* MessageSender(const entity::EntityMessage&) { return nullptr; }
+
 void EntityTick(Entity*, float) {}
 void EntitySetTransform(Entity* entity, const ape::Matrix34& transform)
 {
@@ -43,11 +50,14 @@ void BodyRequestStop(EntityComponent*) {}
 
 bool CharacterPlayClip(EntityComponent*, uint32_t) { return false; }
 bool CharacterClipFinished(EntityComponent*) { return false; }
+bool CharacterHasClip(EntityComponent*, uint32_t) { return false; }
 float CharacterHealth(const Entity*) { return 0.0f; }
 
 bool NavPointIsValid(void* point) { return point != nullptr; }
 void NavPointRelease(void*) {}
 void NavAgentDestroy(NavAgent*) {}
+void NavAgentRequestGoal(NavAgent*, const ape::Vec3&) {}
+ape::Vec3 NavAgentGoal(NavAgent*) { return {}; }
 
 void ReleaseAnimScript(ape::ApeAnimScriptInstance*) {}
 

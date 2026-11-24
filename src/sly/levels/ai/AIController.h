@@ -97,6 +97,9 @@ public:
     // Slot 20 (+0x50): NOTE: maximum yaw error (degrees) before the controller
     // turns on the spot; 0 disables it.
     virtual float TurnInPlaceAngle() { return 0.0f; }
+    // Slot 19 (+0x4C): NOTE: within this distance of the goal the controller
+    // keeps its facing instead of turning around.
+    virtual float FacingLockRadius() { return 0.0f; }
     // Slot 21 (EntityListener).
     bool AllowsInteraction() override { return true; }
     // Slot 30 (+0x78): kept in the manager's "active" list.
@@ -112,6 +115,8 @@ public:
     // Slot 44 (+0xB0): extra vertical speed applies (`out` is unused by the
     // base). NOTE: name from use.
     virtual bool HasVerticalBoost(float* out) { (void)out; return false; }
+    // Slot 42 (+0xA8): debug name of a state.
+    virtual const char* StateName(int s);
     // Slot 53 (+0xD4): picks the next state.
     virtual void ChooseState();
     // Slot 54 (+0xD8): behaviour specific thinking; true when it chose a state.
@@ -154,6 +159,14 @@ public:
     virtual float VerticalBoost() { return 0.0f; }
 
     // -- helpers ----------------------------------------------------------------------
+    // Turns the transform to face `direction` (horizontal part only, up axis
+    // straight up); ignored for a vertical direction (0x00015F90).
+    void FaceDirection(const ape::Vec3& direction);
+    // Sets the home position; while following a nav path the nav agent's
+    // reachable goal is used instead (0x00015944).
+    void SetHomePosition(const ape::Vec3& position);
+    // Home becomes the current proxy point (0x000159EC).
+    void ReturnToProxyPoint();
     // Sets the facing direction (normalised; flattened unless pitching is allowed).
     void SetFacing(const ape::Vec3& direction);
     void NormalizeFacing();
@@ -219,6 +232,9 @@ public:
     uint8_t flags0 = 0;                          // +0x130 Flags0
     uint8_t flags1 = 0;                          // +0x131 Flags1
     uint8_t flags2 = 0;                          // +0x132 Flags2
+    // +0x134 AI settings object; only filled in by the behaviours that read
+    // settings (from the AI component, see AIComponent::GetSettings()).
+    const PropertyBlock* settings = nullptr;
 };
 
 // One remembered sighting (0x50 bytes on the console; eight per block).

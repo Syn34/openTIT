@@ -13,7 +13,7 @@ namespace ape { class ApeAnimScriptInstance; }
 
 namespace sly {
 class WorldObject;
-namespace entity { class Entity; class EntityComponent; }
+namespace entity { class Entity; class EntityComponent; struct EntityMessage; }
 
 namespace levels {
 struct AIProxyPoint;
@@ -47,9 +47,46 @@ enum class AIProp : uint16_t {
     JumpLink_Object4,
     JumpLink_Object5,
     JumpLink_Object6,
-    // AI settings objects (component 0x0D +0x1C; registered by 0x00067738)
-    AI_UseNavigation,       // 0x00F94844 bool
-    AI_UsePhysics,          // 0x00F94874 bool
+    // Critter settings (0x0001CE40)
+    Critter_BoundingRadius,       // 0x00F94784 float
+    Critter_ScaleMin,             // 0x00F9479C float
+    Critter_ScaleMax,             // 0x00F947B4 float
+    Critter_AlwaysUseBoundingRadius, // 0x00F947CC bool
+    Critter_AvoidanceRadius,      // 0x00F947E4 float
+    Critter_IsFlyer,              // 0x00F947FC bool
+    Critter_UseFlightAnims,       // 0x00F94814 bool
+    Critter_OrientYUp,            // 0x00F9482C bool
+    Critter_UseNavigation,        // 0x00F94844 bool
+    Critter_UseAvoidance,         // 0x00F9485C bool
+    Critter_UsePhysics,           // 0x00F94874 bool
+    Critter_SnapToGround,         // 0x00F9488C bool
+    Critter_PerchOnRails,         // 0x00F948A4 bool
+    Critter_IdleDelayMin,         // 0x00F948BC float
+    Critter_IdleDelayMax,         // 0x00F948D4 float
+    Critter_POIDelayMin,          // 0x00F948EC float
+    Critter_POIDelayMax,          // 0x00F94904 float
+    Critter_QuickTurnDelayMin,    // 0x00F9491C float
+    Critter_QuickTurnDelayMax,    // 0x00F94934 float
+    Critter_QuickTurnAngleMin,    // 0x00F9494C float
+    Critter_QuickTurnAngleMax,    // 0x00F94964 float
+    Critter_POITargetDist,        // 0x00F9497C float
+    Critter_FleePlayerDist,       // 0x00F94994 float
+    Critter_StopFleeingPlayerDist, // 0x00F949AC float
+    Critter_ChargePlayerDist,     // 0x00F949C4 float
+    Critter_AttackPlayerDist,     // 0x00F949DC float
+    Critter_NoticePlayerDist,     // 0x00F949F4 float
+    Critter_SpeedScale,           // 0x00F94A0C float
+    Critter_AttackBone,           // 0x00F94A24 hash
+    Critter_IdleAnimClip,         // 0x00F94A3C hash
+    Critter_SpawnAnimClip,        // 0x00F94A54 hash
+    Critter_FleeAnimClip,         // 0x00F94A6C hash
+    Critter_SpawnPosIsDst,        // 0x00F94A84 bool
+    Critter_OneHitKill,           // 0x00F94A9C bool
+    // Player buddy settings (0x00023F3C)
+    Buddy_FollowDist,             // 0x00F94AB4 float
+    Buddy_AttackDist,             // 0x00F94ACC float
+    Buddy_Murray,                 // 0x00F94AE4 bool
+    Buddy_Bentley,                // 0x00F94AFC bool
 };
 
 const char* PropString(const PropertyBlock* block, AIProp prop);
@@ -69,6 +106,19 @@ const PropertyBlock* FindSettingObject(uint32_t nameHash);
 // (+0x78..+0x80). False when `entity` was not made by a character spawner.
 bool CharacterSpawnerSettings(const Entity* entity, uint32_t defNames[3],
                               const PropertyBlock* settings[3]);
+
+// Spawner of an entity (entity +0xDC): bounds of the definition of its
+// alternative spawn object (0x00451E08, object +0xD0 box), false without one;
+// and its "IsSpawnField" setting (0x010AB0E8).
+bool SpawnerAltObjectBounds(const Entity* entity, ape::Vec3& boxMin, ape::Vec3& boxMax);
+bool SpawnerIsSpawnField(const Entity* entity);
+bool HasSpawner(const Entity* entity);
+// 0x0048FA54: registers the entity in an event listener group.
+void AddToListenerGroup(Entity* entity, uint32_t group, bool add);
+
+// Sender of an entity message (EntityMessage +0x00, an entity pointer on
+// the console).
+Entity* MessageSender(const entity::EntityMessage& msg);
 
 // -- entities --------------------------------------------------------------------
 // Entity virtual slot 13 (+0x34): per-frame update of the entity itself.
@@ -115,6 +165,8 @@ void BodyRequestStop(EntityComponent* body);
 bool CharacterPlayClip(EntityComponent* character, uint32_t clipHash);
 // 0x0029879C(component, 0, 1): true when the current clip is done.
 bool CharacterClipFinished(EntityComponent* character);
+// 0x00298B44: the character has a clip of that name.
+bool CharacterHasClip(EntityComponent* character, uint32_t clipHash);
 // Character entity +0x15C: health.
 float CharacterHealth(const Entity* character);
 
@@ -125,6 +177,10 @@ bool NavPointIsValid(void* point);
 void NavPointRelease(void* point);
 struct NavAgent;
 void NavAgentDestroy(NavAgent* agent);
+// 0x006C0AA4 (with the nav query settings 0x011AD1D4): asks the agent to go
+// to `goal`; 0x006C1B94: the goal it settled on (nearest reachable point).
+void NavAgentRequestGoal(NavAgent* agent, const ape::Vec3& goal);
+ape::Vec3 NavAgentGoal(NavAgent* agent);
 
 // -- anim scripts ------------------------------------------------------------------
 // 0x004D0280: stops an instance and queues it for deletion.
