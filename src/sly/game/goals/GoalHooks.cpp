@@ -1,6 +1,8 @@
 // openTIT - TODO stubs for the goal module's outside calls (see GoalHooks.h).
 #include "sly/game/goals/GoalHooks.h"
 
+#include "sly/game/goals/JobManager.h"
+
 namespace sly {
 namespace goals {
 
@@ -13,8 +15,16 @@ uint8_t JobOwnerFlag(const Job*) { return 0; }
 bool IsGoalInLiveJob(const Goal*) { return false; }
 void JobManagerGoalFailed(Goal*, uint8_t) {}
 void JobManagerBeforeFailSequence() {}
-Goal* JobManagerTrackedGoal() { return nullptr; }
-Goal* JobManagerGoalAfterTracked() { return nullptr; }
+Goal* JobManagerTrackedGoal()
+{
+    game::JobManager* manager = game::GetJobManager();
+    return manager ? manager->trackedGoal : nullptr;
+}
+Goal* JobManagerGoalAfterTracked()
+{
+    game::JobManager* manager = game::GetJobManager();
+    return manager ? manager->GoalAfterTracked() : nullptr;
+}
 const GoalScriptBinding* JobManagerJobBindings(size_t* count)
 {
     *count = 0;
