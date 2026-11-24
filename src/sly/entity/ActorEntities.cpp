@@ -1,0 +1,93 @@
+// openTIT - Scripted actors (see ActorEntities.h).
+#include "sly/entity/ActorEntities.h"
+
+#include "ape/world/ApeObj.h"
+
+namespace sly {
+namespace entity {
+
+// @func 0x001DC04C InteractivePropA::~InteractivePropA
+// @func 0x001DC104 InteractivePropA::~InteractivePropA (deleting)
+// @func 0x001DC1D4 InteractivePropA::~InteractivePropA (deleting thunk, +0x180)
+// @func 0x001DC1FC InteractivePropA::~InteractivePropA (deleting thunk, +0x17C)
+// @func 0x001DC22C InteractivePropA::~InteractivePropA (thunk, +0x180)
+// @func 0x001DC2E8 InteractivePropA::~InteractivePropA (thunk, +0x17C)
+InteractivePropA::~InteractivePropA() = default;
+
+// @func 0x001EA650 SearchlightActor::~SearchlightActor
+// @func 0x001EA708 SearchlightActor::~SearchlightActor (deleting)
+// @func 0x001EA7D8 SearchlightActor::~SearchlightActor (deleting thunk, +0x180)
+// @func 0x001EA800 SearchlightActor::~SearchlightActor (deleting thunk, +0x17C)
+// @func 0x001EA830 SearchlightActor::~SearchlightActor (thunk, +0x180)
+// @func 0x001EA8EC SearchlightActor::~SearchlightActor (thunk, +0x17C)
+SearchlightActor::~SearchlightActor() = default;
+
+// @func 0x001F62DC InteractivePropB::~InteractivePropB
+// @func 0x001F6394 InteractivePropB::~InteractivePropB (deleting)
+// @func 0x001F6464 InteractivePropB::~InteractivePropB (deleting thunk, +0x180)
+// @func 0x001F648C InteractivePropB::~InteractivePropB (deleting thunk, +0x17C)
+// @func 0x001F64BC InteractivePropB::~InteractivePropB (thunk, +0x180)
+// @func 0x001F6578 InteractivePropB::~InteractivePropB (thunk, +0x17C)
+InteractivePropB::~InteractivePropB() = default;
+
+// @func 0x001AE468 SoundActor::~SoundActor
+// @func 0x001AE574 SoundActor::~SoundActor (deleting)
+// @func 0x001AE5BC SoundActor::~SoundActor (deleting thunk, +0x180)
+// @func 0x001AE608 SoundActor::~SoundActor (deleting thunk, +0x17C)
+// @func 0x001AE654 SoundActor::~SoundActor (thunk, +0x180)
+// @func 0x001AE67C SoundActor::~SoundActor (thunk, +0x17C)
+SoundActor::~SoundActor()
+{
+    for (SoundSlot& slot : sounds)
+        audio::SoundNameRelease(slot.sound);
+}
+
+// @func 0x001C33C4 SoundActorB16B48::~SoundActorB16B48
+// @func 0x001C345C SoundActorB16B48::~SoundActorB16B48 (deleting)
+// @func 0x001C3510 SoundActorB16B48::~SoundActorB16B48 (deleting thunk, +0x180)
+// @func 0x001C35C8 SoundActorB16B48::~SoundActorB16B48 (deleting thunk, +0x17C)
+// @func 0x001C3688 SoundActorB16B48::~SoundActorB16B48 (thunk, +0x180)
+// @func 0x001C3724 SoundActorB16B48::~SoundActorB16B48 (thunk, +0x17C)
+SoundActorB16B48::~SoundActorB16B48() = default;
+
+// @func 0x001CBE10 SoundActorB17270::~SoundActorB17270
+// @func 0x001CBE90 SoundActorB17270::~SoundActorB17270 (deleting)
+// @func 0x001CBF2C SoundActorB17270::~SoundActorB17270 (deleting thunk, +0x180)
+// @func 0x001CBFCC SoundActorB17270::~SoundActorB17270 (deleting thunk, +0x17C)
+// @func 0x001CC06C SoundActorB17270::~SoundActorB17270 (thunk, +0x180)
+// @func 0x001CC0F0 SoundActorB17270::~SoundActorB17270 (thunk, +0x17C)
+SoundActorB17270::~SoundActorB17270()
+{
+    field_32C.Clear();
+}
+
+// @func 0x001D1D94 SoundActorB174C0::~SoundActorB174C0
+// @func 0x001D1E0C SoundActorB174C0::~SoundActorB174C0 (deleting)
+// @func 0x001D1EA0 SoundActorB174C0::~SoundActorB174C0 (deleting thunk, +0x180)
+// @func 0x001D1F38 SoundActorB174C0::~SoundActorB174C0 (deleting thunk, +0x17C)
+// @func 0x001D1FD8 SoundActorB174C0::~SoundActorB174C0 (thunk, +0x180)
+// @func 0x001D2054 SoundActorB174C0::~SoundActorB174C0 (thunk, +0x17C)
+SoundActorB174C0::~SoundActorB174C0() = default;
+
+// @func 0x001EB5E0 ObjectActor::~ObjectActor
+// @func 0x001EB6E4 ObjectActor::~ObjectActor (deleting)
+// @func 0x001EB72C ObjectActor::~ObjectActor (deleting thunk, +0x180)
+// @func 0x001EB778 ObjectActor::~ObjectActor (deleting thunk, +0x17C)
+// @func 0x001EB7C4 ObjectActor::~ObjectActor (thunk, +0x180)
+// @func 0x001EB7EC ObjectActor::~ObjectActor (thunk, +0x17C)
+ObjectActor::~ObjectActor()
+{
+    if (object_1F4)
+        object_1F4->Release();
+}
+
+// @func 0x001ED5F4 TweenActor::~TweenActor
+// @func 0x001ED72C TweenActor::~TweenActor (deleting)
+// @func 0x001ED774 TweenActor::~TweenActor (deleting thunk, +0x180)
+// @func 0x001ED7C0 TweenActor::~TweenActor (deleting thunk, +0x17C)
+// @func 0x001ED80C TweenActor::~TweenActor (thunk, +0x180)
+// @func 0x001ED834 TweenActor::~TweenActor (thunk, +0x17C)
+TweenActor::~TweenActor() = default;
+
+} // namespace entity
+} // namespace sly
