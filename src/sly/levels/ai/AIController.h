@@ -112,14 +112,42 @@ public:
     virtual bool WritesEntityTransform() { return false; }
     // Slot 33 (+0x84): facing may tilt (flyers).
     virtual bool CanPitch() { return false; }
-    // Slot 44 (+0xB0): extra vertical speed applies (`out` is unused by the
-    // base). NOTE: name from use.
-    virtual bool HasVerticalBoost(float* out) { (void)out; return false; }
+    // Slot 44 (+0xB0): gravity applies to the body velocity being built
+    // (only its y is filled in at that point). The base version
+    // (0x00738690) applies it while not moving up.
+    virtual bool ShouldApplyGravity(const ape::Vec3& velocity) { return velocity.y < 1e-05f; }
+    // Slot 11 (+0x2C): NOTE: event from outside (0 and 1 are handled by the
+    // standard enemy).
+    virtual void OnEvent(int kind) { (void)kind; }
+    // Slot 21 is AllowsInteraction (EntityListener). Slots 22/23/25 (+0x58,
+    // +0x5C, +0x64): NOTE: state queries asked by other modules; the base
+    // answers from flags0.
+    virtual bool IsEngaged() { return (flags0 & kF0_Bit0) != 0; }
+    virtual bool IsCalm() { return !(flags0 & kF0_Bit6); }
+    virtual bool CanBeTakenDown() { return false; }
+    // Slot 26 (+0x68): NOTE: the player may sneak up on this one.
+    virtual bool CanBeSneakedUpOn() { return false; }
+    // Slot 38 (+0x98): NOTE: true in the states where the enemy is helpless.
+    virtual bool IsHelpless() { return false; }
+    // Slot 39 (+0x9C): the controlled character has no health left.
+    virtual bool IsCharacterDead();
     // Slot 40 (+0xA0): NOTE: false while the behaviour is still on its way
     // somewhere (meaning inferred from the buddy override).
     virtual bool IsSettled() { return true; }
+    // Slot 41 (+0xA4): command from a script (hash, two arguments and a value).
+    virtual void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value)
+    {
+        (void)command; (void)arg1; (void)arg2; (void)value;
+    }
     // Slot 42 (+0xA8): debug name of a state.
     virtual const char* StateName(int s);
+    // Slot 43 (+0xAC): NOTE: the alarm went off; the base version (0x007385A0)
+    // drops the target.
+    virtual void OnAlarm() { DropTarget(); }
+    // Slot 47 (+0xBC): attacked by `attacker` (standard enemies may dodge).
+    virtual void OnAttacked(Entity* attacker) { (void)attacker; }
+    // Slot 48 (+0xC0): chance to taunt.
+    virtual void OnTauntChance() {}
     // Slot 49 (+0xC4): damage taken. The base version (0x007386E0) sets
     // kF1_Hit unless hits are locked out.
     virtual void OnDamaged(float amount, uint32_t kind, const struct AIDamageInfo* info)
@@ -140,9 +168,10 @@ public:
     virtual void ExitState();
     // Slot 59 (+0xEC): advances the nav path. TODO(0x00015040).
     virtual void UpdateNavigation();
-    // Slots 60/61 (+0xF0/+0xF4). NOTE: called while (re)building the nav agent.
-    virtual void PrepareNavAgent() {}
-    virtual void ConfigureNavAgent() {}
+    // Slots 60/61 (+0xF0/+0xF4): settings of the nav agent: search radius and
+    // the proxy point / nav filter (1 heavy, 2 light; see "Filter").
+    virtual float NavSearchRadius() { return 0.0f; }
+    virtual int NavFilter() { return 0; }
     // Slot 62 (+0xF8): a nav request produced a new goal.
     virtual void OnNavGoalChanged() {}
     // Slot 64 (+0x100): the facing error got larger than TurnInPlaceAngle().
@@ -166,8 +195,8 @@ public:
     virtual bool IsStateInterruptible(int state);
     // Slot 73 (+0x124): turning, root motion and body velocity.
     virtual void UpdateMovement(float dt);
-    // Slot 74 (+0x128): extra vertical speed (see HasVerticalBoost).
-    virtual float VerticalBoost() { return 0.0f; }
+    // Slot 74 (+0x128): vertical speed added when gravity applies.
+    virtual float GravitySpeed() { return 0.0f; }
 
     // -- helpers ----------------------------------------------------------------------
     // Turns the transform to face `direction` (horizontal part only, up axis
@@ -238,7 +267,9 @@ public:
     Entity* target = nullptr;                    // +0x100
     ape::Vec3 targetDir{};                       // +0x110
     float targetDist = 0.0f;                     // +0x120
-    uint32_t field_124 = 0;                      // +0x124
+    // +0x124 slot elsewhere that points back at this controller (cleared on
+    // disengage). NOTE: what owns the slot is not known.
+    AIController** claimSlot = nullptr;
     int32_t bodyMotion = 0;                      // +0x12C motion type of the body when attached
     uint8_t flags0 = 0;                          // +0x130 Flags0
     uint8_t flags1 = 0;                          // +0x131 Flags1
@@ -252,12 +283,18 @@ public:
 struct AIDamageInfo {
     uint32_t field_00 = 0;
     Entity* source = nullptr;    // +0x04
+    uint32_t field_08 = 0;
+    uint16_t field_0C = 0;
+    uint16_t flags = 0;          // +0x0E NOTE: bit 12 makes sentries react
 };
 
 // One remembered sighting (0x50 bytes on the console; eight per block).
 struct AISighting {
     Entity* entity = nullptr;                    // +0x00
-    uint8_t data[0x4C] = {};                     // NOTE: rest not decoded
+    uint32_t field_04 = 0;                       // +0x04
+    uint32_t kind = 0;                           // +0x08
+    int32_t bone = -1;                           // +0x0C bone of the entity it refers to
+    uint8_t data[0x40] = {};                     // NOTE: rest not decoded
 };
 
 // The level's AI manager (console pointer 0x00F557F0).
@@ -265,7 +302,7 @@ class AIManager {
 public:
     static constexpr int kMaxControllers = 256;
     static constexpr int kMaxAllies = 9;
-    static constexpr int kMaxSightings = 64;
+    static constexpr int kMaxSightings = 16;
 
     AIManager();
 
@@ -275,30 +312,87 @@ public:
     void Unregister(AIController* controller);
     // Forgets the sighting of `entity` (0x0001285C).
     void ForgetSighting(Entity* entity);
+    // Forgets the sightings of `entity` of the given kind whose bone still
+    // exists (0x0001BCF4).
+    void ForgetSighting(Entity* entity, uint32_t kind);
+    // Nearest listed, living enemy within `radius` of `position` (optionally
+    // only engaged ones) (0x0001AE6C).
+    Entity* FindNearestEnemy(float radius, const ape::Vec3& position, bool engagedOnly) const;
     // Drops priority targets that are no longer alive (0x0001A7C0).
     void PrunePriorityTargets();
     // Level start: links the proxy point patrol chains and sets the kill
     // height (0x000191B0).
     void OnLevelLoaded();
     void ClearSightings();       // 0x0001AC68
+    // Level start / level end / reset of the AI systems (0x0001AA34,
+    // 0x0001AB3C, 0x0001A840).
+    void OnLevelStart();
+    void OnLevelEnd();
+    void Reset();
+    // Looks up the objects of the platform jump links (0x00019210).
+    void ResolveJumpLinks();
+    // Shows or hides every non-ally AI entity (0x0001B2F4).
+    void SetEntitiesVisible(bool visible);
+    // Hands a script command to every controller in the active list
+    // (0x0001B3BC).
+    void BroadcastScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value);
+    // Target for an enemy: the nearest priority target, else the nearest of
+    // the player and the allies (0x0001AC80).
+    Entity* PickTarget(const AIController* controller) const;
 
     int32_t controllerCount = 0;                       // +0x00
     int32_t activeCount = 0;                           // +0x04
     int32_t allyCount = 0;                             // +0x10
     int32_t sightingCount = 0;                         // +0x18
     float killHeight = 0.0f;                           // +0x20 below this the AI snaps back to its entity
+    float targetingPause = 0.0f;                       // +0x28 no new targets while positive
     float timeSinceSeen = 0.0f;                        // +0x2C
     ape::Vec3 lastPlayerPosition{};                    // +0x30
     AIController* controllers[kMaxControllers] = {};   // +0x250
     AIController* active[kMaxControllers] = {};        // +0x650
     Entity* allies[kMaxAllies] = {};                   // +0xE50
     AIPriorityTargets priorityTargets;                 // +0x14 / +0xE74
-    AISighting* sightings[kMaxSightings] = {};         // +0xE94 (records from +0xEE0)
+    AISighting* sightings[kMaxSightings] = {};         // +0xE94 in use first, then free
+    AISighting sightingPool[kMaxSightings];            // +0xEE0
+private:
+    void ResetSightings();
 };
 
 // The level's AI manager (null between levels).
 AIManager* GetAIManager();
 void SetAIManager(AIManager* manager);
+
+// Noise the enemies may hear (AlertEnemies kinds).
+enum AINoise : int {
+    kNoise_Normal = 0,      // fixed 15 m
+    kNoise_Footsteps = 1,   // AI.AudioAlertRangeFootsteps
+    kNoise_Bottle = 2,      // AI.AudioAlertRangeBottle
+};
+// Tells the enemies within the noise's range of `source` (0x0001B4A0).
+// NOTE: the console passes an unused first argument.
+void AlertEnemies(Entity* source, int noise, bool loud);
+
+// Per-player threat timers (NOTE: owner and name unknown; the character
+// module and the game loop use them).
+struct AIThreatState {
+    // True (and restarted) when the chase voice-over may play (0x0001BE50).
+    bool ConsumeChaseVO();
+    // Restarts the recovery time after the player was attacked (0x0001BE8C).
+    void RestartAttackRecovery();
+    // Forwards to the listener (slots 9/8) (0x0001BEA0 / 0x0001BEE8).
+    void NotifyListener();
+    void NotifyListener(uint32_t value);
+
+    class Listener {
+    public:
+        virtual ~Listener() = default;
+        virtual void OnValue(uint32_t value) { (void)value; }   // slot 8
+        virtual void OnNotify() {}                             // slot 9
+    };
+    Listener* listener = nullptr;    // +0x24
+    float attackRecovery = 0.0f;     // +0x44
+    float chaseVOTimer = 0.0f;       // +0x48
+};
 
 // Point on segment [a, b] closest to p (0x00013E40).
 ape::Vec3 ClosestPointOnSegment(const ape::Vec3& a, const ape::Vec3& b, const ape::Vec3& p);

@@ -7,11 +7,14 @@
 #include <cstdint>
 #include <vector>
 
+namespace ape { class ApeAnimScriptVar; }
+
 namespace sly {
 namespace gameplay {
 
 struct GuiAnimation;
-class ScriptCondition;
+// The "condition" of a dialog is an int script variable (shown while non-zero).
+using ScriptCondition = ape::ApeAnimScriptVar;
 
 // Plays the animation of a fixed HUD element and waits for it (0x00B21088).
 class SeqHudElementCommand : public SequenceCommand {
@@ -58,8 +61,8 @@ class SeqDialogPagesCommand : public SequenceCommand {
 public:
     static constexpr int kMaxPages = 4;
 
-    SeqDialogPagesCommand(const char (*pages)[0x80], int pageCount, const int32_t pos[2],
-                          const int32_t size[2], ScriptCondition* condition, bool blocking,
+    SeqDialogPagesCommand(const char (*pages)[0x80], int pageCount, const float pos[2],
+                          const float size[2], ScriptCondition* condition, bool blocking,
                           bool letterboxOn, const uint8_t colorA[4], const uint8_t colorB[4],
                           bool restoreLetterbox, bool askFirst, bool flagA, bool flagB,
                           bool flag0);
@@ -74,8 +77,8 @@ private:
 
     char m_pages[kMaxPages][0x80] = {};    // +0x09
     int32_t m_pageCount = 0;               // +0x20C
-    int32_t m_pos[2] = {};                 // +0x210
-    int32_t m_size[2] = {};                // +0x218
+    float m_pos[2] = {};                   // +0x210 "Scale" of the script command. NOTE: role assumed
+    float m_size[2] = {};                  // +0x218 "Offset" of the script command. NOTE: role assumed
     ScriptCondition* m_condition = nullptr;// +0x220
     uint8_t m_colorA[4] = {};              // +0x224
     uint8_t m_colorB[4] = {};              // +0x228

@@ -10,6 +10,8 @@
 #include "sly/game/WorldInterface.h"
 #include "sly/levels/ai/AIHooks.h"
 #include "sly/levels/ai/AIProxyPoints.h"
+#include "sly/levels/ai/AITuning.h"
+#include "sly/levels/nav/NavGraph.h"
 
 #include <cmath>
 #include <limits>
@@ -266,7 +268,7 @@ void AIController::Attach(Entity* newEntity)
     target = nullptr;
     flags1 &= static_cast<uint8_t>(~(kF1_HitLocked | kF1_Hit));
     leashRadius = 1.0f;
-    field_124 = 0;
+    claimSlot = nullptr;
     currentClip = 0;
     stateRepeat = 0;
     state = -1;
@@ -284,6 +286,7 @@ void AIController::Attach(Entity* newEntity)
         manager->Register(this);
 }
 
+// @func 0x00012460 AIController::DropTarget
 void AIController::DropTarget()
 {
     if (!target)
@@ -348,6 +351,39 @@ void AIManager::ForgetSighting(Entity* forget)
             --i;
         }
     }
+}
+
+// @func 0x0001BCF4 AIManager::ForgetSighting (kind)
+void AIManager::ForgetSighting(Entity* forget, uint32_t kind)
+{
+    for (int i = 0; i < sightingCount; ++i) {
+        AISighting* sighting = sightings[i];
+        if (sighting->entity == forget && forget->GetBone(sighting->bone) && sighting->kind == kind) {
+            --sightingCount;
+            std::swap(sightings[i], sightings[sightingCount]);
+            --i;
+        }
+    }
+}
+
+// @func 0x0001AE6C AIManager::FindNearestEnemy
+Entity* AIManager::FindNearestEnemy(float radius, const ape::Vec3& position, bool engagedOnly) const
+{
+    Entity* best = nullptr;
+    float bestDist = radius * radius;
+    for (int i = 0; i < controllerCount; ++i) {
+        AIController* controller = controllers[i];
+        if (!controller->IsListedActive() || controller->IsCharacterDead())
+            continue;
+        if (engagedOnly && !controller->IsEngaged())
+            continue;
+        const float d = DistanceSq(position, controller->entity->Position());
+        if (d < bestDist) {
+            bestDist = d;
+            best = controller->entity;
+        }
+    }
+    return best;
 }
 
 // @func 0x00012928 AIController::Detach
@@ -599,6 +635,12 @@ void AIController::FaceDirection(const ape::Vec3& direction)
     const float xz = kUp.x * z.y - kUp.y * z.x;
     const float xInv = 1.0f / std::sqrt(xz * xz + xx * xx + xy * xy);
     transform.xAxis = {xInv * xx, xInv * xy, xInv * xz, 0.0f};
+}
+
+bool AIController::IsCharacterDead()
+{
+    // The base version (0x00738528) lies outside this range.
+    return character && CharacterHealth(character) <= 0.0f;
 }
 
 const char* AIController::StateName(int s)
@@ -865,9 +907,8 @@ void AIController::UpdateMovement(float dt)
     const float inv = 1.0f / dt;
     const ape::Vec3 bodyPos = BodyPosition(body);
     float vy = (transform.translation.y - bodyPos.y) * inv;
-    float boost = 0.0f;
-    if (HasVerticalBoost(&boost))
-        vy += VerticalBoost();
+    if (ShouldApplyGravity({0.0f, vy, 0.0f, 0.0f}))
+        vy += GravitySpeed();
     BodyRequestVelocity(body, {(transform.translation.x - bodyPos.x) * inv, vy,
                                (transform.translation.z - bodyPos.z) * inv, 0.0f});
     bodyMotion = BodyMotionType(body);
@@ -896,6 +937,152 @@ void AIManager::OnLevelLoaded()
 void AIManager::PrunePriorityTargets()
 {
     priorityTargets.RemoveDead();
+}
+
+// @func 0x0001AC80 AIManager::PickTarget
+Entity* AIManager::PickTarget(const AIController* controller) const
+{
+    if (targetingPause > 0.0f)
+        return nullptr;
+    const ape::Vec3& from = controller->transform.translation;
+    const int targetCount = priorityTargets.Count();
+    if (targetCount > 0) {
+        Entity* best = nullptr;
+        float bestDist = 1e+06f;
+        for (int i = 0; i < targetCount; ++i) {
+            Entity* candidate = AsEntity(priorityTargets.At(i));
+            const float d = DistanceSq(candidate->Position(), from);
+            if (d < bestDist) {
+                bestDist = d;
+                // Only player type entities count; a nearer other one blocks.
+                best = (candidate->typeBits[0] & 0x2u) ? candidate : nullptr;
+            }
+        }
+        return best;
+    }
+    if (allyCount == 1)
+        return allies[0];
+    Entity* best = PlayerCharacter();
+    if (!best)
+        return nullptr;
+    float bestDist = DistanceSq(best->Position(), from);
+    for (int i = 0; i < allyCount; ++i) {
+        const float d = DistanceSq(allies[i]->Position(), from);
+        if (d < bestDist) {
+            bestDist = d;
+            best = allies[i];
+        }
+    }
+    return best;
+}
+
+// @func 0x0001B2F4 AIManager::SetEntitiesVisible
+void AIManager::SetEntitiesVisible(bool visible)
+{
+    for (int i = 0; i < controllerCount; ++i) {
+        if (!controllers[i]->IsAlly())
+            controllers[i]->entity->SetVisibilityDeferred(visible, false);
+    }
+}
+
+// @func 0x0001B3BC AIManager::BroadcastScriptCommand
+void AIManager::BroadcastScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value)
+{
+    for (int i = 0; i < activeCount; ++i)
+        active[i]->OnScriptCommand(command, arg1, arg2, value);
+}
+
+// @func 0x0001B4A0 AlertEnemies
+void AlertEnemies(Entity* source, int noise, bool loud)
+{
+    constexpr uint32_t kGroup_Enemies = 0xCB186A06u;
+    constexpr uint32_t kEvent_Noise = 0x795BCF46u;       // NOTE: event names unknown
+    constexpr uint32_t kEvent_LoudNoise = 0x39EE3E3Au;
+    float range = 0.0f;
+    if (noise == kNoise_Normal)
+        range = 15.0f;
+    else if (noise == kNoise_Footsteps)
+        range = g_aiAudioAlertRangeFootsteps;
+    else if (noise == kNoise_Bottle)
+        range = g_aiAudioAlertRangeBottle;
+    BroadcastInRange(source, range, kGroup_Enemies, loud ? kEvent_LoudNoise : kEvent_Noise, 0);
+}
+
+// @func 0x0001BE50 AIThreatState::ConsumeChaseVO
+bool AIThreatState::ConsumeChaseVO()
+{
+    const bool ready = chaseVOTimer < 0.0f;
+    if (ready)
+        chaseVOTimer = g_aiChaseVOFrequency;
+    return ready;
+}
+
+// @func 0x0001BE8C AIThreatState::RestartAttackRecovery
+void AIThreatState::RestartAttackRecovery()
+{
+    attackRecovery = g_aiAttackPlayerRecoveryTime;
+}
+
+// @func 0x0001BEA0 AIThreatState::NotifyListener
+void AIThreatState::NotifyListener()
+{
+    if (listener)
+        listener->OnNotify();
+}
+
+// @func 0x0001BEE8 AIThreatState::NotifyListener (value)
+void AIThreatState::NotifyListener(uint32_t value)
+{
+    if (listener)
+        listener->OnValue(value);
+}
+
+void AIManager::ResetSightings()
+{
+    sightingCount = 0;
+    for (int i = 0; i < kMaxSightings; ++i)
+        sightings[i] = &sightingPool[i];
+}
+
+// @func 0x0001A840 AIManager::Reset
+void AIManager::Reset()
+{
+    if (AIProxyPointTable* table = GetAIProxyPointTable())
+        table->Clear();
+    AIObjectPoolReset();
+    KnowledgeReset();
+    if (NavManager* nav = GetNavManager())
+        ResetNavManager(*nav);
+    ResetSightings();
+}
+
+// @func 0x0001AA34 AIManager::OnLevelStart
+void AIManager::OnLevelStart()
+{
+    controllerCount = 0;
+    activeCount = 0;
+    KnowledgeLevelStart();
+    AIObjectPoolLevelStart();
+    ResetSightings();
+}
+
+// @func 0x0001AB3C AIManager::OnLevelEnd
+void AIManager::OnLevelEnd()
+{
+    controllerCount = 0;
+    activeCount = 0;
+    if (AIProxyPointTable* table = GetAIProxyPointTable())
+        table->Clear();
+    KnowledgeLevelEnd();
+    AIObjectPoolLevelEnd();
+    ResetSightings();
+}
+
+// @func 0x00019210 AIManager::ResolveJumpLinks
+void AIManager::ResolveJumpLinks()
+{
+    if (NavManager* nav = GetNavManager())
+        ResolveJumpLinkObjects(*nav);
 }
 
 // @func 0x0001AC68 AIManager::ClearSightings

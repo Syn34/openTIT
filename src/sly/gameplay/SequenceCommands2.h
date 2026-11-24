@@ -5,6 +5,7 @@
 // The console vtable of each class is given in its comment.
 #pragma once
 
+#include "sly/game/Upgrades.h"
 #include "sly/gameplay/GameplayWorld.h"
 #include "sly/gameplay/Sequencer.h"
 
@@ -269,9 +270,9 @@ private:
 
 // One variable binding handed to an anim script started by a sequence.
 // NOTE: 0x4C-byte records consumed by 0x0049FCC0; layout not decoded.
-struct AnimScriptBinding {
-    uint8_t data[0x4C] = {};
-};
+// The 0x4C-byte records are the text fields of the "run script" command
+// (sly/game TextField: text, id, two flags).
+using AnimScriptBinding = TextField;
 // 0x0049FCC0: binds the variables of an anim script instance.
 void AnimScriptBindVariables(ape::ApeAnimScriptInstance* instance,
                              const std::vector<AnimScriptBinding>& bindings, uint32_t param,

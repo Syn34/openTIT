@@ -86,6 +86,18 @@ void UnregisterEntity(EntityList list, Entity* entity)
     }
 }
 
+void UnregisterObject(EntityList list, const void* object)
+{
+    std::vector<Entity*>& entries = List(list);
+    for (size_t i = 0; i < entries.size(); ++i) {
+        if (static_cast<const void*>(entries[i]) == object) {
+            entries[i] = entries.back();
+            entries.pop_back();
+            return;
+        }
+    }
+}
+
 uint32_t EntityCount(EntityList list) { return uint32_t(List(list).size()); }
 Entity* EntityAt(EntityList list, uint32_t index) { return List(list)[index]; }
 
