@@ -77,6 +77,7 @@ void ApeRefCounted::Release()
 
 ApeAnimScriptVar::~ApeAnimScriptVar() = default;
 
+// @func 0x00742AD0 ApeAnimScriptVar::ToString
 char* ApeAnimScriptVar::ToString(char* buffer) const
 {
     buffer[0] = '\0';

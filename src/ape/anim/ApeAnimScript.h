@@ -110,9 +110,13 @@ public:
     ~ApeAnimScriptVar() override;
 
     virtual bool IsNumber() const { return false; }
+    // @func 0x00793D54 ApeAnimScriptVar::IsReference
     virtual bool IsReference() const { return false; }
+    // @func 0x00742AB0 ApeAnimScriptVar::GetFloat
     virtual float GetFloat() const { return 0.0f; }
+    // @func 0x00742AC0 ApeAnimScriptVar::GetInt
     virtual int32_t GetInt() const { return 0; }
+    // @func 0x00742AC8 ApeAnimScriptVar::GetHash
     virtual uint32_t GetHash() const { return 0; }
     virtual AnimScriptVarType GetType() const = 0;
     // Copy used when an instance or a state clone takes its own variables.
@@ -120,8 +124,10 @@ public:
     // Debug text of the value; returns `buffer` (at least 64 bytes).
     virtual char* ToString(char* buffer) const;
     // NOTE: purpose unknown; every variable class returns 0.
+    // @func 0x00742AE0 ApeAnimScriptVar::Unknown2C
     virtual int Unknown2C() const { return 0; }
     // The owning instance is being destroyed.
+    // @func 0x00742AE8 ApeAnimScriptVar::OnOwnerDestroyed
     virtual void OnOwnerDestroyed() {}
     virtual uint32_t GetSize() const = 0;
     // Prototype factory: builds a new variable from its XML element.
@@ -174,11 +180,16 @@ public:
     ~ApeAnimScriptEvent() override;
 
     // Time inside the state at which a timed event fires.
+    // @func 0x007941B0 ApeAnimScriptEvent::GetTime
     virtual float GetTime() { return m_time; }
+    // @func 0x007941B8 ApeAnimScriptEvent::IsTimed
     virtual bool IsTimed() const { return false; }
     // Polled every update for untimed events; true runs the commands.
+    // @func 0x007941C0 ApeAnimScriptEvent::Check
     virtual bool Check(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) { return false; }
+    // @func 0x007941C8 ApeAnimScriptEvent::CreateDebugElement
     virtual xml::XmlElement* CreateDebugElement() const { return nullptr; }
+    // @func 0x007941D0 ApeAnimScriptEvent::Create
     virtual ApeAnimScriptEvent* Create(xml::XmlElement* element) const { return nullptr; }
 
     // Adds the commands found among the children of `element`.

@@ -69,6 +69,24 @@ void* XmlNode::ToText() { return nullptr; }
 // @func 0x0079B9B8 XmlNode::ToComment
 void* XmlNode::ToComment() { return nullptr; }
 
+// @func 0x0079B9C0 XmlNode::ToUnknown
+void* XmlNode::ToUnknown() { return nullptr; }
+
+// @func 0x0079B9C8 XmlNode::ToDeclaration
+void* XmlNode::ToDeclaration() { return nullptr; }
+
+// @func 0x0079B9E0 XmlNode::ToText (const)
+const void* XmlNode::ToText() const { return nullptr; }
+
+// @func 0x0079B9E8 XmlNode::ToComment (const)
+const void* XmlNode::ToComment() const { return nullptr; }
+
+// @func 0x0079B9F0 XmlNode::ToUnknown (const)
+const void* XmlNode::ToUnknown() const { return nullptr; }
+
+// @func 0x0079B9F8 XmlNode::ToDeclaration (const)
+const void* XmlNode::ToDeclaration() const { return nullptr; }
+
 // ---------------------------------------------------------------------------
 // XmlElement
 // ---------------------------------------------------------------------------
@@ -85,6 +103,12 @@ XmlDocument* XmlElement::ToDocument() { return nullptr; }
 
 // @func 0x0079BA00 XmlElement::ToElement
 XmlElement* XmlElement::ToElement() { return this; }
+
+// @func 0x0079B9D0 XmlElement::ToDocument (const)
+const XmlDocument* XmlElement::ToDocument() const { return nullptr; }
+
+// @func 0x0079BA04 XmlElement::ToElement (const)
+const XmlElement* XmlElement::ToElement() const { return this; }
 
 const XmlNodeData* XmlElement::Node() const
 {
@@ -564,6 +588,12 @@ XmlDocument* XmlDocument::ToDocument() { return this; }
 
 // @func 0x0079B9A8 XmlDocument::ToElement
 XmlElement* XmlDocument::ToElement() { return nullptr; }
+
+// @func 0x0079BA0C XmlDocument::ToDocument (const)
+const XmlDocument* XmlDocument::ToDocument() const { return this; }
+
+// @func 0x0079B9D8 XmlDocument::ToElement (const)
+const XmlElement* XmlDocument::ToElement() const { return nullptr; }
 
 void XmlDocument::SetError(uint32_t code)
 {
