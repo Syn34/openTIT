@@ -69,6 +69,10 @@ public:
         : ApeCompactArrayBase((uint16_t)sizeof(Pair), capacity, allocator), m_default(defaultValue)
     {
     }
+    // Form with an explicit comparator (the out-of-line constructor copies);
+    // the default value starts out zero. NOTE: the third argument is not
+    // used by the console code and its meaning is unknown.
+    ApeTSortedMap(uint16_t capacity, ApeAllocator* allocator, uint32_t unused, CompareFn compare);
 
     void Add(uint32_t key, V value)
     {
@@ -81,6 +85,11 @@ public:
     V* Find(uint32_t key);
     // Removes the entry for `key`, if present.
     void Remove(uint32_t key);
+    // Index of the entry for `key` in the (sorted) storage, or -1.
+    int FindIndex(uint32_t key);
+    // Inserts in key order (the map stays sorted, unlike Add). Equal keys
+    // go after the existing ones.
+    void Insert(uint32_t key, const V& value);
 
     Pair* Data() { return static_cast<Pair*>(m_data); }
     void SetCompare(CompareFn compare) { m_compare = compare; }
@@ -91,6 +100,13 @@ private:
     V m_default;
     CompareFn m_compare = &CompareSortedMapKeys;
 };
+
+template <class V>
+ApeTSortedMap<V>::ApeTSortedMap(uint16_t capacity, ApeAllocator* allocator, uint32_t /*unused*/,
+                                CompareFn compare)
+    : ApeCompactArrayBase((uint16_t)sizeof(Pair), capacity, allocator), m_default(), m_compare(compare)
+{
+}
 
 template <class V>
 void ApeTSortedMap<V>::SortIfDirty()
@@ -153,6 +169,51 @@ void ApeTSortedMap<V>::Remove(uint32_t key)
         }
         lo = mid + 1;
     }
+}
+
+template <class V>
+int ApeTSortedMap<V>::FindIndex(uint32_t key)
+{
+    SortIfDirty();
+    const Pair* data = Data();
+    int lo = 0, hi = (int)m_count - 1;
+    while (lo <= hi) {
+        const int mid = (lo + hi) >> 1;
+        int order;
+        if (m_compare == &CompareSortedMapKeys) {
+            order = key < data[mid].key ? -1 : (key > data[mid].key ? 1 : 0);
+        } else {
+            const ApeSortedMapKey probe = { key };
+            order = -m_compare(&data[mid], &probe);
+        }
+        if (order < 0)
+            hi = mid - 1;
+        else if (order > 0)
+            lo = mid + 1;
+        else
+            return mid;
+    }
+    return -1;
+}
+
+template <class V>
+void ApeTSortedMap<V>::Insert(uint32_t key, const V& value)
+{
+    if (m_count == m_capacity)
+        Grow((uint32_t)(m_capacity & 0x7FFF) << 1);
+    SortIfDirty();
+    Pair* data = Data();
+    // Shift the larger keys up by one (plain key order, not the comparator).
+    int index = m_count;
+    while (index > 0 && data[index - 1].key > key) {
+        data[index] = data[index - 1];
+        --index;
+    }
+    data[index].key = key;
+    data[index].value = value;
+    ++m_count;
+    if (m_count > m_peak)
+        m_peak = m_count;
 }
 
 } // namespace ape
