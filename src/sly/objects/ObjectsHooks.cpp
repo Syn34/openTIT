@@ -284,5 +284,8 @@ bool TextDisplayHasSeen(uint32_t messageId) { (void)messageId; return false; }
 
 uint32_t EntityClass2(const ObjEntity* entity) { (void)entity; return 0; }
 
+void CameraRemoveMode(void* mode, float blendTime) { (void)mode; (void)blendTime; }
+void CameraModeDelete(void* mode) { (void)mode; }
+
 } // namespace objects
 } // namespace sly

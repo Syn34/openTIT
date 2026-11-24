@@ -215,6 +215,33 @@ CameraTrigger::CameraTrigger(const CameraTriggerInstanceDesc& desc)
 // @func 0x00215D40 CameraTrigger::~CameraTrigger (deleting)
 CameraTrigger::~CameraTrigger() = default;
 
+// @func 0x0021686C CameraTrigger::OnEnter
+void CameraTrigger::OnEnter(ObjEntity* entity)
+{
+    TriggerBase::OnEnter(entity);
+    ActivateCamera(entity);
+}
+
+// @func 0x0021690C CameraTrigger::OnExit
+void CameraTrigger::OnExit(ObjEntity* entity)
+{
+    // With "NoDeadExit" a dead character keeps the camera of the volume it died in.
+    if (g_triggerCameraNoDeadExit.Get() && entity && (entity->flags2 & 0x08) && entity->IsEventSuppressed())
+        return;
+    DeactivateCamera(entity);
+    TriggerBase::OnExit(entity);
+}
+
+// @func 0x002169C0 CameraTrigger::ReleaseCameraMode
+void CameraTrigger::ReleaseCameraMode()
+{
+    if (!m_cameraMode)
+        return;
+    CameraRemoveMode(m_cameraMode, -1.0f);
+    CameraModeDelete(m_cameraMode);
+    m_cameraMode = nullptr;
+}
+
 // @func 0x00216A64 CameraTrigger::IsDebugDisplayed
 bool CameraTrigger::IsDebugDisplayed() const
 {

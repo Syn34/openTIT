@@ -213,5 +213,10 @@ bool TextDisplayHasSeen(uint32_t messageId);
 // Second class word of an entity (+0xC8).
 uint32_t EntityClass2(const ObjEntity* entity);
 
+// Game camera (game world +0x1281E0): removes a camera mode with a blend
+// time (0x000FBB88, negative = default), and deletes a mode (virtual slot 1).
+void CameraRemoveMode(void* mode, float blendTime);
+void CameraModeDelete(void* mode);
+
 } // namespace objects
 } // namespace sly
