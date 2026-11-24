@@ -3,6 +3,7 @@
 
 #include "ape/core/ApeString.h"
 #include "ape/sys/ApeGeometry.h"
+#include "agl/AglResources.h"
 
 namespace ape {
 
@@ -56,6 +57,54 @@ void ForgetGuiSlots(ApeGuiObject* object)
 uint8_t Modulate(uint8_t value, uint8_t by) { return (uint8_t)(((uint32_t)value * by) >> 8); }
 
 } // namespace
+
+// Material blend presets: 0 opaque, 1 opaque with blending on, 2 alpha
+// blend, 3 additive, 4 reverse subtract. The GUI blend modes "av", "ad" and
+// "su" select 2, 3 and 4 (tables 0x00AEF7F8 / 0x00AEF990).
+namespace {
+const int kGuiBlendPresets[4] = { 2, 3, 4, 0 };
+}
+
+void ApplyGuiBlendMode(agl::AglMaterial* material, uint32_t mode)
+{
+    using agl::gpu::BlendEquation;
+    using agl::gpu::BlendFactor;
+    switch (kGuiBlendPresets[mode & 3]) {
+    case 4:
+        material->blendEquation = BlendEquation::ReverseSubtract;
+        material->blendDst = BlendFactor::One;
+        material->blendEnable = true;
+        material->blendSrc = BlendFactor::SrcAlpha;
+        break;
+    case 3:
+        material->blendEquation = BlendEquation::Add;
+        material->blendDst = BlendFactor::One;
+        material->blendEnable = true;
+        material->blendSrc = BlendFactor::SrcAlpha;
+        break;
+    case 2:
+        material->blendEquation = BlendEquation::Add;
+        material->blendDst = BlendFactor::OneMinusSrcAlpha;
+        material->blendEnable = true;
+        material->blendSrc = BlendFactor::SrcAlpha;
+        break;
+    case 1:
+        material->blendEquation = BlendEquation::Add;
+        material->blendDst = BlendFactor::Zero;
+        material->blendEnable = true;
+        material->blendSrc = BlendFactor::One;
+        break;
+    case 0:
+        material->blendEquation = BlendEquation::Add;
+        material->blendDst = BlendFactor::Zero;
+        material->blendEnable = false;
+        material->blendSrc = BlendFactor::One;
+        break;
+    }
+    // GUI geometry ignores the depth buffer.
+    material->depthFunc = agl::gpu::CompareFunc::Always;
+    material->depthTest = false;
+}
 
 // ---------------------------------------------------------------------------
 // ApeGuiObject
@@ -479,6 +528,14 @@ void ApeGuiGradient::SetColor(xml::Color8 value)
     color = value;
 }
 
+// @func 0x004DD08C ApeGuiGradient::SetBlendMode
+void ApeGuiGradient::SetBlendMode(uint32_t mode)
+{
+    ApeGuiObject::SetBlendMode(mode);
+    if (material)
+        ApplyGuiBlendMode(material, mode);
+}
+
 // ---------------------------------------------------------------------------
 // Label and ticker
 // ---------------------------------------------------------------------------
@@ -546,6 +603,26 @@ void ApeGuiTile::SetSize(const float value[2])
     size[0] = value[0];
     size[1] = value[1];
     Invalidate();
+}
+
+// @func 0x004E82D8 ApeGuiTile::SetColor
+void ApeGuiTile::SetColor(xml::Color8 value)
+{
+    color = value;
+    for (ApeGuiObject* piece : pieces) {
+        if (piece)
+            piece->SetColor(value);
+    }
+}
+
+// @func 0x004E83B8 ApeGuiTile::SetBlendMode
+void ApeGuiTile::SetBlendMode(uint32_t mode)
+{
+    ApeGuiObject::SetBlendMode(mode);
+    for (ApeGuiObject* piece : pieces) {
+        if (piece)
+            piece->SetBlendMode(mode);
+    }
 }
 
 // @func 0x007965EC ApeGuiTile::Invalidate

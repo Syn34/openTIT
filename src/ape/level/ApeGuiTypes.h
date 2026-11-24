@@ -11,7 +11,15 @@
 
 #include <string>
 
+namespace agl {
+class AglMaterial;
+}
+
 namespace ape {
+
+// Applies the blend/depth state of a GUI blend mode to a material (inlined
+// into the SetBlendMode overrides on the console).
+void ApplyGuiBlendMode(agl::AglMaterial* material, uint32_t mode);
 
 // "frame" (type 0, vtable 0x00B22920, 0xB0 bytes): an empty sized box.
 // TODO(0x004E4BF8 ApeGuiFrame::Clone) TODO(0x004E4E78 ApeGuiFrame::GetLayoutSize)
@@ -49,8 +57,10 @@ public:
     void SetSize(const float size[2]) override;
     xml::Color8 GetColor() const override;
     void SetColor(xml::Color8 color) override;
+    void SetBlendMode(uint32_t mode) override;
 
     float size[2] = {};   // +0xA8
+    agl::AglMaterial* material = nullptr;   // +0xC0
 };
 
 // "label" (type 3, vtable 0x00B227D8): text from the string table.
@@ -84,8 +94,12 @@ public:
     void SetScale(const Vec3& scale) override;
     void GetSize(float out[2]) const override;
     void SetSize(const float size[2]) override;
+    void SetColor(xml::Color8 color) override;
+    void SetBlendMode(uint32_t mode) override;
     void Invalidate() override;
 
+    // The nine pieces of the tiled box (corners, edges, centre).
+    ApeGuiObject* pieces[9] = {};   // +0xCC
     float size[2] = {};     // +0xF0
     bool layoutDirty = false; // +0xF8 set by Invalidate
 };
