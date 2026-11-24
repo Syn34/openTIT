@@ -19,6 +19,26 @@ void RegisterScriptCommandsG2();
 void RegisterScriptCommandsH();
 void RegisterScriptCommandsI();
 void RegisterScriptCommandsJ();
+void RegisterScriptCommandsK();
+void RegisterScriptCommandsL();
+void RegisterScriptCommandsM();
+void RegisterScriptCommandsN();
+void RegisterScriptCommandsO();
+void RegisterScriptCommandsP();
+void RegisterScriptCommandsQ();
+void RegisterScriptCommandsR();
+void RegisterScriptCommandsS();
+void RegisterScriptCommandsT();
+void RegisterScriptCommandsU();
+void RegisterScriptCommandsV();
+void RegisterScriptCommandsW();
+void RegisterScriptCommandsX();
+void RegisterScriptCommandsY();
+void RegisterScriptCommandsZ();
+void RegisterScriptCommandsAA();
+void RegisterScriptCommandsAB();
+void RegisterScriptCommandsAC();
+void RegisterScriptCommandsAD();
 
 inline void RegisterLevelScriptCommands()
 {
@@ -31,6 +51,26 @@ inline void RegisterLevelScriptCommands()
     RegisterScriptCommandsH();
     RegisterScriptCommandsI();
     RegisterScriptCommandsJ();
+    RegisterScriptCommandsK();
+    RegisterScriptCommandsL();
+    RegisterScriptCommandsM();
+    RegisterScriptCommandsN();
+    RegisterScriptCommandsO();
+    RegisterScriptCommandsP();
+    RegisterScriptCommandsQ();
+    RegisterScriptCommandsR();
+    RegisterScriptCommandsS();
+    RegisterScriptCommandsT();
+    RegisterScriptCommandsU();
+    RegisterScriptCommandsV();
+    RegisterScriptCommandsW();
+    RegisterScriptCommandsX();
+    RegisterScriptCommandsY();
+    RegisterScriptCommandsZ();
+    RegisterScriptCommandsAA();
+    RegisterScriptCommandsAB();
+    RegisterScriptCommandsAC();
+    RegisterScriptCommandsAD();
 }
 
 } // namespace levels

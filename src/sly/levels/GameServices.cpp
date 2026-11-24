@@ -2,6 +2,8 @@
 // Each returns what the original returns for a missing object.
 #include "sly/levels/GameServices.h"
 
+#include "sly/levels/PlayerNotifyFlags.h"
+
 namespace sly {
 namespace levels {
 
@@ -70,7 +72,11 @@ ape::ApeAnimScriptInstance* HudScriptInstance(void* hud) { (void)hud; return nul
 bool EntityIsDead(WorldObject* entity) { (void)entity; return false; }
 uint32_t FindCollectableId(uint32_t nameHash) { (void)nameHash; return 0; }
 int GameStateCollectableQuery(uint32_t id) { (void)id; return 1; }
-bool PlayerNotifyFlagIsSet(int playerIndex, uint32_t flag) { (void)playerIndex; (void)flag; return false; }
+bool PlayerNotifyFlagIsSet(int playerIndex, uint32_t flag)
+{
+    const PlayerNotifyFlags* flags = PlayerNotifyFlagsOf(playerIndex);
+    return flags && flags->IsSet(flag);
+}
 void CameraBlendWeight(float weight, float duration, float exponent) { (void)weight; (void)duration; (void)exponent; }
 void KillSequence(uint32_t name) { (void)name; }
 uint32_t CurrentLevelName() { return 0; }

@@ -16,13 +16,17 @@
 
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
+#include "ape/math/ApeMath.h"
 #include "ape/xml/ApeXml.h"
 
+#include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace sly {
 
 class WorldObject;
+struct TextField;
 namespace audio { struct MixState; }
 
 namespace levels {
@@ -55,6 +59,11 @@ WorldObject* EntityFromVar(ApeAnimScriptInstance* instance, uint32_t varHash);
 // The common operand lookup: entity of the object variable `objectVar`, else
 // the live entity named `entityName`. Either hash may be 0.
 WorldObject* ResolveEntity(ApeAnimScriptInstance* instance, uint32_t objectVar, uint32_t entityName);
+
+// Like ResolveEntity, but the object is looked up by name among the
+// instance's objects (not through an object variable) (0x0009A284).
+WorldObject* ResolveEntityByObjectName(ApeAnimScriptInstance* instance, uint32_t entityName,
+                                       uint32_t objectName);
 
 // Entity named by `nameHash` for the event commands: a world object of the
 // instance, the instance's entity variable, else a live entity (0x0009A190).
@@ -94,6 +103,17 @@ uint32_t LookupEntityFlag(uint32_t nameHash);
 void RunCommands(const ape::AnimScriptCommandList& list, ApeAnimScriptInstance* instance,
                  ApeAnimScriptState* state);
 void LinkCommands(const ape::AnimScriptCommandList& list);
+
+// Rotation quaternion (x, y, z, w) from Euler angles in degrees, as the
+// spawn commands build it from their "OffsetRot" attributes (inlined in
+// each parser on the console).
+ape::Vec4 QuatFromEulerDegrees(const ape::Vec3& degrees);
+
+// Text messages of a command: every child element the text parser accepts,
+// up to `capacity` entries (console helper 0x0049EF40, outside this module;
+// the list is an ApeArray of 0x4C-byte records there).
+using TextFieldList = std::vector<TextField>;
+void ParseTextFieldList(XmlElement* element, TextFieldList& list, size_t capacity);
 
 } // namespace levels
 } // namespace sly

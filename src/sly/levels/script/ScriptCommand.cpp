@@ -2,6 +2,9 @@
 #include "sly/levels/script/ScriptCommand.h"
 
 #include "ape/core/ApeString.h"
+#include "sly/game/Upgrades.h"
+
+#include <cmath>
 #include "sly/levels/GameServices.h"
 
 namespace sly {
@@ -47,6 +50,17 @@ WorldObject* ResolveEntity(ApeAnimScriptInstance* instance, uint32_t objectVar, 
 {
     if (WorldObject* entity = EntityFromVar(instance, objectVar))
         return entity;
+    return entityName ? FindEntity(entityName) : nullptr;
+}
+
+// @func 0x0009A284 ResolveEntityByObjectName
+WorldObject* ResolveEntityByObjectName(ApeAnimScriptInstance* instance, uint32_t entityName,
+                                       uint32_t objectName)
+{
+    if (objectName != 0) {
+        if (WorldObject* entity = EntityFromObject(instance->ResolveObject(objectName, false)))
+            return entity;
+    }
     return entityName ? FindEntity(entityName) : nullptr;
 }
 
@@ -96,6 +110,37 @@ void LinkCommands(const ape::AnimScriptCommandList& list)
 {
     for (ApeAnimScriptCommand* command : list)
         command->Link();
+}
+
+ape::Vec4 QuatFromEulerDegrees(const ape::Vec3& degrees)
+{
+    constexpr float kDegToRad = 0.017453292f;
+    const float hx = degrees.x * kDegToRad * 0.5f;
+    const float hy = degrees.y * kDegToRad * 0.5f;
+    const float hz = degrees.z * kDegToRad * 0.5f;
+    const float cx = std::cos(hx), sx = std::sin(hx);
+    const float cy = std::cos(hy), sy = std::sin(hy);
+    const float cz = std::cos(hz), sz = std::sin(hz);
+    ape::Vec4 q;
+    q.x = sy * sz * cx + cy * cz * sx;
+    q.y = cz * sy * cx + cy * sz * sx;
+    q.z = cy * sz * cx - cz * sy * sx;
+    q.w = cy * cz * cx - sy * sz * sx;
+    return q;
+}
+
+void ParseTextFieldList(XmlElement* element, TextFieldList& list, size_t capacity)
+{
+    if (!element)
+        return;
+    for (XmlElement* child = element->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        TextField text;
+        if (!TextFieldParse(child, &text))
+            continue;
+        if (list.size() >= capacity)
+            return;
+        list.push_back(text);
+    }
 }
 
 } // namespace levels
