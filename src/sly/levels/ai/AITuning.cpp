@@ -9,6 +9,10 @@ namespace levels {
 namespace ai {
 
 // @func 0x00067738 StaticInit_AITuning
+// @func 0x00065424 StaticDestroy_AITuning
+// The matching static destructor runs the destructors of the same globals in
+// reverse order (tuning variables leave the registry, the setting parameters
+// get their base vtable back, the pattern arrays are released).
 // Compiler-generated initialiser for the globals of the module, in console
 // order. Besides the tuning variables below it constructs:
 //   * the AI setting class parameter descriptors (critter 0x00F94784..,
