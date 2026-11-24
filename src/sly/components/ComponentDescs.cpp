@@ -106,6 +106,12 @@ constexpr uint32_t kAttr_RespawnEnabled  = 0x83CA0519u;
 // Spawn kinds by "Type" (0x00AD538C): none, "Mine".
 constexpr uint32_t kClosetSpawnTypes[2] = {0u, 0x00241C53u};
 
+constexpr uint32_t kAttr_Name            = 0x0024728Bu;
+constexpr uint32_t kTag_JointTwoSolver   = 0x75215015u;
+constexpr uint32_t kTag_JointThreeSolver = 0x6AD11467u;
+constexpr uint32_t kTag_FootSolver       = 0x895ACE01u;
+constexpr uint32_t kTag_LookAtSolver     = 0x5BDDD9A5u;
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -121,6 +127,18 @@ Desc* NewNamedDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
     Desc* desc = new Desc(ape::HashNameNoCase(name));
     desc->scope = scope;
     return desc;
+}
+
+// "Name" of up to `count` children with tag `tag`, in order.
+void ReadChildNames(XmlElement* elem, uint32_t tag, uint32_t* out, uint32_t count)
+{
+    XmlElement* child = elem->FirstChildElement(tag);
+    for (uint32_t i = 0; child && i < count; ++i) {
+        uint32_t value = 0;
+        child->GetHash(kAttr_Name, &value, 0);
+        out[i] = value;
+        child = child->NextSiblingElement(tag);
+    }
 }
 
 void ReadPulseField(XmlElement* elem, PulseFieldComponentDesc& desc)
@@ -179,6 +197,23 @@ ComponentDesc* ParseAnimMapComponentDesc(XmlElement* root, XmlElement* elem, uin
         elem->GetHash(kAttr_Tree, &desc->tree, desc->tree);
         elem->GetHash(kAttr_BlendMap, &desc->blendMap, desc->blendMap);
         elem->GetHash(kAttr_Set, &desc->animSet, desc->animSet);
+    }
+    return desc;
+}
+
+// @func 0x00291AD0 ParseIKComponentDesc
+ComponentDesc* ParseIKComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    IKComponentDesc* desc = NewNamedDesc<IKComponentDesc>(root, elem, scope);
+    if (!desc)
+        return nullptr;
+    ReadChildNames(elem, kTag_JointTwoSolver, desc->jointTwoSolvers, 8);
+    ReadChildNames(elem, kTag_JointThreeSolver, desc->jointThreeSolvers, 8);
+    ReadChildNames(elem, kTag_FootSolver, desc->footSolvers, 2);
+    if (XmlElement* lookAt = elem->FirstChildElement(kTag_LookAtSolver)) {
+        uint32_t value = 0;
+        lookAt->GetHash(kAttr_Name, &value, 0);
+        desc->lookAtSolver = value;
     }
     return desc;
 }

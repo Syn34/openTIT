@@ -30,6 +30,7 @@ enum ComponentDescType : uint32_t {
     kCompDesc_Anim           = 0x02,
     kCompDesc_ControlAI      = 0x06,
     kCompDesc_AnimMap        = 0x0E,
+    kCompDesc_IK             = 0x11,
     kCompDesc_FacePlayer     = 0x16,
     kCompDesc_RadarBlip      = 0x19,
     kCompDesc_OffscreenMarker = 0x1E,
@@ -84,6 +85,18 @@ struct AnimMapComponentDesc : ComponentDesc {
     uint32_t tree = 0;           // 0x18
     uint32_t blendMap = 0;       // 0x1C
     uint32_t animSet = 0;        // 0x20 "set"
+};
+
+// <IK> (vtable 0x00B1C7D0, 0x60 bytes): names of the IK solvers the
+// component drives, from its child elements.
+struct IKComponentDesc : ComponentDesc {
+    explicit IKComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_IK) {}
+    uint32_t jointTwoSolvers[8] = {};    // 0x14 <JointTwoSolver Name=...>
+    // 0x34 <JointThreeSolver Name=...>. NOTE: the console leaves unused slots
+    // uninitialised.
+    uint32_t jointThreeSolvers[8] = {};
+    uint32_t footSolvers[2] = {};        // 0x54 <FootSolver Name=...>
+    uint32_t lookAtSolver = 0;           // 0x5C <LookAtSolver Name=...> NOTE: uninitialised without one
 };
 
 // <FacePlayer> (vtable 0x00B1C720, 0x20 bytes): turns a part towards the player.
@@ -281,6 +294,7 @@ ComponentDesc* ParsePhysicsComponentDesc(ape::xml::XmlElement* root, ape::xml::X
 ComponentDesc* ParseAnimComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseControlAIComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseAnimMapComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseIKComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseFacePlayerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseRadarBlipComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseOffscreenMarkerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
