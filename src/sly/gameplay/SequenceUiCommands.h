@@ -38,6 +38,7 @@ public:
     SeqSpeakerDialogCommand(const std::vector<DialogSpeaker>& speakers, const char* textKey,
                             const char* soundKey, uint32_t screenHash, uint32_t param,
                             bool notifyScreen, bool blocking, bool pauseGame);
+    ~SeqSpeakerDialogCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -93,6 +94,7 @@ private:
 class SeqLetterboxCommand : public SequenceCommand {
 public:
     SeqLetterboxCommand(bool show, bool blocking);
+    ~SeqLetterboxCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 

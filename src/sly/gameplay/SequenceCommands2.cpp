@@ -150,6 +150,10 @@ SeqPlaceEntityCommand::SeqPlaceEntityCommand(uint32_t entityHash, uint32_t targe
 {
 }
 
+// @func 0x0077F758 SeqPlaceEntityCommand::~SeqPlaceEntityCommand
+// @func 0x0077F788 SeqPlaceEntityCommand::~SeqPlaceEntityCommand (deleting)
+SeqPlaceEntityCommand::~SeqPlaceEntityCommand() = default;
+
 // @func 0x0042CE48 SeqPlaceEntityCommand::Execute
 void SeqPlaceEntityCommand::Execute()
 {
@@ -188,6 +192,10 @@ SeqSetCameraViewCommand::SeqSetCameraViewCommand(WorldObject* camera, WorldObjec
 {
 }
 
+// @func 0x0077F870 SeqSetCameraViewCommand::~SeqSetCameraViewCommand
+// @func 0x0077F8A0 SeqSetCameraViewCommand::~SeqSetCameraViewCommand (deleting)
+SeqSetCameraViewCommand::~SeqSetCameraViewCommand() = default;
+
 // @func 0x0042D288 SeqSetCameraViewCommand::Execute
 void SeqSetCameraViewCommand::Execute()
 {
@@ -225,6 +233,10 @@ SeqCameraReleaseCommand::SeqCameraReleaseCommand(float blendTime, bool blocking)
     : SequenceCommand(blocking), m_blendTime(blendTime)
 {
 }
+
+// @func 0x0077F900 SeqCameraReleaseCommand::~SeqCameraReleaseCommand
+// @func 0x0077F930 SeqCameraReleaseCommand::~SeqCameraReleaseCommand (deleting)
+SeqCameraReleaseCommand::~SeqCameraReleaseCommand() = default;
 
 // @func 0x0042D4C8 SeqCameraReleaseCommand::Execute
 void SeqCameraReleaseCommand::Execute()
@@ -270,6 +282,10 @@ SeqCharacterAction1Command::SeqCharacterAction1Command(float value, uint32_t ent
       m_value(value), m_flag(flag), m_wasIdle(false)
 {
 }
+
+// @func 0x007805C8 SeqCharacterAction1Command::~SeqCharacterAction1Command
+// @func 0x007805F8 SeqCharacterAction1Command::~SeqCharacterAction1Command (deleting)
+SeqCharacterAction1Command::~SeqCharacterAction1Command() = default;
 
 // @func 0x00431800 SeqCharacterAction1Command::Execute
 void SeqCharacterAction1Command::Execute()
@@ -344,6 +360,10 @@ SeqCharacterAction2Command::SeqCharacterAction2Command(float valueA, float value
 {
 }
 
+// @func 0x007804B8 SeqCharacterAction2Command::~SeqCharacterAction2Command
+// @func 0x007804E8 SeqCharacterAction2Command::~SeqCharacterAction2Command (deleting)
+SeqCharacterAction2Command::~SeqCharacterAction2Command() = default;
+
 // @func 0x004307CC SeqCharacterAction2Command::Execute
 void SeqCharacterAction2Command::Execute()
 {
@@ -376,6 +396,10 @@ SeqCharacterAction3Command::SeqCharacterAction3Command(uint32_t entityHash, uint
 {
 }
 
+// @func 0x007803A0 SeqCharacterAction3Command::~SeqCharacterAction3Command
+// @func 0x007803D0 SeqCharacterAction3Command::~SeqCharacterAction3Command (deleting)
+SeqCharacterAction3Command::~SeqCharacterAction3Command() = default;
+
 // @func 0x0042FB5C SeqCharacterAction3Command::Execute
 void SeqCharacterAction3Command::Execute()
 {
@@ -403,6 +427,10 @@ SeqCharacterAction4Command::SeqCharacterAction4Command(uint32_t entityHash, uint
     : SequenceCommand(blocking), m_entityHash(entityHash), m_target(target)
 {
 }
+
+// @func 0x0077FA10 SeqCharacterAction4Command::~SeqCharacterAction4Command
+// @func 0x0077FA40 SeqCharacterAction4Command::~SeqCharacterAction4Command (deleting)
+SeqCharacterAction4Command::~SeqCharacterAction4Command() = default;
 
 // @func 0x0042D92C SeqCharacterAction4Command::Execute
 void SeqCharacterAction4Command::Execute()
@@ -435,6 +463,10 @@ SeqHitEntityCommand::SeqHitEntityCommand(float force, float lift, uint32_t entit
       m_force(force), m_lift(lift), m_mode(mode)
 {
 }
+
+// @func 0x0077FA98 SeqHitEntityCommand::~SeqHitEntityCommand
+// @func 0x0077FAC8 SeqHitEntityCommand::~SeqHitEntityCommand (deleting)
+SeqHitEntityCommand::~SeqHitEntityCommand() = default;
 
 // @func 0x0042DB60 SeqHitEntityCommand::Execute
 void SeqHitEntityCommand::Execute()
@@ -483,6 +515,10 @@ SeqPlayerControlCommand::SeqPlayerControlCommand(bool enable, bool refresh)
 {
 }
 
+// @func 0x0077FD60 SeqPlayerControlCommand::~SeqPlayerControlCommand
+// @func 0x0077FD90 SeqPlayerControlCommand::~SeqPlayerControlCommand (deleting)
+SeqPlayerControlCommand::~SeqPlayerControlCommand() = default;
+
 // @func 0x0042E41C SeqPlayerControlCommand::Execute
 void SeqPlayerControlCommand::Execute()
 {
@@ -513,6 +549,10 @@ SeqHudScreenCommand::SeqHudScreenCommand(uint32_t screenHash, bool show, bool se
       m_restart(restart)
 {
 }
+
+// @func 0x0077FDF0 SeqHudScreenCommand::~SeqHudScreenCommand
+// @func 0x0077FE20 SeqHudScreenCommand::~SeqHudScreenCommand (deleting)
+SeqHudScreenCommand::~SeqHudScreenCommand() = default;
 
 // @func 0x0042E6C0 SeqHudScreenCommand::Execute
 void SeqHudScreenCommand::Execute()
@@ -564,6 +604,10 @@ SeqHudLayerCommand::SeqHudLayerCommand(uint32_t layerHash, bool show, bool setPe
 {
 }
 
+// @func 0x0077FE78 SeqHudLayerCommand::~SeqHudLayerCommand
+// @func 0x0077FEA8 SeqHudLayerCommand::~SeqHudLayerCommand (deleting)
+SeqHudLayerCommand::~SeqHudLayerCommand() = default;
+
 // @func 0x0042E8F8 SeqHudLayerCommand::Execute
 void SeqHudLayerCommand::Execute()
 {
@@ -600,6 +644,10 @@ SeqSkinAttachCommand::SeqSkinAttachCommand(uint32_t hostHash, uint32_t childHash
       m_socket(socket), m_restore(restore)
 {
 }
+
+// @func 0x00780200 SeqSkinAttachCommand::~SeqSkinAttachCommand
+// @func 0x00780230 SeqSkinAttachCommand::~SeqSkinAttachCommand (deleting)
+SeqSkinAttachCommand::~SeqSkinAttachCommand() = default;
 
 // @func 0x0042F620 SeqSkinAttachCommand::Execute
 void SeqSkinAttachCommand::Execute()
@@ -714,6 +762,10 @@ SeqAnimScriptCommand::SeqAnimScriptCommand(const std::vector<AnimScriptBinding>&
 {
 }
 
+// @func 0x007808F8 SeqAnimScriptCommand::~SeqAnimScriptCommand
+// @func 0x00780960 SeqAnimScriptCommand::~SeqAnimScriptCommand (deleting)
+SeqAnimScriptCommand::~SeqAnimScriptCommand() = default;
+
 // @func 0x004332B0 SeqAnimScriptCommand::Execute
 void SeqAnimScriptCommand::Execute()
 {
@@ -772,6 +824,10 @@ SeqSetRenderFlagCommand::SeqSetRenderFlagCommand(WorldObject* entity, uint32_t c
 {
 }
 
+// @func 0x00780E80 SeqSetRenderFlagCommand::~SeqSetRenderFlagCommand
+// @func 0x00780EB0 SeqSetRenderFlagCommand::~SeqSetRenderFlagCommand (deleting)
+SeqSetRenderFlagCommand::~SeqSetRenderFlagCommand() = default;
+
 // @func 0x004383E0 SeqSetRenderFlagCommand::Execute
 void SeqSetRenderFlagCommand::Execute()
 {
@@ -787,6 +843,10 @@ SeqSetActiveCommand::SeqSetActiveCommand(WorldObject* entity, uint32_t childHash
       m_children(children)
 {
 }
+
+// @func 0x007813F0 SeqSetActiveCommand::~SeqSetActiveCommand
+// @func 0x00781420 SeqSetActiveCommand::~SeqSetActiveCommand (deleting)
+SeqSetActiveCommand::~SeqSetActiveCommand() = default;
 
 // @func 0x00439144 SeqSetActiveCommand::Execute
 void SeqSetActiveCommand::Execute()
@@ -807,6 +867,10 @@ SeqSwapAnimSetCommand::SeqSwapAnimSetCommand(uint32_t entityHash, uint32_t animS
       m_permanent(permanent), m_stopAction(stopAction)
 {
 }
+
+// @func 0x007818B8 SeqSwapAnimSetCommand::~SeqSwapAnimSetCommand
+// @func 0x007818E8 SeqSwapAnimSetCommand::~SeqSwapAnimSetCommand (deleting)
+SeqSwapAnimSetCommand::~SeqSwapAnimSetCommand() = default;
 
 // @func 0x0043A8E4 SeqSwapAnimSetCommand::Execute
 void SeqSwapAnimSetCommand::Execute()

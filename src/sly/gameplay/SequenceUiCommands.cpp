@@ -79,6 +79,10 @@ SeqSpeakerDialogCommand::SeqSpeakerDialogCommand(const std::vector<DialogSpeaker
     CopyKey(m_soundKey, 0x40, soundKey);
 }
 
+// @func 0x007809E0 SeqSpeakerDialogCommand::~SeqSpeakerDialogCommand
+// @func 0x00780A48 SeqSpeakerDialogCommand::~SeqSpeakerDialogCommand (deleting)
+SeqSpeakerDialogCommand::~SeqSpeakerDialogCommand() = default;
+
 // @func 0x004337D0 SeqSpeakerDialogCommand::Execute
 void SeqSpeakerDialogCommand::Execute()
 {
@@ -185,6 +189,10 @@ SeqLetterboxCommand::SeqLetterboxCommand(bool show, bool blocking)
     : SequenceCommand(blocking), m_show(show)
 {
 }
+
+// @func 0x00781248 SeqLetterboxCommand::~SeqLetterboxCommand
+// @func 0x00781278 SeqLetterboxCommand::~SeqLetterboxCommand (deleting)
+SeqLetterboxCommand::~SeqLetterboxCommand() = default;
 
 // @func 0x00438A3C SeqLetterboxCommand::Execute
 void SeqLetterboxCommand::Execute()
