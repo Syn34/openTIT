@@ -94,6 +94,18 @@ void SetNavManager(NavManager* nav);
 // Platform links: looks up the entities their Object1..Object6 properties
 // name (0x00010238).
 void ResolveJumpLinkObjects(NavManager& nav);
+// Tracks whether the player stands on the nav mesh, with a one second
+// hysteresis before the answer flips (NOTE: owner unknown; updated by the AI
+// manager's tick).
+struct PlayerNavTracker {
+    ape::Vec3 meshPoint{};      // +0x0C last nav mesh point under the player
+    bool onMesh = false;        // +0x14
+    float switchTimer = 0.0f;   // +0x18
+};
+// One update (0x000104C8). NOTE: the console first calls 0x0067C8B8 on the
+// tracker; its result is not used.
+void UpdatePlayerNavTracker(PlayerNavTracker& tracker, const ape::Vec3* playerPosition, float dt);
+
 // Level reset: drops every jump link and obstacle and unloads the graph
 // (part of 0x0001A840).
 void ResetNavManager(NavManager& nav);

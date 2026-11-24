@@ -135,6 +135,33 @@ void ResolveJumpLinkObjects(NavManager& nav)
     }
 }
 
+// @func 0x000104C8 UpdatePlayerNavTracker
+void UpdatePlayerNavTracker(PlayerNavTracker& tracker, const ape::Vec3* playerPosition, float dt)
+{
+    if (!playerPosition)
+        return;
+    ape::Vec3 point;
+    bool onMesh = false;
+    if (NavPower().FindNearestPoint(*playerPosition, &point)) {
+        const float dy = point.y - playerPosition->y;
+        if (dy > -1.0f && dy < 0.5f) {
+            const float dx = point.x - playerPosition->x;
+            const float dz = point.z - playerPosition->z;
+            onMesh = dz * dz + dx * dx + 0.0f < 1.0f;
+        }
+    }
+    if (tracker.onMesh != onMesh) {
+        if (tracker.switchTimer > 1.0f)
+            tracker.onMesh = onMesh;
+        else
+            tracker.switchTimer += dt;
+    }
+    if (onMesh && tracker.onMesh) {
+        tracker.switchTimer = 0.0f;
+        tracker.meshPoint = point;
+    }
+}
+
 void ResetNavManager(NavManager& nav)
 {
     for (int i = 0; i < nav.jumpLinkCount; ++i) {
