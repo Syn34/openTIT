@@ -284,8 +284,9 @@ struct AIDamageInfo {
     uint32_t field_00 = 0;
     Entity* source = nullptr;    // +0x04
     uint32_t field_08 = 0;
-    uint16_t field_0C = 0;
-    uint16_t flags = 0;          // +0x0E NOTE: bit 12 makes sentries react
+    uint16_t field_0C = 0;       // +0x0C NOTE: bit 8 marks a hit with a position
+    uint16_t flags = 0;          // +0x0E NOTE: bit 12 makes sentries react; bits 13-15 a category
+    ape::Vec3 position{};        // +0x10 where the hit landed (see field_0C)
 };
 
 // One remembered sighting (0x50 bytes on the console; eight per block).
