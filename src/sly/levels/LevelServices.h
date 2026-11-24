@@ -393,5 +393,33 @@ void CharacterResetAfterSwap(WorldObject* character);
 // Camera instance of the loaded level by name (sorted map of 0x00F8F134).
 WorldObject* FindCameraInstance(uint32_t nameHash);
 
+// ---------------------------------------------------------------------------
+// Attaching entities
+
+// Attach record handed to Entity::AttachChild (0x000D15C0; the console
+// record is EntityChildLink, 0xF0 bytes).
+struct EntityAttachDesc {
+    WorldObject* child = nullptr;   // +0xC0
+    ape::Vec3 offset{};             // +0x80
+    ape::Vec4 rotation{0.0f, 0.0f, 0.0f, 1.0f};  // +0x90
+    uint32_t parentPart = 0;        // +0xA0
+    uint32_t childPart = 0;         // +0xA8
+    bool forwardAnim = false;       // +0xB0 bit 31
+    bool restoreState = false;      // +0xB0 bit 25
+    bool flag28 = false;            // +0xB0 bit 28. NOTE: meaning unknown
+    bool flag27 = false;            // +0xB0 bit 27. NOTE: meaning unknown
+    float gravity = 0.0f;           // +0xE0
+};
+void EntityAttach(WorldObject* parent, const EntityAttachDesc& desc);
+// Entity flag 0x200 (+0xAC): the entity forwards its animation to children.
+bool EntityForwardsAnimation(const WorldObject* entity);
+// Entity virtual slot 12.
+void EntityUpdateTransform(WorldObject* entity);
+// Carry components (EntityCarry 0x000D9544): whether it can take an entity
+// (0x002B91EC) and picking it up at once (0x002B9454 with a zero offset).
+void* EntityCarryComponent(WorldObject* entity);
+bool CarryCanTake(void* carry, WorldObject* entity);
+void CarryTake(void* carry, WorldObject* entity);
+
 } // namespace levels
 } // namespace sly

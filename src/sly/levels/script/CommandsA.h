@@ -136,6 +136,7 @@ public:
     AttachEntityCommand();
     explicit AttachEntityCommand(XmlElement* element);
     ~AttachEntityCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:

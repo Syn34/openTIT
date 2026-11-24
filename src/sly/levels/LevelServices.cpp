@@ -170,5 +170,12 @@ void CharacterResetAfterSwap(WorldObject* character) { (void)character; }
 
 WorldObject* FindCameraInstance(uint32_t nameHash) { (void)nameHash; return nullptr; }
 
+void EntityAttach(WorldObject* parent, const EntityAttachDesc& desc) { (void)parent; (void)desc; }
+bool EntityForwardsAnimation(const WorldObject* entity) { (void)entity; return false; }
+void EntityUpdateTransform(WorldObject* entity) { (void)entity; }
+void* EntityCarryComponent(WorldObject* entity) { (void)entity; return nullptr; }
+bool CarryCanTake(void* carry, WorldObject* entity) { (void)carry; (void)entity; return false; }
+void CarryTake(void* carry, WorldObject* entity) { (void)carry; (void)entity; }
+
 } // namespace levels
 } // namespace sly
