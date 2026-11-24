@@ -252,6 +252,10 @@ void ShutdownLevelDefs();
 // Clears both registries (end of program).
 void LevelDefModuleShutdown();
 
+// Level definition being loaded or played (the target of the XML handlers
+// and of the level file chunks that attach strings to it), or null.
+ApeLevelDef* GetCurrentLevelDef();
+
 uint32_t GetLevelDefCount();
 // Level definitions in name hash order.
 ApeLevelDef* GetLevelDefByIndex(uint32_t index);

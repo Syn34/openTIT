@@ -34,6 +34,7 @@ public:
     ~ApeAnimScriptAlwaysEvent() override;
 
     bool Check(ApeAnimScriptInstance*, ApeAnimScriptState*) override { return true; }
+    xml::XmlElement* CreateDebugElement() const override;
     ApeAnimScriptEvent* Create(xml::XmlElement* element) const override;
 };
 
@@ -42,6 +43,7 @@ public:
     ApeAnimScriptGenericEvent() : ApeAnimScriptEvent(AnimHash("event")) {}
     ~ApeAnimScriptGenericEvent() override;
 
+    xml::XmlElement* CreateDebugElement() const override;
     ApeAnimScriptEvent* Create(xml::XmlElement* element) const override;
 };
 
@@ -51,6 +53,7 @@ public:
     ~ApeAnimScriptRefcountEvent() override;
 
     bool Check(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
+    xml::XmlElement* CreateDebugElement() const override;
     ApeAnimScriptEvent* Create(xml::XmlElement* element) const override;
 
 private:

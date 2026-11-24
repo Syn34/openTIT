@@ -426,6 +426,11 @@ ApeAnimScriptEvent* CreateEvent(xml::XmlElement* element);
 // Registers the engine's built-in variable, event and command prototypes.
 void RegisterBuiltins();
 
+// Level files: handlers of the director chunks (DIRF/DIRH/DIRD), and a reload
+// of the current level's director documents into the default library.
+void RegisterDirectorChunkHandlers();
+void ReloadLevelDirectors();
+
 // Hooks into systems outside the script module.
 struct AnimScriptHooks {
     // World object with the given name hash (borrowed reference) or null.
