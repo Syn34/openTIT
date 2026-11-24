@@ -80,6 +80,12 @@ void NavAgentDestroy(NavAgent*) {}
 void NavAgentRequestGoal(NavAgent*, const ape::Vec3&) {}
 ape::Vec3 NavAgentGoal(NavAgent*) { return {}; }
 
+void KnowledgeLevelStart() {}
+void KnowledgeLevelEnd() {}
+void KnowledgeReset() {}
+void AIObjectPoolLevelStart() {}
+void AIObjectPoolLevelEnd() {}
+void AIObjectPoolReset() {}
 void ReleaseCameraMode(AICameraMode*) {}
 void GameWorldSetBossFlag(bool) {}
 void HudSetContext(Entity*, const char*) {}

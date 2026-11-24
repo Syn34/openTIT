@@ -340,6 +340,16 @@ void ReleaseCameraMode(AICameraMode* mode);
 // Game world byte +0x1285A5. NOTE: set while El Jefe's fight runs.
 void GameWorldSetBossFlag(bool on);
 
+// Knowledge system (0x00F6578C) and the AI object pool (0x00F557F8 +4):
+// level start (0x00390D9C / 0x004B2398), level end (0x00390DC4 /
+// 0x004B25C0) and reset (0x00390BAC / 0x004B0E70).
+void KnowledgeLevelStart();
+void KnowledgeLevelEnd();
+void KnowledgeReset();
+void AIObjectPoolLevelStart();
+void AIObjectPoolLevelEnd();
+void AIObjectPoolReset();
+
 // -- HUD -----------------------------------------------------------------------------
 // hud::SetContextByString (0x00369D14) / hud::SetContext (0x00369D00) with
 // the entity as the context value (a 32-bit pointer on the console).

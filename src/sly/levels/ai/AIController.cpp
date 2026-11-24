@@ -11,6 +11,7 @@
 #include "sly/levels/ai/AIHooks.h"
 #include "sly/levels/ai/AIProxyPoints.h"
 #include "sly/levels/ai/AITuning.h"
+#include "sly/levels/nav/NavGraph.h"
 
 #include <cmath>
 #include <limits>
@@ -1001,6 +1002,54 @@ void AIThreatState::NotifyListener(uint32_t value)
 {
     if (listener)
         listener->OnValue(value);
+}
+
+void AIManager::ResetSightings()
+{
+    sightingCount = 0;
+    for (int i = 0; i < kMaxSightings; ++i)
+        sightings[i] = &sightingPool[i];
+}
+
+// @func 0x0001A840 AIManager::Reset
+void AIManager::Reset()
+{
+    if (AIProxyPointTable* table = GetAIProxyPointTable())
+        table->Clear();
+    AIObjectPoolReset();
+    KnowledgeReset();
+    if (NavManager* nav = GetNavManager())
+        ResetNavManager(*nav);
+    ResetSightings();
+}
+
+// @func 0x0001AA34 AIManager::OnLevelStart
+void AIManager::OnLevelStart()
+{
+    controllerCount = 0;
+    activeCount = 0;
+    KnowledgeLevelStart();
+    AIObjectPoolLevelStart();
+    ResetSightings();
+}
+
+// @func 0x0001AB3C AIManager::OnLevelEnd
+void AIManager::OnLevelEnd()
+{
+    controllerCount = 0;
+    activeCount = 0;
+    if (AIProxyPointTable* table = GetAIProxyPointTable())
+        table->Clear();
+    KnowledgeLevelEnd();
+    AIObjectPoolLevelEnd();
+    ResetSightings();
+}
+
+// @func 0x00019210 AIManager::ResolveJumpLinks
+void AIManager::ResolveJumpLinks()
+{
+    if (NavManager* nav = GetNavManager())
+        ResolveJumpLinkObjects(*nav);
 }
 
 // @func 0x0001AC68 AIManager::ClearSightings

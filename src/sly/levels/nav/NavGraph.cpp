@@ -1,6 +1,9 @@
 // openTIT - Level navigation: nav graph loading, nav mesh queries and dynamic obstacles.
 #include "sly/levels/nav/NavGraph.h"
 
+#include "sly/entity/Entity.h"
+#include "sly/levels/ai/AIHooks.h"
+
 #include "ape/core/ApeString.h"
 #include "ape/file/ApeFile.h"
 #include "ape/memory/ApeMem.h"
@@ -11,6 +14,7 @@ namespace levels {
 namespace {
 NavPowerInterface g_nullNavPower;
 NavPowerInterface* g_navPower = &g_nullNavPower;
+NavManager* g_navManager = nullptr;
 
 const ape::Matrix34 kIdentity = {
     {1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
@@ -99,6 +103,51 @@ void RemoveNavObstacle(NavManager& nav, NavObstacleHandle handle)
     }
     // NOTE: the console's handles are reference counted; it also drops the
     // caller's reference here. Raw handles need no such step.
+}
+
+NavManager* GetNavManager() { return g_navManager; }
+void SetNavManager(NavManager* nav) { g_navManager = nav; }
+
+// @func 0x00010238 ResolveJumpLinkObjects
+void ResolveJumpLinkObjects(NavManager& nav)
+{
+    using ai::AIProp;
+    static const AIProp kObjectProps[6] = {AIProp::JumpLink_Object1, AIProp::JumpLink_Object2,
+                                           AIProp::JumpLink_Object3, AIProp::JumpLink_Object4,
+                                           AIProp::JumpLink_Object5, AIProp::JumpLink_Object6};
+    for (int i = 0; i < nav.jumpLinkCount; ++i) {
+        NavJumpLink& link = nav.jumpLinks[i];
+        link.objectCount = 0;
+        if (link.type != NavJumpLink::kPlatformLink)
+            continue;
+        const ai::PropertyBlock* props = link.settingName ? ai::FindSettingObject(link.settingName) : nullptr;
+        if (!props)
+            continue;
+        for (int j = 0; j < 6; ++j) {
+            const char* name = ai::PropString(props, kObjectProps[j]);
+            const uint32_t hash = name ? ape::HashNameNoCase(name) : 0;
+            if (hash == 0)
+                continue;
+            link.objects[j] = entity::FindEntity(hash);
+            if (link.objects[j])
+                ++link.objectCount;
+        }
+    }
+}
+
+void ResetNavManager(NavManager& nav)
+{
+    for (int i = 0; i < nav.jumpLinkCount; ++i) {
+        NavPower().ReleaseJumpLink(nav.jumpLinks[i].link);
+        nav.jumpLinks[i].objectCount = 0;
+    }
+    for (int i = 0; i < nav.obstacleCount; ++i)
+        NavPower().DestroyObstacle(nav.obstacles[i]);
+    if (nav.graphData) {
+        NavPower().UnloadGraph();
+        ape::MemFree(nav.graphData);
+        nav.graphData = nullptr;
+    }
 }
 
 } // namespace levels

@@ -17,6 +17,7 @@
 #include <cstdint>
 
 namespace sly {
+namespace entity { class Entity; }
 namespace levels {
 
 // Opaque NavPower obstacle handle.
@@ -53,21 +54,49 @@ public:
         return nullptr;
     }
     virtual void DestroyObstacle(NavObstacleHandle handle) { (void)handle; }
+    // Jump links (0x0060EABC releases one) and the loaded graph (0x0067738C
+    // unloads it).
+    virtual void ReleaseJumpLink(void* link) { (void)link; }
+    virtual void UnloadGraph() {}
 };
 
 NavPowerInterface& NavPower();
 // Installs the NavPower binding (null restores the inert default).
 void SetNavPower(NavPowerInterface* navPower);
 
+// Jump link created from a "SAINavJumpLink_" level object (0x38 bytes).
+struct NavJumpLink {
+    enum Type : int32_t { kPointLink = 0, kStripLink = 1, kPlatformLink = 2 };
+    int32_t type = kPointLink;                    // +0x00
+    void* link = nullptr;                         // +0x04 NavPower link object
+    uint32_t settingName = 0;                     // +0x08 level object holding the link's properties
+    class entity::Entity* objects[6] = {};        // +0x0C entities named by Object1..Object6
+    int32_t objectCount = 0;                      // +0x24
+};
+
 // Per-level navigation state.
 struct NavManager {
     static constexpr int kMaxObstacles = 0x200;
+    static constexpr int kMaxJumpLinks = 0x200;
 
     void* graphData = nullptr;                    // +0x0000 loaded NavGraph.bfx_res image
     size_t graphSize = 0;
+    int32_t jumpLinkCount = 0;                    // +0x001C
     int32_t obstacleCount = 0;                    // +0x0020
+    NavJumpLink jumpLinks[kMaxJumpLinks];         // +0x0024
     NavObstacleHandle obstacles[kMaxObstacles] = {};  // +0x7024 (pointer to the array on the console)
 };
+
+// The level's nav manager (console pointer 0x00F557EC), may be null.
+NavManager* GetNavManager();
+void SetNavManager(NavManager* nav);
+
+// Platform links: looks up the entities their Object1..Object6 properties
+// name (0x00010238).
+void ResolveJumpLinkObjects(NavManager& nav);
+// Level reset: drops every jump link and obstacle and unloads the graph
+// (part of 0x0001A840).
+void ResetNavManager(NavManager& nav);
 
 // Loads "Levels/<levelName>/NavGraph.bfx_res" once and registers it.
 void LoadNavGraph(NavManager& nav, const char* levelName);

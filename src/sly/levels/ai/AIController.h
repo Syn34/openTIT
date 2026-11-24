@@ -299,7 +299,7 @@ class AIManager {
 public:
     static constexpr int kMaxControllers = 256;
     static constexpr int kMaxAllies = 9;
-    static constexpr int kMaxSightings = 64;
+    static constexpr int kMaxSightings = 16;
 
     AIManager();
 
@@ -315,6 +315,13 @@ public:
     // height (0x000191B0).
     void OnLevelLoaded();
     void ClearSightings();       // 0x0001AC68
+    // Level start / level end / reset of the AI systems (0x0001AA34,
+    // 0x0001AB3C, 0x0001A840).
+    void OnLevelStart();
+    void OnLevelEnd();
+    void Reset();
+    // Looks up the objects of the platform jump links (0x00019210).
+    void ResolveJumpLinks();
     // Shows or hides every non-ally AI entity (0x0001B2F4).
     void SetEntitiesVisible(bool visible);
     // Hands a script command to every controller in the active list
@@ -336,7 +343,10 @@ public:
     AIController* active[kMaxControllers] = {};        // +0x650
     Entity* allies[kMaxAllies] = {};                   // +0xE50
     AIPriorityTargets priorityTargets;                 // +0x14 / +0xE74
-    AISighting* sightings[kMaxSightings] = {};         // +0xE94 (records from +0xEE0)
+    AISighting* sightings[kMaxSightings] = {};         // +0xE94 in use first, then free
+    AISighting sightingPool[kMaxSightings];            // +0xEE0
+private:
+    void ResetSightings();
 };
 
 // The level's AI manager (null between levels).
