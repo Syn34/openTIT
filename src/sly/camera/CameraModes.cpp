@@ -489,6 +489,196 @@ void SpotlightCameraMode::UpdateStage2(float dt, CameraViewState& /*view*/)
 }
 
 // ===========================================================================
+// Default
+// ===========================================================================
+
+// @func 0x001002C4 DefaultCameraMode::~DefaultCameraMode
+// @func 0x00100470 DefaultCameraMode::~DefaultCameraMode (deleting)
+// @func 0x00100504 DefaultCameraMode::~DefaultCameraMode (thunk)
+// @func 0x001004B8 DefaultCameraMode::~DefaultCameraMode (deleting thunk)
+DefaultCameraMode::~DefaultCameraMode()
+{
+    AssignEntity(target, nullptr);
+    if (phantomB) {
+        DestroyPhantom(phantomB);
+        phantomB = nullptr;
+    }
+    if (probeShape) {
+        HavokRemoveReference(probeShape);
+        probeShape = nullptr;
+    }
+    if (phantomA)
+        DestroyPhantom(phantomA);
+    if (probeBodyB)
+        DestroyHavokEntity(probeBodyB);
+    if (probeBodyA)
+        DestroyHavokEntity(probeBodyA);
+}
+
+// @func 0x000FE828 DefaultCameraMode::UpdateCollisionFilter
+void DefaultCameraMode::UpdateCollisionFilter()
+{
+    if (!target)
+        return;
+    uint32_t filter;
+    if (!EntityCollisionFilter(target, filter))
+        return;
+    // Same group as the target (so it never collides with it), layer 0x10.
+    filter = (filter & 0xFFFF0000u) | 0x10;
+    if (filter == collisionFilter)
+        return;
+    collisionFilter = filter;
+    if (probeBodyA)
+        SetEntityCollisionFilter(probeBodyA, filter);
+    if (probeBodyB)
+        SetEntityCollisionFilter(probeBodyB, filter);
+    if (phantomA)
+        SetPhantomCollisionFilter(phantomA, filter);
+    if (phantomB)
+        SetPhantomCollisionFilter(phantomB, filter);
+}
+
+// @func 0x000FEACC DefaultCameraMode::LoadTargetSettings
+void DefaultCameraMode::LoadTargetSettings()
+{
+    const CameraSettings* source = nullptr;
+    if (target) {
+        if (IsCharacterEntity(target))
+            source = CharacterCameraSettings(target);
+        else if (IsVehicleEntity(target))
+            source = VehicleCameraSettings(target);
+    }
+    if (source)
+        targetSettings = *source;
+    else
+        targetSettings.LoadDefaults();
+}
+
+// @func 0x000FEEBC DefaultCameraMode::SetTarget
+void DefaultCameraMode::SetTarget(Entity* entity)
+{
+    AssignEntity(target, entity);
+    if (entity) {
+        LoadTargetSettings();
+        UpdateCollisionFilter();
+    }
+}
+
+// @func 0x000FEF54 DefaultCameraMode::PushOverride
+void DefaultCameraMode::PushOverride(CameraSettings* settings, bool keepOnTop)
+{
+    settings->field_78 = keepOnTop;
+    if (!keepOnTop && overrideCount != 0 && overrides[overrideCount - 1]->field_78) {
+        // Slide in below the entries that stay on top.
+        for (int i = overrideCount; i > 0; --i) {
+            if (!overrides[i - 1]->field_78) {
+                overrides[i] = settings;
+                ++overrideCount;
+                return;
+            }
+            overrides[i] = overrides[i - 1];
+        }
+        // NOTE: with every entry flagged the console drops the new one.
+        return;
+    }
+    overrides[overrideCount++] = settings;
+}
+
+// @func 0x001071CC DefaultCameraMode::RemoveOverride
+CameraSettings* DefaultCameraMode::RemoveOverride(CameraSettings* settings)
+{
+    if (overrideCount >= 2 && overrides[overrideCount - 1] == settings) {
+        overrides[--overrideCount] = nullptr;
+        return settings;
+    }
+    for (int i = overrideCount - 1; i > 0; --i) {
+        if (overrides[i] != settings)
+            continue;
+        --overrideCount;
+        for (int j = i; j < overrideCount; ++j)
+            overrides[j] = overrides[j + 1];
+        overrides[overrideCount] = nullptr;
+        return settings;
+    }
+    return nullptr;
+}
+
+// @func 0x00106700 DefaultCameraMode::SetSecondaryTarget
+void DefaultCameraMode::SetSecondaryTarget(Entity* entity)
+{
+    if (secondaryTarget != entity)
+        targetSettings.fov = entity ? g_cameraDefaultTargetFOV : g_cameraDefaultFOV;
+    secondaryTarget = entity;
+}
+
+// @func 0x001062B8 DefaultCameraMode::Deactivate
+void DefaultCameraMode::Deactivate()
+{
+    if (probeShape) {
+        HavokRemoveReference(probeShape);
+        probeShape = nullptr;
+    }
+    if (probeBodyB)
+        RemoveHavokEntityFromWorld(probeBodyB);
+    if (probeBodyA)
+        RemoveHavokEntityFromWorld(probeBodyA);
+}
+
+// @func 0x00106350 DefaultCameraMode::ResetSettings
+void DefaultCameraMode::ResetSettings()
+{
+    targetSettings.LoadDefaults();
+    const bool flag = targetSettings.field_78;
+    const float extra = targetSettings.field_7C;
+    current = targetSettings;
+    current.field_78 = flag;
+    current.field_7C = extra;
+    angleInterp = g_cameraDefaultAngleInterp;
+}
+
+// @func 0x00100570 DefaultCameraMode::Tick
+bool DefaultCameraMode::Tick(float dt, CameraViewState& view)
+{
+    if (std::fabs(dt) >= 1e-05f) {
+        // Smooth the frame time, fading the smoothing in over five seconds.
+        if (smoothingTime <= 0.1f) {
+            dtSpring.target = dt;
+            dtSpring.targetVelocity = 0.0f;
+            dtSpring.value = dt;
+            dtSpring.velocity = 0.0f;
+        }
+        smoothingTime += dt;
+        dtSpring.timeLeft = 2.0f;
+        dtSpring.Update(dt, dt);
+        const float weight = ape::Saturate(smoothingTime / 5.0f);
+        dt = (dtSpring.value - dt) * weight + dt;
+    }
+    UpdateCollisionFilter();
+    Update(dt, view);
+    UpdateStage2(dt, view);
+    UpdateStage3(dt, view);
+
+    // Optional roll.
+    ape::Matrix34 roll;
+    ape::Matrix34RotationZ(g_cameraDefaultRotationZ * 0.017453292f, roll);
+    const ape::Matrix34 rolled = view.transform;
+    ape::Matrix34MulRotationKeepTranslation(view.transform, rolled, roll);
+    field_C1 = false;
+    field_A4 = 0.0f;
+    return true;
+}
+
+// @func 0x0010660C DefaultCameraMode::GetDebugText
+const char* DefaultCameraMode::GetDebugText()
+{
+    return ape::TempFormat("Target: %s\nSec Tgt: %s\nGimbal Radius: %5.2f", target ? EntityName(target) : "<none>",
+                           secondaryTarget ? EntityName(secondaryTarget) : "<none>", current.gimbalRadius);
+}
+
+// TODO(0x00106B80 DefaultCameraMode::OnStep)
+void DefaultCameraMode::OnStep(const void* /*info*/) {}
+
+// ===========================================================================
 // Shoulder
 // ===========================================================================
 
@@ -554,6 +744,21 @@ SplineCameraMode::~SplineCameraMode()
 {
     AssignEntity(target, nullptr);
     AssignEntity(lookAt, nullptr);
+}
+
+// @func 0x00108A34 SplineCameraMode::SetTarget
+void SplineCameraMode::SetTarget(Entity* entity)
+{
+    AssignEntity(target, entity);
+    if (!entity)
+        AssignEntity(lookAt, nullptr);
+}
+
+// @func 0x001089A8 SplineCameraMode::SetLookAt
+void SplineCameraMode::SetLookAt(Entity* entity)
+{
+    if (lookAt != entity)
+        AssignEntity(lookAt, entity);
 }
 
 // @func 0x0010B240 SplineCameraMode::Finish

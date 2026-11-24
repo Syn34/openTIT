@@ -43,6 +43,11 @@ void BinocucomRefreshFocus(BinocucomCameraMode* mode) { (void)mode; }
 void* CreateSpherePhantom(float radius, uint32_t filterInfo) { (void)radius; (void)filterInfo; return nullptr; }
 void DestroyPhantom(void* phantom) { (void)phantom; }
 void DestroyHavokEntity(void* entity) { (void)entity; }
+void RemoveHavokEntityFromWorld(void* entity) { (void)entity; }
+void HavokRemoveReference(void* object) { (void)object; }
+bool EntityCollisionFilter(entity::Entity* entity, uint32_t& filter) { (void)entity; (void)filter; return false; }
+void SetEntityCollisionFilter(void* entity, uint32_t filter) { (void)entity; (void)filter; }
+void SetPhantomCollisionFilter(void* phantom, uint32_t filter) { (void)phantom; (void)filter; }
 uint32_t CharacterCollisionGroup(entity::Entity* entity) { (void)entity; return 0; }
 void ConstructVehicleFollowCamera(void* storage) { (void)storage; }
 void DestroyVehicleFollowCamera(void* storage) { (void)storage; }

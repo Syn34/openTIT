@@ -87,6 +87,17 @@ void* CreateSpherePhantom(float radius, uint32_t filterInfo);
 void DestroyPhantom(void* phantom);
 // Removes a Havok entity from its world (0x0092FFC8 via 0x009D19C8) and drops it.
 void DestroyHavokEntity(void* entity);
+// Takes a Havok entity out of its world but keeps the reference (0x0092FFC8).
+void RemoveHavokEntityFromWorld(void* entity);
+// Drops a Havok reference (0x007D4EA8).
+void HavokRemoveReference(void* object);
+// Collision filter word of the entity's physics shape (character skin
+// component, prop body, or render object); false when it has none.
+bool EntityCollisionFilter(entity::Entity* entity, uint32_t& filter);
+// New collision filter word for a Havok entity (+0x2C, 0x00930B70) or a
+// phantom (+0x2C, 0x009315F0), applied in the game physics world.
+void SetEntityCollisionFilter(void* entity, uint32_t filter);
+void SetPhantomCollisionFilter(void* phantom, uint32_t filter);
 // Collision group of a character (skin component's shape filter word >> 16), 0 otherwise.
 uint32_t CharacterCollisionGroup(entity::Entity* entity);
 // Havok vehicle follow camera constructed in place (0x009F6BB0 / 0x009F6A60).

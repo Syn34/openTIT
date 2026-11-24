@@ -2,6 +2,7 @@
 #pragma once
 
 #include "sly/camera/CameraMode.h"
+#include "sly/camera/CameraSprings.h"
 
 namespace ape::world { class ApeCameraDef; class ApeObj; class ApeSplineInstance; }
 
@@ -156,6 +157,83 @@ public:
     float yawSpeed = 0.0f;             // 0xB4
 };
 
+// Listener interface shared with the entities (console vtable 0x00B1200C,
+// defaults at 0x0074354C-0x007435B4): three callbacks, then the destructor,
+// then three more callbacks. NOTE: it looks like a physics step listener; the
+// default camera receives slot 0 with the state of its probe bodies.
+class StepListener {
+public:
+    virtual void OnStep(const void* info) { (void)info; }    // slot 0
+    virtual void Slot1() {}
+    virtual void Slot2() {}
+    virtual ~StepListener() = default;                         // slots 3/4
+    virtual void Slot5() {}
+    virtual void Slot6() {}
+    virtual void Slot7() {}
+};
+
+// "Default" (type 11, vtable 0x00B13B90 + 0x00B13BE4 at +0x0C, 0x410 bytes):
+// the follow camera of the player characters. It keeps two sets of
+// CameraSettings (current and target, blended), a stack of setting
+// overrides pushed by character states and triggers, and Havok probe
+// bodies/phantoms for collision.
+// NOTE: the constructor (0x000FF0D8) and the update stages are not ported yet.
+class DefaultCameraMode : public CameraMode, public StepListener {
+public:
+    static constexpr int kMaxOverrides = 17;
+
+    explicit DefaultCameraMode(GameCamera* owner) : CameraMode(owner) {}
+    ~DefaultCameraMode() override;
+    int32_t GetType() const override { return kCamMode_Default; }
+    const char* GetName() const override { return "Default"; }
+    void Deactivate() override;
+    void ResetSettings() override;
+    bool Tick(float dt, CameraViewState& view) override;
+    const char* GetDebugText() override;
+    // Slot 17: empty.
+    // @func 0x001066FC DefaultCameraMode::Slot17
+    virtual void Slot17() {}
+    // Slot 18, also reached through the listener interface (0x00106B80).
+    void OnStep(const void* info) override;
+
+    // Follows `entity` and takes its camera settings (0x000FEEBC).
+    void SetTarget(Entity* entity);
+    // Target settings from the followed character or vehicle definition, or
+    // the tuning defaults (0x000FEACC).
+    void LoadTargetSettings();
+    // Gives the probe bodies and phantoms the target's collision group (0x000FE828).
+    void UpdateCollisionFilter();
+    // Secondary target (lock-on): switches the target field of view (0x00106700).
+    void SetSecondaryTarget(Entity* entity);
+    // Settings overrides; entries flagged keepOnTop (CameraSettings::field_78)
+    // stay above unflagged ones (0x000FEF54 / 0x001071CC). The bottom entry is
+    // never removed.
+    void PushOverride(CameraSettings* settings, bool keepOnTop);
+    CameraSettings* RemoveOverride(CameraSettings* settings);
+    // 0x001071C4
+    void SetField214(bool value) { field_214 = value; }
+
+    Entity* target = nullptr;            // 0x10 counted
+    void* probeBodyA = nullptr;          // 0x14 Havok entity
+    void* probeBodyB = nullptr;          // 0x18 Havok entity
+    void* probeShape = nullptr;          // 0x1C
+    uint32_t collisionFilter = 0;        // 0x30
+    float field_A4 = 0.0f;               // 0xA4 cleared after every tick
+    bool field_C1 = false;               // 0xC1 cleared after every tick
+    void* phantomA = nullptr;            // 0x110
+    Entity* secondaryTarget = nullptr;   // 0x1B8 (not counted)
+    float angleInterp = 0.0f;            // 0x1F0
+    bool field_214 = false;              // 0x214
+    int32_t overrideCount = 0;           // 0x218
+    CameraSettings* overrides[kMaxOverrides] = {};   // 0x21C
+    CameraSettings current;              // 0x260
+    CameraSettings targetSettings;       // 0x2E0
+    SpringFloat dtSpring;                // 0x360 smooths the frame time
+    float smoothingTime = 0.0f;          // 0x380
+    SpringVec3 field_390;                // 0x390
+    void* phantomB = nullptr;            // 0x404
+};
+
 // Settings of the over-the-shoulder camera (Camera.Shoulder.*).
 struct ShoulderSettings {
     void LoadDefaults();               // 0x001072BC
@@ -196,6 +274,10 @@ public:
     const char* GetName() const override { return "Spline"; }
     void Finish() override;
     const char* GetDebugText() override;
+    // A null target also drops the look-at entity (0x00108A34).
+    void SetTarget(Entity* entity);
+    // 0x001089A8
+    void SetLookAt(Entity* entity);
 
     Entity* target = nullptr;                          // 0x0C
     Entity* lookAt = nullptr;                          // 0x10
