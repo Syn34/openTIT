@@ -6,7 +6,7 @@
   ControlAI, AnimMap, ProcAnim, IK, FacePlayer, RadarBlip, Buoyancy, OffscreenMarker,
   SimplePhysics, JumpRope, AeSpline, tracker, Vortex, Scoring, SystemCracker, MagNet,
   SpeedBoost, WallClimb, BallRoll, MonsterCloset, DamageSequence, Mover, Combat, Interact,
-  targeting, ProcEyes, FX, Wheelchair, Radar.
+  targeting, ProcEyes, FX, Wheelchair, Radar, Receptacle.
 * `IKSolverDefs.*`: the IK file's solver definitions (JointTwo/JointThree/LookAt/Foot) and
   their four registries, plus the file-level parser 0x00292F00.
 * Radar reads two tuning defaults (`EntityComp.Radar.Default*Duration`) that belong to the
@@ -25,7 +25,9 @@ hashing the executable's strings and word pairs. Hashes with no match keep a
 * Dispatcher 0x00250190: needs every table entry first.
 * Inventory (0x002666C0 with item parser 0x00265D60, sorted insert 0x00266570 and the
   item/group registries 0x0105BE30 / 0x0105BE18; group parser 0x002650D8).
-* Receptacle (0x002B8328: 0x90-byte slot records built on the stack), Projector,
+* Inventory: group file parser 0x00266C3C, group parser 0x002650D8 (two slot classes,
+  vtables 0x00B1BEA0 / 0x00B1BEC8), item parser 0x00265D60 and the component 0x002666C0.
+* Projector,
   CustomModel, Weapon, Binocucom (its defaults are tuning globals of 0x002D6A40), Shooting,
   and the 0xCE95B536 element (0x0028363C, a parser that returns null).
 * Description destructors live at 0x0076xxxx (outside this range).
