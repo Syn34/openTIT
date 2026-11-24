@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 namespace ape {
@@ -60,6 +61,122 @@ int StrICmp(const char* a, const char* b)
         if (ca != cb || ca == 0)
             return ca - cb;
     }
+}
+
+namespace {
+inline int FoldLower(int c)
+{
+    return (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c;
+}
+} // namespace
+
+// @func 0x00555DE8 StrCaseCompare
+int StrCaseCompare(const char* a, const char* b)
+{
+    for (int i = 0;; ++i) {
+        if (a[i] == '\0' && b[i] == '\0')
+            return 0;
+        const int ca = FoldLower((signed char)a[i]);
+        const int cb = FoldLower((signed char)b[i]);
+        if (ca < cb)
+            return -1;
+        if (ca > cb)
+            return 1;
+    }
+}
+
+// @func 0x00555EB0 StrNCaseCompare
+int StrNCaseCompare(const char* a, const char* b, int count)
+{
+    for (int i = 0; i < count; ++i) {
+        if (a[i] == '\0' && b[i] == '\0')
+            return 0;
+        const int ca = FoldLower((signed char)a[i]);
+        const int cb = FoldLower((signed char)b[i]);
+        if (ca < cb)
+            return -1;
+        if (ca > cb)
+            return 1;
+    }
+    return 0;
+}
+
+// @func 0x00555CF4 StrPrintf
+int StrPrintf(char* buffer, size_t size, const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    const int written = std::vsnprintf(buffer, size, fmt, args);
+    va_end(args);
+    return written;
+}
+
+// @func 0x00555D48 StrVPrintf
+int StrVPrintf(char* buffer, size_t size, const char* fmt, va_list args)
+{
+    return std::vsnprintf(buffer, size, fmt, args);
+}
+
+// @func 0x00555FCC StrStr
+char* StrStr(const char* s, const char* sub)
+{
+    return const_cast<char*>(std::strstr(s, sub));
+}
+
+// @func 0x00555FF0 StrChr
+char* StrChr(const char* s, int c)
+{
+    return const_cast<char*>(std::strchr(s, c));
+}
+
+// @func 0x00556014 StrRChr
+char* StrRChr(const char* s, int c)
+{
+    return const_cast<char*>(std::strrchr(s, c));
+}
+
+// @func 0x005566A8 StrCat
+char* StrCat(char* dst, const char* src)
+{
+    return std::strcat(dst, src);
+}
+
+// @func 0x005565A0 StrLower
+void StrLower(char* s)
+{
+    for (; *s; ++s)
+        *s = (char)FoldLower((signed char)*s);
+}
+
+// @func 0x005565F0 StrFindAny
+char* StrFindAny(const char* s, const char* set)
+{
+    const size_t length = std::strlen(s);
+    const size_t setLength = std::strlen(set);
+    for (size_t i = 0; i < length; ++i)
+        for (size_t j = 0; j < setLength; ++j)
+            if (s[i] == set[j])
+                return const_cast<char*>(s + i);
+    return nullptr;
+}
+
+// @func 0x005566CC StrToUInt
+uint32_t StrToUInt(const char* s)
+{
+    return (uint32_t)std::strtoul(s, nullptr, 10);
+}
+
+// @func 0x005566FC StrToFloat
+float StrToFloat(const char* s)
+{
+    return (float)std::strtod(s, nullptr);
+}
+
+// @func 0x0055672C StrToInt
+long StrToInt(const char* s, int base)
+{
+    char* end = nullptr;
+    return std::strtol(s, &end, base);
 }
 
 // @func 0x0056A710 HashNameNoCase

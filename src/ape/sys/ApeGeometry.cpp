@@ -1,6 +1,10 @@
 // openTIT - Plane helpers.
 #include "ape/sys/ApeGeometry.h"
 
+#include <algorithm>
+#include <cfloat>
+#include <cmath>
+
 #include <cmath>
 
 namespace ape {
@@ -112,6 +116,55 @@ bool PlaneIntersectsBox(const Plane& plane, const Vec3& center, const Vec3& exte
     const float dNear = n[0] * nearCorner[0] + n[1] * nearCorner[1] + n[2] * nearCorner[2];
     const float dFar = n[0] * farCorner[0] + n[1] * farCorner[1] + n[2] * farCorner[2];
     return !(dNear > 0.0f || dFar < 0.0f);
+}
+
+// Separating axis test of a triangle against an axis aligned box: the nine
+// edge x box-axis cross products, the three box faces and the triangle plane.
+// @func 0x00577788 TriangleIntersectsBox
+bool TriangleIntersectsBox(const Vec3& center, const Vec3& extents, const Vec3 triangle[3])
+{
+    float v[3][3];
+    for (int i = 0; i < 3; ++i) {
+        v[i][0] = triangle[i].x - center.x;
+        v[i][1] = triangle[i].y - center.y;
+        v[i][2] = triangle[i].z - center.z;
+    }
+    const float e[3] = {extents.x, extents.y, extents.z};
+    float edges[3][3];
+    for (int i = 0; i < 3; ++i)
+        for (int k = 0; k < 3; ++k)
+            edges[i][k] = v[(i + 1) % 3][k] - v[i][k];
+
+    // Axis = edge x unit axis `a`; project the three vertices and the box.
+    for (const auto& edge : edges) {
+        for (int a = 0; a < 3; ++a) {
+            const int b = (a + 1) % 3, c = (a + 2) % 3;
+            // axis components: (edge x unit_a) has zero along a, edge[c] along b, -edge[b] along c
+            float pmin = FLT_MAX, pmax = -FLT_MAX;
+            for (const auto& vert : v) {
+                const float p = edge[c] * vert[b] - edge[b] * vert[c];
+                pmin = std::min(pmin, p);
+                pmax = std::max(pmax, p);
+            }
+            const float radius = std::fabs(edge[c]) * e[b] + std::fabs(edge[b]) * e[c];
+            if (pmin > radius || pmax < -radius)
+                return false;
+        }
+    }
+
+    // Box faces: the triangle's extent along each axis.
+    for (int a = 0; a < 3; ++a) {
+        const float lo = std::min(v[0][a], std::min(v[1][a], v[2][a]));
+        const float hi = std::max(v[0][a], std::max(v[1][a], v[2][a]));
+        if (lo > e[a] || hi < -e[a])
+            return false;
+    }
+
+    // Triangle plane against the box.
+    const Plane normal = {edges[0][1] * edges[1][2] - edges[0][2] * edges[1][1],
+                          edges[0][2] * edges[1][0] - edges[0][0] * edges[1][2],
+                          edges[0][0] * edges[1][1] - edges[0][1] * edges[1][0], 0.0f};
+    return PlaneIntersectsBox(normal, {v[0][0], v[0][1], v[0][2], 0.0f}, extents);
 }
 
 // --- camera matrices -------------------------------------------------------------

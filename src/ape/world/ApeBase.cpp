@@ -1,6 +1,8 @@
 // openTIT - Ape engine world object base class and shared constants.
 #include "ape/world/ApeBase.h"
 
+#include "ape/world/ApeTags.h"
+
 namespace ape::world {
 
 const Vec3 kWorldUnitScale = {1.0f, 1.0f, 1.0f, 0.0f};
@@ -22,19 +24,33 @@ ApeBase::ApeBase(uint32_t type)
 {
 }
 
-// NOTE: the console destructor (0x00558A48, outside this module's range) also
-// runs a global hook when m_tagFlags is set and releases the tag block with
-// the parameter allocator (0x0056C730). Tag blocks are not ported yet, so
-// there is nothing to release here.
-ApeBase::~ApeBase() = default;
+void (*g_tagReleaseHook)(ApeBase* object) = nullptr;
 
+// @func 0x00558A48 ApeBase::~ApeBase
+// @func 0x00558B84 ApeBase::~ApeBase (deleting)
+// @func 0x00558CE8 ApeBase::~ApeBase (copy called by derived destructors)
+ApeBase::~ApeBase()
+{
+    if (m_tagFlags != 0 && g_tagReleaseHook)
+        g_tagReleaseHook(this);
+    if (m_tags) {
+        m_tags->Release();
+        m_tags = nullptr;
+    }
+}
+
+// @func 0x00558F34 ApeBase::Release
 void ApeBase::Release() {}
 
-// Inlined share of the tag block reference (0x00558E24 on the console). The
-// reference count of the block is not maintained until tag blocks exist.
+// @func 0x00558E24 ApeBase::ShareTags
 void ApeBase::ShareTags(const ApeBase& other)
 {
-    m_tags = other.m_tags;
+    AssignTagBlock(m_tags, other.m_tags);
+}
+
+void ApeBase::SetTags(ApeTagBlock* tags)
+{
+    AssignTagBlock(m_tags, tags);
 }
 
 } // namespace ape::world

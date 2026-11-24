@@ -141,7 +141,13 @@ void ApeAnimScriptIfEqualsCommand::Execute(ApeAnimScriptInstance* instance, ApeA
         ExecuteCommandList(m_commands, instance, state);
 }
 
-// TODO(0x004C6708 ApeAnimScriptIfEqualsCommand::CreateDebugElement) "IfEquals" debug element.
+// @func 0x004C6708 ApeAnimScriptIfEqualsCommand::CreateDebugElement
+xml::XmlElement* ApeAnimScriptIfEqualsCommand::CreateDebugElement() const
+{
+    // NOTE: the console passes the label "IfEquals" to the element constructor,
+    // which ignores it in release builds.
+    return new xml::XmlElement();
+}
 
 // ---------------------------------------------------------------------------
 // IfRange
@@ -188,7 +194,13 @@ void ApeAnimScriptIfRangeCommand::Execute(ApeAnimScriptInstance* instance, ApeAn
         ExecuteCommandList(m_commands, instance, state);
 }
 
-// TODO(0x004C6F4C ApeAnimScriptIfRangeCommand::CreateDebugElement) "IfRange" debug element.
+// @func 0x004C6F4C ApeAnimScriptIfRangeCommand::CreateDebugElement
+xml::XmlElement* ApeAnimScriptIfRangeCommand::CreateDebugElement() const
+{
+    // NOTE: the console passes the label "IfRange" to the element constructor,
+    // which ignores it in release builds.
+    return new xml::XmlElement();
+}
 
 // ---------------------------------------------------------------------------
 // Call
@@ -254,7 +266,13 @@ void ApeAnimScriptCallCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimS
         instance->AddChild(callee);
 }
 
-// TODO(0x004C82F8 ApeAnimScriptCallCommand::CreateDebugElement) "Call" debug element.
+// @func 0x004C82F8 ApeAnimScriptCallCommand::CreateDebugElement
+xml::XmlElement* ApeAnimScriptCallCommand::CreateDebugElement() const
+{
+    // NOTE: the console passes the label "Call" to the element constructor,
+    // which ignores it in release builds.
+    return new xml::XmlElement();
+}
 
 // ---------------------------------------------------------------------------
 // StopChildScript
@@ -281,7 +299,13 @@ void ApeAnimScriptStopChildScriptCommand::Execute(ApeAnimScriptInstance* instanc
         instance->StopChildren(m_child);
 }
 
-// TODO(0x004C9674 ApeAnimScriptStopChildScriptCommand::CreateDebugElement) "StopChildScript" debug element.
+// @func 0x004C9674 ApeAnimScriptStopChildScriptCommand::CreateDebugElement
+xml::XmlElement* ApeAnimScriptStopChildScriptCommand::CreateDebugElement() const
+{
+    // NOTE: the console passes the label "StopChildScript" to the element constructor,
+    // which ignores it in release builds.
+    return new xml::XmlElement();
+}
 
 // ---------------------------------------------------------------------------
 // ChangeState

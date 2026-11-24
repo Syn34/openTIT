@@ -66,8 +66,13 @@ ApeAnimScriptEvent* ApeAnimScriptTimeEvent::Create(xml::XmlElement* element) con
 // @func 0x004C1380 ApeAnimScriptAlwaysEvent::~ApeAnimScriptAlwaysEvent (deleting)
 ApeAnimScriptAlwaysEvent::~ApeAnimScriptAlwaysEvent() = default;
 
-// TODO(0x004C147C ApeAnimScriptAlwaysEvent::CreateDebugElement) builds an
-// "AlwaysEvent" debug element through an XmlElement constructor this port lacks.
+// @func 0x004C147C ApeAnimScriptAlwaysEvent::CreateDebugElement
+xml::XmlElement* ApeAnimScriptAlwaysEvent::CreateDebugElement() const
+{
+    // NOTE: the label "AlwaysEvent" is passed to the element constructor, which
+    // ignores it in release builds.
+    return new xml::XmlElement();
+}
 
 // @func 0x004C14E0 ApeAnimScriptAlwaysEvent::Create
 ApeAnimScriptEvent* ApeAnimScriptAlwaysEvent::Create(xml::XmlElement* element) const
@@ -82,7 +87,13 @@ ApeAnimScriptEvent* ApeAnimScriptAlwaysEvent::Create(xml::XmlElement* element) c
 // @func 0x004C1688 ApeAnimScriptGenericEvent::~ApeAnimScriptGenericEvent (deleting)
 ApeAnimScriptGenericEvent::~ApeAnimScriptGenericEvent() = default;
 
-// TODO(0x004C1784 ApeAnimScriptGenericEvent::CreateDebugElement) "GenericEvent" debug element.
+// @func 0x004C1784 ApeAnimScriptGenericEvent::CreateDebugElement
+xml::XmlElement* ApeAnimScriptGenericEvent::CreateDebugElement() const
+{
+    // NOTE: the label "GenericEvent" is passed to the element constructor, which
+    // ignores it in release builds.
+    return new xml::XmlElement();
+}
 
 // @func 0x004C17E8 ApeAnimScriptGenericEvent::Create
 ApeAnimScriptEvent* ApeAnimScriptGenericEvent::Create(xml::XmlElement* element) const
@@ -107,7 +118,13 @@ bool ApeAnimScriptRefcountEvent::Check(ApeAnimScriptInstance* instance, ApeAnimS
     return !object || object->GetRefCount() < 2;
 }
 
-// TODO(0x004C1B18 ApeAnimScriptRefcountEvent::CreateDebugElement) "Refcount" debug element.
+// @func 0x004C1B18 ApeAnimScriptRefcountEvent::CreateDebugElement
+xml::XmlElement* ApeAnimScriptRefcountEvent::CreateDebugElement() const
+{
+    // NOTE: the label "Refcount" is passed to the element constructor, which
+    // ignores it in release builds.
+    return new xml::XmlElement();
+}
 
 // @func 0x004C1B7C ApeAnimScriptRefcountEvent::Create
 ApeAnimScriptEvent* ApeAnimScriptRefcountEvent::Create(xml::XmlElement* element) const
