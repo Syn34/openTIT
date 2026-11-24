@@ -352,3 +352,78 @@ private:
 
 } // namespace goals
 } // namespace sly
+
+namespace sly {
+namespace goals {
+
+// One entity the camera goal can point out (0x30 bytes on the console).
+struct CameraEntityTarget {
+    uint32_t name = 0;          // +0x00 "Name"
+    void* entity = nullptr;     // +0x04 resolved (holds a reference)
+    ape::Vec3 offset;           // +0x10 (XML 0x8ACA5893)
+    float screenRadius = 0.75f; // +0x20 max distance from the screen centre
+    float minSize = 5.0f;       // +0x24 (XML 0x8E727ACC) view width at the entity's depth
+    float maxSize = 50.0f;      // +0x28
+    bool binocucomOnly = false; // +0x2C (XML 0x1EE7AC93) only while the binocucom is up
+};
+
+// "CameraEntity" (vtable 0x00B1E738): while active, tells the hint script
+// which listed entity the player is looking at. It never completes by itself.
+class GoalCameraEntity : public Goal {
+public:
+    static constexpr int kMaxTargets = 16;
+
+    using Goal::Goal;
+    ~GoalCameraEntity() override;
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
+    uint8_t Update(int player, const GameEvent& e) override;
+    void ResetHints(bool stopHintScript) override;
+    void ReapplyHints(Goal* owner) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+    // 0x0032E038: the target nearest to the view centre, or null.
+    CameraEntityTarget* SelectTarget();
+
+    float timer = 0.0f;                          // +0xA0C (XML 0x71F634BF)
+    float cooldown = 15.0f;                      // +0xA10 (XML 0xDBDD1EA5)
+    CameraEntityTarget targets[kMaxTargets];     // +0xA20
+    int32_t targetCount = 0;                     // +0xD20
+    CameraEntityTarget* current = nullptr;       // +0xD24
+    bool binocucomMode = false;                  // +0xD28
+};
+
+// One interaction the goal watches (0x20 bytes on the console).
+struct InteractionLink {
+    ape::Vec3 offset;               // +0x00 (XML 0x4A4D4D4D)
+    uint32_t name = 0;              // +0x10 entity "Name"
+    void* interaction = nullptr;    // +0x14 the entity's interaction component
+    bool showMarker = false;        // +0x18 bit 31 (XML 0x76E96977)
+    uint32_t options = 0;           // +0x18 bits 25-30 NOTE: same option set as EntityChildLink
+};
+
+// Element hash 0xC766004C (name not recovered; vtable 0x00B1E8A0): every
+// listed interaction is in the required state.
+class GoalInteraction : public Goal {
+public:
+    enum Check : uint32_t {
+        kCheck_Available = 0,   // state < 2
+        kCheck_State1    = 1,
+        kCheck_Flag22    = 2,   // interaction field_7C bit 22
+        kCheck_State3    = 3,
+        kCheck_Touch     = 4,   // NOTE: calls 0x002B719C on each and counts them all
+    };
+
+    using Goal::Goal;
+    ~GoalInteraction() override;
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
+    uint8_t Update(int player, const GameEvent& e) override;
+    void ResetHints(bool stopHintScript) override;
+    void ReapplyHints(Goal* owner) override;
+    void CollectMarkers(GoalMarkerList* list) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+
+    uint32_t check = kCheck_Available;     // +0xA0C bits 26-31
+    ape::ApeTArray<InteractionLink> links; // +0xA10
+};
+
+} // namespace goals
+} // namespace sly

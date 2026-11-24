@@ -76,6 +76,25 @@ void GoalAddEntityMarker(GoalMarkerList*, void*) {}
 void* GoalFindEntity(uint32_t) { return nullptr; }
 void* EntityFindDescendant(void*, uint32_t) { return nullptr; }
 
+void GoalEntityAddRef(void*) {}
+void GoalEntityRelease(void*) {}
+uint32_t GoalEntityName(const void*) { return 0; }
+bool PlayerBinocucomActive() { return false; }
+bool GameCameraFrame(float position[3], float forward[3])
+{
+    position[0] = position[1] = position[2] = 0.0f;
+    forward[0] = forward[1] = forward[2] = 0.0f;
+    return false;
+}
+bool GameWorldToScreen(const float*, float screen[2])
+{
+    screen[0] = screen[1] = 0.0f;
+    return false;
+}
+bool InteractionFlag22(const void*) { return false; }
+void* InteractionOwner(const void*) { return nullptr; }
+void InteractionTouch(void*) {}
+
 // HUD
 void* HudFind(uint32_t) { return nullptr; }
 bool HudIsShown(const void*) { return false; }

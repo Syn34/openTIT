@@ -136,6 +136,24 @@ void* GoalFindEntity(uint32_t name);
 // 0x000DB290: descendant of an entity by name (null if none).
 void* EntityFindDescendant(void* entity, uint32_t name);
 
+// Entity reference count (+0xB2) and virtual slot 10 (release).
+void GoalEntityAddRef(void* entity);
+void GoalEntityRelease(void* entity);
+// Name hash of an entity (+0xA8).
+uint32_t GoalEntityName(const void* entity);
+// The player's binocucom gadget (0x000D94CC) is in mode 3 (field_F4 bits 20-27).
+bool PlayerBinocucomActive();
+// The gameplay camera (game world +0x1281E0): position (+0x90) and forward
+// axis (+0x80). False if there is none.
+bool GameCameraFrame(float position[3], float forward[3]);
+// 0x00522750 on the main render target (+0x128168): screen position (0..1).
+bool GameWorldToScreen(const float position[3], float screen[2]);
+// Interaction component: state (+0x44), field_7C bit 22, owner (+0x08) and
+// 0x002B719C.
+bool InteractionFlag22(const void* interaction);
+void* InteractionOwner(const void* interaction);
+void InteractionTouch(void* interaction);
+
 // ---------------------------------------------------------------------------
 // HUD (0x003568E0 HudFind and friends, sly/game HUD module, not ported)
 // ---------------------------------------------------------------------------
