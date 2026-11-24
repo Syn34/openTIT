@@ -1086,9 +1086,9 @@ public:
 };
 
 class SlyCharacter2Technique : public AglTechnique {
-    // TODO(0x005BD298 SlyCharacter2Technique::BeginMaterial)
     // TODO(0x005BD3B0 SlyCharacter2Technique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
 };
 
@@ -1107,16 +1107,16 @@ public:
 };
 
 class SlyCharacterFurFinTechnique : public AglTechnique {
-    // TODO(0x005C1368 SlyCharacterFurFinTechnique::BeginMaterial)
     // TODO(0x005C13DC SlyCharacterFurFinTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
 };
 
 class SlyCharacterFakeFurTechnique : public AglTechnique {
-    // TODO(0x005C1E40 SlyCharacterFakeFurTechnique::BeginMaterial)
     // TODO(0x005C1EB8 SlyCharacterFakeFurTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
 };
 
@@ -1128,8 +1128,9 @@ public:
 };
 
 class SlyDecalTechnique : public AglTechnique {
-    // TODO(0x005C38C0 SlyDecalTechnique::BeginMaterial)
     // TODO(0x005C39C8 SlyDecalTechnique::Draw)
+public:
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyDecal4Technique : public AglTechnique {
@@ -1406,6 +1407,52 @@ void SlyTerrainTechnique::BeginMaterial(AglMaterial* material)
     if (material->anim)
         UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
     UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// Shared by the second generation character techniques: colour constants
+// and the rim parameters (constants 10 and 12) in vertex register 0x21 and
+// fragment constant 4.
+static void BeginCharacter2Material(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, 0.0f);
+    const float rim[4] = {MaterialConstant(material, 10), MaterialConstant(material, 12), 0.0f, 0.0f};
+    Cmd().SetVertexProgramConstants(0x21, 4, rim);
+    SetShaderConstant(4, rim);
+}
+
+// @func 0x005BD298 SlyCharacter2Technique::BeginMaterial
+void SlyCharacter2Technique::BeginMaterial(AglMaterial* material)
+{
+    BeginCharacter2Material(material);
+}
+
+// @func 0x005C1E40 SlyCharacterFakeFurTechnique::BeginMaterial
+void SlyCharacterFakeFurTechnique::BeginMaterial(AglMaterial* material)
+{
+    BeginCharacter2Material(material);
+    const float fur[4] = {MaterialConstant(material, 13), 0.0f, 0.0f, 0.0f};
+    SetShaderConstant(5, fur);
+}
+
+// @func 0x005C1368 SlyCharacterFurFinTechnique::BeginMaterial
+void SlyCharacterFurFinTechnique::BeginMaterial(AglMaterial* material)
+{
+    const float fin[4] = {MaterialConstant(material, 0), MaterialConstant(material, 1), 0.0f, 0.0f};
+    Cmd().SetVertexProgramConstants(7, 4, fin);
+}
+
+// @func 0x005C38C0 SlyDecalTechnique::BeginMaterial
+void SlyDecalTechnique::BeginMaterial(AglMaterial* material)
+{
+    // Constants 0/1 scale the texture coordinates, 2..4 tint the decal.
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, MaterialConstant(material, 0), MaterialConstant(material, 1));
+    const float flag[4] = {MaterialSwitchValue(material), 0.0f, 0.0f, 0.0f};
+    SetShaderConstant(3, flag);
+    const float tint[4] = {MaterialConstant(material, 2), MaterialConstant(material, 3),
+                           MaterialConstant(material, 4), 0.0f};
+    SetShaderConstant(0, tint);
 }
 
 // @func 0x005B182C ProjTxrDeferredTechnique::BeginMaterial
