@@ -2895,7 +2895,7 @@ public:
     // @func 0x007AB22C SlyCausticsClass::~SlyCausticsClass
     // @func 0x007AEB44 SlyCausticsClass::~SlyCausticsClass (deleting)
     ~SlyCausticsClass() override = default;
-    // TODO(0x005BB23C SlyCausticsClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyCausticsClass() : AglShaderClass("SlyCaustics") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3159,7 +3159,7 @@ public:
     // @func 0x007AB4AC SlyDecalClass::~SlyDecalClass
     // @func 0x007AF108 SlyDecalClass::~SlyDecalClass (deleting)
     ~SlyDecalClass() override = default;
-    // TODO(0x005C45D0 SlyDecalClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyDecalClass() : AglShaderClass("SlyDecal") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3512,7 +3512,7 @@ public:
     // @func 0x007AB7CC SlyShrubClass::~SlyShrubClass
     // @func 0x007AFC94 SlyShrubClass::~SlyShrubClass (deleting)
     ~SlyShrubClass() override = default;
-    // TODO(0x005CE368 SlyShrubClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyShrubClass() : AglShaderClass("SlyShrub") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -4059,6 +4059,71 @@ bool SlyTerrainClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc
     if (!SecondDetailLayerDisabled())
         if (AglTexture* detail2 = FindTexture(desc->detail2Hash))
             AddLayerLikeFirst(material, detail2);
+    return true;
+}
+
+// Main texture repeated in both directions plus the word 0x78 switch from
+// the desc wrap mode. False without the texture.
+static bool AddRepeatedMainLayer(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    AglTexture* texture = FindTexture(desc->textureHash);
+    if (!texture)
+        return false;
+    texture->SetWrap(1, 1, 1);
+    material->AddTexture(texture);
+    material->field_78 = desc->wrapMode == 2 ? 2 : 3;
+    return true;
+}
+
+// @func 0x005BB23C SlyCausticsClass::SetupMaterial
+bool SlyCausticsClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (!AddRepeatedMainLayer(material, desc))
+        return false;
+    for (uint32_t i = 0; i < 4; ++i)
+        *material->GetConstant(i) = desc->params[i];
+    return true;
+}
+
+// @func 0x005C45D0 SlyDecalClass::SetupMaterial
+bool SlyDecalClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (desc->paramCount == 0)
+        return true;
+    if (!AddRepeatedMainLayer(material, desc))
+        return false;
+    *material->GetConstant(0) = desc->params[0];
+    *material->GetConstant(1) = desc->params[1];
+    if (!MaterialParamsEnabled())
+        return true;
+    // Detail and colour layers; a missing one is replaced by default texture 4.
+    AglTexture* detail = FindTexture(desc->detailHash);
+    AglTexture* color = FindTexture(desc->diffuseHash);
+    if (!detail && !color)
+        return true;
+    AddLayerLikeFirst(material, detail ? detail : GetDefaultTexture(4));
+    AddLayerLikeFirst(material, color ? color : GetDefaultTexture(4));
+    for (uint32_t i = 2; i < 5; ++i)
+        *material->GetConstant(i) = desc->params[i];
+    if (!SecondDetailLayerDisabled())
+        if (AglTexture* detail2 = FindTexture(desc->detail2Hash))
+            AddLayerLikeFirst(material, detail2);
+    return true;
+}
+
+// @func 0x005CE368 SlyShrubClass::SetupMaterial
+bool SlyShrubClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    // Constant 0 holds an integer (0..255) read from the raw bits of param 0.
+    uint32_t level = 0;
+    if (desc->paramCount != 0) {
+        std::memcpy(&level, &desc->params[0], sizeof(level));
+        if (level >= 0x100)
+            level = 0xFF;
+    }
+    std::memcpy(material->GetConstant(0), &level, sizeof(level));
+    for (uint32_t i = 1; i < 7; ++i)
+        *material->GetConstant(i) = desc->paramCount > i ? desc->params[i] : 0.0f;
     return true;
 }
 
