@@ -203,6 +203,8 @@ public:
     static constexpr uint32_t kInstanceType = kObjType_PointInstance;
     ApePointInstance() : ApeObj(kInstanceType) {}
     void Release() override;
+    // @func 0x005A6C28 ApePointInstance::VirtualSlot15
+    void VirtualSlot15(int count, int arg) override { ApeObj::VirtualSlot15(count, arg); }
 };
 
 class ApeSplineInstance : public ApeObj {
@@ -210,6 +212,11 @@ public:
     static constexpr uint32_t kInstanceType = kObjType_SplineInstance;
     ApeSplineInstance() : ApeObj(kInstanceType) {}
     void Release() override;
+    // A moved spline only needs its bounds pushed again.
+    // @func 0x005A77F0 ApeSplineInstance::OnWorldTransformUpdated
+    void OnWorldTransformUpdated(bool moved) override { OnBoundsChanged(); }
+    // @func 0x005A8388 ApeSplineInstance::VirtualSlot15
+    void VirtualSlot15(int count, int arg) override { ApeObj::VirtualSlot15(count, arg); }
 
     // Spline queries in world space (the definition's spline is in the
     // instance's local space). They return the segment found.
@@ -222,6 +229,9 @@ public:
 
     ApeSplineDef* GetSplineDef() const;
 };
+
+// First direct child of `object` that is a spline instance, or null.
+ApeSplineInstance* FindChildSpline(const ApeObj& object);
 
 // Chunk handlers: the instance chunk (arg: parent object or null) and the
 // record chunk inside it (arg: the instance).

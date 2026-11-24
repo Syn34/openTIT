@@ -4,6 +4,9 @@
 // system is ported and can be called directly.
 #include "sly/objects/ObjectsHooks.h"
 
+#include "sly/game/AudioSystem.h"
+#include "sly/game/SoundZones.h"
+
 #include "ape/world/ApeBase.h"
 
 namespace sly {
@@ -163,12 +166,9 @@ void* FindJob(uint32_t jobNameHash)
 }
 
 // --- audio -------------------------------------------------------------------
-// TODO(0x00446984 FindSoundName)
 audio::SoundName* FindSoundName(uint32_t soundHash, uint32_t bankHash)
 {
-    (void)soundHash;
-    (void)bankHash;
-    return nullptr;
+    return audio::CreateSoundName(soundHash, bankHash);
 }
 
 // TODO(0x0044C474)
@@ -191,36 +191,15 @@ void SetVoice3D(uint32_t voice, const ape::Vec3& position, float volume)
 ape::Vec3 GetListenerPosition() { return ape::world::kWorldZero; }
 ObjEntity* GetPlayerEntity() { return nullptr; }
 
-// TODO(0x0044C404)
-SoundZone* FindSoundZone(uint32_t nameHash)
-{
-    (void)nameHash;
-    return nullptr;
-}
-// TODO(0x0044C43C)
-MixState* FindMixState(uint32_t nameHash)
-{
-    (void)nameHash;
-    return nullptr;
-}
-float SoundZoneFadeDistance(const SoundZone* zone) { (void)zone; return 0.0f; }
-float SoundZoneRadius(const SoundZone* zone) { (void)zone; return 0.0f; }
-void* SoundZoneActiveTrigger(const SoundZone* zone) { (void)zone; return nullptr; }
-void SetSoundZoneActiveTrigger(SoundZone* zone, void* trigger)
-{
-    (void)zone;
-    (void)trigger;
-}
-// TODO(0x00441C68)
-void SoundZoneActivate(SoundZone* zone) { (void)zone; }
-// TODO(0x00441CB8)
-void SoundZoneDeactivate(SoundZone* zone) { (void)zone; }
-// TODO(0x00441D18)
-void SoundZoneSetWeight(SoundZone* zone, float weight)
-{
-    (void)zone;
-    (void)weight;
-}
+SoundZone* FindSoundZone(uint32_t nameHash) { return audio::FindSoundZone(nameHash); }
+MixState* FindMixState(uint32_t nameHash) { return audio::FindMixState(nameHash); }
+float SoundZoneFadeDistance(const SoundZone* zone) { return zone->fadeDistance; }
+float SoundZoneRadius(const SoundZone* zone) { return zone->radius; }
+void* SoundZoneActiveTrigger(const SoundZone* zone) { return zone->activeTriggers; }
+void SetSoundZoneActiveTrigger(SoundZone* zone, void* trigger) { zone->activeTriggers = trigger; }
+void SoundZoneActivate(SoundZone* zone) { audio::ActivateSoundZone(zone); }
+void SoundZoneDeactivate(SoundZone* zone) { audio::DeactivateSoundZone(zone); }
+void SoundZoneSetWeight(SoundZone* zone, float weight) { audio::SetSoundZoneWeight(zone, weight); }
 // TODO(0x0044D5BC)
 void MixStatePush(MixState* mix, float fadeTime)
 {

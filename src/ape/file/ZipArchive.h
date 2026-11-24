@@ -172,6 +172,9 @@ int MountZipArchive(const char* path, const char* mountPrefix);
 // Mounts a zip read from an open stream (the stream stays owned by the caller).
 int MountZipStream(File* stream, const char* mountPrefix);
 
+// Unmounts the archive with the 1-based handle returned at mount time.
+bool UnmountZipArchive(int handle);
+
 // Checks the mounted archives for `path` / opens it from them.
 bool IsInMountedArchive(const char* path);
 File* OpenArchiveFile(const char* path);

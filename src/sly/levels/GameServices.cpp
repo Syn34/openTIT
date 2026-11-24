@@ -1,6 +1,9 @@
 // openTIT - TODO stubs for the game systems used by the level and script code.
 // Each returns what the original returns for a missing object.
 #include "sly/levels/GameServices.h"
+
+#include "sly/game/AudioSystem.h"
+#include "sly/game/SoundZones.h"
 #include "sly/levels/script/ScriptVars.h"
 
 #include "sly/levels/PlayerNotifyFlags.h"
@@ -104,10 +107,8 @@ WorldObject* EntityVarValue(ape::ApeAnimScriptVar* var)
 void GoalSetComplete(uint32_t goal, bool complete, bool notify) { (void)goal; (void)complete; (void)notify; }
 void GlobalToggleOn() {}
 
-// TODO(0x0044C43C FindMixState)
-const audio::MixState* FindMixState(uint32_t nameHash) { (void)nameHash; return nullptr; }
-// TODO(0x00446984 FindSoundName)
-audio::SoundName* FindSoundName(uint32_t soundHash, uint32_t bankHash) { (void)soundHash; (void)bankHash; return nullptr; }
+const audio::MixState* FindMixState(uint32_t nameHash) { return audio::FindMixState(nameHash); }
+audio::SoundName* FindSoundName(uint32_t soundHash, uint32_t bankHash) { return audio::CreateSoundName(soundHash, bankHash); }
 
 } // namespace levels
 } // namespace sly
