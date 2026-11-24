@@ -14,7 +14,7 @@ namespace components {
 // console order. Besides the tuning variables below it constructs the module's
 // registries, which live with the code that uses them:
 //   0x01056F04 component template table (cap 0x140, sly/entity RegisterComponentTemplate),
-//   0x01056F1C live inventory components (cap 0x100), 0x0105AE30 (cap 0x20),
+//   0x01056F1C live components (cap 0x100, Components.cpp), 0x0105AE30 (cap 0x20),
 //   0x0105752C / 0x01057544 (cap 0x20), 0x010578A4 / 0x010578BC / 0x01057874 /
 //   0x0105788C (cap 4; the IK solver registries, IKSolverDefs.cpp), 0x0105ABB8 (cap 0x20),
 //   0x0105BE04 / 0x0105BE18 / 0x0105BE30 (inventory slots/groups/items, InventoryDescs.cpp),
