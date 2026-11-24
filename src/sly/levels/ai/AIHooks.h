@@ -279,6 +279,8 @@ int BodyMotionType(EntityComponent* body);
 // linear velocity, clears the angular part and marks it pending (bit 25 of
 // word +0xA8).
 void BodyRequestVelocity(EntityComponent* body, const ape::Vec3& velocity);
+// 0x0026D824: normal of the ground under the body.
+ape::Vec3 BodyGroundNormal(EntityComponent* body);
 // Hold request: zero velocity, identity orientation, factor +0x80 = 1 and
 // flag bit 26 instead of bit 25 (word +0xA8).
 void BodyRequestHold(EntityComponent* body);

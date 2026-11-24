@@ -253,6 +253,15 @@ void EnemyAI::OnTurnInPlace()
         SetState(kState_TurnInPlace);
 }
 
+// @func 0x0003B7F8 EnemyAI::OnNavGoalChanged
+void EnemyAI::OnNavGoalChanged()
+{
+    SetFacing({navGoal.x - transform.translation.x, navGoal.y - transform.translation.y,
+               navGoal.z - transform.translation.z, 0.0f});
+    const float degrees = SignedAngle(transform.zAxis, facing) * 57.2957763671875f;
+    SetState(std::fabs(degrees) > 60.0f ? 0x23 : 0x1F);
+}
+
 // @func 0x0003BAB8 EnemyAI::OnProxyPointReached
 void EnemyAI::OnProxyPointReached()
 {

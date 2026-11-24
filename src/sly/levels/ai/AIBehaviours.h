@@ -195,6 +195,7 @@ public:
     float GravitySpeed() override;
 
     void OnProxyPointReached() override;
+    void OnNavGoalChanged() override;
 
     // Lets go of the target and any claim when engaged (0x0002EC04).
     void Disengage();
@@ -236,6 +237,8 @@ public:
     bool IsSettled() override;
     bool ShouldApplyGravity(const ape::Vec3& velocity) override;
     void ExitState() override;
+    void OnProxyPointReached() override;
+    void UpdateMovement(float dt) override;
 
     Entity* alertReceiver = nullptr;  // +0x138 told when the sentry is hit
     uint8_t settled = 0;              // +0x13C

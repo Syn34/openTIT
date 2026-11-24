@@ -2,7 +2,11 @@
 #include "sly/levels/ai/AIBehaviours.h"
 
 #include "sly/levels/ai/AIComponent.h"
+#include "ape/core/ApeString.h"
 #include "sly/levels/ai/AIHooks.h"
+#include "sly/levels/ai/AIProxyPoints.h"
+
+#include <cmath>
 
 namespace sly {
 namespace levels {
@@ -98,6 +102,45 @@ void SentryAI::ExitState()
         field_13D = 0;
     else if (state == 4)
         GameStateNotify();
+}
+
+// @func 0x0003DC98 SentryAI::UpdateMovement
+void SentryAI::UpdateMovement(float dt)
+{
+    AIController::UpdateMovement(dt);
+    if (!PropBool(settings, AIProp::Sentry_OrientToTerrain) || !body || !BodyIsEnabled(body) ||
+        BodyMotionType(body) != 1)
+        return;
+    const ape::Vec3 ground = BodyGroundNormal(body);
+    if (ground.y <= 0.5f)
+        return;
+    // Lean the up axis a tenth of the way towards the ground normal and
+    // rebuild the other two axes around it.
+    ape::Matrix34& m = transform;
+    const ape::Vec3 up = {m.yAxis.x * 0.9f + ground.x * 0.1f, m.yAxis.y * 0.9f + ground.y * 0.1f,
+                          m.yAxis.z * 0.9f + ground.z * 0.1f, 0.0f};
+    ape::Vec3 x = {up.y * m.zAxis.z - up.z * m.zAxis.y, up.z * m.zAxis.x - up.x * m.zAxis.z,
+                   up.x * m.zAxis.y - up.y * m.zAxis.x, 0.0f};
+    m.yAxis = up;
+    const float xInv = 1.0f / std::sqrt(x.z * x.z + x.x * x.x + x.y * x.y);
+    x = {x.x * xInv, x.y * xInv, x.z * xInv, 0.0f};
+    m.xAxis = x;
+    const ape::Vec3 z = {x.y * up.z - x.z * up.y, x.z * up.x - x.x * up.z, x.x * up.y - x.y * up.x, 0.0f};
+    const float zInv = 1.0f / std::sqrt(z.z * z.z + z.x * z.x + z.y * z.y);
+    m.zAxis = {z.x * zInv, z.y * zInv, z.z * zInv, 0.0f};
+}
+
+// @func 0x0003DED8 SentryAI::OnProxyPointReached
+void SentryAI::OnProxyPointReached()
+{
+    const PropertyBlock* props =
+        proxyPoint ? static_cast<const PropertyBlock*>(proxyPoint->properties) : nullptr;
+    const char* anim = PropString(props, AIProp::ProxyPt_Anim);
+    if (anim && anim[0] != '\0') {
+        SetState(0);
+        PlayClip(ape::HashNameNoCase(anim));
+    }
+    AIController::OnProxyPointReached();
 }
 
 } // namespace ai
