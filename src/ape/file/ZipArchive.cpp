@@ -691,6 +691,20 @@ int MountZipStream(File* stream, const char* mountPrefix)
     return RegisterArchive(archive);
 }
 
+// Unmounts archive `handle` (1-based mount index). The last archive takes
+// the freed slot, as on the console. Returns false for an empty slot.
+// @func 0x0055E350 UnmountZipArchive
+bool UnmountZipArchive(int handle)
+{
+    const size_t index = size_t(uint16_t(handle)) - 1;
+    if (index >= g_archives.size() || !g_archives[index])
+        return false;
+    delete g_archives[index];
+    g_archives[index] = g_archives.back();
+    g_archives.pop_back();
+    return true;
+}
+
 bool IsInMountedArchive(const char* path)
 {
     for (const ZipArchive* archive : g_archives)
