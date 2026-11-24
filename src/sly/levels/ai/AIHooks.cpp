@@ -12,6 +12,9 @@ uint32_t PropHash(const PropertyBlock*, AIProp) { return 0; }
 bool PropBool(const PropertyBlock*, AIProp) { return false; }
 float PropFloat(const PropertyBlock*, AIProp) { return 0.0f; }
 
+const PropertyBlock* FindSettingObject(uint32_t) { return nullptr; }
+bool CharacterSpawnerSettings(const Entity*, uint32_t[3], const PropertyBlock*[3]) { return false; }
+
 void EntityTick(Entity*, float) {}
 void EntitySetTransform(Entity* entity, const ape::Matrix34& transform)
 {

@@ -61,6 +61,15 @@ float PropFloat(const PropertyBlock* block, AIProp prop);
 constexpr uint32_t kPathType_PingPong = 0x152D006Au;
 constexpr uint32_t kPathType_Random = 0x8FA5D8C3u;
 
+// Level object holding the properties of a setting, by name (the scene's
+// named setting map, 0x00F658D4 +0x20), or null.
+const PropertyBlock* FindSettingObject(uint32_t nameHash);
+// Character spawners (spawner slot 5) carry up to three entity definition
+// names (+0x68..+0x70) with the AI setting object to use for each
+// (+0x78..+0x80). False when `entity` was not made by a character spawner.
+bool CharacterSpawnerSettings(const Entity* entity, uint32_t defNames[3],
+                              const PropertyBlock* settings[3]);
+
 // -- entities --------------------------------------------------------------------
 // Entity virtual slot 13 (+0x34): per-frame update of the entity itself.
 void EntityTick(Entity* entity, float dt);
