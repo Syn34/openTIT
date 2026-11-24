@@ -463,5 +463,22 @@ void SunLightSetRange(SunLightSettings& light, float range);
 // 0x0042A740: puts back the values saved when the level started.
 void SunLightRestoreDefaults();
 
+// Marker record of a targeting gadget (0x0029F760 adds one and returns it).
+// NOTE: flag meanings unknown; named after their bit in the word +0x78.
+struct TargetingMarker {
+    ape::xml::Color8 color{};     // +0x00
+    WorldObject* target = nullptr; // +0x08
+    ape::Vec3 offset{};           // +0x10
+    int32_t field_24 = 0;         // +0x24
+    uint32_t markerDef = 0;       // +0x28
+    bool flag28 = false;
+    bool flag27 = false;
+    bool flag26 = false;
+    bool flag25 = false;
+    bool flag24 = false;
+    bool flag23 = false;
+};
+TargetingMarker* TargetingAddMarker(void* targeting);
+
 } // namespace levels
 } // namespace sly

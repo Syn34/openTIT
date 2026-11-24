@@ -190,5 +190,7 @@ SunLightSettings* GetSunLightSettings() { return nullptr; }
 void SunLightSetRange(SunLightSettings& light, float range) { (void)light; (void)range; }
 void SunLightRestoreDefaults() {}
 
+TargetingMarker* TargetingAddMarker(void* targeting) { (void)targeting; return nullptr; }
+
 } // namespace levels
 } // namespace sly
