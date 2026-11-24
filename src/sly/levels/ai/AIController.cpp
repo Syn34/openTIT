@@ -601,6 +601,12 @@ void AIController::FaceDirection(const ape::Vec3& direction)
     transform.xAxis = {xInv * xx, xInv * xy, xInv * xz, 0.0f};
 }
 
+bool AIController::IsCharacterDead()
+{
+    // The base version (0x00738528) lies outside this range.
+    return character && CharacterHealth(character) <= 0.0f;
+}
+
 const char* AIController::StateName(int s)
 {
     // The base version (0x00738574) lies outside this range.

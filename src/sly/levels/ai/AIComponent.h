@@ -26,7 +26,7 @@ enum AIType : uint32_t {
     kAIType_Critter        = 0x685B0BE7u,   // "Critter"
     kAIType_Player         = 0x8CD18EE1u,   // "Player"
     kAIType_PatternBoss    = 0x49CC0E00u,   // reads the "Pattern" lists below
-    kAIType_Cpu            = 0xCCFB1F40u,
+    kAIType_Racer          = 0xCCFB1F40u,
     kAIType_C83BCA3D       = 0xC83BCA3Du,
     kAIType_BC6EBE7B       = 0xBC6EBE7Bu,
     kAIType_ElJefe         = 0xA1519173u,

@@ -8,6 +8,9 @@
 #pragma once
 
 #include "sly/levels/ai/AIController.h"
+#include "sly/levels/ai/AIHooks.h"
+
+namespace ape::world { class ApeSplineInstance; }
 
 namespace sly {
 namespace levels {
@@ -120,9 +123,36 @@ public:
     ape::ApeAnimScriptInstance* loopScript = nullptr;   // +0x164
 };
 
-// Scripted opponent ("CPU"; vtable 0x00B0E428, 0x170 bytes).
-class CpuAI : public AIController {
+// Racer (vtable 0x00B0E428, 0x170 bytes): spawned by a spawner that keeps
+// a race track; the spawner ranks its racers by their progress along it.
+class RacerAI : public AIController {
 public:
+    ~RacerAI() override;
+    void Update(float dt) override;
+    void PreUpdate(float dt) override;
+    void OnMessage(const entity::EntityMessage& msg) override;
+    void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2) override;
+    void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
+    bool IsCharacterDead() override;
+    void ChooseState() override;
+    bool Think(float dt) override;
+    void ExitState() override;
+    // Slot 75: place in the race (0 = first). Implemented outside this range
+    // (0x00738E00).
+    virtual void SetRacePosition(float position) { (void)position; }
+
+    float progress = 0.0f;            // +0x14C position along the race track
+};
+
+// Race state of a spawner (spawner +0x50, 0x3C bytes).
+class RaceTracker {
+public:
+    // Re-ranks the racers of `spawner` by their progress along the track and
+    // tells each its place (0x0002B618).
+    void UpdateRanking(SpawnerRef* spawner);
+
+    uint32_t field_00 = 0;
+    ape::world::ApeSplineInstance* track = nullptr;   // +0x04
 };
 
 // Standard enemy (vtable 0x00B0E5B8, 0x1E0 bytes): patrol, cover, turret and

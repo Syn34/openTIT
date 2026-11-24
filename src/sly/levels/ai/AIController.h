@@ -115,9 +115,16 @@ public:
     // Slot 44 (+0xB0): extra vertical speed applies (`out` is unused by the
     // base). NOTE: name from use.
     virtual bool HasVerticalBoost(float* out) { (void)out; return false; }
+    // Slot 39 (+0x9C): the controlled character has no health left.
+    virtual bool IsCharacterDead();
     // Slot 40 (+0xA0): NOTE: false while the behaviour is still on its way
     // somewhere (meaning inferred from the buddy override).
     virtual bool IsSettled() { return true; }
+    // Slot 41 (+0xA4): command from a script (hash, two arguments).
+    virtual void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2)
+    {
+        (void)command; (void)arg1; (void)arg2;
+    }
     // Slot 42 (+0xA8): debug name of a state.
     virtual const char* StateName(int s);
     // Slot 49 (+0xC4): damage taken. The base version (0x007386E0) sets

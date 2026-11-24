@@ -113,6 +113,17 @@ bool CharacterSpawnerSettings(const Entity* entity, uint32_t defNames[3],
 bool SpawnerAltObjectBounds(const Entity* entity, ape::Vec3& boxMin, ape::Vec3& boxMax);
 bool SpawnerIsSpawnField(const Entity* entity);
 bool HasSpawner(const Entity* entity);
+// The spawner that created an entity (entity +0xDC), opaque here, and its
+// list of live spawned objects (spawner +0x14/+0x18).
+struct SpawnerRef;
+SpawnerRef* EntitySpawner(const Entity* entity);
+int SpawnerLiveCount(const SpawnerRef* spawner);
+Entity* SpawnerLive(const SpawnerRef* spawner, int index);
+void SpawnerSwapLive(SpawnerRef* spawner, int a, int b);
+// Race state a spawner keeps for the racers it spawns (spawner +0x50), or
+// null.
+class RaceTracker;
+RaceTracker* SpawnerRaceTracker(const SpawnerRef* spawner);
 // 0x0048FA54: registers the entity in an event listener group.
 void AddToListenerGroup(Entity* entity, uint32_t group, bool add);
 
