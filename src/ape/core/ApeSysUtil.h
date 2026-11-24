@@ -8,6 +8,7 @@ namespace ape {
 // Registers a system event handler in one of the platform callback slots.
 // Serialised against SysUtilCheckCallbacks() with the engine's sysutil lock.
 bool SysUtilRegisterCallback(int slot, plat::SystemEventCallback callback, void* userdata);
+bool SysUtilUnregisterCallback(int slot);
 
 // Pumps pending system events into the registered handlers.
 void SysUtilCheckCallbacks();

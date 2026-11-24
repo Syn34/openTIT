@@ -18,6 +18,13 @@ bool SysUtilRegisterCallback(int slot, plat::SystemEventCallback callback, void*
     return plat::RegisterSystemCallback(slot, callback, userdata);
 }
 
+// @func 0x0056C274 SysUtilUnregisterCallback
+bool SysUtilUnregisterCallback(int slot)
+{
+    plat::ScopedLock lock(SysUtilLock());
+    return plat::UnregisterSystemCallback(slot);
+}
+
 // @func 0x0056C184 SysUtilCheckCallbacks
 void SysUtilCheckCallbacks()
 {
