@@ -14,12 +14,18 @@ namespace objects {
 constexpr uint32_t kDefClass_CameraBehaviorTrigger = 0x01000000;
 
 // TODO(0x002183FC CreateCameraBehaviorTriggerDef, 0x00217470 parser,
-// 0x00216AB0 definition constructor, 0x002172A8 destructor): the behaviour
-// parameters are camera module blocks (0x000FD7AC) that are not ported.
+// 0x00216AB0 definition constructor): the behaviour parameters are camera
+// module blocks (0x000FD7AC) that are not ported.
 class CameraBehaviorTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
+    ~CameraBehaviorTriggerDef() override;
     ObjEntity* Create(EntityPlacement* placement) override;
+
+private:
+    // Camera module parameter blocks the parser allocates (0xB4..0xC0).
+    // NOTE: which camera behaviour each slot holds is not known.
+    void* m_behaviorBlocks[4] = {};
 };
 
 class CameraBehaviorTrigger : public TriggerBase {

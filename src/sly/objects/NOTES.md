@@ -107,3 +107,10 @@
 * `InheritDefDesc` (0x000C387C) is now tagged: the stand-in is the complete function.
 * New hooks in ObjectsHooks.h: entity scripts, script variables/states, volume shape
   queries, wind fields, jobs, text display, camera modes, `EntityClass2`.
+
+## Fourth pass
+* Damage trigger: ApplyDamage (0x0021B0E0, hit record sent through the entity hit hook),
+  Update / OnEnter / OnExit; camera behaviour definition destructor (0x002172A8 / 0x00217374).
+* Not decodable with the current tools: trigger SetTransform 0x0020D7E8 and the polled
+  trigger's IsInside 0x0020FD30 use Cell `lvlx` loads that the disassembler stops at.
+* The operand order of the in-place matrix multiply 0x005541F0 used by ApplyDamage is assumed.

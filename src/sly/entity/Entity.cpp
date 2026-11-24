@@ -309,7 +309,7 @@ bool Entity::PostUpdate(float dt)
 // Refreshes the world object (when children hang off an object without a
 // render node), places the children unless nobody can see them, and applies
 // a deferred visibility change.
-void Entity::UpdateTransform()
+void Entity::UpdateTransform(float /*dt*/)
 {
     if (object && children && children->Count() != 0 && !object->GetRenderNode())
         object->UpdateWorld(false, false);
@@ -457,6 +457,12 @@ ComponentDesc* FindComponentTemplate(uint32_t name)
 void UnregisterComponentTemplate(uint32_t name)
 {
     ComponentTemplates().Remove(name);
+}
+
+ComponentDesc::ComponentDesc(uint32_t nameHash, uint32_t componentType)
+    : name(nameHash), type(componentType)
+{
+    RegisterComponentTemplate(name, this);
 }
 
 // @func 0x007374D8 ComponentDesc::~ComponentDesc
