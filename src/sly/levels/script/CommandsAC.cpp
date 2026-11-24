@@ -6,6 +6,7 @@
 #include "sly/game/AudioSystem.h"
 #include "sly/levels/GameServices.h"
 #include "sly/game/WorldInterface.h"
+#include "sly/gameplay/SequenceCommands.h"
 #include "sly/gameplay/SequenceCommands2.h"
 #include "sly/gameplay/Sequencer.h"
 #include "sly/levels/LevelServices.h"
@@ -137,6 +138,7 @@ public:
     SetEntityCommand();
     explicit SetEntityCommand(XmlElement* element);
     ~SetEntityCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -173,8 +175,40 @@ ApeAnimScriptCommand* SetEntityCommand::Create(XmlElement* element) const
     return new SetEntityCommand(element);
 }
 
-// TODO(0x000A4BB8 SetEntityCommand::Execute) resolves the entity and builds the sequence
-// entity binding command (0x004386C4).
+// @func 0x000A4BB8 SetEntityCommand::Execute
+// Binds an entity to the sequence: the entity of the object variable, else
+// the named entity (a descendant of "Parent" when given).
+void SetEntityCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_name == 0 && m_var == 0)
+        return;
+    WorldObject* entity = nullptr;
+    if (m_var != 0) {
+        ape::ApeRefCounted* object = instance->ResolveObject(m_var, false);
+        if (!object)
+            return;
+        entity = EntityFromObject(object);
+    } else if (m_parent != 0) {
+        WorldObject* parent = FindEntity(m_parent);
+        if (!parent)
+            return;
+        entity = EntityFindChild(parent, m_name);
+    } else {
+        entity = FindEntity(m_name);
+    }
+    if (!entity)
+        return;
+    // The first flag can come from an int variable (non-zero = set).
+    bool flag0 = m_flags[0];
+    if (m_hash1C != 0) {
+        ApeAnimScriptVar* var = instance->FindVar(m_hash1C);
+        if (var && var->GetType() == ape::AnimScriptVarType::Int)
+            flag0 = var->GetInt() != 0;
+    }
+    gameplay::AddSequenceCommand(new gameplay::SeqSetEntityCommand(entity, m_nameOverride, m_flags[2], m_flags[3],
+                                                                   flag0, m_flags[4], m_flags[5], m_flags[6],
+                                                                   m_flags[7], m_flags[8]));
+}
 
 // ---------------------------------------------------------------------------
 // "SetEntityUpdate" (NOTE: name from a hash match)

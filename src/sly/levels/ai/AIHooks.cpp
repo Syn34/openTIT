@@ -2,6 +2,7 @@
 #include "sly/levels/ai/AIHooks.h"
 
 #include "sly/entity/Entity.h"
+#include "sly/game/goals/JobManager.h"
 
 namespace sly {
 namespace levels {
@@ -60,6 +61,7 @@ void BroadcastInRange(Entity*, float, uint32_t, uint32_t, uint32_t) {}
 
 void EntitySetScriptState(Entity*, uint32_t) {}
 bool EntityHoldsAttention(const Entity*) { return false; }
+bool RacerHasVehicle(const Entity*) { return false; }
 void CharacterSetEventListener(EntityComponent*, AIController*) {}
 bool AttackerComponentFlag(Entity*, bool* hasComponent)
 {
@@ -92,6 +94,7 @@ void ReleaseCameraMode(AICameraMode*) {}
 void GameWorldSetBossFlag(bool) {}
 void HudSetContext(Entity*, const char*) {}
 void HudSetContext(Entity*, uint32_t) {}
+bool HudObjectPausesAI(const hud::HudObject*) { return false; }
 
 ape::ApeRefCounted* EntityScriptObject(const Entity*) { return nullptr; }
 void ReleaseAnimScript(ape::ApeAnimScriptInstance*) {}
@@ -100,7 +103,11 @@ Entity* PlayerCharacter() { return nullptr; }
 bool RenderZoomActive() { return false; }
 float RenderZoom() { return 1.0f; }
 bool AITargetingSuppressed() { return false; }
-void GameStateNotify() {}
+void GameStateNotify()
+{
+    if (game::JobManager* manager = game::GetJobManager())
+        manager->FlushPendingRequest();
+}
 void PostScriptMessage(Entity*, uint32_t, uint32_t, uint32_t) {}
 uint32_t ProxyPointMessageKey() { return 0; }
 uint32_t WorldObjectKeyOf(const WorldObject*) { return 0; }

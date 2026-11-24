@@ -3,6 +3,9 @@
 
 #include "sly/components/ComponentHooks.h"
 #include "sly/components/IKSolverDefs.h"
+#include "sly/components/InventoryDescs.h"
+
+#include "ape/world/ApeObj.h"
 
 namespace sly {
 namespace components {
@@ -82,6 +85,23 @@ void ControlAIComponent::Update(float dt)
     if (brain)
         AIBrainFillInput(brain, input);
 }
+
+// ===========================================================================
+// ControlExt (type 0x23)
+// ===========================================================================
+
+// @func 0x00255AD8 ControlExtComponent::ControlExtComponent
+ControlExtComponent::ControlExtComponent(const ComponentDesc* desc) : ControlComponent(desc) {}
+
+// @func 0x00283644 ControlExtComponent::~ControlExtComponent
+// @func 0x00283740 ControlExtComponent::~ControlExtComponent (deleting)
+ControlExtComponent::~ControlExtComponent() = default;
+
+// @func 0x0028386C ControlExtComponent::OnOwnerSpawned
+// Nothing to bind: the controller is fed from outside.
+void ControlExtComponent::OnOwnerSpawned(entity::Entity* newOwner) { (void)newOwner; }
+
+void ControlExtComponent::Update(float dt) { (void)dt; }
 
 // ===========================================================================
 // AnimMap
@@ -184,6 +204,91 @@ ScoringComponent::~ScoringComponent() = default;
 // @func 0x002B2184 ScoringComponent::Update
 // Scoring is event driven; nothing to do per frame.
 void ScoringComponent::Update(float dt) { (void)dt; }
+
+// ===========================================================================
+// Mover
+// ===========================================================================
+
+namespace {
+constexpr uint32_t kMoverPoint_Entity = 0x7A30D7E3u;    // "Entity": a named entity
+constexpr uint32_t kMoverPoint_Nearest = 0x70E8DC96u;   // nearest entity of a definition. NOTE: name unknown
+constexpr uint32_t kMoverPoint_Owner = 0xA9CDB8F9u;     // relative to the owner. NOTE: name unknown
+constexpr uint32_t kMoverPath_Default = 0xE2E902C9u;    // NOTE: name unknown
+constexpr uint32_t kMoverPath_Forward = 0x026F1EA5u;    // "Forward"
+} // namespace
+
+// @func 0x00258008 MoverComponent::MoverComponent
+MoverComponent::MoverComponent(const MoverComponentDesc* desc)
+    : EntityComponent(desc),
+      pathType(desc->pathType),
+      motionType(desc->motionType),
+      speed(desc->speed),
+      pauseDelayMin(desc->pauseDelayMin),
+      pauseDelayMax(desc->pauseDelayMax),
+      flag30(desc->flag28),
+      flag31(desc->flag29)
+{
+    // Point positions are fixed now: the anchor's position plus the offset.
+    for (int i = 0; i < desc->pointCount; ++i) {
+        const MoverPoint& point = desc->points[i];
+        const ape::Vec3* anchor = nullptr;
+        if (point.tag == kMoverPoint_Entity) {
+            if (entity::Entity* found = entity::FindEntity(point.name))
+                anchor = &found->Position();
+        } else if (point.tag == kMoverPoint_Nearest) {
+            if (entity::Entity* found = entity::FindNearestEntityOfDef(point.name, owner->Position()))
+                anchor = &found->Position();
+        } else if (point.tag == kMoverPoint_Owner) {
+            anchor = &owner->Position();
+        }
+        if (anchor && pointCount < kMaxPoints) {
+            points[pointCount++] = {anchor->x + point.offset.x, anchor->y + point.offset.y,
+                                    anchor->z + point.offset.z, 0.0f};
+        }
+    }
+    // Both path kinds start at the first point; the default kind does so
+    // even without points.
+    current = -1;
+    if (pathType == kMoverPath_Default || (pathType == kMoverPath_Forward && pointCount > 0))
+        current = 0;
+    pauseTimer = ape::RandomRange(pauseDelayMin, pauseDelayMax, ape::g_gameRandom);
+}
+
+// @func 0x002B9FF8 MoverComponent::~MoverComponent
+// @func 0x002BA0F4 MoverComponent::~MoverComponent (deleting)
+MoverComponent::~MoverComponent() = default;
+
+// ===========================================================================
+// Inventory
+// ===========================================================================
+
+// @func 0x0025E7E4 InventoryComponent::InventoryComponent
+InventoryComponent::InventoryComponent(const InventoryComponentDesc* inventoryDesc)
+    : EntityComponent(inventoryDesc), desc(inventoryDesc), entries(4)
+{
+    // The owner's world object gets its world transform now, before items
+    // are attached to it.
+    if (owner->object)
+        owner->object->UpdateWorld(false, false);
+}
+
+// @func 0x0026694C InventoryComponent::~InventoryComponent
+// @func 0x00266BF4 InventoryComponent::~InventoryComponent (deleting)
+InventoryComponent::~InventoryComponent()
+{
+    // Live item entities go with the inventory.
+    for (InventoryEntry* entry : entries) {
+        for (InventoryHeldItem& item : entry->held) {
+            if (item.entity && item.entity->IsAlive())
+                item.entity->Release(true);
+        }
+        entry->held.Clear();
+        if (entry->entity && entry->entity->IsAlive())
+            entry->entity->Release(true);
+        delete entry;
+    }
+    entries.Clear();
+}
 
 } // namespace components
 } // namespace sly

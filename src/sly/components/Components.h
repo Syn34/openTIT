@@ -14,6 +14,7 @@
 #include "sly/entity/Entity.h"
 
 #include "ape/container/ApeTSortedMap.h"
+#include "ape/memory/ApeTArray.h"
 
 #include <cstdint>
 #include <utility>
@@ -53,6 +54,40 @@ public:
 
     uint32_t behavior = 0;           // 0x50 from the description
     void* brain = nullptr;           // 0x54 the owner's AI object (entity +0xF4)
+};
+
+// Type 0x23 control component (vtable 0x00B1C518, 0xC0 bytes). NOTE: read
+// as the "ControlExt" controller (an externally driven character: the
+// element name table points "ControlExt" at no real parser and the
+// EntityComp.ControlExt.* tuning belongs to the same module); its input
+// block is three 16-byte vectors.
+class ControlExtComponent : public ControlComponent {
+public:
+    explicit ControlExtComponent(const ComponentDesc* desc);
+    ~ControlExtComponent() override;
+    void OnOwnerSpawned(entity::Entity* owner) override;
+    // TODO(0x00283888 ControlExtComponent::Update): steers towards the
+    // target point (vector code not reimplemented yet).
+    void Update(float dt) override;
+
+    uint32_t field_50 = 0;           // 0x50
+    uint32_t field_54 = 0;           // 0x54
+    ape::Vec3 vec60 = {0.0f, 0.0f, 0.0f, 0.0f};   // 0x60
+    uint32_t field_70[3] = {};       // 0x70
+    float field_7C = 1.0f;           // 0x7C
+    ape::Vec3 vec80 = {0.0f, 0.0f, 0.0f, 0.0f};   // 0x80
+    float field_90 = 10.0f;          // 0x90
+    float field_94 = 5.0f;           // 0x94
+    float field_98 = 1.0f;           // 0x98
+    float field_9C = 1.0f;           // 0x9C
+    float field_A0 = 15.0f;          // 0xA0
+    float field_A4 = 0.0f;           // 0xA4
+    float field_A8 = 10.0f;          // 0xA8
+    float field_AC = 200.0f;         // 0xAC
+    float field_B0 = 10.0f;          // 0xB0
+    uint32_t field_B4 = 0;           // 0xB4
+    uint32_t field_B8 = 0;           // 0xB8
+    bool flagBC = false;             // 0xBC bit 31
 };
 
 // <AnimMap> (type 0x0E, vtable 0x00B1C628, 0x28 bytes).
@@ -121,6 +156,58 @@ public:
     float damp = 0.0f;               // 0x34
     float speed = 0.0f;              // 0x38
     bool triggered = false;          // 0x3C NOTE: role assumed
+};
+
+// <Mover> (type 0x1D, vtable 0x00B1CED0, 0xC0 bytes): moves the owner
+// through up to eight points, pausing a random time at each.
+class MoverComponent : public EntityComponent {
+public:
+    explicit MoverComponent(const MoverComponentDesc* desc);
+    ~MoverComponent() override;
+
+    static constexpr int kMaxPoints = 8;
+    uint32_t pathType = 0;           // 0x18
+    uint32_t motionType = 0;         // 0x1C
+    float speed = 0.0f;              // 0x20
+    float pauseDelayMin = 0.0f;      // 0x24
+    float pauseDelayMax = 0.0f;      // 0x28
+    float pauseTimer = 0.0f;         // 0x2C
+    bool flag30 = false;             // 0x30
+    bool flag31 = false;             // 0x31
+    int32_t pointCount = 0;          // 0x34
+    int32_t current = -1;            // 0x38 point being approached (-1 = none)
+    ape::Vec3 points[kMaxPoints] = {};   // 0x40 world positions
+};
+
+struct InventoryComponentDesc;
+
+// Something an inventory entry holds (8-byte records).
+struct InventoryHeldItem {
+    uint32_t key;                    // +0x00 NOTE: role unknown
+    entity::Entity* entity;          // +0x04
+};
+
+// One live inventory item (0x40 bytes).
+struct InventoryEntry {
+    uint32_t field_00 = 0;
+    uint32_t field_04 = 0;
+    ape::ApeTArray<InventoryHeldItem> held;   // +0x08
+    ape::ApeTArray<uint32_t> field_1C;        // +0x1C NOTE: element type unknown (4 bytes)
+    entity::Entity* entity = nullptr;         // +0x34 the item's own entity
+};
+
+// <Inventory> (type 0x12, vtable 0x00B1BF00, 0x38 bytes): the items an
+// entity carries (and can drop or have pickpocketed).
+class InventoryComponent : public EntityComponent {
+public:
+    explicit InventoryComponent(const InventoryComponentDesc* desc);
+    ~InventoryComponent() override;
+
+    const InventoryComponentDesc* desc = nullptr;   // 0x18
+    ape::ApeTArray<InventoryEntry*> entries;        // 0x1C
+    uint32_t field_30 = 0;                          // 0x30
+    bool flag34_31 = false;                         // 0x34 bit 31. NOTE: role unknown
+    bool flag34_30 = false;                         // 0x34 bit 30. NOTE: role unknown
 };
 
 } // namespace components

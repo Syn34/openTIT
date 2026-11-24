@@ -14,6 +14,7 @@ namespace ape { class ApeAnimScriptInstance; class ApeRefCounted; }
 namespace sly {
 class WorldObject;
 namespace entity { class Entity; class EntityComponent; struct EntityMessage; }
+namespace hud { class HudObject; }
 
 namespace levels {
 struct AIProxyPoint;
@@ -301,6 +302,9 @@ void BodyClearRequestBit31(EntityComponent* body);
 // Entity type word +0xC8 bit 10. NOTE: marks a target enemies do not
 // switch away from.
 bool EntityHoldsAttention(const Entity* entity);
+// Racer entities: word +0x1FC (NOTE: the vehicle or racing state; zero
+// when the racer does not race).
+bool RacerHasVehicle(const Entity* racer);
 // Character component (+0x24 sub-object, +0x34/+0x38): animation event
 // listener (the console installs callback 0x00065404 with the controller as
 // its user data); null removes it.
@@ -360,6 +364,9 @@ void AIObjectPoolReset();
 // the entity as the context value (a 32-bit pointer on the console).
 void HudSetContext(Entity* entity, const char* name);
 void HudSetContext(Entity* entity, uint32_t nameHash);
+// The HUD element's object (+0x18) has bit 15 of +0xA4 set. NOTE: the race
+// HUD sets it while the racers must wait (countdown / results).
+bool HudObjectPausesAI(const hud::HudObject* element);
 
 // -- anim scripts ------------------------------------------------------------------
 // The entity's world object (+0xA0) as an anim script object reference.
@@ -379,8 +386,9 @@ bool RenderZoomActive();
 float RenderZoom();
 // 0x00F9BC28: the AI is told to leave targets alone (debug / cutscene).
 bool AITargetingSuppressed();
-// 0x002E2E78 on the game state (0x00F64C20). NOTE: purpose unknown; sent by
-// AI message 0x9A986484.
+// 0x002E2E78 on the job manager (0x00F64C20): hands a pending level
+// request to the game world (game::JobManager::FlushPendingRequest); sent
+// by AI message 0x9A986484.
 void GameStateNotify();
 // 0x00470660 with key/message 0x00F65C54: posts a script message.
 void PostScriptMessage(Entity* sender, uint32_t key, uint32_t message, uint32_t argument);
