@@ -1,6 +1,8 @@
 // openTIT - Audio front end.
 #include "sly/game/AudioSystem.h"
 
+#include <vector>
+
 #include "ape/core/ApeString.h"
 #include "ape/file/ApeFile.h"
 #include "ape/memory/ApeMem.h"
@@ -94,6 +96,96 @@ SoundCategory CategoryFromHash(uint32_t nameHash)
 // ---------------------------------------------------------------------------
 // SoundName
 // ---------------------------------------------------------------------------
+
+namespace {
+std::map<uint32_t, SoundBankDefs*> g_soundBanks;              // 0x010AFEB0
+SoundBankDefs* g_defaultSoundBank = nullptr;                  // 0x00F65B60
+uint32_t g_defaultSoundBankHash = 0;                          // 0x010B00D8
+std::vector<std::pair<uint32_t, SoundBankDefs*>> g_globalSoundBanks;   // 0x010AFEB8
+
+SoundDef* FindInBank(const SoundBankDefs* bank, uint32_t soundHash)
+{
+    if (!bank)
+        return nullptr;
+    auto it = bank->defs.find(soundHash);
+    return it == bank->defs.end() ? nullptr : it->second;
+}
+} // namespace
+
+void RegisterSoundBank(uint32_t bankHash, SoundBankDefs* bank)
+{
+    g_soundBanks[bankHash] = bank;
+}
+
+void UnregisterSoundBank(uint32_t bankHash)
+{
+    g_soundBanks.erase(bankHash);
+}
+
+void SetDefaultSoundBank(uint32_t bankHash, SoundBankDefs* bank)
+{
+    g_defaultSoundBankHash = bankHash;
+    g_defaultSoundBank = bank;
+}
+
+void AddGlobalSoundBank(uint32_t bankHash, SoundBankDefs* bank)
+{
+    g_globalSoundBanks.emplace_back(bankHash, bank);
+}
+
+// @func 0x00441AC0 FindSoundDef
+SoundDef* FindSoundDef(uint32_t soundHash, uint32_t* bankHash)
+{
+    if (!AudioEnabled() || soundHash == 0)
+        return nullptr;
+    SoundDef* def = nullptr;
+    if (*bankHash != 0) {
+        SoundBankDefs* bank = *bankHash == g_defaultSoundBankHash ? g_defaultSoundBank : nullptr;
+        if (!bank) {
+            auto it = g_soundBanks.find(*bankHash);
+            bank = it == g_soundBanks.end() ? nullptr : it->second;
+        }
+        def = FindInBank(bank, soundHash);
+    }
+    if (!def && g_defaultSoundBank) {
+        def = FindInBank(g_defaultSoundBank, soundHash);
+        if (def)
+            *bankHash = g_defaultSoundBankHash;
+    }
+    if (!def) {
+        for (const auto& entry : g_globalSoundBanks) {
+            if (SoundDef* found = FindInBank(entry.second, soundHash)) {
+                *bankHash = entry.first;
+                return found;
+            }
+        }
+    }
+    return def;
+}
+
+// @func 0x00446984 CreateSoundName
+SoundName* CreateSoundName(uint32_t soundHash, uint32_t bankHash)
+{
+    if (soundHash == 0)
+        return nullptr;
+    uint32_t foundBank = bankHash;
+    SoundDef* def = FindSoundDef(soundHash, &foundBank);
+    SoundName* name = SoundName::Create(def);
+    name->refCount = 1;
+    // NOTE: the console stores the requested bank, not the one the sound
+    // was found in.
+    name->bank = bankHash;
+    name->soundHash = soundHash;
+    return name;
+}
+
+// @func 0x0044BD74 ResolveSoundNames
+void ResolveSoundNames()
+{
+    for (SoundName* name = g_soundNames; name; name = name->next)
+        if (!name->def)
+            name->def = FindSoundDef(name->soundHash, &name->bank);
+}
 
 SoundName* SoundName::Create(SoundDef* def)
 {

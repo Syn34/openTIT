@@ -4,6 +4,7 @@
 // system is ported and can be called directly.
 #include "sly/objects/ObjectsHooks.h"
 
+#include "sly/game/AudioSystem.h"
 #include "sly/game/SoundZones.h"
 
 #include "ape/world/ApeBase.h"
@@ -165,12 +166,9 @@ void* FindJob(uint32_t jobNameHash)
 }
 
 // --- audio -------------------------------------------------------------------
-// TODO(0x00446984 FindSoundName)
 audio::SoundName* FindSoundName(uint32_t soundHash, uint32_t bankHash)
 {
-    (void)soundHash;
-    (void)bankHash;
-    return nullptr;
+    return audio::CreateSoundName(soundHash, bankHash);
 }
 
 // TODO(0x0044C474)
