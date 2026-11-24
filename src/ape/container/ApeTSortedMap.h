@@ -26,6 +26,8 @@ public:
     // Grows the storage to at least `minCapacity` (and by at least 16 elements).
     void Grow(uint32_t minCapacity);
     void Release();
+    // Forgets the elements; the storage is kept.
+    void Clear() { m_count = 0; }
 
     uint16_t Count() const { return m_count; }
     uint16_t Capacity() const { return m_capacity; }

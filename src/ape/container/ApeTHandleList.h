@@ -33,6 +33,13 @@ public:
     Handle PushBack(const T& value);
     // Removes the first element (if any).
     void PopFront();
+    // Value of a live handle, or null when the handle is stale or invalid.
+    T* Get(Handle handle);
+    // Removes the element of a live handle (stale handles are ignored).
+    void Remove(Handle handle);
+    // Puts every node back on the free list (storage is kept).
+    void Clear();
+    int32_t Capacity() const { return m_capacity; }
 
     int32_t Count() const { return m_count; }
     bool Empty() const { return m_count == 0; }
@@ -53,6 +60,15 @@ private:
     };
 
     void MarkFree(Node& n) { n.flags = (n.flags & 0x7FFFu) | 0x80000000u; }
+    bool IsLive(Handle handle) const
+    {
+        const int32_t index = (int32_t)(handle >> 16);
+        if ((handle & 0xFFFF) == 0 || index >= m_capacity)
+            return false;
+        const Node& n = m_nodes[index];
+        return ((n.flags >> 15) & 0xFFFF) == (handle & 0xFFFF) && (n.flags & 0x80000000u) == 0;
+    }
+    void Unlink(int32_t index);
     void SetSerial(Node& n, uint32_t serial) { n.flags = (n.flags & 0x80007FFFu) | (serial << 15); }
     void LinkFreeRange(int32_t first, int32_t end);
 
@@ -163,7 +179,40 @@ void ApeTHandleList<T>::PopFront()
 {
     if (!m_count)
         return;
-    const int32_t index = m_head;
+    Unlink(m_head);
+}
+
+template <class T>
+T* ApeTHandleList<T>::Get(Handle handle)
+{
+    return IsLive(handle) ? &m_nodes[handle >> 16].value : nullptr;
+}
+
+template <class T>
+void ApeTHandleList<T>::Remove(Handle handle)
+{
+    if (IsLive(handle))
+        Unlink((int32_t)(handle >> 16));
+}
+
+template <class T>
+void ApeTHandleList<T>::Clear()
+{
+    if (!m_capacity)
+        return;
+    LinkFreeRange(0, m_capacity);
+    m_nodes[0].prev = kNone;
+    m_nodes[m_capacity - 1].next = kNone;
+    m_head = m_tail = kNone;
+    m_freeHead = 0;
+    m_freeTail = m_capacity > 1 ? m_capacity - 1 : kNone;
+    m_count = 0;
+    m_freeCount = m_capacity;
+}
+
+template <class T>
+void ApeTHandleList<T>::Unlink(int32_t index)
+{
     Node& node = m_nodes[index];
     // Unlink from the used list.
     if (index == m_head)

@@ -46,12 +46,31 @@ game layer can fill in:
 
 ## Not done in the range
 * 0x004B0124 (economy tuning static initialiser, another module's TU) and 0x004B00EC.
-* The anim set / anim clip definitions, 0x004B0850-0x004B6658 ("AnimSet",
-  "AnimClipSimple/Random/Selection/Container/Blend"). They use hash table containers
-  (0x00558F38/0x00558F3C) and FourCC network handlers that are not ported yet.
+* (done, see below) The anim set / anim clip definitions.
 * 0x004B6760, 0x004B9F2C (RegisterBuiltins: AttachObject, MoveObject, CallRandom and
   SetPostProc are still missing), 0x004BCE08/0x004BE61C/0x004BE75C/0x004BE850 (host
   live-reload handlers), 0x004BDDB8 (reload from the level manifest).
 * The Execute() of the object commands (SwapDef, SpawnObject, SetVisible, SetFOV,
   Rumble, SetColor, SetScale, InterpScale, ProcAnim, PlayGuiScript, ...), plus
   AttachObject, MoveObject, CallRandom and SetPostProc ("FxType" parser 0x004CCF28).
+
+## Anim sets and clips (`ApeAnimClip.h/.cpp`, 0x004B0850-0x004B6760)
+* The manager (0x00F65F84) is embedded at +4 of a game object (vtable 0x00B0EF30, created
+  by 0x000186CC with 256 slots, 12 control types at 0x00AC000C and 1 sync type at
+  0x00AC0080). It has no vtable of its own; the string pool is its first member.
+* The clip pool is a fixed array of 0x4C-byte tagged entries (helpers 0x00789280...);
+  `AnimClipPool` is a plain C++ version. The set slot list is the engine handle list
+  (`ApeTHandleList` gained Get/Remove/Clear for it).
+* Attribute names known only by hash are constants with NOTE comments (0x57BAF55F,
+  0x91EEB2F8 = transition clip of a blend rule, 0xA80F1E14 = channel map override of a
+  set, 0xE98F593E, the event attributes, 0x044DDD31). Selection operators other than
+  "LessThan"/"NotEqual" are named by their comparison.
+* Faithful quirks: the blend clip's control value search is dead code (the console's test
+  is "index < 0 && index >= count"), so the element at firstElement + index is used even
+  for index -1. The sync type enum of the clip DTD is bounded by the control type count.
+  Blend rule elements the reader rejects are still added (with an unset key on the
+  console; 0 here). The "*" wildcard rule key is the target name alone (the console
+  leaves its buffer uninitialised). After the first "AnimSet" element every following
+  sibling is read as a set.
+* 0x00789BC0/0x00789E00 (AnimSet::FindBlendInfo/FindBlendClassInfo) are tagged here
+  although they sit in the helper range.
