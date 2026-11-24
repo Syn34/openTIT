@@ -136,6 +136,13 @@ constexpr uint32_t kAttr_Gravity         = 0x3B83FE2Eu;
 constexpr uint32_t kAttr_ProcAnim50      = 0x34BF0B12u;   // NOTE: name unknown
 constexpr uint32_t kTag_ProcAnimBone     = 0xA0702B13u;   // NOTE: element name unknown
 
+constexpr uint32_t kAttr_PathType        = 0x784848DFu;
+constexpr uint32_t kAttr_MotionType      = 0xF2006FF0u;
+constexpr uint32_t kAttr_PauseDelayMin   = 0x7689C1C5u;
+constexpr uint32_t kAttr_PauseDelayMax   = 0x7689C0D7u;
+constexpr uint32_t kAttr_Mover28         = 0x86BE6BD3u;   // NOTE: name unknown
+constexpr uint32_t kAttr_Mover29         = 0xE9B00400u;   // NOTE: name unknown
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -328,6 +335,33 @@ ComponentDesc* ParseRadarBlipComponentDesc(XmlElement* root, XmlElement* elem, u
     RadarBlipComponentDesc* desc = new RadarBlipComponentDesc(ape::HashNameNoCase(name));
     desc->scope = scope;
     elem->GetHash(kAttr_Type, &desc->blipType, desc->blipType);
+    return desc;
+}
+
+// @func 0x002B9C74 ParseMoverComponentDesc
+ComponentDesc* ParseMoverComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    MoverComponentDesc* desc = NewNamedDesc<MoverComponentDesc>(root, elem, scope);
+    if (!desc)
+        return nullptr;
+    desc->pointCount = 0;
+    elem->GetHash(kAttr_PathType, &desc->pathType, desc->pathType);
+    elem->GetHash(kAttr_MotionType, &desc->motionType, desc->motionType);
+    elem->GetFloat(kAttr_Speed, &desc->speed, desc->speed);
+    elem->GetFloat(kAttr_PauseDelayMin, &desc->pauseDelayMin, desc->pauseDelayMin);
+    elem->GetFloat(kAttr_PauseDelayMax, &desc->pauseDelayMax, desc->pauseDelayMax);
+    elem->GetBool(kAttr_Mover28, &desc->flag28, desc->flag28);
+    elem->GetBool(kAttr_Mover29, &desc->flag29, desc->flag29);
+    const float zero[3] = {0.0f, 0.0f, 0.0f};
+    for (XmlElement* child = elem->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        if (desc->pointCount >= 8)
+            continue;
+        MoverPoint& point = desc->points[desc->pointCount];
+        point.tag = child->GetNameHash();
+        child->GetHash(kAttr_Name, &point.name, 0);
+        child->GetVec3(kAttr_Offset, &point.offset.x, zero);
+        ++desc->pointCount;
+    }
     return desc;
 }
 

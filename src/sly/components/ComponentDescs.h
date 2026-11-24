@@ -35,6 +35,7 @@ enum ComponentDescType : uint32_t {
     kCompDesc_IK             = 0x11,
     kCompDesc_FacePlayer     = 0x16,
     kCompDesc_RadarBlip      = 0x19,
+    kCompDesc_Mover          = 0x1D,
     kCompDesc_OffscreenMarker = 0x1E,
     kCompDesc_SimplePhysics  = 0x1F,
     kCompDesc_JumpRope       = 0x21,
@@ -149,6 +150,27 @@ struct FacePlayerComponentDesc : ComponentDesc {
 struct RadarBlipComponentDesc : ComponentDesc {
     explicit RadarBlipComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_RadarBlip) {}
     uint32_t blipType = 0x03F0D768u;   // 0x14 "Type", default "Enemy"
+};
+
+// <Mover> (vtable 0x00B1CEC0, 0x130 bytes): moves the entity along a path
+// of up to eight child points.
+struct MoverPoint {
+    uint32_t tag = 0;            // +0x00 element name hash of the child
+    uint32_t name = 0;           // +0x04 "Name"
+    uint32_t pad[2] = {};
+    ape::Vec3 offset = {0.0f, 0.0f, 0.0f, 0.0f};   // +0x10 "Offset"
+};
+struct MoverComponentDesc : ComponentDesc {
+    explicit MoverComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Mover) {}
+    uint32_t pathType = 0xE2E902C9u;   // 0x14 NOTE: default name unknown
+    uint32_t motionType = 0x85D98325u; // 0x18 default "Linear"
+    float speed = 1.0f;          // 0x1C
+    float pauseDelayMin = 0.0f;  // 0x20 NOTE: name from a hash match
+    float pauseDelayMax = 0.0f;  // 0x24 NOTE: name from a hash match
+    bool flag28 = true;          // 0x28 attribute 0x86BE6BD3. NOTE: name unknown
+    bool flag29 = true;          // 0x29 attribute 0xE9B00400. NOTE: name unknown
+    int32_t pointCount = 0;      // 0x2C
+    MoverPoint points[8];        // 0x30
 };
 
 // <OffscreenMarker> (vtable 0x00B1CF18, 0x2C bytes): HUD marker of an
@@ -336,6 +358,7 @@ ComponentDesc* ParseProcAnimComponentDesc(ape::xml::XmlElement* root, ape::xml::
 ComponentDesc* ParseIKComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseFacePlayerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseRadarBlipComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseMoverComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseOffscreenMarkerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseSimplePhysicsComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseJumpRopeComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
