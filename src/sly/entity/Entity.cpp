@@ -909,7 +909,7 @@ bool Entity::CanInteractWith(Entity* other, int kind)
 // @func 0x000DFAC8 Entity::OnInteractStart
 void Entity::OnInteractStart(Entity* other, int kind)
 {
-    ++interactionCount;
+    AddRef();
     if (kind != kInteract_Player || !(other->classBits & 1))
         return;
     if (auto* comp = static_cast<InteractionComponent*>(GetComponent(kComp_Interaction)))

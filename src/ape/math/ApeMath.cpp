@@ -363,6 +363,17 @@ float RandomUnit(RandomState& state)
     return (float)previous * kInv65535;
 }
 
+// @func 0x0074E23C RandomInt
+int RandomInt(RandomState& state, int minValue, int maxValue)
+{
+    const uint32_t seed = state.seed;
+    const uint32_t range = uint32_t(maxValue - minValue) + 1u;
+    const uint32_t mixed = RandomStep(seed);
+    state.value = mixed & 0xFFFF;
+    state.seed = RotateLeft(mixed, 16);
+    return minValue + int(seed % range);
+}
+
 // @func 0x007342D8 RandomRange
 float RandomRange(float minValue, float maxValue, RandomState& state)
 {

@@ -298,6 +298,13 @@ public:
     // Player slot kept in the top byte of the flags (bits 24-29).
     uint32_t PlayerSlot() const { return (flags >> 24) & 0x3F; }
     bool IsAlive() const { return (flags & kEnt_Alive) != 0; }
+    // @func 0x0074B5A0 Entity::IsActive
+    bool IsActive() const { return (flags & kEnt_Active) != 0; }
+    // @func 0x0074D808 Entity::IsFlag80Set
+    bool IsFlag80Set() const { return (flags & kEnt_80) != 0; }
+    // Takes a reference (the counter Release() drops; interactions hold one).
+    // @func 0x0074CC74 Entity::AddRef
+    void AddRef() { ++interactionCount; }
     uint32_t SoundSlotCount() const { return (flags & kEnt_SoundCountMask) >> kEnt_SoundCountShift; }
 
     // -- data -------------------------------------------------------------------
