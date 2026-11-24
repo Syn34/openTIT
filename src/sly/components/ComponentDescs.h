@@ -6,8 +6,8 @@
 // description of one component type, registers it in the named template
 // table under its "name" attribute and reads the type's attributes.
 //
-// Every parser returns null when the element has no "name" (the console then
-// only fetches the document path for an error message that is compiled out).
+// Every parser returns null when the element has no "name"; most of them first
+// fetch the document path for an error message that is compiled out.
 #pragma once
 
 #include "sly/entity/Entity.h"
@@ -28,6 +28,7 @@ using entity::ComponentDesc;
 enum ComponentDescType : uint32_t {
     kCompDesc_Physics        = 0x00,
     kCompDesc_Anim           = 0x02,
+    kCompDesc_ContextualMarker = 0x04,
     kCompDesc_ControlAI      = 0x06,
     kCompDesc_AnimMap        = 0x0E,
     kCompDesc_IK             = 0x11,
@@ -70,6 +71,25 @@ struct AnimComponentDesc : ComponentDesc {
     explicit AnimComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Anim) {}
     uint32_t animSet = 0;        // 0x14 "set"
     uint32_t animTree = 0;       // 0x18 "tree"
+};
+
+// <ContextualMarker> (vtable 0x00B1C0BC, 0x70 bytes): a HUD marker
+// attached to the entity, scaled with distance.
+struct ContextualMarkerComponentDesc : ComponentDesc {
+    explicit ContextualMarkerComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_ContextualMarker) {}
+    ape::Vec4 attachRot = {0.0f, 0.0f, 0.0f, 1.0f};       // 0x20 quaternion of AttachRot (degrees)
+    ape::Vec3 attachOffset = {0.0f, 0.0f, 0.0f, 0.0f};    // 0x30
+    ape::Vec3 vec40 = {0.0f, 0.0f, 0.0f, 0.0f};           // 0x40 attribute 0xE8B802BD. NOTE: name unknown
+    uint32_t hash50 = 0;         // 0x50 attribute 0xA7E293B8. NOTE: name unknown
+    uint32_t hash54 = 0;         // 0x54 attribute 0x26161B29. NOTE: name unknown
+    float scaleMin = -1.0f;      // 0x58
+    float scaleMax = -1.0f;      // 0x5C
+    float scaleDistMin = -1.0f;  // 0x60
+    float scaleDistMax = -1.0f;  // 0x64
+    float scaleFactorFOV = 0.0f; // 0x68
+    bool hasScaleFactorFOV = false; // 0x6C the XML gave ScaleFactorFOV
+    bool flag6D = false;         // 0x6D attribute 0xBC175CCC. NOTE: name unknown; uninitialised on the console
+    bool startEnabled = false;   // 0x6E NOTE: uninitialised on the console before the read
 };
 
 // <ControlAI> (vtable 0x00B1432C, 0x18 bytes).
@@ -292,6 +312,7 @@ struct WallClimbComponentDesc : ComponentDesc {
 // Parsers (root = document element, elem = the component element).
 ComponentDesc* ParsePhysicsComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseAnimComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseContextualMarkerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseControlAIComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseAnimMapComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseIKComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);

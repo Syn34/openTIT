@@ -2,6 +2,7 @@
 #include "sly/components/ComponentDescs.h"
 
 #include "sly/components/ComponentHooks.h"
+#include "sly/objects/TriggerEnv.h"
 
 #include "ape/core/ApeString.h"
 #include "ape/xml/ApeXml.h"
@@ -112,6 +113,18 @@ constexpr uint32_t kTag_JointThreeSolver = 0x6AD11467u;
 constexpr uint32_t kTag_FootSolver       = 0x895ACE01u;
 constexpr uint32_t kTag_LookAtSolver     = 0x5BDDD9A5u;
 
+constexpr uint32_t kAttr_AttachRot      = 0x898B7952u;
+constexpr uint32_t kAttr_AttachOffset   = 0x3818B318u;
+constexpr uint32_t kAttr_Marker40       = 0xE8B802BDu;   // NOTE: name unknown
+constexpr uint32_t kAttr_Marker50       = 0xA7E293B8u;   // NOTE: name unknown
+constexpr uint32_t kAttr_Marker54       = 0x26161B29u;   // NOTE: name unknown
+constexpr uint32_t kAttr_ScaleMin       = 0xF97D90C8u;
+constexpr uint32_t kAttr_ScaleMax       = 0xF97D8FDAu;
+constexpr uint32_t kAttr_ScaleDistMin   = 0x0F8DA662u;
+constexpr uint32_t kAttr_ScaleDistMax   = 0x0F8DA574u;
+constexpr uint32_t kAttr_ScaleFactorFOV = 0xFDF98B14u;
+constexpr uint32_t kAttr_Marker6D       = 0xBC175CCCu;   // NOTE: name unknown
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -176,6 +189,37 @@ ComponentDesc* ParseAnimComponentDesc(XmlElement* root, XmlElement* elem, uint8_
         elem->GetHash(kAttr_Set, &desc->animSet, desc->animSet);
         elem->GetHash(kAttr_Tree, &desc->animTree, desc->animTree);
     }
+    return desc;
+}
+
+// @func 0x0027B648 ParseContextualMarkerComponentDesc
+ComponentDesc* ParseContextualMarkerComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    (void)root;
+    // This parser skips the missing-name report.
+    const char* name = elem->GetString("name");
+    if (!name)
+        return nullptr;
+    ContextualMarkerComponentDesc* desc = new ContextualMarkerComponentDesc(ape::HashNameNoCase(name));
+    desc->scope = scope;
+    const float zero[3] = {0.0f, 0.0f, 0.0f};
+    ape::Vec3 euler = {0.0f, 0.0f, 0.0f, 0.0f};
+    if (elem->GetVec3(kAttr_AttachRot, &euler.x, zero) == ape::xml::kQuery_Ok) {
+        const ape::Vec3 radians = {euler.x * kDegToRad, euler.y * kDegToRad, euler.z * kDegToRad, 0.0f};
+        desc->attachRot = objects::QuaternionFromEuler(radians);
+    }
+    elem->GetVec3(kAttr_AttachOffset, &desc->attachOffset.x, &desc->attachOffset.x);
+    elem->GetVec3(kAttr_Marker40, &desc->vec40.x, &desc->vec40.x);
+    elem->GetHash(kAttr_Marker50, &desc->hash50, desc->hash50);
+    elem->GetHash(kAttr_Marker54, &desc->hash54, desc->hash54);
+    elem->GetFloat(kAttr_ScaleMin, &desc->scaleMin, desc->scaleMin);
+    elem->GetFloat(kAttr_ScaleMax, &desc->scaleMax, desc->scaleMax);
+    elem->GetFloat(kAttr_ScaleDistMin, &desc->scaleDistMin, desc->scaleDistMin);
+    elem->GetFloat(kAttr_ScaleDistMax, &desc->scaleDistMax, desc->scaleDistMax);
+    desc->hasScaleFactorFOV =
+        elem->GetFloat(kAttr_ScaleFactorFOV, &desc->scaleFactorFOV, desc->scaleFactorFOV) == ape::xml::kQuery_Ok;
+    elem->GetBool(kAttr_Marker6D, &desc->flag6D, desc->flag6D);
+    elem->GetBool(kAttr_StartEnabled, &desc->startEnabled, desc->startEnabled);
     return desc;
 }
 
