@@ -1,0 +1,336 @@
+// openTIT - Agl render context: the command list being recorded and the GPU state shadow.
+#include "agl/AglState.h"
+
+#include "agl/AglShader.h"
+
+namespace agl {
+
+namespace {
+
+AglRenderState g_state;          // 0x010F1020..0x010F1180
+gpu::CommandList g_fallbackList{"AglDefault"};
+
+void SetFullTargetViewport(uint16_t width, uint16_t height)
+{
+    // The console used a [0, 1] depth range with the viewport transform
+    // computed by libgcm for the whole target.
+    const float scale[4] = { width * 0.5f, height * -0.5f, 0.5f, 0.0f };
+    const float offset[4] = { width * 0.5f, height * 0.5f, 0.5f, 0.0f };
+    Cmd().SetViewport(0, 0, width, height, 0.0f, 1.0f, scale, offset);
+    Cmd().SetScissor(0, 0, width, height);
+}
+
+void ApplyDepthEnable()
+{
+    // Depth testing and writing follow the presence of a depth target.
+    Cmd().SetDepthTestEnable(g_state.depthEnabled);
+    Cmd().SetDepthMask(g_state.depthEnabled);
+}
+
+void FillColorTarget(int index, const AglSurface* color)
+{
+    gpu::SurfaceDesc& s = g_state.surface;
+    s.color[index] = color->Ptr();
+    s.colorPitch[index] = color->pitch;
+    s.colorFormat = static_cast<gpu::SurfaceColorFormat>(color->surfaceFormat);
+    s.antialias = static_cast<gpu::SurfaceAntialias>(color->antialias);
+    s.swizzled = color->type == kAglSurface_Swizzle;
+    s.colorTargets = gpu::kTarget_0;
+    s.width = color->width;
+    s.height = color->height;
+    s.x = color->x;
+    s.y = color->y;
+}
+
+void FillDepthTarget(const AglSurface* depth)
+{
+    gpu::SurfaceDesc& s = g_state.surface;
+    if (depth) {
+        s.depthFormat = static_cast<gpu::SurfaceDepthFormat>(depth->surfaceFormat);
+        s.depth = depth->Ptr();
+        s.depthPitch = depth->pitch;
+    } else {
+        s.depthFormat = gpu::SurfaceDepthFormat::Z24S8;
+        s.depth = gpu::GpuPtr{};
+        s.depthPitch = 0x40;
+    }
+}
+
+} // namespace
+
+AglRenderState& GetRenderState()
+{
+    return g_state;
+}
+
+gpu::CommandList& Cmd()
+{
+    return g_state.cmd ? *g_state.cmd : g_fallbackList;
+}
+
+// @func 0x0053170C AglRenderState::Reset
+void ResetRenderState()
+{
+    gpu::CommandList& cmd = Cmd();
+    cmd.SetFrontFace(gpu::FrontFace::CW);
+    cmd.SetCullFace(gpu::CullFace::Back);
+    cmd.SetCullFaceEnable(true);
+    cmd.SetDepthFunc(gpu::CompareFunc::LEqual);
+    cmd.SetDepthTestEnable(true);
+    cmd.SetRestartIndex(0xFFFF);
+    cmd.SetRestartIndexEnable(true);
+    cmd.SetColorMask(gpu::kColorMask_All);
+    // Then everything off: passes enable what they need.
+    cmd.SetCullFaceEnable(false);
+    cmd.SetDepthTestEnable(false);
+    cmd.SetAlphaTestEnable(false);
+    cmd.SetBlendEnable(false);
+    // NOTE: the console also wrote an unidentified state method here
+    // (0x1E98 with value 0x01000000); it has no equivalent in the abstraction.
+
+    g_state.vertexLayoutDirty = true;
+    g_state.streamCount = 0;
+    g_state.vertexStride = 0;
+    g_state.fragmentProgram = nullptr;
+    g_state.enabledAttributes = 0xFFFF;
+    g_state.fragmentProgramDirty = false;
+    for (auto& texture : g_state.textures)
+        texture = nullptr;
+    g_state.field_1178 = -1;
+    g_state.samplerMinFilter[0] = g_state.samplerMinFilter[1] = 0;
+
+    g_state.stencilFront = AglStencilState();
+    g_state.stencilBack = AglStencilState();
+    for (auto& target : g_state.colorTargets)
+        target = nullptr;
+    g_state.depthTarget = nullptr;
+
+    // Default surface: one 64x64 A8R8G8B8 target, no depth.
+    gpu::SurfaceDesc& s = g_state.surface;
+    s = gpu::SurfaceDesc();
+    s.colorFormat = gpu::SurfaceColorFormat::A8R8G8B8;
+    s.colorTargets = gpu::kTarget_0;
+    for (int i = 0; i < gpu::kMaxColorTargets; ++i)
+        s.colorPitch[i] = 0x40;
+    s.depthFormat = gpu::SurfaceDepthFormat::Z24S8;
+    s.depthPitch = 0x40;
+    s.width = 0x40;
+    s.height = 0x40;
+}
+
+// @func 0x00532090 AglRenderState::SetRenderTargets
+void SetRenderTargets(const AglSurface* depth, const AglSurface* color, int index)
+{
+    if (g_state.colorTargets[index] == color && g_state.depthTarget == depth)
+        return;
+    g_state.colorTargets[index] = color;
+
+    gpu::SurfaceDesc& s = g_state.surface;
+    if (color) {
+        FillColorTarget(index, color);
+    } else {
+        // Depth-only rendering.
+        if (index == 0)
+            s.colorTargets = gpu::kTarget_None;
+        s.color[index] = gpu::GpuPtr{};
+        s.colorPitch[index] = 0x40;
+        if (depth) {
+            s.width = depth->width;
+            s.height = depth->height;
+            s.x = depth->x;
+            s.y = depth->y;
+        }
+    }
+    FillDepthTarget(depth);
+    g_state.depthTarget = depth;
+    Cmd().SetSurface(s);
+
+    const AglSurface* sized = color ? color : depth;
+    if (sized)
+        SetFullTargetViewport(sized->width, sized->height);
+
+    g_state.depthEnabled = depth != nullptr;
+    ApplyDepthEnable();
+}
+
+// @func 0x005373A8 AglRenderState::SetColorTarget
+void SetColorTarget(const AglSurface* color, int index)
+{
+    if (g_state.colorTargets[index] == color)
+        return;
+    g_state.colorTargets[index] = color;
+    if (!color)
+        return;
+    FillColorTarget(index, color);
+    Cmd().SetSurface(g_state.surface);
+    SetFullTargetViewport(color->width, color->height);
+}
+
+// @func 0x0053755C AglRenderState::SetDepthTarget
+void SetDepthTarget(const AglSurface* depth)
+{
+    if (g_state.depthTarget == depth)
+        return;
+    FillDepthTarget(depth);
+    g_state.depthTarget = depth;
+    Cmd().SetSurface(g_state.surface);
+    g_state.depthEnabled = depth != nullptr;
+    ApplyDepthEnable();
+}
+
+// @func 0x00532450 AglRenderState::SetViewportRect
+void SetViewportRect(const uint16_t rect[4])
+{
+    const uint16_t x = rect[0];
+    const uint16_t y = rect[1];
+    const uint16_t w = rect[2];
+    const uint16_t h = rect[3];
+    const float scale[4] = { w * 0.5f, h * -0.5f, 0.5f, 0.0f };
+    const float offset[4] = { x + w * 0.5f, y + h * 0.5f, 0.5f, 0.0f };
+    Cmd().SetViewport(x, y, w, h, 0.0f, 1.0f, scale, offset);
+    Cmd().SetScissor(x, y, w, h);
+}
+
+// @func 0x00535294 AglRenderState::SetDefault3DState
+void SetDefault3DState()
+{
+    gpu::CommandList& cmd = Cmd();
+    cmd.SetDepthTestEnable(g_state.depthEnabled);
+    cmd.SetDepthFunc(gpu::CompareFunc::LEqual);
+    cmd.SetDepthMask(g_state.depthEnabled);
+    cmd.SetCullFaceEnable(true);
+    cmd.SetFrontFace(gpu::FrontFace::CCW);
+}
+
+// @func 0x005355D8 AglRenderState::Begin2DPass
+void Begin2DPass(bool disableBlend, uint32_t clearConstant)
+{
+    gpu::CommandList& cmd = Cmd();
+    if (disableBlend)
+        cmd.SetBlendEnable(false);
+    cmd.SetDepthTestEnable(false);
+    cmd.SetDepthMask(false);
+    cmd.SetAlphaTestEnable(false);
+    cmd.SetCullFaceEnable(false);
+    // The pass's vertex constant 'clearConstant' starts out as zero.
+    const float zero[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    cmd.SetVertexProgramConstants(clearConstant, 4, zero);
+}
+
+// @func 0x00536AC0 AglRenderState::BindTexture
+void BindTexture(const AglTextureImage* texture, uint32_t unit, int sampler)
+{
+    gpu::CommandList& cmd = Cmd();
+    const uint8_t u = static_cast<uint8_t>(unit);
+    if (!texture) {
+        g_state.textures[unit] = nullptr;
+        cmd.SetTextureControl(u, false, 0, 0, 0);
+        return;
+    }
+    if (g_state.textures[unit] != texture) {
+        g_state.textures[unit] = texture;
+        cmd.SetTexture(u, texture->desc);
+        // All mip levels: max LOD is (levels - 1) in 4.8 fixed point.
+        cmd.SetTextureControl(u, true, 0, static_cast<uint16_t>((texture->desc.mipmaps - 1) * 0x100), 0);
+    }
+    cmd.SetTextureAddress(u, gpu::TextureWrap::ClampToEdge, gpu::TextureWrap::ClampToEdge,
+                          gpu::TextureWrap::ClampToEdge, 0, 0, 0);
+    const uint8_t minFilter = g_state.samplerMinFilter[sampler & 1];
+    const uint8_t magFilter = g_state.samplerMagFilter[sampler & 1];
+    cmd.SetTextureFilter(u, 0,
+                         minFilter ? static_cast<gpu::TextureMinFilter>(minFilter) : gpu::TextureMinFilter::Linear,
+                         magFilter ? static_cast<gpu::TextureMagFilter>(magFilter) : gpu::TextureMagFilter::Linear,
+                         1);
+}
+
+// @func 0x00531F80 AglRenderState::Clear
+void ClearTargets(float depth, uint32_t mask, uint32_t color, uint32_t stencil, uint32_t stencilMask)
+{
+    gpu::CommandList& cmd = Cmd();
+    cmd.SetClearColor(color);
+    // 24-bit depth; exactly 1.0 maps to the maximum value.
+    const uint32_t depth24 = depth != 1.0f ? static_cast<uint32_t>(depth * 16777215.0f) : 0xFFFFFFu;
+    cmd.SetClearDepthStencil((depth24 << 8) | (stencil & 0xFF));
+    cmd.SetStencilMask(stencilMask);
+    cmd.ClearSurface(mask);
+    cmd.SetStencilMask(g_state.stencilFront.writeMask);
+}
+
+// @func 0x0053539C AglRenderState::CommitDrawState
+void CommitDrawState()
+{
+    gpu::CommandList& cmd = Cmd();
+    AglFragmentProgram* fp = g_state.fragmentProgram;
+    if (g_state.fragmentProgramDirty) {
+        g_state.fragmentProgramDirty = false;
+        if (fp) {
+            cmd.SetFragmentProgram(fp->desc);
+            UploadFragmentConstants(fp);
+        }
+    } else if (fp && fp->dirtyMask != 0) {
+        UploadFragmentConstants(fp);
+    }
+
+    if (!g_state.vertexLayoutDirty)
+        return;
+    g_state.vertexLayoutDirty = false;
+    const uint16_t provided = g_state.attributeMask;
+    for (uint32_t i = 0; i < g_state.streamCount; ++i) {
+        const AglVertexStream& stream = g_state.streams[i];
+        const uint32_t attribute = stream.attribute + stream.attributeOffset;
+        if (stream.skip || !(provided & (1u << attribute)))
+            continue;
+        gpu::GpuPtr memory = g_state.vertexBuffer;
+        memory.data = static_cast<const uint8_t*>(memory.data) + stream.offset;
+        memory.location = gpu::MemoryLocation::Main;
+        cmd.SetVertexAttribute(static_cast<uint8_t>(attribute), 0, static_cast<uint8_t>(g_state.vertexStride),
+                               stream.size, static_cast<gpu::VertexAttribType>(stream.type), memory);
+    }
+    // Attributes enabled by the previous layout but not by this one.
+    uint16_t stale = static_cast<uint16_t>((g_state.enabledAttributes | provided) ^ provided);
+    for (int attribute = gpu::kMaxVertexAttributes - 1; stale != 0 && attribute >= 0; --attribute) {
+        if (stale & (1u << attribute)) {
+            stale = static_cast<uint16_t>(stale & ~(1u << attribute));
+            cmd.DisableVertexAttribute(static_cast<uint8_t>(attribute));
+        }
+    }
+    g_state.enabledAttributes = provided;
+}
+
+// @func 0x00537B7C FindVertexStream
+const AglVertexStream* FindVertexStream(const AglVertexStream* streams, uint32_t attribute,
+                                        uint32_t attributeOffset)
+{
+    for (; streams->size != 0; ++streams) {
+        if (streams->attribute == attribute && streams->attributeOffset == attributeOffset)
+            return streams;
+    }
+    return nullptr;
+}
+
+// @func 0x0053C7EC AglRenderer::BindTexture
+void ApiBindTexture(const AglTextureImage* texture, uint32_t unit, int sampler)
+{
+    BindTexture(texture, unit, sampler);
+}
+
+// @func 0x0053C80C AglRenderer::Begin2DPass
+void ApiBegin2DPass(bool disableBlend, uint32_t clearConstant)
+{
+    Begin2DPass(disableBlend, clearConstant);
+}
+
+// @func 0x0053C830 AglRenderer::SetDefault3DState
+// @func 0x0054338C AglRenderer::SetDefault3DState (copy 2)
+void ApiSetDefault3DState()
+{
+    SetDefault3DState();
+}
+
+// @func 0x0053C850 AglRenderer::CommitDrawState
+void ApiCommitDrawState()
+{
+    CommitDrawState();
+}
+
+} // namespace agl
