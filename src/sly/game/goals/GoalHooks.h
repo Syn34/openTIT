@@ -136,6 +136,39 @@ void* GoalFindEntity(uint32_t name);
 // 0x000DB290: descendant of an entity by name (null if none).
 void* EntityFindDescendant(void* entity, uint32_t name);
 
+// Entity field_AC bit 18: alive / registered.
+bool GoalEntityAlive(const void* entity);
+// Entity health (+0x15C) and maximum health (+0x158).
+float GoalEntityHealth(const void* entity);
+float GoalEntityMaxHealth(const void* entity);
+// field_C0 bit 1: an actor (has health).
+bool GoalEntityIsActor(const void* entity);
+// Targeting component of the job owner (Job +0x08, 0x000D949C): drops
+// `entityName` from its targets (0x0029F510).
+void JobOwnerUntarget(const Job* job, uint32_t entityName);
+// Targeting component of the job owner: adds a highlighted target for an
+// entity (0x0029F760, then the record is filled: type 1, radius 62.99)
+// or removes it (0x0029F7A0).
+void JobOwnerAddTarget(const Job* job, void* entity);
+void JobOwnerRemoveTarget(const Job* job, void* entity);
+// 0x00470660: stat counter `stat` of `category` += amount for an object.
+void GoalReportStat(void* object, uint32_t category, uint32_t stat, int amount);
+// Event listener groups of a goal (0x0048FA54 add, 0x0048F298 remove).
+void GoalListenTo(Goal* goal, uint32_t group);
+void GoalStopListening(Goal* goal);
+// Spawns the Operation Mousetrap helper entity (definition 0x30667928, then
+// placed through its slot 21 from a level locator); returns it, or null.
+void* SpawnMousetrapHelper();
+// field_150 of an entity: the object it is attached to.
+void* GoalEntityParent(const void* entity);
+// Marker filters: field_C0 bit 22 with +0x19C >= 0 (the entity hides its
+// marker while targeted), and class bit 35 (+0xB8): markers allowed.
+bool GoalEntityMarkerSuppressed(const void* entity);
+bool GoalEntityAllowsMarker(const void* entity);
+// Class bit 34 (+0xB8): the entity can be photographed.
+bool GoalEntityPhotographable(const void* entity);
+// The "too far" warning on the follow HUD (0x00368A48 on 0x00F64D3C, then 0x00384750).
+void HudSetFollowWarning(bool on);
 // Entity reference count (+0xB2) and virtual slot 10 (release).
 void GoalEntityAddRef(void* entity);
 void GoalEntityRelease(void* entity);
@@ -191,7 +224,10 @@ enum class MinigameKind {
     Fencing,             // 0x003D8B34
     Fishing,             // 0x003B3148
     Qte,                 // 0x003D3704
+    PenguinMontage,      // 0x0041F1FC
 };
+// 0x000B27B4: awards the trophy registered under `name`.
+void GoalAwardTrophy(uint32_t name);
 gameplay::Minigame* CreateMinigame(MinigameKind kind, SlyGame* game, const void* config,
                                    Goal* owner);
 

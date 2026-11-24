@@ -270,6 +270,33 @@ public:
     ape::ApeTArray<uint32_t> field_A50;                                    // +0xA50
 };
 
+// "GoalPenguinMontageGame" (vtable 0x00B1EEE0): a run of penguin
+// minigames in rounds; completing it without losing a round awards a
+// trophy.
+class GoalPenguinMontageGame : public MinigameGoal {
+public:
+    static constexpr uint32_t kTrophy_NoLoss = 0xCBB04602;
+    static constexpr int kRoundCount = 6;
+
+    using MinigameGoal::MinigameGoal;
+    ~GoalPenguinMontageGame() override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+    void InstallMinigame() override;
+
+    // File-static flag 0x0106B62C: a round was lost during this montage.
+    // NOTE: set by the montage minigame (outside this module).
+    static bool s_roundLost;
+
+    // One round (0x3C bytes on the console). NOTE: built by 0x003396A8 /
+    // 0x00339388 (not ported): the sub-goals of the round and their weights.
+    struct Round {
+        ape::ApeTArray<uint64_t> entries;   // +0x04 (8-byte records)
+        uint8_t data[0x24] = {};
+    };
+    uint32_t field_A14 = 0;          // +0xA14 (XML 0xCF4A1DD4)
+    Round rounds[kRoundCount];       // +0xA18
+};
+
 // "GoalBartenderGame" (vtable 0x00B1E3E0).
 class GoalBartenderGame : public MinigameGoal {
 public:
@@ -423,6 +450,254 @@ public:
 
     uint32_t check = kCheck_Available;     // +0xA0C bits 26-31
     ape::ApeTArray<InteractionLink> links; // +0xA10
+};
+
+} // namespace goals
+} // namespace sly
+
+namespace sly {
+namespace goals {
+
+// "GoalFollow" (vtable 0x00B1EA08): stay within range of an entity; fails
+// after too long too far away, completes after long enough close by.
+class GoalFollow : public Goal {
+public:
+    enum FollowFlags : uint32_t {
+        kFollow_TooFar     = 0x01000000,   // warning currently shown
+        kFollow_ShowMarker = 0x80000000,   // (XML 0x76E96977)
+    };
+
+    // 0x0033162C (the factory's constructor).
+    GoalFollow(const GoalDesc* desc, const float offset[3], uint32_t target, float minDistance,
+               float maxDistance, float failTime, float completeTime, uint32_t options);
+    ~GoalFollow() override;
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
+    uint8_t Update(int player, const GameEvent& e) override;
+    void ResetHints(bool stopHintScript) override;
+    void ReapplyHints(Goal* owner) override;
+    void CollectMarkers(GoalMarkerList* list) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+
+    ape::Vec3 offset;               // +0xA10 marker offset
+    uint32_t target = 0;            // +0xA20 entity to follow
+    float minDistanceSq = 0.0f;     // +0xA24
+    float maxDistanceSq = 0.0f;     // +0xA28
+    float failTime = 0.0f;          // +0xA2C too far for longer than this fails (< 0: never)
+    float completeTime = -1.0f;     // +0xA30 close for this long completes (<= 0: never)
+    uint32_t followFlags = 0;       // +0xA34 FollowFlags (+ option bits 25-30)
+    void* entity = nullptr;         // +0xA38
+    float farTime = 0.0f;           // +0xA3C
+    float nearTime = 0.0f;          // +0xA40
+    float lastDistanceSq = -1.0f;   // +0xA44
+};
+
+// "GoalHealthMonitor" (vtable 0x00B1EA80; destructor outside this range):
+// plays "Threshold<n>_Passed" on the hint script when an entity's health
+// drops past each threshold. Never holds up its job.
+class GoalHealthMonitor : public Goal {
+public:
+    // 0x0033273C (the factory's constructor).
+    GoalHealthMonitor(const GoalDesc* desc, const ape::ApeTArray<float>& thresholds,
+                      uint32_t target, bool percent);
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
+    uint8_t Update(int player, const GameEvent& e) override;
+    void ResetHints(bool stopHintScript) override;
+    void ReapplyHints(Goal* owner) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+
+    ape::ApeTArray<float> thresholds;   // +0xA0C highest first
+    uint32_t target = 0;                // +0xA20
+    bool percent = false;               // +0xA24 thresholds are fractions of the maximum
+    void* entity = nullptr;             // +0xA28
+    float lastHealth = 0.0f;            // +0xA2C
+};
+
+// Element hash 0x5F3BC8F0 (a vocabulary search matched "GoalLifoHop",
+// probably a collision; vtable 0x00B1EAF8): shows a marker on an entity
+// while active. Never holds up its job.
+class GoalMarkEntity : public Goal {
+public:
+    enum MarkFlags : uint32_t {
+        kMark_HideWhileTargeted = 0x02000000,   // option bit 25
+    };
+
+    // 0x00332E28 (the factory's constructor).
+    GoalMarkEntity(const GoalDesc* desc, uint32_t target, const float offset[3], uint32_t options,
+                   uint32_t field_A10);
+    ~GoalMarkEntity() override;
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
+    uint8_t Update(int player, const GameEvent& e) override;
+    void ResetHints(bool stopHintScript) override;
+    void ReapplyHints(Goal* owner) override;
+    void CollectMarkers(GoalMarkerList* list) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+
+    uint32_t target = 0;        // +0xA0C
+    uint32_t field_A10 = 0;     // +0xA10 (XML 0x6E6EDD6B)
+    ape::Vec3 offset;           // +0xA20
+    uint32_t markFlags = 0;     // +0xA30 option bits 25-31
+    void* entity = nullptr;     // +0xA34
+};
+
+} // namespace goals
+} // namespace sly
+
+namespace sly {
+namespace goals {
+
+// "OperationMousetrap" (vtable 0x00B1EB70): a goal group that also keeps
+// two sets of entities targeted by the job owner's targeting gadget and
+// completes once every entity of the second set is gone.
+class GoalOperationMousetrap : public GoalGroup {
+public:
+    enum Phase : int32_t {
+        kPhase_None   = 0,   // nothing targeted
+        kPhase_SetB   = 1,   // the second set is targeted
+        kPhase_SetA   = 2,   // the first set is targeted
+        kPhase_Helper = 3,   // the helper entity is targeted
+    };
+    // Messages that switch between the two sets.
+    static constexpr uint32_t kMsg_TargetSetA = 0xF41445FE;
+    static constexpr uint32_t kMsg_TargetSetB = 0x3281C093;
+
+    using GoalGroup::GoalGroup;
+    ~GoalOperationMousetrap() override;
+    void HandleMessage(const GoalMessage& msg) override;
+    uint8_t Update(int player, const GameEvent& e) override;
+    void ResetHints(bool stopHintScript) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+
+    // 0x00333BC8: changes which entities are targeted.
+    void SetPhase(int32_t phase, bool force);
+    // 0x00334114: drops every target and entity reference.
+    void Stop();
+    // 0x00334954: spawns the helper entity if there is none.
+    void SpawnHelper();
+    // 0x00334B74: resolves the entity names and starts targeting.
+    void Start();
+    // 0x00334D88: per-update logic while active.
+    void Tick();
+
+    ape::ApeTArray<uint32_t> namesA;   // +0xA20
+    ape::ApeTArray<uint32_t> namesB;   // +0xA34
+    ape::ApeTArray<void*> entitiesA;   // +0xA48
+    ape::ApeTArray<void*> entitiesB;   // +0xA5C
+    void* helper = nullptr;            // +0xA70
+    int32_t phase = kPhase_None;       // +0xA74
+    bool started = false;              // +0xA78
+    bool wantSetA = true;              // +0xA79
+};
+
+} // namespace goals
+} // namespace sly
+
+namespace sly {
+namespace goals {
+
+// "GoalScore" (vtable 0x00B1F048; factory 0x0033E7D8 and destructor not
+// ported): counts events of one type ("scoreType") and compares the score
+// with a target.
+class GoalScore : public Goal {
+public:
+    enum Compare : uint8_t {
+        kCompare_Less = 0, kCompare_AtMost = 1, kCompare_Near = 2,
+        kCompare_Greater = 3, kCompare_AtLeast = 4,
+    };
+    enum ScoreFlags : uint32_t {
+        kScore_ReportStat    = 0x10000000,   // (XML 0x58FA06CA)
+        kScore_HasMax        = 0x20000000,
+        kScore_HasMin        = 0x40000000,
+        kScore_NotifyAdvance = 0x80000000,   // (XML 0x512CF5D9)
+    };
+    // An entity that is marked while it can still score (0x20 bytes).
+    struct Marked {
+        uint8_t pad[0x10];
+        void* entity = nullptr;   // +0x10
+        uint8_t pad2[0x0C];
+    };
+    // A scoring object (0x30 bytes).
+    struct Source {
+        uint8_t pad[0x10];
+        uint32_t name = 0;       // +0x10 object (or child) name
+        uint32_t parent = 0;     // +0x14 parent entity, 0 for none
+        uint32_t group = 0;      // +0x18 compared with event arguments
+        uint32_t field_1C = 0;
+        int32_t points = 1;      // +0x20
+        uint32_t flags = 0;      // +0x24 SourceFlags
+        uint8_t pad3[0x08];
+    };
+    enum SourceFlags : uint32_t {
+        kSource_CountMissing = 0x00800000,   // a missing entity counts as scored
+        kSource_Unmark       = 0x40000000,   // drop its marker when it scores
+        kSource_Marked       = 0x80000000,   // shown with a marker
+    };
+    // Points per event group id (8 bytes).
+    struct Value {
+        uint32_t group = 0;
+        int32_t points = 1;
+    };
+
+    using Goal::Goal;
+    uint8_t Update(int player, const GameEvent& e) override;
+    void Reset(bool fromSave, int status) override;
+    void ResetHints(bool stopHintScript) override;
+    void ReapplyHints(Goal* owner) override;
+    bool GetProgress(GoalProgress* out) override;
+    void CollectMarkers(GoalMarkerList* list) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+
+    ape::ApeTArray<Marked> marked;    // +0xA0C
+    ape::ApeTArray<Source> sources;   // +0xA20
+    ape::ApeTArray<Value> values;     // +0xA34
+    uint32_t eventName = 0;           // +0xA48 "scoreType"
+    uint32_t customData = 0;          // +0xA4C "customData"
+    uint8_t compare = kCompare_AtLeast; // +0xA50
+    float target = 0.0f;              // +0xA54
+    float tolerance = 0.0f;           // +0xA58
+    float minScore = 0.0f;            // +0xA5C
+    float maxScore = 0.0f;            // +0xA60
+    float score = 0.0f;               // +0xA64
+    uint32_t scoreFlags = 0;          // +0xA68 ScoreFlags
+};
+
+} // namespace goals
+} // namespace sly
+
+namespace sly {
+namespace goals {
+
+// "GoalBinocucomPhoto" (vtable 0x00B1E5D0): photograph a set of entities
+// with the binocucom. Only the target bookkeeping is ported; the camera
+// test (Update 0x0032BCD0), SetStatus (0x0032AC78), the factory (0x0032B358)
+// and the marker builder (0x0032AAE8) are TODO.
+class GoalBinocucomPhoto : public Goal {
+public:
+    // One photo target (0x90 bytes on the console).
+    struct Target {
+        uint8_t pad[0x10];
+        uint32_t name = 0;        // +0x10
+        void* entity = nullptr;   // +0x14
+        uint8_t pad2[0x18];
+        bool pending = true;      // +0x30 still to be photographed
+        uint8_t pad3[0x5F];
+    };
+
+    using Goal::Goal;
+    ~GoalBinocucomPhoto() override;
+    uint8_t Update(int player, const GameEvent& e) override;
+    void Reset(bool fromSave, int status) override;
+    void ResetHints(bool stopHintScript) override;
+    void ReapplyHints(Goal* owner) override;
+    void CollectMarkers(GoalMarkerList* list) override;
+    void CollectAllMarkers(GoalMarkerList* list) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+    void BuildMarker(const Target& target, GoalMarker* marker) const;
+
+    ape::ApeTArray<Target> targets;   // +0xA0C
+
+private:
+    // Resolves every target; fails the goal if one is gone. False if it failed.
+    bool ResolveTargets(bool pending);
 };
 
 } // namespace goals

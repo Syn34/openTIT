@@ -101,6 +101,7 @@ public:
     }
 
     void Clear() { m_count = 0; }
+    void PopBack() { --m_count; }
 };
 
 } // namespace ape

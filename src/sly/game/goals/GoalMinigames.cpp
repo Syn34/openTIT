@@ -411,3 +411,49 @@ void GoalBartenderGame::InstallMinigame()
 
 } // namespace goals
 } // namespace sly
+
+namespace sly {
+namespace goals {
+
+// ===========================================================================
+// Penguin montage
+
+bool GoalPenguinMontageGame::s_roundLost = false;
+
+// @func 0x00339248 GoalPenguinMontageGame::~GoalPenguinMontageGame
+// @func 0x003392D0 GoalPenguinMontageGame::~GoalPenguinMontageGame (deleting)
+GoalPenguinMontageGame::~GoalPenguinMontageGame() = default;
+
+// @func 0x00339998 GoalPenguinMontageGame::SetStatus
+void GoalPenguinMontageGame::SetStatus(uint8_t newStatus, bool force)
+{
+    if (newStatus == kGoal_Active)
+        s_roundLost = false;
+    if (newStatus == kGoal_Complete && !s_roundLost)
+        GoalAwardTrophy(kTrophy_NoLoss);
+    // Same minigame handling as MinigameGoal::SetStatus (inlined on the
+    // console), then the base status change.
+    if (force || newStatus != status) {
+        if (newStatus == kGoal_Active) {
+            if (!GameActiveMinigame(game)) {
+                InstallMinigame();
+                minigame = GameActiveMinigame(game);
+                if (!force)
+                    MinigameStart(minigame);
+            }
+        } else if (newStatus != kGoal_Complete && newStatus != kGoal_Failed) {
+            if (minigame && GameActiveMinigame(game) == minigame)
+                GameEndActiveMinigame(game);
+        }
+    }
+    Goal::SetStatus(newStatus, force);
+}
+
+// @func 0x00339B14 GoalPenguinMontageGame::InstallMinigame
+void GoalPenguinMontageGame::InstallMinigame()
+{
+    GameInstallMinigame(game, CreateMinigame(MinigameKind::PenguinMontage, game, &field_A14, this));
+}
+
+} // namespace goals
+} // namespace sly
