@@ -38,6 +38,7 @@ enum ComponentDescType : uint32_t {
     kCompDesc_ProcEyes       = 0x10,
     kCompDesc_IK             = 0x11,
     kCompDesc_FacePlayer     = 0x16,
+    kCompDesc_FX             = 0x17,
     kCompDesc_RadarBlip      = 0x19,
     kCompDesc_Interact       = 0x1B,
     kCompDesc_Mover          = 0x1D,
@@ -210,6 +211,42 @@ struct FacePlayerComponentDesc : ComponentDesc {
     float rotSpeed = 0.0f;       // 0x18 radians per second (degrees in the XML)
     bool lockY = false;          // 0x1C
     bool flag1D = false;         // 0x1D attribute 0x05AB7B55. NOTE: name unknown
+};
+
+// <FX> (vtable 0x00B1C778, 0xE0 bytes): effects played on the entity for
+// the gadget powers (one child element per power; all fields start zero).
+struct PowerFx {
+    uint32_t objName = 0;        // +0x00
+    uint32_t script = 0;         // +0x04
+    uint32_t defName = 0;        // +0x08
+    float timeout = 0.0f;        // +0x0C
+};
+struct FxComponentDesc : ComponentDesc {
+    explicit FxComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_FX) {}
+    PowerFx cloak;               // 0x20 <Cloak>
+    float cloakPowerCost = 0.0f; // 0x30
+    PowerFx electricity;         // 0x34 <Electricity>
+    PowerFx fire;                // 0x44 <fire>
+    PowerFx poison;              // 0x54 <Poison>
+    PowerFx ice;                 // 0x64 <Ice>
+    uint32_t pad74[3] = {};      // 0x74
+    // 0x80: child element 0x654ADD4F. NOTE: element name unknown.
+    uint32_t glowObjName = 0;    // 0x80
+    float glow84 = 0.0f;         // 0x84 attribute 0x71D1F169 (default 0.8). NOTE: name unknown
+    uint32_t pad88[2] = {};
+    ape::Vec3 glowScale = {0.0f, 0.0f, 0.0f, 0.0f};   // 0x90 attribute 0x1BAD0B40 (default 1.05). NOTE: name unknown
+    float colorScale[4] = {};    // 0xA0 ColorScaleR/G/B/A (defaults 1.1, 1.1, 1.1, 1.5)
+    bool glowB0 = false;         // 0xB0 attribute 0xA621B465. NOTE: name unknown
+    bool glowB1 = false;         // 0xB1 attribute 0x6E828D95. NOTE: name unknown
+    uint8_t padB2[14] = {};
+    // 0xC0 <SlowTime>.
+    float slowTimeRadius = 0.0f;     // 0xC0
+    float slowTimeTimeout = 0.0f;    // 0xC4
+    float slowTimeScale = 0.0f;      // 0xC8
+    float slowTimePowerCost = 0.0f;  // 0xCC
+    uint32_t slowTimeHashD0 = 0;     // 0xD0 attribute 0x4F113DAE. NOTE: name unknown
+    float slowTimeD4 = 0.0f;         // 0xD4 attribute 0x173BA787 (default 1). NOTE: name unknown
+    float slowTimeD8 = 0.0f;         // 0xD8 attribute 0x4E1FBF3A. NOTE: name unknown
 };
 
 // <RadarBlip> (vtable 0x00B1C920, 0x18 bytes).
@@ -449,6 +486,7 @@ ComponentDesc* ParseProcAnimComponentDesc(ape::xml::XmlElement* root, ape::xml::
 ComponentDesc* ParseProcEyesComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseIKComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseFacePlayerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseFxComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseRadarBlipComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseInteractComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseMoverComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);

@@ -202,6 +202,27 @@ constexpr uint32_t kAttr_UpperRotPivotV  = 0xC4E89AA9u;
 constexpr uint32_t kAttr_LowerRotPivotU  = 0x1B750329u;
 constexpr uint32_t kAttr_LowerRotPivotV  = 0x1B75032Au;
 
+constexpr uint32_t kTag_Cloak            = 0x03D3E3B0u;
+constexpr uint32_t kTag_Electricity      = 0xB96F8651u;
+constexpr uint32_t kTag_Fire             = 0x0020EE36u;
+constexpr uint32_t kTag_Poison           = 0x8CFF6308u;
+constexpr uint32_t kTag_Ice              = 0x00011A6Bu;
+constexpr uint32_t kTag_FxGlow           = 0x654ADD4Fu;   // NOTE: element name unknown
+constexpr uint32_t kTag_SlowTime         = 0xEE1B444Eu;
+constexpr uint32_t kAttr_ObjName         = 0xC7E35FE2u;
+constexpr uint32_t kAttr_DefName         = 0x86E4FFF0u;
+constexpr uint32_t kAttr_Timeout         = 0xDC7AD941u;
+constexpr uint32_t kAttr_PowerCost       = 0xD87F3E32u;
+constexpr uint32_t kAttr_Glow84          = 0x71D1F169u;   // NOTE: name unknown
+constexpr uint32_t kAttr_GlowScale       = 0x1BAD0B40u;   // NOTE: name unknown
+constexpr uint32_t kAttr_ColorScale[4]   = {0xF0828D6Bu, 0xF0828D60u, 0xF0828D5Bu, 0xF0828D5Au};   // R, G, B, A
+constexpr uint32_t kAttr_GlowB0          = 0xA621B465u;   // NOTE: name unknown
+constexpr uint32_t kAttr_GlowB1          = 0x6E828D95u;   // NOTE: name unknown
+constexpr uint32_t kAttr_TimeScale       = 0xA9597E7Du;
+constexpr uint32_t kAttr_SlowTimeD0      = 0x4F113DAEu;   // NOTE: name unknown
+constexpr uint32_t kAttr_SlowTimeD4      = 0x173BA787u;   // NOTE: name unknown
+constexpr uint32_t kAttr_SlowTimeD8      = 0x4E1FBF3Au;   // NOTE: name unknown
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -229,6 +250,14 @@ void ReadChildNames(XmlElement* elem, uint32_t tag, uint32_t* out, uint32_t coun
         out[i] = value;
         child = child->NextSiblingElement(tag);
     }
+}
+
+void ReadPowerFx(XmlElement* child, PowerFx& fx)
+{
+    child->GetHash(kAttr_Script, &fx.script, 0);
+    child->GetHash(kAttr_ObjName, &fx.objName, 0);
+    child->GetHash(kAttr_DefName, &fx.defName, 0);
+    child->GetFloat(kAttr_Timeout, &fx.timeout, 0.0f);
 }
 
 void ReadPulseField(XmlElement* elem, PulseFieldComponentDesc& desc)
@@ -480,6 +509,63 @@ ComponentDesc* ParseFacePlayerComponentDesc(XmlElement* root, XmlElement* elem, 
             desc->rotSpeed *= kDegToRad;
         elem->GetBool(kAttr_LockY, &desc->lockY, desc->lockY);
         elem->GetBool(kAttr_FacePlayer1D, &desc->flag1D, desc->flag1D);
+    }
+    return desc;
+}
+
+// @func 0x00290928 ParseFxComponentDesc
+ComponentDesc* ParseFxComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    FxComponentDesc* desc = NewNamedDesc<FxComponentDesc>(root, elem, scope);
+    if (!desc)
+        return nullptr;
+    for (XmlElement* child = elem->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        switch (child->GetNameHash()) {
+        case kTag_FxGlow: {
+            const float defaultScale[3] = {1.05f, 1.05f, 1.05f};
+            child->GetHash(kAttr_ObjName, &desc->glowObjName, 0);
+            child->GetFloat(kAttr_Glow84, &desc->glow84, 0.8f);
+            child->GetVec3(kAttr_GlowScale, &desc->glowScale.x, defaultScale);
+            child->GetFloat(kAttr_ColorScale[0], &desc->colorScale[0], 1.1f);
+            child->GetFloat(kAttr_ColorScale[1], &desc->colorScale[1], 1.1f);
+            child->GetFloat(kAttr_ColorScale[2], &desc->colorScale[2], 1.1f);
+            child->GetFloat(kAttr_ColorScale[3], &desc->colorScale[3], 1.5f);
+            child->GetBool(kAttr_GlowB0, &desc->glowB0, false);
+            child->GetBool(kAttr_GlowB1, &desc->glowB1, false);
+            break;
+        }
+        case kTag_Cloak:
+            child->GetHash(kAttr_Script, &desc->cloak.script, 0);
+            child->GetHash(kAttr_ObjName, &desc->cloak.objName, 0);
+            child->GetHash(kAttr_DefName, &desc->cloak.defName, 0);
+            child->GetFloat(kAttr_Timeout, &desc->cloak.timeout, 0.0f);
+            child->GetFloat(kAttr_PowerCost, &desc->cloakPowerCost, 0.0f);
+            break;
+        case kTag_Fire:
+            ReadPowerFx(child, desc->fire);
+            break;
+        case kTag_Ice:
+            ReadPowerFx(child, desc->ice);
+            break;
+        case kTag_SlowTime:
+            child->GetFloat(kAttr_Radius, &desc->slowTimeRadius, 0.0f);
+            child->GetFloat(kAttr_Timeout, &desc->slowTimeTimeout, 0.0f);
+            child->GetFloat(kAttr_TimeScale, &desc->slowTimeScale, 0.0f);
+            child->GetFloat(kAttr_PowerCost, &desc->slowTimePowerCost, 0.0f);
+            child->GetHash(kAttr_SlowTimeD0, &desc->slowTimeHashD0, 0);
+            child->GetFloat(kAttr_SlowTimeD4, &desc->slowTimeD4, 1.0f);
+            child->GetFloat(kAttr_SlowTimeD8, &desc->slowTimeD8, 0.0f);
+            break;
+        case kTag_Electricity:
+            ReadPowerFx(child, desc->electricity);
+            break;
+        case kTag_Poison:
+            ReadPowerFx(child, desc->poison);
+            break;
+        default:
+            (void)root->GetDocumentPath();   // compiled-out error report
+            break;
+        }
     }
     return desc;
 }
