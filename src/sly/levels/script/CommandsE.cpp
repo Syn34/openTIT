@@ -4,6 +4,7 @@
 #include "sly/levels/script/ScriptVars.h"
 #include "sly/levels/LevelServices.h"
 #include "sly/game/SpawnManager.h"
+#include "sly/gameplay/WaveDistortion.h"
 
 #include "ape/core/ApeString.h"
 #include "sly/game/AudioSystem.h"
@@ -106,6 +107,7 @@ void DetachFromParentCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimSc
 class WaveDistortCommand : public ApeAnimScriptCommand {
 public:
     WaveDistortCommand();
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -137,8 +139,21 @@ ApeAnimScriptCommand* WaveDistortCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x000722FC WaveDistortCommand::Execute) fills a wave description and
-// hands it to 0x0042A248 (gameplay range).
+// @func 0x000722FC WaveDistortCommand::Execute
+void WaveDistortCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    gameplay::WaveDistortionDesc desc;
+    // "object" names an object variable or, failing that, a live entity.
+    desc.entity = ResolveEntity(instance, m_object, m_object);
+    desc.easeIn = m_easeIn;
+    desc.duration = m_duration;
+    desc.easeOut = m_easeOut;
+    desc.radius = m_radius;
+    desc.amplitude = m_amplitude;
+    desc.frequency = m_freq;
+    desc.waveOffset = m_waveOffset;
+    gameplay::AddWaveDistortion(desc);
+}
 
 // ---------------------------------------------------------------------------
 // EnableCollision
@@ -146,6 +161,7 @@ ApeAnimScriptCommand* WaveDistortCommand::Create(XmlElement* element) const
 class EnableCollisionCommand : public ApeAnimScriptCommand {
 public:
     EnableCollisionCommand();
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -176,7 +192,29 @@ ApeAnimScriptCommand* EnableCollisionCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x000725E0 EnableCollisionCommand::Execute) finds the Havok rigid body.
+// @func 0x000725E0 EnableCollisionCommand::Execute
+// Either adds/removes a named rigid body of the level's physics world, or
+// switches the collision of an entity (one shape by index).
+void EnableCollisionCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_rigidBody[0] != '\0') {
+        void* body = PhysicsFindRigidBody(m_rigidBody);
+        if (!body)
+            return;
+        const bool inWorld = RigidBodyIsInWorld(body);
+        if (!m_enable && inWorld)
+            PhysicsRemoveRigidBody(body);
+        else if (m_enable && !inWorld)
+            PhysicsAddRigidBody(body);
+        return;
+    }
+
+    WorldObject* entity = ResolveEntity(instance, m_entity, m_entity);
+    if (entity && m_child != 0)
+        entity = EntityFindChild(entity, m_child);
+    if (entity)
+        EntitySetCollisionDisabled(entity, !m_enable, m_index);
+}
 
 // ---------------------------------------------------------------------------
 // EnableComponent
@@ -184,6 +222,7 @@ ApeAnimScriptCommand* EnableCollisionCommand::Create(XmlElement* element) const
 class EnableComponentCommand : public ApeAnimScriptCommand {
 public:
     EnableComponentCommand();
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -209,7 +248,28 @@ ApeAnimScriptCommand* EnableComponentCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00072974 EnableComponentCommand::Execute) "AnimScriptCommandEnableComponent".
+// @func 0x00072974 EnableComponentCommand::Execute
+void EnableComponentCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_var, m_entity);
+    if (entity && m_entityChild != 0)
+        entity = EntityFindChild(entity, m_entityChild);
+    if (!entity)
+        return;
+    void* component = EntityFindComponentById(entity, m_component);
+    if (!component) {
+        if (g_scriptWarnings)
+            ape::TempFormat("AnimScriptCommandEnableComponent '%s' failed because component (%s) could not be found",
+                            EntityDebugName(entity), ape::TempHexString(m_component));
+        return;
+    }
+    if (m_enable) {
+        if (!ComponentIsEnabled(component))
+            ComponentSetEnabled(component, true);
+    } else {
+        ComponentSetEnabled(component, false);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xC99BEAB1 (name unknown, between EnableComponent and EnableDarkScreen):
@@ -411,6 +471,7 @@ void EnableGlobalSwitchCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptSta
 class EnableSentryLightCommand : public ApeAnimScriptCommand {
 public:
     EnableSentryLightCommand();
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -438,7 +499,23 @@ ApeAnimScriptCommand* EnableSentryLightCommand::Create(XmlElement* element) cons
     return command;
 }
 
-// TODO(0x00073748 EnableSentryLightCommand::Execute)
+// @func 0x00073748 EnableSentryLightCommand::Execute
+void EnableSentryLightCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_object, m_entity);
+    if (!entity || !EntityIsSentryLight(entity)) {
+        if (m_object != 0)
+            ScriptWarning("EnableSentryLight: %s is not a sentry light", m_object);
+        if (m_entity != 0)
+            ScriptWarning("EnableSentryLight: %s is not a sentry light", m_entity);
+        return;
+    }
+    // Only the attributes present in the script are applied.
+    if (m_hasEnable)
+        SentryLightSetEnabled(entity, m_enable);
+    if (m_hasLocked)
+        SentryLightSetLocked(entity, m_locked);
+}
 
 // ---------------------------------------------------------------------------
 // EnableSpawner / "EnableSpawnerGroup" (hash 0x3F74DF1A; name from a hash match)
@@ -596,6 +673,7 @@ public:
     EnqueueSoundCommand();
     ~EnqueueSoundCommand() override;
     void Link() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -648,7 +726,32 @@ ApeAnimScriptCommand* EnqueueSoundCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00074354 EnqueueSoundCommand::Execute) "EnqueueSound fails to find sound %s (in bank %s)".
+// @func 0x00074354 EnqueueSoundCommand::Execute
+// Queues the sound (it waits for a free voice) unless it is already playing;
+// attribute 0x6D18DE7D queues it again regardless.
+void EnqueueSoundCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    if (!audio::SoundNameHasDef(m_sound)) {
+        if (g_scriptWarnings)
+            ape::TempFormat("EnqueueSound fails to find sound %s (in bank %s)",
+                            ape::TempHexString(m_soundName), ape::TempHexString(m_soundBank));
+        return;
+    }
+    if (!audio::SoundNameHasVariants(&m_sound))
+        return;
+    audio::SoundQueue& queue = audio::Requests();
+    if (queue.FindPlaying(&m_sound) && !m_flag20)
+        return;
+
+    audio::SoundParams params;
+    const float volume = 1.0f;
+    std::memcpy(&params.field_20, &volume, sizeof(volume));
+    params.field_30 = m_exclusivityGroup;
+    params.field_34 = static_cast<uint32_t>(m_exclusivityPriority);
+    queue.RequestImmediate(m_sound, &params);
+    audio::SetRequestBusA(params, nullptr);
+    audio::SetRequestBusB(params, nullptr);
+}
 
 // ---------------------------------------------------------------------------
 

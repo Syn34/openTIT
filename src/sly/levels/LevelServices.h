@@ -7,10 +7,11 @@
 #pragma once
 
 #include "ape/math/ApeMath.h"
+#include "ape/xml/ApeXml.h"
 
 #include <cstdint>
 
-namespace ape { class ApeRefCounted; class ApeAnimScriptObjectVar; }
+namespace ape { class ApeRefCounted; class ApeAnimScriptObjectVar; namespace xml { struct Color8; } }
 
 namespace sly {
 
@@ -109,6 +110,115 @@ void SpecialSetEnabled(void* special, bool enabled);
 // present): switches state layer 0 to 6 (virtual slot 7) and stores the flag
 // in bit 31 of the state word +0x14.
 void CharacterSetSkipAnim(WorldObject* character, bool skip);
+
+// ---------------------------------------------------------------------------
+// Level objects
+
+// Sentry lights: entity type bit 0x08000000 of +0xC4; 0x001D218C switches the
+// light, bit 26 of +0x3CC locks it.
+bool EntityIsSentryLight(const WorldObject* entity);
+void SentryLightSetEnabled(WorldObject* light, bool enable);
+void SentryLightSetLocked(WorldObject* light, bool locked);
+
+// 0x002EF648 on the effect manager 0x00F64C38: kills the effects attached to
+// an entity.
+void FxKillEntityEffects(WorldObject* entity);
+
+// ---------------------------------------------------------------------------
+// Physics and components
+
+// Rigid body of the level's physics world (game world +0x1281D4) by name
+// (0x0034654C), whether it is in the Havok world (+0x08), and the Havok
+// world add/remove calls (0x0092F2A8 / 0x0092FFC8).
+void* PhysicsFindRigidBody(const char* name);
+bool RigidBodyIsInWorld(const void* body);
+void PhysicsAddRigidBody(void* body);
+void PhysicsRemoveRigidBody(void* body);
+// Entity virtual slot 23 (+0x5C): collision of shape `index` off/on.
+void EntitySetCollisionDisabled(WorldObject* entity, bool disabled, int32_t index);
+
+// Entity::FindComponentById (0x000D92B0), the component's enabled byte
+// (+0x10) and its virtual slot 11 (enable/disable).
+void* EntityFindComponentById(WorldObject* entity, uint32_t id);
+bool ComponentIsEnabled(const void* component);
+void ComponentSetEnabled(void* component, bool enabled);
+// Entity virtual slot 19 (+0x4C): debug name.
+const char* EntityDebugName(WorldObject* entity);
+
+// ---------------------------------------------------------------------------
+// Entity state
+
+// Collection values of a character's definition (definition +0x5B8..+0x5C0
+// ints, +0x5D0 and +0x5E0 vectors). NOTE: meaning of the values unknown.
+struct CharacterCollectInfo {
+    int32_t values[3] = {};
+    ape::Vec3 vectors[2] = {};
+};
+CharacterCollectInfo CharacterDefCollectInfo(const WorldObject* character);
+
+// Class flag 0x400000 (+0xC0): entities with their own enable switch
+// (virtual slot 76, +0x130).
+constexpr uint32_t kEntityClass_Enableable = 0x400000;
+void EntitySetEnabledState(WorldObject* entity, bool enabled);
+// Entity::SetVisibilityDeferred (0x000DD02C).
+void EntitySetVisibilityDeferred(WorldObject* entity, bool visible, bool deferred);
+// Attached children (Entity +0x154 records, child at +0xC0).
+int EntityChildCount(const WorldObject* entity);
+WorldObject* EntityChildAt(const WorldObject* entity, int index);
+// Script state: virtual slots 33 (+0x84, get) and 32 (+0x80, set).
+uint32_t EntityScriptState(WorldObject* entity);
+void EntitySetScriptState(WorldObject* entity, uint32_t state, bool flag);
+// Gadget objects: type bit 0x80000 of +0xC4; 0x001AE9C8 sets their state.
+bool EntityIsGadgetObject(const WorldObject* entity);
+void GadgetObjectSetState(WorldObject* entity, uint32_t state);
+// "No target" switch: bit 30 of +0x1A4 (class flag 4), bit 7 of +0x1B0
+// (class flag 0x20) and bit 15 of +0x248 (type bit 0x20000 of +0xC4),
+// whichever apply to the entity.
+void EntitySetNoTarget(WorldObject* entity, bool noTarget);
+// Entity virtual slot 22 (+0x58).
+void EntitySetVisible(WorldObject* entity, bool visible, bool immediate, bool children, bool components);
+
+// ---------------------------------------------------------------------------
+// Colours and fades
+
+// Full-screen colour filter fades of the game world (0x1C-byte records at
+// +0x128334, count at +0x1283A4).
+struct ScreenFilterFade {
+    uint8_t blendMode = 0;          // bits 28-31 of the first halfword
+    uint8_t type = 0;               // bits 24-27
+    bool disabled = false;          // bit 23
+    ape::xml::Color8 colorStart{};  // +0x02
+    ape::xml::Color8 colorEnd{};    // +0x06
+    float intensityStart = 0.0f;    // +0x0C
+    float intensityEnd = 0.0f;      // +0x10
+    float duration = 0.0f;          // +0x14
+    float elapsed = 0.0f;           // +0x18
+};
+// Takes the next free record (the count grows).
+int GameWorldAllocScreenFilter();
+ScreenFilterFade& GameWorldScreenFilter(int index);
+
+// Entity virtual slot 29 (+0x74): opacity (alpha, flag, 1, 0).
+void EntitySetAlpha(WorldObject* entity, uint8_t alpha, bool flag);
+// Lights (object kind 9): intensity is stored as its square root (+0x178);
+// a change refreshes the light (0x005913E0 unless its type +0x170 is 2) and
+// its bounds (virtual slot 9). Colour: floats at +0x160.
+bool ObjectIsLight(const ape::ApeRefCounted* object);
+void LightSetIntensity(ape::ApeRefCounted* light, float intensity);
+void LightSetColor(ape::ApeRefCounted* light, const ape::xml::Color8& color);
+// Geometry instances: opacity (virtual slot 13), material by name
+// (0x004A59B4) and tint colour (+0x13C).
+void GeometrySetAlpha(ape::ApeRefCounted* geometry, uint8_t alpha, bool flag);
+void* GeometryFindMaterial(ape::ApeRefCounted* geometry, uint32_t materialName);
+void GeometrySetTint(ape::ApeRefCounted* geometry, const ape::xml::Color8& color);
+// Live material with that name in the AglMaterial free list (0x00F8F114).
+void* FindLiveMaterial(uint32_t nameHash);
+// Material colour (floats at +0x40).
+void MaterialSetColor(void* material, const ape::xml::Color8& color);
+// GUI node virtual slot 14 (+0x38).
+void GuiNodeSetColor(void* node, const ape::xml::Color8& color);
+// Character override colour: bit 5 of +0x3C8 switches it on, colour +0x3C9.
+void CharacterSetOverrideColor(WorldObject* character, bool active, const ape::xml::Color8& color);
 
 } // namespace levels
 } // namespace sly
