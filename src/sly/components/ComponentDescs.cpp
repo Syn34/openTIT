@@ -2,6 +2,7 @@
 #include "sly/components/ComponentDescs.h"
 
 #include "sly/components/ComponentHooks.h"
+#include "sly/components/ComponentTuning.h"
 #include "sly/objects/TriggerEnv.h"
 
 #include "ape/core/ApeString.h"
@@ -307,11 +308,6 @@ void ReadPulseField(XmlElement* elem, PulseFieldComponentDesc& desc)
 }
 
 } // namespace
-
-// Radar defaults. NOTE: these belong to the component static initialiser
-// 0x002D6A40 (not ported), which registers them with the other component tuning.
-ape::TuningFloat g_radarDefaultActiveDuration("EntityComp.Radar.DefaultActiveDuration", 8.0f);
-ape::TuningFloat g_radarDefaultRefreshDuration("EntityComp.Radar.DefaultRefreshDuration", 8.0f);
 
 // @func 0x0026EFD4 ParsePhysicsComponentDesc
 ComponentDesc* ParsePhysicsComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
