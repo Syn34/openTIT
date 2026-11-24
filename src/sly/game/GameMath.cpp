@@ -182,6 +182,78 @@ bool SegmentsWithin(float radius, const ape::Vec3& a0, const ape::Vec3& a1, cons
     return SegmentSegmentDistanceSq(a0, a1, b0, b1) <= radius * radius;
 }
 
+namespace {
+ape::Vec3 Cross(const ape::Vec3& a, const ape::Vec3& b)
+{
+    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x, 0.0f};
+}
+ape::Vec3 Normalized(const ape::Vec3& v)
+{
+    const float inv = 1.0f / std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    return {v.x * inv, v.y * inv, v.z * inv, 0.0f};
+}
+bool IsFiniteVec(const ape::Vec3& v)
+{
+    return std::fabs(v.x - v.x) < 1e-5f && std::fabs(v.y - v.y) < 1e-5f && std::fabs(v.z - v.z) < 1e-5f;
+}
+} // namespace
+
+// @func 0x004A54F8 OrientAlong
+void OrientAlong(const ape::Vec3& forward, ape::Matrix34& m)
+{
+    static const ape::Vec3 kUp = {0.0f, 1.0f, 0.0f, 0.0f};
+    // NOTE: the console falls back to a global (0x01164B50) assumed to be
+    // the unit x axis.
+    static const ape::Vec3 kUnitX = {1.0f, 0.0f, 0.0f, 0.0f};
+    const float upDot = forward.x * kUp.x + forward.y * kUp.y + forward.z * kUp.z;
+    const ape::Vec3 dir = {forward.x, forward.y, forward.z, 0.0f};
+    if (std::fabs(std::fabs(upDot) - 1.0f) < 1e-5f || std::fabs(upDot + 1.0f) < 1e-5f) {
+        const ape::Vec3 reference = IsFiniteVec(m.xAxis) ? m.xAxis : kUnitX;
+        m.yAxis = Normalized(Cross(dir, reference));
+        m.zAxis = dir;
+        m.xAxis = Normalized(Cross(m.yAxis, m.zAxis));
+    } else {
+        m.xAxis = Normalized(Cross(kUp, dir));
+        m.yAxis = Normalized(Cross(dir, m.xAxis));
+        m.zAxis = dir;
+    }
+}
+
+// @func 0x004A69C0 PushAndAverage
+void PushAndAverage(ape::Vec3& average, Vec3History& history, const ape::Vec3& sample)
+{
+    auto advance = [&history](ape::Vec3* p) { return p + 1 < history.end ? p + 1 : history.begin; };
+    if (history.count == history.capacity) {
+        --history.count;
+        history.oldest = advance(history.oldest);
+    }
+    if (history.count != history.capacity) {
+        ++history.count;
+        ape::Vec3* slot = history.write;
+        history.write = advance(slot);
+        if (slot)
+            *slot = {sample.x, sample.y, sample.z, slot->pad};
+    }
+    average = ape::world::kWorldZero;
+    float samples = 0.0f;
+    if (history.count) {
+        ape::Vec3* p = history.oldest;
+        do {
+            average.x += p->x;
+            average.y += p->y;
+            average.z += p->z;
+            samples += 1.0f;
+            p = advance(p);
+        } while (p != history.write);
+    }
+    if (samples > 1.0f) {
+        const float inv = 1.0f / samples;
+        average.x *= inv;
+        average.y *= inv;
+        average.z *= inv;
+    }
+}
+
 // @func 0x004A7130 PolygonAreaXZ
 float PolygonAreaXZ(const ape::Vec3* points, uint32_t count)
 {

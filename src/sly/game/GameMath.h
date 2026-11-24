@@ -40,6 +40,24 @@ float BlendKeep(float from, float to, float keep, float dt);
 // segment is parallel to the plane.
 bool SegmentPlaneIntersection(const ape::Vec4& plane, const ape::Vec3& a, const ape::Vec3& b, ape::Vec3& out);
 
+// Orientation whose z axis is `forward`: the x axis is up x forward and the
+// y axis completes the frame (translation untouched). When forward is
+// vertical, the matrix's current x axis (or the unit x axis) is used as the
+// reference instead of the world up.
+void OrientAlong(const ape::Vec3& forward, ape::Matrix34& m);
+
+// Fixed capacity ring of recent positions (storage owned by the caller).
+struct Vec3History {
+    ape::Vec3* begin = nullptr;
+    ape::Vec3* end = nullptr;      // one past the storage
+    ape::Vec3* write = nullptr;    // next slot to fill
+    ape::Vec3* oldest = nullptr;
+    uint32_t capacity = 0;
+    uint32_t count = 0;
+};
+// Adds a sample (dropping the oldest when full) and returns the average.
+void PushAndAverage(ape::Vec3& average, Vec3History& history, const ape::Vec3& sample);
+
 // Squared distance between the segments a0-a1 and b0-b1.
 float SegmentSegmentDistanceSq(const ape::Vec3& a0, const ape::Vec3& a1, const ape::Vec3& b0, const ape::Vec3& b1);
 // True when the two segments come within `radius` of each other.
