@@ -1,6 +1,8 @@
 // openTIT - Priority targets of the level AI.
 #include "sly/levels/ai/AIPriorityTargets.h"
 
+#include "sly/game/WorldInterface.h"
+
 namespace sly {
 namespace levels {
 
@@ -34,6 +36,17 @@ void AIPriorityTargets::Remove(WorldObject* entity)
 void AIPriorityTargets::Clear()
 {
     m_count = 0;
+}
+
+void AIPriorityTargets::RemoveDead()
+{
+    for (int i = 0; i < m_count; ++i) {
+        if (!SpawnedIsAlive(m_targets[i])) {
+            m_targets[i] = m_targets[m_count - 1];
+            --m_count;
+            --i;
+        }
+    }
 }
 
 } // namespace levels
