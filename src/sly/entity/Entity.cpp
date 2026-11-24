@@ -446,6 +446,18 @@ void Entity::SetCullDistance(float distance, bool recurse)
     });
 }
 
+// @func 0x007348D8 Entity::SetClassBits
+void Entity::SetClassBits(uint64_t bits, bool on, bool recurse)
+{
+    classBits = on ? (classBits | bits) : (classBits & ~bits);
+    if (!recurse)
+        return;
+    ForEachChild(this, [bits, on](EntityChildLink& link) {
+        if (link.child)
+            link.child->SetClassBits(bits, on, true);
+    });
+}
+
 // @func 0x000D7904 Entity::SetScale
 void Entity::SetScale(const ape::Vec3& scale, bool recurse)
 {

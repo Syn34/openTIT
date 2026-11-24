@@ -36,7 +36,7 @@
 * `EntityDefDesc::typeBits` (+0x04) / `EntityDef::typeBits` (+0x18) and
   `EntityPlacement::typeBits` (+0x08) are per-class type bits (trigger types: push block 1,
   wind 2, crawl 4, alert 8, filtered 0x10, jump dir 0x20, update enable 0x80).
-* `TriggerPlacement` constructor is console 0x00746148 (tagged by the 0x0072-0x007B range owner;
+* `TriggerPlacement` constructor is console 0x00746148 (still a TODO: the def attachment list copy is missing;
   the owner of that address can tag it on `TriggerPlacement::TriggerPlacement`).
 * Trigger name accessor 0x00759E30 is `TriggerBase::GetName` (tagged by the 0x0072-0x007B range owner).
 * Tagged byte-identical copies outside this range (same classes): trigger def destructor
