@@ -12,6 +12,7 @@
 
 #include "sly/entity/Entity.h"
 
+#include "ape/container/ApeTSortedMap.h"
 #include "ape/memory/ApeTArray.h"
 #include "ape/xml/ApeXml.h"
 
@@ -28,6 +29,7 @@ using entity::ComponentDesc;
 enum ComponentDescType : uint32_t {
     kCompDesc_Physics        = 0x00,
     kCompDesc_Anim           = 0x02,
+    kCompDesc_Combat         = 0x03,
     kCompDesc_ContextualMarker = 0x04,
     kCompDesc_ControlAI      = 0x06,
     kCompDesc_AnimMap        = 0x0E,
@@ -73,6 +75,20 @@ struct AnimComponentDesc : ComponentDesc {
     explicit AnimComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Anim) {}
     uint32_t animSet = 0;        // 0x14 "set"
     uint32_t animTree = 0;       // 0x18 "tree"
+};
+
+// <Combat> (vtable 0x00B1C040, 0x48 bytes): attack definitions and the
+// reaction animation set per reaction type (<Reaction Type=... Name=...>).
+struct CombatComponentDesc : ComponentDesc {
+    explicit CombatComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Combat) {}
+    // 0x14..0x28: two groups of three hashes (attributes 0xFB92D658,
+    // 0xFB92E002, 0xFB929D5A and 0xBF173D65, 0xBF17470F, 0xBF170467).
+    // NOTE: names unknown.
+    uint32_t hashes[6] = {};
+    float value2C = 1.0f;        // 0x2C attribute 0x7CDB801C. NOTE: name unknown
+    // 0x30 reaction type -> name; type "default" is stored as 0; lookups
+    // of missing types give 0xFFFFFFFF.
+    ape::ApeTSortedMap<uint32_t> reactions{0x10, nullptr, 0xFFFFFFFFu};
 };
 
 // <ContextualMarker> (vtable 0x00B1C0BC, 0x70 bytes): a HUD marker
@@ -351,6 +367,7 @@ struct WallClimbComponentDesc : ComponentDesc {
 // Parsers (root = document element, elem = the component element).
 ComponentDesc* ParsePhysicsComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseAnimComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseCombatComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseContextualMarkerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseControlAIComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseAnimMapComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);

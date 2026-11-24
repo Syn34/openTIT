@@ -143,6 +143,12 @@ constexpr uint32_t kAttr_PauseDelayMax   = 0x7689C0D7u;
 constexpr uint32_t kAttr_Mover28         = 0x86BE6BD3u;   // NOTE: name unknown
 constexpr uint32_t kAttr_Mover29         = 0xE9B00400u;   // NOTE: name unknown
 
+constexpr uint32_t kAttr_CombatHashes[6] = {0xFB92D658u, 0xFB92E002u, 0xFB929D5Au,
+                                            0xBF173D65u, 0xBF17470Fu, 0xBF170467u};   // NOTE: names unknown
+constexpr uint32_t kAttr_Combat2C        = 0x7CDB801Cu;   // NOTE: name unknown
+constexpr uint32_t kTag_Reaction         = 0xFAF0CA29u;
+constexpr uint32_t kReactionDefault      = 0x86DF6221u;   // "default"
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -206,6 +212,40 @@ ComponentDesc* ParseAnimComponentDesc(XmlElement* root, XmlElement* elem, uint8_
     if (desc) {
         elem->GetHash(kAttr_Set, &desc->animSet, desc->animSet);
         elem->GetHash(kAttr_Tree, &desc->animTree, desc->animTree);
+    }
+    return desc;
+}
+
+// @func 0x002745B8 ParseCombatComponentDesc
+ComponentDesc* ParseCombatComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    const char* name = elem->GetString("name");
+    if (!name) {
+        (void)root->GetDocumentPath();
+        return nullptr;
+    }
+    CombatComponentDesc* desc = new CombatComponentDesc(ape::HashNameNoCase(name));
+    desc->scope = scope;
+    for (int i = 0; i < 6; ++i)
+        elem->GetHash(kAttr_CombatHashes[i], &desc->hashes[i], desc->hashes[i]);
+    elem->GetFloat(kAttr_Combat2C, &desc->value2C, desc->value2C);
+    for (XmlElement* child = elem->FirstChildElement(kTag_Reaction); child;
+         child = child->NextSiblingElement(kTag_Reaction)) {
+        uint32_t type = 0, anim = 0;
+        if (child->GetHash(kAttr_Type, &type, 0) != ape::xml::kQuery_Ok ||
+            child->GetHash(kAttr_Name, &anim, 0) != ape::xml::kQuery_Ok) {
+            (void)root->GetDocumentPath();   // compiled-out error report
+            continue;
+        }
+        if (type == kReactionDefault)
+            type = 0;
+        if (*desc->reactions.Find(type) != 0xFFFFFFFFu) {
+            // NOTE: the compiled data carries no line numbers; the console
+            // prints the element row + 1.
+            ape::TempFormat("%s(%ld): Combat component '%s': duplicate Reaction type '%s' specifiers.",
+                            root->GetDocumentPath(), 0L, name, ape::TempHexString(type));
+        }
+        desc->reactions.Add(type, anim);
     }
     return desc;
 }
