@@ -28,6 +28,7 @@ using entity::ComponentDesc;
 // Component type numbers of the descriptions below (ComponentDesc::type).
 enum ComponentDescType : uint32_t {
     kCompDesc_Physics        = 0x00,
+    kCompDesc_Targeting      = 0x01,
     kCompDesc_Anim           = 0x02,
     kCompDesc_Combat         = 0x03,
     kCompDesc_ContextualMarker = 0x04,
@@ -69,6 +70,29 @@ struct PhysicsComponentDesc : ComponentDesc {
     ape::Vec3 offset = {0.0f, 0.0f, 0.0f, 0.0f};   // 0x80
     bool enabled = true;         // 0x90
     bool flag91 = false;         // 0x91 attribute 0x8BB0F765. NOTE: name unknown
+};
+
+// <targeting> (vtable 0x00B13C74, 0xE0 bytes): how the entity can be
+// targeted, one range block per targeting kind (child elements named after
+// the kinds at 0x00AD4D34: two unknown, Throw, Interact, Carry, Collect).
+struct TargetingRange {
+    int32_t maxTargets = 0;      // +0x00
+    float radius = 0.0f;         // +0x04
+    float angle = 90.0f;         // +0x08
+    float heightRange[2] = {-3.4028235e38f, 3.4028235e38f};   // +0x0C attribute 0x9C819064. NOTE: name unknown
+    float value14 = 0.5f;        // +0x14 attribute 0xF5DFB24A. NOTE: name unknown
+};
+struct TargetingComponentDesc : ComponentDesc {
+    explicit TargetingComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Targeting) {}
+    TargetingRange ranges[6];    // 0x14
+    bool simple = false;         // 0xA4
+    bool raycast = false;        // 0xA5
+    bool useCamera = false;      // 0xA6
+    uint32_t boneName = 0;       // 0xA8
+    uint32_t partName = 0;       // 0xAC NOTE: uninitialised on the console before the read
+    ape::Vec3 offsetPos = {0.0f, 0.0f, 0.0f, 0.0f};   // 0xB0
+    ape::Vec3 vecC0 = {0.0f, 0.0f, 0.0f, 0.0f};       // 0xC0 attribute 0xC333F453. NOTE: name unknown
+    bool flagD0 = false;         // 0xD0 attribute 0x69EC8F92. NOTE: name unknown; uninitialised on the console
 };
 
 // <Anim> (vtable 0x00B1434C, 0x1C bytes).
@@ -390,6 +414,7 @@ struct WallClimbComponentDesc : ComponentDesc {
 
 // Parsers (root = document element, elem = the component element).
 ComponentDesc* ParsePhysicsComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseTargetingComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseAnimComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseCombatComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseContextualMarkerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);

@@ -169,6 +169,22 @@ constexpr uint32_t kPhysicsStateNames[7] = {0x0024A738u /* None */, 0x7DD0CD87u 
                                             0x03D66C07u /* Crawl */, 0x9EA8BD98u /* PlayDead */,
                                             0x419905DFu /* ClimbWall */};
 
+constexpr uint32_t kAttr_Simple          = 0x91CB25B2u;
+constexpr uint32_t kAttr_Raycast         = 0x65AF9A49u;
+constexpr uint32_t kAttr_PartName        = 0x75849CFEu;
+constexpr uint32_t kAttr_OffsetPos       = 0x313AB0C1u;
+constexpr uint32_t kAttr_TargetingC0     = 0xC333F453u;   // NOTE: name unknown
+constexpr uint32_t kAttr_TargetingD0     = 0x69EC8F92u;   // NOTE: name unknown
+constexpr uint32_t kAttr_UseCamera       = 0xA0D5174Cu;
+constexpr uint32_t kAttr_MaxTargets      = 0xA3F9EF1Eu;
+constexpr uint32_t kAttr_Angle           = 0x03B880B3u;
+constexpr uint32_t kAttr_HeightRange     = 0x9C819064u;   // NOTE: name unknown
+constexpr uint32_t kAttr_Targeting14     = 0xF5DFB24Au;   // NOTE: name unknown
+// Targeting kinds by child element name (0x00AD4D34).
+constexpr uint32_t kTargetingKinds[6] = {0x96EC7B40u, 0x036166E2u, 0x04C1AEC6u /* Throw */,
+                                         0x50A58636u /* Interact */, 0x03CEF0FBu /* Carry */,
+                                         0x6362ED0Au /* Collect */};
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -221,6 +237,38 @@ ComponentDesc* ParsePhysicsComponentDesc(XmlElement* root, XmlElement* elem, uin
         elem->GetVec3(kAttr_Offset, &desc->offset.x, &desc->offset.x);
         elem->GetBool(kAttr_Enabled, &desc->enabled, desc->enabled);
         elem->GetBool(kAttr_Physics91, &desc->flag91, desc->flag91);
+    }
+    return desc;
+}
+
+// @func 0x0026F2D0 ParseTargetingComponentDesc
+ComponentDesc* ParseTargetingComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    TargetingComponentDesc* desc = NewNamedDesc<TargetingComponentDesc>(root, elem, scope);
+    if (!desc)
+        return nullptr;
+    elem->GetBool(kAttr_Simple, &desc->simple, desc->simple);
+    elem->GetBool(kAttr_Raycast, &desc->raycast, desc->raycast);
+    elem->GetHash(kAttr_BoneName, &desc->boneName, desc->boneName);
+    elem->GetHash(kAttr_PartName, &desc->partName, desc->partName);
+    elem->GetVec3(kAttr_OffsetPos, &desc->offsetPos.x, &desc->offsetPos.x);
+    elem->GetVec3(kAttr_TargetingC0, &desc->vecC0.x, &desc->vecC0.x);
+    elem->GetBool(kAttr_TargetingD0, &desc->flagD0, desc->flagD0);
+    elem->GetBool(kAttr_UseCamera, &desc->useCamera, desc->useCamera);
+    for (XmlElement* child = elem->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        uint32_t kind = 0;
+        while (kind < 6 && child->GetNameHash() != kTargetingKinds[kind])
+            ++kind;
+        if (kind >= 6) {
+            (void)root->GetDocumentPath();   // compiled-out error report
+            continue;
+        }
+        TargetingRange& range = desc->ranges[kind];
+        child->GetInt(kAttr_MaxTargets, &range.maxTargets, range.maxTargets);
+        child->GetFloat(kAttr_Radius, &range.radius, range.radius);
+        child->GetFloat(kAttr_Angle, &range.angle, range.angle);
+        child->GetVec2(kAttr_HeightRange, range.heightRange, range.heightRange);
+        child->GetFloat(kAttr_Targeting14, &range.value14, range.value14);
     }
     return desc;
 }
