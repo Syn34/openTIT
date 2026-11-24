@@ -45,6 +45,15 @@ Goal* JobManagerTrackedGoal();
 Goal* JobManagerGoalAfterTracked();
 // Bindings of the current job (+0x28, array at +0x1AC).
 const GoalScriptBinding* JobManagerJobBindings(size_t* count);
+// 0x002E4A0C(manager, 1): a sequential group moved to its next child.
+void JobManagerGroupAdvanced();
+// Game world +0x128214 (16 bits). NOTE: non-zero while the HUD scripts
+// must not be touched (loading / cut scene).
+uint16_t GameHudLockCount(SlyGame* game);
+// Player character position (game world +0x1078, +0x90).
+bool PlayerPosition(float out[3]);
+// World position of an entity (+0x90).
+void EntityPosition(const void* entity, float out[3]);
 // Job manager +0x50: the goal that owns the on-screen countdown.
 void JobManagerSetTimerGoal(Goal* goal);
 
@@ -119,8 +128,9 @@ uint32_t PadButtonsDown(const void* pad);
 float PadStickAxis(const void* pad, int axis);
 // Binocucom power level (global 0x010592EC).
 float BinocucomPowerLevel();
-// 0x0075EBFC: debug marker at an entity (compiled-in debug draw).
-void GoalDebugDrawEntity(void* context, void* entity);
+// Builds a waypoint marker for an entity and appends it (0x0075EBFC).
+// NOTE: the marker contents are built on the stack and not decoded.
+void GoalAddEntityMarker(struct GoalMarkerList* list, void* entity);
 // 0x000D6A28 for goal targets.
 void* GoalFindEntity(uint32_t name);
 // 0x000DB290: descendant of an entity by name (null if none).
@@ -148,7 +158,7 @@ gameplay::Minigame* GameActiveMinigame(SlyGame* game);
 void GameInstallMinigame(SlyGame* game, gameplay::Minigame* minigame);  // 0x0047C530
 void GameEndActiveMinigame(SlyGame* game);                              // 0x0047C490
 void MinigameStart(gameplay::Minigame* minigame);                       // virtual slot 2
-void MinigameTick(gameplay::Minigame* minigame);                        // virtual slot 13
+void MinigameCollectMarkers(gameplay::Minigame* minigame, struct GoalMarkerList* list); // slot 13
 // Minigame classes built by the minigame goals (their constructors take the
 // game, the goal's configuration block, the goal script library and the goal).
 enum class MinigameKind {

@@ -404,14 +404,14 @@ void GoalBinocucomRecord::ReapplyHints(Goal* owner)
             target.entity = GoalFindEntity(target.name);
 }
 
-// @func 0x0032D758 GoalBinocucomRecord::Draw
-void GoalBinocucomRecord::Draw(void* context)
+// @func 0x0032D758 GoalBinocucomRecord::CollectMarkers
+void GoalBinocucomRecord::CollectMarkers(GoalMarkerList* list)
 {
     if (status != kGoal_Active)
         return;
     for (BinocucomRecordTarget& target : targets)
         if (target.entity && target.visible)
-            GoalDebugDrawEntity(context, target.entity);
+            GoalAddEntityMarker(list, target.entity);
 }
 
 // @func 0x0032D8E4 GoalBinocucomRecord::SetStatus
@@ -490,14 +490,14 @@ void GoalEntityChild::ReapplyHints(Goal* owner)
         link.parent = GoalFindEntity(link.parentName);
 }
 
-// @func 0x0032F714 GoalEntityChild::Draw
-void GoalEntityChild::Draw(void* context)
+// @func 0x0032F714 GoalEntityChild::CollectMarkers
+void GoalEntityChild::CollectMarkers(GoalMarkerList* list)
 {
     if (status != kGoal_Active)
         return;
     for (EntityChildLink& link : links)
         if (link.parent)
-            GoalDebugDrawEntity(context, link.parent);
+            GoalAddEntityMarker(list, link.parent);
 }
 
 // @func 0x0032F8CC GoalEntityChild::Update

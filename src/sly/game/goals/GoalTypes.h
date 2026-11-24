@@ -112,7 +112,7 @@ public:
     uint8_t Update(int player, const GameEvent& e) override;
     void ResetHints(bool stopHintScript) override;
     void ReapplyHints(Goal* owner) override;
-    void Draw(void* context) override;
+    void CollectMarkers(GoalMarkerList* list) override;
     void SetStatus(uint8_t newStatus, bool force) override;
 
     float failLevel = 0.0f;     // +0xA0C (XML 0x56EF5AEB)
@@ -143,7 +143,7 @@ public:
     uint8_t Update(int player, const GameEvent& e) override;
     void ResetHints(bool stopHintScript) override;
     void ReapplyHints(Goal* owner) override;
-    void Draw(void* context) override;
+    void CollectMarkers(GoalMarkerList* list) override;
     void SetStatus(uint8_t newStatus, bool force) override;
 
     ape::ApeTArray<EntityChildLink> links;   // +0xA0C
@@ -166,7 +166,7 @@ public:
     using Goal::Goal;
     ~MinigameGoal() override;
     uint8_t Update(int player, const GameEvent& e) override;
-    void Draw(void* context) override;
+    void CollectMarkers(GoalMarkerList* list) override;
     void SetStatus(uint8_t newStatus, bool force) override;
     // slot 27 (+0x6C): builds the minigame and installs it in the game world.
     virtual void InstallMinigame() = 0;
@@ -282,6 +282,72 @@ public:
     uint8_t config[0x290] = {};   // +0xA20
     struct Entry { uint32_t a, b, c; };
     ape::ApeTArray<Entry> entries;   // +0xCB0
+};
+
+} // namespace goals
+} // namespace sly
+
+namespace sly {
+namespace goals {
+
+// Group of child goals (vtable 0x00B1E278; "GoalSet" 0x00B1E2F0 and the
+// Operation Mousetrap goal derive from it). The children form a list
+// through Goal::nextGoal; the group completes or fails according to `mode`.
+class GoalGroup : public Goal {
+public:
+    enum Mode : int32_t {
+        kMode_All         = 1,   // every counted child complete
+        kMode_NotAll      = 2,
+        kMode_Any         = 3,   // one counted child complete
+        kMode_None        = 4,
+        kMode_AllProgress = 5,   // like kMode_All, reports each completion to the hint script
+        kMode_Sequence    = 6,   // children are activated one after the other
+    };
+    enum GroupFlags : uint32_t {
+        kGroup_StopOnNewCompletion = 0x20000000,   // sequence: stop the pass when a child completes
+        kGroup_WaitActiveScripts   = 0x40000000,   // complete only once the active scripts ran
+        kGroup_NotifyAdvance       = 0x80000000,   // tell the job manager when a child starts
+    };
+
+    using Goal::Goal;
+    ~GoalGroup() override;
+
+    // 0x00321CF4: appends a child goal.
+    void AddChild(Goal* child);
+
+    uint8_t Update(int player, const GameEvent& e) override;
+    void OnLevelLoaded() override;
+    void Reset(bool fromSave, int status) override;
+    void ResetHints(bool stopHintScript) override;
+    void PrepareScripts() override;
+    void ReapplyHints(Goal* owner) override;
+    void SetFlags(uint32_t value) override;
+    const char* GetDescription() override;
+    bool GetProgress(GoalProgress* out) override;
+    bool IsComplete() override;
+    void CollectMarkers(GoalMarkerList* list) override;
+    bool GetTarget(GoalTarget* out) override;
+    uint32_t Field8A0() override;
+    void CollectAllMarkers(GoalMarkerList* list) override;
+    uint32_t Field8F4(int i) override;
+    const char* CurrentCycleText(float* fade) override;
+    void ResetCycle() override;
+    void FreezeStatus(bool frozen) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+
+    // 0x00327A58: copies the `maxMarkers` markers of `found` nearest to the
+    // player into `list` (all of them if there are few enough).
+    void SelectNearestMarkers(GoalMarkerList* list, const GoalMarkerList& found) const;
+
+    int32_t mode = kMode_All;     // +0xA0C Mode
+    Goal* firstChild = nullptr;   // +0xA10
+    int32_t completedCount = 0;   // +0xA14
+    uint32_t groupFlags = 0;      // +0xA18 GroupFlags
+    uint32_t maxMarkers = 0;      // +0xA1C 0 = every child adds its own markers
+
+private:
+    void ActivateChild(Goal* child);
+    void PlayChildCompleteState(int count);
 };
 
 } // namespace goals

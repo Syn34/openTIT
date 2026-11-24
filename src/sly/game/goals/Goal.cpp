@@ -49,7 +49,7 @@ Goal::Goal(const GoalDesc* desc)
         return;
     game = desc->game;
     job = desc->job;
-    reward = desc->reward;
+    repeatCount = desc->repeatCount;
     flags = desc->flags;
     initialFlags = desc->flags;
     if (desc->name)
@@ -188,9 +188,9 @@ void Goal::Reset(bool fromSave, int requested)
         if (savedComplete) {
             newStatus = kGoal_Complete;
             force = true;
-            pendingReward = reward;
+            repeatProgress = repeatCount;
         } else {
-            pendingReward = 0;
+            repeatProgress = 0;
             newStatus = kGoal_Active;
             if (flags & kGoalFlag_Lock3)
                 newStatus = kGoal_Locked3;
@@ -200,7 +200,7 @@ void Goal::Reset(bool fromSave, int requested)
                 newStatus = kGoal_Locked1;
         }
     } else {
-        pendingReward = requested == kGoal_Complete ? reward : 0;
+        repeatProgress = requested == kGoal_Complete ? repeatCount : 0;
         if (requested == kGoal_Complete || !(flags & kGoalFlag_KeepComplete) ||
             status != kGoal_Complete) {
             force = requested == kGoal_Complete || fromSave;
@@ -326,17 +326,17 @@ void Goal::ReapplyHints(Goal* owner)
 }
 
 // @func 0x00325DD0 Goal::GetTarget
-bool Goal::GetTarget(uint32_t* outName, bool* outFlag) const
+bool Goal::GetTarget(GoalTarget* out)
 {
     if (targetName != 0) {
-        *outName = targetName;
-        *outFlag = targetFlag;
+        out->name = targetName;
+        out->flag = targetFlag;
     }
     return targetName != 0;
 }
 
 // @func 0x00325DF8 Goal::CurrentCycleText
-const char* Goal::CurrentCycleText(float* fade) const
+const char* Goal::CurrentCycleText(float* fade)
 {
     if (!cycle || cycleIndex >= cycleCount)
         return nullptr;
@@ -529,7 +529,7 @@ void Goal::SetStatus(uint8_t newStatus, bool force)
 
     const bool live = IsGoalInLiveJob(this);
     if (newStatus == kGoal_Active) {
-        pendingReward = 0;
+        repeatProgress = 0;
         // Stream in the scripts the next goal of the job will need.
         for (uint32_t i = 0; i < JobGoalCount(job); ++i) {
             if (JobGoalAt(job, i) != this)

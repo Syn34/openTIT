@@ -21,6 +21,14 @@ const GoalScriptBinding* JobManagerJobBindings(size_t* count)
     return nullptr;
 }
 void JobManagerSetTimerGoal(Goal*) {}
+void JobManagerGroupAdvanced() {}
+uint16_t GameHudLockCount(SlyGame*) { return 0; }
+bool PlayerPosition(float out[3])
+{
+    out[0] = out[1] = out[2] = 0.0f;
+    return false;
+}
+void EntityPosition(const void*, float out[3]) { out[0] = out[1] = out[2] = 0.0f; }
 
 // Sequences and scripts
 void SequenceStreamRequest(uint32_t) {}
@@ -64,7 +72,7 @@ const void* PlayerPad(int) { return nullptr; }
 uint32_t PadButtonsDown(const void*) { return 0; }
 float PadStickAxis(const void*, int) { return 0.0f; }
 float BinocucomPowerLevel() { return 0.0f; }
-void GoalDebugDrawEntity(void*, void*) {}
+void GoalAddEntityMarker(GoalMarkerList*, void*) {}
 void* GoalFindEntity(uint32_t) { return nullptr; }
 void* EntityFindDescendant(void*, uint32_t) { return nullptr; }
 
@@ -83,7 +91,7 @@ gameplay::Minigame* GameActiveMinigame(SlyGame*) { return nullptr; }
 void GameInstallMinigame(SlyGame*, gameplay::Minigame*) {}
 void GameEndActiveMinigame(SlyGame*) {}
 void MinigameStart(gameplay::Minigame*) {}
-void MinigameTick(gameplay::Minigame*) {}
+void MinigameCollectMarkers(gameplay::Minigame*, GoalMarkerList*) {}
 gameplay::Minigame* CreateMinigame(MinigameKind, SlyGame*, const void*, Goal*) { return nullptr; }
 
 } // namespace goals

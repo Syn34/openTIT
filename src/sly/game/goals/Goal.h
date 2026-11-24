@@ -52,6 +52,7 @@ enum GoalFlags : uint32_t {
     kGoalFlag_Lock1          = 0x04,
     kGoalFlag_KeepComplete   = 0x10,   // Reset() leaves a completed goal alone
     kGoalFlag_StatusFrozen   = 0x80,   // slot 24; SetStatus() does nothing
+    kGoalFlag_CountsProgress = 0x100,  // counted by the parent group's progress
 };
 
 // Script lists run on status changes (Goal::scripts[]).
@@ -140,6 +141,33 @@ struct GoalHint {
     void Apply(class Goal* owner, bool enable);
 };
 
+// HUD progress counter of a goal (slot 13).
+struct GoalProgress {
+    uint32_t name = 0;     // text id
+    int32_t done = 0;
+    int32_t total = 0;
+};
+
+// The entity the HUD arrow points at (slot 16).
+struct GoalTarget {
+    uint32_t name = 0;
+    bool flag = false;     // NOTE: copied from Goal +0x9FE
+};
+
+// One waypoint marker (0x80 bytes on the console; built by the goals, drawn
+// by the HUD). Only the entity is decoded.
+struct GoalMarker {
+    uint32_t field_00 = 0;
+    uint32_t field_04 = 0;
+    void* entity = nullptr;   // +0x08
+    uint8_t rest[0x74] = {};
+};
+
+// List the markers are collected into (0x0075EBFC appends).
+struct GoalMarkerList {
+    ape::ApeTArray<GoalMarker> markers;
+};
+
 // One entry of the cycling text list (Goal +0x9F0, 8 bytes): a text and how
 // long it stays up.
 struct GoalCycleEntry {
@@ -191,26 +219,27 @@ public:
     // slot 10 (+0x28)
     virtual void SetFlags(uint32_t value) { flags = value; }
     // slots 11/12 (+0x2C/+0x30): "???" for a hidden goal.
-    virtual const char* GetName() const { return status == kGoal_Locked2 ? "???" : name; }
-    virtual const char* GetDescription() const { return status == kGoal_Locked2 ? "???" : description; }
-    // slot 13 (+0x34)
-    virtual bool Virtual13() const { return false; }
+    virtual const char* GetName() { return status == kGoal_Locked2 ? "???" : name; }
+    virtual const char* GetDescription() { return status == kGoal_Locked2 ? "???" : description; }
+    // slot 13 (+0x34): progress counter shown by the HUD; false if none.
+    virtual bool GetProgress(struct GoalProgress* out) { (void)out; return false; }
     // slot 14 (+0x38)
-    virtual bool IsComplete() const { return status == kGoal_Complete; }
-    // slot 15 (+0x3C): debug drawing (and per-frame work of minigame goals).
-    virtual void Draw(void* context) { (void)context; }
+    virtual bool IsComplete() { return status == kGoal_Complete; }
+    // slot 15 (+0x3C): adds the goal's waypoint markers (minigame goals let
+    // the minigame do it).
+    virtual void CollectMarkers(struct GoalMarkerList* list) { (void)list; }
     // slot 16 (+0x40): the entity the HUD points at; false if none.
-    virtual bool GetTarget(uint32_t* targetName, bool* flag) const;
+    virtual bool GetTarget(struct GoalTarget* out);
     // slot 17 (+0x44)
-    virtual uint32_t Field8A0() const { return field_8A0; }
+    virtual uint32_t Field8A0() { return field_8A0; }
     // slot 18 (+0x48)
-    virtual void DrawAll(void* context) { Draw(context); }
+    virtual void CollectAllMarkers(struct GoalMarkerList* list) { CollectMarkers(list); }
     // slot 19 (+0x4C)
-    virtual uint32_t Field8F4(int i) const { return field_8F4[i]; }
+    virtual uint32_t Field8F4(int i) { return field_8F4[i]; }
     // slot 20 (+0x50)
     virtual uint32_t Field960() const { return field_960; }
     // slot 21 (+0x54): text of the current cycle entry and its fade value.
-    virtual const char* CurrentCycleText(float* fade) const;
+    virtual const char* CurrentCycleText(float* fade);
     // slot 22 (+0x58)
     virtual void ResetCycle();
     // slot 23 (+0x5C)
@@ -250,15 +279,18 @@ public:
     // -- console members ---------------------------------------------------
     SlyGame* game = nullptr;            // +0x08
     Job* job = nullptr;                 // +0x0C
-    uint8_t reward = 0;                 // +0x10 NOTE: copied to +0x11 on completion
-    uint8_t pendingReward = 0;          // +0x11
+    uint8_t repeatCount = 0;            // +0x10 times a group must complete (0 = once)
+    uint8_t repeatProgress = 0;         // +0x11 completions so far
     uint8_t status = kGoal_None;        // +0x12 GoalStatus
     uint32_t flags = 0;                 // +0x14 GoalFlags
     uint32_t initialFlags = 0;          // +0x18
     char name[0x80] = {};               // +0x1C
     char description[0x800] = {};       // +0x9C
+    bool showDescription = false;       // +0x99C NOTE: a group shows its active child's description
     uint32_t targetName = 0;            // +0x89C
     uint32_t field_8A0 = 0;             // +0x8A0
+    uint32_t progressName = 0;          // +0x8A4 GoalProgress::name of a group
+    int32_t progressBase = 0;           // +0x8A8 count added to a group's progress
     uint32_t hintScriptName = 0;        // +0x8AC anim script started while the goal is active
     ape::ApeAnimScriptInstance* hintScript = nullptr; // +0x8B0
     GoalScriptCursor scripts[kScriptSlotCount];       // +0x8B8
@@ -266,6 +298,7 @@ public:
     uint32_t field_8F4[27] = {};        // +0x8F4
     uint32_t field_960 = 0;             // +0x960
     bool field_96C = false;             // +0x96C
+    bool completesParent = false;       // +0x8B6 a completed child completes its group
     uint32_t checkpoints[9] = {};       // +0x970
     int32_t saveSlot = 0;               // +0x994 index of the goal's job save word
     int32_t index = -1;                 // +0x998 position in the job's goal list
@@ -275,6 +308,8 @@ public:
     GoalCycleEntry* cycle = nullptr;    // +0x9F0
     float cycleTimer = 0.0f;            // +0x9F4
     float cycleFade = 0.0f;             // +0x9F8
+    bool countsForGroup = true;         // +0x9FC the parent group looks at this child's result
+    bool failRestarts = false;          // +0x9FD a failed group resets instead of failing
     bool targetFlag = false;            // +0x9FE
     Goal* nextGoal = nullptr;           // +0xA04 chained goal (shares the start scripts)
     Goal* parentGoal = nullptr;         // +0xA08
@@ -285,7 +320,7 @@ public:
 struct GoalDesc {
     SlyGame* game = nullptr;
     Job* job = nullptr;
-    uint8_t reward = 0;
+    uint8_t repeatCount = 0;
     uint32_t flags = 0;
     const char* name = nullptr;
     const char* description = nullptr;

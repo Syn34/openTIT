@@ -101,14 +101,13 @@ uint8_t MinigameGoal::Update(int player, const GameEvent& e)
     return Goal::Update(player, e);
 }
 
-// @func 0x00328B90 MinigameGoal::Draw
-void MinigameGoal::Draw(void* context)
+// @func 0x00328B90 MinigameGoal::CollectMarkers
+void MinigameGoal::CollectMarkers(GoalMarkerList* list)
 {
-    (void)context;
     if (status != kGoal_Active)
         return;
     if (gameplay::Minigame* active = GameActiveMinigame(game))
-        MinigameTick(active);
+        MinigameCollectMarkers(active, list);
 }
 
 // @func 0x00328BF0 MinigameGoal::SetStatus
