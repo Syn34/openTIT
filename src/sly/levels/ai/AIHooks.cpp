@@ -48,6 +48,11 @@ int BodyMotionType(EntityComponent*) { return 0; }
 void BodyRequestVelocity(EntityComponent*, const ape::Vec3&) {}
 void BodyRequestStop(EntityComponent*) {}
 
+void EntitySetScriptState(Entity*, uint32_t) {}
+void EntityDamage(Entity*, float, Entity*, int) {}
+void Component24Reset(EntityComponent*) {}
+void BodyClearRequestBit31(EntityComponent*) {}
+
 bool CharacterPlayClip(EntityComponent*, uint32_t) { return false; }
 bool CharacterClipFinished(EntityComponent*) { return false; }
 bool CharacterHasClip(EntityComponent*, uint32_t) { return false; }

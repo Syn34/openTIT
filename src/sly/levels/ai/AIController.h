@@ -115,8 +115,19 @@ public:
     // Slot 44 (+0xB0): extra vertical speed applies (`out` is unused by the
     // base). NOTE: name from use.
     virtual bool HasVerticalBoost(float* out) { (void)out; return false; }
+    // Slot 40 (+0xA0): NOTE: false while the behaviour is still on its way
+    // somewhere (meaning inferred from the buddy override).
+    virtual bool IsSettled() { return true; }
     // Slot 42 (+0xA8): debug name of a state.
     virtual const char* StateName(int s);
+    // Slot 49 (+0xC4): damage taken. The base version (0x007386E0) sets
+    // kF1_Hit unless hits are locked out.
+    virtual void OnDamaged(float amount, uint32_t kind, const struct AIDamageInfo* info)
+    {
+        (void)kind; (void)info;
+        if (amount > 0.0f && !(flags1 & kF1_HitLocked))
+            flags1 |= kF1_Hit;
+    }
     // Slot 53 (+0xD4): picks the next state.
     virtual void ChooseState();
     // Slot 54 (+0xD8): behaviour specific thinking; true when it chose a state.
@@ -235,6 +246,12 @@ public:
     // +0x134 AI settings object; only filled in by the behaviours that read
     // settings (from the AI component, see AIComponent::GetSettings()).
     const PropertyBlock* settings = nullptr;
+};
+
+// Damage description handed to OnDamaged.
+struct AIDamageInfo {
+    uint32_t field_00 = 0;
+    Entity* source = nullptr;    // +0x04
 };
 
 // One remembered sighting (0x50 bytes on the console; eight per block).

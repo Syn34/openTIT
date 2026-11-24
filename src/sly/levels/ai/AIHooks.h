@@ -160,6 +160,16 @@ void BodyRequestVelocity(EntityComponent* body, const ape::Vec3& velocity);
 // quaternion on the console).
 void BodyRequestStop(EntityComponent* body);
 
+// 0x000DAEC8: switches the entity's anim script (slot 68) to a state.
+void EntitySetScriptState(Entity* entity, uint32_t stateHash);
+// Entity virtual slot 88 (+0x160): damage.
+void EntityDamage(Entity* entity, float amount, Entity* source, int type);
+// 0x00254040(component, 0) on component type 0x24. NOTE: purpose unknown;
+// the buddy calls it when it leaves its idle and dead states.
+void Component24Reset(EntityComponent* component);
+// Physics body request (slot 2) flag word +0xA8: clears bit 31.
+void BodyClearRequestBit31(EntityComponent* body);
+
 // -- character component (entity virtual slot 15) ------------------------------------
 // 0x002775A8: plays a clip (blend 1.0, 0.25 s). False if it is not available.
 bool CharacterPlayClip(EntityComponent* character, uint32_t clipHash);

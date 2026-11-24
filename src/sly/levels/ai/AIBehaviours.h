@@ -63,6 +63,43 @@ public:
 // FollowDist / AttackDist / Murray / Bentley).
 class PlayerAI : public AIController {
 public:
+    // Byte +0x1A0.
+    enum BuddyFlags : uint8_t {
+        kBuddy_Flag20 = 0x20,   // set by message 0x50A63D95
+        kBuddy_Flag40 = 0x40,   // set by 0x00764FA9, cleared by 0x7D2BB408
+    };
+
+    void Attach(Entity* entity) override;
+    void SetActive(bool active) override;
+    void Update(float dt) override;
+    void PreUpdate(float dt) override;
+    void OnMessage(const entity::EntityMessage& msg) override;
+    bool IsSettled() override;
+    const char* StateName(int s) override;
+    void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
+    void ChooseState() override;
+    bool Think(float dt) override;
+    void ExitState() override;
+    void OnNavGoalChanged() override;
+
+    // Follow mode (0 and 1 lock out hits) (0x00024048).
+    void SetMode(int mode);
+    // Pops the state stack and resumes the state below.
+    void PopState();
+    // Puts the buddy next to `point` facing it (0x00024670).
+    void WarpTo(const ape::Vec3& point);
+    // Re-reads the character and body components (0x0002550C).
+    void RefreshComponents();
+
+    uint32_t field_150 = 0;           // +0x150
+    float field_154 = 20.0f;          // +0x154
+    uint32_t field_158 = 0;           // +0x158 set to 1 by Update
+    int32_t mode = 0;                 // +0x15C
+    ape::Vec3 startPosition{};        // +0x160
+    uint32_t field_170 = 0;           // +0x170
+    uint32_t field_178 = 0;           // +0x178
+    ape::Vec3 warpPoint{};            // +0x190
+    uint8_t buddyFlags = 0;           // +0x1A0
 };
 
 // Boss that runs state patterns per level and spawns ghosts (vtable
