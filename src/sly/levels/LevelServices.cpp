@@ -94,5 +94,25 @@ void MaterialSetColor(void* material, const ape::xml::Color8& color) { (void)mat
 void GuiNodeSetColor(void* node, const ape::xml::Color8& color) { (void)node; (void)color; }
 void CharacterSetOverrideColor(WorldObject* character, bool active, const ape::xml::Color8& color) { (void)character; (void)active; (void)color; }
 
+void GadgetObjectSetFlag(WorldObject* entity, bool value) { (void)entity; (void)value; }
+bool EntityIsGadgetTurret(const WorldObject* entity) { (void)entity; return false; }
+void TurretAddTarget(WorldObject* turret, WorldObject* target) { (void)turret; (void)target; }
+void TurretRemoveTarget(WorldObject* turret, WorldObject* target) { (void)turret; (void)target; }
+bool BinocucomIsVisible(void* binocucom) { (void)binocucom; return false; }
+void* CharacterAnimController(void* character) { (void)character; return nullptr; }
+void* ScriptObjectAnimController(ape::ApeAnimScriptInstance* instance, uint32_t varName) { (void)instance; (void)varName; return nullptr; }
+float AnimSpeed(const void* anim) { (void)anim; return 0.0f; }
+
+uint64_t EntityClassBits(const WorldObject* entity) { (void)entity; return 0; }
+bool EntityHasEffectOfType(const WorldObject* entity, int type) { (void)entity; (void)type; return false; }
+bool HasCurrentJob() { return false; }
+uint32_t CurrentJobName() { return 0; }
+void* GameStateFindJob(uint32_t jobName) { (void)jobName; return nullptr; }
+int JobState(void* job) { (void)job; return 0; }
+
+CharacterRespawnInfo CharacterRespawn(const WorldObject* character) { (void)character; return {}; }
+void* GameStateCurrentSafe() { return nullptr; }
+int SafeState(void* safe) { (void)safe; return -1; }
+
 } // namespace levels
 } // namespace sly

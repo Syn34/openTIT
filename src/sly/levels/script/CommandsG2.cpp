@@ -5,6 +5,8 @@
 #include "ape/core/ApeString.h"
 #include "sly/game/Upgrades.h"
 #include "sly/levels/GameServices.h"
+#include "sly/levels/ScriptServices.h"
+#include "sly/levels/LevelServices.h"
 
 namespace sly {
 namespace levels {
@@ -172,6 +174,7 @@ class GetSafeStateCommand : public ApeAnimScriptCommand {
 public:
     GetSafeStateCommand();
     ~GetSafeStateCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -193,7 +196,27 @@ ApeAnimScriptCommand* GetSafeStateCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0007C40C GetSafeStateCommand::Execute)
+// Safe states by index (table 0x00AC4DB0); anything else reads "Unknown".
+static constexpr uint32_t kSafeStateNames[5] = {
+    AnimHash("available"), 0x9F632718u, AnimHash("active"), AnimHash("disabled"), AnimHash("inactive"),
+};
+static constexpr uint32_t kSafeStateUnknown = AnimHash("Unknown");
+
+// @func 0x0007C40C GetSafeStateCommand::Execute
+void GetSafeStateCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_stateVar == 0)
+        return;
+    uint32_t name = kSafeStateUnknown;
+    if (void* safe = GameStateCurrentSafe()) {
+        const int state = SafeState(safe);
+        if (state >= 0 && state < 5)
+            name = kSafeStateNames[state];
+    }
+    ApeAnimScriptVar* var = instance->FindVar(m_stateVar);
+    if (var && var->GetType() == AnimScriptVarType::Hash)
+        static_cast<ape::ApeAnimScriptHashVar*>(var)->SetHash(name);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xC010ED68 (name unknown): an effect type plus one more name.
@@ -202,6 +225,7 @@ class FxTypeQueryCommand : public ApeAnimScriptCommand {
 public:
     FxTypeQueryCommand();
     ~FxTypeQueryCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -225,7 +249,32 @@ ApeAnimScriptCommand* FxTypeQueryCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0007BB18 FxTypeQueryCommand::Execute)
+// Effect types the query understands (table 0x00AC4D80), in the order of
+// the type number kept in bits 25-29 of effect components (type 0x17).
+// NOTE: unresolved names are kept as hashes; "Fire" appears twice.
+static constexpr uint32_t kFxTypes[9] = {
+    0x0024A738u, AnimHash("Cloak"), 0xB96F8651u, AnimHash("fire"), AnimHash("fire"),
+    AnimHash("Ice"), 0x654ADD4Fu, AnimHash("SlowTime"), 0x9268437Eu,
+};
+
+// @func 0x0007BB18 FxTypeQueryCommand::Execute
+// Sets the int variable to 1 while the player carries an effect of the type.
+void FxTypeQueryCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_fxType == 0 || m_field10 == 0)
+        return;
+    int type = 0;
+    while (kFxTypes[type] != m_fxType) {
+        if (++type >= 9)
+            return;
+    }
+    bool found = false;
+    if (WorldObject* player = PlayerEntity())
+        found = EntityHasEffectOfType(player, type);
+    ApeAnimScriptVar* var = instance->FindVar(m_field10);
+    if (var && var->GetType() == AnimScriptVarType::Int)
+        static_cast<ape::ApeAnimScriptIntVar*>(var)->SetInt(found ? 1 : 0);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xF77517AF (name unknown): shows a text message from the script.
@@ -275,6 +324,7 @@ void ShowTextCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptStat
 
 class GetEntityFlagCommand : public ApeAnimScriptCommand {
 public:
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -301,7 +351,23 @@ ApeAnimScriptCommand* GetEntityFlagCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0007B0CC GetEntityFlagCommand::Execute)
+// @func 0x0007B0CC GetEntityFlagCommand::Execute
+void GetEntityFlagCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_stateVar == 0 || m_flag == 0)
+        return;
+    WorldObject* entity = nullptr;
+    if (m_object != 0)
+        entity = EntityFromObject(instance->ResolveObject(m_object, false));
+    if (!entity && m_entity != 0)
+        entity = FindEntity(m_entity);
+    if (!entity)
+        return;
+    const bool set = (EntityClassBits(entity) & m_flag) != 0;
+    ApeAnimScriptVar* var = instance->FindVar(m_stateVar);
+    if (var && var->GetType() == AnimScriptVarType::Int)
+        static_cast<ape::ApeAnimScriptIntVar*>(var)->SetInt(set ? 1 : 0);
+}
 
 // ---------------------------------------------------------------------------
 // "GetRespawnInfo" (hash 0x8D10E0C0; NOTE: name from a hash match)
@@ -310,6 +376,7 @@ class GetRespawnInfoCommand : public ApeAnimScriptCommand {
 public:
     GetRespawnInfoCommand();
     ~GetRespawnInfoCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -341,7 +408,43 @@ ApeAnimScriptCommand* GetRespawnInfoCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0007BF3C GetRespawnInfoCommand::Execute)
+// @func 0x0007BF3C GetRespawnInfoCommand::Execute
+// Copies a character's respawn point and its four respawn state bytes into
+// script variables. The character is a player by index, else "object"/"Entity".
+void GetRespawnInfoCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_matrix == 0 && m_stateVars[0] == 0 && m_stateVars[1] == 0 && m_stateVars[2] == 0 &&
+        m_stateVars[3] == 0)
+        return;
+
+    WorldObject* character = nullptr;
+    if (m_playerIndex != -1) {
+        character = PlayerEntityByIndex(m_playerIndex);
+    } else if (m_object != 0) {
+        ape::ApeRefCounted* object = instance->ResolveObject(m_object, false);
+        if (!object)
+            object = instance->ResolveObject(m_object, true);
+        if (!object)
+            return;
+        character = EntityFromObject(object);
+    } else if (m_entity != 0) {
+        character = FindEntity(m_entity);
+    } else {
+        return;
+    }
+    if (!character || !EntityIsCharacter(character))
+        return;
+
+    const CharacterRespawnInfo info = CharacterRespawn(character);
+    ApeAnimScriptVar* var = instance->FindVar(m_matrix);
+    if (var && var->GetType() == AnimScriptVarType::Matrix)
+        static_cast<ape::ApeAnimScriptMatrixVar*>(var)->SetMatrix(info.point);
+    for (int i = 0; i < 4; ++i) {
+        var = instance->FindVar(m_stateVars[i]);
+        if (var && var->GetType() == AnimScriptVarType::Int)
+            static_cast<ape::ApeAnimScriptIntVar*>(var)->SetInt(info.states[i]);
+    }
+}
 
 // ---------------------------------------------------------------------------
 

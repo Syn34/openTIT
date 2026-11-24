@@ -11,7 +11,7 @@
 
 #include <cstdint>
 
-namespace ape { class ApeRefCounted; class ApeAnimScriptObjectVar; namespace xml { struct Color8; } }
+namespace ape { class ApeRefCounted; class ApeAnimScriptObjectVar; class ApeAnimScriptInstance; namespace xml { struct Color8; } }
 
 namespace sly {
 
@@ -219,6 +219,57 @@ void MaterialSetColor(void* material, const ape::xml::Color8& color);
 void GuiNodeSetColor(void* node, const ape::xml::Color8& color);
 // Character override colour: bit 5 of +0x3C8 switches it on, colour +0x3C9.
 void CharacterSetOverrideColor(WorldObject* character, bool active, const ape::xml::Color8& color);
+
+// ---------------------------------------------------------------------------
+// Gadgets, turrets, binocucom
+
+// Bit 29 of the gadget object word +0x228. NOTE: meaning unknown.
+void GadgetObjectSetFlag(WorldObject* entity, bool value);
+// Gadget turrets: type bit 0x2000000 of +0xC4; 0x001CC174 adds a target,
+// 0x001CC214 removes one.
+bool EntityIsGadgetTurret(const WorldObject* entity);
+void TurretAddTarget(WorldObject* turret, WorldObject* target);
+void TurretRemoveTarget(WorldObject* turret, WorldObject* target);
+// Class flag 1 (+0xC0): entities a turret can aim at.
+constexpr uint32_t kEntityClass_Targetable = 0x01;
+// Player index meaning "no player" in script data.
+constexpr int32_t kNoPlayer = 9;
+// 0x002A6044: the binocucom view is up.
+bool BinocucomIsVisible(void* binocucom);
+
+// Animation controller of a character (+0x24), the controller recorded for an
+// object variable (ApeAnimScriptInstance::GetObjectVarField24, 0x004CF2BC),
+// and the speed of a playing animation (0x003541B0).
+void* CharacterAnimController(void* character);
+void* ScriptObjectAnimController(ape::ApeAnimScriptInstance* instance, uint32_t varName);
+float AnimSpeed(const void* anim);
+
+// ---------------------------------------------------------------------------
+// Queries
+
+// Class bits of an entity (64-bit word +0xB8).
+uint64_t EntityClassBits(const WorldObject* entity);
+// True if one of the entity's effect components (type 0x17) has effect type
+// `type` (bits 25-29 of its word +0x18).
+bool EntityHasEffectOfType(const WorldObject* entity, int type);
+// Jobs (game state 0x00F64C20): the current job (+0x28, name at +0x1D4),
+// a job by name (0x002E1220) and its state index 0..2 (0x002D98A4).
+bool HasCurrentJob();
+uint32_t CurrentJobName();
+void* GameStateFindJob(uint32_t jobName);
+int JobState(void* job);
+
+// Respawn point of a character (+0x240, four rows) and its respawn state
+// bytes (+0x280..+0x283).
+struct CharacterRespawnInfo {
+    ape::Matrix34 point;
+    uint8_t states[4] = {};
+};
+CharacterRespawnInfo CharacterRespawn(const WorldObject* character);
+// Safes: the game state's current safe (0x002DDD24) and its state index
+// (0x002DA990).
+void* GameStateCurrentSafe();
+int SafeState(void* safe);
 
 } // namespace levels
 } // namespace sly
