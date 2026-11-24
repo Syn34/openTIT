@@ -20,14 +20,17 @@
   covered by the C++ globals, not tagged.
 * GUI resource path variable 0x243084BD ("$<var>" replaced by the language
   folder string at 0x00F668A4): the variable's spelling is unknown.
-* GUI texture booleans 0x051B7FEC / 0x2E8401A3 and font flag 0x04704F4C are
-  only known by hash. Element hashes: 0x447D9F5E (bitmap font element),
-  0x0001293C (font glyph map child) unresolved.
+* GUI texture booleans: 0x051B7FEC is "ztest" (depth compare LEqual instead of
+  Always); 0x2E8401A3 (enables the depth test) and font flag 0x04704F4C are
+  only known by hash. Element hashes: 0x447D9F5E (bitmap font element)
+  unresolved; 0x0001293C is "map" (font code point list). Font set children
+  0x00255A8F match "page" (only 4-letter candidate); the per-page float
+  0x7A600EB7 is stored as a vertical offset (guess).
 * ApeGuiObject is a skeleton (tree + name + text id). The real class derives
   from a large engine base (vtable 0x00B22710, slots at 0x00761Bxx).
-* ApeGuiTexture::Load/Unload (0x004D5EAC / 0x004D5F38, sampler setup
-  0x004D5C64) are TODO: they need the render texture manager (0x0050C398,
-  0x0051E68C, 0x00523B7C).
+* ApeGuiTexture::Load/Unload and the per-blend-mode materials are done
+  (CreateSpriteMaterial 0x00523B7C lives in agl). ApeGuiBitmapFont::Load
+  (0x004D6768) is TODO: the glyph scan of the map bitmap is not written.
 * SetGuiPadFilter / SetGuiFilter / SetGuiSlot names are guesses (callers in
   the game app only install/read them).
 * ApeDTD (0x004D2BB8-0x004D3378): attribute schema used by the knowledge,
@@ -41,8 +44,7 @@
 * 0x004D35AC.., 0x004D3798/0x004D39B0 (GUI shutdown), 0x004D4xxx-0x004EAxxx:
   GUI object classes, GUI anims (list 0x00F6689C), anim playback list
   (0x00F668A0), GUI file parsing (0x004DE0F8, 0x004DFA60, 0x004DFD04),
-  bitmap fonts (0x004D601C, 0x004D6768) - need the GUI object base class
-  and the renderer.
+  bitmap font Load (0x004D6768, glyph scan).
 * 0x004F0000-0x004F2FC0: level scene object creation (ApeCameraDef,
   ApeGeomInstance) - render/scene dependent.
 * 0x004F32F4-0x004F7C48: setting manager / setting defs / tag settings. A

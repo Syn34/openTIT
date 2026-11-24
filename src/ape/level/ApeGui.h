@@ -13,6 +13,11 @@
 
 #include <cstdint>
 
+namespace agl {
+class AglMaterial;
+class AglTexture;
+}
+
 namespace ape {
 
 class StringTable;
@@ -48,6 +53,8 @@ public:
 
     // Takes a load reference (loads the data on the first one).
     void AddLoadRef();
+    // Drops a load reference (unloads the data on the last one).
+    void ReleaseLoadRef();
     void AddRef() { ++m_refCount; }
 
     const char* GetPath() const { return m_path; }
@@ -82,16 +89,85 @@ public:
     uint16_t Load() override;
     void Unload() override;
 
-    // NOTE: the two flags are XML booleans whose names are only known by
-    // hash (0x051B7FEC and 0x2E8401A3); they select sampler states.
-    bool flag_51B7FEC = false;       // +0x5C bit 31
+    // Builds 'materials' (one per GUI blend mode) for the loaded texture.
+    void CreateMaterials();
+
+    bool ztest = false;              // +0x5C bit 31: depth compare LEqual instead of Always
+    // NOTE: XML boolean known only by hash (0x2E8401A3); enables the depth test.
     bool flag_2E8401A3 = false;      // +0x5C bit 30
-    void* texture = nullptr;         // +0x60 render texture
-    void* samplers[3] = {};          // +0x64 per-filter texture views
+    agl::AglTexture* texture = nullptr;      // +0x60
+    agl::AglMaterial* materials[3] = {};     // +0x64 alpha, additive, subtractive
 };
 
 // Creates a texture resource from a <texture name filename preload ...> element.
 ApeGuiTexture* CreateGuiTexture(xml::XmlDocument* doc, xml::XmlElement* element, void* owner);
+
+// One glyph of a bitmap font, as found by scanning the font bitmap.
+struct GuiGlyph {
+    uint8_t top = 0;                 // +0 rows above the baseline
+    uint8_t bottom = 0;              // +1 rows below the baseline
+    uint8_t width = 0;               // +2
+    uint8_t cells = 0;               // +3 character cells covered (wide glyphs span several)
+    uint16_t x = 0;                  // +4 position in the texture
+    uint16_t y = 0;                  // +6
+};
+
+// A font whose glyphs are cut out of a texture. The glyph rectangles come
+// from a separate map bitmap ('path') in which marker pixels outline each
+// glyph.
+class ApeGuiBitmapFont : public ApeGuiResource {
+public:
+    ApeGuiBitmapFont(const char* name, const char* mapPath, void* owner, ApeGuiTexture* texture,
+                     uint32_t firstChar);
+    ~ApeGuiBitmapFont() override;
+    uint16_t Load() override;
+    void Unload() override;
+
+    uint16_t GetHeight() const { return height; }
+
+    ApeGuiTexture* texture = nullptr;        // +0x5C (referenced)
+    uint32_t firstChar = ' ';                // +0x60 character of glyph 0 without a char map
+    uint8_t glyphCount = 0;                  // +0x64
+    bool ztest = false;                      // +0x65 bit 6, see ApeGuiTexture
+    bool flag_2E8401A3 = false;              // +0x65 bit 5
+    // NOTE: boolean known only by hash (0x04704F4C).
+    bool flag_4704F4C = false;               // +0x65 bit 7
+    uint16_t height = 0;                     // +0x66 line height in pixels
+    GuiGlyph* glyphs = nullptr;              // +0x68
+    uint8_t* charMap = nullptr;              // +0x6C 64K entries: glyph index per code point, 0xFF none
+    agl::AglMaterial* materials[3] = {};     // +0x70
+};
+
+// Creates a bitmap font from a <font name texture mapfilename firstchar ...>
+// element; the texture must already exist. An optional <map> child lists
+// the code points of the glyphs in order (hex, optionally "\u" prefixed).
+ApeGuiBitmapFont* CreateGuiBitmapFont(xml::XmlDocument* doc, xml::XmlElement* element, void* owner);
+
+// Up to 16 bitmap fonts used together (one per script / glyph range), each
+// with its own scale and vertical offset.
+class ApeGuiFontSet : public ApeGuiResource {
+public:
+    static constexpr uint32_t kMaxFonts = 16;
+
+    ApeGuiFontSet(const char* name, void* owner, const float scale[2]);
+    ~ApeGuiFontSet() override;
+    uint16_t Load() override;
+    void Unload() override;
+
+    // Adds 'font' (referenced). Scales after the first are relative to the
+    // first font's height once the fonts are loaded.
+    void AddFont(ApeGuiBitmapFont* font, float fontScale, float offset);
+
+    float scale[2] = {};                     // +0x5C
+    uint32_t fontCount = 0;                  // +0x64
+    ApeGuiBitmapFont* fonts[kMaxFonts] = {}; // +0x68
+    float fontScales[kMaxFonts] = {};        // +0xA8
+    float fontOffsets[kMaxFonts] = {};       // +0xE8
+};
+
+// Creates a font set from a <fontset name scale preload> element with
+// <page name scale ...> children naming existing fonts.
+ApeGuiFontSet* CreateGuiFontSet(xml::XmlDocument* doc, xml::XmlElement* element, void* owner);
 
 // Value substituted for "$<language variable>" in resource paths.
 void SetGuiLanguagePath(const char* path);
