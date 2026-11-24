@@ -61,6 +61,7 @@ void BroadcastInRange(Entity*, float, uint32_t, uint32_t, uint32_t) {}
 
 void EntitySetScriptState(Entity*, uint32_t) {}
 bool EntityHoldsAttention(const Entity*) { return false; }
+bool RacerHasVehicle(const Entity*) { return false; }
 void CharacterSetEventListener(EntityComponent*, AIController*) {}
 bool AttackerComponentFlag(Entity*, bool* hasComponent)
 {
@@ -93,6 +94,7 @@ void ReleaseCameraMode(AICameraMode*) {}
 void GameWorldSetBossFlag(bool) {}
 void HudSetContext(Entity*, const char*) {}
 void HudSetContext(Entity*, uint32_t) {}
+bool HudObjectPausesAI(const hud::HudObject*) { return false; }
 
 ape::ApeRefCounted* EntityScriptObject(const Entity*) { return nullptr; }
 void ReleaseAnimScript(ape::ApeAnimScriptInstance*) {}

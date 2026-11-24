@@ -2,6 +2,7 @@
 #include "sly/levels/ai/AIBehaviours.h"
 
 #include "ape/world/ApeInstances.h"
+#include "sly/game/hud/HudManager.h"
 #include "sly/levels/ai/AIHooks.h"
 
 namespace sly {
@@ -70,12 +71,37 @@ RacerAI::~RacerAI()
         race->UpdateRanking(spawner);
 }
 
+// @func 0x0002BB38 RacerAI::Attach
+void RacerAI::Attach(Entity* newEntity)
+{
+    constexpr uint32_t kHud_Race = 0x2508CAD1u;          // NOTE: element name unknown
+    constexpr int kState_Start = static_cast<int>(0xB2E5993Au);   // NOTE: a hash used as state id
+    AIController::Attach(newEntity);
+    hud = hud::Find(kHud_Race);
+    EntitySetEngaged(entity, true);
+    AnimControllerSetEngaged(entity, true);
+    leashRadius = 3.0f;
+    state = kState_Start;
+    field_1C = kState_Start;
+    settings = nullptr;
+    flags1 |= kF1_Hit;
+    field_138 = 0;
+    racerFlags &= ~kRacer_Bit29;
+    field_150 = ape::Vec3{};
+    const bool racer = (entity->typeBits[0] & kRacerTypeBit) != 0;
+    if (racer && RacerHasVehicle(entity))
+        racerFlags |= kRacer_Racing;
+    else
+        racerFlags &= ~kRacer_Racing;
+    racerFlags &= ~kRacer_Bit30;
+    EnterState();
+}
+
 // @func 0x0002BCB4 RacerAI::Update
 void RacerAI::Update(float dt)
 {
-    // NOTE: the console also skips the update while the HUD element
-    // 0x2508CAD1 it looked up on attach (+0x160) has its object's bit 15 of
-    // +0xA4 set; the HUD element is not tracked here.
+    if (hud && HudObjectPausesAI(hud))
+        return;
     if (entity->flags & (0x40u | 0x20u))
         return;
     AIController::Update(dt);
