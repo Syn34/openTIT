@@ -1,9 +1,12 @@
 // openTIT - Game script commands, sixth block (GiveAward and the HUD commands).
 #include "sly/levels/script/ScriptCommand.h"
+
+#include <cstdio>
 #include "sly/levels/script/ScriptCommands.h"
 
 #include "ape/core/ApeString.h"
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/trophy/TrophyManager.h"
 
 namespace sly {
@@ -136,6 +139,7 @@ class HudHealthMeterCommand : public ApeAnimScriptCommand {
 public:
     HudHealthMeterCommand();
     ~HudHealthMeterCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -165,7 +169,24 @@ ApeAnimScriptCommand* HudHealthMeterCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0007D098 HudHealthMeterCommand::Execute)
+// @func 0x0007D098 HudHealthMeterCommand::Execute
+// Shows or hides the health meter of a killable entity; without an entity
+// the given player's meter can be hidden.
+void HudHealthMeterCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    if (m_entity == 0 && m_playerNum != kNoPlayer) {
+        if (!m_enable)
+            HudSetPlayerHealthMeter(m_playerNum, "");
+        return;
+    }
+    WorldObject* entity = FindEntity(m_entity);
+    if (!entity || !EntityHasClassFlag(entity, kEntityClass_Killable))
+        return;
+    if (m_enable)
+        HudShowHealthMeter(entity, m_healthMeter);
+    else
+        HudHideHealthMeter(entity);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xE573697F (name unknown): plays an animation on a HUD object.
@@ -219,6 +240,7 @@ class HudMessageCommand : public ApeAnimScriptCommand {
 public:
     HudMessageCommand();
     ~HudMessageCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -253,7 +275,24 @@ ApeAnimScriptCommand* HudMessageCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0007D540 HudMessageCommand::Execute)
+// @func 0x0007D540 HudMessageCommand::Execute
+// Puts a text into a HUD object; with "MsgVar" the text is that int
+// variable's value.
+void HudMessageCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_msgVar != 0) {
+        ApeAnimScriptVar* var = instance->FindVar(m_msgVar);
+        if (var && var->GetType() == AnimScriptVarType::Int)
+            std::snprintf(m_msg, sizeof(m_msg), "%d", var->GetInt());
+    }
+    void* hud = FindHudObject(m_hudObj);
+    if (!hud)
+        return;
+    if (m_animMode != 0)
+        HudSetAnimMode(hud, m_animMode);
+    HudSetAnimRate(hud, m_animRate);
+    HudSetText(hud, m_msg, m_index);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xD1CD23E6 (name unknown): sets the animation mode and rate of a HUD object.

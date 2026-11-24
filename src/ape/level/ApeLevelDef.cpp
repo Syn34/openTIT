@@ -713,6 +713,11 @@ void ApeLevelDef::ClearStringLists()
     stringLists.clear();
 }
 
+ApeLevelDef* GetCurrentLevelDef()
+{
+    return s_currentLevelDef;
+}
+
 // @func 0x004ECF08 ApeLevelDef::AddStringToList
 void ApeLevelDef::AddStringToList(uint32_t key, const char* str)
 {

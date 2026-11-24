@@ -39,9 +39,11 @@ void RegisterScriptCommandsAA();
 void RegisterScriptCommandsAB();
 void RegisterScriptCommandsAC();
 void RegisterScriptCommandsAD();
+void RegisterScriptVars();
 
 inline void RegisterLevelScriptCommands()
 {
+    RegisterScriptVars();
     RegisterScriptCommandsA();
     RegisterScriptCommandsEvent();
     RegisterScriptCommandsE();

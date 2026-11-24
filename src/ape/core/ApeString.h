@@ -1,6 +1,7 @@
 // openTIT - Ape engine string helpers.
 #pragma once
 
+#include <cstdarg>
 #include <cstddef>
 #include <cstdint>
 
@@ -19,6 +20,26 @@ int StrCmp(const char* a, const char* b);
 int StrNCmp(const char* a, const char* b, size_t count);
 // Case-insensitive ASCII compare (stricmp).
 int StrICmp(const char* a, const char* b);
+// The engine's own case-insensitive compares (letters folded to lower case);
+// they return -1, 0 or 1. The bounded one stops after `count` characters.
+int StrCaseCompare(const char* a, const char* b);
+int StrNCaseCompare(const char* a, const char* b, int count);
+
+// More C library wrappers.
+int StrPrintf(char* buffer, size_t size, const char* fmt, ...);
+int StrVPrintf(char* buffer, size_t size, const char* fmt, va_list args);
+char* StrStr(const char* s, const char* sub);
+char* StrChr(const char* s, int c);
+char* StrRChr(const char* s, int c);
+char* StrCat(char* dst, const char* src);
+// Lower-cases the ASCII letters of `s` in place.
+void StrLower(char* s);
+// First character of `s` that also occurs in `set` (strpbrk), or null.
+char* StrFindAny(const char* s, const char* set);
+// Number parsing (no error reporting).
+uint32_t StrToUInt(const char* s);
+float StrToFloat(const char* s);
+long StrToInt(const char* s, int base);
 
 // Case-insensitive 31-multiplier string hash used for all engine name lookups
 // (entity names, tuning keys, asset names). Lower-case ASCII letters are

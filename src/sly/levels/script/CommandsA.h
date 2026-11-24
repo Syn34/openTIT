@@ -17,6 +17,7 @@ public:
     ActivateInteractionCommand();
     explicit ActivateInteractionCommand(XmlElement* element);
     ~ActivateInteractionCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -50,6 +51,7 @@ class ObjectMaterialCommand : public ApeAnimScriptCommand {
 public:
     ObjectMaterialCommand();
     ~ObjectMaterialCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -83,6 +85,7 @@ class AnimLayerTimeCommand : public ApeAnimScriptCommand {
 public:
     AnimLayerTimeCommand();
     ~AnimLayerTimeCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -208,6 +211,7 @@ public:
     CameraShakeCommand();
     explicit CameraShakeCommand(XmlElement* element);
     ~CameraShakeCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -225,8 +229,8 @@ private:
     float m_yawFrequency = 6.5f;         // +0x38 "YawFrequency"
     float m_rollFrequency = 2.5f;        // +0x3C "RollFrequency"
     float m_radius = 0.0f;               // +0x40 "Radius"
-    ape::Vec3 m_field50 = {0.0f, 0.0f, 0.0f, 0.0f};  // +0x50 NOTE: runtime state
-    float m_field60 = -1.0f;             // +0x60 NOTE: runtime state
+    ape::Vec3 m_origin = {0.0f, 0.0f, 0.0f, 0.0f};  // +0x50 shake origin (RefObject position, set on Execute)
+    float m_field60 = -1.0f;             // +0x60 NOTE: never read from data
 };
 
 // Hash 0x3D0E7A04 (name unknown): stops the game camera's animation.
@@ -272,6 +276,7 @@ public:
     CharacterSpecialCommand();
     explicit CharacterSpecialCommand(XmlElement* element);
     ~CharacterSpecialCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
     // Values of "Command" (names unknown).
