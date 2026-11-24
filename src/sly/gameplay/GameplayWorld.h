@@ -14,6 +14,8 @@
 #include <cstddef>
 #include <cstdint>
 
+namespace ape { class ApeAnimScriptVar; }
+
 namespace sly {
 
 class WorldObject;   // game entity (sly/game/WorldInterface.h)
@@ -231,11 +233,11 @@ bool SpeakerDialogBusy();
 // 0x00368FA0 + 0x004A674C: tells a HUD screen a dialog is starting.
 void HudScreenNotifyDialog(uint32_t screenHash);
 // Text pages (0x004890A0).
-void ShowDialogPages(const char (*pages)[0x80], int count, const int32_t pos[2],
-                     const int32_t size[2], bool flagA, bool flagB, const uint8_t colorA[4],
+void ShowDialogPages(const char (*pages)[0x80], int count, const float pos[2],
+                     const float size[2], bool flagA, bool flagB, const uint8_t colorA[4],
                      const uint8_t colorB[4]);
-// Script condition objects (virtual slot 6 returns non-zero when true).
-class ScriptCondition;
+// Script condition objects: int script variables (virtual slot 6, GetInt, non-zero when true).
+using ScriptCondition = ape::ApeAnimScriptVar;
 bool EvaluateScriptCondition(const ScriptCondition* condition);
 // GUI screens and their animations (0x004D5544, 0x004E3168, 0x004E2EF0).
 struct GuiAnimation;

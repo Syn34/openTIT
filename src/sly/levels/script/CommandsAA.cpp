@@ -2,11 +2,15 @@
 #include "sly/levels/script/ScriptCommand.h"
 #include "sly/levels/script/ScriptCommands.h"
 
+#include "ape/core/ApeString.h"
+
 #include "sly/game/AudioSystem.h"
 #include "sly/game/Upgrades.h"
 #include "sly/levels/GameServices.h"
 #include "sly/gameplay/SequenceCommands.h"
 #include "sly/gameplay/Sequencer.h"
+#include "sly/gameplay/SequenceUiCommands.h"
+#include "sly/levels/script/ScriptVars.h"
 #include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
@@ -402,8 +406,119 @@ void SeqHudElementCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
     SequenceAddHudElement(m_wait);
 }
 
-// TODO(0x000A116C SeqTextPanelCommand) hash 0x661993C7 (#230): text panel with up to six
-// named lines; parser 0x000A1224, Execute 0x000A16C0.
+// ---------------------------------------------------------------------------
+// Hash 0x661993C7 (#230, name unknown): speaker dialog in the sequence: two
+// text keys (literal or string variables), up to six speakers and the HUD
+// screen to notify (sequence command 0x004335C0).
+
+namespace {
+constexpr uint32_t kAttrPanelMessageVar = AnimHash("messageVar");
+constexpr uint32_t kAttrPanelMessage2Var = AnimHash("message2Var");
+constexpr uint32_t kAttrPanelScreen = 0x7A73437Du;       // NOTE: name unknown
+constexpr uint32_t kAttrPanelScreenVar = 0xAB5BFA6Au;    // NOTE: name unknown (int variable)
+constexpr uint32_t kAttrPanelParam = 0xE7CEA5A4u;        // NOTE: name unknown
+constexpr uint32_t kAttrPanelParamVar = 0xA8BF12E3u;     // NOTE: name unknown (int variable)
+constexpr uint32_t kAttrPanelBlocking = 0x8488565Bu;     // NOTE: name unknown
+constexpr uint32_t kAttrPanelPause = 0x1D373FEBu;        // NOTE: name unknown
+constexpr uint32_t kAttrPanelNotify = 0x92DE619Au;       // NOTE: name unknown
+constexpr uint32_t kTagPanelSpeaker = 0xDB7A793Au;       // NOTE: element name unknown
+constexpr uint32_t kAttrPanelSpeakerFlag = 0xF5897C08u;  // NOTE: name unknown
+
+// Text of a string variable, or null.
+const char* StringVarText(ApeAnimScriptInstance* instance, uint32_t varHash)
+{
+    if (varHash == 0)
+        return nullptr;
+    ApeAnimScriptVar* var = instance->FindVar(varHash);
+    if (!var || static_cast<int>(var->GetType()) != kVarType_String)
+        return nullptr;
+    return static_cast<ScriptStringVar*>(var)->GetString();
+}
+} // namespace
+
+class SeqSpeakerDialogScriptCommand : public ApeAnimScriptCommand {
+public:
+    SeqSpeakerDialogScriptCommand();
+    explicit SeqSpeakerDialogScriptCommand(XmlElement* element);
+    ~SeqSpeakerDialogScriptCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
+    ApeAnimScriptCommand* Create(XmlElement* element) const override;
+
+private:
+    static constexpr size_t kMaxSpeakers = 6;
+    char m_message[0x41] = {};                    // +0x0C "message"
+    char m_message2[0x41] = {};                   // +0x4D "message2"
+    std::vector<gameplay::DialogSpeaker> m_speakers;   // +0x90 (console ApeArray, capacity 6)
+    uint32_t m_messageVar = 0;                    // +0xA4
+    uint32_t m_message2Var = 0;                   // +0xA8
+    uint32_t m_screen = 0;                        // +0xAC
+    uint32_t m_screenVar = 0;                     // +0xB0
+    int32_t m_param = 0;                          // +0xB4
+    uint32_t m_paramVar = 0;                      // +0xB8
+    // +0xBC flag bits 31..29.
+    bool m_blocking = true;
+    bool m_pauseGame = false;
+    bool m_notifyScreen = false;
+};
+
+// @func 0x000A116C SeqSpeakerDialogScriptCommand::SeqSpeakerDialogScriptCommand
+SeqSpeakerDialogScriptCommand::SeqSpeakerDialogScriptCommand() { m_speakers.reserve(kMaxSpeakers); }
+
+// @func 0x000A1224 SeqSpeakerDialogScriptCommand::SeqSpeakerDialogScriptCommand (parsing)
+SeqSpeakerDialogScriptCommand::SeqSpeakerDialogScriptCommand(XmlElement* element) : SeqSpeakerDialogScriptCommand()
+{
+    element->GetHash(kAttrPanelMessageVar, &m_messageVar, 0);
+    const char* text = m_messageVar == 0 ? element->GetString("message") : nullptr;
+    if (text && text[0] != '\0')
+        ape::StrCopyBounded(m_message, text, 0x40);
+    element->GetHash(kAttrPanelMessage2Var, &m_message2Var, m_message2Var);
+    text = m_message2Var == 0 ? element->GetString("message2") : nullptr;
+    if (text && text[0] != '\0')
+        ape::StrCopyBounded(m_message2, text, 0x40);
+    element->GetHash(kAttrPanelScreen, &m_screen, m_screen);
+    element->GetHash(kAttrPanelScreenVar, &m_screenVar, m_screenVar);
+    element->GetInt(kAttrPanelParam, &m_param, m_param);
+    element->GetHash(kAttrPanelParamVar, &m_paramVar, m_paramVar);
+    element->GetBool(kAttrPanelBlocking, &m_blocking, m_blocking);
+    element->GetBool(kAttrPanelPause, &m_pauseGame, m_pauseGame);
+    element->GetBool(kAttrPanelNotify, &m_notifyScreen, m_notifyScreen);
+    for (XmlElement* child = element->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        if (child->GetNameHash() != kTagPanelSpeaker || m_speakers.size() >= kMaxSpeakers)
+            continue;
+        gameplay::DialogSpeaker speaker;
+        bool flag = true;
+        child->GetHash(AnimHash("Name"), &speaker.nameHash, 0);
+        child->GetBool(kAttrPanelSpeakerFlag, &flag, flag);
+        speaker.flags = flag ? 1 : 0;
+        if (speaker.nameHash != 0)
+            m_speakers.push_back(speaker);
+    }
+}
+
+// NOTE: the destructors live at 0x0074xxxx (outside this range).
+SeqSpeakerDialogScriptCommand::~SeqSpeakerDialogScriptCommand() = default;
+
+// @func 0x000A1650 SeqSpeakerDialogScriptCommand::Create
+ApeAnimScriptCommand* SeqSpeakerDialogScriptCommand::Create(XmlElement* element) const
+{
+    return new SeqSpeakerDialogScriptCommand(element);
+}
+
+// @func 0x000A16C0 SeqSpeakerDialogScriptCommand::Execute
+void SeqSpeakerDialogScriptCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    // String variables replace the stored texts (the console keeps the copy).
+    const char* text = StringVarText(instance, m_messageVar);
+    if (text && text[0] != '\0')
+        ape::StrCopyBounded(m_message, text, 0x40);
+    text = StringVarText(instance, m_message2Var);
+    if (text && text[0] != '\0')
+        ape::StrCopyBounded(m_message2, text, 0x40);
+    const uint32_t screen = uint32_t(ResolveInt(instance, m_screenVar, int32_t(m_screen)));
+    const uint32_t param = uint32_t(ResolveInt(instance, m_paramVar, m_param));
+    gameplay::AddSequenceCommand(new gameplay::SeqSpeakerDialogCommand(
+        m_speakers, m_message, m_message2, screen, param, m_notifyScreen, m_blocking, m_pauseGame));
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x226C3AFD (name unknown): sequence message box with a picture.
@@ -459,10 +574,10 @@ void RegisterScriptCommandsAA()
     prototypes.Add(0x2D43CE4Cu, new SeqShowHudCommand());
     prototypes.Add(AnimHash("PauseHavok"), new SeqPauseHavokCommand());
     prototypes.Add(AnimHash("SeqPlayAnim"), new SeqPlayAnimCommand());
-    // #227 (0x780316BB) and #230 (0x661993C7) are not registered until their
-    // parsers are ported.
+    // #227 (0x780316BB) is not registered until its parser is ported.
     prototypes.Add(0xE37F3CE5u, new SeqRunScriptCommand());
     prototypes.Add(0x93C95D39u, new SeqHudElementCommand());
+    prototypes.Add(0x661993C7u, new SeqSpeakerDialogScriptCommand());
     prototypes.Add(0x226C3AFDu, new SeqMessageBoxCommand());
 }
 

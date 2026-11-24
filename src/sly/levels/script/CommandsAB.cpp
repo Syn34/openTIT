@@ -8,6 +8,7 @@
 #include "sly/levels/ScriptServices.h"
 #include "sly/gameplay/SequenceCommands.h"
 #include "sly/gameplay/Sequencer.h"
+#include "sly/gameplay/SequenceUiCommands.h"
 
 #include <cstring>
 
@@ -70,6 +71,131 @@ int32_t ReadPlayerNum(XmlElement* element, uint32_t attr)
     return value == -1 ? 0 : value;
 }
 } // namespace
+
+// ---------------------------------------------------------------------------
+// Hash 0x9F8D96A1 (#232, name unknown): shows up to four text pages (the
+// element's own "name" and its <MOVIE name=...> children) in the sequence
+// (sequence command 0x00433B2C).
+
+namespace {
+constexpr uint32_t kTagPageMovie = AnimHash("MOVIE");
+constexpr uint32_t kAttrPagesCondition = 0x42E874AAu;   // NOTE: name unknown (int variable)
+constexpr uint32_t kAttrPagesColorA = 0x3060AABFu;      // NOTE: name unknown
+constexpr uint32_t kAttrPagesColorB = 0xBF1E5566u;      // NOTE: name unknown
+constexpr uint32_t kAttrPagesBlocking = 0x8488565Bu;    // NOTE: name unknown
+constexpr uint32_t kAttrPagesLetterbox = 0x9C6B7DABu;   // NOTE: name unknown
+constexpr uint32_t kAttrPagesPrompt = AnimHash("PROMPT");
+constexpr uint32_t kAttrPagesFade = AnimHash("fade");
+constexpr uint32_t kAttrPagesFlagB = 0x4DFD4BFEu;       // NOTE: name unknown
+constexpr uint32_t kAttrPagesFlag0 = 0x367CF240u;       // NOTE: name unknown
+} // namespace
+
+class SeqDialogPagesScriptCommand : public ApeAnimScriptCommand {
+public:
+    SeqDialogPagesScriptCommand();
+    explicit SeqDialogPagesScriptCommand(XmlElement* element);
+    ~SeqDialogPagesScriptCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
+    ApeAnimScriptCommand* Create(XmlElement* element) const override;
+
+private:
+    static constexpr int kMaxPages = 4;
+    void Reset();
+    void AddPage(const char* text);
+
+    char m_pages[kMaxPages][0x80];   // +0x0C
+    int32_t m_pageCount;             // +0x20C
+    float m_scale[2];                // +0x210 "Scale"
+    float m_offset[2];               // +0x218 "Offset"
+    uint32_t m_condition;            // +0x220 int variable
+    uint8_t m_colorA[4];             // +0x224
+    uint8_t m_colorB[4];             // +0x228
+    bool m_blocking;                 // +0x22C
+    bool m_letterbox;                // +0x22D
+    bool m_letterboxGiven;           // +0x22E the letterbox attribute was present
+    bool m_prompt;                   // +0x22F "PROMPT"
+    bool m_fade;                     // +0x230 "fade"
+    bool m_flagB;                    // +0x231
+    bool m_flag0;                    // +0x232
+};
+
+// @func 0x000A1C28 SeqDialogPagesScriptCommand::Reset
+void SeqDialogPagesScriptCommand::Reset()
+{
+    m_pageCount = 0;
+    m_scale[0] = m_scale[1] = 1.0f;     // console global 0x01164AF4
+    m_offset[0] = m_offset[1] = 0.0f;   // console global 0x01164AFC
+    m_condition = 0;
+    m_colorA[0] = m_colorA[1] = m_colorA[2] = 0;
+    m_colorA[3] = 0xFF;
+    m_colorB[0] = m_colorB[1] = m_colorB[2] = m_colorB[3] = 0;
+    m_blocking = true;
+    m_letterbox = false;
+    m_letterboxGiven = false;
+    m_prompt = true;
+    m_fade = true;
+    m_flagB = true;
+    m_flag0 = true;
+    for (char* page : m_pages)
+        page[0] = '\0';
+}
+
+void SeqDialogPagesScriptCommand::AddPage(const char* text)
+{
+    // NOTE: the console does not bound the page count (four pages fit).
+    if (text && text[0] != '\0' && m_pageCount < kMaxPages)
+        ape::StrCopyBounded(m_pages[m_pageCount++], text, 0x7F);
+}
+
+// @func 0x000A1CEC SeqDialogPagesScriptCommand::SeqDialogPagesScriptCommand
+SeqDialogPagesScriptCommand::SeqDialogPagesScriptCommand() { Reset(); }
+
+// @func 0x000A1D34 SeqDialogPagesScriptCommand::SeqDialogPagesScriptCommand (parsing)
+SeqDialogPagesScriptCommand::SeqDialogPagesScriptCommand(XmlElement* element)
+{
+    Reset();
+    AddPage(element->GetString("name"));
+    for (XmlElement* child = element->FirstChildElement(kTagPageMovie); child;
+         child = child->NextSiblingElement(kTagPageMovie))
+        AddPage(child->GetString("name"));
+    element->GetVec2(AnimHash("Scale"), m_scale, m_scale);
+    element->GetVec2(AnimHash("Offset"), m_offset, m_offset);
+    element->GetHash(kAttrPagesCondition, &m_condition, m_condition);
+    element->GetColor(kAttrPagesColorA, reinterpret_cast<ape::xml::Color8*>(m_colorA),
+                      reinterpret_cast<const ape::xml::Color8*>(m_colorA));
+    element->GetColor(kAttrPagesColorB, reinterpret_cast<ape::xml::Color8*>(m_colorB),
+                      reinterpret_cast<const ape::xml::Color8*>(m_colorB));
+    element->GetBool(kAttrPagesBlocking, &m_blocking, m_blocking);
+    m_letterboxGiven =
+        element->GetBool(kAttrPagesLetterbox, &m_letterbox, m_letterbox) == ape::xml::kQuery_Ok;
+    element->GetBool(kAttrPagesPrompt, &m_prompt, m_prompt);
+    element->GetBool(kAttrPagesFade, &m_fade, m_fade);
+    element->GetBool(kAttrPagesFlagB, &m_flagB, m_flagB);
+    element->GetBool(kAttrPagesFlag0, &m_flag0, m_flag0);
+}
+
+// NOTE: the destructors live at 0x0074xxxx (outside this range).
+SeqDialogPagesScriptCommand::~SeqDialogPagesScriptCommand() = default;
+
+// @func 0x000A2028 SeqDialogPagesScriptCommand::Create
+ApeAnimScriptCommand* SeqDialogPagesScriptCommand::Create(XmlElement* element) const
+{
+    return new SeqDialogPagesScriptCommand(element);
+}
+
+// @func 0x000A2098 SeqDialogPagesScriptCommand::Execute
+void SeqDialogPagesScriptCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    ApeAnimScriptVar* condition = nullptr;
+    if (m_condition != 0) {
+        ApeAnimScriptVar* var = instance->FindVar(m_condition);
+        if (var && var->GetType() == ape::AnimScriptVarType::Int)
+            condition = var;
+    }
+    gameplay::AddSequenceCommand(new gameplay::SeqDialogPagesCommand(
+        m_pages, m_pageCount, m_scale, m_offset, condition, m_blocking, m_letterbox, m_colorA, m_colorB,
+        m_letterboxGiven, m_prompt, m_fade, m_flagB, m_flag0));
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x1FE37F1C (name unknown): sequence screen colour ramp.
@@ -631,7 +757,7 @@ void SeqHudTypeCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 void RegisterScriptCommandsAB()
 {
     auto& prototypes = ape::CommandPrototypes();
-    // #232 (0x9F8D96A1) is not ported yet.
+    prototypes.Add(0x9F8D96A1u, new SeqDialogPagesScriptCommand());
     prototypes.Add(0x1FE37F1Cu, new SeqScreenTintCommand());
     prototypes.Add(AnimHash("SeqPlaySound"), new SeqPlaySoundCommand());
     prototypes.Add(AnimHash("SeqQTE"), new SeqQteCommand());
