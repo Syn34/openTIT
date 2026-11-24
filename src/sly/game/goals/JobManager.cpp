@@ -23,6 +23,9 @@ PlayerProgress& CurrentProgress() { return g_progressStandIn; }
 uint32_t PlayerGoalCount() { return 0; }
 Goal* PlayerGoalListAt(uint32_t) { return nullptr; }
 uint32_t LiveJobId() { return 0; }
+int GameWorldState(int) { return 0; }
+void GameWorldSetState(int, int) {}
+void GameWorldSetStateData(uint32_t, uint32_t) {}
 uint32_t UnlockableCount() { return 0; }
 uint32_t UnlockableKey(uint32_t) { return 0; }
 void TargetingSetEnabled(void*, bool) {}
@@ -177,6 +180,25 @@ void JobManager::CheckEpisodeTrophies() const
         AwardTrophyByName(kTrophy_FirstEpisode);
     else if (finished > 5)
         AwardTrophyByName(kTrophy_SixEpisodes);
+}
+
+// @func 0x002E2E78 JobManager::FlushPendingRequest
+// @func 0x002E2FD4 JobManager::FlushPendingRequest (copy 2)
+void JobManager::FlushPendingRequest()
+{
+    constexpr uint32_t kPending = 1u << 29;
+    if (!(flags & kPending))
+        return;
+    if (GameWorldState(0) == 1 && GameWorldState(1) != 10) {
+        if (GameWorldState(1) != 5) {
+            GameWorldSetState(1, 10);
+            GameWorldSetState(2, 0);
+        }
+        GameWorldSetStateData(pendingRequest[0], pendingRequest[1]);
+    }
+    pendingRequest[0] = 0;
+    pendingRequest[1] = 0;
+    flags &= ~kPending;
 }
 
 // @func 0x002E2874 UnlockByKey

@@ -379,8 +379,9 @@ bool RenderZoomActive();
 float RenderZoom();
 // 0x00F9BC28: the AI is told to leave targets alone (debug / cutscene).
 bool AITargetingSuppressed();
-// 0x002E2E78 on the game state (0x00F64C20). NOTE: purpose unknown; sent by
-// AI message 0x9A986484.
+// 0x002E2E78 on the job manager (0x00F64C20): hands a pending level
+// request to the game world (game::JobManager::FlushPendingRequest); sent
+// by AI message 0x9A986484.
 void GameStateNotify();
 // 0x00470660 with key/message 0x00F65C54: posts a script message.
 void PostScriptMessage(Entity* sender, uint32_t key, uint32_t message, uint32_t argument);

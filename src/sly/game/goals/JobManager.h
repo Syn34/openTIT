@@ -87,6 +87,11 @@ public:
     // Awards the trophies for finishing the first and the sixth episode
     // (counts episodes with flag 0x40) (0x002E619C).
     void CheckEpisodeTrophies() const;
+    // Hands a pending level request to the game world: unless the game is
+    // already restarting (state layer 1 at 10) it switches layer 1 to 10 and
+    // layer 2 to 0, then passes the request's two words as the state data
+    // (0x002E2E78; 0x002E2FD4 is an identical copy).
+    void FlushPendingRequest();
 
     Job* jobs = nullptr;             // +0x14
     uint32_t jobCount = 0;           // +0x18
@@ -94,6 +99,8 @@ public:
     uint32_t episodeCount = 0;       // +0x20
     Job* currentJob = nullptr;       // +0x24
     Goal* trackedGoal = nullptr;     // +0x48
+    uint32_t pendingRequest[2] = {}; // +0x58
+    uint32_t flags = 0;              // +0x64 bit 29: a request is pending
 };
 
 // The job manager (0x00F64C20).
@@ -130,6 +137,11 @@ void SetPlayersTargeting(bool enabled);
 // world models it.
 uint32_t PlayerGoalCount();
 Goal* PlayerGoalListAt(uint32_t index);
+// Game world state machine (slot 8 GetState, 0x004665C0 SetState) and the
+// data word pair of its current state (+0x14 buffer, +0x06 offset).
+int GameWorldState(int layer);
+void GameWorldSetState(int layer, int state);
+void GameWorldSetStateData(uint32_t first, uint32_t second);
 // Game world +0x128114: id of the job that is running (0 = none).
 uint32_t LiveJobId();
 // 0x0029D838 on a targeting component.

@@ -18,7 +18,11 @@ bool IsGoalInLiveJob(const Goal* goal)
     return manager && manager->IsGoalLive(goal);
 }
 void JobManagerGoalFailed(Goal*, uint8_t) {}
-void JobManagerBeforeFailSequence() {}
+void JobManagerBeforeFailSequence()
+{
+    if (game::JobManager* manager = game::GetJobManager())
+        manager->FlushPendingRequest();
+}
 Goal* JobManagerTrackedGoal()
 {
     game::JobManager* manager = game::GetJobManager();
