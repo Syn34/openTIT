@@ -254,6 +254,7 @@ class StartSequenceCommand : public ApeAnimScriptCommand {
 public:
     StartSequenceCommand();
     ~StartSequenceCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -277,8 +278,25 @@ ApeAnimScriptCommand* StartSequenceCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x000A6B4C StartSequenceCommand::Execute) starts or queues the named sequence
-// (0x0042BAE0 / 0x0042BD0C / 0x0042BF50).
+// @func 0x000A6B4C StartSequenceCommand::Execute
+// Restarts the named sequence: a running one of that name is stopped, a
+// start marker goes into the sequence being built and the new sequence is
+// opened for the commands that follow.
+void StartSequenceCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    uint32_t name = uint32_t(ResolveInt(instance, m_varName, 0));
+    if (name == 0)
+        name = m_name;
+    if (name == 0) {
+        // NOTE: default sequence name (hash 0x0A95F036, string unknown); the
+        // console also formats a compiled-out warning with the script name.
+        name = 0x0A95F036u;
+    }
+    if (gameplay::Sequence* running = gameplay::FindSequence(name))
+        gameplay::StopSequence(running);
+    gameplay::AddSequenceCommand(new gameplay::SeqStartSequenceCommand(name));
+    gameplay::BeginSequence(name);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xB89DA664 (name unknown): stops sounds in the sequence.

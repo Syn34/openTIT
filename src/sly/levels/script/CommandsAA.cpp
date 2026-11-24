@@ -235,6 +235,7 @@ public:
     SeqPlayAnimCommand();
     explicit SeqPlayAnimCommand(XmlElement* element);
     ~SeqPlayAnimCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -246,7 +247,7 @@ private:
     float m_speed = 1.0f;         // +0x20 "Speed"
     float m_blend = 0.0f;         // +0x24 "Blend"
     uint32_t m_skeletonMap = 0;   // +0x28 "SkeletonMap"
-    uint32_t m_hash2C = 0;        // +0x2C attribute 0x941382D8
+    uint32_t m_hash2C = 0;        // +0x2C attribute 0x941382D8 (int variable overriding SkeletonMap)
     bool m_flag30 = true;         // +0x30 attribute 0xC1B28F57
     bool m_wait = true;           // +0x31 attribute 0x8488565B
     bool m_flag32 = true;         // +0x32 attribute 0x81D8B678
@@ -286,8 +287,19 @@ ApeAnimScriptCommand* SeqPlayAnimCommand::Create(XmlElement* element) const
     return new SeqPlayAnimCommand(element);
 }
 
-// TODO(0x000A0270 SeqPlayAnimCommand::Execute) resolves the animation variable and builds
-// the sequence animation command (0x004321A4).
+// @func 0x000A0270 SeqPlayAnimCommand::Execute
+void SeqPlayAnimCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    const uint32_t animation = uint32_t(ResolveInt(instance, m_animationVar, int32_t(m_animation)));
+    const uint32_t skeletonMap = uint32_t(ResolveInt(instance, m_hash2C, int32_t(m_skeletonMap)));
+    if (animation == 0 || m_entity == 0)
+        return;
+    // NOTE: passed in the console's argument order; the sequencer port names
+    // the two floats blendIn/speed.
+    gameplay::AddSequenceCommand(new gameplay::SeqPlayClipCommand(m_speed, m_blend, m_entity, animation, m_layer,
+                                                                  skeletonMap, m_loop, m_flag30, m_wait, m_flag32,
+                                                                  m_flag33));
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x780316BB (name unknown): sequence subtitle/dialogue line with an
@@ -437,9 +449,6 @@ void SeqDialogueCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
         (void)ape::TempHexString(m_soundName);
         (void)ape::TempHexString(m_bank);
     }
-    // NOTE: the console passes 19 values to 0x0043267C; the sequencer port
-    // models 17 of them (the prompt text pointer goes in twice and the
-    // blocking byte has no slot there). The mapping below is positional.
     gameplay::AddSequenceCommand(new gameplay::SeqDialogStreamCommand(
         m_time, m_displayRate, m_sound, m_subtitle, m_hash50, m_hash68, m_hash6C, m_blocking, m_buttonMask,
         m_flag78, m_flag79, m_hash7C, m_promptText, m_flagC0, m_exclusivityGroup, uint32_t(m_exclusivityPriority),
@@ -454,12 +463,13 @@ class SeqRunScriptCommand : public ApeAnimScriptCommand {
 public:
     SeqRunScriptCommand();
     ~SeqRunScriptCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
     TextFieldList m_texts;          // +0x0C
     uint32_t m_script = 0;          // +0x20 attribute 0x849B0778
-    uint32_t m_hash24 = 0;          // +0x24 attribute 0x74EB708F
+    uint32_t m_hash24 = 0;          // +0x24 attribute 0x74EB708F (int variable overriding the script)
     uint32_t m_hash28 = 0;          // +0x28 attribute 0x74EB4BED
     bool m_wait = true;             // +0x2C attribute 0x8488565B
     bool m_ignoreWarnings = false;  // +0x2D "IgnoreWarnings"
@@ -488,7 +498,16 @@ ApeAnimScriptCommand* SeqRunScriptCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x000A0E80 SeqRunScriptCommand::Execute) builds the sequence script command (0x00433120).
+// @func 0x000A0E80 SeqRunScriptCommand::Execute
+void SeqRunScriptCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    const uint32_t script = uint32_t(ResolveInt(instance, m_hash24, int32_t(m_script)));
+    if (script == 0)
+        return;
+    // NOTE: the console also passes the running instance (unused by the port).
+    gameplay::AddSequenceCommand(
+        new gameplay::SeqAnimScriptCommand(m_texts, script, m_hash28, m_wait, 0, m_ignoreWarnings));
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x93C95D39 (name unknown): sequence HUD element switch.
