@@ -206,5 +206,9 @@ uint8_t CharacterAbilityState(const ObjEntity* character, int ability);
 // (callback 0x00F39CA0).
 void ShowJobPrompt(ObjEntity* entity, const char* text, const char* buttons);
 
+// Whether the game state's text display reports the message as already
+// seen (0x002D9994 on game state +0x28 with a text field of that id, kind 13).
+bool TextDisplayHasSeen(uint32_t messageId);
+
 } // namespace objects
 } // namespace sly

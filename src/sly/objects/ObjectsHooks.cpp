@@ -280,5 +280,7 @@ void GameStateStartJob(ObjEntity* entity, void* job, uint32_t startGoal) { (void
 uint8_t CharacterAbilityState(const ObjEntity* character, int ability) { (void)character; (void)ability; return 0; }
 void ShowJobPrompt(ObjEntity* entity, const char* text, const char* buttons) { (void)entity; (void)text; (void)buttons; }
 
+bool TextDisplayHasSeen(uint32_t messageId) { (void)messageId; return false; }
+
 } // namespace objects
 } // namespace sly
