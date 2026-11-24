@@ -134,10 +134,10 @@ public:
     // Slot 40 (+0xA0): NOTE: false while the behaviour is still on its way
     // somewhere (meaning inferred from the buddy override).
     virtual bool IsSettled() { return true; }
-    // Slot 41 (+0xA4): command from a script (hash, two arguments).
-    virtual void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2)
+    // Slot 41 (+0xA4): command from a script (hash, two arguments and a value).
+    virtual void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value)
     {
-        (void)command; (void)arg1; (void)arg2;
+        (void)command; (void)arg1; (void)arg2; (void)value;
     }
     // Slot 42 (+0xA8): debug name of a state.
     virtual const char* StateName(int s);
@@ -319,7 +319,7 @@ public:
     void SetEntitiesVisible(bool visible);
     // Hands a script command to every controller in the active list
     // (0x0001B3BC).
-    void BroadcastScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2);
+    void BroadcastScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value);
     // Target for an enemy: the nearest priority target, else the nearest of
     // the player and the allies (0x0001AC80).
     Entity* PickTarget(const AIController* controller) const;

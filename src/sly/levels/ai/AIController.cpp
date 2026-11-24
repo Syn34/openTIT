@@ -952,10 +952,10 @@ void AIManager::SetEntitiesVisible(bool visible)
 }
 
 // @func 0x0001B3BC AIManager::BroadcastScriptCommand
-void AIManager::BroadcastScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2)
+void AIManager::BroadcastScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value)
 {
     for (int i = 0; i < activeCount; ++i)
-        active[i]->OnScriptCommand(command, arg1, arg2);
+        active[i]->OnScriptCommand(command, arg1, arg2, value);
 }
 
 // @func 0x0001B4A0 AlertEnemies

@@ -121,9 +121,9 @@ bool RacerAI::IsCharacterDead()
 void RacerAI::ChooseState() {}
 
 // @func 0x0002BED8 RacerAI::OnScriptCommand
-void RacerAI::OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2)
+void RacerAI::OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value)
 {
-    (void)arg1; (void)arg2;
+    (void)arg1; (void)arg2; (void)value;
     // Script commands are racer states.
     SetState(static_cast<int>(command));
 }

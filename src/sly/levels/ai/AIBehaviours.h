@@ -131,7 +131,7 @@ public:
     void Update(float dt) override;
     void PreUpdate(float dt) override;
     void OnMessage(const entity::EntityMessage& msg) override;
-    void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2) override;
+    void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value) override;
     void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
     bool IsCharacterDead() override;
     void ChooseState() override;
@@ -287,10 +287,28 @@ public:
 };
 class MsDecibelAI : public AIController {
 public:
-    bool field_1870 = false;   // +0x1870
+    ape::Vec3 GetTargetPosition() override;
+    float GravitySpeed() override;
+    void OnTauntChance() override;
+    void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value) override;
+
+    // Starts the fight (called by a level script command) (0x0005BB08).
+    void Start();
+    // Switches the fight phase. TODO(0x00053A80): not ported.
+    void SetPhase(int phase);
+
+    int32_t phase = 0;         // +0x134
+    bool started = false;      // +0x1870
 };
 class ParadoxAI : public AIController {
 public:
+    bool Think(float dt) override;
+    bool IsSettled() override;
+    void OnTauntChance() override;
+    void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
+    float GravitySpeed() override;
+
+    uint8_t settled = 0;       // +0x201
 };
 
 } // namespace ai
