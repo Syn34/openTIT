@@ -131,5 +131,24 @@ void EntityRelease(WorldObject* entity, bool kill) { (void)entity; (void)kill; }
 
 void EntityApplyOverrideColor(WorldObject* entity, bool enabled, const ape::xml::Color8& color) { (void)entity; (void)enabled; (void)color; }
 
+void BinocucomScanObject(void* binocucom, ape::ApeRefCounted* geometry) { (void)binocucom; (void)geometry; }
+void AnimSetSpeed(void* anim, float speed) { (void)anim; (void)speed; }
+bool AnimIsLooping(const void* anim) { (void)anim; return false; }
+void AnimJumpToEnd(void* anim) { (void)anim; }
+uint8_t EntityPlayerByte(const WorldObject* entity) { (void)entity; return 0; }
+void GameWorldPostEvent(uint8_t player, const GameEvent& event) { (void)player; (void)event; }
+
+void EntityListenerSetState(WorldObject* entity, uint32_t state, uint32_t clip, uint32_t target, float value) { (void)entity; (void)state; (void)clip; (void)target; (void)value; }
+void* EntityFindComponentOfType(WorldObject* entity, uint32_t type) { (void)entity; (void)type; return nullptr; }
+ChainComponentParams& ChainParams(void* chainComponent)
+{
+    // TODO: chain components are not ported; hand out a scratch record.
+    static ChainComponentParams s_scratch;
+    (void)chainComponent;
+    return s_scratch;
+}
+ape::Matrix34 PointInstanceTransform(const WorldObject* point) { (void)point; return IdentityTransform(); }
+void GameWorldSetPlayerSpawn(int player, const ape::Matrix34& transform) { (void)player; (void)transform; }
+
 } // namespace levels
 } // namespace sly

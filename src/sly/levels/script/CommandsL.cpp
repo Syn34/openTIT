@@ -5,6 +5,7 @@
 #include "sly/game/AudioSystem.h"
 #include "sly/game/Upgrades.h"
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 #include "sly/levels/ai/AIPriorityTargets.h"
 
@@ -452,6 +453,7 @@ class ScanObjectCommand : public ApeAnimScriptCommand {
 public:
     ScanObjectCommand();
     ~ScanObjectCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -477,8 +479,38 @@ ApeAnimScriptCommand* ScanObjectCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0008546C ScanObjectCommand::Execute) part search through the object hierarchy
-// (0x0057F5D8) then 0x002A8F18 on the player's binocucom; the part branch is unclear.
+// @func 0x0008546C ScanObjectCommand::Execute
+// Hands a geometry instance (an object, or a named part of it) to the
+// player's binocucom scanner.
+void ScanObjectCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    ape::ApeRefCounted* object = nullptr;
+    if (m_object != 0) {
+        object = instance->ResolveObject(m_object, false);
+        if (!object)
+            object = instance->ResolveObject(m_object, true);
+    }
+    if (!object && m_entity != 0) {
+        if (WorldObject* entity = FindEntity(m_entity))
+            object = EntityWorldObject(entity);
+        else
+            ScriptWarning("ScanObject: no entity %s", m_entity);
+    }
+    if (!object)
+        return;
+    if (m_part != 0) {
+        object = ObjectFindDescendant(object, m_part);
+        if (!object)
+            ScriptWarning("ScanObject: no part %s", m_part);
+    }
+    if (!object || !ObjectIsGeometryInstance(object))
+        return;
+    WorldObject* player = PlayerEntity();
+    if (!player)
+        return;
+    if (void* binocucom = PlayerBinocucom(player))
+        BinocucomScanObject(binocucom, object);
+}
 
 // ---------------------------------------------------------------------------
 
