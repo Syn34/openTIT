@@ -9,10 +9,14 @@
 
 #include <cstdint>
 
+namespace ape::world { class ApeObj; }
+
 namespace sly {
 namespace entity {
 
 class Entity;
+class EntityComponent;
+class EntityDef;
 
 // Engine game object virtual slot 3 (0x00464B90): leaves the world.
 void EntityShutdown(Entity* entity);
@@ -21,6 +25,10 @@ void DetachAnimScript(void* script);
 // Orphans an anim script instance (flags +0x88: set bit 9, clear bit 10) and
 // hands it to the deferred release list (0x004D0280).
 void OrphanAndReleaseAnimScript(void* script);
+// Bit 8 of an anim script instance's flag word (+0x88): paused.
+void SetAnimScriptPaused(void* script, bool paused);
+// Render object of an entity's character/physics component (0x00252940).
+ape::world::ApeObj* ComponentRenderObject(EntityComponent* component);
 // Entity virtual slot 8 (+0x20): script state of a layer.
 int EntityGetState(const Entity* entity, int layer);
 

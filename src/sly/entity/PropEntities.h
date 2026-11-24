@@ -23,6 +23,7 @@ void ReleaseCollisionShape(void* shape);
 class RigidPropDef : public ScriptedEntityDef {
 public:
     ~RigidPropDef() override;
+    uint8_t targetingFlags[6] = {};    // 0x104 ("targetingFlags", one per interaction kind)
     void* collisionShape = nullptr;    // 0x10C
 };
 
@@ -31,12 +32,17 @@ public:
 class RigidProp : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
     ~RigidProp() override;
+    // Both answer with the definition's targeting flag for the kind.
+    uint32_t InteractionOffer(int kind, Entity* other) override;
+    uint32_t InteractionNeeds(int kind, Entity* other) override;
+    const RigidPropDef* Def() const { return static_cast<const RigidPropDef*>(def); }
 };
 
 // Definition of AlterEgoEntity (vtable 0x00B14918).
 class AlterEgoDef : public ScriptedEntityDef {
 public:
     ~AlterEgoDef() override;
+    uint8_t targetingFlags[6] = {};    // 0xF4
     void* collisionShape = nullptr;    // 0xFC
 };
 
@@ -46,6 +52,8 @@ public:
 class AlterEgoEntity : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
     ~AlterEgoEntity() override;
+    uint32_t InteractionNeeds(int kind, Entity* other) override;
+    const AlterEgoDef* Def() const { return static_cast<const AlterEgoDef*>(def); }
 };
 
 // Definition of the Bentley alter ego entity (vtable 0x00B14590, 0x110
@@ -108,6 +116,8 @@ public:
         uint8_t field_04[0x5C] = {};
     };
     ~ChainEntity() override;
+    bool PostUpdate(float dt) override;
+    bool Release(bool kill) override;
 
     Link links[kMaxLinks];                       // 0x1B0
     uint16_t linkCount = 0;                      // 0x760

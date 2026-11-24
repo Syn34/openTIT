@@ -28,6 +28,18 @@ RigidPropDef::~RigidPropDef()
 // @func 0x001683A0 RigidProp::~RigidProp (thunk, +0x17C)
 RigidProp::~RigidProp() = default;
 
+// @func 0x00169260 RigidProp::InteractionOffer
+uint32_t RigidProp::InteractionOffer(int kind, Entity* /*other*/)
+{
+    return Def()->targetingFlags[kind];
+}
+
+// @func 0x00169248 RigidProp::InteractionNeeds
+uint32_t RigidProp::InteractionNeeds(int kind, Entity* /*other*/)
+{
+    return Def()->targetingFlags[kind];
+}
+
 // @func 0x001762F8 AlterEgoDef::~AlterEgoDef
 // @func 0x00176358 AlterEgoDef::~AlterEgoDef (deleting)
 AlterEgoDef::~AlterEgoDef()
@@ -45,6 +57,12 @@ AlterEgoDef::~AlterEgoDef()
 AlterEgoEntity::~AlterEgoEntity()
 {
     UnregisterEntity(kList_B, this);
+}
+
+// @func 0x00179FE8 AlterEgoEntity::InteractionNeeds
+uint32_t AlterEgoEntity::InteractionNeeds(int kind, Entity* /*other*/)
+{
+    return Def()->targetingFlags[kind];
 }
 
 // @func 0x0016A740 AlterEgoBentleyDef::~AlterEgoBentleyDef
@@ -113,6 +131,19 @@ ChainEntity::~ChainEntity()
         links[i].object->Release();
         links[i].object = nullptr;
     }
+}
+
+// @func 0x001A97D0 ChainEntity::PostUpdate
+bool ChainEntity::PostUpdate(float /*dt*/)
+{
+    // The links are placed by the physics step; nothing to do here.
+    return true;
+}
+
+// @func 0x001A7FE8 ChainEntity::Release
+bool ChainEntity::Release(bool kill)
+{
+    return Entity::Release(kill);
 }
 
 // @func 0x0016EC4C CompoundEntity::~CompoundEntity

@@ -56,6 +56,12 @@ public:
 class Character : public ScriptedEntity {
 public:
     ~Character() override;
+    void ApplyVisibility(bool visible) override;
+    // Characters never ask anything of an interaction partner.
+    // @func 0x00127ECC Character::InteractionNeeds
+    uint32_t InteractionNeeds(int kind, Entity* other) override { (void)kind; (void)other; return 0; }
+    // Render object of the character component.
+    ape::world::ApeObj* GetRenderObject() override;
 
     Entity* field_17C = nullptr;                    // 0x17C
     CharacterController* controller = nullptr;      // 0x180 the one in charge (may alias the others)

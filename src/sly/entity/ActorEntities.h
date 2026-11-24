@@ -57,6 +57,10 @@ public:
     // The console's out-of-line destructor is 0x007476B0 (not in this range);
     // derived classes inline it.
     ~ActorEntity() override { delete field_184; }
+    // Minimal versions of 0x000E4720 / 0x000E4544 / 0x000E7730 (entity module).
+    bool Update(float dt) override { return ScriptedEntity::Update(dt); }
+    bool Release(bool kill) override { return ScriptedEntity::Release(kill); }
+    void SetActive(bool active) override { ScriptedEntity::SetActive(active); }
 
     ape::ApeTArray<void*>* field_184 = nullptr;   // 0x184 allocated on demand
 };
@@ -66,6 +70,16 @@ public:
 class InteractivePropA : public ActorEntity {
 public:
     ~InteractivePropA() override;
+    bool Update(float dt) override;
+};
+
+// Definition of SearchlightActor (vtable 0x00B18230; destructor outside this
+// range, stand-in).
+class SearchlightDef : public ActorDef {
+public:
+    uint8_t interactionNeeds[6] = {};   // 0x12E per interaction kind
+    ape::Vec3 cameraOffset{};           // 0x140 camera position relative to the light
+    ape::Vec4 field_150{};              // 0x150 NOTE: read by the spotlight camera constructor
 };
 
 // Player-steered searchlight (vtable 0x00B18260, 0x1D0 bytes); the spotlight
@@ -73,6 +87,16 @@ public:
 class SearchlightActor : public ActorEntity {
 public:
     ~SearchlightActor() override;
+    bool Release(bool kill) override;
+    // Offers interaction kind 4 (bit value 0x10) to everyone.
+    uint32_t InteractionOffer(int kind, Entity* other) override;
+    // Per-kind byte of the definition (+0x12E).
+    uint32_t InteractionNeeds(int kind, Entity* other) override;
+    // 0x001EB0BC / 0x001EB0DC
+    ape::Vec3 CameraOffset() const;
+    ape::Vec4 Field150() const;
+
+    const SearchlightDef* Def() const { return static_cast<const SearchlightDef*>(def); }
 };
 
 // Interactive prop driven by an anim script variable (vtable 0x00B18908,
@@ -87,6 +111,8 @@ public:
 class SoundActor : public ActorEntity {
 public:
     ~SoundActor() override;
+    // The anim script is paused while the actor is inactive.
+    void SetActive(bool active) override;
 
     struct SoundSlot {
         audio::SoundName* sound = nullptr;

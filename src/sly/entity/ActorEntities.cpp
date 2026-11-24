@@ -4,6 +4,7 @@
 #include "ape/memory/ApeMem.h"
 #include "ape/world/ApeObj.h"
 #include "sly/camera/CameraHooks.h"
+#include "sly/entity/GameEntityHooks.h"
 
 namespace sly {
 namespace entity {
@@ -44,6 +45,14 @@ SafeDef::~SafeDef() = default;
 // @func 0x001DC2E8 InteractivePropA::~InteractivePropA (thunk, +0x17C)
 InteractivePropA::~InteractivePropA() = default;
 
+// @func 0x001DC590 InteractivePropA::Update
+bool InteractivePropA::Update(float dt)
+{
+    // NOTE: the console looks the interaction component up and discards it.
+    (void)EntityInteraction(this);
+    return ActorEntity::Update(dt);
+}
+
 // @func 0x001EA650 SearchlightActor::~SearchlightActor
 // @func 0x001EA708 SearchlightActor::~SearchlightActor (deleting)
 // @func 0x001EA7D8 SearchlightActor::~SearchlightActor (deleting thunk, +0x180)
@@ -51,6 +60,37 @@ InteractivePropA::~InteractivePropA() = default;
 // @func 0x001EA830 SearchlightActor::~SearchlightActor (thunk, +0x180)
 // @func 0x001EA8EC SearchlightActor::~SearchlightActor (thunk, +0x17C)
 SearchlightActor::~SearchlightActor() = default;
+
+// @func 0x001EA9A8 SearchlightActor::Release
+bool SearchlightActor::Release(bool kill)
+{
+    return ActorEntity::Release(kill);
+}
+
+// @func 0x001EB0B4 SearchlightActor::InteractionOffer
+uint32_t SearchlightActor::InteractionOffer(int /*kind*/, Entity* /*other*/)
+{
+    return 0x10;
+}
+
+// @func 0x001EB09C SearchlightActor::InteractionNeeds
+uint32_t SearchlightActor::InteractionNeeds(int kind, Entity* /*other*/)
+{
+    return Def()->interactionNeeds[kind];
+}
+
+// @func 0x001EB0BC SearchlightActor::CameraOffset
+ape::Vec3 SearchlightActor::CameraOffset() const
+{
+    const ape::Vec3& offset = Def()->cameraOffset;
+    return { offset.x, offset.y, offset.z, 0.0f };
+}
+
+// @func 0x001EB0DC SearchlightActor::Field150
+ape::Vec4 SearchlightActor::Field150() const
+{
+    return Def()->field_150;
+}
 
 // @func 0x001F62DC InteractivePropB::~InteractivePropB
 // @func 0x001F6394 InteractivePropB::~InteractivePropB (deleting)
@@ -70,6 +110,14 @@ SoundActor::~SoundActor()
 {
     for (SoundSlot& slot : sounds)
         audio::SoundNameRelease(slot.sound);
+}
+
+// @func 0x001AE980 SoundActor::SetActive
+void SoundActor::SetActive(bool active)
+{
+    if (animScript)
+        SetAnimScriptPaused(animScript, !active);
+    ActorEntity::SetActive(active);
 }
 
 // @func 0x001C33C4 SoundActorB16B48::~SoundActorB16B48

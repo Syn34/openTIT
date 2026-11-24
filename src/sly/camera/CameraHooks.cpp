@@ -2,6 +2,7 @@
 #include "sly/camera/CameraHooks.h"
 
 #include "sly/camera/CameraSettings.h"
+#include "sly/entity/ActorEntities.h"
 
 namespace sly {
 namespace camera {
@@ -11,7 +12,10 @@ const char* EntityName(entity::Entity* entity) { (void)entity; return "<none>"; 
 // Entity virtual slot 39; forward once Entity declares it.
 ape::Vec3 EntityFocusPoint(entity::Entity* entity) { (void)entity; return {}; }
 void EntitySetWorldTransform(entity::Entity* entity, const ape::Matrix34& transform) { (void)entity; (void)transform; }
-ape::Vec3 SpotlightCameraOffset(entity::Entity* spotlight) { (void)spotlight; return {}; }
+ape::Vec3 SpotlightCameraOffset(entity::Entity* spotlight)
+{
+    return static_cast<entity::SearchlightActor*>(spotlight)->CameraOffset();
+}
 bool IsCharacterEntity(const entity::Entity* entity) { (void)entity; return false; }
 bool IsVehicleEntity(const entity::Entity* entity) { (void)entity; return false; }
 bool Component03Flag31(entity::Entity* entity) { (void)entity; return false; }

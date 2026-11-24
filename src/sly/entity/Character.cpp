@@ -9,6 +9,7 @@ namespace entity {
 
 // @func 0x00121BDC Character::~Character
 // @func 0x00121E24 Character::~Character (deleting)
+// @func 0x00121E6C Character::~Character (base object)
 Character::~Character()
 {
     EntityShutdown(this);
@@ -40,6 +41,19 @@ Character::~Character()
     audio::SoundNameRelease(sounds[1]);
     for (int i = 3; i < 7; ++i)
         audio::SoundNameRelease(sounds[i]);
+}
+
+// @func 0x0012492C Character::ApplyVisibility
+void Character::ApplyVisibility(bool visible)
+{
+    Entity::ApplyVisibility(visible);
+}
+
+// @func 0x00129148 Character::GetRenderObject
+ape::world::ApeObj* Character::GetRenderObject()
+{
+    EntityComponent* component = GetComponent00();
+    return component ? ComponentRenderObject(component) : nullptr;
 }
 
 // @func 0x0011BBC4 CharacterDef::~CharacterDef

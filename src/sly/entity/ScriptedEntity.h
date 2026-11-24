@@ -20,6 +20,8 @@ namespace entity {
 class ScriptedEntity : public Entity {
 public:
     ~ScriptedEntity() override = default;
+
+    void* animScript = nullptr;   // 0x164 ApeAnimScriptInstance (returned by slot 68)
 };
 
 // Scripted entity definition (vtable 0x00B11D98, slot 7 Spawn is pure).
