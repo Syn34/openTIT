@@ -7,6 +7,19 @@
   (0x0042CC10-0x0043AE04).
 * `Minigame.*`: the level's active game-mode object (game world +0x1281F4), only
   the request/intro helpers used by the sequencer (0x003A4000-0x003AAB54).
+* `SequenceCommands2.*` (second batch): place entity, camera view/release,
+  character actions 1-4, hit, player control, HUD screen/layer, skin attach,
+  play clip, anim script, render flag, set active, anim set swap,
+  SeqPlaySound, SeqDialogStream (ctor/dtor only), child-name matcher
+  0x0043B02C.
+* `BvpFighter.*`, `BvpTuning.*`, `StateMachine.h`: Bentley vs Penelope boss
+  fight (0x003AABBC-0x003B3014): fighter base (clip pairs, damage, range
+  checks), Bentley/Penelope overrides, battle object (camera blends,
+  message routing) and the 240 "Mechanic.BvP" tuning variables
+  (0x004227F0/0x00421474). `StateMachine.h` is an untagged stand-in for
+  the engine state machine base (vtable 0x00B219D0, 0x00464xxx).
+* `DebugNetServer.*`: debug network server 0x00426CE0-0x004285B8.
+* `PenguinMinigames.*`: the six penguin minigame actor-record destructors.
 * `GameplayWorld.*`: every world/engine call the above needs, as free functions
   with TODO stubs (safe defaults). Each hook names the console member, virtual
   slot or function it stands for.
@@ -35,14 +48,26 @@
   (AglMaterial ctor) and `sly/levels/script/ScriptCommand.cpp`; nothing in this
   directory is involved. All files here compile warning-free.
 
+* Sockets: `GameplayWorld.h` has `Net*` hooks (socket/bind/listen/accept/
+  send/sendto/recvfrom/close, cellNetCtl IP query) for DebugNetServer; they
+  belong in `src/platform` once it has a socket layer.
+* `GameplayWorld.h` hook naming: virtual slot 88 (0x160) is damage
+  (amount, source, type), now `ActorDamage`; the older `EntityDespawn`
+  hook names the same slot and should be merged.
+* `AnimScriptBindVariables` (0x0049FCC0) is a TODO stub in
+  SequenceCommands2.cpp; it belongs with the anim-script glue.
+
 ## Open TODOs in this range
-* Sequencer commands not done (engine-heavy): 0x0042CCD4/0x0042CE48 (spawn at
-  rotation), 0x0042D20C, 0x0042D464, 0x0042D8BC, 0x0042DAB4, 0x0042E3AC,
-  0x0042E618, 0x0042E868, 0x0042F588, 0x0042FACC, 0x0042FF28 (camera look-at),
-  0x004306F4, 0x00430A64, 0x00431748, 0x004321A4 (play anim with blend),
-  0x0043267C (dialog stream), 0x004342DC (SeqPlaySound), 0x00434E0C,
-  0x0043554C, 0x004360CC (prologue time machine), 0x00437F24, 0x00438348,
-  0x004390AC, 0x00439224 (SetPosition), 0x00439E4C (spawn), 0x0043A84C.
+* Sequencer commands still not done: 0x0042FF28 (camera look-at),
+  0x00430A64 (camera orbit), 0x00432AB4/0x00432E08 (dialog stream
+  Execute/Update), 0x00434E0C (wait for player look), 0x0043554C (ramp
+  entities; 0x00435B30 has bad instruction data), 0x004360CC (prologue time
+  machine), 0x00437F24 (rider), 0x00439224 (SetPosition), 0x00439E4C
+  (spawn).
+* BvP: per-state handlers 0x003AD270 / 0x003AECB0, battle phases
+  0x003B0BA8 / 0x003B1E88 / 0x003B2718 (TODO stubs), 0x003AC298,
+  0x003AC560, 0x003AC8C0, 0x003ABB98, 0x003ACB90 (transform math).
+* Water/ripple grid module 0x004286D8-0x0042AD9C (render dependent).
 * Laser groups/lasers/fields (0x003A1500-0x003A233C): the pools and object
   constructors live below 0x003A0000; not started.
 * Minigames (PingPong, penguin games, SystemCracker, SparkRunner, AlterEgo),
@@ -51,6 +76,17 @@
   registrations (0x0043B450-0x0043EB48): not started.
 
 ## Uncertain identifications
+* Character actions 1-4: numbered because the action ids of the scripted
+  state machine are not decoded; parameter blocks are modelled as small
+  structs (`CharacterStartAction` returns them).
+* "BvpFighter" was first taken for a generic super-attack class; the tuning
+  reads (Mechanic.BvP.*) identify it as the Bentley vs Penelope fight.
+  B20398 = Bentley, B203E0 = Penelope is inferred from the tuning names
+  each one reads.
+* Penguin record class names are taken from the nearest game string; the
+  sumo record's two arrays are kept opaque.
+* BvpTuning's static init also sets up a zero vector, a NaN sentinel, a
+  list head and an array (no users); not modelled.
 * Command class names are descriptive guesses except where the original
   warnings name them (EnableComponent, EnablePhysics, EntitySuppressAudio,
   SeqEnqueueStream, SetEntityVisible, SetEntityUpdate, SeqPlaySound).

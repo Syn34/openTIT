@@ -138,5 +138,127 @@ GuiAnimation* GuiStartAnimation(const char*, void*, bool) { return nullptr; }
 bool GuiAnimationRunning(const GuiAnimation*) { return false; }
 void GuiAnimationDelete(GuiAnimation*) {}
 
+// -- second batch (SequenceCommands2, super attacks, minigames) ---------------
+bool EntityIsVehicle(const WorldObject*) { return false; }
+bool EntityIsMount(const WorldObject*) { return false; }
+bool EntityIsCreature(const WorldObject*) { return false; }
+bool EntityIsRiding(const WorldObject*) { return false; }
+bool EntityAcceptsAttachments(const WorldObject*) { return false; }
+void EntitySetSequenceAnimated(WorldObject*, bool) {}
+void EntitySetAnimSetOverridden(WorldObject*, bool) {}
+WorldObject* EntityLinkedParent(const WorldObject*) { return nullptr; }
+void EntityApplyPlacement(WorldObject*, const EntityPlacement&) {}
+void EntityCommitPlacement(WorldObject*) {}
+void WalkEntityChildren(WorldObject*, EntityVisitor, void*) {}
+void EntitySetRenderFlag8(WorldObject*, bool) {}
+void EntitySetActive(WorldObject*, bool, bool) {}
+void CharacterActivateState(WorldObject*, CharacterStateSlot) {}
+bool CharacterHasActiveState(const WorldObject*) { return false; }
+bool CharacterActiveStateIs(const WorldObject*, CharacterStateSlot) { return false; }
+void* CharacterStartAction(WorldObject*, int) { return nullptr; }
+bool CharacterActionRunning(const WorldObject*) { return false; }
+void* EntityStartAction(WorldObject*, int) { return nullptr; }
+bool EntityActionRunning(const WorldObject*) { return false; }
+bool EntityHasAction(const WorldObject*) { return false; }
+void EntityFinishAction(WorldObject*) {}
+void CharacterEnableHeadTracking(WorldObject*, bool) {}
+void CharacterEnableBody(WorldObject*, bool, bool) {}
+void CharacterResetMovement(WorldObject*) {}
+void CharacterReturnToIdle(WorldObject*) {}
+void CharacterResetAnimState(WorldObject*) {}
+int CharacterStateId(WorldObject*) { return 0; }
+void CharacterStopAction(WorldObject*) {}
+void CharacterSwapAnimSet(WorldObject*, void*, bool) {}
+void MountSwapAnimSet(WorldObject*, void*, bool) {}
+void* FindAnimSet(uint32_t) { return nullptr; }
+void CharacterRefreshBody(WorldObject*) {}
+void CharacterEnableDefaultState(WorldObject*, bool) {}
+void VehicleEnableControl(WorldObject*, bool) {}
+void RiderEnableControl(WorldObject*, bool) {}
+void EntityRefresh(WorldObject*) {}
+void CharacterApplyHit(WorldObject*, const HitInfo&) {}
+void ActorDamage(WorldObject*, float, int32_t) {}
+float ActorHealth(const WorldObject*) { return 1.0f; }
+float ActorMaxHealth(const WorldObject*) { return 1.0f; }
+void ActorSetHealth(WorldObject*, float) {}
+bool ActorIsDying(WorldObject*) { return false; }
+bool ActorControllerReady(const WorldObject*) { return true; }
+ape::Vec3 EntityForward(const WorldObject*) { return {0.0f, 0.0f, 1.0f, 0.0f}; }
+void ActorPlayScriptClip(WorldObject*, uint32_t, float, bool) {}
+void ActorSetClipSpeed(WorldObject*, float) {}
+bool ActorClipFinished(WorldObject*) { return true; }
+float EntityAnimTime(WorldObject*) { return 0.0f; }
+float EntityAnimLength(WorldObject*) { return 1.0f; }
+void ShowButtonHint(uint32_t) {}
+float PadAxis(int, int) { return 0.0f; }
+EntitySkin* EntityActiveSkin(WorldObject*) { return nullptr; }
+EntitySkin* SkinPrevious(const EntitySkin*) { return nullptr; }
+bool EntitySwitchSkin(WorldObject*, EntitySkin*) { return false; }
+void EntityRemoveSkin(WorldObject*, EntitySkin*) {}
+void SkinAttach(EntitySkin*, WorldObject*, uint32_t) {}
+bool EntityPlayClip(WorldObject*, uint32_t, uint32_t, float, float, bool, uint32_t) { return false; }
+bool EntityClipDone(WorldObject*, uint32_t) { return true; }
+void EntityClipFailed(WorldObject*) {}
+void EntityResetAnimTime(WorldObject*) {}
+GameCamera* TopCamera() { return nullptr; }
+GameCamera* NextCamera(GameCamera*) { return nullptr; }
+int CameraType(GameCamera*) { return 0; }
+void PopCameraBlended(float) {}
+void KillCamera(GameCamera*) {}
+void ResetCameraManager() {}
+void SetCameraView(const CameraView&) {}
+const ape::Matrix34* CameraObjectMatrix(const WorldObject*, float*) { return nullptr; }
+const ape::Matrix34* LocatorMatrix(const WorldObject*) { return nullptr; }
+const uint8_t* DefaultCameraColor()
+{
+    static const uint8_t color[4] = {0, 0, 0, 0};
+    return color;
+}
+void HudShowAll() {}
+void HudHideAll() {}
+HudScreen* FindHudScreenByHash(uint32_t) { return nullptr; }
+void HudScreenSetPersistent(HudScreen*, bool) {}
+void HudScreenRestart(HudScreen*) {}
+void HudScreenShow(HudScreen*, bool) {}
+void HudScreenSkipToEnd(HudScreen*) {}
+HudLayer* FindHudLayerByHash(uint32_t) { return nullptr; }
+void HudLayerSetPersistent(HudLayer*, bool) {}
+void HudLayerRestart(HudLayer*) {}
+void HudLayerShow(HudLayer*, bool) {}
+
+// -- debug network sockets (no socket layer yet: everything fails) -------------
+bool NetInitialize() { return false; }
+bool NetLocalIpString(char*, size_t) { return false; }
+int NetOpen(NetProtocol) { return -1; }
+bool NetSetOption(int, NetOption) { return false; }
+bool NetBind(int, const NetAddress&) { return false; }
+bool NetListen(int, int) { return false; }
+int NetAccept(int, NetAddress*) { return -1; }
+int NetReceive(int, void*, size_t) { return -1; }
+int NetSend(int, const void*, size_t) { return -1; }
+int NetSendTo(int, const void*, size_t, const NetAddress&) { return -1; }
+void NetClose(int) {}
+const char* CurrentLevelName() { return ""; }
+uint8_t GoalOwnerState(const WorldObject*) { return 0; }
+void EntityMarkForRemoval(WorldObject*) {}
+uint32_t PlaySound2D(audio::SoundName*, const audio::SoundParams&) { return 0; }
+uint32_t EntityPlaySound(WorldObject*, audio::SoundName*, const audio::SoundParams&,
+                         audio::AudioBus*)
+{
+    return 0;
+}
+void PrepareSoundRequest() {}
+uint32_t PlaySoundRequest(audio::SoundRequest*, const audio::SoundParams&) { return 0; }
+uint32_t EntityPlaySoundRequest(WorldObject*, audio::SoundRequest*, const audio::SoundParams&,
+                                audio::AudioBus*)
+{
+    return 0;
+}
+void EmitterStart(uint32_t) {}
+bool EmitterPlaying(uint32_t) { return false; }
+bool SubtitlesEnabled() { return false; }
+void ShowSubtitle(const char*, uint32_t, audio::SoundRequest*) {}
+bool EntityUsesAltSoundBus(const WorldObject*) { return false; }
+
 } // namespace gameplay
 } // namespace sly
