@@ -266,7 +266,7 @@ void AIController::Attach(Entity* newEntity)
     target = nullptr;
     flags1 &= static_cast<uint8_t>(~(kF1_HitLocked | kF1_Hit));
     leashRadius = 1.0f;
-    field_124 = 0;
+    claimSlot = nullptr;
     currentClip = 0;
     stateRepeat = 0;
     state = -1;
@@ -902,6 +902,43 @@ void AIManager::OnLevelLoaded()
 void AIManager::PrunePriorityTargets()
 {
     priorityTargets.RemoveDead();
+}
+
+// @func 0x0001AC80 AIManager::PickTarget
+Entity* AIManager::PickTarget(const AIController* controller) const
+{
+    if (targetingPause > 0.0f)
+        return nullptr;
+    const ape::Vec3& from = controller->transform.translation;
+    const int targetCount = priorityTargets.Count();
+    if (targetCount > 0) {
+        Entity* best = nullptr;
+        float bestDist = 1e+06f;
+        for (int i = 0; i < targetCount; ++i) {
+            Entity* candidate = AsEntity(priorityTargets.At(i));
+            const float d = DistanceSq(candidate->Position(), from);
+            if (d < bestDist) {
+                bestDist = d;
+                // Only player type entities count; a nearer other one blocks.
+                best = (candidate->typeBits[0] & 0x2u) ? candidate : nullptr;
+            }
+        }
+        return best;
+    }
+    if (allyCount == 1)
+        return allies[0];
+    Entity* best = PlayerCharacter();
+    if (!best)
+        return nullptr;
+    float bestDist = DistanceSq(best->Position(), from);
+    for (int i = 0; i < allyCount; ++i) {
+        const float d = DistanceSq(allies[i]->Position(), from);
+        if (d < bestDist) {
+            bestDist = d;
+            best = allies[i];
+        }
+    }
+    return best;
 }
 
 // @func 0x0001AC68 AIManager::ClearSightings

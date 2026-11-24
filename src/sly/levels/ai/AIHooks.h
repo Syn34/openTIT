@@ -18,10 +18,17 @@ namespace entity { class Entity; class EntityComponent; struct EntityMessage; }
 namespace levels {
 struct AIProxyPoint;
 
+namespace ai { class AIController; }
+
 namespace ai {
 
 using entity::Entity;
 using entity::EntityComponent;
+
+// The levels code refers to game entities through the opaque `WorldObject`
+// (sly/game/WorldInterface.h); the AI works on entity::Entity. Both name the
+// same console objects.
+inline Entity* AsEntity(WorldObject* object) { return reinterpret_cast<Entity*>(object); }
 
 // -- level object properties ---------------------------------------------------
 // A placed level object carries the values of the properties of its property
@@ -87,6 +94,108 @@ enum class AIProp : uint16_t {
     Buddy_AttackDist,             // 0x00F94ACC float
     Buddy_Murray,                 // 0x00F94AE4 bool
     Buddy_Bentley,                // 0x00F94AFC bool
+    // Enemy settings (0x0002E4FC)
+    Enemy_EntityDefName,           // 0x00F94B14 string
+    Enemy_Awareness,               // 0x00F9509C bool
+    Enemy_RespondToDistressCall,   // 0x00F950B4 bool
+    Enemy_NoTarget,                // 0x00F94B2C bool
+    Enemy_CombatAlways,            // 0x00F94B44 bool
+    Enemy_Health,                  // 0x00F94B5C float
+    Enemy_Heavy,                   // 0x00F94B74 bool
+    Enemy_RatTrooper,              // 0x00F94B8C bool
+    Enemy_Turret,                  // 0x00F94BA4 bool
+    Enemy_TurretAttackMinTime,     // 0x00F94BBC float
+    Enemy_TurretAttackMaxTime,     // 0x00F94BD4 float
+    Enemy_Cover,                   // 0x00F94BEC bool
+    Enemy_Patrol,                  // 0x00F94C04 bool
+    Enemy_PatrolIdleMinTime,       // 0x00F94C1C float
+    Enemy_PatrolIdleMaxTime,       // 0x00F94C34 float
+    Enemy_PatrolInteractionMinTime, // 0x00F94C4C float
+    Enemy_PatrolInteractionMinDist, // 0x00F94C64 float
+    Enemy_PatrolInteractionMaxDist, // 0x00F94C7C float
+    Enemy_IdleAnimClip,            // 0x00F94C94 hash
+    Enemy_SpawnAnimClip,           // 0x00F94CAC hash
+    Enemy_MovementAnim,            // 0x00F94CC4 hash
+    Enemy_CombatAttackCloseAnim,   // 0x00F94CDC hash
+    Enemy_CombatAttackMidAnim,     // 0x00F94CF4 hash
+    Enemy_CombatAttackFarAnim,     // 0x00F94D0C hash
+    Enemy_CombatAttackRangedAnim,  // 0x00F94D24 hash
+    Enemy_CombatOtherAnim,         // 0x00F94D3C hash
+    Enemy_CombatMovementAnim,      // 0x00F94D54 hash
+    Enemy_Scale,                   // 0x00F94D6C float
+    Enemy_OptimalTargetRangeMin,   // 0x00F94D84 float
+    Enemy_OptimalTargetRangeMax,   // 0x00F94D9C float
+    Enemy_CloseAttackRange,        // 0x00F94DB4 float
+    Enemy_CloseAttackAngle,        // 0x00F94DCC float
+    Enemy_CloseAttackHeightMin,    // 0x00F94DE4 float
+    Enemy_CloseAttackHeightMax,    // 0x00F94DFC float
+    Enemy_MidAttackRange,          // 0x00F94E14 float
+    Enemy_MidAttackAngle,          // 0x00F94E2C float
+    Enemy_MidAttackHeightMin,      // 0x00F94E44 float
+    Enemy_MidAttackHeightMax,      // 0x00F94E5C float
+    Enemy_FarAttackRange,          // 0x00F94E74 float
+    Enemy_FarAttackAngle,          // 0x00F94E8C float
+    Enemy_FarAttackHeightMin,      // 0x00F94EA4 float
+    Enemy_FarAttackHeightMax,      // 0x00F94EBC float
+    Enemy_RangedAttackRange,       // 0x00F94ED4 float
+    Enemy_RangedAttackAngle,       // 0x00F94EEC float
+    Enemy_RangedAttackHeightMin,   // 0x00F94F04 float
+    Enemy_RangedAttackHeightMax,   // 0x00F94F1C float
+    Enemy_RangedAttackChaseFrequency, // 0x00F94F34 float
+    Enemy_CounterAttackRange,      // 0x00F94F4C float
+    Enemy_SearchRange,             // 0x00F94F64 float
+    Enemy_DodgeRate,               // 0x00F94F7C float
+    Enemy_TauntRate,               // 0x00F94F94 float
+    Enemy_StunTime,                // 0x00F94FAC float
+    Enemy_SleepTime,               // 0x00F94FC4 float
+    Enemy_ThrowDamage,             // 0x00F94FDC float
+    Enemy_KnockbackDamage,         // 0x00F94FF4 float
+    Enemy_TorsoIKAngleOffset,      // 0x00F9500C float
+    Enemy_AttackControllerUseTimer, // 0x00F95024 bool
+    Enemy_AttackRequiresLOS,       // 0x00F9503C bool
+    Enemy_PlayerDamageOnly,        // 0x00F95054 bool
+    Enemy_StealthKillAttachTest,   // 0x00F9506C bool
+    Enemy_InitialAttackTime,       // 0x00F95084 float
+    Enemy_LoseTargetTime,          // 0x00F950CC float
+    Enemy_LoseTargetDist,          // 0x00F950E4 float
+    Enemy_TooCloseCylinderRadius,  // 0x00F950FC float
+    Enemy_TooCloseCylinderHeight,  // 0x00F95114 float
+    Enemy_LightCylinderRadius,     // 0x00F9512C float
+    Enemy_LightCylinderHeight,     // 0x00F95144 float
+    Enemy_AudioAlertRadius,        // 0x00F9515C float
+    Enemy_AudioAlertHeightMin,     // 0x00F95174 float
+    Enemy_AudioAlertHeightMax,     // 0x00F9518C float
+    Enemy_AudioAlertInvestigate,   // 0x00F951A4 bool
+    Enemy_CallForHelpDist,         // 0x00F951BC float
+    Enemy_CallForHelpHeightMin,    // 0x00F951D4 float
+    Enemy_CallForHelpHeightMax,    // 0x00F951EC float
+    Enemy_VisionDistance,          // 0x00F95204 float
+    Enemy_VisionDistanceCombat,    // 0x00F9521C float
+    Enemy_VisionFOVAngle,          // 0x00F95234 float
+    Enemy_VisionHeightMin,         // 0x00F9524C float
+    Enemy_VisionHeightMax,         // 0x00F95264 float
+    Enemy_VisionHeightsRelativeToBase, // 0x00F9527C bool
+    Enemy_VisionAttachBone,        // 0x00F95294 hash
+    // Sentry settings (0x0003BE60)
+    Sentry_SpawnAnimClip,          // 0x00F952AC hash
+    Sentry_IdleAnimClip,           // 0x00F952C4 hash
+    Sentry_FormationOffset,        // 0x00F952E0 vec3
+    Sentry_Awareness,              // 0x00F95320 bool
+    Sentry_AudioAlertRadius,       // 0x00F95338 float
+    Sentry_AudioAlertWhileALertFail, // 0x00F95350 bool
+    Sentry_AudioAlertHeightMin,    // 0x00F95368 float
+    Sentry_AudioAlertHeightMax,    // 0x00F95380 float
+    Sentry_VisionDistance,         // 0x00F95398 float
+    Sentry_VisionFOVAngle,         // 0x00F953B0 float
+    Sentry_VisionHeightMin,        // 0x00F953C8 float
+    Sentry_VisionHeightMax,        // 0x00F953E0 float
+    Sentry_VisionAttachBone,       // 0x00F953F8 hash
+    Sentry_SneakAllowed,           // 0x00F95410 bool
+    Sentry_DetectionCylinderRadius, // 0x00F95428 float
+    Sentry_DetectionCylinderHeight, // 0x00F95440 float
+    Sentry_DetectionCylinderYOffset, // 0x00F95458 float
+    Sentry_AlwaysApplyGravity,     // 0x00F95470 bool
+    Sentry_OrientToTerrain,        // 0x00F95488 bool
 };
 
 const char* PropString(const PropertyBlock* block, AIProp prop);
@@ -167,6 +276,9 @@ int BodyMotionType(EntityComponent* body);
 // linear velocity, clears the angular part and marks it pending (bit 25 of
 // word +0xA8).
 void BodyRequestVelocity(EntityComponent* body, const ape::Vec3& velocity);
+// Hold request: zero velocity, identity orientation, factor +0x80 = 1 and
+// flag bit 26 instead of bit 25 (word +0xA8).
+void BodyRequestHold(EntityComponent* body);
 // Same request with zero velocity and the given orientation (identity
 // quaternion on the console).
 void BodyRequestStop(EntityComponent* body);
@@ -180,6 +292,18 @@ void EntityDamage(Entity* entity, float amount, Entity* source, int type);
 void Component24Reset(EntityComponent* component);
 // Physics body request (slot 2) flag word +0xA8: clears bit 31.
 void BodyClearRequestBit31(EntityComponent* body);
+
+// Entity type word +0xC8 bit 10. NOTE: marks a target enemies do not
+// switch away from.
+bool EntityHoldsAttention(const Entity* entity);
+// Character component (+0x24 sub-object, +0x34/+0x38): animation event
+// listener (the console installs callback 0x00065404 with the controller as
+// its user data); null removes it.
+void CharacterSetEventListener(EntityComponent* character, AIController* listener);
+// Component 3 of an entity (0x000D93FC) and whether its state block
+// (+0x88) is missing or has a non-zero field in bits 26-29 of +0x44.
+// NOTE: meaning unknown; picks one of two dodge clips.
+bool AttackerComponentFlag(Entity* attacker, bool* hasComponent);
 
 // -- character component (entity virtual slot 15) ------------------------------------
 // 0x002775A8: plays a clip (blend 1.0, 0.25 s). False if it is not available.
@@ -202,6 +326,10 @@ void NavAgentDestroy(NavAgent* agent);
 // to `goal`; 0x006C1B94: the goal it settled on (nearest reachable point).
 void NavAgentRequestGoal(NavAgent* agent, const ape::Vec3& goal);
 ape::Vec3 NavAgentGoal(NavAgent* agent);
+
+// 0x0048F90C: posts `event` to the members of listener group `group` within
+// `range` of the sender.
+void BroadcastInRange(Entity* sender, float range, uint32_t group, uint32_t event, uint32_t argument);
 
 // -- HUD -----------------------------------------------------------------------------
 // hud::SetContextByString (0x00369D14) / hud::SetContext (0x00369D00) with

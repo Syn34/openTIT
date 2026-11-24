@@ -52,8 +52,18 @@ ape::Matrix34 BodyRotation(EntityComponent*) { return {}; }
 int BodyMotionType(EntityComponent*) { return 0; }
 void BodyRequestVelocity(EntityComponent*, const ape::Vec3&) {}
 void BodyRequestStop(EntityComponent*) {}
+void BodyRequestHold(EntityComponent*) {}
+void BroadcastInRange(Entity*, float, uint32_t, uint32_t, uint32_t) {}
 
 void EntitySetScriptState(Entity*, uint32_t) {}
+bool EntityHoldsAttention(const Entity*) { return false; }
+void CharacterSetEventListener(EntityComponent*, AIController*) {}
+bool AttackerComponentFlag(Entity*, bool* hasComponent)
+{
+    if (hasComponent)
+        *hasComponent = false;
+    return false;
+}
 void EntityDamage(Entity*, float, Entity*, int) {}
 void Component24Reset(EntityComponent*) {}
 void BodyClearRequestBit31(EntityComponent*) {}

@@ -159,6 +159,61 @@ public:
 // combat settings.
 class EnemyAI : public AIController {
 public:
+    // Byte +0x1D0.
+    enum EnemyFlagsA : uint8_t {
+        kEA_Bit1  = 0x02,   // movement held (no root motion)
+        kEA_Bit3  = 0x08,   // kept when activated
+        kEA_Taunt = 0x40,   // wants to taunt
+        kEA_Bit7  = 0x80,   // set by event 0
+    };
+    // Byte +0x1D1.
+    enum EnemyFlagsB : uint8_t {
+        kEB_Bit1      = 0x02,   // in combat range checks
+        kEB_FarSearch = 0x40,   // nav search radius 500 instead of 50
+    };
+
+    ~EnemyAI() override;
+    void SetActive(bool active) override;
+    void PreUpdate(float dt) override;
+    void OnEvent(int kind) override;
+    bool AllowsInteraction() override;
+    bool IsEngaged() override;
+    bool IsCalm() override;
+    bool CanBeTakenDown() override;
+    bool IsHelpless() override;
+    bool IsCharacterDead() override;
+    const char* StateName(int s) override;
+    void OnAlarm() override;
+    void OnAttacked(Entity* attacker) override;
+    void OnTauntChance() override;
+    float NavSearchRadius() override;
+    int NavFilter() override;
+    void OnTurnInPlace() override;
+    ape::Vec3 FilterRootMotion(const ape::Vec3& step) override;
+    void SetTarget(Entity* target) override;
+    void UpdateMovement(float dt) override;
+    float VerticalBoost() override;
+
+    // Lets go of the target and any claim when engaged (0x0002EC04).
+    void Disengage();
+    // Looks for a better target (0x0002F900).
+    void RefreshTarget();
+    // Takes over the entity's animation (0x00030A70).
+    void LockEntityAnimation();
+    // Calls nearby enemies for help (0x00035D44).
+    void CallForHelp();
+
+    uint8_t field_180 = 0;            // +0x180
+    uint8_t field_181 = 0;            // +0x181
+    float attackTimer = 0.0f;         // +0x198 (InitialAttackTime on activation)
+    ape::Vec3 field_19C{};            // +0x19C
+    float field_1B0 = 0.0f;           // +0x1B0 NOTE: interactions are refused while positive
+    uint32_t field_1B4 = 0;           // +0x1B4
+    ape::Vec3 field_1BC{};            // +0x1BC
+    uint32_t field_1C8 = 0;           // +0x1C8
+    uint8_t enemyFlagsA = 0;          // +0x1D0
+    uint8_t enemyFlagsB = 0;          // +0x1D1
+    uint8_t enemyFlagsC = 0;          // +0x1D2
 };
 
 // Watcher with awareness, vision and detection cylinder settings (vtable

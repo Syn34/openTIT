@@ -115,6 +115,17 @@ public:
     // Slot 44 (+0xB0): extra vertical speed applies (`out` is unused by the
     // base). NOTE: name from use.
     virtual bool HasVerticalBoost(float* out) { (void)out; return false; }
+    // Slot 11 (+0x2C): NOTE: event from outside (0 and 1 are handled by the
+    // standard enemy).
+    virtual void OnEvent(int kind) { (void)kind; }
+    // Slot 21 is AllowsInteraction (EntityListener). Slots 22/23/25 (+0x58,
+    // +0x5C, +0x64): NOTE: state queries asked by other modules; the base
+    // answers from flags0.
+    virtual bool IsEngaged() { return (flags0 & kF0_Bit0) != 0; }
+    virtual bool IsCalm() { return !(flags0 & kF0_Bit6); }
+    virtual bool CanBeTakenDown() { return false; }
+    // Slot 38 (+0x98): NOTE: true in the states where the enemy is helpless.
+    virtual bool IsHelpless() { return false; }
     // Slot 39 (+0x9C): the controlled character has no health left.
     virtual bool IsCharacterDead();
     // Slot 40 (+0xA0): NOTE: false while the behaviour is still on its way
@@ -127,6 +138,13 @@ public:
     }
     // Slot 42 (+0xA8): debug name of a state.
     virtual const char* StateName(int s);
+    // Slot 43 (+0xAC): NOTE: the alarm went off; the base version (0x007385A0)
+    // drops the target.
+    virtual void OnAlarm() { DropTarget(); }
+    // Slot 47 (+0xBC): attacked by `attacker` (standard enemies may dodge).
+    virtual void OnAttacked(Entity* attacker) { (void)attacker; }
+    // Slot 48 (+0xC0): chance to taunt.
+    virtual void OnTauntChance() {}
     // Slot 49 (+0xC4): damage taken. The base version (0x007386E0) sets
     // kF1_Hit unless hits are locked out.
     virtual void OnDamaged(float amount, uint32_t kind, const struct AIDamageInfo* info)
@@ -147,9 +165,10 @@ public:
     virtual void ExitState();
     // Slot 59 (+0xEC): advances the nav path. TODO(0x00015040).
     virtual void UpdateNavigation();
-    // Slots 60/61 (+0xF0/+0xF4). NOTE: called while (re)building the nav agent.
-    virtual void PrepareNavAgent() {}
-    virtual void ConfigureNavAgent() {}
+    // Slots 60/61 (+0xF0/+0xF4): settings of the nav agent: search radius and
+    // the proxy point / nav filter (1 heavy, 2 light; see "Filter").
+    virtual float NavSearchRadius() { return 0.0f; }
+    virtual int NavFilter() { return 0; }
     // Slot 62 (+0xF8): a nav request produced a new goal.
     virtual void OnNavGoalChanged() {}
     // Slot 64 (+0x100): the facing error got larger than TurnInPlaceAngle().
@@ -245,7 +264,9 @@ public:
     Entity* target = nullptr;                    // +0x100
     ape::Vec3 targetDir{};                       // +0x110
     float targetDist = 0.0f;                     // +0x120
-    uint32_t field_124 = 0;                      // +0x124
+    // +0x124 slot elsewhere that points back at this controller (cleared on
+    // disengage). NOTE: what owns the slot is not known.
+    AIController** claimSlot = nullptr;
     int32_t bodyMotion = 0;                      // +0x12C motion type of the body when attached
     uint8_t flags0 = 0;                          // +0x130 Flags0
     uint8_t flags1 = 0;                          // +0x131 Flags1
@@ -288,12 +309,16 @@ public:
     // height (0x000191B0).
     void OnLevelLoaded();
     void ClearSightings();       // 0x0001AC68
+    // Target for an enemy: the nearest priority target, else the nearest of
+    // the player and the allies (0x0001AC80).
+    Entity* PickTarget(const AIController* controller) const;
 
     int32_t controllerCount = 0;                       // +0x00
     int32_t activeCount = 0;                           // +0x04
     int32_t allyCount = 0;                             // +0x10
     int32_t sightingCount = 0;                         // +0x18
     float killHeight = 0.0f;                           // +0x20 below this the AI snaps back to its entity
+    float targetingPause = 0.0f;                       // +0x28 no new targets while positive
     float timeSinceSeen = 0.0f;                        // +0x2C
     ape::Vec3 lastPlayerPosition{};                    // +0x30
     AIController* controllers[kMaxControllers] = {};   // +0x250
