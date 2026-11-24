@@ -138,6 +138,7 @@ ApeAnimScriptCommand* VehicleInputCommand::Create(XmlElement* element) const
 class HudHealthMeterCommand : public ApeAnimScriptCommand {
 public:
     HudHealthMeterCommand();
+    ~HudHealthMeterCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -150,6 +151,10 @@ private:
 
 // @func 0x0007CEFC HudHealthMeterCommand::HudHealthMeterCommand
 HudHealthMeterCommand::HudHealthMeterCommand() = default;
+
+// @func 0x0073D110 HudHealthMeterCommand::~HudHealthMeterCommand
+// @func 0x0073D140 HudHealthMeterCommand::~HudHealthMeterCommand (deleting)
+HudHealthMeterCommand::~HudHealthMeterCommand() = default;
 
 // @func 0x0007CF54 HudHealthMeterCommand::Create
 ApeAnimScriptCommand* HudHealthMeterCommand::Create(XmlElement* element) const
@@ -189,6 +194,7 @@ void HudHealthMeterCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class HudPlayAnimCommand : public ApeAnimScriptCommand {
 public:
     HudPlayAnimCommand();
+    ~HudPlayAnimCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -201,6 +207,10 @@ private:
 
 // @func 0x0007D154 HudPlayAnimCommand::HudPlayAnimCommand
 HudPlayAnimCommand::HudPlayAnimCommand() = default;
+
+// @func 0x0073D198 HudPlayAnimCommand::~HudPlayAnimCommand
+// @func 0x0073D1C8 HudPlayAnimCommand::~HudPlayAnimCommand (deleting)
+HudPlayAnimCommand::~HudPlayAnimCommand() = default;
 
 // @func 0x0007D1A4 HudPlayAnimCommand::Create
 ApeAnimScriptCommand* HudPlayAnimCommand::Create(XmlElement* element) const
@@ -229,6 +239,7 @@ void HudPlayAnimCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class HudMessageCommand : public ApeAnimScriptCommand {
 public:
     HudMessageCommand();
+    ~HudMessageCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -243,6 +254,10 @@ private:
 
 // @func 0x0007D340 HudMessageCommand::HudMessageCommand
 HudMessageCommand::HudMessageCommand() = default;
+
+// @func 0x0073D220 HudMessageCommand::~HudMessageCommand
+// @func 0x0073D250 HudMessageCommand::~HudMessageCommand (deleting)
+HudMessageCommand::~HudMessageCommand() = default;
 
 // @func 0x0007D3A0 HudMessageCommand::Create
 ApeAnimScriptCommand* HudMessageCommand::Create(XmlElement* element) const
@@ -285,6 +300,7 @@ void HudMessageCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptSt
 class HudAnimModeCommand : public ApeAnimScriptCommand {
 public:
     HudAnimModeCommand();
+    ~HudAnimModeCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -296,6 +312,10 @@ private:
 
 // @func 0x0007D678 HudAnimModeCommand::HudAnimModeCommand
 HudAnimModeCommand::HudAnimModeCommand() = default;
+
+// @func 0x0073D2A8 HudAnimModeCommand::~HudAnimModeCommand
+// @func 0x0073D2D8 HudAnimModeCommand::~HudAnimModeCommand (deleting)
+HudAnimModeCommand::~HudAnimModeCommand() = default;
 
 // @func 0x0007D6D0 HudAnimModeCommand::Create
 ApeAnimScriptCommand* HudAnimModeCommand::Create(XmlElement* element) const
@@ -324,6 +344,7 @@ void HudAnimModeCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class HudSetStateCommand : public ApeAnimScriptCommand {
 public:
     HudSetStateCommand();
+    ~HudSetStateCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -334,6 +355,10 @@ private:
 
 // @func 0x0007D83C HudSetStateCommand::HudSetStateCommand
 HudSetStateCommand::HudSetStateCommand() = default;
+
+// @func 0x0073D330 HudSetStateCommand::~HudSetStateCommand
+// @func 0x0073D360 HudSetStateCommand::~HudSetStateCommand (deleting)
+HudSetStateCommand::~HudSetStateCommand() = default;
 
 // @func 0x0007D884 HudSetStateCommand::Create
 ApeAnimScriptCommand* HudSetStateCommand::Create(XmlElement* element) const

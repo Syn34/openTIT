@@ -64,8 +64,11 @@ uint32_t ElementHash(const xml::XmlElement* element)
 // ---------------------------------------------------------------------------
 // Base classes
 
+// @func 0x00742A50 ApeRefCounted::~ApeRefCounted
+// @func 0x00742A60 ApeRefCounted::~ApeRefCounted (deleting)
 ApeRefCounted::~ApeRefCounted() = default;
 
+// @func 0x0073B890 ApeRefCounted::Release
 void ApeRefCounted::Release()
 {
     if (--m_refCount < 1)
@@ -81,6 +84,8 @@ char* ApeAnimScriptVar::ToString(char* buffer) const
 }
 
 // @func 0x004BB41C ApeAnimScriptCommand::~ApeAnimScriptCommand
+// @func 0x0073BE78 ApeAnimScriptCommand::~ApeAnimScriptCommand (game-side copy)
+// @func 0x0073BEA8 ApeAnimScriptCommand::~ApeAnimScriptCommand (game-side copy, deleting)
 // @func 0x004BB3C8 ApeAnimScriptCommand::~ApeAnimScriptCommand (complete)
 // @func 0x004BB3D8 ApeAnimScriptCommand::~ApeAnimScriptCommand (deleting)
 ApeAnimScriptCommand::~ApeAnimScriptCommand() = default;

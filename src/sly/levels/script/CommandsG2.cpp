@@ -282,6 +282,7 @@ void FxTypeQueryCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptS
 class ShowTextCommand : public ApeAnimScriptCommand {
 public:
     ShowTextCommand();
+    ~ShowTextCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -295,6 +296,10 @@ ShowTextCommand::ShowTextCommand()
 {
     m_text.Clear();
 }
+
+// @func 0x0073D000 ShowTextCommand::~ShowTextCommand
+// @func 0x0073D030 ShowTextCommand::~ShowTextCommand (deleting)
+ShowTextCommand::~ShowTextCommand() = default;
 
 // @func 0x0007AD68 ShowTextCommand::Create
 ApeAnimScriptCommand* ShowTextCommand::Create(XmlElement* element) const
@@ -324,6 +329,7 @@ void ShowTextCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptStat
 
 class GetEntityFlagCommand : public ApeAnimScriptCommand {
 public:
+    ~GetEntityFlagCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -333,6 +339,10 @@ private:
     uint32_t m_flag = 0;      // +0x14 "flag" (translated to the flag bit)
     uint32_t m_stateVar = 0;  // +0x18 "StateVar"
 };
+
+// @func 0x0073D088 GetEntityFlagCommand::~GetEntityFlagCommand
+// @func 0x0073D0B8 GetEntityFlagCommand::~GetEntityFlagCommand (deleting)
+GetEntityFlagCommand::~GetEntityFlagCommand() = default;
 
 // @func 0x0007AF38 GetEntityFlagCommand::Create
 ApeAnimScriptCommand* GetEntityFlagCommand::Create(XmlElement* element) const

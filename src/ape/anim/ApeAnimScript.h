@@ -60,8 +60,7 @@ static_assert(AnimHash("state") == 0x04B8CC71u, "AnimHash must match HashNameNoC
 // ---------------------------------------------------------------------------
 // Intrusively reference counted engine object. The count starts at 1 and the
 // object deletes itself when Release() drops it to zero.
-// NOTE: this base is shared by many engine classes (entities, components...);
-// its own out-of-line copies live outside this module's address range.
+// NOTE: this base is shared by many engine classes (entities, components...).
 class ApeRefCounted {
 public:
     ApeRefCounted() = default;
@@ -143,12 +142,16 @@ public:
     ApeAnimScriptCommand();
     ~ApeAnimScriptCommand() override;
 
+    // @func 0x0073B8EC ApeAnimScriptCommand::Execute
     virtual void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) {}
     // Debug-display element describing the command (null when not provided).
+    // @func 0x0073B8F0 ApeAnimScriptCommand::CreateDebugElement
     virtual xml::XmlElement* CreateDebugElement() const { return nullptr; }
     // Called once after a whole library has been loaded.
+    // @func 0x0073B8F8 ApeAnimScriptCommand::Link
     virtual void Link() {}
     // Prototype factory: builds a new command from its XML element.
+    // @func 0x0073B8FC ApeAnimScriptCommand::Create
     virtual ApeAnimScriptCommand* Create(xml::XmlElement* element) const { return nullptr; }
 };
 
@@ -425,6 +428,11 @@ ApeAnimScriptEvent* CreateEvent(xml::XmlElement* element);
 
 // Registers the engine's built-in variable, event and command prototypes.
 void RegisterBuiltins();
+
+// Level files: handlers of the director chunks (DIRF/DIRH/DIRD), and a reload
+// of the current level's director documents into the default library.
+void RegisterDirectorChunkHandlers();
+void ReloadLevelDirectors();
 
 // Hooks into systems outside the script module.
 struct AnimScriptHooks {

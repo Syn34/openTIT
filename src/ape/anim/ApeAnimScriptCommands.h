@@ -29,6 +29,7 @@ public:
 
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     void Link() override;
+    xml::XmlElement* CreateDebugElement() const override;
     ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
 
 private:
@@ -48,6 +49,7 @@ public:
 
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     void Link() override;
+    xml::XmlElement* CreateDebugElement() const override;
     ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
 
 private:
@@ -65,6 +67,7 @@ public:
     ~ApeAnimScriptCallCommand() override;
 
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
+    xml::XmlElement* CreateDebugElement() const override;
     ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
 
 private:
@@ -82,6 +85,7 @@ public:
     ~ApeAnimScriptStopChildScriptCommand() override;
 
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
+    xml::XmlElement* CreateDebugElement() const override;
     ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
 
 private:

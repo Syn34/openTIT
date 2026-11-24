@@ -64,6 +64,8 @@ struct AglVertexProgram {
 // A vertex/fragment program pair as used by materials and passes.
 struct AglShader {
     AglShader() = default;
+    // @func 0x007A0EB4 AglShader::~AglShader
+    // @func 0x007A0EC4 AglShader::~AglShader (deleting)
     virtual ~AglShader() = default;
     AglShader(const AglShader&) = delete;
     AglShader& operator=(const AglShader&) = delete;

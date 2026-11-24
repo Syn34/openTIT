@@ -175,6 +175,10 @@ void ActivateInteractionCommand::Execute(ApeAnimScriptInstance* instance, ApeAni
 // @func 0x0006BAB0 ActivateMixStateCommand::ActivateMixStateCommand
 ActivateMixStateCommand::ActivateMixStateCommand() = default;
 
+// @func 0x0073BD68 ActivateMixStateCommand::~ActivateMixStateCommand
+// @func 0x0073BD98 ActivateMixStateCommand::~ActivateMixStateCommand (deleting)
+ActivateMixStateCommand::~ActivateMixStateCommand() = default;
+
 ActivateMixStateCommand::ActivateMixStateCommand(XmlElement* element)
 {
     element->GetBool(kAttrActivate, &m_activate, true);
@@ -490,6 +494,10 @@ void AttachCarryItemCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScr
 // @func 0x0006D3A0 AttachEntityCommand::AttachEntityCommand
 AttachEntityCommand::AttachEntityCommand() = default;
 
+// @func 0x0073BDF0 AttachEntityCommand::~AttachEntityCommand
+// @func 0x0073BE20 AttachEntityCommand::~AttachEntityCommand (deleting)
+AttachEntityCommand::~AttachEntityCommand() = default;
+
 // @func 0x0006D488 AttachEntityCommand::AttachEntityCommand
 AttachEntityCommand::AttachEntityCommand(XmlElement* element)
 {
@@ -578,6 +586,10 @@ ApeAnimScriptCommand* BlastCommand::Create(XmlElement* element) const
 // @func 0x0006ECB8 CameraClearEaseCommand::CameraClearEaseCommand
 CameraClearEaseCommand::CameraClearEaseCommand() = default;
 
+// @func 0x0073C010 CameraClearEaseCommand::~CameraClearEaseCommand
+// @func 0x0073C040 CameraClearEaseCommand::~CameraClearEaseCommand (deleting)
+CameraClearEaseCommand::~CameraClearEaseCommand() = default;
+
 // @func 0x0006ECF8 CameraClearEaseCommand::Create
 ApeAnimScriptCommand* CameraClearEaseCommand::Create(XmlElement*) const
 {
@@ -595,6 +607,10 @@ void CameraClearEaseCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*
 
 // @func 0x0006EDE4 CameraPlayAnimCommand::CameraPlayAnimCommand
 CameraPlayAnimCommand::CameraPlayAnimCommand() = default;
+
+// @func 0x0073C098 CameraPlayAnimCommand::~CameraPlayAnimCommand
+// @func 0x0073C0C8 CameraPlayAnimCommand::~CameraPlayAnimCommand (deleting)
+CameraPlayAnimCommand::~CameraPlayAnimCommand() = default;
 
 // @func 0x0006EE44 CameraPlayAnimCommand::Create
 ApeAnimScriptCommand* CameraPlayAnimCommand::Create(XmlElement* element) const
@@ -676,6 +692,10 @@ void CameraShakeCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptS
 // @func 0x0006F614 CameraStopAnimCommand::CameraStopAnimCommand
 CameraStopAnimCommand::CameraStopAnimCommand() = default;
 
+// @func 0x0073C120 CameraStopAnimCommand::~CameraStopAnimCommand
+// @func 0x0073C150 CameraStopAnimCommand::~CameraStopAnimCommand (deleting)
+CameraStopAnimCommand::~CameraStopAnimCommand() = default;
+
 // @func 0x0006F664 CameraStopAnimCommand::Create
 ApeAnimScriptCommand* CameraStopAnimCommand::Create(XmlElement* element) const
 {
@@ -697,6 +717,10 @@ void CameraStopAnimCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 
 // @func 0x0006FCE0 CloseBinocucomCommand::CloseBinocucomCommand
 CloseBinocucomCommand::CloseBinocucomCommand() = default;
+
+// @func 0x0073C230 CloseBinocucomCommand::~CloseBinocucomCommand
+// @func 0x0073C260 CloseBinocucomCommand::~CloseBinocucomCommand (deleting)
+CloseBinocucomCommand::~CloseBinocucomCommand() = default;
 
 // @func 0x0006FD20 CloseBinocucomCommand::Create
 ApeAnimScriptCommand* CloseBinocucomCommand::Create(XmlElement*) const
@@ -720,6 +744,10 @@ void CloseBinocucomCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 // @func 0x0006FE0C CompleteGoalCommand::CompleteGoalCommand
 CompleteGoalCommand::CompleteGoalCommand() = default;
 
+// @func 0x0073C2B8 CompleteGoalCommand::~CompleteGoalCommand
+// @func 0x0073C2E8 CompleteGoalCommand::~CompleteGoalCommand (deleting)
+CompleteGoalCommand::~CompleteGoalCommand() = default;
+
 // @func 0x0006FE54 CompleteGoalCommand::Create
 ApeAnimScriptCommand* CompleteGoalCommand::Create(XmlElement* element) const
 {
@@ -742,6 +770,10 @@ void CompleteGoalCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScript
 
 // @func 0x0006F768 CharacterSpecialCommand::CharacterSpecialCommand
 CharacterSpecialCommand::CharacterSpecialCommand() = default;
+
+// @func 0x0073C1A8 CharacterSpecialCommand::~CharacterSpecialCommand
+// @func 0x0073C1D8 CharacterSpecialCommand::~CharacterSpecialCommand (deleting)
+CharacterSpecialCommand::~CharacterSpecialCommand() = default;
 
 // @func 0x0006F7C8 CharacterSpecialCommand::CharacterSpecialCommand
 CharacterSpecialCommand::CharacterSpecialCommand(XmlElement* element)
@@ -818,6 +850,10 @@ void CharacterSpecialCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimSc
 
 // @func 0x0006FFF0 EntityGameStateCommand::EntityGameStateCommand
 EntityGameStateCommand::EntityGameStateCommand() = default;
+
+// @func 0x0073C340 EntityGameStateCommand::~EntityGameStateCommand
+// @func 0x0073C370 EntityGameStateCommand::~EntityGameStateCommand (deleting)
+EntityGameStateCommand::~EntityGameStateCommand() = default;
 
 // @func 0x00070040 EntityGameStateCommand::Create
 ApeAnimScriptCommand* EntityGameStateCommand::Create(XmlElement* element) const
@@ -939,6 +975,10 @@ ApeAnimScriptCommand* CrossfadeCommand::Create(XmlElement* element) const
 // @func 0x000717B8 DamageCommand::DamageCommand
 DamageCommand::DamageCommand() = default;
 
+// @func 0x0073C3C8 DamageCommand::~DamageCommand
+// @func 0x0073C3F8 DamageCommand::~DamageCommand (deleting)
+DamageCommand::~DamageCommand() = default;
+
 // @func 0x00071808 DamageCommand::Create
 ApeAnimScriptCommand* DamageCommand::Create(XmlElement* element) const
 {
@@ -958,6 +998,10 @@ ApeAnimScriptCommand* DamageCommand::Create(XmlElement* element) const
 
 // @func 0x00071C2C DetachEntityCommand::DetachEntityCommand
 DetachEntityCommand::DetachEntityCommand() = default;
+
+// @func 0x0073C450 DetachEntityCommand::~DetachEntityCommand
+// @func 0x0073C480 DetachEntityCommand::~DetachEntityCommand (deleting)
+DetachEntityCommand::~DetachEntityCommand() = default;
 
 // @func 0x00071C7C DetachEntityCommand::Create
 ApeAnimScriptCommand* DetachEntityCommand::Create(XmlElement* element) const

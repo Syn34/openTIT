@@ -68,6 +68,7 @@ constexpr ape::xml::Color8 kDefaultMarkerColor = {0, 0, 0, 0};
 class SetComponentScriptCommand : public ApeAnimScriptCommand {
 public:
     SetComponentScriptCommand();
+    ~SetComponentScriptCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -80,6 +81,10 @@ private:
 
 // @func 0x00087FFC SetComponentScriptCommand::SetComponentScriptCommand
 SetComponentScriptCommand::SetComponentScriptCommand() = default;
+
+// @func 0x0073E2D0 SetComponentScriptCommand::~SetComponentScriptCommand
+// @func 0x0073E300 SetComponentScriptCommand::~SetComponentScriptCommand (deleting)
+SetComponentScriptCommand::~SetComponentScriptCommand() = default;
 
 // @func 0x0008804C SetComponentScriptCommand::Create
 ApeAnimScriptCommand* SetComponentScriptCommand::Create(XmlElement* element) const
@@ -114,6 +119,7 @@ void SetComponentScriptCommand::Execute(ApeAnimScriptInstance* instance, ApeAnim
 class SetComponentVisibleCommand : public ApeAnimScriptCommand {
 public:
     SetComponentVisibleCommand();
+    ~SetComponentVisibleCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -128,6 +134,10 @@ private:
 
 // @func 0x000882C8 SetComponentVisibleCommand::SetComponentVisibleCommand
 SetComponentVisibleCommand::SetComponentVisibleCommand() = default;
+
+// @func 0x0073E358 SetComponentVisibleCommand::~SetComponentVisibleCommand
+// @func 0x0073E388 SetComponentVisibleCommand::~SetComponentVisibleCommand (deleting)
+SetComponentVisibleCommand::~SetComponentVisibleCommand() = default;
 
 // @func 0x00088330 SetComponentVisibleCommand::Create
 ApeAnimScriptCommand* SetComponentVisibleCommand::Create(XmlElement* element) const
@@ -179,6 +189,7 @@ class ChainParamsCommand : public ApeAnimScriptCommand {
 public:
     ChainParamsCommand();
     explicit ChainParamsCommand(XmlElement* element);
+    ~ChainParamsCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -212,6 +223,10 @@ private:
 
 // @func 0x0008867C ChainParamsCommand::ChainParamsCommand
 ChainParamsCommand::ChainParamsCommand() = default;
+
+// @func 0x0073E3E0 ChainParamsCommand::~ChainParamsCommand
+// @func 0x0073E410 ChainParamsCommand::~ChainParamsCommand (deleting)
+ChainParamsCommand::~ChainParamsCommand() = default;
 
 // @func 0x00088704 ChainParamsCommand::ChainParamsCommand
 ChainParamsCommand::ChainParamsCommand(XmlElement* element)
@@ -295,6 +310,7 @@ void ChainParamsCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptS
 class SetControllerRumbleCommand : public ApeAnimScriptCommand {
 public:
     SetControllerRumbleCommand();
+    ~SetControllerRumbleCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -306,6 +322,10 @@ private:
 
 // @func 0x00088D44 SetControllerRumbleCommand::SetControllerRumbleCommand
 SetControllerRumbleCommand::SetControllerRumbleCommand() = default;
+
+// @func 0x0073E468 SetControllerRumbleCommand::~SetControllerRumbleCommand
+// @func 0x0073E498 SetControllerRumbleCommand::~SetControllerRumbleCommand (deleting)
+SetControllerRumbleCommand::~SetControllerRumbleCommand() = default;
 
 // @func 0x00088D94 SetControllerRumbleCommand::Create
 ApeAnimScriptCommand* SetControllerRumbleCommand::Create(XmlElement* element) const
@@ -346,6 +366,8 @@ ShowVarTextCommand::ShowVarTextCommand()
     m_text.Clear();
 }
 
+// @func 0x0073E4F0 ShowVarTextCommand::~ShowVarTextCommand
+// @func 0x0073E520 ShowVarTextCommand::~ShowVarTextCommand (deleting)
 ShowVarTextCommand::~ShowVarTextCommand() = default;
 
 // @func 0x00088F38 ShowVarTextCommand::Create
@@ -380,6 +402,7 @@ void ShowVarTextCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptS
 class SetGameLimitCommand : public ApeAnimScriptCommand {
 public:
     SetGameLimitCommand();
+    ~SetGameLimitCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -389,6 +412,10 @@ private:
 
 // @func 0x000890DC SetGameLimitCommand::SetGameLimitCommand
 SetGameLimitCommand::SetGameLimitCommand() = default;
+
+// @func 0x0073E578 SetGameLimitCommand::~SetGameLimitCommand
+// @func 0x0073E5A8 SetGameLimitCommand::~SetGameLimitCommand (deleting)
+SetGameLimitCommand::~SetGameLimitCommand() = default;
 
 // @func 0x00089138 SetGameLimitCommand::Create
 ApeAnimScriptCommand* SetGameLimitCommand::Create(XmlElement* element) const
@@ -413,6 +440,7 @@ class SetMarkerCommand : public ApeAnimScriptCommand {
 public:
     SetMarkerCommand();
     explicit SetMarkerCommand(XmlElement* element);
+    ~SetMarkerCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -435,6 +463,10 @@ private:
 
 // @func 0x00089204 SetMarkerCommand::SetMarkerCommand
 SetMarkerCommand::SetMarkerCommand() = default;
+
+// @func 0x0073E600 SetMarkerCommand::~SetMarkerCommand
+// @func 0x0073E630 SetMarkerCommand::~SetMarkerCommand (deleting)
+SetMarkerCommand::~SetMarkerCommand() = default;
 
 // @func 0x000892D4 SetMarkerCommand::SetMarkerCommand
 SetMarkerCommand::SetMarkerCommand(XmlElement* element)
@@ -474,6 +506,7 @@ ApeAnimScriptCommand* SetMarkerCommand::Create(XmlElement* element) const
 class SetPlayerTimerCommand : public ApeAnimScriptCommand {
 public:
     SetPlayerTimerCommand();
+    ~SetPlayerTimerCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -485,6 +518,10 @@ private:
 
 // @func 0x000899A8 SetPlayerTimerCommand::SetPlayerTimerCommand
 SetPlayerTimerCommand::SetPlayerTimerCommand() = default;
+
+// @func 0x0073E688 SetPlayerTimerCommand::~SetPlayerTimerCommand
+// @func 0x0073E6B8 SetPlayerTimerCommand::~SetPlayerTimerCommand (deleting)
+SetPlayerTimerCommand::~SetPlayerTimerCommand() = default;
 
 // @func 0x00089A10 SetPlayerTimerCommand::Create
 ApeAnimScriptCommand* SetPlayerTimerCommand::Create(XmlElement* element) const

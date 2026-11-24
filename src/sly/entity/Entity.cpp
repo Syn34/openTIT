@@ -342,6 +342,18 @@ ComponentDesc* FindComponentTemplate(uint32_t name)
     return *ComponentTemplates().Find(name);
 }
 
+void UnregisterComponentTemplate(uint32_t name)
+{
+    ComponentTemplates().Remove(name);
+}
+
+// @func 0x007374D8 ComponentDesc::~ComponentDesc
+// @func 0x0073751C ComponentDesc::~ComponentDesc (deleting)
+ComponentDesc::~ComponentDesc()
+{
+    UnregisterComponentTemplate(name);
+}
+
 // @func 0x000D99D8 Entity::ReplaceComponent12
 void Entity::ReplaceComponent12(uint32_t templateName) { ReplaceFromTemplate(this, templateName, kComp_12); }
 // @func 0x000D9B30 Entity::ReplaceCarryComponent

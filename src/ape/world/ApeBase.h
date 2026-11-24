@@ -32,6 +32,7 @@ enum ApeObjType : uint32_t {
     // NOTE: AttachChild() climbs the parent chain until it meets an object of
     // this type and makes it the root of the attached subtree. Which class it
     // is (probably a game-side container object) is not known.
+    kObjType_RegionSet       = 0x12,
     kObjType_HierarchyRoot   = 0x13,
     kObjType_GeomDef         = 0x14,
     kObjType_LightDef        = 0x15,
@@ -54,7 +55,10 @@ extern const Matrix34 kWorldIdentity;
 // Tolerance used when comparing scales against kWorldUnitScale.
 constexpr float kScaleEpsilon = 1e-5f;
 
-struct ApeTagBlock;   // shared parameter block (ATAG/TAG2), not ported yet
+struct ApeTagBlock;   // shared parameter block (ATAG/TAG2), see ApeTags.h
+
+// Called by the base destructor for objects with tag flags (0x01164CD4).
+extern void (*g_tagReleaseHook)(class ApeBase* object);
 
 class ApeBase {
 public:
@@ -84,6 +88,9 @@ public:
 
     // Shares the tag block of another object.
     void ShareTags(const ApeBase& other);
+    ApeTagBlock* GetTags() const { return m_tags; }
+    // Replaces the tag block (counted reference).
+    void SetTags(ApeTagBlock* tags);
 
 protected:
     int16_t m_refCount = 1;

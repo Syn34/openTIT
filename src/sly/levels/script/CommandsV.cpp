@@ -41,6 +41,7 @@ constexpr float kDegToRad = 0.017453292f;
 class StopMusicCommand : public ApeAnimScriptCommand {
 public:
     StopMusicCommand();
+    ~StopMusicCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -50,6 +51,10 @@ private:
 
 // @func 0x00096858 StopMusicCommand::StopMusicCommand
 StopMusicCommand::StopMusicCommand() = default;
+
+// @func 0x0073B860 StopMusicCommand::~StopMusicCommand
+// @func 0x0073FA18 StopMusicCommand::~StopMusicCommand (deleting)
+StopMusicCommand::~StopMusicCommand() = default;
 
 // @func 0x000968A8 StopMusicCommand::Create
 ApeAnimScriptCommand* StopMusicCommand::Create(XmlElement* element) const
@@ -127,6 +132,7 @@ WorldObject* SwapTarget(ApeAnimScriptInstance* instance, uint32_t refObject, uin
 class SwapBinocucomCommand : public ApeAnimScriptCommand {
 public:
     SwapBinocucomCommand();
+    ~SwapBinocucomCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -138,6 +144,10 @@ private:
 
 // @func 0x00096BD4 SwapBinocucomCommand::SwapBinocucomCommand
 SwapBinocucomCommand::SwapBinocucomCommand() = default;
+
+// @func 0x0073FA70 SwapBinocucomCommand::~SwapBinocucomCommand
+// @func 0x0073FAA0 SwapBinocucomCommand::~SwapBinocucomCommand (deleting)
+SwapBinocucomCommand::~SwapBinocucomCommand() = default;
 
 // @func 0x00096C2C SwapBinocucomCommand::Create
 ApeAnimScriptCommand* SwapBinocucomCommand::Create(XmlElement* element) const
@@ -163,6 +173,7 @@ void SwapBinocucomCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScrip
 class SwapDefCommand : public ApeAnimScriptCommand {
 public:
     SwapDefCommand();
+    ~SwapDefCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -173,6 +184,10 @@ private:
 
 // @func 0x00096E00 SwapDefCommand::SwapDefCommand
 SwapDefCommand::SwapDefCommand() = default;
+
+// @func 0x0073FAF8 SwapDefCommand::~SwapDefCommand
+// @func 0x0073FB28 SwapDefCommand::~SwapDefCommand (deleting)
+SwapDefCommand::~SwapDefCommand() = default;
 
 // @func 0x00096E50 SwapDefCommand::Create
 ApeAnimScriptCommand* SwapDefCommand::Create(XmlElement* element) const
@@ -190,6 +205,7 @@ ApeAnimScriptCommand* SwapDefCommand::Create(XmlElement* element) const
 class SwapInventoryCommand : public ApeAnimScriptCommand {
 public:
     SwapInventoryCommand();
+    ~SwapInventoryCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -201,6 +217,10 @@ private:
 
 // @func 0x00097188 SwapInventoryCommand::SwapInventoryCommand
 SwapInventoryCommand::SwapInventoryCommand() = default;
+
+// @func 0x0073FB80 SwapInventoryCommand::~SwapInventoryCommand
+// @func 0x0073FBB0 SwapInventoryCommand::~SwapInventoryCommand (deleting)
+SwapInventoryCommand::~SwapInventoryCommand() = default;
 
 // @func 0x000971E0 SwapInventoryCommand::Create
 ApeAnimScriptCommand* SwapInventoryCommand::Create(XmlElement* element) const
@@ -223,6 +243,7 @@ void SwapInventoryCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScrip
 class SwapMarkerCommand : public ApeAnimScriptCommand {
 public:
     SwapMarkerCommand();
+    ~SwapMarkerCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -234,6 +255,10 @@ private:
 
 // @func 0x000973A8 SwapMarkerCommand::SwapMarkerCommand
 SwapMarkerCommand::SwapMarkerCommand() = default;
+
+// @func 0x0073FC08 SwapMarkerCommand::~SwapMarkerCommand
+// @func 0x0073FC38 SwapMarkerCommand::~SwapMarkerCommand (deleting)
+SwapMarkerCommand::~SwapMarkerCommand() = default;
 
 // @func 0x00097400 SwapMarkerCommand::Create
 ApeAnimScriptCommand* SwapMarkerCommand::Create(XmlElement* element) const
@@ -256,6 +281,7 @@ void SwapMarkerCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptSt
 class SwapReceptacleCommand : public ApeAnimScriptCommand {
 public:
     SwapReceptacleCommand();
+    ~SwapReceptacleCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -267,6 +293,10 @@ private:
 
 // @func 0x000975C8 SwapReceptacleCommand::SwapReceptacleCommand
 SwapReceptacleCommand::SwapReceptacleCommand() = default;
+
+// @func 0x0073FC90 SwapReceptacleCommand::~SwapReceptacleCommand
+// @func 0x0073FCC0 SwapReceptacleCommand::~SwapReceptacleCommand (deleting)
+SwapReceptacleCommand::~SwapReceptacleCommand() = default;
 
 // @func 0x00097618 SwapReceptacleCommand::Create
 ApeAnimScriptCommand* SwapReceptacleCommand::Create(XmlElement* element) const
@@ -292,6 +322,7 @@ class SwapWeaponCommand : public ApeAnimScriptCommand {
 public:
     SwapWeaponCommand();
     explicit SwapWeaponCommand(XmlElement* element);
+    ~SwapWeaponCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -307,6 +338,10 @@ private:
 
 // @func 0x000977E4 SwapWeaponCommand::SwapWeaponCommand
 SwapWeaponCommand::SwapWeaponCommand() = default;
+
+// @func 0x0073FD18 SwapWeaponCommand::~SwapWeaponCommand
+// @func 0x0073FD48 SwapWeaponCommand::~SwapWeaponCommand (deleting)
+SwapWeaponCommand::~SwapWeaponCommand() = default;
 
 // @func 0x00097850 SwapWeaponCommand::SwapWeaponCommand
 SwapWeaponCommand::SwapWeaponCommand(XmlElement* element)

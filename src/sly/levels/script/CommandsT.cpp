@@ -51,6 +51,7 @@ constexpr uint16_t kNoTimeScaleType = 0xFFFF;
 class SetGlobalValueCommand : public ApeAnimScriptCommand {
 public:
     SetGlobalValueCommand();
+    ~SetGlobalValueCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -61,6 +62,10 @@ private:
 
 // @func 0x00091BBC SetGlobalValueCommand::SetGlobalValueCommand
 SetGlobalValueCommand::SetGlobalValueCommand() = default;
+
+// @func 0x0073F440 SetGlobalValueCommand::~SetGlobalValueCommand
+// @func 0x0073F470 SetGlobalValueCommand::~SetGlobalValueCommand (deleting)
+SetGlobalValueCommand::~SetGlobalValueCommand() = default;
 
 // @func 0x00091C08 SetGlobalValueCommand::Create
 ApeAnimScriptCommand* SetGlobalValueCommand::Create(XmlElement* element) const
@@ -151,6 +156,7 @@ void SetTimeScaleCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScript
 class SetUVSpeedCommand : public ApeAnimScriptCommand {
 public:
     SetUVSpeedCommand();
+    ~SetUVSpeedCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -165,6 +171,10 @@ private:
 
 // @func 0x00092168 SetUVSpeedCommand::SetUVSpeedCommand
 SetUVSpeedCommand::SetUVSpeedCommand() = default;
+
+// @func 0x0073F4C8 SetUVSpeedCommand::~SetUVSpeedCommand
+// @func 0x0073F4F8 SetUVSpeedCommand::~SetUVSpeedCommand (deleting)
+SetUVSpeedCommand::~SetUVSpeedCommand() = default;
 
 // @func 0x000921C8 SetUVSpeedCommand::Create
 ApeAnimScriptCommand* SetUVSpeedCommand::Create(XmlElement* element) const
@@ -207,6 +217,7 @@ void SetUVSpeedCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptSt
 class SetEntityScriptCommand : public ApeAnimScriptCommand {
 public:
     SetEntityScriptCommand();
+    ~SetEntityScriptCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -217,6 +228,10 @@ private:
 
 // @func 0x0009241C SetEntityScriptCommand::SetEntityScriptCommand
 SetEntityScriptCommand::SetEntityScriptCommand() = default;
+
+// @func 0x0073F550 SetEntityScriptCommand::~SetEntityScriptCommand
+// @func 0x0073F580 SetEntityScriptCommand::~SetEntityScriptCommand (deleting)
+SetEntityScriptCommand::~SetEntityScriptCommand() = default;
 
 // @func 0x00092464 SetEntityScriptCommand::Create
 ApeAnimScriptCommand* SetEntityScriptCommand::Create(XmlElement* element) const
@@ -241,6 +256,7 @@ void SetEntityScriptCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScr
 class ShootWeaponCommand : public ApeAnimScriptCommand {
 public:
     ShootWeaponCommand();
+    ~ShootWeaponCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -253,6 +269,10 @@ private:
 
 // @func 0x00092628 ShootWeaponCommand::ShootWeaponCommand
 ShootWeaponCommand::ShootWeaponCommand() = default;
+
+// @func 0x0073F5D8 ShootWeaponCommand::~ShootWeaponCommand
+// @func 0x0073F608 ShootWeaponCommand::~ShootWeaponCommand (deleting)
+ShootWeaponCommand::~ShootWeaponCommand() = default;
 
 // @func 0x00092680 ShootWeaponCommand::Create
 ApeAnimScriptCommand* ShootWeaponCommand::Create(XmlElement* element) const
@@ -282,6 +302,7 @@ void ShootWeaponCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptS
 class ShowHudPromptCommand : public ApeAnimScriptCommand {
 public:
     ShowHudPromptCommand();
+    ~ShowHudPromptCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -294,6 +315,10 @@ private:
 
 // @func 0x00092870 ShowHudPromptCommand::ShowHudPromptCommand
 ShowHudPromptCommand::ShowHudPromptCommand() = default;
+
+// @func 0x0073F660 ShowHudPromptCommand::~ShowHudPromptCommand
+// @func 0x0073F690 ShowHudPromptCommand::~ShowHudPromptCommand (deleting)
+ShowHudPromptCommand::~ShowHudPromptCommand() = default;
 
 // @func 0x000928D0 ShowHudPromptCommand::Create
 ApeAnimScriptCommand* ShowHudPromptCommand::Create(XmlElement* element) const
@@ -336,6 +361,7 @@ void ShowHudPromptCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class WorldForceCommand : public ApeAnimScriptCommand {
 public:
     WorldForceCommand();
+    ~WorldForceCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -345,6 +371,10 @@ private:
 
 // @func 0x00092B8C WorldForceCommand::WorldForceCommand
 WorldForceCommand::WorldForceCommand() = default;
+
+// @func 0x0073F6E8 WorldForceCommand::~WorldForceCommand
+// @func 0x0073F718 WorldForceCommand::~WorldForceCommand (deleting)
+WorldForceCommand::~WorldForceCommand() = default;
 
 // @func 0x00092BD4 WorldForceCommand::Create
 ApeAnimScriptCommand* WorldForceCommand::Create(XmlElement* element) const

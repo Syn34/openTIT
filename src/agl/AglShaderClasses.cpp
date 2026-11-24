@@ -11,6 +11,8 @@
 #include "agl/AglState.h"
 #include "agl/AglTexture.h"
 
+#include "ape/core/ApeString.h"
+
 #include <cstring>
 
 namespace agl {
@@ -18,6 +20,50 @@ namespace agl {
 namespace {
 
 // --- parameter and variant tables -------------------------------------------------
+
+const AglGlobalShaderParam kParams_F88B5C[] = {
+    { "gfBlendAlpha", 0 },
+    { nullptr, 0 },
+};
+
+const AglGlobalShaderParam kParams_F88BD4[] = {
+    { "gvBumpOffsets[0]", 1 },
+    { "gvBumpOffsets[1]", 2 },
+    { nullptr, 0 },
+};
+
+const AglGlobalShaderParam kParams_F88C5C[] = {
+    { "gvParams", 0 },
+    { nullptr, 0 },
+};
+
+const AglGlobalShaderParam kParams_F88C7C[] = {
+    { "gvDepthParams", 0 },
+    { nullptr, 0 },
+};
+
+const AglGlobalShaderParam kParams_F88CD4[] = {
+    { "gps_mCamClipToProjClip[0]", 0 },
+    { "gps_mCamClipToProjClip[1]", 1 },
+    { "gps_mCamClipToProjClip[2]", 2 },
+    { "gps_mCamClipToProjClip[3]", 3 },
+    { "gps_vParams", 4 },
+    { "gps_vSsViewDir", 5 },
+    { "gps_vSsNormal", 6 },
+    { "gps_vCamDepthParams", 7 },
+    { nullptr, 0 },
+};
+
+const AglGlobalShaderParam kParams_F88EB4[] = {
+    { "gfBlendSwitch", 0 },
+    { nullptr, 0 },
+};
+
+const AglGlobalShaderParam kParams_F8A484[] = {
+    { "gvBumpOffsets[0]", 1 },
+    { "gvBumpOffsets[1]", 2 },
+    { nullptr, 0 },
+};
 
 const AglGlobalShaderParam kParams_F88CAC[] = {
     { "gfBlendSwitch", 0 },
@@ -327,6 +373,17 @@ const AglGlobalShaderParam kParams_F8B010[] = {
 const AglGlobalShaderParam kParams_F8B078[] = {
     { "gfBlendAlpha", 2 },
     { nullptr, 0 },
+};
+
+const AglShaderVariant kVariants_Decal[] = {
+    { "Decal", "Decal_SK", "Decal" },
+    { "Decal_Lit", "Decal_Lit_SK", "Decal_Lit" },
+    { "Decal_Lit_1", "Decal_Lit_1_SK", "Decal_Lit" },
+    { "Decal_Lit_2", "Decal_Lit_2_SK", "Decal_Lit" },
+    { "Decal_Lit_3", "Decal_Lit_3_SK", "Decal_Lit" },
+    { "Decal_Lit_4", "Decal_Lit_4_SK", "Decal_Lit" },
+    { nullptr, nullptr, nullptr },
+    { nullptr, nullptr, nullptr },
 };
 
 const AglShaderVariant kVariants_Diffuse[] = {
@@ -952,71 +1009,229 @@ AglTechnique* SelectSingleLit(AglMaterial* material, AglRenderItem* item, bool a
     return Pick(material, LightPair(item, alt) + 2);
 }
 
+// Screen warp materials: the distortion texture plus eight parameters.
+// NOTE: ScreenWarp and SlyScreenWarp have identical, separate copies of
+// this code on the console; field_2D = 8 is not decoded.
+bool SetupWarpMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    AglTexture* texture = FindTexture(desc->diffuseHash);
+    if (!texture)
+        return false;
+    texture->SetWrap(1, 1, 1);
+    material->AddTexture(texture);
+    material->field_2D = 8;
+    for (uint32_t i = 0; i < 8; ++i)
+        *material->GetConstant(i) = desc->params[i];
+    return true;
+}
+
 } // namespace
 
 // --- techniques -------------------------------------------------------------------
 
-class ParticleMaterialTechnique : public AglTechnique {
-    // TODO(0x005B0388 ParticleMaterialTechnique::BeginMaterial)
-    // TODO(0x005B0440 ParticleMaterialTechnique::Draw)
+class DebugTechnique : public AglTechnique {
+    // TODO(0x005ADA08 DebugTechnique::BeginMaterial)
+    // TODO(0x005ADA18 DebugTechnique::Draw)
+public:
+    // @func 0x007ABB3C DebugTechnique::~DebugTechnique
+    // @func 0x007ABEB0 DebugTechnique::~DebugTechnique (deleting)
+    ~DebugTechnique() override = default;
+    // @func 0x007ABEAC DebugTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+};
+
+class PrimTxrTechnique : public AglTechnique {
+    // TODO(0x005ADD50 PrimTxrTechnique::BeginMaterial)
+    // TODO(0x005ADD54 PrimTxrTechnique::Draw)
+public:
+    // @func 0x007ABB4C PrimTxrTechnique::~PrimTxrTechnique
+    // @func 0x007AC134 PrimTxrTechnique::~PrimTxrTechnique (deleting)
+    ~PrimTxrTechnique() override = default;
+    // @func 0x007AC130 PrimTxrTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+};
+
+class SimpleColorTxrTechnique : public AglTechnique {
+    // TODO(0x005ADEE0 SimpleColorTxrTechnique::BeginMaterial)
+    // TODO(0x005ADEE4 SimpleColorTxrTechnique::Draw)
+public:
+    // @func 0x007ABB5C SimpleColorTxrTechnique::~SimpleColorTxrTechnique
+    // @func 0x007AC454 SimpleColorTxrTechnique::~SimpleColorTxrTechnique (deleting)
+    ~SimpleColorTxrTechnique() override = default;
+    // @func 0x007AC450 SimpleColorTxrTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+};
+
+class SimpleColorTxrUVTechnique : public AglTechnique {
+    // TODO(0x005AE0B0 SimpleColorTxrUVTechnique::BeginMaterial)
+    // TODO(0x005AE0F0 SimpleColorTxrUVTechnique::Draw)
+public:
+    // @func 0x007ABB6C SimpleColorTxrUVTechnique::~SimpleColorTxrUVTechnique
+    // @func 0x007AC608 SimpleColorTxrUVTechnique::~SimpleColorTxrUVTechnique (deleting)
+    ~SimpleColorTxrUVTechnique() override = default;
+    // @func 0x007AC604 SimpleColorTxrUVTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+};
+
+class TextureWarpTechnique : public AglTechnique {
+    // TODO(0x005AE9A0 TextureWarpTechnique::BeginMaterial)
+    // TODO(0x005AEB00 TextureWarpTechnique::Draw)
+    // TODO(0x005AF07C TextureWarpTechnique::End)
+public:
+    // @func 0x007ABB7C TextureWarpTechnique::~TextureWarpTechnique
+    // @func 0x007AC7BC TextureWarpTechnique::~TextureWarpTechnique (deleting)
+    ~TextureWarpTechnique() override = default;
+};
+
+class ScreenWarpTechnique : public AglTechnique {
+    // TODO(0x005AF518 ScreenWarpTechnique::BeginMaterial)
+    // TODO(0x005AF730 ScreenWarpTechnique::Draw)
+    // TODO(0x005AFAB8 ScreenWarpTechnique::End)
+public:
+    // @func 0x007ABB8C ScreenWarpTechnique::~ScreenWarpTechnique
+    // @func 0x007AC874 ScreenWarpTechnique::~ScreenWarpTechnique (deleting)
+    ~ScreenWarpTechnique() override = default;
+};
+
+class LineOutlineTechnique : public AglTechnique {
+    // TODO(0x005AFACC LineOutlineTechnique::BeginMaterial)
+    // TODO(0x005AFAD0 LineOutlineTechnique::Draw)
+public:
+    // @func 0x007ABB9C LineOutlineTechnique::~LineOutlineTechnique
+    // @func 0x007ACCAC LineOutlineTechnique::~LineOutlineTechnique (deleting)
+    ~LineOutlineTechnique() override = default;
+    // @func 0x007ACCA8 LineOutlineTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+};
+
+class OutlineTechnique : public AglTechnique {
+    // TODO(0x005AFBE8 OutlineTechnique::BeginMaterial)
+    // TODO(0x005AFBF8 OutlineTechnique::Draw)
+public:
+    // @func 0x007ABBAC OutlineTechnique::~OutlineTechnique
+    // @func 0x007ACD68 OutlineTechnique::~OutlineTechnique (deleting)
+    ~OutlineTechnique() override = default;
+    // @func 0x007ACD64 OutlineTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class GeoParticleTechnique : public AglTechnique {
-    // TODO(0x005B06B0 GeoParticleTechnique::BeginMaterial)
-    // TODO(0x005B095C GeoParticleTechnique::Draw)
+    // TODO(0x005B0388 GeoParticleTechnique::BeginMaterial)
+    // TODO(0x005B0440 GeoParticleTechnique::Draw)
+public:
+    // @func 0x007ABBBC GeoParticleTechnique::~GeoParticleTechnique
+    // @func 0x007AD018 GeoParticleTechnique::~GeoParticleTechnique (deleting)
+    ~GeoParticleTechnique() override = default;
+    // @func 0x007AD014 GeoParticleTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+};
+
+class SprParticleTechnique : public AglTechnique {
+    // TODO(0x005B06B0 SprParticleTechnique::BeginMaterial)
+    // TODO(0x005B095C SprParticleTechnique::Draw)
 public:
     void End(AglMaterial* material) override;
+    // @func 0x007ABBCC SprParticleTechnique::~SprParticleTechnique
+    // @func 0x007AD1CC SprParticleTechnique::~SprParticleTechnique (deleting)
+    ~SprParticleTechnique() override = default;
 };
 
 class ProjTxrTechnique : public AglTechnique {
-    // TODO(0x005B0C78 ProjTxrTechnique::BeginMaterial)
     // TODO(0x005B0FB0 ProjTxrTechnique::Draw)
+public:
+    // @func 0x007ABBDC ProjTxrTechnique::~ProjTxrTechnique
+    // @func 0x007AD514 ProjTxrTechnique::~ProjTxrTechnique (deleting)
+    ~ProjTxrTechnique() override = default;
+    // @func 0x007AD510 ProjTxrTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class ProjTxrDeferredTechnique : public AglTechnique {
     // TODO(0x005B1830 ProjTxrDeferredTechnique::Draw)
 public:
     void BeginMaterial(AglMaterial* material) override;
+    // @func 0x007ABBEC ProjTxrDeferredTechnique::~ProjTxrDeferredTechnique
+    // @func 0x007AD5D0 ProjTxrDeferredTechnique::~ProjTxrDeferredTechnique (deleting)
+    ~ProjTxrDeferredTechnique() override = default;
+    // @func 0x007AD5CC ProjTxrDeferredTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class FluidSimTechnique : public AglTechnique {
 public:
     void BeginMaterial(AglMaterial* material) override;
     void Draw(AglRenderItem* item) override;
+    // @func 0x007ABBFC FluidSimTechnique::~FluidSimTechnique
+    // @func 0x007AD85C FluidSimTechnique::~FluidSimTechnique (deleting)
+    ~FluidSimTechnique() override = default;
+    // @func 0x007AD858 FluidSimTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class ZPassTechnique : public AglTechnique {
     // TODO(0x005B1AE8 ZPassTechnique::Draw)
 public:
     void BeginMaterial(AglMaterial* material) override;
+    // @func 0x007ABC0C ZPassTechnique::~ZPassTechnique
+    // @func 0x007AD918 ZPassTechnique::~ZPassTechnique (deleting)
+    ~ZPassTechnique() override = default;
+    // @func 0x007AD914 ZPassTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class DiffuseTechnique : public AglTechnique {
-    // TODO(0x005B1E88 DiffuseTechnique::BeginMaterial)
     // TODO(0x005B1FA0 DiffuseTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
+    // @func 0x007ABC1C DiffuseTechnique::~DiffuseTechnique
+    // @func 0x007AD9D0 DiffuseTechnique::~DiffuseTechnique (deleting)
+    ~DiffuseTechnique() override = default;
 };
 
 class DecalTechnique : public AglTechnique {
-    // TODO(0x005B30A0 DecalTechnique::BeginMaterial)
     // TODO(0x005B3148 DecalTechnique::Draw)
+public:
+    // @func 0x007ABC2C DecalTechnique::~DecalTechnique
+    // @func 0x007ADA8C DecalTechnique::~DecalTechnique (deleting)
+    ~DecalTechnique() override = default;
+    // @func 0x007ADA88 DecalTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class EnvMapTechnique : public AglTechnique {
-    // TODO(0x005B34C0 EnvMapTechnique::BeginMaterial)
     // TODO(0x005B3590 EnvMapTechnique::Draw)
+public:
+    // @func 0x007ABC3C EnvMapTechnique::~EnvMapTechnique
+    // @func 0x007AE180 EnvMapTechnique::~EnvMapTechnique (deleting)
+    ~EnvMapTechnique() override = default;
+    // @func 0x007AE17C EnvMapTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SelfLightTechnique : public AglTechnique {
     // TODO(0x005B48E8 SelfLightTechnique::Draw)
 public:
     void BeginMaterial(AglMaterial* material) override;
+    // @func 0x007ABC4C SelfLightTechnique::~SelfLightTechnique
+    // @func 0x007AE23C SelfLightTechnique::~SelfLightTechnique (deleting)
+    ~SelfLightTechnique() override = default;
+    // @func 0x007AE238 SelfLightTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class AngleIndexTechnique : public AglTechnique {
-    // TODO(0x005B50A0 AngleIndexTechnique::BeginMaterial)
     // TODO(0x005B5150 AngleIndexTechnique::Draw)
+public:
+    // @func 0x007ABC5C AngleIndexTechnique::~AngleIndexTechnique
+    // @func 0x007AE2F8 AngleIndexTechnique::~AngleIndexTechnique (deleting)
+    ~AngleIndexTechnique() override = default;
+    // @func 0x007AE2F4 AngleIndexTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class WaterTechnique : public AglTechnique {
@@ -1024,58 +1239,107 @@ class WaterTechnique : public AglTechnique {
     // TODO(0x005B5E00 WaterTechnique::Draw)
 public:
     void End(AglMaterial* material) override;
+    // @func 0x007ABC6C WaterTechnique::~WaterTechnique
+    // @func 0x007AE3B0 WaterTechnique::~WaterTechnique (deleting)
+    ~WaterTechnique() override = default;
 };
 
 class SacSkinnedTechnique : public AglTechnique {
     // TODO(0x005B67C8 SacSkinnedTechnique::Draw)
 public:
     void BeginMaterial(AglMaterial* material) override;
+    // @func 0x007ABC7C SacSkinnedTechnique::~SacSkinnedTechnique
+    // @func 0x007AE46C SacSkinnedTechnique::~SacSkinnedTechnique (deleting)
+    ~SacSkinnedTechnique() override = default;
+    // @func 0x007AE468 SacSkinnedTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class SacEnvironmentTechnique : public AglTechnique {
     // TODO(0x005B7260 SacEnvironmentTechnique::Draw)
 public:
     void BeginMaterial(AglMaterial* material) override;
+    // @func 0x007ABC8C SacEnvironmentTechnique::~SacEnvironmentTechnique
+    // @func 0x007AE528 SacEnvironmentTechnique::~SacEnvironmentTechnique (deleting)
+    ~SacEnvironmentTechnique() override = default;
+    // @func 0x007AE524 SacEnvironmentTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class SacPropTechnique : public AglTechnique {
     // TODO(0x005B78A8 SacPropTechnique::Draw)
 public:
     void BeginMaterial(AglMaterial* material) override;
+    // @func 0x007ABC9C SacPropTechnique::~SacPropTechnique
+    // @func 0x007AE5E4 SacPropTechnique::~SacPropTechnique (deleting)
+    ~SacPropTechnique() override = default;
+    // @func 0x007AE5E0 SacPropTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class SacLitPropTechnique : public AglTechnique {
     // TODO(0x005B7F18 SacLitPropTechnique::Draw)
 public:
     void BeginMaterial(AglMaterial* material) override;
+    // @func 0x007ABCAC SacLitPropTechnique::~SacLitPropTechnique
+    // @func 0x007AE6A0 SacLitPropTechnique::~SacLitPropTechnique (deleting)
+    ~SacLitPropTechnique() override = default;
+    // @func 0x007AE69C SacLitPropTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class SacFastPropTechnique : public AglTechnique {
     // TODO(0x005B8640 SacFastPropTechnique::Draw)
 public:
     void BeginMaterial(AglMaterial* material) override;
+    // @func 0x007ABCBC SacFastPropTechnique::~SacFastPropTechnique
+    // @func 0x007AE75C SacFastPropTechnique::~SacFastPropTechnique (deleting)
+    ~SacFastPropTechnique() override = default;
+    // @func 0x007AE758 SacFastPropTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class SacEnvMapTechnique : public AglTechnique {
-    // TODO(0x005B8DF0 SacEnvMapTechnique::BeginMaterial)
     // TODO(0x005B8EC0 SacEnvMapTechnique::Draw)
+public:
+    // @func 0x007ABCCC SacEnvMapTechnique::~SacEnvMapTechnique
+    // @func 0x007AE818 SacEnvMapTechnique::~SacEnvMapTechnique (deleting)
+    ~SacEnvMapTechnique() override = default;
+    // @func 0x007AE814 SacEnvMapTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class Sly2UVTechnique : public AglTechnique {
-    // TODO(0x005B9C80 Sly2UVTechnique::BeginMaterial)
     // TODO(0x005B9D0C Sly2UVTechnique::Draw)
+public:
+    // @func 0x007ABCDC Sly2UVTechnique::~Sly2UVTechnique
+    // @func 0x007AEA44 Sly2UVTechnique::~Sly2UVTechnique (deleting)
+    ~Sly2UVTechnique() override = default;
+    // @func 0x007AEA40 Sly2UVTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyCausticsTechnique : public AglTechnique {
-    // TODO(0x005BA7D0 SlyCausticsTechnique::BeginMaterial)
     // TODO(0x005BA8BC SlyCausticsTechnique::Draw)
+public:
+    // @func 0x007ABCEC SlyCausticsTechnique::~SlyCausticsTechnique
+    // @func 0x007AEB00 SlyCausticsTechnique::~SlyCausticsTechnique (deleting)
+    ~SlyCausticsTechnique() override = default;
+    // @func 0x007AEAFC SlyCausticsTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyCharacterTechnique : public AglTechnique {
-    // TODO(0x005BB408 SlyCharacterTechnique::BeginMaterial)
     // TODO(0x005BB4D8 SlyCharacterTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
+    // @func 0x007ABCFC SlyCharacterTechnique::~SlyCharacterTechnique
+    // @func 0x007AEBB8 SlyCharacterTechnique::~SlyCharacterTechnique (deleting)
+    ~SlyCharacterTechnique() override = default;
 };
 
 class SlyCharacter2Technique : public AglTechnique {
@@ -1083,6 +1347,9 @@ class SlyCharacter2Technique : public AglTechnique {
     // TODO(0x005BD3B0 SlyCharacter2Technique::Draw)
 public:
     void End(AglMaterial* material) override;
+    // @func 0x007ABD0C SlyCharacter2Technique::~SlyCharacter2Technique
+    // @func 0x007AEC70 SlyCharacter2Technique::~SlyCharacter2Technique (deleting)
+    ~SlyCharacter2Technique() override = default;
 };
 
 class SlyCharacterEyeTechnique : public AglTechnique {
@@ -1090,6 +1357,9 @@ class SlyCharacterEyeTechnique : public AglTechnique {
 public:
     void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
+    // @func 0x007ABD1C SlyCharacterEyeTechnique::~SlyCharacterEyeTechnique
+    // @func 0x007AED28 SlyCharacterEyeTechnique::~SlyCharacterEyeTechnique (deleting)
+    ~SlyCharacterEyeTechnique() override = default;
 };
 
 class SlyCharacterFurTechnique : public AglTechnique {
@@ -1097,6 +1367,9 @@ class SlyCharacterFurTechnique : public AglTechnique {
 public:
     void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
+    // @func 0x007ABD2C SlyCharacterFurTechnique::~SlyCharacterFurTechnique
+    // @func 0x007AEDE0 SlyCharacterFurTechnique::~SlyCharacterFurTechnique (deleting)
+    ~SlyCharacterFurTechnique() override = default;
 };
 
 class SlyCharacterFurFinTechnique : public AglTechnique {
@@ -1104,6 +1377,9 @@ class SlyCharacterFurFinTechnique : public AglTechnique {
     // TODO(0x005C13DC SlyCharacterFurFinTechnique::Draw)
 public:
     void End(AglMaterial* material) override;
+    // @func 0x007ABD3C SlyCharacterFurFinTechnique::~SlyCharacterFurFinTechnique
+    // @func 0x007AEE98 SlyCharacterFurFinTechnique::~SlyCharacterFurFinTechnique (deleting)
+    ~SlyCharacterFurFinTechnique() override = default;
 };
 
 class SlyCharacterFakeFurTechnique : public AglTechnique {
@@ -1111,53 +1387,108 @@ class SlyCharacterFakeFurTechnique : public AglTechnique {
     // TODO(0x005C1EB8 SlyCharacterFakeFurTechnique::Draw)
 public:
     void End(AglMaterial* material) override;
+    // @func 0x007ABD4C SlyCharacterFakeFurTechnique::~SlyCharacterFakeFurTechnique
+    // @func 0x007AEF50 SlyCharacterFakeFurTechnique::~SlyCharacterFakeFurTechnique (deleting)
+    ~SlyCharacterFakeFurTechnique() override = default;
 };
 
 class SlyCharacterCollectibleTechnique : public AglTechnique {
-    // TODO(0x005C27B0 SlyCharacterCollectibleTechnique::BeginMaterial)
     // TODO(0x005C2880 SlyCharacterCollectibleTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
+    // @func 0x007ABD5C SlyCharacterCollectibleTechnique::~SlyCharacterCollectibleTechnique
+    // @func 0x007AF008 SlyCharacterCollectibleTechnique::~SlyCharacterCollectibleTechnique (deleting)
+    ~SlyCharacterCollectibleTechnique() override = default;
 };
 
 class SlyDecalTechnique : public AglTechnique {
     // TODO(0x005C38C0 SlyDecalTechnique::BeginMaterial)
     // TODO(0x005C39C8 SlyDecalTechnique::Draw)
+public:
+    // @func 0x007ABD6C SlyDecalTechnique::~SlyDecalTechnique
+    // @func 0x007AF0C4 SlyDecalTechnique::~SlyDecalTechnique (deleting)
+    ~SlyDecalTechnique() override = default;
+    // @func 0x007AF0C0 SlyDecalTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class SlyDecal4Technique : public AglTechnique {
     // TODO(0x005C49C0 SlyDecal4Technique::BeginMaterial)
     // TODO(0x005C4C3C SlyDecal4Technique::Draw)
+public:
+    // @func 0x007ABD7C SlyDecal4Technique::~SlyDecal4Technique
+    // @func 0x007AF180 SlyDecal4Technique::~SlyDecal4Technique (deleting)
+    ~SlyDecal4Technique() override = default;
+    // @func 0x007AF17C SlyDecal4Technique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class SlyEnvMapTechnique : public AglTechnique {
-    // TODO(0x005C56E0 SlyEnvMapTechnique::BeginMaterial)
     // TODO(0x005C57B0 SlyEnvMapTechnique::Draw)
+public:
+    // @func 0x007ABD8C SlyEnvMapTechnique::~SlyEnvMapTechnique
+    // @func 0x007AF23C SlyEnvMapTechnique::~SlyEnvMapTechnique (deleting)
+    ~SlyEnvMapTechnique() override = default;
+    // @func 0x007AF238 SlyEnvMapTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyHeightFogTechnique : public AglTechnique {
     // TODO(0x005C6D38 SlyHeightFogTechnique::BeginMaterial)
     // TODO(0x005C7210 SlyHeightFogTechnique::Draw)
+public:
+    // @func 0x007ABD9C SlyHeightFogTechnique::~SlyHeightFogTechnique
+    // @func 0x007AF2F8 SlyHeightFogTechnique::~SlyHeightFogTechnique (deleting)
+    ~SlyHeightFogTechnique() override = default;
+    // @func 0x007AF2F4 SlyHeightFogTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class SlyMirrorTechnique : public AglTechnique {
-    // TODO(0x005C8268 SlyMirrorTechnique::BeginMaterial)
     // TODO(0x005C8338 SlyMirrorTechnique::Draw)
+public:
+    // @func 0x007ABDAC SlyMirrorTechnique::~SlyMirrorTechnique
+    // @func 0x007AF3B4 SlyMirrorTechnique::~SlyMirrorTechnique (deleting)
+    ~SlyMirrorTechnique() override = default;
+    // @func 0x007AF3B0 SlyMirrorTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyPanoramaTechnique : public AglTechnique {
-    // TODO(0x005C9898 SlyPanoramaTechnique::BeginMaterial)
     // TODO(0x005C9948 SlyPanoramaTechnique::Draw)
+public:
+    // @func 0x007ABDBC SlyPanoramaTechnique::~SlyPanoramaTechnique
+    // @func 0x007AF470 SlyPanoramaTechnique::~SlyPanoramaTechnique (deleting)
+    ~SlyPanoramaTechnique() override = default;
+    // @func 0x007AF46C SlyPanoramaTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyProjTxrTechnique : public AglTechnique {
 public:
     void BeginMaterial(AglMaterial* material) override;
+    // @func 0x007ABDCC SlyProjTxrTechnique::~SlyProjTxrTechnique
+    // @func 0x007AF530 SlyProjTxrTechnique::~SlyProjTxrTechnique (deleting)
+    ~SlyProjTxrTechnique() override = default;
+    // @func 0x007AF52C SlyProjTxrTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+    // @func 0x007AF528 SlyProjTxrTechnique::Draw
+    void Draw(AglRenderItem* /*item*/) override {}
 };
 
 class SlyPropTechnique : public AglTechnique {
-    // TODO(0x005CAD48 SlyPropTechnique::BeginMaterial)
     // TODO(0x005CAE18 SlyPropTechnique::Draw)
+public:
+    // @func 0x007ABDDC SlyPropTechnique::~SlyPropTechnique
+    // @func 0x007AF5EC SlyPropTechnique::~SlyPropTechnique (deleting)
+    ~SlyPropTechnique() override = default;
+    // @func 0x007AF5E8 SlyPropTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyScreenWarpTechnique : public AglTechnique {
@@ -1165,27 +1496,53 @@ class SlyScreenWarpTechnique : public AglTechnique {
     // TODO(0x005CD6F0 SlyScreenWarpTechnique::Draw)
 public:
     void End(AglMaterial* material) override;
+    // @func 0x007ABDFC SlyScreenWarpTechnique::~SlyScreenWarpTechnique
+    // @func 0x007AF760 SlyScreenWarpTechnique::~SlyScreenWarpTechnique (deleting)
+    ~SlyScreenWarpTechnique() override = default;
 };
 
 class SlyShrubTechnique : public AglTechnique {
     // TODO(0x005CDC38 SlyShrubTechnique::Draw)
 public:
     void BeginMaterial(AglMaterial* material) override;
+    // @func 0x007ABE0C SlyShrubTechnique::~SlyShrubTechnique
+    // @func 0x007AFC50 SlyShrubTechnique::~SlyShrubTechnique (deleting)
+    ~SlyShrubTechnique() override = default;
+    // @func 0x007AFC4C SlyShrubTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class SlyTerrainTechnique : public AglTechnique {
-    // TODO(0x005CC170 SlyTerrainTechnique::BeginMaterial)
     // TODO(0x005CC240 SlyTerrainTechnique::Draw)
+public:
+    // @func 0x007ABDEC SlyTerrainTechnique::~SlyTerrainTechnique
+    // @func 0x007AF6A8 SlyTerrainTechnique::~SlyTerrainTechnique (deleting)
+    ~SlyTerrainTechnique() override = default;
+    // @func 0x007AF6A4 SlyTerrainTechnique::End
+    void End(AglMaterial* /*material*/) override {}
+    void BeginMaterial(AglMaterial* material) override;
 };
 
 class SlyTerrainSnowTechnique : public AglTechnique {
     // TODO(0x005CE508 SlyTerrainSnowTechnique::BeginMaterial)
     // TODO(0x005CE6A0 SlyTerrainSnowTechnique::Draw)
+public:
+    // @func 0x007ABE1C SlyTerrainSnowTechnique::~SlyTerrainSnowTechnique
+    // @func 0x007AFD0C SlyTerrainSnowTechnique::~SlyTerrainSnowTechnique (deleting)
+    ~SlyTerrainSnowTechnique() override = default;
+    // @func 0x007AFD08 SlyTerrainSnowTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class SlyTerrainSnowDecalTechnique : public AglTechnique {
     // TODO(0x005CFA68 SlyTerrainSnowDecalTechnique::BeginMaterial)
     // TODO(0x005CFDC0 SlyTerrainSnowDecalTechnique::Draw)
+public:
+    // @func 0x007ABE2C SlyTerrainSnowDecalTechnique::~SlyTerrainSnowDecalTechnique
+    // @func 0x007AFDC8 SlyTerrainSnowDecalTechnique::~SlyTerrainSnowDecalTechnique (deleting)
+    ~SlyTerrainSnowDecalTechnique() override = default;
+    // @func 0x007AFDC4 SlyTerrainSnowDecalTechnique::End
+    void End(AglMaterial* /*material*/) override {}
 };
 
 class SlyTextureWarpTechnique : public AglTechnique {
@@ -1193,6 +1550,9 @@ class SlyTextureWarpTechnique : public AglTechnique {
     // TODO(0x005D17E8 SlyTextureWarpTechnique::Draw)
 public:
     void End(AglMaterial* material) override;
+    // @func 0x007ABE3C SlyTextureWarpTechnique::~SlyTextureWarpTechnique
+    // @func 0x007AFE80 SlyTextureWarpTechnique::~SlyTextureWarpTechnique (deleting)
+    ~SlyTextureWarpTechnique() override = default;
 };
 
 class SlyWaterTechnique : public AglTechnique {
@@ -1200,6 +1560,9 @@ class SlyWaterTechnique : public AglTechnique {
     // TODO(0x005D2614 SlyWaterTechnique::Draw)
 public:
     void End(AglMaterial* material) override;
+    // @func 0x007ABE4C SlyWaterTechnique::~SlyWaterTechnique
+    // @func 0x007AFF38 SlyWaterTechnique::~SlyWaterTechnique (deleting)
+    ~SlyWaterTechnique() override = default;
 };
 
 class SlyWater2Technique : public AglTechnique {
@@ -1207,6 +1570,9 @@ class SlyWater2Technique : public AglTechnique {
     // TODO(0x005D3750 SlyWater2Technique::Draw)
 public:
     void End(AglMaterial* material) override;
+    // @func 0x007ABE5C SlyWater2Technique::~SlyWater2Technique
+    // @func 0x007AFFF0 SlyWater2Technique::~SlyWater2Technique (deleting)
+    ~SlyWater2Technique() override = default;
 };
 
 class SlyWater3Technique : public AglTechnique {
@@ -1214,12 +1580,16 @@ class SlyWater3Technique : public AglTechnique {
     // TODO(0x005D5220 SlyWater3Technique::Draw)
 public:
     void End(AglMaterial* material) override;
+    // @func 0x007ABE6C SlyWater3Technique::~SlyWater3Technique
+    ~SlyWater3Technique() override = default;
 };
 
 class ShoDefaultTechnique : public AglTechnique {
     // TODO(0x005D65C0 ShoDefaultTechnique::Draw)
 public:
     void BeginMaterial(AglMaterial* material) override;
+    // @func 0x007ABE7C ShoDefaultTechnique::~ShoDefaultTechnique
+    ~ShoDefaultTechnique() override = default;
 };
 
 class ShoTextureWarpTechnique : public AglTechnique {
@@ -1227,20 +1597,178 @@ class ShoTextureWarpTechnique : public AglTechnique {
     // TODO(0x005D7598 ShoTextureWarpTechnique::Draw)
 public:
     void End(AglMaterial* material) override;
+    // @func 0x007ABE8C ShoTextureWarpTechnique::~ShoTextureWarpTechnique
+    ~ShoTextureWarpTechnique() override = default;
 };
 
 class ShoNightBlendTechnique : public AglTechnique {
     // TODO(0x005D8060 ShoNightBlendTechnique::BeginMaterial)
     // TODO(0x005D8100 ShoNightBlendTechnique::Draw)
+public:
+    // @func 0x007ABE9C ShoNightBlendTechnique::~ShoNightBlendTechnique
+    ~ShoNightBlendTechnique() override = default;
 };
 
-// @func 0x005B0AF0 GeoParticleTechnique::End
-void GeoParticleTechnique::End(AglMaterial* material)
+// @func 0x005B0AF0 SprParticleTechnique::End
+void SprParticleTechnique::End(AglMaterial* material)
 {
     // Materials with a depth bias turned polygon offset on.
     const float bias = (material && material->constants) ? material->constants[4] : 0.0f;
     if (bias != 0.0f)
         Cmd().SetPolygonOffset(false, 0.0f, 0.0f);
+}
+
+// --- material constants shared by the BeginMaterial handlers --------------------
+
+// Material float constant `index`, or 0 when the material has none.
+static float MaterialConstant(const AglMaterial* material, int index)
+{
+    return material->constants ? material->constants[index] : 0.0f;
+}
+
+// NOTE: materials whose word 0x78 top nibble is 2 (the default) get 1.0 in
+// the slot the shaders use as a switch; its meaning is not decoded.
+static float MaterialSwitchValue(const AglMaterial* material)
+{
+    return material->field_78 == 2 ? 1.0f : 0.0f;
+}
+
+// Fragment constant 0 = material colour constants 0..2, w = 'w'.
+static void UploadMaterialColor(const AglMaterial* material, float w)
+{
+    const float value[4] = {MaterialConstant(material, 0), MaterialConstant(material, 1),
+                            MaterialConstant(material, 2), w};
+    SetShaderConstant(0, value);
+}
+
+// @func 0x005B0C78 ProjTxrTechnique::BeginMaterial
+void ProjTxrTechnique::BeginMaterial(AglMaterial* material)
+{
+    const float value[4] = {MaterialSwitchValue(material), 0.0f, 0.0f, 0.0f};
+    SetShaderConstant(0, value);
+}
+
+// @func 0x005B1E88 DiffuseTechnique::BeginMaterial
+void DiffuseTechnique::BeginMaterial(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, 0.0f);
+    // Constant 3 holds an integer alpha reference; a positive one turns on
+    // the alpha test.
+    if (material->constants) {
+        int32_t alphaRef = 0;
+        std::memcpy(&alphaRef, &material->constants[3], sizeof(alphaRef));
+        if (alphaRef > 0) {
+            Cmd().SetAlphaFunc(gpu::CompareFunc::GEqual, uint32_t(alphaRef));
+            Cmd().SetAlphaTestEnable(true);
+        }
+    }
+}
+
+// @func 0x005B30A0 DecalTechnique::BeginMaterial
+void DecalTechnique::BeginMaterial(AglMaterial* material)
+{
+    // Constants 0 and 1 scale the texture coordinates.
+    UploadUVTransform(material->anim, 4, MaterialConstant(material, 0), MaterialConstant(material, 1));
+    const float value[4] = {MaterialSwitchValue(material), 0.0f, 0.0f, 0.0f};
+    SetShaderConstant(0, value);
+}
+
+// @func 0x005B34C0 EnvMapTechnique::BeginMaterial
+void EnvMapTechnique::BeginMaterial(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005B50A0 AngleIndexTechnique::BeginMaterial
+void AngleIndexTechnique::BeginMaterial(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, 0.0f);
+}
+
+// @func 0x005B8DF0 SacEnvMapTechnique::BeginMaterial
+void SacEnvMapTechnique::BeginMaterial(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005B9C80 Sly2UVTechnique::BeginMaterial
+void Sly2UVTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    const float value[4] = {MaterialSwitchValue(material), 0.0f, 0.0f, 0.0f};
+    SetShaderConstant(0, value);
+}
+
+// @func 0x005BA7D0 SlyCausticsTechnique::BeginMaterial
+void SlyCausticsTechnique::BeginMaterial(AglMaterial* material)
+{
+    // Constants 0/1 scale the texture coordinates, 2/3 are periods sent
+    // as reciprocals. NOTE: a material without constants divides by zero, as
+    // on the console.
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, MaterialConstant(material, 0), MaterialConstant(material, 1));
+    const float value[4] = {1.0f / MaterialConstant(material, 2), 1.0f / MaterialConstant(material, 3),
+                            MaterialSwitchValue(material), 0.0f};
+    SetShaderConstant(0, value);
+}
+
+// @func 0x005BB408 SlyCharacterTechnique::BeginMaterial
+void SlyCharacterTechnique::BeginMaterial(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005C27B0 SlyCharacterCollectibleTechnique::BeginMaterial
+void SlyCharacterCollectibleTechnique::BeginMaterial(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005C56E0 SlyEnvMapTechnique::BeginMaterial
+void SlyEnvMapTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005C8268 SlyMirrorTechnique::BeginMaterial
+void SlyMirrorTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 8, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005C9898 SlyPanoramaTechnique::BeginMaterial
+void SlyPanoramaTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005CAD48 SlyPropTechnique::BeginMaterial
+void SlyPropTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005CC170 SlyTerrainTechnique::BeginMaterial
+void SlyTerrainTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, MaterialSwitchValue(material));
 }
 
 // @func 0x005B182C ProjTxrDeferredTechnique::BeginMaterial
@@ -1430,61 +1958,86 @@ void ShoTextureWarpTechnique::End(AglMaterial* material)
 
 class DebugClass : public AglShaderClass {
 public:
+    // @func 0x007AA82C DebugClass::~DebugClass
+    // @func 0x007AC0BC DebugClass::~DebugClass (deleting)
+    ~DebugClass() override = default;
     DebugClass() : AglShaderClass("Debug") {}
     void CreateTechniques() override;
 };
 
-// TODO(0x007ABEF4 DebugClass::CreateTechniques)
+// @func 0x007ABEF4 DebugClass::CreateTechniques
 void DebugClass::CreateTechniques()
 {
+    AddShader<DebugTechnique>("FlatColor", "FlatColor", nullptr);
+    AddShader<DebugTechnique>("FlatColor_SK", "FlatColor", nullptr);
 }
 
 class PrimTxrClass : public AglShaderClass {
 public:
+    // @func 0x007AA87C PrimTxrClass::~PrimTxrClass
+    // @func 0x007AC270 PrimTxrClass::~PrimTxrClass (deleting)
+    ~PrimTxrClass() override = default;
     PrimTxrClass() : AglShaderClass("PrimTxr") {}
     void CreateTechniques() override;
 };
 
-// TODO(0x007AC178 PrimTxrClass::CreateTechniques)
+// @func 0x007AC178 PrimTxrClass::CreateTechniques
 void PrimTxrClass::CreateTechniques()
 {
+    AddShader<PrimTxrTechnique>("PrimTxr", "PrimTxr", nullptr);
 }
 
 class PrimNoTxrClass : public AglShaderClass {
 public:
+    // @func 0x007AA8CC PrimNoTxrClass::~PrimNoTxrClass
+    // @func 0x007AC3DC PrimNoTxrClass::~PrimNoTxrClass (deleting)
+    ~PrimNoTxrClass() override = default;
     PrimNoTxrClass() : AglShaderClass("PrimNoTxr") {}
     void CreateTechniques() override;
 };
 
-// TODO(0x007AC2E4 PrimNoTxrClass::CreateTechniques)
+// @func 0x007AC2E4 PrimNoTxrClass::CreateTechniques
 void PrimNoTxrClass::CreateTechniques()
 {
+    // Shares the technique type of PrimTxr.
+    AddShader<PrimTxrTechnique>("PrimNoTxr", "PrimNoTxr", nullptr);
 }
 
 class SimpleColorTxrClass : public AglShaderClass {
 public:
+    // @func 0x007AA91C SimpleColorTxrClass::~SimpleColorTxrClass
+    // @func 0x007AC590 SimpleColorTxrClass::~SimpleColorTxrClass (deleting)
+    ~SimpleColorTxrClass() override = default;
     SimpleColorTxrClass() : AglShaderClass("SimpleColorTxr") {}
     void CreateTechniques() override;
 };
 
-// TODO(0x007AC498 SimpleColorTxrClass::CreateTechniques)
+// @func 0x007AC498 SimpleColorTxrClass::CreateTechniques
 void SimpleColorTxrClass::CreateTechniques()
 {
+    AddShader<SimpleColorTxrTechnique>("SimpleColorTxr", "SimpleColorTxr", nullptr);
 }
 
 class SimpleColorTxrUVClass : public AglShaderClass {
 public:
+    // @func 0x007AA96C SimpleColorTxrUVClass::~SimpleColorTxrUVClass
+    // @func 0x007AC748 SimpleColorTxrUVClass::~SimpleColorTxrUVClass (deleting)
+    ~SimpleColorTxrUVClass() override = default;
     SimpleColorTxrUVClass() : AglShaderClass("SimpleColorTxrUV") {}
     void CreateTechniques() override;
 };
 
-// TODO(0x007AC64C SimpleColorTxrUVClass::CreateTechniques)
+// @func 0x007AC64C SimpleColorTxrUVClass::CreateTechniques
 void SimpleColorTxrUVClass::CreateTechniques()
 {
+    AddShader<SimpleColorTxrUVTechnique>("SimpleColorTxrUV", "SimpleColorTxrUV", kParams_F88B5C);
 }
 
 class TextureWarpClass : public AglShaderClass {
 public:
+    // @func 0x007AA9BC TextureWarpClass::~TextureWarpClass
+    // @func 0x007AC800 TextureWarpClass::~TextureWarpClass (deleting)
+    ~TextureWarpClass() override = default;
     TextureWarpClass() : AglShaderClass("TextureWarp") {}
     void CreateTechniques() override;
 };
@@ -1496,17 +2049,32 @@ void TextureWarpClass::CreateTechniques()
 
 class ScreenWarpClass : public AglShaderClass {
 public:
+    // @func 0x007AAA0C ScreenWarpClass::~ScreenWarpClass
+    // @func 0x007ACC34 ScreenWarpClass::~ScreenWarpClass (deleting)
+    ~ScreenWarpClass() override = default;
     ScreenWarpClass() : AglShaderClass("ScreenWarp") {}
     void CreateTechniques() override;
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
 };
 
-// TODO(0x007AC8B8 ScreenWarpClass::CreateTechniques)
+// @func 0x007AC8B8 ScreenWarpClass::CreateTechniques
 void ScreenWarpClass::CreateTechniques()
 {
+    AddShader<ScreenWarpTechnique>("ScreenWarp", nullptr, kParams_F88BD4);
+    AddShader<ScreenWarpTechnique>("ScreenWarp_Lit", nullptr, kParams_F88BD4);
+}
+
+// @func 0x007ACA84 ScreenWarpClass::SetupMaterial
+bool ScreenWarpClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    return SetupWarpMaterial(material, desc);
 }
 
 class LineOutlineClass : public AglShaderClass {
 public:
+    // @func 0x007AAA5C LineOutlineClass::~LineOutlineClass
+    // @func 0x007ACCF0 LineOutlineClass::~LineOutlineClass (deleting)
+    ~LineOutlineClass() override = default;
     LineOutlineClass() : AglShaderClass("LineOutline") {}
     void CreateTechniques() override;
 };
@@ -1518,6 +2086,9 @@ void LineOutlineClass::CreateTechniques()
 
 class OutlineClass : public AglShaderClass {
 public:
+    // @func 0x007AAAAC OutlineClass::~OutlineClass
+    // @func 0x007ACDAC OutlineClass::~OutlineClass (deleting)
+    ~OutlineClass() override = default;
     OutlineClass() : AglShaderClass("Outline") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -1535,7 +2106,7 @@ bool OutlineClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* d
     // Outlines are drawn late, behind the surface, alpha blended.
     material->sortKey = 0xFFF;
     material->depthFunc = gpu::CompareFunc::Less;
-    const float width = desc->hasParams ? desc->params[0] : 30.0f;
+    const float width = desc->paramCount != 0 ? desc->params[0] : 30.0f;
     *material->GetConstant(0) = width * width;
     material->blendEquation = gpu::BlendEquation::Add;
     material->blendEnable = true;
@@ -1554,25 +2125,58 @@ AglTechnique* OutlineClass::SelectTechnique(AglMaterial* material, AglRenderItem
 
 class ParticleMaterialClass : public AglShaderClass {
 public:
+    // @func 0x007AAAFC ParticleMaterialClass::~ParticleMaterialClass
+    // @func 0x007ACFA0 ParticleMaterialClass::~ParticleMaterialClass (deleting)
+    ~ParticleMaterialClass() override = default;
     ParticleMaterialClass() : AglShaderClass("ParticleMaterial") {}
     void CreateTechniques() override;
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
-// TODO(0x007ACE20 ParticleMaterialClass::CreateTechniques)
+// @func 0x007ACE20 ParticleMaterialClass::CreateTechniques
 void ParticleMaterialClass::CreateTechniques()
 {
+    // Particle materials only carry parameters; nothing is drawn with them.
+}
+
+// @func 0x007ACE38 ParticleMaterialClass::SetupMaterial
+bool ParticleMaterialClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    // Up to five exported parameters; missing ones take their defaults.
+    // NOTE: the meaning of the individual values is not known. Parameter 2
+    // is copied bit for bit (an integer), parameter 3 is an integer that is
+    // converted to float.
+    const uint8_t count = desc->paramCount;
+    *material->GetConstant(0) = count > 0 ? desc->params[0] * -2.0f : 0.0f;
+    *material->GetConstant(1) = count > 1 ? desc->params[1] * -2.0f : 0.0f;
+    const uint32_t raw = count > 2 ? desc->ParamBits(2) : 0u;
+    std::memcpy(material->GetConstant(2), &raw, sizeof(raw));
+    *material->GetConstant(3) = count > 3 ? float(desc->ParamBits(3)) : 1.0f;
+    *material->GetConstant(4) = count > 4 ? desc->params[4] : 0.0f;
+    return true;
+}
+
+// @func 0x007ACF98 ParticleMaterialClass::SelectTechnique
+AglTechnique* ParticleMaterialClass::SelectTechnique(AglMaterial* /*material*/, AglRenderItem* /*item*/)
+{
+    return nullptr;
 }
 
 class GeoParticleClass : public AglShaderClass {
 public:
+    // @func 0x007AAB4C GeoParticleClass::~GeoParticleClass
+    // @func 0x007AD158 GeoParticleClass::~GeoParticleClass (deleting)
+    ~GeoParticleClass() override = default;
     GeoParticleClass() : AglShaderClass("GeoParticle") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
-// TODO(0x007AD05C GeoParticleClass::CreateTechniques)
+// @func 0x007AD05C GeoParticleClass::CreateTechniques
 void GeoParticleClass::CreateTechniques()
 {
+    AddShader<GeoParticleTechnique>("GeoParticle", "GeoParticle", kParams_F88C5C);
 }
 
 // @func 0x005B068C GeoParticleClass::SelectTechnique
@@ -1584,28 +2188,65 @@ AglTechnique* GeoParticleClass::SelectTechnique(AglMaterial* material, AglRender
 
 class SprParticleClass : public AglShaderClass {
 public:
+    // @func 0x007AAB9C SprParticleClass::~SprParticleClass
+    // @func 0x007AD410 SprParticleClass::~SprParticleClass (deleting)
+    ~SprParticleClass() override = default;
     SprParticleClass() : AglShaderClass("SprParticle") {}
     void CreateTechniques() override;
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
-// TODO(0x007AD210 SprParticleClass::CreateTechniques)
+// @func 0x007AD210 SprParticleClass::CreateTechniques
 void SprParticleClass::CreateTechniques()
 {
+    // Technique 0 draws hard sprites, technique 1 depth-faded ("soft") ones.
+    AddShader<SprParticleTechnique>("SprParticle", nullptr, kParams_F88C7C);
+    AddShader<SprParticleTechnique>("SprParticle_Soft", nullptr, kParams_F88C7C);
+}
+
+// @func 0x007AD3DC SprParticleClass::SelectTechnique
+AglTechnique* SprParticleClass::SelectTechnique(AglMaterial* material, AglRenderItem* item)
+{
+    // Constant 2 holds the technique index as an integer (see
+    // ParticleMaterialClass::SetupMaterial). NOTE: the index is also stored
+    // as the item's light mask, as on the console.
+    uint32_t index = 0;
+    if (material->constants)
+        std::memcpy(&index, &material->constants[2], sizeof(index));
+    item->lightMask = uint8_t(index);
+    return Pick(material, index);
 }
 
 class ShadowClass : public AglShaderClass {
 public:
+    // @func 0x007AABEC ShadowClass::~ShadowClass
+    // @func 0x007AD49C ShadowClass::~ShadowClass (deleting)
+    ~ShadowClass() override = default;
     ShadowClass() : AglShaderClass("Shadow") {}
     void CreateTechniques() override;
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
 };
 
-// TODO(0x007AD484 ShadowClass::CreateTechniques)
+// @func 0x007AD484 ShadowClass::CreateTechniques
 void ShadowClass::CreateTechniques()
 {
+    // Retired class: its materials are redirected in SetupMaterial.
+}
+
+// @func 0x007AD488 ShadowClass::SetupMaterial
+bool ShadowClass::SetupMaterial(AglMaterial* /*material*/, const AglMaterialDesc* desc)
+{
+    // NOTE: 0x03DE9E33 is the name hash of the replacement class; the name
+    // itself was not recovered.
+    desc->replacementClass = 0x03DE9E33u;
+    return false;
 }
 
 class ProjTxrClass : public AglShaderClass {
 public:
+    // @func 0x007AAC3C ProjTxrClass::~ProjTxrClass
+    // @func 0x007AD558 ProjTxrClass::~ProjTxrClass (deleting)
+    ~ProjTxrClass() override = default;
     ProjTxrClass() : AglShaderClass("ProjTxr") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -1640,14 +2281,19 @@ AglTechnique* ProjTxrClass::SelectTechnique(AglMaterial* material, AglRenderItem
 
 class ProjTxrDeferredClass : public AglShaderClass {
 public:
+    // @func 0x007AAC8C ProjTxrDeferredClass::~ProjTxrDeferredClass
+    // @func 0x007AD7E4 ProjTxrDeferredClass::~ProjTxrDeferredClass (deleting)
+    ~ProjTxrDeferredClass() override = default;
     ProjTxrDeferredClass() : AglShaderClass("ProjTxr_Deferred") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
-// TODO(0x007AD614 ProjTxrDeferredClass::CreateTechniques)
+// @func 0x007AD614 ProjTxrDeferredClass::CreateTechniques
 void ProjTxrDeferredClass::CreateTechniques()
 {
+    AddShader<ProjTxrDeferredTechnique>("ProjTxr_Deferred", "ProjTxr_Deferred", kParams_F88CD4);
+    AddShader<ProjTxrDeferredTechnique>("ProjTxr_Deferred", "ProjTxr_Deferred_NF", kParams_F88CD4);
 }
 
 // @func 0x005B19B4 ProjTxrDeferredClass::SelectTechnique
@@ -1659,6 +2305,9 @@ AglTechnique* ProjTxrDeferredClass::SelectTechnique(AglMaterial* material, AglRe
 
 class FluidSimClass : public AglShaderClass {
 public:
+    // @func 0x007AACDC FluidSimClass::~FluidSimClass
+    // @func 0x007AD8A0 FluidSimClass::~FluidSimClass (deleting)
+    ~FluidSimClass() override = default;
     FluidSimClass() : AglShaderClass("FluidSim") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -1688,6 +2337,9 @@ AglTechnique* FluidSimClass::SelectTechnique(AglMaterial* material, AglRenderIte
 
 class ZPassClass : public AglShaderClass {
 public:
+    // @func 0x007AAD2C ZPassClass::~ZPassClass
+    // @func 0x007AD95C ZPassClass::~ZPassClass (deleting)
+    ~ZPassClass() override = default;
     ZPassClass() : AglShaderClass("ZPass") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -1709,6 +2361,9 @@ AglTechnique* ZPassClass::SelectTechnique(AglMaterial* material, AglRenderItem* 
 
 class DiffuseClass : public AglShaderClass {
 public:
+    // @func 0x007AAD7C DiffuseClass::~DiffuseClass
+    // @func 0x007ADA14 DiffuseClass::~DiffuseClass (deleting)
+    ~DiffuseClass() override = default;
     // TODO(0x005B2DF0 DiffuseClass::SetupMaterial)
     DiffuseClass() : AglShaderClass("Diffuse") {}
     void CreateTechniques() override;
@@ -1731,17 +2386,48 @@ AglTechnique* DiffuseClass::SelectTechnique(AglMaterial* material, AglRenderItem
 
 class DecalClass : public AglShaderClass {
 public:
+    // @func 0x007AADCC DecalClass::~DecalClass
+    // @func 0x007AE108 DecalClass::~DecalClass (deleting)
+    ~DecalClass() override = default;
     DecalClass() : AglShaderClass("Decal") {}
     void CreateTechniques() override;
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
-// TODO(0x007ADAD0 DecalClass::CreateTechniques)
+// @func 0x007ADAD0 DecalClass::CreateTechniques
 void DecalClass::CreateTechniques()
 {
+    AddShader<DecalTechnique>("Decal", "Decal", kParams_F88EB4);
+    AddShader<DecalTechnique>("Decal_SK", "Decal", kParams_F88EB4);
+    AddVariants<DecalTechnique>(kVariants_Decal, 1, 8, true, kParams_F88EB4);
+}
+
+// @func 0x007ADF80 DecalClass::SetupMaterial
+bool DecalClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    AglTexture* texture = FindTexture(desc->textureHash);
+    if (!texture)
+        return false;
+    texture->SetWrap(1, 1, 1);
+    material->AddTexture(texture);
+    material->field_78 = desc->wrapMode == 3 ? 3 : 2;
+    *material->GetConstant(0) = desc->params[0];
+    *material->GetConstant(1) = desc->params[1];
+    return true;
+}
+
+// @func 0x007AE08C DecalClass::SelectTechnique
+AglTechnique* DecalClass::SelectTechnique(AglMaterial* material, AglRenderItem* item)
+{
+    return SelectSingleLit(material, item, IsSkinned(item));
 }
 
 class EnvMapClass : public AglShaderClass {
 public:
+    // @func 0x007AAE1C EnvMapClass::~EnvMapClass
+    // @func 0x007AE1C4 EnvMapClass::~EnvMapClass (deleting)
+    ~EnvMapClass() override = default;
     // TODO(0x005B44B4 EnvMapClass::SetupMaterial)
     EnvMapClass() : AglShaderClass("EnvMap") {}
     void CreateTechniques() override;
@@ -1764,6 +2450,9 @@ AglTechnique* EnvMapClass::SelectTechnique(AglMaterial* material, AglRenderItem*
 
 class SelfLightClass : public AglShaderClass {
 public:
+    // @func 0x007AAE6C SelfLightClass::~SelfLightClass
+    // @func 0x007AE280 SelfLightClass::~SelfLightClass (deleting)
+    ~SelfLightClass() override = default;
     SelfLightClass() : AglShaderClass("SelfLight") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -1793,6 +2482,9 @@ AglTechnique* SelfLightClass::SelectTechnique(AglMaterial* material, AglRenderIt
 
 class AngleIndexClass : public AglShaderClass {
 public:
+    // @func 0x007AAEBC AngleIndexClass::~AngleIndexClass
+    // @func 0x007AE33C AngleIndexClass::~AngleIndexClass (deleting)
+    ~AngleIndexClass() override = default;
     AngleIndexClass() : AglShaderClass("AngleIndex") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -1826,6 +2518,9 @@ AglTechnique* AngleIndexClass::SelectTechnique(AglMaterial* material, AglRenderI
 
 class WaterClass : public AglShaderClass {
 public:
+    // @func 0x007AAF0C WaterClass::~WaterClass
+    // @func 0x007AE3F4 WaterClass::~WaterClass (deleting)
+    ~WaterClass() override = default;
     // TODO(0x005B6528 WaterClass::SetupMaterial)
     WaterClass() : AglShaderClass("Water") {}
     void CreateTechniques() override;
@@ -1847,6 +2542,9 @@ AglTechnique* WaterClass::SelectTechnique(AglMaterial* material, AglRenderItem* 
 
 class SacSkinnedClass : public AglShaderClass {
 public:
+    // @func 0x007AAF5C SacSkinnedClass::~SacSkinnedClass
+    // @func 0x007AE4B0 SacSkinnedClass::~SacSkinnedClass (deleting)
+    ~SacSkinnedClass() override = default;
     SacSkinnedClass() : AglShaderClass("SAC_Skinned") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -1882,6 +2580,9 @@ AglTechnique* SacSkinnedClass::SelectTechnique(AglMaterial* material, AglRenderI
 
 class SacEnvironmentClass : public AglShaderClass {
 public:
+    // @func 0x007AAFAC SacEnvironmentClass::~SacEnvironmentClass
+    // @func 0x007AE56C SacEnvironmentClass::~SacEnvironmentClass (deleting)
+    ~SacEnvironmentClass() override = default;
     SacEnvironmentClass() : AglShaderClass("SAC_Environment") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -1911,6 +2612,9 @@ AglTechnique* SacEnvironmentClass::SelectTechnique(AglMaterial* material, AglRen
 
 class SacPropClass : public AglShaderClass {
 public:
+    // @func 0x007AAFFC SacPropClass::~SacPropClass
+    // @func 0x007AE628 SacPropClass::~SacPropClass (deleting)
+    ~SacPropClass() override = default;
     SacPropClass() : AglShaderClass("SAC_Prop") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -1940,6 +2644,9 @@ AglTechnique* SacPropClass::SelectTechnique(AglMaterial* material, AglRenderItem
 
 class SacLitPropClass : public AglShaderClass {
 public:
+    // @func 0x007AB04C SacLitPropClass::~SacLitPropClass
+    // @func 0x007AE6E4 SacLitPropClass::~SacLitPropClass (deleting)
+    ~SacLitPropClass() override = default;
     SacLitPropClass() : AglShaderClass("SAC_LitProp") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -1969,6 +2676,9 @@ AglTechnique* SacLitPropClass::SelectTechnique(AglMaterial* material, AglRenderI
 
 class SacFastPropClass : public AglShaderClass {
 public:
+    // @func 0x007AB09C SacFastPropClass::~SacFastPropClass
+    // @func 0x007AE7A0 SacFastPropClass::~SacFastPropClass (deleting)
+    ~SacFastPropClass() override = default;
     SacFastPropClass() : AglShaderClass("SAC_FastProp") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -1987,7 +2697,7 @@ bool SacFastPropClass::SetupMaterial(AglMaterial* material, const AglMaterialDes
     if (MaterialParamsEnabled()) {
         // The parameter is copied as raw bits; all ones when absent.
         uint32_t bits = 0xFFFFFFFFu;
-        if (desc->hasParams)
+        if (desc->paramCount != 0)
             std::memcpy(&bits, &desc->params[0], sizeof(bits));
         std::memcpy(material->GetConstant(0), &bits, sizeof(bits));
     }
@@ -2003,6 +2713,9 @@ AglTechnique* SacFastPropClass::SelectTechnique(AglMaterial* material, AglRender
 
 class SacEnvMapClass : public AglShaderClass {
 public:
+    // @func 0x007AB0EC SacEnvMapClass::~SacEnvMapClass
+    // @func 0x007AE85C SacEnvMapClass::~SacEnvMapClass (deleting)
+    ~SacEnvMapClass() override = default;
     // TODO(0x005B9A1C SacEnvMapClass::SetupMaterial)
     SacEnvMapClass() : AglShaderClass("SAC_EnvMap") {}
     void CreateTechniques() override;
@@ -2024,28 +2737,81 @@ AglTechnique* SacEnvMapClass::SelectTechnique(AglMaterial* material, AglRenderIt
 
 class SacPanoramaClass : public AglShaderClass {
 public:
+    // @func 0x007AB13C SacPanoramaClass::~SacPanoramaClass
+    // @func 0x007AE938 SacPanoramaClass::~SacPanoramaClass (deleting)
+    ~SacPanoramaClass() override = default;
     SacPanoramaClass() : AglShaderClass("SAC_Panorama") {}
     void CreateTechniques() override;
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
-// TODO(0x007AE8D0 SacPanoramaClass::CreateTechniques)
+// @func 0x007AE8D0 SacPanoramaClass::CreateTechniques
 void SacPanoramaClass::CreateTechniques()
 {
+    // Retired class. The console printed a one-time warning here (the text
+    // was compiled out); only the "warned" latch remains.
+    static bool s_warned = false;
+    if (!s_warned)
+        s_warned = true;
+}
+
+// @func 0x007AE8F0 SacPanoramaClass::SetupMaterial
+bool SacPanoramaClass::SetupMaterial(AglMaterial* /*material*/, const AglMaterialDesc* /*desc*/)
+{
+    // Retired: warns once (text compiled out) and rejects the material.
+    static bool s_warned = false;
+    if (!s_warned)
+        s_warned = true;
+    return false;
+}
+
+// @func 0x007AE914 SacPanoramaClass::SelectTechnique
+AglTechnique* SacPanoramaClass::SelectTechnique(AglMaterial* /*material*/, AglRenderItem* /*item*/)
+{
+    static bool s_warned = false;
+    if (!s_warned)
+        s_warned = true;
+    return nullptr;
 }
 
 class SacParticleClass : public AglShaderClass {
 public:
+    // @func 0x007AB18C SacParticleClass::~SacParticleClass
+    // @func 0x007AE9CC SacParticleClass::~SacParticleClass (deleting)
+    ~SacParticleClass() override = default;
     SacParticleClass() : AglShaderClass("SAC_Particle") {}
     void CreateTechniques() override;
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
-// TODO(0x007AE9AC SacParticleClass::CreateTechniques)
+// @func 0x007AE9AC SacParticleClass::CreateTechniques
 void SacParticleClass::CreateTechniques()
 {
+    // Retired class: its materials are redirected in SetupMaterial.
+}
+
+// @func 0x007AE9B0 SacParticleClass::SetupMaterial
+bool SacParticleClass::SetupMaterial(AglMaterial* /*material*/, const AglMaterialDesc* desc)
+{
+    // Drawn by the class with name hash 0xD08FCDAD instead (the same target
+    // as the name aliases in AglShaderClass.cpp).
+    desc->replacementClass = 0xD08FCDADu;
+    return false;
+}
+
+// @func 0x007AE9C4 SacParticleClass::SelectTechnique
+AglTechnique* SacParticleClass::SelectTechnique(AglMaterial* /*material*/, AglRenderItem* /*item*/)
+{
+    return nullptr;
 }
 
 class Sly2UVClass : public AglShaderClass {
 public:
+    // @func 0x007AB1DC Sly2UVClass::~Sly2UVClass
+    // @func 0x007AEA88 Sly2UVClass::~Sly2UVClass (deleting)
+    ~Sly2UVClass() override = default;
     Sly2UVClass() : AglShaderClass("Sly2UV") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -2080,6 +2846,9 @@ AglTechnique* Sly2UVClass::SelectTechnique(AglMaterial* material, AglRenderItem*
 
 class SlyCausticsClass : public AglShaderClass {
 public:
+    // @func 0x007AB22C SlyCausticsClass::~SlyCausticsClass
+    // @func 0x007AEB44 SlyCausticsClass::~SlyCausticsClass (deleting)
+    ~SlyCausticsClass() override = default;
     // TODO(0x005BB23C SlyCausticsClass::SetupMaterial)
     SlyCausticsClass() : AglShaderClass("SlyCaustics") {}
     void CreateTechniques() override;
@@ -2102,6 +2871,9 @@ AglTechnique* SlyCausticsClass::SelectTechnique(AglMaterial* material, AglRender
 
 class SlyCharacterClass : public AglShaderClass {
 public:
+    // @func 0x007AB27C SlyCharacterClass::~SlyCharacterClass
+    // @func 0x007AEBFC SlyCharacterClass::~SlyCharacterClass (deleting)
+    ~SlyCharacterClass() override = default;
     // TODO(0x005BC4F0 SlyCharacterClass::SetupMaterial)
     SlyCharacterClass() : AglShaderClass("SlyCharacter") {}
     void CreateTechniques() override;
@@ -2138,6 +2910,9 @@ AglTechnique* SlyCharacterClass::SelectTechnique(AglMaterial* material, AglRende
 
 class SlyCharacter2Class : public AglShaderClass {
 public:
+    // @func 0x007AB2CC SlyCharacter2Class::~SlyCharacter2Class
+    // @func 0x007AECB4 SlyCharacter2Class::~SlyCharacter2Class (deleting)
+    ~SlyCharacter2Class() override = default;
     // TODO(0x005BDD30 SlyCharacter2Class::SetupMaterial)
     SlyCharacter2Class() : AglShaderClass("SlyCharacter2") {}
     void CreateTechniques() override;
@@ -2174,6 +2949,9 @@ AglTechnique* SlyCharacter2Class::SelectTechnique(AglMaterial* material, AglRend
 
 class SlyCharacterEyeClass : public AglShaderClass {
 public:
+    // @func 0x007AB31C SlyCharacterEyeClass::~SlyCharacterEyeClass
+    // @func 0x007AED6C SlyCharacterEyeClass::~SlyCharacterEyeClass (deleting)
+    ~SlyCharacterEyeClass() override = default;
     // TODO(0x005BF608 SlyCharacterEyeClass::SetupMaterial)
     SlyCharacterEyeClass() : AglShaderClass("SlyCharacterEye") {}
     void CreateTechniques() override;
@@ -2202,6 +2980,9 @@ AglTechnique* SlyCharacterEyeClass::SelectTechnique(AglMaterial* material, AglRe
 
 class SlyCharacterFurClass : public AglShaderClass {
 public:
+    // @func 0x007AB36C SlyCharacterFurClass::~SlyCharacterFurClass
+    // @func 0x007AEE24 SlyCharacterFurClass::~SlyCharacterFurClass (deleting)
+    ~SlyCharacterFurClass() override = default;
     // TODO(0x005C0F50 SlyCharacterFurClass::SetupMaterial)
     SlyCharacterFurClass() : AglShaderClass("SlyCharacterFur") {}
     void CreateTechniques() override;
@@ -2222,6 +3003,9 @@ AglTechnique* SlyCharacterFurClass::SelectTechnique(AglMaterial* material, AglRe
 
 class SlyCharacterFurFinClass : public AglShaderClass {
 public:
+    // @func 0x007AB3BC SlyCharacterFurFinClass::~SlyCharacterFurFinClass
+    // @func 0x007AEEDC SlyCharacterFurFinClass::~SlyCharacterFurFinClass (deleting)
+    ~SlyCharacterFurFinClass() override = default;
     SlyCharacterFurFinClass() : AglShaderClass("SlyCharacterFurFin") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -2252,6 +3036,9 @@ AglTechnique* SlyCharacterFurFinClass::SelectTechnique(AglMaterial* material, Ag
 
 class SlyCharacterFakeFurClass : public AglShaderClass {
 public:
+    // @func 0x007AB40C SlyCharacterFakeFurClass::~SlyCharacterFakeFurClass
+    // @func 0x007AEF94 SlyCharacterFakeFurClass::~SlyCharacterFakeFurClass (deleting)
+    ~SlyCharacterFakeFurClass() override = default;
     // TODO(0x005C25B8 SlyCharacterFakeFurClass::SetupMaterial)
     SlyCharacterFakeFurClass() : AglShaderClass("SlyCharacterFakeFur") {}
     void CreateTechniques() override;
@@ -2286,6 +3073,9 @@ AglTechnique* SlyCharacterFakeFurClass::SelectTechnique(AglMaterial* material, A
 
 class SlyCharacterCollectibleClass : public AglShaderClass {
 public:
+    // @func 0x007AB45C SlyCharacterCollectibleClass::~SlyCharacterCollectibleClass
+    // @func 0x007AF04C SlyCharacterCollectibleClass::~SlyCharacterCollectibleClass (deleting)
+    ~SlyCharacterCollectibleClass() override = default;
     // TODO(0x005C3528 SlyCharacterCollectibleClass::SetupMaterial)
     SlyCharacterCollectibleClass() : AglShaderClass("SlyCharacterCollectible") {}
     void CreateTechniques() override;
@@ -2320,6 +3110,9 @@ AglTechnique* SlyCharacterCollectibleClass::SelectTechnique(AglMaterial* materia
 
 class SlyDecalClass : public AglShaderClass {
 public:
+    // @func 0x007AB4AC SlyDecalClass::~SlyDecalClass
+    // @func 0x007AF108 SlyDecalClass::~SlyDecalClass (deleting)
+    ~SlyDecalClass() override = default;
     // TODO(0x005C45D0 SlyDecalClass::SetupMaterial)
     SlyDecalClass() : AglShaderClass("SlyDecal") {}
     void CreateTechniques() override;
@@ -2356,6 +3149,9 @@ AglTechnique* SlyDecalClass::SelectTechnique(AglMaterial* material, AglRenderIte
 
 class SlyDecal4Class : public AglShaderClass {
 public:
+    // @func 0x007AB4FC SlyDecal4Class::~SlyDecal4Class
+    // @func 0x007AF1C4 SlyDecal4Class::~SlyDecal4Class (deleting)
+    ~SlyDecal4Class() override = default;
     // TODO(0x005C5300 SlyDecal4Class::SetupMaterial)
     SlyDecal4Class() : AglShaderClass("SlyDecal4") {}
     void CreateTechniques() override;
@@ -2380,6 +3176,9 @@ AglTechnique* SlyDecal4Class::SelectTechnique(AglMaterial* material, AglRenderIt
 
 class SlyEnvMapClass : public AglShaderClass {
 public:
+    // @func 0x007AB54C SlyEnvMapClass::~SlyEnvMapClass
+    // @func 0x007AF280 SlyEnvMapClass::~SlyEnvMapClass (deleting)
+    ~SlyEnvMapClass() override = default;
     // TODO(0x005C67E0 SlyEnvMapClass::SetupMaterial)
     SlyEnvMapClass() : AglShaderClass("SlyEnvMap") {}
     void CreateTechniques() override;
@@ -2402,6 +3201,9 @@ AglTechnique* SlyEnvMapClass::SelectTechnique(AglMaterial* material, AglRenderIt
 
 class SlyHeightFogClass : public AglShaderClass {
 public:
+    // @func 0x007AB59C SlyHeightFogClass::~SlyHeightFogClass
+    // @func 0x007AF33C SlyHeightFogClass::~SlyHeightFogClass (deleting)
+    ~SlyHeightFogClass() override = default;
     // TODO(0x005C7DE8 SlyHeightFogClass::SetupMaterial)
     SlyHeightFogClass() : AglShaderClass("SlyHeightFog") {}
     void CreateTechniques() override;
@@ -2434,6 +3236,9 @@ AglTechnique* SlyHeightFogClass::SelectTechnique(AglMaterial* material, AglRende
 
 class SlyMirrorClass : public AglShaderClass {
 public:
+    // @func 0x007AB5EC SlyMirrorClass::~SlyMirrorClass
+    // @func 0x007AF3F8 SlyMirrorClass::~SlyMirrorClass (deleting)
+    ~SlyMirrorClass() override = default;
     // TODO(0x005C95FC SlyMirrorClass::SetupMaterial)
     SlyMirrorClass() : AglShaderClass("SlyMirror") {}
     void CreateTechniques() override;
@@ -2456,6 +3261,9 @@ AglTechnique* SlyMirrorClass::SelectTechnique(AglMaterial* material, AglRenderIt
 
 class SlyPanoramaClass : public AglShaderClass {
 public:
+    // @func 0x007AB63C SlyPanoramaClass::~SlyPanoramaClass
+    // @func 0x007AF4B4 SlyPanoramaClass::~SlyPanoramaClass (deleting)
+    ~SlyPanoramaClass() override = default;
     // TODO(0x005CA818 SlyPanoramaClass::SetupMaterial)
     SlyPanoramaClass() : AglShaderClass("SlyPanorama") {}
     void CreateTechniques() override;
@@ -2478,6 +3286,9 @@ AglTechnique* SlyPanoramaClass::SelectTechnique(AglMaterial* material, AglRender
 
 class SlyProjTxrClass : public AglShaderClass {
 public:
+    // @func 0x007AB68C SlyProjTxrClass::~SlyProjTxrClass
+    // @func 0x007AF574 SlyProjTxrClass::~SlyProjTxrClass (deleting)
+    ~SlyProjTxrClass() override = default;
     SlyProjTxrClass() : AglShaderClass("SlyProjTxr") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -2513,6 +3324,9 @@ AglTechnique* SlyProjTxrClass::SelectTechnique(AglMaterial* material, AglRenderI
 
 class SlyPropClass : public AglShaderClass {
 public:
+    // @func 0x007AB6DC SlyPropClass::~SlyPropClass
+    // @func 0x007AF630 SlyPropClass::~SlyPropClass (deleting)
+    ~SlyPropClass() override = default;
     // TODO(0x005CBE90 SlyPropClass::SetupMaterial)
     SlyPropClass() : AglShaderClass("SlyProp") {}
     void CreateTechniques() override;
@@ -2535,6 +3349,9 @@ AglTechnique* SlyPropClass::SelectTechnique(AglMaterial* material, AglRenderItem
 
 class SlyTerrainClass : public AglShaderClass {
 public:
+    // @func 0x007AB81C SlyTerrainClass::~SlyTerrainClass
+    // @func 0x007AF6EC SlyTerrainClass::~SlyTerrainClass (deleting)
+    ~SlyTerrainClass() override = default;
     // TODO(0x005CD100 SlyTerrainClass::SetupMaterial)
     SlyTerrainClass() : AglShaderClass("SlyTerrain") {}
     void CreateTechniques() override;
@@ -2591,14 +3408,26 @@ AglTechnique* SlyTerrainClass::SelectTechnique(AglMaterial* material, AglRenderI
 
 class SlyScreenWarpClass : public AglShaderClass {
 public:
+    // @func 0x007AB72C SlyScreenWarpClass::~SlyScreenWarpClass
+    // @func 0x007AFB20 SlyScreenWarpClass::~SlyScreenWarpClass (deleting)
+    ~SlyScreenWarpClass() override = default;
     SlyScreenWarpClass() : AglShaderClass("SlyScreenWarp") {}
     void CreateTechniques() override;
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
-// TODO(0x007AF7A4 SlyScreenWarpClass::CreateTechniques)
+// @func 0x007AF7A4 SlyScreenWarpClass::CreateTechniques
 void SlyScreenWarpClass::CreateTechniques()
 {
+    AddShader<SlyScreenWarpTechnique>("SlyScreenWarp", nullptr, kParams_F8A484);
+    AddShader<SlyScreenWarpTechnique>("SlyScreenWarp_Lit", nullptr, kParams_F8A484);
+}
+
+// @func 0x007AF970 SlyScreenWarpClass::SetupMaterial
+bool SlyScreenWarpClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    return SetupWarpMaterial(material, desc);
 }
 
 // @func 0x005CDC18 SlyScreenWarpClass::SelectTechnique
@@ -2610,17 +3439,33 @@ AglTechnique* SlyScreenWarpClass::SelectTechnique(AglMaterial* material, AglRend
 
 class SlyShadowMapClass : public AglShaderClass {
 public:
+    // @func 0x007AB77C SlyShadowMapClass::~SlyShadowMapClass
+    // @func 0x007AFBD8 SlyShadowMapClass::~SlyShadowMapClass (deleting)
+    ~SlyShadowMapClass() override = default;
     SlyShadowMapClass() : AglShaderClass("SlyShadowMap") {}
     void CreateTechniques() override;
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
 };
 
-// TODO(0x007AFB94 SlyShadowMapClass::CreateTechniques)
+// @func 0x007AFB94 SlyShadowMapClass::CreateTechniques
 void SlyShadowMapClass::CreateTechniques()
 {
+    // Retired class: its materials are redirected in SetupMaterial.
+}
+
+// @func 0x007AFB98 SlyShadowMapClass::SetupMaterial
+bool SlyShadowMapClass::SetupMaterial(AglMaterial* /*material*/, const AglMaterialDesc* desc)
+{
+    // Retired: materials are drawn with the "Debug" class instead.
+    desc->replacementClass = ape::HashNameNoCase("Debug");
+    return false;
 }
 
 class SlyShrubClass : public AglShaderClass {
 public:
+    // @func 0x007AB7CC SlyShrubClass::~SlyShrubClass
+    // @func 0x007AFC94 SlyShrubClass::~SlyShrubClass (deleting)
+    ~SlyShrubClass() override = default;
     // TODO(0x005CE368 SlyShrubClass::SetupMaterial)
     SlyShrubClass() : AglShaderClass("SlyShrub") {}
     void CreateTechniques() override;
@@ -2642,6 +3487,9 @@ AglTechnique* SlyShrubClass::SelectTechnique(AglMaterial* material, AglRenderIte
 
 class SlyTerrainSnowClass : public AglShaderClass {
 public:
+    // @func 0x007AB86C SlyTerrainSnowClass::~SlyTerrainSnowClass
+    // @func 0x007AFD50 SlyTerrainSnowClass::~SlyTerrainSnowClass (deleting)
+    ~SlyTerrainSnowClass() override = default;
     // TODO(0x005CF5B0 SlyTerrainSnowClass::SetupMaterial)
     SlyTerrainSnowClass() : AglShaderClass("SlyTerrainSnow") {}
     void CreateTechniques() override;
@@ -2671,6 +3519,9 @@ AglTechnique* SlyTerrainSnowClass::SelectTechnique(AglMaterial* material, AglRen
 
 class SlyTerrainSnowDecalClass : public AglShaderClass {
 public:
+    // @func 0x007AB8BC SlyTerrainSnowDecalClass::~SlyTerrainSnowDecalClass
+    // @func 0x007AFE0C SlyTerrainSnowDecalClass::~SlyTerrainSnowDecalClass (deleting)
+    ~SlyTerrainSnowDecalClass() override = default;
     // TODO(0x005D0CA0 SlyTerrainSnowDecalClass::SetupMaterial)
     SlyTerrainSnowDecalClass() : AglShaderClass("SlyTerrainSnowDecal") {}
     void CreateTechniques() override;
@@ -2697,6 +3548,9 @@ AglTechnique* SlyTerrainSnowDecalClass::SelectTechnique(AglMaterial* material, A
 
 class SlyTextureWarpClass : public AglShaderClass {
 public:
+    // @func 0x007AB90C SlyTextureWarpClass::~SlyTextureWarpClass
+    // @func 0x007AFEC4 SlyTextureWarpClass::~SlyTextureWarpClass (deleting)
+    ~SlyTextureWarpClass() override = default;
     // TODO(0x005D2334 SlyTextureWarpClass::SetupMaterial)
     SlyTextureWarpClass() : AglShaderClass("SlyTextureWarp") {}
     void CreateTechniques() override;
@@ -2718,6 +3572,9 @@ AglTechnique* SlyTextureWarpClass::SelectTechnique(AglMaterial* material, AglRen
 
 class SlyWaterClass : public AglShaderClass {
 public:
+    // @func 0x007AB95C SlyWaterClass::~SlyWaterClass
+    // @func 0x007AFF7C SlyWaterClass::~SlyWaterClass (deleting)
+    ~SlyWaterClass() override = default;
     // TODO(0x005D2F20 SlyWaterClass::SetupMaterial)
     SlyWaterClass() : AglShaderClass("SlyWater") {}
     void CreateTechniques() override;
@@ -2744,6 +3601,9 @@ AglTechnique* SlyWaterClass::SelectTechnique(AglMaterial* material, AglRenderIte
 
 class SlyWater2Class : public AglShaderClass {
 public:
+    // @func 0x007AB9AC SlyWater2Class::~SlyWater2Class
+    // NOTE: the deleting destructor is 0x007B0034.
+    ~SlyWater2Class() override = default;
     // TODO(0x005D47A0 SlyWater2Class::SelectTechnique)
     // TODO(0x005D4198 SlyWater2Class::SetupMaterial)
     SlyWater2Class() : AglShaderClass("SlyWater2") {}
@@ -2758,6 +3618,9 @@ void SlyWater2Class::CreateTechniques()
 
 class SlyWater3Class : public AglShaderClass {
 public:
+    // @func 0x007AB9FC SlyWater3Class::~SlyWater3Class
+    // NOTE: the deleting destructor is 0x007B00EC.
+    ~SlyWater3Class() override = default;
     // TODO(0x005D62E8 SlyWater3Class::SelectTechnique)
     // TODO(0x005D5C80 SlyWater3Class::SetupMaterial)
     SlyWater3Class() : AglShaderClass("SlyWater3") {}
@@ -2772,6 +3635,9 @@ void SlyWater3Class::CreateTechniques()
 
 class ShoDefaultClass : public AglShaderClass {
 public:
+    // @func 0x007ABA4C ShoDefaultClass::~ShoDefaultClass
+    // NOTE: the deleting destructor is 0x007B01A8.
+    ~ShoDefaultClass() override = default;
     ShoDefaultClass() : AglShaderClass("SHO_Default") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
@@ -2806,6 +3672,9 @@ AglTechnique* ShoDefaultClass::SelectTechnique(AglMaterial* material, AglRenderI
 
 class ShoTextureWarpClass : public AglShaderClass {
 public:
+    // @func 0x007ABA9C ShoTextureWarpClass::~ShoTextureWarpClass
+    // NOTE: the deleting destructor is 0x007B0260.
+    ~ShoTextureWarpClass() override = default;
     // TODO(0x005D803C ShoTextureWarpClass::SetupMaterial)
     ShoTextureWarpClass() : AglShaderClass("SHO_TextureWarp") {}
     void CreateTechniques() override;
@@ -2827,6 +3696,9 @@ AglTechnique* ShoTextureWarpClass::SelectTechnique(AglMaterial* material, AglRen
 
 class ShoNightBlendClass : public AglShaderClass {
 public:
+    // @func 0x007ABAEC ShoNightBlendClass::~ShoNightBlendClass
+    // NOTE: the deleting destructor is 0x007B031C.
+    ~ShoNightBlendClass() override = default;
     // TODO(0x005D8C6C ShoNightBlendClass::SelectTechnique)
     // TODO(0x005D8B9C ShoNightBlendClass::SetupMaterial)
     ShoNightBlendClass() : AglShaderClass("SHO_NightBlend") {}

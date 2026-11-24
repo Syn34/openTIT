@@ -277,6 +277,7 @@ ApeAnimScriptCommand* FxTrailCommand::Create(XmlElement* element) const
 class GadgetCommand : public ApeAnimScriptCommand {
 public:
     GadgetCommand();
+    ~GadgetCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -291,6 +292,10 @@ private:
 
 // @func 0x0007A084 GadgetCommand::GadgetCommand
 GadgetCommand::GadgetCommand() = default;
+
+// @func 0x0073CEF0 GadgetCommand::~GadgetCommand
+// @func 0x0073CF20 GadgetCommand::~GadgetCommand (deleting)
+GadgetCommand::~GadgetCommand() = default;
 
 // @func 0x0007A0E4 GadgetCommand::Create
 ApeAnimScriptCommand* GadgetCommand::Create(XmlElement* element) const
@@ -326,6 +331,7 @@ void GadgetCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*
 class GadgetTurretCommand : public ApeAnimScriptCommand {
 public:
     GadgetTurretCommand();
+    ~GadgetTurretCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -338,6 +344,10 @@ private:
 
 // @func 0x0007A38C GadgetTurretCommand::GadgetTurretCommand
 GadgetTurretCommand::GadgetTurretCommand() = default;
+
+// @func 0x0073CF78 GadgetTurretCommand::~GadgetTurretCommand
+// @func 0x0073CFA8 GadgetTurretCommand::~GadgetTurretCommand (deleting)
+GadgetTurretCommand::~GadgetTurretCommand() = default;
 
 // @func 0x0007A3EC GadgetTurretCommand::Create
 ApeAnimScriptCommand* GadgetTurretCommand::Create(XmlElement* element) const
