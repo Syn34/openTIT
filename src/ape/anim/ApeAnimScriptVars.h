@@ -200,6 +200,7 @@ public:
     uint32_t GetMaterialName() const { return m_material; }
     void* GetMaterial() const { return m_resolved; }
     void SetMaterial(void* material) { m_resolved = material; }
+    void SetMaterialName(uint32_t name) { m_material = name; }
 
 private:
     uint32_t m_material = 0;

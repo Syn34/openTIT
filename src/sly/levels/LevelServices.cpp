@@ -114,5 +114,22 @@ CharacterRespawnInfo CharacterRespawn(const WorldObject* character) { (void)char
 void* GameStateCurrentSafe() { return nullptr; }
 int SafeState(void* safe) { (void)safe; return -1; }
 
+void HudSetPlayerHealthMeter(int player, const char* text) { (void)player; (void)text; }
+void HudShowHealthMeter(WorldObject* entity, uint32_t meter) { (void)entity; (void)meter; }
+void HudHideHealthMeter(WorldObject* entity) { (void)entity; }
+void HudSetText(void* hud, const char* text, int32_t index) { (void)hud; (void)text; (void)index; }
+void* CurrentJob() { return nullptr; }
+
+bool EntityIsInputMover(const WorldObject* entity) { (void)entity; return false; }
+void InputMoverSetPoints(WorldObject* mover, float points, bool flag) { (void)mover; (void)points; (void)flag; }
+void InputMoverReset(WorldObject* mover) { (void)mover; }
+bool EntityHasListener(const WorldObject* entity) { (void)entity; return false; }
+void DecibelMeterTrigger(WorldObject* meter) { (void)meter; }
+float EntityHealth(const WorldObject* entity) { (void)entity; return 0.0f; }
+void EntityApplyDamage(WorldObject* entity, float amount) { (void)entity; (void)amount; }
+void EntityRelease(WorldObject* entity, bool kill) { (void)entity; (void)kill; }
+
+void EntityApplyOverrideColor(WorldObject* entity, bool enabled, const ape::xml::Color8& color) { (void)entity; (void)enabled; (void)color; }
+
 } // namespace levels
 } // namespace sly

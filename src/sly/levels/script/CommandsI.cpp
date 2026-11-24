@@ -6,6 +6,7 @@
 #include "sly/levels/script/ScriptCommands.h"
 
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 
 namespace sly {
 namespace levels {
@@ -198,6 +199,7 @@ public:
     IfJobCommand();
     explicit IfJobCommand(XmlElement* element);
     ~IfJobCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -250,7 +252,31 @@ ApeAnimScriptCommand* IfJobCommand::Create(XmlElement* element) const
     return new IfJobCommand(element);
 }
 
-// TODO(0x0007EE24 IfJobCommand::Execute) job lookup 0x002E1220, state 0x002D98A4.
+// @func 0x0007EE24 IfJobCommand::Execute
+// Runs the nested commands when the job matches: either "is (not) the
+// selected job", or "is in `state`" (optionally only while the player is the
+// given character definition).
+void IfJobCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state)
+{
+    void* job = GameStateFindJob(m_job);
+    if (!job)
+        return;
+    if (!m_testState) {
+        if ((CurrentJob() == job) != m_isSelectedJob)
+            return;
+    } else {
+        if (levels::JobState(job) != m_state)
+            return;
+        if (m_characterDef != 0) {
+            WorldObject* player = PlayerEntity();
+            if (!player || EntityDefName(player) != m_characterDef)
+                return;
+        }
+    }
+    // NOTE: unlike the other nested-command commands this one runs them in
+    // list order through the command's own list.
+    RunCommands(m_commands, instance, state);
+}
 
 // ---------------------------------------------------------------------------
 // "IfNotifyFlag" (hash 0xBFB3BF12; NOTE: name from a hash match): tests a

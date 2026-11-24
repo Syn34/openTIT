@@ -233,7 +233,7 @@ void TurretRemoveTarget(WorldObject* turret, WorldObject* target);
 // Class flag 1 (+0xC0): entities a turret can aim at.
 constexpr uint32_t kEntityClass_Targetable = 0x01;
 // Player index meaning "no player" in script data.
-constexpr int32_t kNoPlayer = 9;
+constexpr int32_t kNoPlayerIndex = 9;
 // 0x002A6044: the binocucom view is up.
 bool BinocucomIsVisible(void* binocucom);
 
@@ -270,6 +270,45 @@ CharacterRespawnInfo CharacterRespawn(const WorldObject* character);
 // (0x002DA990).
 void* GameStateCurrentSafe();
 int SafeState(void* safe);
+
+// ---------------------------------------------------------------------------
+// HUD
+
+// Health meters: a player's meter (0x0036960C, text), an entity's meter
+// shown with a meter name (0x00369910) or hidden (0x00369A80).
+void HudSetPlayerHealthMeter(int player, const char* text);
+void HudShowHealthMeter(WorldObject* entity, uint32_t meter);
+void HudHideHealthMeter(WorldObject* entity);
+// 0x00367530: text of a HUD object (index of the text field).
+void HudSetText(void* hud, const char* text, int32_t index);
+// The game state's selected job (+0x28), or null.
+void* CurrentJob();
+
+// ---------------------------------------------------------------------------
+// Movers, meters, killing
+
+// Input movers: class flag 1 of +0xC8; 0x001DB978 sets the input points
+// (value, flag), virtual slot 11 resets.
+bool EntityIsInputMover(const WorldObject* entity);
+void InputMoverSetPoints(WorldObject* mover, float points, bool flag);
+void InputMoverReset(WorldObject* mover);
+// The decibel meter entity of the MS level and its update (0x0005BB08).
+constexpr uint32_t kDecibelMeterEntity = 0xCD4F65FCu;  // NOTE: name unknown
+bool EntityHasListener(const WorldObject* entity);   // listener +0xF4
+void DecibelMeterTrigger(WorldObject* meter);
+// Health of a killable entity (+0x158) and damage (virtual slot 88, no
+// source, type 0).
+float EntityHealth(const WorldObject* entity);
+void EntityApplyDamage(WorldObject* entity, float amount);
+// Entity virtual slot 10.
+void EntityRelease(WorldObject* entity, bool kill);
+
+// Override colour of an entity, written to every colour slot its classes
+// have: characters (bit 6 of +0x3C8, colour +0x3C9), class flags 0x800
+// (+0x1B1), 0x200 (+0x2B1), 0x400 (+0x2F9), 0x100 (+0x699) - these only
+// enable while health (+0x15C) is positive and clear their blend timer when
+// disabled - and class2 flag 0x2000 (bit 7 of +0x568).
+void EntityApplyOverrideColor(WorldObject* entity, bool enabled, const ape::xml::Color8& color);
 
 } // namespace levels
 } // namespace sly

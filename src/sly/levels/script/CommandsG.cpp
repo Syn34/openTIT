@@ -376,7 +376,7 @@ void GadgetTurretCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
     WorldObject* candidate = nullptr;
     if (m_target != 0)
         candidate = FindEntity(m_target);
-    else if (m_targetIndex != kNoPlayer)
+    else if (m_targetIndex != kNoPlayerIndex)
         candidate = PlayerEntityByIndex(m_targetIndex);
     if (candidate && EntityHasClassFlag(candidate, kEntityClass_Targetable))
         target = candidate;
