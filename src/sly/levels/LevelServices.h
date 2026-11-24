@@ -356,5 +356,42 @@ ChainComponentParams& ChainParams(void* chainComponent);
 ape::Matrix34 PointInstanceTransform(const WorldObject* point);
 void GameWorldSetPlayerSpawn(int player, const ape::Matrix34& transform);
 
+// 0x00254814: pauses an animation layer of a character; Entity::SetAnimPaused
+// (0x000DC314) for other entities.
+void CharacterPauseAnimLayer(void* character, uint32_t layer);
+void EntitySetAnimPaused(WorldObject* entity, uint32_t layer, bool paused);
+// Definitions: an object's definition (+0xD0), a level definition by name
+// (sorted map of 0x00F8F12C), the object kind of a definition (bits 10-15 of
+// +0x04), ApeObj virtual slot 11 (SetDef), and the refresh of the entity's
+// render components (type 0x10, 0x00287318) after a swap.
+void* ObjectDef(const ape::ApeRefCounted* object);
+void* FindLevelDef(uint32_t nameHash);
+int DefKind(const void* def);
+void ObjectSetDef(ape::ApeRefCounted* object, void* def);
+void EntityRefreshRenderComponents(WorldObject* entity);
+// Entity virtual slot 18 (+0x48): swaps the weapon component; turrets then
+// reset their aim (0x001CAA88).
+void EntitySwapWeapon(WorldObject* entity, uint32_t component, float speed, float interval1,
+                      float interval2, float angle);
+void TurretResetAim(WorldObject* turret);
+
+// Entity definitions by name (FindEntityDef 0x000C9FC8) and their name (+0x34).
+void* FindEntityDefByName(uint32_t nameHash);
+uint32_t EntityDefNameOf(const void* def);
+// Second class word (+0xC8) of an entity.
+constexpr uint32_t kEntityClass2_Vehicle800 = 0x800;    // NOTE: vehicle class with swap 0x00238270
+constexpr uint32_t kEntityClass2_Vehicle2000 = 0x2000;  // NOTE: vehicle class with swap 0x0024B1E8
+bool EntityHasClass2Flag(const WorldObject* entity, uint32_t mask);
+// Definition swaps: characters 0x00124D58, vehicles 0x00238270 / 0x0024B1E8.
+void CharacterSwapDef(WorldObject* character, void* def, bool deferred);
+void VehicleSwapDef800(WorldObject* vehicle, void* def, bool deferred);
+void VehicleSwapDef2000(WorldObject* vehicle, void* def, bool deferred);
+// After an immediate swap: state layer 0 to state 0 (virtual slot 7) and
+// 0x00261328(component 0x00, 1).
+void CharacterResetAfterSwap(WorldObject* character);
+
+// Camera instance of the loaded level by name (sorted map of 0x00F8F134).
+WorldObject* FindCameraInstance(uint32_t nameHash);
+
 } // namespace levels
 } // namespace sly

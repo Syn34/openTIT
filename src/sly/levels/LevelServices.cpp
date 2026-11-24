@@ -150,5 +150,25 @@ ChainComponentParams& ChainParams(void* chainComponent)
 ape::Matrix34 PointInstanceTransform(const WorldObject* point) { (void)point; return IdentityTransform(); }
 void GameWorldSetPlayerSpawn(int player, const ape::Matrix34& transform) { (void)player; (void)transform; }
 
+void CharacterPauseAnimLayer(void* character, uint32_t layer) { (void)character; (void)layer; }
+void EntitySetAnimPaused(WorldObject* entity, uint32_t layer, bool paused) { (void)entity; (void)layer; (void)paused; }
+void* ObjectDef(const ape::ApeRefCounted* object) { (void)object; return nullptr; }
+void* FindLevelDef(uint32_t nameHash) { (void)nameHash; return nullptr; }
+int DefKind(const void* def) { (void)def; return -1; }
+void ObjectSetDef(ape::ApeRefCounted* object, void* def) { (void)object; (void)def; }
+void EntityRefreshRenderComponents(WorldObject* entity) { (void)entity; }
+void EntitySwapWeapon(WorldObject* entity, uint32_t component, float speed, float interval1, float interval2, float angle) { (void)entity; (void)component; (void)speed; (void)interval1; (void)interval2; (void)angle; }
+void TurretResetAim(WorldObject* turret) { (void)turret; }
+
+void* FindEntityDefByName(uint32_t nameHash) { (void)nameHash; return nullptr; }
+uint32_t EntityDefNameOf(const void* def) { (void)def; return 0; }
+bool EntityHasClass2Flag(const WorldObject* entity, uint32_t mask) { (void)entity; (void)mask; return false; }
+void CharacterSwapDef(WorldObject* character, void* def, bool deferred) { (void)character; (void)def; (void)deferred; }
+void VehicleSwapDef800(WorldObject* vehicle, void* def, bool deferred) { (void)vehicle; (void)def; (void)deferred; }
+void VehicleSwapDef2000(WorldObject* vehicle, void* def, bool deferred) { (void)vehicle; (void)def; (void)deferred; }
+void CharacterResetAfterSwap(WorldObject* character) { (void)character; }
+
+WorldObject* FindCameraInstance(uint32_t nameHash) { (void)nameHash; return nullptr; }
+
 } // namespace levels
 } // namespace sly
