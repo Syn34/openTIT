@@ -156,6 +156,8 @@ public:
 
     ApePointDef();
     void Release() override;
+    // @func 0x007A9ED0 ApePointDef::VirtualSlot5
+    int VirtualSlot5(void* /*arg*/) override { return 0; }
 
     // Shared definition used by point instances created at run time.
     static ApePointDef* GetDefault();
@@ -176,6 +178,8 @@ public:
     ApeSplineDef();
     ~ApeSplineDef() override;
     void Release() override;
+    // @func 0x007A9ED8 ApeSplineDef::VirtualSlot5
+    int VirtualSlot5(void* /*arg*/) override { return 0; }
 
     void InitFromHeader(const ApeSplineDefHeader& header);
     // Recomputes the arc length (unless skipped) and the bounds.
