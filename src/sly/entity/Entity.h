@@ -55,12 +55,17 @@ enum ComponentType : uint32_t {
 
 // Description a component is built from (owner filled in by AddComponent).
 struct ComponentDesc {
+    ComponentDesc() = default;
+    // Named description of a component type, entered in the template table
+    // (the base part every XML component parser inlines).
+    ComponentDesc(uint32_t nameHash, uint32_t componentType);
     // Leaves the named template table (descriptions built from XML templates
     // are registered under 'name').
     virtual ~ComponentDesc();
     uint32_t name = 0;         // 0x04 template name hash
     Entity* owner = nullptr;   // 0x08 set while a component is built from it
     uint32_t type = 0;         // 0x0C ComponentType of the component it builds
+    uint8_t scope = 0;         // 0x10 load scope byte handed to the parser (0xFE = current). NOTE: role assumed
 };
 
 // Base of all entity components.
