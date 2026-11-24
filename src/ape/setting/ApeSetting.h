@@ -67,6 +67,12 @@ public:
         : name(name), type(type), usage(usage), defaultValue(defaultValue)
     {
     }
+    // One instantiation per value type on the console; the SAI module's integer
+    // ones are tagged here.
+    // @func 0x00781AD0 SettingParam::~SettingParam (copy, int)
+    // @func 0x00782080 SettingParam::~SettingParam (deleting, copy, int)
+    // @func 0x00781AB0 SettingParam::~SettingParam (copy, int1)
+    // @func 0x007820C4 SettingParam::~SettingParam (deleting, copy, int1)
     virtual ~SettingParam() = default;
     SettingParam(const SettingParam&) = delete;
     SettingParam& operator=(const SettingParam&) = delete;
@@ -115,7 +121,11 @@ public:
         : SettingParam(name, kDTD_RGBA, usage), rgba{ r, g, b, a }
     {
     }
-    // 0x00782108
+    // @func 0x00781AC0 SettingColorParam::~SettingColorParam
+    // @func 0x00782170 SettingColorParam::~SettingColorParam (deleting)
+    ~SettingColorParam() override = default;
+
+    // @func 0x00782108 SettingColorParam::ApplyDefault
     void ApplyDefault(DTDValue* values) const override
     {
         for (int i = 0; i < 4; ++i)

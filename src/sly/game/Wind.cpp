@@ -2,14 +2,13 @@
 #include "sly/game/Wind.h"
 
 #include "ape/core/ApeString.h"
+#include "sly/game/EconomyTuning.h"
 #include "sly/game/WorldInterface.h"
 
 namespace sly {
 
 namespace {
 
-ape::Vec3 g_defaultWindDirection{};   // 0x010C1F00
-float g_globalWindStrength = 0.0f;    // 0x010C2478
 
 // Cached wind globals cleared by ResetWindGlobals (0x00F65F74..0x00F65F80,
 // 0x010C2488). The two resources are looked up lazily by name hash
@@ -133,9 +132,15 @@ void RemoveFromPointerArray(std::vector<void*>& array, void* value)
 }
 
 // @func 0x004AE360 InitWindParams
+// NOTE: 0x010C1F00 is the value of the tuning variable
+// Game.Economy.ThrowCollectible.FromSpawnerOffset, so this block probably
+// belongs to the collectible throw code rather than to the wind.
 void InitWindParams(WindParams& params)
 {
-    params.direction = g_defaultWindDirection;
+    const float* offset = g_throwFromSpawnerOffset.Get();
+    params.direction.x = offset[0];
+    params.direction.y = offset[1];
+    params.direction.z = offset[2];
     params.field_10 = 0.0f;
     params.field_14 = 0.0f;
     params.field_18 = 0.0f;
@@ -151,18 +156,20 @@ void InitWindParams(WindParams& params)
 
 void SetDefaultWindDirection(const ape::Vec3& direction)
 {
-    g_defaultWindDirection = direction;
+    const float value[3] = { direction.x, direction.y, direction.z };
+    g_throwFromSpawnerOffset.SetVec3(value);
 }
 
 // @func 0x004AFCA4 GlobalWindStrength
+// NOTE: 0x010C2478 is the value of Game.Economy.ThrowCollectible.BoltIncreasePercent.
 float GlobalWindStrength()
 {
-    return g_globalWindStrength;
+    return g_throwBoltIncreasePercent.Get();
 }
 
 void SetGlobalWindStrength(float strength)
 {
-    g_globalWindStrength = strength;
+    g_throwBoltIncreasePercent.SetFloat(strength);
 }
 
 // @func 0x004AE458 ResetWindGlobals

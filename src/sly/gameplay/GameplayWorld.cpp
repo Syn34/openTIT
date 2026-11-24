@@ -129,7 +129,7 @@ void ShowSpeakerDialog(const DialogSpeaker*, int, const char*, const char*, uint
                        bool) {}
 bool SpeakerDialogBusy() { return false; }
 void HudScreenNotifyDialog(uint32_t) {}
-void ShowDialogPages(const char (*)[0x80], int, const int32_t*, const int32_t*, bool, bool,
+void ShowDialogPages(const char (*)[0x80], int, const float*, const float*, bool, bool,
                      const uint8_t*, const uint8_t*) {}
 bool EvaluateScriptCondition(const ScriptCondition*) { return true; }
 void* FindGuiScreen(const char*) { return nullptr; }
