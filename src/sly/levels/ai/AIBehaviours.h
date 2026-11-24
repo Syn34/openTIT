@@ -11,6 +11,7 @@
 #include "sly/levels/ai/AIHooks.h"
 
 namespace ape::world { class ApeObj; class ApeSplineInstance; }
+namespace sly::hud { class HudObject; }
 
 namespace sly {
 namespace levels {
@@ -127,7 +128,15 @@ public:
 // a race track; the spawner ranks its racers by their progress along it.
 class RacerAI : public AIController {
 public:
+    // racerFlags (+0x164).
+    enum RacerFlags : uint32_t {
+        kRacer_Bit29 = 1u << 29,
+        kRacer_Bit30 = 1u << 30,
+        kRacer_Racing = 1u << 31,   // the entity is a racer with a vehicle (+0x1FC)
+    };
+
     ~RacerAI() override;
+    void Attach(Entity* entity) override;
     void Update(float dt) override;
     void PreUpdate(float dt) override;
     void OnMessage(const entity::EntityMessage& msg) override;
@@ -142,6 +151,10 @@ public:
     virtual void SetRacePosition(float position) { (void)position; }
 
     float progress = 0.0f;            // +0x14C position along the race track
+    uint32_t field_138 = 0;           // +0x138
+    ape::Vec3 field_150{};            // +0x150
+    hud::HudObject* hud = nullptr;    // +0x160 HUD element 0x2508CAD1
+    uint32_t racerFlags = 0;          // +0x164
 };
 
 // Race state of a spawner (spawner +0x50, 0x3C bytes).
