@@ -13,6 +13,7 @@
 
 #include "ape/core/ApeString.h"
 
+#include <algorithm>
 #include <cstring>
 
 namespace agl {
@@ -3029,7 +3030,7 @@ public:
     // @func 0x007AB36C SlyCharacterFurClass::~SlyCharacterFurClass
     // @func 0x007AEE24 SlyCharacterFurClass::~SlyCharacterFurClass (deleting)
     ~SlyCharacterFurClass() override = default;
-    // TODO(0x005C0F50 SlyCharacterFurClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyCharacterFurClass() : AglShaderClass("SlyCharacterFur") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3536,7 +3537,7 @@ public:
     // @func 0x007AB86C SlyTerrainSnowClass::~SlyTerrainSnowClass
     // @func 0x007AFD50 SlyTerrainSnowClass::~SlyTerrainSnowClass (deleting)
     ~SlyTerrainSnowClass() override = default;
-    // TODO(0x005CF5B0 SlyTerrainSnowClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyTerrainSnowClass() : AglShaderClass("SlyTerrainSnow") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -4360,6 +4361,75 @@ bool SlyPropClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* d
     if (!MaterialParamsEnabled())
         return true;
     AddDetailLayers(material, desc);
+    return true;
+}
+
+// Raw bits of parameter `index`, or `fallback` when fewer were exported.
+static uint32_t ParamBitsOr(const AglMaterialDesc* desc, uint32_t index, uint32_t fallback)
+{
+    uint32_t bits = fallback;
+    if (desc->paramCount > index)
+        std::memcpy(&bits, &desc->params[index], sizeof(bits));
+    return bits;
+}
+
+static void SetConstantBits(AglMaterial* material, uint32_t index, uint32_t bits)
+{
+    std::memcpy(material->GetConstant(index), &bits, sizeof(bits));
+}
+
+// @func 0x005C0F50 SlyCharacterFurClass::SetupMaterial
+bool SlyCharacterFurClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (!MaterialParamsEnabled())
+        return true;
+    AglTexture* fur = FindTexture(desc->diffuseHash);
+    if (!fur)
+        fur = GetDefaultTexture(0);
+    AddRepeated(material, fur);
+    for (uint32_t i = 0; i < 3; ++i)
+        *material->GetConstant(i) = desc->params[i];
+    for (uint32_t i = 7; i <= 14; ++i)
+        *material->GetConstant(i) = desc->params[i];
+    const float rim = ParamOr(desc, 4, 15.0f);
+    *material->GetConstant(4) = rim > 0.0f ? rim : 0.0f;
+    *material->GetConstant(15) = ParamOr(desc, 15, 1.0f);
+    *material->GetConstant(17) = ParamOr(desc, 17, 1.0f);
+    SetConstantBits(material, 16, SwapRedBlue(ParamBitsOr(desc, 16, 0)));
+    SetConstantBits(material, 18, SwapRedBlue(ParamBitsOr(desc, 18, 0)));
+    // Constant 19: shell count as an integer, at most 14.
+    SetConstantBits(material, 19, std::min<uint32_t>(ParamBitsOr(desc, 19, 14), 14));
+    return true;
+}
+
+// @func 0x005CF5B0 SlyTerrainSnowClass::SetupMaterial
+bool SlyTerrainSnowClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (!MaterialParamsEnabled() || desc->paramCount == 0)
+        return true;
+    AglTexture* snow = FindTexture(desc->textureHash);
+    if (!snow)
+        return false;
+    material->AddTexture(snow);
+    snow->SetWrap(1, 1, 1);
+    SetConstantBits(material, 3, SwapRedBlue(ParamBitsOr(desc, 3, 0xFFFFFFFFu)));
+    SetConstantBits(material, 4, SwapRedBlue(ParamBitsOr(desc, 4, 0xFF661919u)));
+    *material->GetConstant(5) = ParamOr(desc, 5, 0.0001f);
+    *material->GetConstant(6) = ParamOr(desc, 6, 0.0001f);
+    *material->GetConstant(7) = ParamOr(desc, 7, 1.0f);
+    *material->GetConstant(8) = ParamOr(desc, 8, 0.3f);
+    *material->GetConstant(9) = ParamOr(desc, 9, 0.5f);
+    *material->GetConstant(13) = ParamOr(desc, 13, 0.0001f);
+    *material->GetConstant(14) = ParamOr(desc, 14, 0.0001f);
+    // Constant 10: sparkle colour; constant 18 (integer) tells whether it has
+    // any red, green or blue.
+    const uint32_t sparkle = ParamBitsOr(desc, 10, 0xFFFFFFFFu);
+    SetConstantBits(material, 10, SwapRedBlue(sparkle));
+    SetConstantBits(material, 18, (sparkle & 0x00FFFFFFu) != 0 ? 1u : 0u);
+    *material->GetConstant(11) = ParamOr(desc, 11, 30.0f);
+    *material->GetConstant(12) = ParamOr(desc, 12, 15.0f);
+    *material->GetConstant(15) = 0.0f;
+    *material->GetConstant(16) = 0.0f;
     return true;
 }
 

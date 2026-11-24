@@ -65,8 +65,7 @@ struct AglMaterialDesc {
     uint8_t field_55[3] = {};
     // 0x58: class specific parameters. Some classes store integers here
     // (read them with ParamBits()).
-    mutable float params[18] = {};       // 0x58..0x9F
-    int32_t field_A0 = 0;                // 0xA0 NOTE: read by the water classes
+    mutable float params[20] = {};       // 0x58..0xA7
 
     uint32_t ParamBits(int index) const;
 };
