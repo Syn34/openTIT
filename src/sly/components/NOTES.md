@@ -9,9 +9,22 @@
   targeting, ProcEyes, FX, Wheelchair, Radar, Receptacle.
 * `IKSolverDefs.*`: the IK file's solver definitions (JointTwo/JointThree/LookAt/Foot) and
   their four registries, plus the file-level parser 0x00292F00.
-* Radar reads two tuning defaults (`EntityComp.Radar.Default*Duration`) that belong to the
-  unported component static initialiser 0x002D6A40; they are defined in `ComponentDescs.cpp`
-  for now and must move there when that initialiser is ported.
+* `ComponentDescs2.*`: Projector (+ its part-source helper 0x00288C3C), CustomModel, Weapon,
+  Binocucom, Shooting, the null parser of element 0xCE95B536 (0x0028363C) and the element
+  dispatcher 0x00250190 (`ParseComponentDesc`, table 0x00AD4000 as a static array).
+* `InventoryDescs.*`: inventory group file (0x00266C3C), group/slot parser (0x002650D8, the
+  two slot classes 0x00B1BEA0 entity / 0x00B1BEC8 loot table with their accessors
+  0x00264D70..0x00264F58), item parser (0x00265D60), the <Inventory> description (0x002666C0)
+  and its priority insert (0x00266570); registries 0x0105BE04/18/30 as function-local statics.
+* `ComponentTuning.*`: the module's static initialiser 0x002D6A40 (303 tuning variables,
+  extracted from the disassembly; the registries it also constructs live with their users).
+* `Components.*`: the component base (`entity::EntityComponent` ctor 0x00250298 / dtor
+  0x00250384 + base copy 0x002505A0 / deleting 0x00250480, live registry 0x01056F1C) and the
+  simple component classes: ControlAI (0x00B1C1B8), type-0x23 control (0x00B1C518, read as
+  ControlExt), AnimMap (0x00B1C628), IK (0x00B1C7E0, ctor 0x0025E960), RadarBlip
+  (0x00B1C930), Vortex (0x00B1CBB8), Scoring (0x00B1CC80), Mover (0x00B1CED0, ctor
+  0x00258008). Their destructors are byte-identical copies of the base destructor, each tagged
+  on its own class.
 * `ComponentHooks.*`: TODO stubs for calls out of this directory (level physics world).
 * `sly/entity/Entity.h`: `ComponentDesc` gained the registering constructor and the
   scope byte (+0x10) the parsers fill in.
@@ -21,13 +34,31 @@ Attribute and element hashes are `HashNameNoCase` of the name; names were recove
 hashing the executable's strings and word pairs. Hashes with no match keep a
 `NOTE: name unknown` constant.
 
+## Uncertain / notes (agent3 pass)
+* The dispatcher table points ControlPlayer/ControlNet/ControlExt at the dispatcher itself
+  (it would recurse forever on the console); the port returns null for them.
+* Inventory attribute names are mostly unknown (hashes kept). Loot chance defaults to 0.0
+  (the parser overwrites the constructor's 0.5). `InventoryLootSlotDesc::GetRotation` with no
+  entry returns a zero quaternion like the console.
+* Weapon: the console does not bound the <Part> count (six slots); the port stops at six. The
+  "LaunchAngle" default (45) stays in degrees when the attribute is missing (console bug).
+* Shooting: four angle defaults are pi/4 used as degrees; one attribute (0xE9ED1023) is read
+  twice into two fields.
+* Binocucom attribute names follow the tuning names (without "Default"); the projectile list is
+  not bounded on the console (eight slots).
+* `ComponentTuning.cpp` registers "UI.Binocucom.Radar.EnemyColor" twice, like the console.
+* Components: the per-class slot-4 empty overrides (0x00288970 AnimMap, 0x00293934 IK) and
+  the shared empty slot 8 (0x00264D6C) are not tagged (meaning unknown).
+
 ## Not done
-* Dispatcher 0x00250190: needs every table entry first.
-* Inventory (0x002666C0 with item parser 0x00265D60, sorted insert 0x00266570 and the
-  item/group registries 0x0105BE30 / 0x0105BE18; group parser 0x002650D8).
-* Inventory: group file parser 0x00266C3C, group parser 0x002650D8 (two slot classes,
-  vtables 0x00B1BEA0 / 0x00B1BEC8), item parser 0x00265D60 and the component 0x002666C0.
-* Projector,
-  CustomModel, Weapon, Binocucom (its defaults are tuning globals of 0x002D6A40), Shooting,
-  and the 0xCE95B536 element (0x0028363C, a parser that returns null).
+* BossGrizz description (0x00063D54 parser, 0x00062824 ctor, 0x000632A8 body, 0x00062E20
+  action list helper): a pattern-boss action table (types from 0x00F557FC).
+* The component factory 0x002635E8 (needs every component class) and the remaining
+  component classes (Physics 0x00261FE0, Targeting, Anim, Combat, ContextualMarker, ProcAnim,
+  ProcEyes, FX, FacePlayer, CustomModel, Projector, Weapon, Inventory runtime 0x0026621C..
+  0x00267FE0, Radar, Binocucom, Interact, Receptacle, Wheelchair, AeSpline, JumpRope,
+  Buoyancy, SimplePhysics, OffscreenMarker, Shooting, tracker, SystemCracker, MagNet,
+  SpeedBoost, MonsterCloset, BallRoll, WallClimb, DamageSequence and the control family).
+  MagNet/SpeedBoost embed an interface object (vtable 0x00B1CD24, base dtor 0x0048F6B0);
+  AeSpline unregisters a game-world listener in its destructor (0x0046B7A4).
 * Description destructors live at 0x0076xxxx (outside this range).
