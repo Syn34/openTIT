@@ -199,6 +199,12 @@ void CritterAI::SetMoveClip(uint32_t clipHash)
         currentClip = clipHash;
 }
 
+// @func 0x0001F3D8 CritterAI::AllowsInteraction
+bool CritterAI::AllowsInteraction()
+{
+    return state != kState_Dead;
+}
+
 // @func 0x000232A8 CritterAI::ExitState
 void CritterAI::ExitState()
 {

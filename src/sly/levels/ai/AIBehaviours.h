@@ -8,6 +8,9 @@
 #pragma once
 
 #include "sly/levels/ai/AIController.h"
+#include "sly/levels/ai/AIHooks.h"
+
+namespace ape::world { class ApeObj; class ApeSplineInstance; }
 
 namespace sly {
 namespace levels {
@@ -30,7 +33,7 @@ public:
     void Update(float dt) override;
     void OnMessage(const entity::EntityMessage& msg) override;
     float FacingLockRadius() override;
-    bool AllowsInteraction() override { return state != kState_Dead; }
+    bool AllowsInteraction() override;
     const char* StateName(int s) override;
     void ExitState() override;
     void OnProxyPointReached() override;
@@ -120,15 +123,105 @@ public:
     ape::ApeAnimScriptInstance* loopScript = nullptr;   // +0x164
 };
 
-// Scripted opponent ("CPU"; vtable 0x00B0E428, 0x170 bytes).
-class CpuAI : public AIController {
+// Racer (vtable 0x00B0E428, 0x170 bytes): spawned by a spawner that keeps
+// a race track; the spawner ranks its racers by their progress along it.
+class RacerAI : public AIController {
 public:
+    ~RacerAI() override;
+    void Update(float dt) override;
+    void PreUpdate(float dt) override;
+    void OnMessage(const entity::EntityMessage& msg) override;
+    void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value) override;
+    void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
+    bool IsCharacterDead() override;
+    void ChooseState() override;
+    bool Think(float dt) override;
+    void ExitState() override;
+    // Slot 75: place in the race (0 = first). Implemented outside this range
+    // (0x00738E00).
+    virtual void SetRacePosition(float position) { (void)position; }
+
+    float progress = 0.0f;            // +0x14C position along the race track
+};
+
+// Race state of a spawner (spawner +0x50, 0x3C bytes).
+class RaceTracker {
+public:
+    // Re-ranks the racers of `spawner` by their progress along the track and
+    // tells each its place (0x0002B618).
+    void UpdateRanking(SpawnerRef* spawner);
+
+    uint32_t field_00 = 0;
+    ape::world::ApeSplineInstance* track = nullptr;   // +0x04
 };
 
 // Standard enemy (vtable 0x00B0E5B8, 0x1E0 bytes): patrol, cover, turret and
 // combat settings.
 class EnemyAI : public AIController {
 public:
+    // Byte +0x1D0.
+    enum EnemyFlagsA : uint8_t {
+        kEA_Bit1  = 0x02,   // movement held (no root motion)
+        kEA_Bit3  = 0x08,   // kept when activated
+        kEA_Taunt = 0x40,   // wants to taunt
+        kEA_Bit7  = 0x80,   // set by event 0
+    };
+    // Byte +0x1D1.
+    enum EnemyFlagsB : uint8_t {
+        kEB_Bit1      = 0x02,   // in combat range checks
+        kEB_FarSearch = 0x40,   // nav search radius 500 instead of 50
+    };
+
+    ~EnemyAI() override;
+    void SetActive(bool active) override;
+    void PreUpdate(float dt) override;
+    void OnEvent(int kind) override;
+    bool AllowsInteraction() override;
+    bool IsEngaged() override;
+    bool IsCalm() override;
+    bool CanBeTakenDown() override;
+    bool IsHelpless() override;
+    bool IsCharacterDead() override;
+    const char* StateName(int s) override;
+    void OnAlarm() override;
+    void OnAttacked(Entity* attacker) override;
+    void OnTauntChance() override;
+    float NavSearchRadius() override;
+    int NavFilter() override;
+    void OnTurnInPlace() override;
+    ape::Vec3 FilterRootMotion(const ape::Vec3& step) override;
+    void SetTarget(Entity* target) override;
+    void UpdateMovement(float dt) override;
+    float GravitySpeed() override;
+
+    void OnProxyPointReached() override;
+    void OnNavGoalChanged() override;
+
+    // Lets go of the target and any claim when engaged (0x0002EC04).
+    void Disengage();
+    // Enters combat against `target`; the first time also posts the alert
+    // game event unless the settings say "CombatAlways" (0x0003094C).
+    void Engage(Entity* target);
+    // Looks for a better target (0x0002F900).
+    void RefreshTarget();
+    // Takes over the entity's animation (0x00030A70).
+    void LockEntityAnimation();
+    // Calls nearby enemies for help (0x00035D44).
+    void CallForHelp();
+
+    uint8_t field_180 = 0;            // +0x180
+    uint8_t field_181 = 0;            // +0x181
+    uint32_t proxyClip = 0;           // +0x184 clip named by the reached proxy point
+    float attackTimer = 0.0f;         // +0x198 (InitialAttackTime on activation)
+    ape::Vec3 field_19C{};            // +0x19C
+    float field_1B0 = 0.0f;           // +0x1B0 NOTE: interactions are refused while positive
+    uint32_t field_1B4 = 0;           // +0x1B4
+    uint32_t field_1B8 = 0;           // +0x1B8
+    ape::Vec3 field_1BC{};            // +0x1BC
+    uint32_t field_1C8 = 0;           // +0x1C8
+    uint8_t enemyFlagsA = 0;          // +0x1D0
+    uint8_t enemyFlagsB = 0;          // +0x1D1
+    uint8_t enemyFlagsC = 0;          // +0x1D2
 };
 
 // Watcher with awareness, vision and detection cylinder settings (vtable
@@ -136,6 +229,23 @@ public:
 // bytes; its code lies outside this range).
 class SentryAI : public AIController {
 public:
+    void Attach(Entity* entity) override;
+    void Update(float dt) override;
+    void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
+    float GravitySpeed() override;
+    bool CanBeSneakedUpOn() override;
+    bool IsSettled() override;
+    bool ShouldApplyGravity(const ape::Vec3& velocity) override;
+    void ExitState() override;
+    void OnProxyPointReached() override;
+    void UpdateMovement(float dt) override;
+
+    Entity* alertReceiver = nullptr;  // +0x138 told when the sentry is hit
+    uint8_t settled = 0;              // +0x13C
+    uint8_t field_13D = 0;            // +0x13D
+    uint8_t field_13E = 1;            // +0x13E
+    uint32_t idleClip = 0;            // +0x140
+    uint32_t field_144 = 0;           // +0x144
 };
 class SentryAIVariant : public SentryAI {
 public:
@@ -144,16 +254,71 @@ public:
 // Bosses (vtables 0x00B0E888, 0x00B0E9C0, 0x00B0EAF8, 0x00B0EC30).
 class BismarqueAI : public AIController {
 public:
+    ape::Vec3 GetTargetPosition() override;
+    bool Think(float dt) override;
+    float GravitySpeed() override;
+
+    // Moves the two ground markers to their anchors (0x0004399C).
+    void UpdateMarkers();
+    // Shows or hides the two ground markers (0x00043A80).
+    void SetMarkersVisible(bool first, bool second);
+    // Weight of moving to `point` facing `direction`: lower distance and
+    // turning count better with the default (negative) weights (0x00044318).
+    float ScoreTargetPoint(const ape::Vec3& point, const ape::Vec3& direction) const;
+    // Counter attack cool-down ran out and the player is close (0x00046638).
+    bool CounterAttackReady(float dt);
+
+    ape::world::ApeObj* markers[2] = {};   // +0x290
+    ape::world::ApeObj* anchors[2] = {};   // +0x298
+    float counterCooldown = 0.0f;          // +0x2EC
 };
 class ElJefeAI : public AIController {
 public:
+    // One fight stage (0x14 bytes from +0x19C).
+    struct Stage {
+        uint32_t field_00 = 0;
+        AIProxyPoint* point = nullptr;   // +0x04 where El Jefe stands
+        uint32_t field_08[3] = {};
+    };
+    static constexpr int kMaxStages = 0x34;   // NOTE: count assumed (stages run up to +0x600)
+    static constexpr int kMaxSpawned = 0x80;  // NOTE: capacity assumed (array runs up to +0x91C)
+
+    void Detach() override;
+    ape::Vec3 GetTargetPosition() override;
+    void OnTauntChance() override;
+
+    Stage stages[kMaxStages];           // +0x19C
+    uint32_t field_41C = 0;             // +0x41C
+    int32_t stageIndex = 0;             // +0x704
+    uint8_t field_713 = 0;              // +0x713
+    int32_t spawnedCount = 0;           // +0x718
+    Entity* spawned[kMaxSpawned] = {};  // +0x71C entities the fight spawned
+    AICameraMode* camera = nullptr;     // +0x91C
 };
 class MsDecibelAI : public AIController {
 public:
-    bool field_1870 = false;   // +0x1870
+    ape::Vec3 GetTargetPosition() override;
+    float GravitySpeed() override;
+    void OnTauntChance() override;
+    void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value) override;
+
+    // Starts the fight (called by a level script command) (0x0005BB08).
+    void Start();
+    // Switches the fight phase. TODO(0x00053A80): not ported.
+    void SetPhase(int phase);
+
+    int32_t phase = 0;         // +0x134
+    bool started = false;      // +0x1870
 };
 class ParadoxAI : public AIController {
 public:
+    bool Think(float dt) override;
+    bool IsSettled() override;
+    void OnTauntChance() override;
+    void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
+    float GravitySpeed() override;
+
+    uint8_t settled = 0;       // +0x201
 };
 
 } // namespace ai
