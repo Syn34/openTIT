@@ -41,9 +41,14 @@
 * Region test uses `AabbContainsBox` (0x00557430) as named by the math module.
 
 ## Requests for other modules
-* `ApeBase` (0x00558A48/0x00558B84 dtors, 0x00558F34 empty Release, 0x00558E24 tag share) is
-  defined here because the sys module has not ported it; its tag block release (0x0056C730)
-  and the global tag hook (0x01164CD4) are not reproduced. Move/merge when tags are ported.
+* `ApeBase` (0x00558A48/0x00558B84/0x00558CE8 dtors, 0x00558F34 empty Release, 0x00558E24 tag
+  share) releases its tag block; tags live in `ApeTags.h/.cpp` (TAG2 chunks, ApeTagData,
+  ApeTagBlock, the tag cache). The older 'ATAG' form (0x00563808/0x00563368) is not ported.
+* `ApeRegionSet` is now an ApeBase class (type 0x12, 0x0057711C..0x00577520) with the object
+  mask and camera visibility queries; `BuildRegionVolume`/`BuildBoxPlanes` (0x00576F28/
+  0x00576BD8) build oriented regions (plane order of the vector routine is a guess).
+* `ApeScene.h/.cpp`: scene slot table, construction/destruction (0x00586440..0x00586744) and
+  `CreateScene` (0x005903F4); the scene virtuals (0x00586xxx-0x0059AF54) are still open.
 * Region volume builder 0x00576F28 (scene module) is a local stub (`BuildRegionVolume`) that only
   fills the bounds; region lookup 0x00577338 is not called.
 * Renderer: mesh lookups/refs, light links, particle systems and the deferred destruction queue
