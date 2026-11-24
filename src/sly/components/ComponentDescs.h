@@ -12,6 +12,8 @@
 
 #include "sly/entity/Entity.h"
 
+#include "ape/xml/ApeXml.h"
+
 #include <cstdint>
 
 namespace ape { namespace xml { class XmlElement; } }
@@ -29,6 +31,7 @@ enum ComponentDescType : uint32_t {
     kCompDesc_AnimMap        = 0x0E,
     kCompDesc_FacePlayer     = 0x16,
     kCompDesc_RadarBlip      = 0x19,
+    kCompDesc_OffscreenMarker = 0x1E,
     kCompDesc_SimplePhysics  = 0x1F,
     kCompDesc_JumpRope       = 0x21,
     kCompDesc_AeSpline       = 0x22,
@@ -94,6 +97,22 @@ struct FacePlayerComponentDesc : ComponentDesc {
 struct RadarBlipComponentDesc : ComponentDesc {
     explicit RadarBlipComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_RadarBlip) {}
     uint32_t blipType = 0x03F0D768u;   // 0x14 "Type", default "Enemy"
+};
+
+// <OffscreenMarker> (vtable 0x00B1CF18, 0x2C bytes): HUD marker of an
+// entity, with its own colours on and off screen.
+struct OffscreenMarkerComponentDesc : ComponentDesc {
+    explicit OffscreenMarkerComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_OffscreenMarker) {}
+    uint32_t hash14 = 0;         // 0x14 attribute 0x457D8076. NOTE: name unknown
+    uint32_t hash18 = 0;         // 0x18 attribute 0x4EA1C7E6. NOTE: name unknown
+    float rangeSq = -1.0f;       // 0x1C attribute 0x4852D5AF, squared when positive. NOTE: name unknown
+    ape::xml::Color8 onscreenColor = {0xFF, 0xFF, 0xFF, 0xFF};    // 0x20 (shared white 0x01164CA0)
+    ape::xml::Color8 offscreenColor = {0xFF, 0xFF, 0xFF, 0xFF};   // 0x24
+    // Flag word 0x28 (bits 31..28).
+    bool startEnabled = true;    // bit 31
+    bool hasOnscreenColor = false;   // bit 30: the XML gave OnscreenColor
+    bool hasOffscreenColor = false;  // bit 29: the XML gave OffscreenColor
+    bool flag28 = false;         // bit 28 attribute 0xF6DB9816. NOTE: name unknown
 };
 
 // <SimplePhysics> (vtable 0x00B1CF70, 0x24 bytes).
@@ -243,6 +262,7 @@ ComponentDesc* ParseControlAIComponentDesc(ape::xml::XmlElement* root, ape::xml:
 ComponentDesc* ParseAnimMapComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseFacePlayerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseRadarBlipComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseOffscreenMarkerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseSimplePhysicsComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseJumpRopeComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseAeSplineComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);

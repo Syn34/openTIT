@@ -91,6 +91,13 @@ constexpr uint32_t kAttr_Offset          = 0x8ACA5893u;
 constexpr uint32_t kAttr_Enabled         = 0xCADB1721u;
 constexpr uint32_t kAttr_Physics91       = 0x8BB0F765u;   // NOTE: name unknown
 
+constexpr uint32_t kAttr_Marker14        = 0x457D8076u;   // NOTE: name unknown
+constexpr uint32_t kAttr_Marker18        = 0x4EA1C7E6u;   // NOTE: name unknown
+constexpr uint32_t kAttr_MarkerRange     = 0x4852D5AFu;   // NOTE: name unknown
+constexpr uint32_t kAttr_OnscreenColor   = 0x7087CB18u;
+constexpr uint32_t kAttr_OffscreenColor  = 0x83D09DA8u;
+constexpr uint32_t kAttr_Marker28        = 0xF6DB9816u;   // NOTE: name unknown
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -195,6 +202,30 @@ ComponentDesc* ParseRadarBlipComponentDesc(XmlElement* root, XmlElement* elem, u
     RadarBlipComponentDesc* desc = new RadarBlipComponentDesc(ape::HashNameNoCase(name));
     desc->scope = scope;
     elem->GetHash(kAttr_Type, &desc->blipType, desc->blipType);
+    return desc;
+}
+
+// @func 0x002BA548 ParseOffscreenMarkerComponentDesc
+ComponentDesc* ParseOffscreenMarkerComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    (void)root;
+    // This parser skips the missing-name report.
+    const char* name = elem->GetString("name");
+    if (!name)
+        return nullptr;
+    OffscreenMarkerComponentDesc* desc = new OffscreenMarkerComponentDesc(ape::HashNameNoCase(name));
+    desc->scope = scope;
+    elem->GetBool(kAttr_StartEnabled, &desc->startEnabled, true);
+    elem->GetHash(kAttr_Marker14, &desc->hash14, desc->hash14);
+    elem->GetHash(kAttr_Marker18, &desc->hash18, desc->hash18);
+    elem->GetFloat(kAttr_MarkerRange, &desc->rangeSq, desc->rangeSq);
+    desc->hasOnscreenColor =
+        elem->GetColor(kAttr_OnscreenColor, &desc->onscreenColor, &desc->onscreenColor) == ape::xml::kQuery_Ok;
+    desc->hasOffscreenColor =
+        elem->GetColor(kAttr_OffscreenColor, &desc->offscreenColor, &desc->offscreenColor) == ape::xml::kQuery_Ok;
+    elem->GetBool(kAttr_Marker28, &desc->flag28, false);
+    if (desc->rangeSq > 0.0f)
+        desc->rangeSq *= desc->rangeSq;
     return desc;
 }
 
