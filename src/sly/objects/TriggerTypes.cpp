@@ -2,6 +2,8 @@
 // filtered (physics state), job, jump direction and update-enable volumes.
 #include "sly/objects/TriggerTypes.h"
 
+#include "sly/entity/Abilities.h"
+
 #include "sly/objects/TriggerTuning.h"
 
 #include "ape/core/ApeString.h"
@@ -386,6 +388,44 @@ uint32_t JobField1E8(const void* job)
     uint32_t value;
     std::memcpy(&value, static_cast<const uint8_t*>(job) + 0x1E8, sizeof(value));
     return value;
+}
+
+// @func 0x00221068 JobTrigger::GetJob
+void* JobTrigger::GetJob() const
+{
+    return m_job;
+}
+
+// @func 0x00220E14 JobTrigger::IsJobAvailable
+bool JobTrigger::IsJobAvailable() const
+{
+    return m_job && JobState(m_job) == 1;
+}
+
+// @func 0x00220E64 JobTrigger::OnEnter
+// Offers the job to a living entity when none is running: either through a
+// yes/no prompt (when the trigger names an ability the character has), or by
+// starting it straight away.
+void JobTrigger::OnEnter(ObjEntity* entity)
+{
+    TriggerBase::OnEnter(entity);
+    if (!IsJobAvailable() || GameStateHasActiveJob())
+        return;
+    if (!GameStateCanStartJob(entity, m_job) || GameStateJobsBlocked())
+        return;
+    if ((entity->flags2 & 0x02) && entity->IsEventSuppressed())
+        return;
+    if (m_promptId != 0 && (entity->flags2 & 0x08)) {
+        const int ability = entity::FindAbility(m_promptId);
+        if (ability != -1) {
+            const uint8_t state = CharacterAbilityState(entity, ability);
+            if (!(state & 0x80) || (state & 0x40)) {
+                ShowJobPrompt(entity, m_promptText, "$BUTTON_X $STR_YES $BUTTON_CIRCLE $STR_NO");
+                return;
+            }
+        }
+    }
+    GameStateStartJob(entity, m_job, m_startGoal);
 }
 
 // @func 0x0022104C JobTrigger::GetJobField1E8

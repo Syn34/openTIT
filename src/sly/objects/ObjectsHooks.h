@@ -190,5 +190,21 @@ void EntitySetVisibilityDeferred(ObjEntity* entity, bool visible, bool deferred)
 // Health of killable entities (+0x15C).
 float EntityHealth(const ObjEntity* entity);
 
+// Jobs (game state 0x00F64C20): a job's state index (0x002D98A4: 0
+// unavailable, 1 available, 2 complete), whether a job is running (+0x28),
+// whether the game state blocks new jobs (bit 29 of +0x10), whether the
+// entity may start this job (0x002E4ED0), and the start itself (0x002E1E98
+// with the start goal).
+int JobState(const void* job);
+bool GameStateHasActiveJob();
+bool GameStateJobsBlocked();
+bool GameStateCanStartJob(ObjEntity* entity, void* job);
+void GameStateStartJob(ObjEntity* entity, void* job, uint32_t startGoal);
+// Ability byte of a character (+0x290 + index): bit 7 = locked, bit 6 = shown anyway.
+uint8_t CharacterAbilityState(const ObjEntity* character, int ability);
+// Yes/no prompt of the game world (0x00489A60) whose answer starts the job
+// (callback 0x00F39CA0).
+void ShowJobPrompt(ObjEntity* entity, const char* text, const char* buttons);
+
 } // namespace objects
 } // namespace sly

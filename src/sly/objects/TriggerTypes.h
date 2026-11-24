@@ -174,9 +174,12 @@ public:
     explicit JobTrigger(const JobTriggerInstanceDesc& desc);
     ~JobTrigger() override;
     void Release(bool immediate) override;
+    void OnEnter(ObjEntity* entity) override;
     bool IsDebugDisplayed() const override;
     // The job this trigger belongs to (0x00221068) and its field +0x1E8 (0x0022104C).
-    void* GetJob() const { return m_job; }
+    void* GetJob() const;
+    // True while the job can be started (state 1, "available").
+    bool IsJobAvailable() const;
     uint32_t GetJobField1E8() const;
 
 private:

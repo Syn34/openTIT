@@ -272,5 +272,13 @@ uint16_t WindTriggerCapacity() { return 0x20; }
 void EntitySetVisibilityDeferred(ObjEntity* entity, bool visible, bool deferred) { (void)entity; (void)visible; (void)deferred; }
 float EntityHealth(const ObjEntity* entity) { (void)entity; return 0.0f; }
 
+int JobState(const void* job) { (void)job; return 0; }
+bool GameStateHasActiveJob() { return false; }
+bool GameStateJobsBlocked() { return false; }
+bool GameStateCanStartJob(ObjEntity* entity, void* job) { (void)entity; (void)job; return false; }
+void GameStateStartJob(ObjEntity* entity, void* job, uint32_t startGoal) { (void)entity; (void)job; (void)startGoal; }
+uint8_t CharacterAbilityState(const ObjEntity* character, int ability) { (void)character; (void)ability; return 0; }
+void ShowJobPrompt(ObjEntity* entity, const char* text, const char* buttons) { (void)entity; (void)text; (void)buttons; }
+
 } // namespace objects
 } // namespace sly
