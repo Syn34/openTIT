@@ -124,6 +124,7 @@ class SoundZoneTrigger : public PolledTrigger {
 public:
     explicit SoundZoneTrigger(const TriggerInstanceDesc& desc);
     void OnCreated() override;
+    void Update(float dt) override;
     void OnEnter(ObjEntity* entity) override;
     void OnExit(ObjEntity* entity) override;
     bool IsDebugDisplayed() const override;

@@ -485,6 +485,43 @@ float ZoneFadeTime(const SoundZone* zone)
 }
 } // namespace
 
+// @func 0x00213C78 SoundZoneTrigger::Update
+// Fading volumes follow the listener's position; the others ramp their weight
+// up while occupied and down (unlinking at zero) when empty, over the zone's
+// cross-fade time. The active trigger of the zone hands the weight on.
+void SoundZoneTrigger::Update(float dt)
+{
+    if (!m_enabled)
+        return;
+    SoundZoneTriggerDef* zoneDef = ZoneDef();
+    SoundZone* zone = zoneDef ? zoneDef->zone : nullptr;
+    if (m_fades) {
+        m_weight = ComputeFadeWeight(GetListenerPosition());
+        if (zone && SoundZoneActiveTrigger(zone) == this)
+            SoundZoneSetWeight(zone, m_weight);
+    } else {
+        const float fadeTime = ZoneFadeTime(zone);
+        const bool occupied = IsPolled() ? m_inside : OccupantCount() != 0;
+        if (occupied) {
+            if (m_weight < 1.0f) {
+                m_weight = std::min(m_weight + dt / fadeTime, 1.0f);
+                if (zone && SoundZoneActiveTrigger(zone) == this)
+                    SoundZoneSetWeight(zone, m_weight);
+            }
+        } else if (m_weight > 0.0f) {
+            m_weight -= dt / fadeTime;
+            if (m_weight <= 0.0f) {
+                if (zone && m_linked)
+                    UnlinkActive();
+                m_weight = 0.0f;
+            }
+            if (zone && SoundZoneActiveTrigger(zone) == this)
+                SoundZoneSetWeight(zone, m_weight);
+        }
+    }
+    PolledTrigger::Update(dt);
+}
+
 // @func 0x002140C0 SoundZoneTrigger::OnEnter
 void SoundZoneTrigger::OnEnter(ObjEntity* entity)
 {
