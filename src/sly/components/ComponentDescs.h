@@ -39,6 +39,7 @@ enum ComponentDescType : uint32_t {
     kCompDesc_IK             = 0x11,
     kCompDesc_FacePlayer     = 0x16,
     kCompDesc_FX             = 0x17,
+    kCompDesc_Radar          = 0x18,
     kCompDesc_RadarBlip      = 0x19,
     kCompDesc_Interact       = 0x1B,
     kCompDesc_Mover          = 0x1D,
@@ -248,6 +249,28 @@ struct FxComponentDesc : ComponentDesc {
     uint32_t slowTimeHashD0 = 0;     // 0xD0 attribute 0x4F113DAE. NOTE: name unknown
     float slowTimeD4 = 0.0f;         // 0xD4 attribute 0x173BA787 (default 1). NOTE: name unknown
     float slowTimeD8 = 0.0f;         // 0xD8 attribute 0x4E1FBF3A. NOTE: name unknown
+};
+
+// <Radar> (vtable 0x00B1C8C8, 0x60 bytes): Binocucom radar target.
+struct RadarDefEntry {
+    uint32_t def = 0;            // +0x00 "Def"
+    uint32_t value = 0;          // +0x04 attribute 0x7BA7CDEF. NOTE: name unknown
+};
+struct RadarComponentDesc : ComponentDesc {
+    explicit RadarComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Radar) {}
+    // 0x14: marker type per radar mode (location, entity, binoPhoto,
+    // binoRecord, hacking, vehicle, blueprint, follow, switch).
+    ape::ApeTArray<uint32_t> markerTypes;
+    ape::ApeTArray<RadarDefEntry> defs;   // 0x28 child elements 0xDE886EE4
+    uint32_t initScript = 0;         // 0x3C
+    uint32_t onActivateScript = 0;   // 0x40
+    uint32_t hash44 = 0;             // 0x44 attribute 0x7C4EBDF7. NOTE: name unknown
+    float compassScale = 1.0f;       // 0x48
+    uint32_t hash4C = 0;             // 0x4C attribute 0xC9796122. NOTE: name unknown
+    uint32_t hash50 = 0;             // 0x50 attribute 0xA7FC59B2. NOTE: name unknown
+    float activeDuration = 0.0f;     // 0x54 default EntityComp.Radar.DefaultActiveDuration
+    float refreshDuration = 0.0f;    // 0x58 default EntityComp.Radar.DefaultRefreshDuration
+    int32_t ignoreEntities = 0;      // 0x5C 1 when IgnoreEntities is set
 };
 
 // <RadarBlip> (vtable 0x00B1C920, 0x18 bytes).
@@ -507,6 +530,7 @@ ComponentDesc* ParseProcEyesComponentDesc(ape::xml::XmlElement* root, ape::xml::
 ComponentDesc* ParseIKComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseFacePlayerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseFxComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseRadarComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseRadarBlipComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseInteractComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseMoverComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);

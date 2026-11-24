@@ -6,6 +6,7 @@
 
 #include "ape/core/ApeString.h"
 #include "ape/memory/ApeMem.h"
+#include "ape/tuning/ApeTuning.h"
 #include "ape/xml/ApeXml.h"
 
 namespace sly {
@@ -234,6 +235,23 @@ constexpr uint32_t kTag_Slave            = 0x04B529B7u;
 constexpr uint32_t kTag_Root             = 0x002678E2u;
 constexpr uint32_t kTag_Bone             = 0x001F32C4u;
 
+constexpr uint32_t kAttr_InitScript      = 0x620515DBu;
+constexpr uint32_t kAttr_OnActivateScript = 0x5D6F9F1Du;
+constexpr uint32_t kAttr_Radar44         = 0x7C4EBDF7u;   // NOTE: name unknown
+constexpr uint32_t kAttr_CompassScale    = 0xDEB00F78u;
+constexpr uint32_t kAttr_Radar4C         = 0xC9796122u;   // NOTE: name unknown
+constexpr uint32_t kAttr_Radar50         = 0xA7FC59B2u;   // NOTE: name unknown
+constexpr uint32_t kAttr_ActiveDuration  = 0x80244A9Au;
+constexpr uint32_t kAttr_RefreshDuration = 0x1867714Fu;
+constexpr uint32_t kAttr_IgnoreEntities  = 0xC09B3793u;
+constexpr uint32_t kAttr_RadarDefValue   = 0x7BA7CDEFu;   // NOTE: name unknown
+constexpr uint32_t kTag_RadarDef         = 0xDE886EE4u;   // NOTE: element name unknown
+constexpr uint32_t kTag_MarkerType       = 0x5F746274u;
+constexpr uint32_t kMarkerTypeDefault    = 0x7DDC7E2Du;   // NOTE: name unknown
+// Radar modes, read by name from <MarkerType> (0x00F64BF0).
+const char* const kRadarModeNames[9] = {"location", "entity", "binoPhoto", "binoRecord", "hacking",
+                                        "vehicle", "blueprint", "follow", "switch"};
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -282,6 +300,11 @@ void ReadPulseField(XmlElement* elem, PulseFieldComponentDesc& desc)
 }
 
 } // namespace
+
+// Radar defaults. NOTE: these belong to the component static initialiser
+// 0x002D6A40 (not ported), which registers them with the other component tuning.
+ape::TuningFloat g_radarDefaultActiveDuration("EntityComp.Radar.DefaultActiveDuration", 8.0f);
+ape::TuningFloat g_radarDefaultRefreshDuration("EntityComp.Radar.DefaultRefreshDuration", 8.0f);
 
 // @func 0x0026EFD4 ParsePhysicsComponentDesc
 ComponentDesc* ParsePhysicsComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
@@ -576,6 +599,49 @@ ComponentDesc* ParseFxComponentDesc(XmlElement* root, XmlElement* elem, uint8_t 
         default:
             (void)root->GetDocumentPath();   // compiled-out error report
             break;
+        }
+    }
+    return desc;
+}
+
+// @func 0x00299A60 ParseRadarComponentDesc
+ComponentDesc* ParseRadarComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    (void)root;
+    // This parser skips the missing-name report.
+    const char* name = elem->GetString("name");
+    if (!name)
+        return nullptr;
+    RadarComponentDesc* desc = new RadarComponentDesc(ape::HashNameNoCase(name));
+    desc->scope = scope;
+    desc->activeDuration = g_radarDefaultActiveDuration.Get();
+    desc->refreshDuration = g_radarDefaultRefreshDuration.Get();
+    elem->GetHash(kAttr_InitScript, &desc->initScript, desc->initScript);
+    elem->GetHash(kAttr_OnActivateScript, &desc->onActivateScript, desc->onActivateScript);
+    elem->GetHash(kAttr_Radar44, &desc->hash44, desc->hash44);
+    elem->GetFloat(kAttr_CompassScale, &desc->compassScale, desc->compassScale);
+    elem->GetHash(kAttr_Radar4C, &desc->hash4C, desc->hash4C);
+    elem->GetHash(kAttr_Radar50, &desc->hash50, desc->hash50);
+    elem->GetFloat(kAttr_ActiveDuration, &desc->activeDuration, desc->activeDuration);
+    elem->GetFloat(kAttr_RefreshDuration, &desc->refreshDuration, desc->refreshDuration);
+    bool ignore = false;
+    elem->GetBool(kAttr_IgnoreEntities, &ignore, false);
+    if (ignore)
+        desc->ignoreEntities = 1;
+    for (XmlElement* child = elem->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        const uint32_t tag = child->GetNameHash();
+        if (tag == kTag_RadarDef) {
+            RadarDefEntry entry;
+            child->GetHash(kAttr_Def, &entry.def, 0);
+            child->GetHash(kAttr_RadarDefValue, &entry.value, entry.value);
+            desc->defs.PushBack(entry);
+        } else if (tag == kTag_MarkerType && desc->markerTypes.Count() == 0) {
+            // Only the first <MarkerType> counts.
+            for (const char* mode : kRadarModeNames) {
+                uint32_t type = kMarkerTypeDefault;
+                child->GetHash(mode, &type, kMarkerTypeDefault);
+                desc->markerTypes.PushBack(type);
+            }
         }
     }
     return desc;
