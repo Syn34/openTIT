@@ -1,0 +1,297 @@
+// openTIT - Damage and wind trigger volumes.
+#include "sly/objects/TriggerEnv.h"
+
+#include "sly/objects/TriggerTypes.h"
+
+#include "ape/math/ApeMath.h"
+#include "ape/xml/ApeXml.h"
+
+namespace sly {
+namespace objects {
+
+namespace {
+constexpr float kDegToRad = 0.017453292f;
+
+void ReadRotation(ape::xml::XmlElement* elem, ape::Vec3& out, const ape::Vec3& fallback)
+{
+    float value[3] = { out.x, out.y, out.z };
+    float def[3] = { fallback.x, fallback.y, fallback.z };
+    // Angles are authored in degrees; inherited values are already radians.
+    if (elem->GetVec3(kAttr_DamageRotation, value, def) == ape::xml::kQuery_Ok)
+        out = { value[0] * kDegToRad, value[1] * kDegToRad, value[2] * kDegToRad, 0.0f };
+    else
+        out = { value[0], value[1], value[2], 0.0f };
+}
+
+void ReadDamageScalars(ape::xml::XmlElement* elem, DamageParams& out, const DamageParams& fallback)
+{
+    elem->GetHash(kAttr_ReactType, &out.reactType, fallback.reactType);
+    elem->GetFloat(kAttr_DamageAmount, &out.amount, fallback.amount);
+    elem->GetFloat(kAttr_DamageValue2, &out.value2, fallback.value2);
+    elem->GetFloat(kAttr_KnockbackImpulse, &out.knockback, fallback.knockback);
+    elem->GetBool(kAttr_DamageFlag0, &out.flags[0], fallback.flags[0]);
+    elem->GetBool(kAttr_DamageFlag1, &out.flags[1], fallback.flags[1]);
+    elem->GetBool(kAttr_DamageFlag2, &out.flags[2], fallback.flags[2]);
+    elem->GetBool(kAttr_DamageFlag3, &out.flags[3], fallback.flags[3]);
+}
+
+// Wind type names (table 0x00AD38B0).
+constexpr uint32_t kWindTypeHashes[3] = {
+    0x1F0FC3CA,   // "Directional"
+    0x9D9722F0,   // NOTE: name not recovered
+    0xDCC384C1,   // NOTE: name not recovered
+};
+} // namespace
+
+// @func 0x0021AA68 ReadDamageTriggerPlacement
+static void ReadDamageTriggerPlacement(ape::xml::XmlElement* elem, DamageTriggerPlacement& placement)
+{
+    ParseTriggerPlacementFlags(elem, placement);
+    ParseDamageParams(elem, placement.params);
+}
+
+void ParseDamageParams(ape::xml::XmlElement* elem, DamageParams& params)
+{
+    DamageParams current = params;
+    ReadRotation(elem, params.rotation, current.rotation);
+    ReadDamageScalars(elem, params, current);
+}
+
+ape::Vec4 QuaternionFromEuler(const ape::Vec3& angles)
+{
+    float hx = angles.x * 0.5f, hy = angles.y * 0.5f, hz = angles.z * 0.5f;
+    float cx = ape::FastCos(hx), cy = ape::FastCos(hy), cz = ape::FastCos(hz);
+    float sx = ape::FastSin(hx), sy = ape::FastSin(hy), sz = ape::FastSin(hz);
+    ape::Vec4 q;
+    q.x = sy * sz * cx + cy * cz * sx;
+    q.y = cz * sy * cx + cy * sz * sx;
+    q.z = cy * sz * cx - cz * sy * sx;
+    q.w = cy * cz * cx - sy * sz * sx;
+    return q;
+}
+
+// ===========================================================================
+// Damage
+// ===========================================================================
+
+DamageTriggerDefDesc::DamageTriggerDefDesc(const EntityDefDesc& loader)
+    : TriggerDefDesc(kDefClass_DamageTrigger | kDefClass_Trigger, loader, "TriggerDamage_")
+{
+    field_20 = 1;
+}
+
+// @func 0x00219FF8 DamageTriggerDefDesc::Parse
+void DamageTriggerDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                 const EntityDefDesc& loader, const EntityDef* parent)
+{
+    TriggerDefDesc::Parse(root, elem, loader, parent);
+    // Defaults: a damage parent's values (only its first two flags), otherwise
+    // the description defaults.
+    DamageParams fallback;
+    if (parent && (parent->classBits & kDefClass_DamageTrigger)) {
+        const DamageParams& from = static_cast<const DamageTriggerDef*>(parent)->params;
+        fallback.rotation = from.rotation;
+        fallback.reactType = from.reactType;
+        fallback.amount = from.amount;
+        fallback.value2 = from.value2;
+        fallback.knockback = from.knockback;
+        fallback.flags[0] = from.flags[0];
+        fallback.flags[1] = from.flags[1];
+    }
+    ReadRotation(elem, params.rotation, fallback.rotation);
+    ReadDamageScalars(elem, params, fallback);
+}
+
+DamageTriggerDef::DamageTriggerDef(const DamageTriggerDefDesc& desc)
+    : TriggerDef(desc), params(desc.params)
+{
+}
+
+// @func 0x0021A310 CreateDamageTriggerDef
+EntityDef* CreateDamageTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                  const EntityDefDesc& loader, const EntityDef* parent)
+{
+    DamageTriggerDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    return new DamageTriggerDef(desc);
+}
+
+DamageTriggerInstanceDesc::DamageTriggerInstanceDesc(const char* instanceName, DamageTriggerDef* ownerDef)
+    : TriggerInstanceDesc(instanceName, ownerDef)
+{
+    if (!ownerDef)
+        return;
+    const DamageParams& p = ownerDef->params;
+    rotation = p.rotation;
+    reactType = p.reactType;
+    amount = p.amount;
+    value2 = p.value2;
+    knockback = p.knockback;
+    // NOTE: the instance has five flag slots; slot 2 is not fed by the definition.
+    flags[0] = p.flags[0];
+    flags[1] = p.flags[1];
+    flags[2] = false;
+    flags[3] = p.flags[2];
+    flags[4] = p.flags[3];
+}
+
+// @func 0x0021A6E8 DamageTriggerDef::Create
+ObjEntity* DamageTriggerDef::Create(EntityPlacement* placement)
+{
+    if (TriggerPlacementSkips(placement, (placement->flags & kDefClass_DamageTrigger) != 0))
+        return nullptr;
+    DamageTriggerInstanceDesc desc(GetInstanceName(placement), this);
+    placement->FillInstanceDesc(desc);
+    DamageTrigger* trigger = new DamageTrigger(desc);
+    trigger->OnCreated();
+    return trigger;
+}
+
+DamageTriggerPlacement::DamageTriggerPlacement(const char* placementName)
+    : TriggerPlacement(placementName, nullptr, nullptr, true, false, true, false, false, false)
+{
+    flags |= kDefClass_DamageTrigger;
+}
+
+// @func 0x0021AD0C ParseDamageTriggerPlacement
+EntityPlacement* ParseDamageTriggerPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                             const char* name)
+{
+    (void)root;
+    DamageTriggerPlacement* placement = new DamageTriggerPlacement(name);
+    ReadDamageTriggerPlacement(elem, *placement);
+    return placement;
+}
+
+// @func 0x0021AE1C DamageTriggerPlacement::FillInstanceDesc
+void DamageTriggerPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
+{
+    TriggerPlacement::FillInstanceDesc(baseDesc);
+    DamageTriggerInstanceDesc& desc = static_cast<DamageTriggerInstanceDesc&>(baseDesc);
+    desc.rotation = params.rotation;
+    desc.reactType = params.reactType;
+    desc.amount = params.amount;
+    desc.value2 = params.value2;
+    desc.knockback = params.knockback;
+    // NOTE: the console skips instance flag slot 2 here as well.
+    desc.flags[0] = params.flags[0];
+    desc.flags[1] = params.flags[1];
+    desc.flags[3] = params.flags[2];
+    desc.flags[4] = params.flags[3];
+}
+
+// @func 0x0021A518 DamageTrigger::DamageTrigger
+DamageTrigger::DamageTrigger(const DamageTriggerInstanceDesc& desc)
+    : TriggerBase(desc, 0x20, true),
+      m_orientation(QuaternionFromEuler(desc.rotation)),
+      m_reactType(desc.reactType),
+      m_amount(desc.amount),
+      m_value2(desc.value2),
+      m_knockback(desc.knockback)
+{
+    for (int i = 0; i < 5; ++i)
+        m_flags[i] = desc.flags[i];
+}
+
+// @func 0x0021B088 DamageTrigger::~DamageTrigger (deleting)
+DamageTrigger::~DamageTrigger() = default;
+
+// ===========================================================================
+// Wind
+// ===========================================================================
+
+uint32_t WindTypeIndex(uint32_t nameHash, uint32_t fallback)
+{
+    for (uint32_t i = 0; i < 3; ++i)
+        if (kWindTypeHashes[i] == nameHash)
+            return i;
+    return fallback;
+}
+
+// @func 0x00223CA0 ParseWindType
+void ParseWindType(ape::xml::XmlElement* elem, uint32_t& type)
+{
+    uint32_t name = 0;
+    elem->GetHash(kAttr_WindType, &name, 0);
+    if (name != 0)
+        type = WindTypeIndex(name, type);
+}
+
+WindTriggerDefDesc::WindTriggerDefDesc(const EntityDefDesc& loader)
+    : TriggerDefDesc(kDefClass_Trigger, loader, "TriggerWind_")
+{
+    typeBits = kTrigType_Wind;
+}
+
+// @func 0x00223D38 WindTriggerDefDesc::Parse
+void WindTriggerDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                               const EntityDefDesc& loader, const EntityDef* parent)
+{
+    TriggerDefDesc::Parse(root, elem, loader, parent);
+    field_20 = 1;
+    // A parent that is not a wind trigger only triggers a warning (stripped).
+    elem->GetHash(kAttr_ScriptLifetime, &scriptLifetime, scriptLifetime);
+    elem->GetHash(kAttr_WindGroup, &windGroup, 0);
+    windType = 0;
+    ParseWindType(elem, windType);
+    elem->GetFloat(kAttr_WindStrength, &strength, 0.0f);
+    elem->GetFloat(kAttr_Wind_64, &field_64, 0.0f);
+    elem->GetFloat(kAttr_Wind_68, &field_68, 0.0f);
+    elem->GetFloat(kAttr_Wind_6C, &field_6C, 0.0f);
+    elem->GetFloat(kAttr_AirDampening, &airDampening, 0.0f);
+    elem->GetFloat(kAttr_AirDampeningTime, &airDampeningTime, 0.0f);
+    elem->GetBool(kAttr_Wind_78, &field_78, false);
+}
+
+WindTriggerDef::WindTriggerDef(const WindTriggerDefDesc& desc)
+    : TriggerDef(desc),
+      scriptLifetime(desc.scriptLifetime),
+      windGroup(desc.windGroup),
+      windType(desc.windType),
+      strength(desc.strength),
+      field_C0(desc.field_64),
+      field_C4(desc.field_68),
+      field_C8(desc.field_6C),
+      airDampening(desc.airDampening),
+      airDampeningTime(desc.airDampeningTime),
+      field_D4(desc.field_78)
+{
+}
+
+// @func 0x00223F94 CreateWindTriggerDef
+EntityDef* CreateWindTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                const EntityDefDesc& loader, const EntityDef* parent)
+{
+    WindTriggerDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    return new WindTriggerDef(desc);
+}
+
+// @func 0x00224720 WindTriggerDef::Create
+ObjEntity* WindTriggerDef::Create(EntityPlacement* placement)
+{
+    if (TriggerPlacementSkips(placement, (placement->typeBits & kTrigType_Wind) != 0))
+        return nullptr;
+    TriggerInstanceDesc desc(GetInstanceName(placement), this);
+    placement->FillInstanceDesc(desc);
+    WindTrigger* trigger = new WindTrigger(desc);
+    trigger->OnCreated();
+    return trigger;
+}
+
+// TODO(0x00224448 WindTrigger::WindTrigger) the wind source set-up (0x00224170
+// parameter block, lifetime anim script, WindInstance 0x004ACD68) is not ported;
+// the occupant capacity comes from the wind system (0x00F64A30).
+WindTrigger::WindTrigger(const TriggerInstanceDesc& desc)
+    : TriggerBase(desc, 0x20, true)
+{
+    const WindTriggerDef* windDef = static_cast<const WindTriggerDef*>(def);
+    m_scriptLifetime = windDef->scriptLifetime;
+    m_field1BC = windDef->field_D4;
+}
+
+// TODO(0x0022499C WindTrigger::~WindTrigger) releases the wind source and script.
+WindTrigger::~WindTrigger() = default;
+
+} // namespace objects
+} // namespace sly
