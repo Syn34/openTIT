@@ -4,6 +4,8 @@
 
 #include "ape/core/ApeString.h"
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
+#include "sly/levels/ScriptServices.h"
 
 namespace sly {
 namespace levels {
@@ -276,6 +278,7 @@ class GadgetCommand : public ApeAnimScriptCommand {
 public:
     GadgetCommand();
     ~GadgetCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -307,7 +310,20 @@ ApeAnimScriptCommand* GadgetCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0007A240 GadgetCommand::Execute)
+// @func 0x0007A240 GadgetCommand::Execute
+void GadgetCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    // NOTE: unlike most commands, a given "Entity" overrides the object variable.
+    WorldObject* entity = m_object != 0 ? EntityFromVar(instance, m_object) : nullptr;
+    if (m_entity != 0)
+        entity = FindEntity(m_entity);
+    if (!entity || !EntityIsGadgetObject(entity))
+        return;
+    if (m_gadgetState != 0)
+        GadgetObjectSetState(entity, m_gadgetState);
+    if (m_hasFlag)
+        GadgetObjectSetFlag(entity, m_flag);
+}
 
 // ---------------------------------------------------------------------------
 // GadgetTurret: sets or adds a turret target.
@@ -316,6 +332,7 @@ class GadgetTurretCommand : public ApeAnimScriptCommand {
 public:
     GadgetTurretCommand();
     ~GadgetTurretCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -353,7 +370,34 @@ ApeAnimScriptCommand* GadgetTurretCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0007A58C GadgetTurretCommand::Execute)
+// @func 0x0007A58C GadgetTurretCommand::Execute
+// Adds or removes a target of a gadget turret: a named entity, or the
+// player with the given index (9 = none).
+void GadgetTurretCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    WorldObject* turret = nullptr;
+    if (m_entity != 0) {
+        WorldObject* entity = FindEntity(m_entity);
+        if (entity && EntityIsGadgetTurret(entity))
+            turret = entity;
+    }
+
+    WorldObject* target = nullptr;
+    WorldObject* candidate = nullptr;
+    if (m_target != 0)
+        candidate = FindEntity(m_target);
+    else if (m_targetIndex != kNoPlayerIndex)
+        candidate = PlayerEntityByIndex(m_targetIndex);
+    if (candidate && EntityHasClassFlag(candidate, kEntityClass_Targetable))
+        target = candidate;
+
+    if (!turret)
+        return;
+    if (m_add)
+        TurretAddTarget(turret, target);
+    else
+        TurretRemoveTarget(turret, target);
+}
 
 // ---------------------------------------------------------------------------
 // "GetAnimSpeed" (hash 0x55C11A40; NOTE: name from a hash match)
@@ -362,6 +406,7 @@ class GetAnimSpeedCommand : public ApeAnimScriptCommand {
 public:
     GetAnimSpeedCommand();
     ~GetAnimSpeedCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -390,7 +435,44 @@ ApeAnimScriptCommand* GetAnimSpeedCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0007A8F4 GetAnimSpeedCommand::Execute)
+// @func 0x0007A8F4 GetAnimSpeedCommand::Execute
+// Reads the playback speed of an animation layer into a float variable. The
+// controller is the character's when the object belongs to one, else the one
+// recorded for the object variable.
+void GetAnimSpeedCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_speedVar == 0)
+        return;
+
+    WorldObject* entity = nullptr;
+    if (m_object != 0) {
+        ape::ApeRefCounted* object = instance->ResolveObject(m_object, false);
+        if (!object)
+            object = instance->ResolveObject(m_object, true);
+        if (!object)
+            return;
+        entity = EntityFromObject(object);
+    } else if (m_entity != 0) {
+        entity = FindEntity(m_entity);
+    }
+
+    void* controller = nullptr;
+    if (entity) {
+        if (void* character = EntityCharacter(entity))
+            controller = CharacterAnimController(character);
+    }
+    if (!controller)
+        controller = ScriptObjectAnimController(instance, m_object);
+    if (!controller)
+        return;
+
+    void* anim = AnimControllerFindLayer(controller, static_cast<int32_t>(m_layer));
+    if (!anim)
+        return;
+    ApeAnimScriptVar* var = instance->FindVar(m_speedVar);
+    if (var && var->GetType() == AnimScriptVarType::Float)
+        static_cast<ape::ApeAnimScriptFloatVar*>(var)->SetFloat(AnimSpeed(anim));
+}
 
 // ---------------------------------------------------------------------------
 // "GetBinocucomVisible" (hash 0x599B5141; NOTE: name from a hash match)
@@ -399,6 +481,7 @@ class GetBinocucomVisibleCommand : public ApeAnimScriptCommand {
 public:
     GetBinocucomVisibleCommand();
     ~GetBinocucomVisibleCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -420,7 +503,20 @@ ApeAnimScriptCommand* GetBinocucomVisibleCommand::Create(XmlElement* element) co
     return command;
 }
 
-// TODO(0x0007AC24 GetBinocucomVisibleCommand::Execute)
+// @func 0x0007AC24 GetBinocucomVisibleCommand::Execute
+void GetBinocucomVisibleCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_stateVar == 0)
+        return;
+    bool visible = false;
+    if (WorldObject* player = PlayerEntity()) {
+        if (void* binocucom = PlayerBinocucom(player))
+            visible = BinocucomIsVisible(binocucom);
+    }
+    ApeAnimScriptVar* var = instance->FindVar(m_stateVar);
+    if (var && var->GetType() == AnimScriptVarType::Int)
+        static_cast<ape::ApeAnimScriptIntVar*>(var)->SetInt(visible ? 1 : 0);
+}
 
 // ---------------------------------------------------------------------------
 // "GetJobState" (hash 0x9929642A; NOTE: name from a hash match)
@@ -429,6 +525,7 @@ class GetJobStateCommand : public ApeAnimScriptCommand {
 public:
     GetJobStateCommand();
     ~GetJobStateCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -454,7 +551,32 @@ ApeAnimScriptCommand* GetJobStateCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0007B5E8 GetJobStateCommand::Execute)
+// Job states as hashes (table 0x00AC4D74, indexed by 0x002D98A4).
+// NOTE: case of the names unknown.
+static constexpr uint32_t kJobStateNames[3] = {
+    AnimHash("unavailable"), AnimHash("available"), AnimHash("complete"),
+};
+
+// @func 0x0007B5E8 GetJobStateCommand::Execute
+// "JobVar" receives the current job's name, "StateVar" the state of "Job".
+void GetJobStateCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_stateVar == 0 && m_jobVar == 0)
+        return;
+    if (m_jobVar != 0 && HasCurrentJob()) {
+        ApeAnimScriptVar* var = instance->FindVar(m_jobVar);
+        if (var && var->GetType() == AnimScriptVarType::Hash)
+            static_cast<ape::ApeAnimScriptHashVar*>(var)->SetHash(CurrentJobName());
+    }
+    if (m_job != 0 && m_stateVar != 0) {
+        int state = 0;
+        if (void* job = GameStateFindJob(m_job))
+            state = JobState(job);
+        ApeAnimScriptVar* var = instance->FindVar(m_stateVar);
+        if (var && var->GetType() == AnimScriptVarType::Hash)
+            static_cast<ape::ApeAnimScriptHashVar*>(var)->SetHash(kJobStateNames[state]);
+    }
+}
 
 // ---------------------------------------------------------------------------
 

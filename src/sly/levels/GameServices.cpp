@@ -1,6 +1,7 @@
 // openTIT - TODO stubs for the game systems used by the level and script code.
 // Each returns what the original returns for a missing object.
 #include "sly/levels/GameServices.h"
+#include "sly/levels/script/ScriptVars.h"
 
 #include "sly/levels/PlayerNotifyFlags.h"
 
@@ -95,7 +96,11 @@ void BroadcastGameEventInRange(WorldObject* sender, uint32_t group, uint32_t eve
     (void)sender; (void)group; (void)event; (void)data; (void)range;
 }
 WorldObject* EntityFindChild(WorldObject* entity, uint32_t childName) { (void)entity; (void)childName; return nullptr; }
-WorldObject* EntityVarValue(ape::ApeAnimScriptVar* var) { (void)var; return nullptr; }
+WorldObject* EntityVarValue(ape::ApeAnimScriptVar* var)
+{
+    // The caller has checked the type (kVarType_Trigger).
+    return static_cast<ScriptTriggerVar*>(var)->GetValue();
+}
 void GoalSetComplete(uint32_t goal, bool complete, bool notify) { (void)goal; (void)complete; (void)notify; }
 void GlobalToggleOn() {}
 

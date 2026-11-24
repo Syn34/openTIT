@@ -189,6 +189,14 @@ public:
     // Adds a spawner to the active list.
     bool AddActive(Spawner* spawner);
     Spawner* FindSpawner(uint32_t key) const;
+    // Group registered under `key` (sorted map at +0x1C), or null.
+    SpawnGroup* FindGroup(uint32_t key) const
+    {
+        for (const GroupEntry& entry : groups)
+            if (entry.key == key)
+                return entry.group;
+        return nullptr;
+    }
 
     bool busy = false;                          // +0x00 inside a bulk operation
     struct Entry { uint32_t key; Spawner* spawner; };
@@ -197,6 +205,10 @@ public:
     std::vector<GroupEntry> groups;             // +0x1C
     std::vector<Spawner*> active;               // +0x34 (handle list on the console)
 };
+
+// Despawns the live objects of a spawner, then resets it (0x0045477C, the
+// Reset override of tracking spawners).
+void SpawnerDespawnAndReset(Spawner& spawner);
 
 // The global spawn manager (0x00F65BE8).
 extern SpawnManager* g_spawnManager;

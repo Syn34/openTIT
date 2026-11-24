@@ -3,6 +3,7 @@
 #include "sly/levels/script/ScriptCommands.h"
 
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 
 namespace sly {
 namespace levels {
@@ -99,11 +100,13 @@ class InputMoverCommand : public ApeAnimScriptCommand {
 public:
     InputMoverCommand();
     ~InputMoverCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
     uint32_t m_object = 0;        // +0x0C "object"
     uint32_t m_entity = 0;        // +0x10 "Entity"
+    WorldObject* m_mover = nullptr; // +0x14 mover found by the last Execute
     float m_inputPoints = -1.0f;  // +0x18 "InputPoints"
     bool m_flag1C = false;        // +0x1C attribute 0xB3106A84
     bool m_hasInputPoints = false;// +0x1D
@@ -131,7 +134,18 @@ ApeAnimScriptCommand* InputMoverCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00080170 InputMoverCommand::Execute)
+// @func 0x00080170 InputMoverCommand::Execute
+void InputMoverCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_object, m_entity);
+    m_mover = (entity && EntityIsInputMover(entity)) ? entity : nullptr;
+    if (!m_mover)
+        return;
+    if (m_hasInputPoints)
+        InputMoverSetPoints(m_mover, m_inputPoints, m_flag1C);
+    if (m_doReset)
+        InputMoverReset(m_mover);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x96EE417F (name unknown): blends the camera weight with a curve.
@@ -196,6 +210,7 @@ class MsDecibelCommand : public ApeAnimScriptCommand {
 public:
     MsDecibelCommand();
     ~MsDecibelCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 };
 
@@ -212,8 +227,14 @@ ApeAnimScriptCommand* MsDecibelCommand::Create(XmlElement*) const
     return new MsDecibelCommand();
 }
 
-// TODO(0x000806D4 MsDecibelCommand::Execute) calls 0x0005BB08 on the entity
-// "MsDecibel" when its +0xF4 component exists.
+// @func 0x000806D4 MsDecibelCommand::Execute
+// Pokes the level's decibel meter entity (fixed name 0xCD4F65FC).
+void MsDecibelCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    WorldObject* meter = FindEntity(kDecibelMeterEntity);
+    if (meter && EntityHasListener(meter))
+        DecibelMeterTrigger(meter);
+}
 
 // ---------------------------------------------------------------------------
 // Kill
@@ -222,6 +243,7 @@ class KillCommand : public ApeAnimScriptCommand {
 public:
     KillCommand();
     ~KillCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -249,7 +271,35 @@ ApeAnimScriptCommand* KillCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0008088C KillCommand::Execute)
+// @func 0x0008088C KillCommand::Execute
+// Kills an entity (or a child of it). Killable entities may instead take
+// damage equal to their health (attribute 0x66D71193). Unless attribute
+// 0x739CF08B is set, the object variable is cleared afterwards.
+void KillCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    ape::ApeAnimScriptObjectVar* var = FindObjectVar(instance, m_object);
+    if (var && !var->GetObject())
+        var = nullptr;
+    WorldObject* entity = var ? EntityFromObject(var->GetObject()) : nullptr;
+    if (!entity) {
+        var = nullptr;
+        entity = FindEntity(m_object);
+    }
+    if (entity) {
+        if (EntityIsAlive(entity) && m_child != 0)
+            entity = EntityFindChild(entity, m_child);
+        if (entity && EntityIsAlive(entity)) {
+            if (EntityHasClassFlag(entity, kEntityClass_Killable) && m_flag14)
+                EntityApplyDamage(entity, EntityHealth(entity));
+            else
+                EntityRelease(entity, true);
+        }
+    }
+    if (var && m_child == 0 && !m_flag15) {
+        var->SetObject(nullptr);
+        var->SetField24(0);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // KillSequence

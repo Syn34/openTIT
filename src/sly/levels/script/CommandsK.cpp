@@ -3,6 +3,7 @@
 #include "sly/levels/script/ScriptCommands.h"
 
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
 #include <cstring>
@@ -66,6 +67,7 @@ class MapMaterialToVarCommand : public ApeAnimScriptCommand {
 public:
     MapMaterialToVarCommand();
     ~MapMaterialToVarCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -91,8 +93,31 @@ ApeAnimScriptCommand* MapMaterialToVarCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00081400 MapMaterialToVarCommand::Execute) searches the global AglMaterial
-// list (or the materials of the object's model) for the name.
+// @func 0x00081400 MapMaterialToVarCommand::Execute
+// Points a material variable at the material named "material": one of the
+// geometry instance held by "ObjectVar", else any live material.
+void MapMaterialToVarCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_materialVar == 0 || m_material == 0)
+        return;
+    ApeAnimScriptVar* var = instance->FindVar(m_materialVar);
+    if (!var || var->GetType() != AnimScriptVarType::Material)
+        return;
+    auto* materialVar = static_cast<ape::ApeAnimScriptMaterialVar*>(var);
+
+    if (m_objectVar == 0) {
+        materialVar->SetMaterial(FindLiveMaterial(m_material));
+        materialVar->SetMaterialName(m_material);
+        return;
+    }
+    ape::ApeRefCounted* object = ObjectFromVar(instance, m_objectVar);
+    if (!object || !ObjectIsGeometryInstance(object))
+        return;
+    if (void* material = GeometryFindMaterial(object, m_material)) {
+        materialVar->SetMaterial(material);
+        materialVar->SetMaterialName(m_material);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x27D06D5B (name unknown): no parameters.
@@ -164,6 +189,7 @@ class OverrideColorCommand : public ApeAnimScriptCommand {
 public:
     OverrideColorCommand();
     ~OverrideColorCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -189,8 +215,14 @@ ApeAnimScriptCommand* OverrideColorCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00081B00 OverrideColorCommand::Execute) writes the colour into several
-// entity-class specific fields (character +0x3C8, class flags 0x800/0x200/0x400/0x100).
+// @func 0x00081B00 OverrideColorCommand::Execute
+void OverrideColorCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_object == 0)
+        return;
+    if (WorldObject* entity = EntityFromVar(instance, m_object))
+        EntityApplyOverrideColor(entity, m_enabled, m_color);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x3173666E (name unknown): sets the game state's pause flag.

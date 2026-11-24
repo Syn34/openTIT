@@ -4,6 +4,8 @@
 
 #include "sly/game/AudioSystem.h"
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
+#include "sly/levels/ScriptServices.h"
 
 namespace sly {
 namespace levels {
@@ -146,8 +148,26 @@ ApeAnimScriptCommand* ActivateInteractionCommand::Create(XmlElement* element) co
     return new ActivateInteractionCommand(element);
 }
 
-// TODO(0x0006B918 ActivateInteractionCommand::Execute) needs the interaction
-// component (0x000D951C) and its activate/deactivate calls.
+// @func 0x0006B918 ActivateInteractionCommand::Execute
+void ActivateInteractionCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_refObject, m_entity);
+    if (!entity)
+        return;
+    void* interaction = EntityInteractionComponent(entity);
+    if (!interaction)
+        return;
+
+    WorldObject* player = PlayerEntity();
+    // "ForcePlayer" makes the player character take the interaction at once.
+    if (m_forcePlayer && m_activate && player && EntityIsCharacter(player))
+        CharacterBeginInteraction(player, InteractionComponentId(interaction));
+    if (m_activate)
+        InteractionActivate(interaction, player);
+    else
+        InteractionDeactivate(interaction);
+    InteractionSetCancelAllowed(interaction, m_allowCancel);
+}
 
 // ---------------------------------------------------------------------------
 // ActivateMixState
@@ -218,8 +238,38 @@ ApeAnimScriptCommand* ObjectMaterialCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0006BF28 ObjectMaterialCommand::Execute) passes the geometry instance
-// to a player component (0x000D94CC, 0x002ACAB8).
+// @func 0x0006BF28 ObjectMaterialCommand::Execute
+void ObjectMaterialCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    ape::ApeRefCounted* object = nullptr;
+    if (m_object != 0) {
+        object = instance->ResolveObject(m_object, false);
+        if (!object)
+            object = instance->ResolveObject(m_object, true);
+    }
+    if (!object && m_entity != 0) {
+        if (WorldObject* entity = FindEntity(m_entity))
+            object = EntityWorldObject(entity);
+        else
+            ScriptWarning("ObjectMaterial: no entity %s", m_entity);
+    }
+    if (!object)
+        return;
+
+    // "part" narrows the object down to a named descendant.
+    if (m_part != 0) {
+        object = ObjectFindDescendant(object, m_part);
+        if (!object)
+            ScriptWarning("ObjectMaterial: no part %s", m_part);
+    }
+    if (!object || !ObjectIsGeometryInstance(object))
+        return;
+    WorldObject* player = PlayerEntity();
+    if (!player)
+        return;
+    if (void* binocucom = PlayerBinocucom(player))
+        BinocucomSetObjectMaterial(binocucom, object, m_material);
+}
 
 // ---------------------------------------------------------------------------
 // #4 (0xB09EA328): blend an animation layer of an entity between two values
@@ -299,8 +349,41 @@ ApeAnimScriptCommand* AnimLayerTimeCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0006C800 AnimLayerTimeCommand::Execute) drives the anim layer of an
-// object or entity (0x0034CC34 layer lookup, 0x00354150 set time).
+// @func 0x0006C800 AnimLayerTimeCommand::Execute
+// Sets the playback time of an animation layer of an object: through the
+// character or entity that owns it, else directly on the object's animation
+// controller.
+void AnimLayerTimeCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    ape::ApeAnimScriptObjectVar* var = FindObjectVar(instance, m_object);
+    if (!var || !var->GetObject())
+        return;
+
+    float time = ResolveFloat(instance, m_animTimeVar, m_animTime);
+    WorldObject* entity = EntityFromWorldObject(var->GetObject(), false, false);
+    if (!entity) {
+        void* controller = ObjectVarAnimController(var);
+        if (!controller)
+            return;
+        void* anim = AnimControllerFindLayer(controller, m_animLayer);
+        if (!anim)
+            return;
+        if (m_scaleByLength) {
+            const float length = AnimLength(anim);
+            time = length > kMinDuration ? length * time : 1.0f;
+        }
+        AnimSetTime(anim, time);
+        return;
+    }
+
+    if (void* character = EntityCharacter(entity)) {
+        CharacterBeginAnimEdit(character);
+        CharacterSetAnimTime(character, time, m_scaleByLength, m_animLayer);
+        CharacterEndAnimEdit(character);
+    } else {
+        EntitySetAnimElapsed(entity, time, m_scaleByLength, m_animLayer);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // #6 (0xC495712B): no data
@@ -579,8 +662,32 @@ ApeAnimScriptCommand* CameraShakeCommand::Create(XmlElement* element) const
     return new CameraShakeCommand(element);
 }
 
-// TODO(0x0006F3F8 CameraShakeCommand::Execute) starts a camera shake (optionally
-// attenuated by the distance to "RefObject").
+// @func 0x0006F3F8 CameraShakeCommand::Execute
+// Starts a camera shake; with "RefObject" the shake originates at that object
+// (the camera manager attenuates it by distance within "Radius").
+void CameraShakeCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (ape::ApeAnimScriptObjectVar* var = FindObjectVar(instance, m_refObject)) {
+        if (var->GetObject())
+            m_origin = ObjectWorldPosition(var->GetObject());
+    }
+    SequenceShakeParams params;
+    params.duration = m_duration;
+    params.magnitude = m_magnitude;
+    params.startMagnitude = m_startMagnitude;
+    params.falloffMode = m_falloffMode;
+    params.falloffStartTime = m_falloffStartTime;
+    params.pitch = m_pitch;
+    params.yaw = m_yaw;
+    params.roll = m_roll;
+    params.pitchFrequency = m_pitchFrequency;
+    params.yawFrequency = m_yawFrequency;
+    params.rollFrequency = m_rollFrequency;
+    params.radius = m_radius;
+    params.vector40 = m_origin;
+    params.value50 = m_field60;
+    CameraAddShake(params);
+}
 
 // @func 0x0006F614 CameraStopAnimCommand::CameraStopAnimCommand
 CameraStopAnimCommand::CameraStopAnimCommand() = default;
@@ -705,7 +812,38 @@ ApeAnimScriptCommand* CharacterSpecialCommand::Create(XmlElement* element) const
     return new CharacterSpecialCommand(element);
 }
 
-// TODO(0x0006FA40 CharacterSpecialCommand::Execute)
+// @func 0x0006FA40 CharacterSpecialCommand::Execute
+void CharacterSpecialCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_object, m_entity);
+    if (!entity) {
+        ScriptWarning("CharacterSpecial: no entity %s", m_entity);
+        return;
+    }
+    if (!EntityIsCharacter(entity)) {
+        ScriptWarning("CharacterSpecial: %s is not a character", m_entity);
+        return;
+    }
+    switch (m_command) {
+    case kCommand_Direction:
+        if (void* special = CharacterSpecialComponent(entity))
+            SpecialSetDirection(special, m_direction);
+        break;
+    case kCommand_Angle:
+        if (void* special = CharacterSpecialComponent(entity))
+            SpecialSetAngle(special, m_angle);
+        break;
+    case kCommand_Enable:
+        if (void* special = CharacterSpecialComponent(entity))
+            SpecialSetEnabled(special, m_flag);
+        break;
+    case kCommand_SkipAnim:
+        CharacterSetSkipAnim(entity, m_flag);
+        break;
+    default:
+        break;
+    }
+}
 
 // ---------------------------------------------------------------------------
 // EntityGameStateCommand (0xCB291F57)
