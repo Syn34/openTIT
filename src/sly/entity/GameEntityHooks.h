@@ -1,0 +1,30 @@
+// openTIT - Calls from the entity classes of 0x000F0000-0x00200000 into
+// systems that are not ported yet (audio requests, entity base slots that
+// Entity.h does not declare yet, physics). TODO stubs live in
+// GameEntityHooks.cpp; each names the console function or slot.
+#pragma once
+
+#include "ape/math/ApeMath.h"
+#include "sly/game/AudioSystem.h"
+
+#include <cstdint>
+
+namespace sly {
+namespace entity {
+
+class Entity;
+
+// Entity virtual slot 8 (+0x20): script state of a layer.
+int EntityGetState(const Entity* entity, int layer);
+
+// Starts a sound at a position or attached to an object (0x0044C474 with the
+// remaining parameters zero); returns the voice (0 when nothing played).
+audio::VoiceId PlayEntitySound(audio::SoundName* sound, const ape::Vec3* position, const void* attachment);
+// Lets a looping voice finish its current loop (0x00443A78 with 1).
+void ReleaseVoiceLoop(audio::VoiceId voice);
+// Copies the request parameters of a playing voice; false when the voice has
+// no request any more (0x00443CE0).
+bool GetVoiceParams(audio::VoiceId voice, audio::SoundParams& out);
+
+} // namespace entity
+} // namespace sly
