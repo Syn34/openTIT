@@ -5,6 +5,8 @@
 
 #include "ape/core/ApeString.h"
 
+#include <cstring>
+
 namespace agl {
 
 namespace {
@@ -52,20 +54,31 @@ AglShaderClass::AglShaderClass(const char* className)
 {
 }
 
-AglShaderClass::~AglShaderClass()
-{
-    for (AglTechnique* technique : m_techniques)
-        delete technique;
-}
+// @func 0x007A344C AglShaderClass::~AglShaderClass
+// @func 0x007A34A4 AglShaderClass::~AglShaderClass (deleting)
+// Only the technique list's storage is released: the techniques themselves
+// live as long as the program (the classes are static objects).
+AglShaderClass::~AglShaderClass() = default;
 
+// @func 0x007A349C AglShaderClass::SetupMaterial
 bool AglShaderClass::SetupMaterial(AglMaterial* /*material*/, const AglMaterialDesc* /*desc*/)
 {
     return true;
 }
 
+// @func 0x007A3518 AglShaderClass::SelectTechnique
 AglTechnique* AglShaderClass::SelectTechnique(AglMaterial* /*material*/, AglRenderItem* /*item*/)
 {
     return m_techniques[0];
+}
+
+// --- AglMaterialDesc ---
+
+uint32_t AglMaterialDesc::ParamBits(int index) const
+{
+    uint32_t bits;
+    std::memcpy(&bits, &params[index], sizeof(bits));
+    return bits;
 }
 
 // --- AglTechnique ---

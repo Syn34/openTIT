@@ -4,6 +4,8 @@
 
 #include "sly/game/AudioSystem.h"
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
+#include "sly/levels/ScriptServices.h"
 
 namespace sly {
 namespace levels {
@@ -146,14 +148,36 @@ ApeAnimScriptCommand* ActivateInteractionCommand::Create(XmlElement* element) co
     return new ActivateInteractionCommand(element);
 }
 
-// TODO(0x0006B918 ActivateInteractionCommand::Execute) needs the interaction
-// component (0x000D951C) and its activate/deactivate calls.
+// @func 0x0006B918 ActivateInteractionCommand::Execute
+void ActivateInteractionCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_refObject, m_entity);
+    if (!entity)
+        return;
+    void* interaction = EntityInteractionComponent(entity);
+    if (!interaction)
+        return;
+
+    WorldObject* player = PlayerEntity();
+    // "ForcePlayer" makes the player character take the interaction at once.
+    if (m_forcePlayer && m_activate && player && EntityIsCharacter(player))
+        CharacterBeginInteraction(player, InteractionComponentId(interaction));
+    if (m_activate)
+        InteractionActivate(interaction, player);
+    else
+        InteractionDeactivate(interaction);
+    InteractionSetCancelAllowed(interaction, m_allowCancel);
+}
 
 // ---------------------------------------------------------------------------
 // ActivateMixState
 
 // @func 0x0006BAB0 ActivateMixStateCommand::ActivateMixStateCommand
 ActivateMixStateCommand::ActivateMixStateCommand() = default;
+
+// @func 0x0073BD68 ActivateMixStateCommand::~ActivateMixStateCommand
+// @func 0x0073BD98 ActivateMixStateCommand::~ActivateMixStateCommand (deleting)
+ActivateMixStateCommand::~ActivateMixStateCommand() = default;
 
 ActivateMixStateCommand::ActivateMixStateCommand(XmlElement* element)
 {
@@ -214,8 +238,38 @@ ApeAnimScriptCommand* ObjectMaterialCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0006BF28 ObjectMaterialCommand::Execute) passes the geometry instance
-// to a player component (0x000D94CC, 0x002ACAB8).
+// @func 0x0006BF28 ObjectMaterialCommand::Execute
+void ObjectMaterialCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    ape::ApeRefCounted* object = nullptr;
+    if (m_object != 0) {
+        object = instance->ResolveObject(m_object, false);
+        if (!object)
+            object = instance->ResolveObject(m_object, true);
+    }
+    if (!object && m_entity != 0) {
+        if (WorldObject* entity = FindEntity(m_entity))
+            object = EntityWorldObject(entity);
+        else
+            ScriptWarning("ObjectMaterial: no entity %s", m_entity);
+    }
+    if (!object)
+        return;
+
+    // "part" narrows the object down to a named descendant.
+    if (m_part != 0) {
+        object = ObjectFindDescendant(object, m_part);
+        if (!object)
+            ScriptWarning("ObjectMaterial: no part %s", m_part);
+    }
+    if (!object || !ObjectIsGeometryInstance(object))
+        return;
+    WorldObject* player = PlayerEntity();
+    if (!player)
+        return;
+    if (void* binocucom = PlayerBinocucom(player))
+        BinocucomSetObjectMaterial(binocucom, object, m_material);
+}
 
 // ---------------------------------------------------------------------------
 // #4 (0xB09EA328): blend an animation layer of an entity between two values
@@ -295,8 +349,41 @@ ApeAnimScriptCommand* AnimLayerTimeCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0006C800 AnimLayerTimeCommand::Execute) drives the anim layer of an
-// object or entity (0x0034CC34 layer lookup, 0x00354150 set time).
+// @func 0x0006C800 AnimLayerTimeCommand::Execute
+// Sets the playback time of an animation layer of an object: through the
+// character or entity that owns it, else directly on the object's animation
+// controller.
+void AnimLayerTimeCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    ape::ApeAnimScriptObjectVar* var = FindObjectVar(instance, m_object);
+    if (!var || !var->GetObject())
+        return;
+
+    float time = ResolveFloat(instance, m_animTimeVar, m_animTime);
+    WorldObject* entity = EntityFromWorldObject(var->GetObject(), false, false);
+    if (!entity) {
+        void* controller = ObjectVarAnimController(var);
+        if (!controller)
+            return;
+        void* anim = AnimControllerFindLayer(controller, m_animLayer);
+        if (!anim)
+            return;
+        if (m_scaleByLength) {
+            const float length = AnimLength(anim);
+            time = length > kMinDuration ? length * time : 1.0f;
+        }
+        AnimSetTime(anim, time);
+        return;
+    }
+
+    if (void* character = EntityCharacter(entity)) {
+        CharacterBeginAnimEdit(character);
+        CharacterSetAnimTime(character, time, m_scaleByLength, m_animLayer);
+        CharacterEndAnimEdit(character);
+    } else {
+        EntitySetAnimElapsed(entity, time, m_scaleByLength, m_animLayer);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // #6 (0xC495712B): no data
@@ -407,6 +494,10 @@ void AttachCarryItemCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScr
 // @func 0x0006D3A0 AttachEntityCommand::AttachEntityCommand
 AttachEntityCommand::AttachEntityCommand() = default;
 
+// @func 0x0073BDF0 AttachEntityCommand::~AttachEntityCommand
+// @func 0x0073BE20 AttachEntityCommand::~AttachEntityCommand (deleting)
+AttachEntityCommand::~AttachEntityCommand() = default;
+
 // @func 0x0006D488 AttachEntityCommand::AttachEntityCommand
 AttachEntityCommand::AttachEntityCommand(XmlElement* element)
 {
@@ -495,6 +586,10 @@ ApeAnimScriptCommand* BlastCommand::Create(XmlElement* element) const
 // @func 0x0006ECB8 CameraClearEaseCommand::CameraClearEaseCommand
 CameraClearEaseCommand::CameraClearEaseCommand() = default;
 
+// @func 0x0073C010 CameraClearEaseCommand::~CameraClearEaseCommand
+// @func 0x0073C040 CameraClearEaseCommand::~CameraClearEaseCommand (deleting)
+CameraClearEaseCommand::~CameraClearEaseCommand() = default;
+
 // @func 0x0006ECF8 CameraClearEaseCommand::Create
 ApeAnimScriptCommand* CameraClearEaseCommand::Create(XmlElement*) const
 {
@@ -512,6 +607,10 @@ void CameraClearEaseCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*
 
 // @func 0x0006EDE4 CameraPlayAnimCommand::CameraPlayAnimCommand
 CameraPlayAnimCommand::CameraPlayAnimCommand() = default;
+
+// @func 0x0073C098 CameraPlayAnimCommand::~CameraPlayAnimCommand
+// @func 0x0073C0C8 CameraPlayAnimCommand::~CameraPlayAnimCommand (deleting)
+CameraPlayAnimCommand::~CameraPlayAnimCommand() = default;
 
 // @func 0x0006EE44 CameraPlayAnimCommand::Create
 ApeAnimScriptCommand* CameraPlayAnimCommand::Create(XmlElement* element) const
@@ -563,11 +662,39 @@ ApeAnimScriptCommand* CameraShakeCommand::Create(XmlElement* element) const
     return new CameraShakeCommand(element);
 }
 
-// TODO(0x0006F3F8 CameraShakeCommand::Execute) starts a camera shake (optionally
-// attenuated by the distance to "RefObject").
+// @func 0x0006F3F8 CameraShakeCommand::Execute
+// Starts a camera shake; with "RefObject" the shake originates at that object
+// (the camera manager attenuates it by distance within "Radius").
+void CameraShakeCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (ape::ApeAnimScriptObjectVar* var = FindObjectVar(instance, m_refObject)) {
+        if (var->GetObject())
+            m_origin = ObjectWorldPosition(var->GetObject());
+    }
+    SequenceShakeParams params;
+    params.duration = m_duration;
+    params.magnitude = m_magnitude;
+    params.startMagnitude = m_startMagnitude;
+    params.falloffMode = m_falloffMode;
+    params.falloffStartTime = m_falloffStartTime;
+    params.pitch = m_pitch;
+    params.yaw = m_yaw;
+    params.roll = m_roll;
+    params.pitchFrequency = m_pitchFrequency;
+    params.yawFrequency = m_yawFrequency;
+    params.rollFrequency = m_rollFrequency;
+    params.radius = m_radius;
+    params.vector40 = m_origin;
+    params.value50 = m_field60;
+    CameraAddShake(params);
+}
 
 // @func 0x0006F614 CameraStopAnimCommand::CameraStopAnimCommand
 CameraStopAnimCommand::CameraStopAnimCommand() = default;
+
+// @func 0x0073C120 CameraStopAnimCommand::~CameraStopAnimCommand
+// @func 0x0073C150 CameraStopAnimCommand::~CameraStopAnimCommand (deleting)
+CameraStopAnimCommand::~CameraStopAnimCommand() = default;
 
 // @func 0x0006F664 CameraStopAnimCommand::Create
 ApeAnimScriptCommand* CameraStopAnimCommand::Create(XmlElement* element) const
@@ -591,6 +718,10 @@ void CameraStopAnimCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 // @func 0x0006FCE0 CloseBinocucomCommand::CloseBinocucomCommand
 CloseBinocucomCommand::CloseBinocucomCommand() = default;
 
+// @func 0x0073C230 CloseBinocucomCommand::~CloseBinocucomCommand
+// @func 0x0073C260 CloseBinocucomCommand::~CloseBinocucomCommand (deleting)
+CloseBinocucomCommand::~CloseBinocucomCommand() = default;
+
 // @func 0x0006FD20 CloseBinocucomCommand::Create
 ApeAnimScriptCommand* CloseBinocucomCommand::Create(XmlElement*) const
 {
@@ -612,6 +743,10 @@ void CloseBinocucomCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 
 // @func 0x0006FE0C CompleteGoalCommand::CompleteGoalCommand
 CompleteGoalCommand::CompleteGoalCommand() = default;
+
+// @func 0x0073C2B8 CompleteGoalCommand::~CompleteGoalCommand
+// @func 0x0073C2E8 CompleteGoalCommand::~CompleteGoalCommand (deleting)
+CompleteGoalCommand::~CompleteGoalCommand() = default;
 
 // @func 0x0006FE54 CompleteGoalCommand::Create
 ApeAnimScriptCommand* CompleteGoalCommand::Create(XmlElement* element) const
@@ -635,6 +770,10 @@ void CompleteGoalCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScript
 
 // @func 0x0006F768 CharacterSpecialCommand::CharacterSpecialCommand
 CharacterSpecialCommand::CharacterSpecialCommand() = default;
+
+// @func 0x0073C1A8 CharacterSpecialCommand::~CharacterSpecialCommand
+// @func 0x0073C1D8 CharacterSpecialCommand::~CharacterSpecialCommand (deleting)
+CharacterSpecialCommand::~CharacterSpecialCommand() = default;
 
 // @func 0x0006F7C8 CharacterSpecialCommand::CharacterSpecialCommand
 CharacterSpecialCommand::CharacterSpecialCommand(XmlElement* element)
@@ -673,13 +812,48 @@ ApeAnimScriptCommand* CharacterSpecialCommand::Create(XmlElement* element) const
     return new CharacterSpecialCommand(element);
 }
 
-// TODO(0x0006FA40 CharacterSpecialCommand::Execute)
+// @func 0x0006FA40 CharacterSpecialCommand::Execute
+void CharacterSpecialCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_object, m_entity);
+    if (!entity) {
+        ScriptWarning("CharacterSpecial: no entity %s", m_entity);
+        return;
+    }
+    if (!EntityIsCharacter(entity)) {
+        ScriptWarning("CharacterSpecial: %s is not a character", m_entity);
+        return;
+    }
+    switch (m_command) {
+    case kCommand_Direction:
+        if (void* special = CharacterSpecialComponent(entity))
+            SpecialSetDirection(special, m_direction);
+        break;
+    case kCommand_Angle:
+        if (void* special = CharacterSpecialComponent(entity))
+            SpecialSetAngle(special, m_angle);
+        break;
+    case kCommand_Enable:
+        if (void* special = CharacterSpecialComponent(entity))
+            SpecialSetEnabled(special, m_flag);
+        break;
+    case kCommand_SkipAnim:
+        CharacterSetSkipAnim(entity, m_flag);
+        break;
+    default:
+        break;
+    }
+}
 
 // ---------------------------------------------------------------------------
 // EntityGameStateCommand (0xCB291F57)
 
 // @func 0x0006FFF0 EntityGameStateCommand::EntityGameStateCommand
 EntityGameStateCommand::EntityGameStateCommand() = default;
+
+// @func 0x0073C340 EntityGameStateCommand::~EntityGameStateCommand
+// @func 0x0073C370 EntityGameStateCommand::~EntityGameStateCommand (deleting)
+EntityGameStateCommand::~EntityGameStateCommand() = default;
 
 // @func 0x00070040 EntityGameStateCommand::Create
 ApeAnimScriptCommand* EntityGameStateCommand::Create(XmlElement* element) const
@@ -801,6 +975,10 @@ ApeAnimScriptCommand* CrossfadeCommand::Create(XmlElement* element) const
 // @func 0x000717B8 DamageCommand::DamageCommand
 DamageCommand::DamageCommand() = default;
 
+// @func 0x0073C3C8 DamageCommand::~DamageCommand
+// @func 0x0073C3F8 DamageCommand::~DamageCommand (deleting)
+DamageCommand::~DamageCommand() = default;
+
 // @func 0x00071808 DamageCommand::Create
 ApeAnimScriptCommand* DamageCommand::Create(XmlElement* element) const
 {
@@ -820,6 +998,10 @@ ApeAnimScriptCommand* DamageCommand::Create(XmlElement* element) const
 
 // @func 0x00071C2C DetachEntityCommand::DetachEntityCommand
 DetachEntityCommand::DetachEntityCommand() = default;
+
+// @func 0x0073C450 DetachEntityCommand::~DetachEntityCommand
+// @func 0x0073C480 DetachEntityCommand::~DetachEntityCommand (deleting)
+DetachEntityCommand::~DetachEntityCommand() = default;
 
 // @func 0x00071C7C DetachEntityCommand::Create
 ApeAnimScriptCommand* DetachEntityCommand::Create(XmlElement* element) const

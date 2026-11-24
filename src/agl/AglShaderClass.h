@@ -55,10 +55,17 @@ struct AglMaterialDesc {
     uint32_t textureHash = 0;                // 0x10
     uint8_t field_14[0x38] = {};
     uint8_t wrapMode = 0;                    // 0x4C
-    uint8_t field_4D[7] = {};
-    bool hasParams = false;                  // 0x54: 'params' were exported
+    uint8_t field_4D[3] = {};
+    // 0x50: set by retired classes to the name hash of the class that should
+    // draw the material instead (their SetupMaterial then returns false).
+    mutable uint32_t replacementClass = 0;
+    uint8_t paramCount = 0;                  // 0x54: number of 'params' exported
     uint8_t field_55[3] = {};
-    float params[4] = {};                    // 0x58: class specific parameters
+    // 0x58: class specific parameters. Some classes store integers here
+    // (read them with ParamBits()).
+    float params[8] = {};
+
+    uint32_t ParamBits(int index) const;
 };
 
 // A vertex/fragment program pair with the code that drives it.

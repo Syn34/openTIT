@@ -55,8 +55,10 @@ enum ComponentType : uint32_t {
 
 // Description a component is built from (owner filled in by AddComponent).
 struct ComponentDesc {
-    uint32_t field_00 = 0;
-    uint32_t field_04 = 0;
+    // Leaves the named template table (descriptions built from XML templates
+    // are registered under 'name').
+    virtual ~ComponentDesc();
+    uint32_t name = 0;         // 0x04 template name hash
     Entity* owner = nullptr;   // 0x08 set while a component is built from it
     uint32_t type = 0;         // 0x0C ComponentType of the component it builds
 };
@@ -378,6 +380,7 @@ namespace entity {
 // Named component templates (0x01056F04).
 void RegisterComponentTemplate(uint32_t name, ComponentDesc* desc);
 ComponentDesc* FindComponentTemplate(uint32_t name);
+void UnregisterComponentTemplate(uint32_t name);
 
 // -- definitions ------------------------------------------------------------------
 void RegisterEntityDef(EntityDef* def);

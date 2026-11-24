@@ -48,12 +48,17 @@ constexpr uint32_t kScoreEventTypes[kScoreEventTypeCount] = {
 class RewindHubCommand : public ApeAnimScriptCommand {
 public:
     RewindHubCommand();
+    ~RewindHubCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 };
 
 // @func 0x0008582C RewindHubCommand::RewindHubCommand
 RewindHubCommand::RewindHubCommand() = default;
+
+// @func 0x0073DF18 RewindHubCommand::~RewindHubCommand
+// @func 0x0073DF48 RewindHubCommand::~RewindHubCommand (deleting)
+RewindHubCommand::~RewindHubCommand() = default;
 
 // @func 0x0008586C RewindHubCommand::Create
 ApeAnimScriptCommand* RewindHubCommand::Create(XmlElement*) const
@@ -109,6 +114,7 @@ ApeAnimScriptCommand* AnimLayerCommand::Create(XmlElement* element) const
 class ResetCharacterCommand : public ApeAnimScriptCommand {
 public:
     ResetCharacterCommand();
+    ~ResetCharacterCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -120,6 +126,10 @@ private:
 
 // @func 0x00085608 ResetCharacterCommand::ResetCharacterCommand
 ResetCharacterCommand::ResetCharacterCommand() = default;
+
+// @func 0x0073DE90 ResetCharacterCommand::~ResetCharacterCommand
+// @func 0x0073DEC0 ResetCharacterCommand::~ResetCharacterCommand (deleting)
+ResetCharacterCommand::~ResetCharacterCommand() = default;
 
 // @func 0x00085660 ResetCharacterCommand::Create
 ApeAnimScriptCommand* ResetCharacterCommand::Create(XmlElement* element) const
@@ -156,6 +166,7 @@ void ResetCharacterCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScri
 class ScoreEventCommand : public ApeAnimScriptCommand {
 public:
     ScoreEventCommand();
+    ~ScoreEventCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -171,6 +182,10 @@ private:
 
 // @func 0x00085DB0 ScoreEventCommand::ScoreEventCommand
 ScoreEventCommand::ScoreEventCommand() = default;
+
+// @func 0x0073DFA0 ScoreEventCommand::~ScoreEventCommand
+// @func 0x0073DFD0 ScoreEventCommand::~ScoreEventCommand (deleting)
+ScoreEventCommand::~ScoreEventCommand() = default;
 
 // @func 0x00085E10 ScoreEventCommand::Create
 ApeAnimScriptCommand* ScoreEventCommand::Create(XmlElement* element) const
@@ -204,6 +219,7 @@ ApeAnimScriptCommand* ScoreEventCommand::Create(XmlElement* element) const
 class EntityStateTargetCommand : public ApeAnimScriptCommand {
 public:
     EntityStateTargetCommand();
+    ~EntityStateTargetCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -219,6 +235,10 @@ private:
 
 // @func 0x000864C8 EntityStateTargetCommand::EntityStateTargetCommand
 EntityStateTargetCommand::EntityStateTargetCommand() = default;
+
+// @func 0x0073E028 EntityStateTargetCommand::~EntityStateTargetCommand
+// @func 0x0073E058 EntityStateTargetCommand::~EntityStateTargetCommand (deleting)
+EntityStateTargetCommand::~EntityStateTargetCommand() = default;
 
 // @func 0x00086528 EntityStateTargetCommand::Create
 ApeAnimScriptCommand* EntityStateTargetCommand::Create(XmlElement* element) const
@@ -279,6 +299,7 @@ void AllowWorldOptionCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState
 class BinocucomModeCommand : public ApeAnimScriptCommand {
 public:
     BinocucomModeCommand();
+    ~BinocucomModeCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -290,6 +311,10 @@ private:
 
 // @func 0x00086DD8 BinocucomModeCommand::BinocucomModeCommand
 BinocucomModeCommand::BinocucomModeCommand() = default;
+
+// @func 0x0073E0B0 BinocucomModeCommand::~BinocucomModeCommand
+// @func 0x0073E0E0 BinocucomModeCommand::~BinocucomModeCommand (deleting)
+BinocucomModeCommand::~BinocucomModeCommand() = default;
 
 // @func 0x00086E28 BinocucomModeCommand::Create
 ApeAnimScriptCommand* BinocucomModeCommand::Create(XmlElement* element) const

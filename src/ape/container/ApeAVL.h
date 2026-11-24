@@ -71,7 +71,7 @@ ApeTFreeList<typename AVL<K, I>::Node>& AVL<K, I>::GetAllocator()
         s_allocator = new ApeTFreeList<Node>();
         s_allocator->SetName("static ApeTFreeList<AVL<KeyType, ItemType>::AVLNode<KeyType, ItemType>> "
                              "&AVL<KeyType, ItemType>::GetAllocator()");
-        s_allocator->Init(0x40, nullptr, false);
+        s_allocator->Init(0x40);
     }
     return *s_allocator;
 }

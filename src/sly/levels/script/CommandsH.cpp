@@ -1,9 +1,12 @@
 // openTIT - Game script commands, sixth block (GiveAward and the HUD commands).
 #include "sly/levels/script/ScriptCommand.h"
+
+#include <cstdio>
 #include "sly/levels/script/ScriptCommands.h"
 
 #include "ape/core/ApeString.h"
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/trophy/TrophyManager.h"
 
 namespace sly {
@@ -135,6 +138,8 @@ ApeAnimScriptCommand* VehicleInputCommand::Create(XmlElement* element) const
 class HudHealthMeterCommand : public ApeAnimScriptCommand {
 public:
     HudHealthMeterCommand();
+    ~HudHealthMeterCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -146,6 +151,10 @@ private:
 
 // @func 0x0007CEFC HudHealthMeterCommand::HudHealthMeterCommand
 HudHealthMeterCommand::HudHealthMeterCommand() = default;
+
+// @func 0x0073D110 HudHealthMeterCommand::~HudHealthMeterCommand
+// @func 0x0073D140 HudHealthMeterCommand::~HudHealthMeterCommand (deleting)
+HudHealthMeterCommand::~HudHealthMeterCommand() = default;
 
 // @func 0x0007CF54 HudHealthMeterCommand::Create
 ApeAnimScriptCommand* HudHealthMeterCommand::Create(XmlElement* element) const
@@ -160,7 +169,24 @@ ApeAnimScriptCommand* HudHealthMeterCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0007D098 HudHealthMeterCommand::Execute)
+// @func 0x0007D098 HudHealthMeterCommand::Execute
+// Shows or hides the health meter of a killable entity; without an entity
+// the given player's meter can be hidden.
+void HudHealthMeterCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    if (m_entity == 0 && m_playerNum != kNoPlayer) {
+        if (!m_enable)
+            HudSetPlayerHealthMeter(m_playerNum, "");
+        return;
+    }
+    WorldObject* entity = FindEntity(m_entity);
+    if (!entity || !EntityHasClassFlag(entity, kEntityClass_Killable))
+        return;
+    if (m_enable)
+        HudShowHealthMeter(entity, m_healthMeter);
+    else
+        HudHideHealthMeter(entity);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xE573697F (name unknown): plays an animation on a HUD object.
@@ -168,6 +194,7 @@ ApeAnimScriptCommand* HudHealthMeterCommand::Create(XmlElement* element) const
 class HudPlayAnimCommand : public ApeAnimScriptCommand {
 public:
     HudPlayAnimCommand();
+    ~HudPlayAnimCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -180,6 +207,10 @@ private:
 
 // @func 0x0007D154 HudPlayAnimCommand::HudPlayAnimCommand
 HudPlayAnimCommand::HudPlayAnimCommand() = default;
+
+// @func 0x0073D198 HudPlayAnimCommand::~HudPlayAnimCommand
+// @func 0x0073D1C8 HudPlayAnimCommand::~HudPlayAnimCommand (deleting)
+HudPlayAnimCommand::~HudPlayAnimCommand() = default;
 
 // @func 0x0007D1A4 HudPlayAnimCommand::Create
 ApeAnimScriptCommand* HudPlayAnimCommand::Create(XmlElement* element) const
@@ -208,6 +239,8 @@ void HudPlayAnimCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class HudMessageCommand : public ApeAnimScriptCommand {
 public:
     HudMessageCommand();
+    ~HudMessageCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -221,6 +254,10 @@ private:
 
 // @func 0x0007D340 HudMessageCommand::HudMessageCommand
 HudMessageCommand::HudMessageCommand() = default;
+
+// @func 0x0073D220 HudMessageCommand::~HudMessageCommand
+// @func 0x0073D250 HudMessageCommand::~HudMessageCommand (deleting)
+HudMessageCommand::~HudMessageCommand() = default;
 
 // @func 0x0007D3A0 HudMessageCommand::Create
 ApeAnimScriptCommand* HudMessageCommand::Create(XmlElement* element) const
@@ -238,7 +275,24 @@ ApeAnimScriptCommand* HudMessageCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0007D540 HudMessageCommand::Execute)
+// @func 0x0007D540 HudMessageCommand::Execute
+// Puts a text into a HUD object; with "MsgVar" the text is that int
+// variable's value.
+void HudMessageCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_msgVar != 0) {
+        ApeAnimScriptVar* var = instance->FindVar(m_msgVar);
+        if (var && var->GetType() == AnimScriptVarType::Int)
+            std::snprintf(m_msg, sizeof(m_msg), "%d", var->GetInt());
+    }
+    void* hud = FindHudObject(m_hudObj);
+    if (!hud)
+        return;
+    if (m_animMode != 0)
+        HudSetAnimMode(hud, m_animMode);
+    HudSetAnimRate(hud, m_animRate);
+    HudSetText(hud, m_msg, m_index);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xD1CD23E6 (name unknown): sets the animation mode and rate of a HUD object.
@@ -246,6 +300,7 @@ ApeAnimScriptCommand* HudMessageCommand::Create(XmlElement* element) const
 class HudAnimModeCommand : public ApeAnimScriptCommand {
 public:
     HudAnimModeCommand();
+    ~HudAnimModeCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -257,6 +312,10 @@ private:
 
 // @func 0x0007D678 HudAnimModeCommand::HudAnimModeCommand
 HudAnimModeCommand::HudAnimModeCommand() = default;
+
+// @func 0x0073D2A8 HudAnimModeCommand::~HudAnimModeCommand
+// @func 0x0073D2D8 HudAnimModeCommand::~HudAnimModeCommand (deleting)
+HudAnimModeCommand::~HudAnimModeCommand() = default;
 
 // @func 0x0007D6D0 HudAnimModeCommand::Create
 ApeAnimScriptCommand* HudAnimModeCommand::Create(XmlElement* element) const
@@ -285,6 +344,7 @@ void HudAnimModeCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class HudSetStateCommand : public ApeAnimScriptCommand {
 public:
     HudSetStateCommand();
+    ~HudSetStateCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -295,6 +355,10 @@ private:
 
 // @func 0x0007D83C HudSetStateCommand::HudSetStateCommand
 HudSetStateCommand::HudSetStateCommand() = default;
+
+// @func 0x0073D330 HudSetStateCommand::~HudSetStateCommand
+// @func 0x0073D360 HudSetStateCommand::~HudSetStateCommand (deleting)
+HudSetStateCommand::~HudSetStateCommand() = default;
 
 // @func 0x0007D884 HudSetStateCommand::Create
 ApeAnimScriptCommand* HudSetStateCommand::Create(XmlElement* element) const

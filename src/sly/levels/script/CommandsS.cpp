@@ -105,6 +105,7 @@ void PlayerAbilityCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SetLockedCommand : public ApeAnimScriptCommand {
 public:
     SetLockedCommand();
+    ~SetLockedCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -117,6 +118,10 @@ private:
 
 // @func 0x0008FB3C SetLockedCommand::SetLockedCommand
 SetLockedCommand::SetLockedCommand() = default;
+
+// @func 0x0073F198 SetLockedCommand::~SetLockedCommand
+// @func 0x0073F1C8 SetLockedCommand::~SetLockedCommand (deleting)
+SetLockedCommand::~SetLockedCommand() = default;
 
 // @func 0x0008FB8C SetLockedCommand::Create
 ApeAnimScriptCommand* SetLockedCommand::Create(XmlElement* element) const
@@ -206,6 +211,7 @@ void SetTargetingDurationCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptS
 class SetGravityCommand : public ApeAnimScriptCommand {
 public:
     SetGravityCommand();
+    ~SetGravityCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -221,6 +227,10 @@ private:
 
 // @func 0x00090124 SetGravityCommand::SetGravityCommand
 SetGravityCommand::SetGravityCommand() = default;
+
+// @func 0x0073F220 SetGravityCommand::~SetGravityCommand
+// @func 0x0073F250 SetGravityCommand::~SetGravityCommand (deleting)
+SetGravityCommand::~SetGravityCommand() = default;
 
 // @func 0x0009018C SetGravityCommand::Create
 ApeAnimScriptCommand* SetGravityCommand::Create(XmlElement* element) const
@@ -257,6 +267,7 @@ void SetGravityCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptSt
 class SetEntitySplineCommand : public ApeAnimScriptCommand {
 public:
     SetEntitySplineCommand();
+    ~SetEntitySplineCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -269,6 +280,10 @@ private:
 
 // @func 0x000903F8 SetEntitySplineCommand::SetEntitySplineCommand
 SetEntitySplineCommand::SetEntitySplineCommand() = default;
+
+// @func 0x0073F2A8 SetEntitySplineCommand::~SetEntitySplineCommand
+// @func 0x0073F2D8 SetEntitySplineCommand::~SetEntitySplineCommand (deleting)
+SetEntitySplineCommand::~SetEntitySplineCommand() = default;
 
 // @func 0x00090450 SetEntitySplineCommand::Create
 ApeAnimScriptCommand* SetEntitySplineCommand::Create(XmlElement* element) const
@@ -292,6 +307,7 @@ ApeAnimScriptCommand* SetEntitySplineCommand::Create(XmlElement* element) const
 class SetRenderVisibleCommand : public ApeAnimScriptCommand {
 public:
     SetRenderVisibleCommand();
+    ~SetRenderVisibleCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -304,6 +320,10 @@ private:
 
 // @func 0x000906E8 SetRenderVisibleCommand::SetRenderVisibleCommand
 SetRenderVisibleCommand::SetRenderVisibleCommand() = default;
+
+// @func 0x0073F330 SetRenderVisibleCommand::~SetRenderVisibleCommand
+// @func 0x0073F360 SetRenderVisibleCommand::~SetRenderVisibleCommand (deleting)
+SetRenderVisibleCommand::~SetRenderVisibleCommand() = default;
 
 // @func 0x00090738 SetRenderVisibleCommand::Create
 ApeAnimScriptCommand* SetRenderVisibleCommand::Create(XmlElement* element) const
@@ -385,6 +405,7 @@ ApeAnimScriptCommand* SetLightSettingCommand::Create(XmlElement* element) const
 class SetSkinScriptCommand : public ApeAnimScriptCommand {
 public:
     SetSkinScriptCommand();
+    ~SetSkinScriptCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -397,6 +418,10 @@ private:
 
 // @func 0x00090E74 SetSkinScriptCommand::SetSkinScriptCommand
 SetSkinScriptCommand::SetSkinScriptCommand() = default;
+
+// @func 0x0073F3B8 SetSkinScriptCommand::~SetSkinScriptCommand
+// @func 0x0073F3E8 SetSkinScriptCommand::~SetSkinScriptCommand (deleting)
+SetSkinScriptCommand::~SetSkinScriptCommand() = default;
 
 // @func 0x00090EC4 SetSkinScriptCommand::Create
 ApeAnimScriptCommand* SetSkinScriptCommand::Create(XmlElement* element) const

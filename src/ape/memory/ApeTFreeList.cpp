@@ -28,6 +28,8 @@ size_t RoundUp16(size_t value)
 
 } // namespace
 
+// @func 0x007A4C68 ApeFreeList::~ApeFreeList
+// @func 0x007A4C94 ApeFreeList::~ApeFreeList (deleting)
 ApeFreeList::~ApeFreeList()
 {
     Destroy();

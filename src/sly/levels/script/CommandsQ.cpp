@@ -50,6 +50,7 @@ class SetHealthCommand : public ApeAnimScriptCommand {
 public:
     SetHealthCommand();
     explicit SetHealthCommand(XmlElement* element);
+    ~SetHealthCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -65,6 +66,10 @@ private:
 
 // @func 0x0008A818 SetHealthCommand::SetHealthCommand
 SetHealthCommand::SetHealthCommand() = default;
+
+// @func 0x0073EA40 SetHealthCommand::~SetHealthCommand
+// @func 0x0073EA70 SetHealthCommand::~SetHealthCommand (deleting)
+SetHealthCommand::~SetHealthCommand() = default;
 
 // @func 0x0008A880 SetHealthCommand::SetHealthCommand
 SetHealthCommand::SetHealthCommand(XmlElement* element)
@@ -148,6 +153,7 @@ void SetWorldValueCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class EnableHudFlagCommand : public ApeAnimScriptCommand {
 public:
     EnableHudFlagCommand();
+    ~EnableHudFlagCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -157,6 +163,10 @@ private:
 
 // @func 0x0008ADE4 EnableHudFlagCommand::EnableHudFlagCommand
 EnableHudFlagCommand::EnableHudFlagCommand() = default;
+
+// @func 0x0073EAC8 EnableHudFlagCommand::~EnableHudFlagCommand
+// @func 0x0073EAF8 EnableHudFlagCommand::~EnableHudFlagCommand (deleting)
+EnableHudFlagCommand::~EnableHudFlagCommand() = default;
 
 // @func 0x0008AE2C EnableHudFlagCommand::Create
 ApeAnimScriptCommand* EnableHudFlagCommand::Create(XmlElement* element) const
@@ -180,6 +190,7 @@ void EnableHudFlagCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SetEntityShownCommand : public ApeAnimScriptCommand {
 public:
     SetEntityShownCommand();
+    ~SetEntityShownCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -191,6 +202,10 @@ private:
 
 // @func 0x0008AF24 SetEntityShownCommand::SetEntityShownCommand
 SetEntityShownCommand::SetEntityShownCommand() = default;
+
+// @func 0x0073EB50 SetEntityShownCommand::~SetEntityShownCommand
+// @func 0x0073EB80 SetEntityShownCommand::~SetEntityShownCommand (deleting)
+SetEntityShownCommand::~SetEntityShownCommand() = default;
 
 // @func 0x0008AF74 SetEntityShownCommand::Create
 ApeAnimScriptCommand* SetEntityShownCommand::Create(XmlElement* element) const
@@ -219,6 +234,7 @@ void SetEntityShownCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScri
 class EnableInteractionCommand : public ApeAnimScriptCommand {
 public:
     EnableInteractionCommand();
+    ~EnableInteractionCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -232,6 +248,10 @@ private:
 
 // @func 0x0008B1C4 EnableInteractionCommand::EnableInteractionCommand
 EnableInteractionCommand::EnableInteractionCommand() = default;
+
+// @func 0x0073EBD8 EnableInteractionCommand::~EnableInteractionCommand
+// @func 0x0073EC08 EnableInteractionCommand::~EnableInteractionCommand (deleting)
+EnableInteractionCommand::~EnableInteractionCommand() = default;
 
 // @func 0x0008B21C EnableInteractionCommand::Create
 ApeAnimScriptCommand* EnableInteractionCommand::Create(XmlElement* element) const
@@ -267,6 +287,7 @@ void EnableInteractionCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimS
 class SetLeashCommand : public ApeAnimScriptCommand {
 public:
     SetLeashCommand();
+    ~SetLeashCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -279,6 +300,10 @@ private:
 
 // @func 0x0008B968 SetLeashCommand::SetLeashCommand
 SetLeashCommand::SetLeashCommand() = default;
+
+// @func 0x0073ECE8 SetLeashCommand::~SetLeashCommand
+// @func 0x0073ED18 SetLeashCommand::~SetLeashCommand (deleting)
+SetLeashCommand::~SetLeashCommand() = default;
 
 // @func 0x0008B9C0 SetLeashCommand::Create
 ApeAnimScriptCommand* SetLeashCommand::Create(XmlElement* element) const
@@ -316,6 +341,7 @@ void SetLeashCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptStat
 class WorldTrackCommand : public ApeAnimScriptCommand {
 public:
     WorldTrackCommand();
+    ~WorldTrackCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -329,6 +355,10 @@ private:
 
 // @func 0x0008BC34 WorldTrackCommand::WorldTrackCommand
 WorldTrackCommand::WorldTrackCommand() = default;
+
+// @func 0x0073ED70 WorldTrackCommand::~WorldTrackCommand
+// @func 0x0073EDA0 WorldTrackCommand::~WorldTrackCommand (deleting)
+WorldTrackCommand::~WorldTrackCommand() = default;
 
 // @func 0x0008BCA8 WorldTrackCommand::Create
 ApeAnimScriptCommand* WorldTrackCommand::Create(XmlElement* element) const
@@ -406,6 +436,7 @@ void InstanceLightGroupCommand::Execute(ApeAnimScriptInstance* instance, ApeAnim
 class SetBinocucomZoomCommand : public ApeAnimScriptCommand {
 public:
     SetBinocucomZoomCommand();
+    ~SetBinocucomZoomCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -415,6 +446,10 @@ private:
 
 // @func 0x0008C2F0 SetBinocucomZoomCommand::SetBinocucomZoomCommand
 SetBinocucomZoomCommand::SetBinocucomZoomCommand() = default;
+
+// @func 0x0073EDF8 SetBinocucomZoomCommand::~SetBinocucomZoomCommand
+// @func 0x0073EE28 SetBinocucomZoomCommand::~SetBinocucomZoomCommand (deleting)
+SetBinocucomZoomCommand::~SetBinocucomZoomCommand() = default;
 
 // @func 0x0008C350 SetBinocucomZoomCommand::Create
 ApeAnimScriptCommand* SetBinocucomZoomCommand::Create(XmlElement* element) const

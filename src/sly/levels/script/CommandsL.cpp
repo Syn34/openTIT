@@ -85,6 +85,7 @@ uint32_t HashFromIntVar(ApeAnimScriptInstance* instance, uint32_t varHash, uint3
 class ScreenColorFadeCommand : public ApeAnimScriptCommand {
 public:
     ScreenColorFadeCommand();
+    ~ScreenColorFadeCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -97,6 +98,10 @@ private:
 
 // @func 0x000835A8 ScreenColorFadeCommand::ScreenColorFadeCommand
 ScreenColorFadeCommand::ScreenColorFadeCommand() = default;
+
+// @func 0x0073DAA0 ScreenColorFadeCommand::~ScreenColorFadeCommand
+// @func 0x0073DAD0 ScreenColorFadeCommand::~ScreenColorFadeCommand (deleting)
+ScreenColorFadeCommand::~ScreenColorFadeCommand() = default;
 
 // @func 0x00083620 ScreenColorFadeCommand::Create
 ApeAnimScriptCommand* ScreenColorFadeCommand::Create(XmlElement* element) const
@@ -235,6 +240,8 @@ EntityMessageCommand::EntityMessageCommand()
     m_texts.reserve(kEntityMessageCapacity);
 }
 
+// @func 0x0073DB28 EntityMessageCommand::~EntityMessageCommand
+// @func 0x0073DB90 EntityMessageCommand::~EntityMessageCommand (deleting)
 EntityMessageCommand::~EntityMessageCommand() = default;
 
 // @func 0x00084490 EntityMessageCommand::Create
@@ -260,6 +267,7 @@ void EntityMessageCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScrip
 class PriorityTargetCommand : public ApeAnimScriptCommand {
 public:
     PriorityTargetCommand();
+    ~PriorityTargetCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -271,6 +279,10 @@ private:
 
 // @func 0x00084624 PriorityTargetCommand::PriorityTargetCommand
 PriorityTargetCommand::PriorityTargetCommand() = default;
+
+// @func 0x0073DC10 PriorityTargetCommand::~PriorityTargetCommand
+// @func 0x0073DC40 PriorityTargetCommand::~PriorityTargetCommand (deleting)
+PriorityTargetCommand::~PriorityTargetCommand() = default;
 
 // @func 0x00084684 PriorityTargetCommand::Create
 ApeAnimScriptCommand* PriorityTargetCommand::Create(XmlElement* element) const
@@ -326,6 +338,8 @@ QueueCutsceneCommand::QueueCutsceneCommand()
     m_texts.reserve(kQueueCutsceneTextCapacity);
 }
 
+// @func 0x0073DC98 QueueCutsceneCommand::~QueueCutsceneCommand
+// @func 0x0073DD00 QueueCutsceneCommand::~QueueCutsceneCommand (deleting)
 QueueCutsceneCommand::~QueueCutsceneCommand() = default;
 
 // @func 0x0008496C QueueCutsceneCommand::Create
@@ -366,6 +380,7 @@ XmlElement* QueueCutsceneCommand::CreateDebugElement() const
 class RegisterListenerCommand : public ApeAnimScriptCommand {
 public:
     RegisterListenerCommand();
+    ~RegisterListenerCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -376,6 +391,10 @@ private:
 
 // @func 0x00084CC0 RegisterListenerCommand::RegisterListenerCommand
 RegisterListenerCommand::RegisterListenerCommand() = default;
+
+// @func 0x0073DD80 RegisterListenerCommand::~RegisterListenerCommand
+// @func 0x0073DDB0 RegisterListenerCommand::~RegisterListenerCommand (deleting)
+RegisterListenerCommand::~RegisterListenerCommand() = default;
 
 // @func 0x00084D10 RegisterListenerCommand::Create
 ApeAnimScriptCommand* RegisterListenerCommand::Create(XmlElement* element) const
@@ -400,6 +419,7 @@ void RegisterListenerCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimSc
 class GadgetTargetCommand : public ApeAnimScriptCommand {
 public:
     GadgetTargetCommand();
+    ~GadgetTargetCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -414,6 +434,10 @@ private:
 
 // @func 0x00084E34 GadgetTargetCommand::GadgetTargetCommand
 GadgetTargetCommand::GadgetTargetCommand() = default;
+
+// @func 0x0073DE08 GadgetTargetCommand::~GadgetTargetCommand
+// @func 0x0073DE38 GadgetTargetCommand::~GadgetTargetCommand (deleting)
+GadgetTargetCommand::~GadgetTargetCommand() = default;
 
 // @func 0x00084E9C GadgetTargetCommand::Create
 ApeAnimScriptCommand* GadgetTargetCommand::Create(XmlElement* element) const

@@ -3,6 +3,8 @@
 #include "sly/levels/script/ScriptCommands.h"
 
 #include "sly/levels/GameServices.h"
+#include "sly/levels/script/ScriptVars.h"
+#include "sly/levels/LevelServices.h"
 
 namespace sly {
 namespace levels {
@@ -68,6 +70,7 @@ constexpr float kMinDuration = 1.0e-5f;
 // start-up). NOTE: assumed to be opaque white and opaque black.
 constexpr Color8 kDefaultFromColor = {0xFF, 0xFF, 0xFF, 0xFF};
 constexpr Color8 kDefaultToColor = {0x00, 0x00, 0x00, 0xFF};
+constexpr float kFadeMinDuration = 1.0e-5f;
 
 // Blend factor 0..255 from a fraction (the console converts through a
 // 64-bit integer and clamps unsigned).
@@ -97,6 +100,7 @@ class EntityKillFxCommand : public ApeAnimScriptCommand {
 public:
     EntityKillFxCommand();
     ~EntityKillFxCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -122,7 +126,16 @@ ApeAnimScriptCommand* EntityKillFxCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x000746B0 EntityKillFxCommand::Execute)
+// @func 0x000746B0 EntityKillFxCommand::Execute
+// Stops the effects the effect manager runs on an entity (or one of its children).
+void EntityKillFxCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_object, m_entity);
+    if (entity && m_child != 0)
+        entity = EntityFindChild(entity, m_child);
+    if (entity)
+        FxKillEntityEffects(entity);
+}
 
 // ---------------------------------------------------------------------------
 // "EntityGetCollectInfo" (hash 0x3CED7265; NOTE: name from a hash match):
@@ -131,6 +144,8 @@ ApeAnimScriptCommand* EntityKillFxCommand::Create(XmlElement* element) const
 class EntityGetCollectInfoCommand : public ApeAnimScriptCommand {
 public:
     EntityGetCollectInfoCommand();
+    ~EntityGetCollectInfoCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -141,6 +156,10 @@ private:
 
 // @func 0x000747D8 EntityGetCollectInfoCommand::EntityGetCollectInfoCommand
 EntityGetCollectInfoCommand::EntityGetCollectInfoCommand() = default;
+
+// @func 0x0073CAB0 EntityGetCollectInfoCommand::~EntityGetCollectInfoCommand
+// @func 0x0073CAE0 EntityGetCollectInfoCommand::~EntityGetCollectInfoCommand (deleting)
+EntityGetCollectInfoCommand::~EntityGetCollectInfoCommand() = default;
 
 // @func 0x00074838 EntityGetCollectInfoCommand::Create
 ApeAnimScriptCommand* EntityGetCollectInfoCommand::Create(XmlElement* element) const
@@ -155,7 +174,30 @@ ApeAnimScriptCommand* EntityGetCollectInfoCommand::Create(XmlElement* element) c
     return command;
 }
 
-// TODO(0x000749C0 EntityGetCollectInfoCommand::Execute)
+// @func 0x000749C0 EntityGetCollectInfoCommand::Execute
+// Copies a character definition's collection values into script variables:
+// three ints, then two vectors.
+void EntityGetCollectInfoCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_var, m_entity);
+    if (!entity || !EntityIsCharacter(entity))
+        return;
+    const CharacterCollectInfo info = CharacterDefCollectInfo(entity);
+    for (int i = 0; i < 3; ++i) {
+        if (m_outVars[i] == 0)
+            continue;
+        ApeAnimScriptVar* var = instance->FindVar(m_outVars[i]);
+        if (var && var->GetType() == AnimScriptVarType::Int)
+            static_cast<ape::ApeAnimScriptIntVar*>(var)->SetInt(info.values[i]);
+    }
+    for (int i = 0; i < 2; ++i) {
+        if (m_outVars[3 + i] == 0)
+            continue;
+        ApeAnimScriptVar* var = instance->FindVar(m_outVars[3 + i]);
+        if (var && var->GetType() == AnimScriptVarType::Vec3)
+            static_cast<ape::ApeAnimScriptVec3Var*>(var)->SetVec3(info.vectors[i]);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // "EntitySetEnabled" (hash 0xA21A00C2; NOTE: name from a hash match)
@@ -163,6 +205,8 @@ ApeAnimScriptCommand* EntityGetCollectInfoCommand::Create(XmlElement* element) c
 class EntitySetEnabledCommand : public ApeAnimScriptCommand {
 public:
     EntitySetEnabledCommand();
+    ~EntitySetEnabledCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -176,6 +220,10 @@ private:
 // @func 0x00074CDC EntitySetEnabledCommand::EntitySetEnabledCommand
 EntitySetEnabledCommand::EntitySetEnabledCommand() = default;
 
+// @func 0x0073CB38 EntitySetEnabledCommand::~EntitySetEnabledCommand
+// @func 0x0073CB68 EntitySetEnabledCommand::~EntitySetEnabledCommand (deleting)
+EntitySetEnabledCommand::~EntitySetEnabledCommand() = default;
+
 // @func 0x00074D34 EntitySetEnabledCommand::Create
 ApeAnimScriptCommand* EntitySetEnabledCommand::Create(XmlElement* element) const
 {
@@ -188,7 +236,39 @@ ApeAnimScriptCommand* EntitySetEnabledCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00074E70 EntitySetEnabledCommand::Execute)
+// @func 0x00074E70 EntitySetEnabledCommand::Execute
+void EntitySetEnabledCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    // The variable may hold an object or a trigger entity.
+    WorldObject* entity = nullptr;
+    if (m_var != 0) {
+        if (ApeAnimScriptVar* var = instance->FindVar(m_var)) {
+            if (var->GetType() == AnimScriptVarType::Object)
+                entity = EntityFromVar(instance, m_var);
+            else if (static_cast<int>(var->GetType()) == kVarType_Trigger)
+                entity = static_cast<ScriptTriggerVar*>(var)->GetValue();
+        }
+    }
+    if (!entity && m_entity != 0)
+        entity = FindEntity(m_entity);
+    if (!entity)
+        return;
+
+    auto apply = [this](WorldObject* target) {
+        if (EntityHasClassFlag(target, kEntityClass_Enableable))
+            EntitySetEnabledState(target, m_enabled);
+        EntitySetVisibilityDeferred(target, m_enabled, m_deferred);
+    };
+    apply(entity);
+    // Attribute 0xF5897C08 applies the same to every attached child.
+    if (m_flag16) {
+        const int count = EntityChildCount(entity);
+        for (int i = 0; i < count; ++i) {
+            if (WorldObject* child = EntityChildAt(entity, i))
+                apply(child);
+        }
+    }
+}
 
 // ---------------------------------------------------------------------------
 // "EntitySetScriptState" (hash 0x53017FA7; NOTE: name from a hash match)
@@ -196,6 +276,8 @@ ApeAnimScriptCommand* EntitySetEnabledCommand::Create(XmlElement* element) const
 class EntitySetScriptStateCommand : public ApeAnimScriptCommand {
 public:
     EntitySetScriptStateCommand();
+    ~EntitySetScriptStateCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -210,6 +292,10 @@ private:
 // @func 0x000750DC EntitySetScriptStateCommand::EntitySetScriptStateCommand
 EntitySetScriptStateCommand::EntitySetScriptStateCommand() = default;
 
+// @func 0x0073CBC0 EntitySetScriptStateCommand::~EntitySetScriptStateCommand
+// @func 0x0073CBF0 EntitySetScriptStateCommand::~EntitySetScriptStateCommand (deleting)
+EntitySetScriptStateCommand::~EntitySetScriptStateCommand() = default;
+
 // @func 0x00075144 EntitySetScriptStateCommand::Create
 ApeAnimScriptCommand* EntitySetScriptStateCommand::Create(XmlElement* element) const
 {
@@ -223,7 +309,17 @@ ApeAnimScriptCommand* EntitySetScriptStateCommand::Create(XmlElement* element) c
     return command;
 }
 
-// TODO(0x000752A8 EntitySetScriptStateCommand::Execute)
+// @func 0x000752A8 EntitySetScriptStateCommand::Execute
+void EntitySetScriptStateCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_refObject, m_entity);
+    if (entity && m_child != 0)
+        entity = EntityFindChild(entity, m_child);
+    if (!entity)
+        return;
+    if (m_allowRepeat || EntityScriptState(entity) != m_state)
+        EntitySetScriptState(entity, m_state, m_flag1C);
+}
 
 // ---------------------------------------------------------------------------
 // "EntitySetGadgetState" (hash 0x3E5144C6; NOTE: name from a hash match)
@@ -231,6 +327,8 @@ ApeAnimScriptCommand* EntitySetScriptStateCommand::Create(XmlElement* element) c
 class EntitySetGadgetStateCommand : public ApeAnimScriptCommand {
 public:
     EntitySetGadgetStateCommand();
+    ~EntitySetGadgetStateCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -243,6 +341,10 @@ private:
 // @func 0x00075424 EntitySetGadgetStateCommand::EntitySetGadgetStateCommand
 EntitySetGadgetStateCommand::EntitySetGadgetStateCommand() = default;
 
+// @func 0x0073CC48 EntitySetGadgetStateCommand::~EntitySetGadgetStateCommand
+// @func 0x0073CC78 EntitySetGadgetStateCommand::~EntitySetGadgetStateCommand (deleting)
+EntitySetGadgetStateCommand::~EntitySetGadgetStateCommand() = default;
+
 // @func 0x0007547C EntitySetGadgetStateCommand::Create
 ApeAnimScriptCommand* EntitySetGadgetStateCommand::Create(XmlElement* element) const
 {
@@ -254,7 +356,19 @@ ApeAnimScriptCommand* EntitySetGadgetStateCommand::Create(XmlElement* element) c
     return command;
 }
 
-// TODO(0x0007558C EntitySetGadgetStateCommand::Execute)
+// @func 0x0007558C EntitySetGadgetStateCommand::Execute
+void EntitySetGadgetStateCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_refObject, m_entity);
+    if (entity && m_child != 0)
+        entity = EntityFindChild(entity, m_child);
+    if (!entity)
+        return;
+    if (EntityIsGadgetObject(entity))
+        GadgetObjectSetState(entity, m_state);
+    else
+        ScriptWarning("EntitySetGadgetState: %s is not a gadget object", EntityName(entity));
+}
 
 // ---------------------------------------------------------------------------
 // "EntitySetNoTarget" (hash 0x9D57A511; NOTE: name from a hash match)
@@ -262,6 +376,8 @@ ApeAnimScriptCommand* EntitySetGadgetStateCommand::Create(XmlElement* element) c
 class EntitySetNoTargetCommand : public ApeAnimScriptCommand {
 public:
     EntitySetNoTargetCommand();
+    ~EntitySetNoTargetCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -274,6 +390,10 @@ private:
 // @func 0x00075710 EntitySetNoTargetCommand::EntitySetNoTargetCommand
 EntitySetNoTargetCommand::EntitySetNoTargetCommand() = default;
 
+// @func 0x0073CCD0 EntitySetNoTargetCommand::~EntitySetNoTargetCommand
+// @func 0x0073CD00 EntitySetNoTargetCommand::~EntitySetNoTargetCommand (deleting)
+EntitySetNoTargetCommand::~EntitySetNoTargetCommand() = default;
+
 // @func 0x00075768 EntitySetNoTargetCommand::Create
 ApeAnimScriptCommand* EntitySetNoTargetCommand::Create(XmlElement* element) const
 {
@@ -285,7 +405,15 @@ ApeAnimScriptCommand* EntitySetNoTargetCommand::Create(XmlElement* element) cons
     return command;
 }
 
-// TODO(0x00075880 EntitySetNoTargetCommand::Execute)
+// @func 0x00075880 EntitySetNoTargetCommand::Execute
+void EntitySetNoTargetCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_object, m_entity);
+    if (entity && m_child != 0)
+        entity = EntityFindChild(entity, m_child);
+    if (entity)
+        EntitySetNoTarget(entity, m_noTarget);
+}
 
 // ---------------------------------------------------------------------------
 // "EntitySetVisible" (hash 0x1DDC65F3; NOTE: name from a hash match)
@@ -293,6 +421,8 @@ ApeAnimScriptCommand* EntitySetNoTargetCommand::Create(XmlElement* element) cons
 class EntitySetVisibleCommand : public ApeAnimScriptCommand {
 public:
     EntitySetVisibleCommand();
+    ~EntitySetVisibleCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -308,6 +438,10 @@ private:
 // @func 0x00075A14 EntitySetVisibleCommand::EntitySetVisibleCommand
 EntitySetVisibleCommand::EntitySetVisibleCommand() = default;
 
+// @func 0x0073CD58 EntitySetVisibleCommand::~EntitySetVisibleCommand
+// @func 0x0073CD88 EntitySetVisibleCommand::~EntitySetVisibleCommand (deleting)
+EntitySetVisibleCommand::~EntitySetVisibleCommand() = default;
+
 // @func 0x00075A7C EntitySetVisibleCommand::Create
 ApeAnimScriptCommand* EntitySetVisibleCommand::Create(XmlElement* element) const
 {
@@ -322,7 +456,15 @@ ApeAnimScriptCommand* EntitySetVisibleCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00075C04 EntitySetVisibleCommand::Execute)
+// @func 0x00075C04 EntitySetVisibleCommand::Execute
+void EntitySetVisibleCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_refObject, m_entity);
+    if (entity && m_child != 0)
+        entity = EntityFindChild(entity, m_child);
+    if (entity)
+        EntitySetVisible(entity, m_visible, m_flag18, m_flag19, m_processComponents);
+}
 
 // ---------------------------------------------------------------------------
 // FadeDesaturation
@@ -334,6 +476,8 @@ public:
 
     FadeDesaturationCommand();
     explicit FadeDesaturationCommand(XmlElement* element);
+    ~FadeDesaturationCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -350,6 +494,10 @@ private:
 
 // @func 0x00075D14 FadeDesaturationCommand::FadeDesaturationCommand
 FadeDesaturationCommand::FadeDesaturationCommand() = default;
+
+// @func 0x0073CDE0 FadeDesaturationCommand::~FadeDesaturationCommand
+// @func 0x0073CE10 FadeDesaturationCommand::~FadeDesaturationCommand (deleting)
+FadeDesaturationCommand::~FadeDesaturationCommand() = default;
 
 // @func 0x00075DD4 FadeDesaturationCommand::FadeDesaturationCommand
 FadeDesaturationCommand::FadeDesaturationCommand(XmlElement* element)
@@ -392,7 +540,35 @@ ApeAnimScriptCommand* FadeDesaturationCommand::Create(XmlElement* element) const
     return new FadeDesaturationCommand(element);
 }
 
-// TODO(0x00076150 FadeDesaturationCommand::Execute)
+// @func 0x00076150 FadeDesaturationCommand::Execute
+// Starts (or restarts) a full-screen desaturation fade. The int variable
+// named by attribute 0x89E68B87 remembers the slot so later commands can
+// replace the same fade.
+void FadeDesaturationCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    ape::ApeAnimScriptIntVar* slotVar = nullptr;
+    if (m_target != 0) {
+        ApeAnimScriptVar* var = instance->FindVar(m_target);
+        if (var && var->GetType() == AnimScriptVarType::Int)
+            slotVar = static_cast<ape::ApeAnimScriptIntVar*>(var);
+    }
+    int slot = slotVar ? slotVar->GetInt() : -1;
+    if (slot < 0)
+        slot = GameWorldAllocScreenFilter();
+
+    ScreenFilterFade& fade = GameWorldScreenFilter(slot);
+    fade.blendMode = static_cast<uint8_t>(m_blendMode & 0xF);
+    fade.type = static_cast<uint8_t>(m_type & 0xF);
+    fade.disabled = !m_enable;
+    fade.colorStart = m_colorStart;
+    fade.colorEnd = m_colorEnd;
+    fade.intensityStart = m_intensityStart;
+    fade.intensityEnd = m_intensityEnd;
+    fade.duration = m_duration;
+    fade.elapsed = 0.0f;
+    if (slotVar)
+        slotVar->SetInt(slot);
+}
 
 // ---------------------------------------------------------------------------
 // FadeColor
@@ -401,6 +577,7 @@ class FadeColorCommand : public ApeAnimScriptCommand {
 public:
     FadeColorCommand();
     ~FadeColorCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
     // Current colour: driven by the float variable "InterpVar" when given,
@@ -451,8 +628,48 @@ Color8 FadeColorCommand::ComputeColor(ApeAnimScriptInstance* instance, const Ape
     return m_to;
 }
 
-// TODO(0x00076970 FadeColorCommand::Execute) applies ComputeColor() to the
-// object's materials.
+// @func 0x00076970 FadeColorCommand::Execute
+// Applies the current colour to whatever "object" names: a GUI node, a
+// material, a light or a geometry instance (one of its materials when
+// "Material" is given, else the instance tint).
+void FadeColorCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state)
+{
+    ApeAnimScriptVar* var = instance->FindVar(m_object);
+    if (!var)
+        return;
+    switch (var->GetType()) {
+    case AnimScriptVarType::Gui:
+        if (void* node = static_cast<ape::ApeAnimScriptGuiVar*>(var)->Resolve())
+            GuiNodeSetColor(node, ComputeColor(instance, state));
+        return;
+    case AnimScriptVarType::Material: {
+        auto* materialVar = static_cast<ape::ApeAnimScriptMaterialVar*>(var);
+        void* material = materialVar->GetMaterial();
+        if (!material && materialVar->GetMaterialName() != 0)
+            material = FindLiveMaterial(materialVar->GetMaterialName());
+        if (material)
+            MaterialSetColor(material, ComputeColor(instance, state));
+        return;
+    }
+    case AnimScriptVarType::Object: {
+        ape::ApeRefCounted* object = static_cast<ape::ApeAnimScriptObjectVar*>(var)->GetObject();
+        if (!object)
+            return;
+        if (ObjectIsLight(object)) {
+            LightSetColor(object, ComputeColor(instance, state));
+        } else if (ObjectIsGeometryInstance(object)) {
+            void* material = m_material ? GeometryFindMaterial(object, m_material) : nullptr;
+            if (material)
+                MaterialSetColor(material, ComputeColor(instance, state));
+            else
+                GeometrySetTint(object, ComputeColor(instance, state));
+        }
+        return;
+    }
+    default:
+        return;
+    }
+}
 
 // ---------------------------------------------------------------------------
 // FadeEntity
@@ -461,6 +678,7 @@ class FadeEntityCommand : public ApeAnimScriptCommand {
 public:
     FadeEntityCommand();
     ~FadeEntityCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -491,7 +709,17 @@ ApeAnimScriptCommand* FadeEntityCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00077138 FadeEntityCommand::Execute)
+// @func 0x00077138 FadeEntityCommand::Execute
+void FadeEntityCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state)
+{
+    WorldObject* entity = EntityFromVar(instance, m_refObject);
+    if (!entity)
+        return;
+    float alpha = m_to;
+    if (m_duration >= kFadeMinDuration && state->GetTime() < m_duration)
+        alpha = m_from + (m_to - m_from) * state->GetTime() / m_duration;
+    EntitySetAlpha(entity, static_cast<uint8_t>(static_cast<int>(alpha * 255.0f)), m_flag1C);
+}
 
 // ---------------------------------------------------------------------------
 // "FadeLightIntensity" (hash 0x5DA7E559; NOTE: name from a hash match)
@@ -500,6 +728,7 @@ class FadeLightIntensityCommand : public ApeAnimScriptCommand {
 public:
     FadeLightIntensityCommand();
     ~FadeLightIntensityCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -529,7 +758,19 @@ ApeAnimScriptCommand* FadeLightIntensityCommand::Create(XmlElement* element) con
     return command;
 }
 
-// TODO(0x000774D8 FadeLightIntensityCommand::Execute)
+// @func 0x000774D8 FadeLightIntensityCommand::Execute
+void FadeLightIntensityCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state)
+{
+    if (m_to < 0.0f)
+        return;
+    ape::ApeRefCounted* light = ObjectFromVar(instance, m_object);
+    if (!light || !ObjectIsLight(light))
+        return;
+    float intensity = m_to;
+    if (m_duration >= kFadeMinDuration && state->GetTime() < m_duration)
+        intensity = m_from + (m_to - m_from) * state->GetTime() / m_duration;
+    LightSetIntensity(light, intensity);
+}
 
 // ---------------------------------------------------------------------------
 // FadeObject
@@ -538,6 +779,7 @@ class FadeObjectCommand : public ApeAnimScriptCommand {
 public:
     FadeObjectCommand();
     ~FadeObjectCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -570,7 +812,27 @@ ApeAnimScriptCommand* FadeObjectCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x000778C0 FadeObjectCommand::Execute)
+// @func 0x000778C0 FadeObjectCommand::Execute
+void FadeObjectCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state)
+{
+    if (m_object == 0)
+        return;
+    ape::ApeRefCounted* object = ObjectFromVar(instance, m_object);
+    if (!object)
+        return;
+    if (m_part != 0) {
+        object = ObjectFindDescendant(object, m_part);
+        if (!object) {
+            ScriptWarning("FadeObject: no part %s", m_part);
+            return;
+        }
+    }
+    float alpha = m_to;
+    if (m_duration >= kFadeMinDuration && state->GetTime() < m_duration)
+        alpha = m_from + (m_to - m_from) * state->GetTime() / m_duration;
+    if (ObjectIsGeometryInstance(object))
+        GeometrySetAlpha(object, static_cast<uint8_t>(static_cast<int>(alpha * 255.0f)), m_flag20);
+}
 
 // ---------------------------------------------------------------------------
 // "FadeOverrideColor" (hash 0x48AF45FB; NOTE: name from a hash match)
@@ -579,6 +841,7 @@ class FadeOverrideColorCommand : public ApeAnimScriptCommand {
 public:
     FadeOverrideColorCommand();
     ~FadeOverrideColorCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
     // Colour at the state's current time; returns true once the fade is over.
@@ -620,7 +883,20 @@ bool FadeOverrideColorCommand::ComputeColor(const ApeAnimScriptState* state, Col
     return false;
 }
 
-// TODO(0x00077EB0 FadeOverrideColorCommand::Execute)
+// @func 0x00077EB0 FadeOverrideColorCommand::Execute
+// Drives a character's override colour; the override switches off once the
+// fade has reached its end.
+void FadeOverrideColorCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state)
+{
+    if (m_object == 0)
+        return;
+    WorldObject* entity = EntityFromVar(instance, m_object);
+    if (!entity || !EntityIsCharacter(entity))
+        return;
+    Color8 color;
+    const bool finished = ComputeColor(state, &color);
+    CharacterSetOverrideColor(entity, !finished, color);
+}
 
 // ---------------------------------------------------------------------------
 // FireProjectile
@@ -629,6 +905,7 @@ class FireProjectileCommand : public ApeAnimScriptCommand {
 public:
     FireProjectileCommand();
     explicit FireProjectileCommand(XmlElement* element);
+    ~FireProjectileCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -659,6 +936,10 @@ private:
 
 // @func 0x00077FE0 FireProjectileCommand::FireProjectileCommand
 FireProjectileCommand::FireProjectileCommand() = default;
+
+// @func 0x0073CE68 FireProjectileCommand::~FireProjectileCommand
+// @func 0x0073CE98 FireProjectileCommand::~FireProjectileCommand (deleting)
+FireProjectileCommand::~FireProjectileCommand() = default;
 
 // @func 0x000780D0 FireProjectileCommand::FireProjectileCommand
 FireProjectileCommand::FireProjectileCommand(XmlElement* element)

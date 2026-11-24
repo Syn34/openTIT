@@ -3,6 +3,7 @@
 #include "sly/levels/script/ScriptCommands.h"
 
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
 #include <cstring>
@@ -65,6 +66,8 @@ int ClampPlayerNum(int32_t value)
 class MapMaterialToVarCommand : public ApeAnimScriptCommand {
 public:
     MapMaterialToVarCommand();
+    ~MapMaterialToVarCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -76,6 +79,10 @@ private:
 // @func 0x000812C0 MapMaterialToVarCommand::MapMaterialToVarCommand
 MapMaterialToVarCommand::MapMaterialToVarCommand() = default;
 
+// @func 0x0073D6E8 MapMaterialToVarCommand::~MapMaterialToVarCommand
+// @func 0x0073D718 MapMaterialToVarCommand::~MapMaterialToVarCommand (deleting)
+MapMaterialToVarCommand::~MapMaterialToVarCommand() = default;
+
 // @func 0x00081310 MapMaterialToVarCommand::Create
 ApeAnimScriptCommand* MapMaterialToVarCommand::Create(XmlElement* element) const
 {
@@ -86,8 +93,31 @@ ApeAnimScriptCommand* MapMaterialToVarCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00081400 MapMaterialToVarCommand::Execute) searches the global AglMaterial
-// list (or the materials of the object's model) for the name.
+// @func 0x00081400 MapMaterialToVarCommand::Execute
+// Points a material variable at the material named "material": one of the
+// geometry instance held by "ObjectVar", else any live material.
+void MapMaterialToVarCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_materialVar == 0 || m_material == 0)
+        return;
+    ApeAnimScriptVar* var = instance->FindVar(m_materialVar);
+    if (!var || var->GetType() != AnimScriptVarType::Material)
+        return;
+    auto* materialVar = static_cast<ape::ApeAnimScriptMaterialVar*>(var);
+
+    if (m_objectVar == 0) {
+        materialVar->SetMaterial(FindLiveMaterial(m_material));
+        materialVar->SetMaterialName(m_material);
+        return;
+    }
+    ape::ApeRefCounted* object = ObjectFromVar(instance, m_objectVar);
+    if (!object || !ObjectIsGeometryInstance(object))
+        return;
+    if (void* material = GeometryFindMaterial(object, m_material)) {
+        materialVar->SetMaterial(material);
+        materialVar->SetMaterialName(m_material);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x27D06D5B (name unknown): no parameters.
@@ -95,12 +125,17 @@ ApeAnimScriptCommand* MapMaterialToVarCommand::Create(XmlElement* element) const
 class WorldResumeCommand : public ApeAnimScriptCommand {
 public:
     WorldResumeCommand();
+    ~WorldResumeCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 };
 
 // @func 0x00081714 WorldResumeCommand::WorldResumeCommand
 WorldResumeCommand::WorldResumeCommand() = default;
+
+// @func 0x0073D770 WorldResumeCommand::~WorldResumeCommand
+// @func 0x0073D7A0 WorldResumeCommand::~WorldResumeCommand (deleting)
+WorldResumeCommand::~WorldResumeCommand() = default;
 
 // @func 0x00081754 WorldResumeCommand::Create
 ApeAnimScriptCommand* WorldResumeCommand::Create(XmlElement*) const
@@ -120,12 +155,17 @@ void WorldResumeCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class OpenBinocucomCommand : public ApeAnimScriptCommand {
 public:
     OpenBinocucomCommand();
+    ~OpenBinocucomCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 };
 
 // @func 0x00081800 OpenBinocucomCommand::OpenBinocucomCommand
 OpenBinocucomCommand::OpenBinocucomCommand() = default;
+
+// @func 0x0073D7F8 OpenBinocucomCommand::~OpenBinocucomCommand
+// @func 0x0073D828 OpenBinocucomCommand::~OpenBinocucomCommand (deleting)
+OpenBinocucomCommand::~OpenBinocucomCommand() = default;
 
 // @func 0x00081840 OpenBinocucomCommand::Create
 ApeAnimScriptCommand* OpenBinocucomCommand::Create(XmlElement*) const
@@ -148,6 +188,8 @@ void OpenBinocucomCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class OverrideColorCommand : public ApeAnimScriptCommand {
 public:
     OverrideColorCommand();
+    ~OverrideColorCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -159,6 +201,10 @@ private:
 // @func 0x00081958 OverrideColorCommand::OverrideColorCommand
 OverrideColorCommand::OverrideColorCommand() = default;
 
+// @func 0x0073D880 OverrideColorCommand::~OverrideColorCommand
+// @func 0x0073D8B0 OverrideColorCommand::~OverrideColorCommand (deleting)
+OverrideColorCommand::~OverrideColorCommand() = default;
+
 // @func 0x000819D8 OverrideColorCommand::Create
 ApeAnimScriptCommand* OverrideColorCommand::Create(XmlElement* element) const
 {
@@ -169,8 +215,14 @@ ApeAnimScriptCommand* OverrideColorCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00081B00 OverrideColorCommand::Execute) writes the colour into several
-// entity-class specific fields (character +0x3C8, class flags 0x800/0x200/0x400/0x100).
+// @func 0x00081B00 OverrideColorCommand::Execute
+void OverrideColorCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_object == 0)
+        return;
+    if (WorldObject* entity = EntityFromVar(instance, m_object))
+        EntityApplyOverrideColor(entity, m_enabled, m_color);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x3173666E (name unknown): sets the game state's pause flag.
@@ -301,6 +353,7 @@ ApeAnimScriptCommand* GamePlayAnimCommand::Create(XmlElement* element) const
 class PlayerEnableAllButtonsCommand : public ApeAnimScriptCommand {
 public:
     PlayerEnableAllButtonsCommand();
+    ~PlayerEnableAllButtonsCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -311,6 +364,10 @@ private:
 
 // @func 0x00082D7C PlayerEnableAllButtonsCommand::PlayerEnableAllButtonsCommand
 PlayerEnableAllButtonsCommand::PlayerEnableAllButtonsCommand() = default;
+
+// @func 0x0073D908 PlayerEnableAllButtonsCommand::~PlayerEnableAllButtonsCommand
+// @func 0x0073D938 PlayerEnableAllButtonsCommand::~PlayerEnableAllButtonsCommand (deleting)
+PlayerEnableAllButtonsCommand::~PlayerEnableAllButtonsCommand() = default;
 
 // @func 0x00082DCC PlayerEnableAllButtonsCommand::Create
 ApeAnimScriptCommand* PlayerEnableAllButtonsCommand::Create(XmlElement* element) const
@@ -337,6 +394,7 @@ void PlayerEnableAllButtonsCommand::Execute(ApeAnimScriptInstance*, ApeAnimScrip
 class PlayerEnableButtonCommand : public ApeAnimScriptCommand {
 public:
     PlayerEnableButtonCommand();
+    ~PlayerEnableButtonCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -348,6 +406,10 @@ private:
 
 // @func 0x00082F58 PlayerEnableButtonCommand::PlayerEnableButtonCommand
 PlayerEnableButtonCommand::PlayerEnableButtonCommand() = default;
+
+// @func 0x0073D990 PlayerEnableButtonCommand::~PlayerEnableButtonCommand
+// @func 0x0073D9C0 PlayerEnableButtonCommand::~PlayerEnableButtonCommand (deleting)
+PlayerEnableButtonCommand::~PlayerEnableButtonCommand() = default;
 
 // @func 0x00082FA8 PlayerEnableButtonCommand::Create
 ApeAnimScriptCommand* PlayerEnableButtonCommand::Create(XmlElement* element) const
@@ -375,6 +437,7 @@ void PlayerEnableButtonCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptSta
 class PlayerEnableControlCommand : public ApeAnimScriptCommand {
 public:
     PlayerEnableControlCommand();
+    ~PlayerEnableControlCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -385,6 +448,10 @@ private:
 
 // @func 0x00083154 PlayerEnableControlCommand::PlayerEnableControlCommand
 PlayerEnableControlCommand::PlayerEnableControlCommand() = default;
+
+// @func 0x0073DA18 PlayerEnableControlCommand::~PlayerEnableControlCommand
+// @func 0x0073DA48 PlayerEnableControlCommand::~PlayerEnableControlCommand (deleting)
+PlayerEnableControlCommand::~PlayerEnableControlCommand() = default;
 
 // @func 0x000831A4 PlayerEnableControlCommand::Create
 ApeAnimScriptCommand* PlayerEnableControlCommand::Create(XmlElement* element) const
