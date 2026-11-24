@@ -1031,9 +1031,10 @@ bool SetupWarpMaterial(AglMaterial* material, const AglMaterialDesc* desc)
 // --- techniques -------------------------------------------------------------------
 
 class DebugTechnique : public AglTechnique {
-    // TODO(0x005ADA08 DebugTechnique::BeginMaterial)
     // TODO(0x005ADA18 DebugTechnique::Draw)
 public:
+    // @func 0x005ADA08 DebugTechnique::BeginMaterial
+    void BeginMaterial(AglMaterial* /*material*/) override {}
     // @func 0x007ABB3C DebugTechnique::~DebugTechnique
     // @func 0x007ABEB0 DebugTechnique::~DebugTechnique (deleting)
     ~DebugTechnique() override = default;
@@ -1042,9 +1043,10 @@ public:
 };
 
 class PrimTxrTechnique : public AglTechnique {
-    // TODO(0x005ADD50 PrimTxrTechnique::BeginMaterial)
     // TODO(0x005ADD54 PrimTxrTechnique::Draw)
 public:
+    // @func 0x005ADD50 PrimTxrTechnique::BeginMaterial
+    void BeginMaterial(AglMaterial* /*material*/) override {}
     // @func 0x007ABB4C PrimTxrTechnique::~PrimTxrTechnique
     // @func 0x007AC134 PrimTxrTechnique::~PrimTxrTechnique (deleting)
     ~PrimTxrTechnique() override = default;
@@ -1053,9 +1055,10 @@ public:
 };
 
 class SimpleColorTxrTechnique : public AglTechnique {
-    // TODO(0x005ADEE0 SimpleColorTxrTechnique::BeginMaterial)
     // TODO(0x005ADEE4 SimpleColorTxrTechnique::Draw)
 public:
+    // @func 0x005ADEE0 SimpleColorTxrTechnique::BeginMaterial
+    void BeginMaterial(AglMaterial* /*material*/) override {}
     // @func 0x007ABB5C SimpleColorTxrTechnique::~SimpleColorTxrTechnique
     // @func 0x007AC454 SimpleColorTxrTechnique::~SimpleColorTxrTechnique (deleting)
     ~SimpleColorTxrTechnique() override = default;
@@ -1064,9 +1067,9 @@ public:
 };
 
 class SimpleColorTxrUVTechnique : public AglTechnique {
-    // TODO(0x005AE0B0 SimpleColorTxrUVTechnique::BeginMaterial)
     // TODO(0x005AE0F0 SimpleColorTxrUVTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABB6C SimpleColorTxrUVTechnique::~SimpleColorTxrUVTechnique
     // @func 0x007AC608 SimpleColorTxrUVTechnique::~SimpleColorTxrUVTechnique (deleting)
     ~SimpleColorTxrUVTechnique() override = default;
@@ -1077,8 +1080,9 @@ public:
 class TextureWarpTechnique : public AglTechnique {
     // TODO(0x005AE9A0 TextureWarpTechnique::BeginMaterial)
     // TODO(0x005AEB00 TextureWarpTechnique::Draw)
-    // TODO(0x005AF07C TextureWarpTechnique::End)
 public:
+    // @func 0x005AF07C TextureWarpTechnique::End
+    void End(AglMaterial* /*material*/) override {}
     // @func 0x007ABB7C TextureWarpTechnique::~TextureWarpTechnique
     // @func 0x007AC7BC TextureWarpTechnique::~TextureWarpTechnique (deleting)
     ~TextureWarpTechnique() override = default;
@@ -1087,17 +1091,19 @@ public:
 class ScreenWarpTechnique : public AglTechnique {
     // TODO(0x005AF518 ScreenWarpTechnique::BeginMaterial)
     // TODO(0x005AF730 ScreenWarpTechnique::Draw)
-    // TODO(0x005AFAB8 ScreenWarpTechnique::End)
 public:
+    // @func 0x005AFAB8 ScreenWarpTechnique::End
+    void End(AglMaterial* /*material*/) override {}
     // @func 0x007ABB8C ScreenWarpTechnique::~ScreenWarpTechnique
     // @func 0x007AC874 ScreenWarpTechnique::~ScreenWarpTechnique (deleting)
     ~ScreenWarpTechnique() override = default;
 };
 
 class LineOutlineTechnique : public AglTechnique {
-    // TODO(0x005AFACC LineOutlineTechnique::BeginMaterial)
     // TODO(0x005AFAD0 LineOutlineTechnique::Draw)
 public:
+    // @func 0x005AFACC LineOutlineTechnique::BeginMaterial
+    void BeginMaterial(AglMaterial* /*material*/) override {}
     // @func 0x007ABB9C LineOutlineTechnique::~LineOutlineTechnique
     // @func 0x007ACCAC LineOutlineTechnique::~LineOutlineTechnique (deleting)
     ~LineOutlineTechnique() override = default;
@@ -1106,9 +1112,10 @@ public:
 };
 
 class OutlineTechnique : public AglTechnique {
-    // TODO(0x005AFBE8 OutlineTechnique::BeginMaterial)
     // TODO(0x005AFBF8 OutlineTechnique::Draw)
 public:
+    // @func 0x005AFBE8 OutlineTechnique::BeginMaterial
+    void BeginMaterial(AglMaterial* /*material*/) override {}
     // @func 0x007ABBAC OutlineTechnique::~OutlineTechnique
     // @func 0x007ACD68 OutlineTechnique::~OutlineTechnique (deleting)
     ~OutlineTechnique() override = default;
@@ -1603,9 +1610,9 @@ public:
 };
 
 class ShoNightBlendTechnique : public AglTechnique {
-    // TODO(0x005D8060 ShoNightBlendTechnique::BeginMaterial)
     // TODO(0x005D8100 ShoNightBlendTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABE9C ShoNightBlendTechnique::~ShoNightBlendTechnique
     ~ShoNightBlendTechnique() override = default;
 };
@@ -4598,6 +4605,23 @@ bool SlyWaterClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* 
     if (AglTexture* foam = FindTexture(desc->detailHash))
         AddRepeated(material, foam);
     return true;
+}
+
+// @func 0x005AE0B0 SimpleColorTxrUVTechnique::BeginMaterial
+void SimpleColorTxrUVTechnique::BeginMaterial(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+}
+
+// @func 0x005D8060 ShoNightBlendTechnique::BeginMaterial
+void ShoNightBlendTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    // NOTE: vertex register 6 always receives (1, 1, 1, 1) (a static that is
+    // never changed on the console).
+    static const float kBlend[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    Cmd().SetVertexProgramConstants(6, 4, kBlend);
 }
 
 } // namespace agl
