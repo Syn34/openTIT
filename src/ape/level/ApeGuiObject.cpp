@@ -66,6 +66,35 @@ namespace {
 const int kGuiBlendPresets[4] = { 2, 3, 4, 0 };
 }
 
+namespace {
+// Compile-time HashNameNoCase().
+constexpr uint32_t GuiHash(const char* name)
+{
+    uint32_t hash = 0;
+    for (; *name; ++name) {
+        int c = (signed char)*name;
+        if (c >= 'a' && c <= 'z')
+            c -= 'a' - 'A';
+        hash = hash * 31u + (uint32_t)c;
+    }
+    return hash;
+}
+static_assert(GuiHash("pingpong") == 0x152D006Au, "GuiHash must match HashNameNoCase");
+} // namespace
+
+// @func 0x004E2B60 ParseGuiAnimPlayMode
+GuiAnimPlayMode ParseGuiAnimPlayMode(uint32_t nameHash)
+{
+    switch (nameHash) {
+    case GuiHash("revloop"): return kGuiAnim_RevLoop;
+    case GuiHash("revhold"): return kGuiAnim_RevHold;
+    case GuiHash("pingpong"): return kGuiAnim_PingPong;
+    case GuiHash("fwdloop"): return kGuiAnim_FwdLoop;
+    case GuiHash("fwdhold"): return kGuiAnim_FwdHold;
+    default: return kGuiAnim_FwdLoop;
+    }
+}
+
 void ApplyGuiBlendMode(agl::AglMaterial* material, uint32_t mode)
 {
     using agl::gpu::BlendEquation;

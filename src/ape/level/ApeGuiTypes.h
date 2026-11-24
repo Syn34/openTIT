@@ -21,6 +21,19 @@ namespace ape {
 // into the SetBlendMode overrides on the console).
 void ApplyGuiBlendMode(agl::AglMaterial* material, uint32_t mode);
 
+// Playback modes of GUI animations.
+enum GuiAnimPlayMode : uint32_t {
+    kGuiAnim_FwdLoop = 0,
+    kGuiAnim_FwdHold = 1,
+    kGuiAnim_PingPong = 2,
+    kGuiAnim_RevLoop = 3,
+    kGuiAnim_RevHold = 4,
+};
+
+// Mode named by 'nameHash' ("fwdloop", "fwdhold", "pingpong", "revloop",
+// "revhold"); unknown names play forward looping.
+GuiAnimPlayMode ParseGuiAnimPlayMode(uint32_t nameHash);
+
 // "frame" (type 0, vtable 0x00B22920, 0xB0 bytes): an empty sized box.
 // TODO(0x004E4BF8 ApeGuiFrame::Clone) TODO(0x004E4E78 ApeGuiFrame::GetLayoutSize)
 // TODO(0x004E4FB0 ApeGuiFrame::VirtualSlot44)
