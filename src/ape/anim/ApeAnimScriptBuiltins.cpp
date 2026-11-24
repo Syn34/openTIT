@@ -9,7 +9,7 @@
 namespace ape {
 
 // TODO(0x004B9F2C RegisterBuiltins) the console version also registers the
-// AttachObject, MoveObject, CallRandom and SetPostProc commands, which are
+// AttachObject, MoveObject and SetPostProc commands, which are
 // not ported yet.
 void RegisterBuiltins()
 {
@@ -35,6 +35,7 @@ void RegisterBuiltins()
     commands.Add(AnimHash("IfEquals"), new ApeAnimScriptIfEqualsCommand());
     commands.Add(AnimHash("IfRange"), new ApeAnimScriptIfRangeCommand());
     commands.Add(AnimHash("call"), new ApeAnimScriptCallCommand());
+    commands.Add(AnimHash("CallRandom"), new ApeAnimScriptCallRandomCommand());
     commands.Add(AnimHash("StopChildScript"), new ApeAnimScriptStopChildScriptCommand());
     commands.Add(AnimHash("SetFloat"), new ApeAnimScriptSetFloatCommand());
     commands.Add(AnimHash("SetInt"), new ApeAnimScriptSetIntCommand());
