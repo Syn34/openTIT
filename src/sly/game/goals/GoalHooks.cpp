@@ -91,6 +91,7 @@ void* GoalEntityParent(const void*) { return nullptr; }
 bool GoalEntityMarkerSuppressed(const void*) { return false; }
 bool GoalEntityAllowsMarker(const void*) { return false; }
 void HudSetFollowWarning(bool) {}
+bool GoalEntityPhotographable(const void*) { return false; }
 void GoalEntityAddRef(void*) {}
 void GoalEntityRelease(void*) {}
 uint32_t GoalEntityName(const void*) { return 0; }

@@ -662,3 +662,43 @@ public:
 
 } // namespace goals
 } // namespace sly
+
+namespace sly {
+namespace goals {
+
+// "GoalBinocucomPhoto" (vtable 0x00B1E5D0): photograph a set of entities
+// with the binocucom. Only the target bookkeeping is ported; the camera
+// test (Update 0x0032BCD0), SetStatus (0x0032AC78), the factory (0x0032B358)
+// and the marker builder (0x0032AAE8) are TODO.
+class GoalBinocucomPhoto : public Goal {
+public:
+    // One photo target (0x90 bytes on the console).
+    struct Target {
+        uint8_t pad[0x10];
+        uint32_t name = 0;        // +0x10
+        void* entity = nullptr;   // +0x14
+        uint8_t pad2[0x18];
+        bool pending = true;      // +0x30 still to be photographed
+        uint8_t pad3[0x5F];
+    };
+
+    using Goal::Goal;
+    ~GoalBinocucomPhoto() override;
+    uint8_t Update(int player, const GameEvent& e) override;
+    void Reset(bool fromSave, int status) override;
+    void ResetHints(bool stopHintScript) override;
+    void ReapplyHints(Goal* owner) override;
+    void CollectMarkers(GoalMarkerList* list) override;
+    void CollectAllMarkers(GoalMarkerList* list) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+    void BuildMarker(const Target& target, GoalMarker* marker) const;
+
+    ape::ApeTArray<Target> targets;   // +0xA0C
+
+private:
+    // Resolves every target; fails the goal if one is gone. False if it failed.
+    bool ResolveTargets(bool pending);
+};
+
+} // namespace goals
+} // namespace sly

@@ -593,3 +593,109 @@ void GoalScore::SetStatus(uint8_t newStatus, bool force)
 
 } // namespace goals
 } // namespace sly
+
+namespace sly {
+namespace goals {
+
+// ===========================================================================
+// GoalBinocucomPhoto
+
+// @func 0x0032B02C GoalBinocucomPhoto::~GoalBinocucomPhoto
+// @func 0x0032B300 GoalBinocucomPhoto::~GoalBinocucomPhoto (deleting)
+GoalBinocucomPhoto::~GoalBinocucomPhoto()
+{
+    SetStatus(kGoal_None, true);
+}
+
+// TODO(0x0032BCD0 GoalBinocucomPhoto::Update)
+uint8_t GoalBinocucomPhoto::Update(int player, const GameEvent& e)
+{
+    return Goal::Update(player, e);
+}
+
+// TODO(0x0032AC78 GoalBinocucomPhoto::SetStatus)
+void GoalBinocucomPhoto::SetStatus(uint8_t newStatus, bool force)
+{
+    Goal::SetStatus(newStatus, force);
+}
+
+// TODO(0x0032AAE8 GoalBinocucomPhoto::BuildMarker)
+void GoalBinocucomPhoto::BuildMarker(const Target& target, GoalMarker* marker) const
+{
+    marker->entity = target.entity;
+}
+
+bool GoalBinocucomPhoto::ResolveTargets(bool pending)
+{
+    for (Target& target : targets) {
+        if (target.name != 0) {
+            target.entity = GoalFindEntity(target.name);
+            if (!target.entity || !GoalEntityAlive(target.entity)) {
+                SetStatus(kGoal_Failed, false);
+                return false;
+            }
+        }
+        target.pending = pending;
+    }
+    return true;
+}
+
+// @func 0x0032C3F4 GoalBinocucomPhoto::Reset
+void GoalBinocucomPhoto::Reset(bool fromSave, int requested)
+{
+    Goal::Reset(fromSave, requested);
+    if (requested == kGoal_Active)
+        ResolveTargets(true);
+}
+
+// @func 0x0032C4E0 GoalBinocucomPhoto::ResetHints
+void GoalBinocucomPhoto::ResetHints(bool stopHintScript)
+{
+    for (Target& target : targets) {
+        if (!(flags & kGoalFlag_KeepComplete))
+            target.pending = true;
+        if (target.entity)
+            JobOwnerUntarget(job, GoalEntityName(target.entity));
+        target.entity = nullptr;
+    }
+    Goal::ResetHints(stopHintScript);
+}
+
+// @func 0x0032C5E4 GoalBinocucomPhoto::ReapplyHints
+void GoalBinocucomPhoto::ReapplyHints(Goal* owner)
+{
+    Goal::ReapplyHints(owner);
+    // A completed photo goal still resolves its targets while its group runs.
+    if (status == kGoal_Active ||
+        (status == kGoal_Complete && owner && owner->status == kGoal_Active))
+        ResolveTargets(status == kGoal_Active);
+}
+
+// @func 0x0032C700 GoalBinocucomPhoto::CollectMarkers
+void GoalBinocucomPhoto::CollectMarkers(GoalMarkerList* list)
+{
+    if (status != kGoal_Active)
+        return;
+    for (const Target& target : targets) {
+        if (!target.entity || !target.pending || !GoalEntityPhotographable(target.entity))
+            continue;
+        GoalMarker marker;
+        BuildMarker(target, &marker);
+        list->markers.PushBack(marker);
+    }
+}
+
+// @func 0x0032C898 GoalBinocucomPhoto::CollectAllMarkers
+void GoalBinocucomPhoto::CollectAllMarkers(GoalMarkerList* list)
+{
+    for (const Target& target : targets) {
+        if (!target.entity)
+            continue;
+        GoalMarker marker;
+        BuildMarker(target, &marker);
+        list->markers.PushBack(marker);
+    }
+}
+
+} // namespace goals
+} // namespace sly

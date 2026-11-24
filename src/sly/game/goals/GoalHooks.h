@@ -165,6 +165,8 @@ void* GoalEntityParent(const void* entity);
 // marker while targeted), and class bit 35 (+0xB8): markers allowed.
 bool GoalEntityMarkerSuppressed(const void* entity);
 bool GoalEntityAllowsMarker(const void* entity);
+// Class bit 34 (+0xB8): the entity can be photographed.
+bool GoalEntityPhotographable(const void* entity);
 // The "too far" warning on the follow HUD (0x00368A48 on 0x00F64D3C, then 0x00384750).
 void HudSetFollowWarning(bool on);
 // Entity reference count (+0xB2) and virtual slot 10 (release).
