@@ -28,7 +28,7 @@ AIStatePatterns g_patterns;
 AIController* CreateBehaviour(uint32_t type)
 {
     switch (type) {
-    case kAIType_Cpu:         return new CpuAI();
+    case kAIType_Racer:       return new RacerAI();
     case kAIType_C83BCA3D:    return new BismarqueAI();
     case kAIType_BC6EBE7B:    return new ParadoxAI();
     case kAIType_ElJefe:      return new ElJefeAI();

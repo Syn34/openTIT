@@ -8,6 +8,7 @@ namespace levels {
 namespace ai {
 
 const char* PropString(const PropertyBlock*, AIProp) { return nullptr; }
+void SettingClassAddProperty(AISettingClass*, AIProp) {}
 uint32_t PropHash(const PropertyBlock*, AIProp) { return 0; }
 bool PropBool(const PropertyBlock*, AIProp) { return false; }
 float PropFloat(const PropertyBlock*, AIProp) { return 0.0f; }
@@ -18,6 +19,11 @@ bool CharacterSpawnerSettings(const Entity*, uint32_t[3], const PropertyBlock*[3
 bool SpawnerAltObjectBounds(const Entity*, ape::Vec3&, ape::Vec3&) { return false; }
 bool SpawnerIsSpawnField(const Entity*) { return false; }
 bool HasSpawner(const Entity* entity) { return entity && entity->field_DC; }
+SpawnerRef* EntitySpawner(const Entity*) { return nullptr; }
+int SpawnerLiveCount(const SpawnerRef*) { return 0; }
+Entity* SpawnerLive(const SpawnerRef*, int) { return nullptr; }
+void SpawnerSwapLive(SpawnerRef*, int, int) {}
+RaceTracker* SpawnerRaceTracker(const SpawnerRef*) { return nullptr; }
 void AddToListenerGroup(Entity*, uint32_t, bool) {}
 
 Entity* MessageSender(const entity::EntityMessage&) { return nullptr; }
@@ -47,8 +53,20 @@ ape::Matrix34 BodyRotation(EntityComponent*) { return {}; }
 int BodyMotionType(EntityComponent*) { return 0; }
 void BodyRequestVelocity(EntityComponent*, const ape::Vec3&) {}
 void BodyRequestStop(EntityComponent*) {}
+void BodyRequestHold(EntityComponent*) {}
+ape::Vec3 BodyGroundNormal(EntityComponent*) { return {0.0f, 1.0f, 0.0f, 0.0f}; }
+void SendGameEvent(Entity*, Entity*, uint32_t, uint32_t, bool) {}
+void BroadcastInRange(Entity*, float, uint32_t, uint32_t, uint32_t) {}
 
 void EntitySetScriptState(Entity*, uint32_t) {}
+bool EntityHoldsAttention(const Entity*) { return false; }
+void CharacterSetEventListener(EntityComponent*, AIController*) {}
+bool AttackerComponentFlag(Entity*, bool* hasComponent)
+{
+    if (hasComponent)
+        *hasComponent = false;
+    return false;
+}
 void EntityDamage(Entity*, float, Entity*, int) {}
 void Component24Reset(EntityComponent*) {}
 void BodyClearRequestBit31(EntityComponent*) {}
@@ -64,6 +82,14 @@ void NavAgentDestroy(NavAgent*) {}
 void NavAgentRequestGoal(NavAgent*, const ape::Vec3&) {}
 ape::Vec3 NavAgentGoal(NavAgent*) { return {}; }
 
+void KnowledgeLevelStart() {}
+void KnowledgeLevelEnd() {}
+void KnowledgeReset() {}
+void AIObjectPoolLevelStart() {}
+void AIObjectPoolLevelEnd() {}
+void AIObjectPoolReset() {}
+void ReleaseCameraMode(AICameraMode*) {}
+void GameWorldSetBossFlag(bool) {}
 void HudSetContext(Entity*, const char*) {}
 void HudSetContext(Entity*, uint32_t) {}
 
