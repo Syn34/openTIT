@@ -12,7 +12,17 @@ public:
     static constexpr int kMaxSplits = 4;
 
     AglShadowSettings();
+    // NOTE: on the console this is the abstract base (vtable 0x00B23CF8) of two
+    // settings classes (0x00B24158, 0x00B23D50) whose own destructors
+    // (0x0079E9A4/0x007A3AD8, 0x0079E9E4/0x007A2390) add nothing.
+    // @func 0x007A22D4 AglShadowSettings::~AglShadowSettings
+    // @func 0x007A22E4 AglShadowSettings::~AglShadowSettings (deleting)
     virtual ~AglShadowSettings() = default;
+    // Slots 6/7: accessors of the value at 0x54.
+    // @func 0x007A2330 AglShadowSettings::SetField54
+    virtual void SetField54(float value) { field_54 = value; }
+    // @func 0x007A2328 AglShadowSettings::GetField54
+    virtual float GetField54() const { return field_54; }
 
     // Cascade split distances (at most four).
     void SetSplits(const float* splits, uint8_t count);
