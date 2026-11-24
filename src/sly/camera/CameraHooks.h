@@ -74,9 +74,9 @@ bool AnimReachedEnd(void* playing);
 // shared default (0x01193010), and marks it dirty.
 void ResetObjectPivot(ape::world::ApeObj* object);
 
-class BinocucomCameraMode;
-// Re-reads the binocucom's focus entity (0x0010DA30).
-void BinocucomRefreshFocus(BinocucomCameraMode* mode);
+struct VehicleCameraDesc;
+// Camera block of a vehicle definition (+0x100).
+const VehicleCameraDesc* VehicleCameraData(entity::Entity* vehicle);
 
 // -- physics ------------------------------------------------------------------------
 // Creates a sphere phantom of `radius` with the collision filter word and adds

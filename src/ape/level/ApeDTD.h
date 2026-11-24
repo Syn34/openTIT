@@ -86,6 +86,14 @@ public:
     bool AddChild(const char* name, int32_t type);
 
     const char* GetName() const { return m_name; }
+    // Prefix of the names generated for records of this DTD (+0x2C); also
+    // sets flag 0x80. Used by the setting definitions ("SLaserFixed_", ...).
+    void SetNamePrefix(const char* prefix)
+    {
+        m_namePrefix = prefix;
+        m_flags |= 0x80;
+    }
+    const char* GetNamePrefix() const { return m_namePrefix; }
     uint32_t GetElementCount() const { return m_elementCount; }
     int32_t GetColumnCount() const { return m_columnCount; }
     const std::vector<std::unique_ptr<DTDAttribute>>& GetAttributes() const { return m_attributes; }
@@ -99,7 +107,7 @@ private:
     std::unique_ptr<std::vector<DTDChild>> m_type3Children;  // +0x20
     const char* m_name = nullptr;                        // +0x24 not copied
     uint8_t m_flags = 0;                                 // +0x28 top two bits cleared by the ctor
-    uint32_t field_2C = 0;                               // +0x2C
+    const char* m_namePrefix = nullptr;                  // +0x2C
     int32_t m_columnCount = 0;                           // +0x30
 };
 

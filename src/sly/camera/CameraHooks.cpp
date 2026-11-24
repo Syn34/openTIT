@@ -41,8 +41,7 @@ bool AnimReachedEnd(void* playing) { (void)playing; return false; }
 
 void ResetObjectPivot(ape::world::ApeObj* object) { (void)object; }
 
-// TODO(0x0010DA30 BinocucomCameraMode::RefreshFocus)
-void BinocucomRefreshFocus(BinocucomCameraMode* mode) { (void)mode; }
+const VehicleCameraDesc* VehicleCameraData(entity::Entity* vehicle) { (void)vehicle; return nullptr; }
 
 void* CreateSpherePhantom(float radius, uint32_t filterInfo) { (void)radius; (void)filterInfo; return nullptr; }
 void DestroyPhantom(void* phantom) { (void)phantom; }

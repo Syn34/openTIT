@@ -4,6 +4,7 @@
 #include "ape/core/ApeString.h"
 #include "sly/game/WorldInterface.h"
 #include "sly/levels/GameServices.h"
+#include "sly/levels/ai/AIHooks.h"
 
 namespace sly {
 namespace levels {
@@ -23,7 +24,7 @@ void SetAIProxyPointTable(AIProxyPointTable* table)
 }
 
 // @func 0x00064D48 AIProxyPointTable::Register
-AIProxyPoint* AIProxyPointTable::Register(WorldObject* object, uint32_t userData)
+AIProxyPoint* AIProxyPointTable::Register(WorldObject* object, const void* properties)
 {
     if (!object)
         return nullptr;
@@ -40,17 +41,16 @@ AIProxyPoint* AIProxyPointTable::Register(WorldObject* object, uint32_t userData
     }
     const uint16_t index = static_cast<uint16_t>(m_points.size());
     AIProxyPoint point;
-    point.userData = userData;
+    point.properties = properties;
     point.object = object;
-    for (uint16_t& link : point.links)
-        link = index;
+    point.self = point.prev = point.next = point.head = static_cast<int16_t>(index);
     m_points.push_back(point);
     m_byKey[key] = index;
     return &m_points.back();
 }
 
 // @func 0x00064F48 AIProxyPointTable::RegisterByName
-void AIProxyPointTable::RegisterByName(uint32_t userData, const char* name)
+void AIProxyPointTable::RegisterByName(const void* properties, const char* name)
 {
     if (!name)
         return;
@@ -61,8 +61,33 @@ void AIProxyPointTable::RegisterByName(uint32_t userData, const char* name)
                         name);
         return;
     }
-    AIProxyPoint* record = Register(point, userData);
+    AIProxyPoint* record = Register(point, properties);
     WorldObjectSetUserData(point, kUserTag_AIProxyPoint, record);
+}
+
+// @func 0x000190B4 AIProxyPointTable::BuildChains
+void AIProxyPointTable::BuildChains()
+{
+    for (AIProxyPoint& head : m_points) {
+        AIProxyPoint* last = nullptr;
+        AIProxyPoint* previous = &head;
+        for (WorldObject* child = ai::WorldObjectFirstChild(head.object); child;
+             child = ai::WorldObjectNextSibling(child)) {
+            AIProxyPoint* point = ai::ProxyPointOf(child);
+            if (!point)
+                continue;
+            point->head = head.self;
+            ++head.childCount;
+            previous->next = point->self;
+            point->prev = previous->self;
+            previous = point;
+            last = point;
+        }
+        if (last) {
+            last->next = head.self;
+            head.prev = last->self;
+        }
+    }
 }
 
 // @func 0x00064C88 EvalBezier

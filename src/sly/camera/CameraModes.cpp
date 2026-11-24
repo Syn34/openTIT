@@ -803,17 +803,76 @@ bool BinocucomCameraMode::HoldZoom(bool hold)
     return zoomHolds > 0;
 }
 
-// @func 0x0010DD60 BinocucomCameraMode::SetFocusEntity
-void BinocucomCameraMode::SetFocusEntity(Entity* entity)
-{
-    AssignEntity(focusEntity, entity);
-    if (entity)
-        BinocucomRefreshFocus(this);
-}
 
 // ===========================================================================
 // Vehicle
 // ===========================================================================
+
+void VehicleChaseSettings::LoadTuningDefaults()
+{
+    fov = g_cameraVehicleFOV;
+    const float* look = g_cameraVehicleLocalLookAtOffset.Get();
+    localLookAtOffset = { look[0], look[1], look[2], localLookAtOffset.pad };
+    horzInputRotScalar = g_cameraVehicleHorzInputRotScalar;
+    horzInputRotInterp = g_cameraVehicleHorzInputRotInterp;
+    lookAtXZInterp = g_cameraVehicleLookAtXZInterp;
+    lookAtYUpInterp = g_cameraVehicleLookAtYUpInterp;
+    lookAtYDownInterp = g_cameraVehicleLookAtYDownInterp;
+    gimbalRadius = g_cameraVehicleGimbalRadius;
+    vertGimbalMin = g_cameraVehicleVertGimbalMin;
+    vertGimbalMax = g_cameraVehicleVertGimbalMax;
+    vertGimbalRestShift = g_cameraVehicleVertGimbalRestShift;
+    const float* offset = g_cameraVehicleGimbalOffset.Get();
+    gimbalOffset = { offset[0], offset[1], offset[2], gimbalOffset.pad };
+    vertInputRotScalar = g_cameraVehicleVertInputRotScalar;
+    vertInputRotAccelInterp = g_cameraVehicleVertInputRotAccelInterp;
+    vertInputRotVelInterp = g_cameraVehicleVertInputRotVelInterp;
+    gimbalReturnInterp = g_cameraVehicleGimbalReturnInterp;
+    colRadius = g_cameraVehicleColRadius;
+    colFractHS = g_cameraVehicleColFractHS;
+    colInterp = g_cameraVehicleColInterp;
+    colConeMin = g_cameraVehicleColConeMin;
+    colMomentMax = g_cameraVehicleColMomentMax;
+    colRetract = g_cameraVehicleColRetract;
+}
+
+// @func 0x0010DA30 VehicleCameraMode::LoadTargetSettings
+void VehicleCameraMode::LoadTargetSettings()
+{
+    const VehicleCameraDesc* desc = (target && IsVehicleEntity(target)) ? VehicleCameraData(target) : nullptr;
+    if (!desc) {
+        targetSettings.LoadTuningDefaults();
+        return;
+    }
+    constexpr float kDegToRad = 0.017453292f;
+    VehicleChaseSettings& t = targetSettings;
+    t.fov = desc->fov;
+    t.localLookAtOffset = desc->localLookAtOffset;
+    float* const values20[] = { &t.horzInputRotScalar, &t.horzInputRotInterp, &t.lookAtXZInterp,
+                                &t.lookAtYUpInterp, &t.lookAtYDownInterp, &t.gimbalRadius, &t.vertGimbalMin,
+                                &t.vertGimbalMax, &t.vertGimbalRestShift };
+    for (int i = 0; i < 9; ++i)
+        *values20[i] = desc->values20[i];
+    t.gimbalOffset = desc->gimbalOffset;
+    float* const values60[] = { &t.vertInputRotScalar, &t.vertInputRotAccelInterp, &t.vertInputRotVelInterp,
+                                &t.gimbalReturnInterp, &t.colRadius, &t.colFractHS, &t.colInterp, &t.colConeMin,
+                                &t.colMomentMax, &t.colRetract, &t.headingReturnMinTimeDefault,
+                                &t.headingReturnMinTimeFwd, &t.headingReturnMinTimeReverse,
+                                &t.headingReturnLowMaxRotSpeed, &t.headingReturnHighMaxRotSpeed };
+    for (int i = 0; i < 15; ++i)
+        *values60[i] = desc->values60[i];
+    t.headingReturnLowSin = ape::FastSin(desc->headingReturnLowAngle * kDegToRad);
+    t.headingReturnHighSin = ape::FastSin(desc->headingReturnHighAngle * kDegToRad);
+    t.headingReturnFullSpeedElapsedTime = desc->headingReturnFullSpeedElapsedTime;
+}
+
+// @func 0x0010DD60 VehicleCameraMode::SetTarget
+void VehicleCameraMode::SetTarget(Entity* entity)
+{
+    AssignEntity(target, entity);
+    if (entity)
+        LoadTargetSettings();
+}
 
 // @func 0x0010E9A4 VehicleCameraMode::~VehicleCameraMode
 // @func 0x0010EAD0 VehicleCameraMode::~VehicleCameraMode (deleting)
