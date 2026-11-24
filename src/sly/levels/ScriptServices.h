@@ -272,6 +272,11 @@ void AudioStopAll();
 constexpr int kAnimScriptVarType_Sound = 13;
 // 0x00443424 on the variable's voice, then clears it.
 void SoundVarStop(ape::ApeAnimScriptVar* var, bool flag);
+// Sound registers: 0x0044A78C (register 1-4 of a voice) and 0x0044CEB0
+// (global register 1-64); the music voice is the console global 0x010AFEA4.
+void AudioSetVoiceRegister(uint32_t voice, int32_t reg, int8_t value);
+void AudioSetGlobalRegister(int32_t reg, int8_t value);
+uint32_t AudioMusicVoice();
 // 0x00449E10: stops the music. NOTE: flag meaning unknown (probably fade).
 void MusicStop(bool flag);
 // Component swaps: binocucom (characters, 0x0012E534), inventory
@@ -394,6 +399,9 @@ void SequenceAddTransitionPrompt(int32_t playerNum);
 void SequenceAddArcQte(float value, float arcAngle, float lookTime, int32_t playerNum);
 // Sequence Paris chase QTE (0x004360CC).
 void SequenceAddParisChaseQte(uint32_t hash, bool flag10, bool flag11);
+// 0x0043554C (100-byte sequence command, not ported in sly/gameplay).
+void SequenceAddActorQte(int32_t player, uint32_t button, float value28, float value2C, float value30,
+                         float value34);
 // SeqEnableScriptedEntitiesCommand (0x00437C0C).
 void SequenceAddEnableScriptedEntities(bool enabled);
 // SeqMinigameControlCommand (0x00437D58): six switches.

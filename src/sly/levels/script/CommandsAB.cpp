@@ -6,6 +6,8 @@
 #include "sly/game/AudioSystem.h"
 #include "sly/levels/GameServices.h"
 #include "sly/levels/ScriptServices.h"
+#include "sly/gameplay/SequenceCommands.h"
+#include "sly/gameplay/Sequencer.h"
 
 #include <cstring>
 
@@ -321,8 +323,86 @@ void SeqArcQteCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
     SequenceAddArcQte(m_value10, m_arcAngle, m_lookTime, m_playerNum);
 }
 
-// TODO(0x000A3108 SeqActorQteCommand::SeqActorQteCommand) hash 0x58A0F34C (#238): QTE with
-// a list of actor records; Execute 0x000A3434.
+// ---------------------------------------------------------------------------
+// Hash 0x58A0F34C (#238, name unknown): button QTE over a list of actors in the
+// sequence. NOTE: the console parses the <0x286A440C> actor records but the
+// sequence command it builds (0x0043554C) only receives the scalar fields.
+
+namespace {
+constexpr uint32_t kTagQteActor = 0x286A440Cu;         // NOTE: element name unknown
+constexpr uint32_t kAttrQteActor08 = 0x3EE71C7Au;      // NOTE: name unknown
+constexpr uint32_t kAttrQteActor0C = 0x31F8E7E5u;      // NOTE: name unknown
+constexpr uint32_t kAttrQtePlayer = 0x368328E5u;       // NOTE: name unknown (-1 = 0)
+constexpr uint32_t kAttrQteButton = AnimHash("Button");
+constexpr uint32_t kAttrQte28 = 0xBD79437Du;           // NOTE: name unknown
+constexpr uint32_t kAttrQte2C = 0x3EE9A5E8u;           // NOTE: name unknown
+constexpr uint32_t kAttrQte30 = 0x3EEC218Cu;           // NOTE: name unknown
+constexpr uint32_t kAttrQte34 = 0x32261AEBu;           // NOTE: name unknown
+} // namespace
+
+class SeqActorQteCommand : public ApeAnimScriptCommand {
+public:
+    SeqActorQteCommand();
+    explicit SeqActorQteCommand(XmlElement* element);
+    ~SeqActorQteCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
+    ApeAnimScriptCommand* Create(XmlElement* element) const override;
+
+private:
+    struct Actor {
+        uint32_t field00 = 0;    // +0x00 NOTE: never set
+        uint32_t entity = 0;     // +0x04 "Entity"
+        uint32_t hash08 = 0;     // +0x08
+        uint32_t hash0C = 0;     // +0x0C
+    };
+    std::vector<Actor> m_actors;     // +0x0C (console ApeArray, capacity 16)
+    int32_t m_player = 0;            // +0x20
+    uint32_t m_button = 0;           // +0x24 "Button"
+    float m_value28 = 1.0f;          // +0x28
+    float m_value2C = 0.0f;          // +0x2C
+    float m_value30 = 0.0f;          // +0x30
+    float m_value34 = -1.0f;         // +0x34
+};
+
+// @func 0x000A3090 SeqActorQteCommand::SeqActorQteCommand
+SeqActorQteCommand::SeqActorQteCommand() = default;
+
+// @func 0x000A3108 SeqActorQteCommand::SeqActorQteCommand (parsing)
+SeqActorQteCommand::SeqActorQteCommand(XmlElement* element)
+{
+    m_actors.reserve(16);
+    for (XmlElement* child = element->FirstChildElement(kTagQteActor); child;
+         child = child->NextSiblingElement(kTagQteActor)) {
+        Actor actor;
+        child->GetHash(kAttrEntity, &actor.entity, 0);
+        child->GetHash(kAttrQteActor0C, &actor.hash0C, 0);
+        child->GetHash(kAttrQteActor08, &actor.hash08, 0);
+        m_actors.push_back(actor);
+    }
+    int32_t player = -1;
+    element->GetInt(kAttrQtePlayer, &player, -1);
+    m_player = player == -1 ? 0 : player;
+    element->GetHash(kAttrQteButton, &m_button, m_button);
+    element->GetFloat(kAttrQte28, &m_value28, m_value28);
+    element->GetFloat(kAttrQte2C, &m_value2C, m_value2C);
+    element->GetFloat(kAttrQte30, &m_value30, m_value30);
+    element->GetFloat(kAttrQte34, &m_value34, m_value34);
+}
+
+// NOTE: the destructors live at 0x0074xxxx (outside this range).
+SeqActorQteCommand::~SeqActorQteCommand() = default;
+
+// @func 0x000A33C4 SeqActorQteCommand::Create
+ApeAnimScriptCommand* SeqActorQteCommand::Create(XmlElement* element) const
+{
+    return new SeqActorQteCommand(element);
+}
+
+// @func 0x000A3434 SeqActorQteCommand::Execute
+void SeqActorQteCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    SequenceAddActorQte(m_player, m_button, m_value28, m_value2C, m_value30, m_value34);
+}
 
 // ---------------------------------------------------------------------------
 // "ParisChaseQTE" (NOTE: name from a hash match)
@@ -363,8 +443,66 @@ void ParisChaseQteCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
     SequenceAddParisChaseQte(m_hash0C, m_flag10, m_flag11);
 }
 
-// TODO(0x000A3688 SeqEntityStateCommand) hash 0xB39D2C46 (#240): entity state/clip with a
-// target; parser 0x000A3700, Execute 0x000A38C4.
+// ---------------------------------------------------------------------------
+// Hash 0xB39D2C46 (#240, name unknown): moves an entity to a state/clip
+// towards a target in the sequence (sequence command 0x00437A1C).
+
+namespace {
+constexpr uint32_t kAttrEntityStateBlocking = 0x8488565Bu;   // NOTE: name unknown
+constexpr uint32_t kAttrEntityStateQuiet = 0x80116C17u;      // NOTE: name unknown
+} // namespace
+
+class SeqEntityStateCommand : public ApeAnimScriptCommand {
+public:
+    SeqEntityStateCommand();
+    ~SeqEntityStateCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
+    ApeAnimScriptCommand* Create(XmlElement* element) const override;
+
+private:
+    uint32_t m_entity = 0;      // +0x0C "Entity"
+    uint32_t m_state = 0;       // +0x10 "state"
+    uint32_t m_clip = 0;        // +0x14 "clip"
+    uint32_t m_target = 0;      // +0x18 "Target"
+    uint32_t m_targetVar = 0;   // +0x1C "TargetVar" (int variable; non-zero overrides Target)
+    float m_value = 0.0f;       // +0x20 "Value"
+    bool m_blocking = false;    // +0x24
+    bool m_quiet = false;       // +0x25
+};
+
+// @func 0x000A3688 SeqEntityStateCommand::SeqEntityStateCommand
+SeqEntityStateCommand::SeqEntityStateCommand() = default;
+
+// NOTE: the destructors live at 0x0074xxxx (outside this range).
+SeqEntityStateCommand::~SeqEntityStateCommand() = default;
+
+// @func 0x000A3700 SeqEntityStateCommand::Create
+ApeAnimScriptCommand* SeqEntityStateCommand::Create(XmlElement* element) const
+{
+    auto* command = new SeqEntityStateCommand();
+    element->GetBool(kAttrEntityStateBlocking, &command->m_blocking, false);
+    element->GetHash(kAttrEntity, &command->m_entity, 0);
+    element->GetHash(AnimHash("state"), &command->m_state, 0);
+    element->GetHash(AnimHash("clip"), &command->m_clip, 0);
+    element->GetHash(AnimHash("Target"), &command->m_target, 0);
+    element->GetHash(AnimHash("TargetVar"), &command->m_targetVar, 0);
+    element->GetFloat(AnimHash("Value"), &command->m_value, 0.0f);
+    element->GetBool(kAttrEntityStateQuiet, &command->m_quiet, command->m_quiet);
+    return command;
+}
+
+// @func 0x000A38C4 SeqEntityStateCommand::Execute
+void SeqEntityStateCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    uint32_t target = m_target;
+    if (m_targetVar != 0) {
+        ApeAnimScriptVar* var = instance->FindVar(m_targetVar);
+        if (var && var->GetType() == ape::AnimScriptVarType::Int && var->GetInt() != 0)
+            target = uint32_t(var->GetInt());
+    }
+    gameplay::AddSequenceCommand(
+        new gameplay::SeqMoveEntityCommand(m_value, m_entity, m_state, m_clip, target, m_quiet, m_blocking));
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x5226D5B6 (name unknown): enables scripted entities in the sequence.
@@ -499,7 +637,9 @@ void RegisterScriptCommandsAB()
     prototypes.Add(AnimHash("SeqQTE"), new SeqQteCommand());
     prototypes.Add(0x556D9F3Bu, new SeqTransitionPromptCommand());
     prototypes.Add(0xB34002B5u, new SeqArcQteCommand());
+    prototypes.Add(0x58A0F34Cu, new SeqActorQteCommand());
     prototypes.Add(AnimHash("ParisChaseQTE"), new ParisChaseQteCommand());
+    prototypes.Add(0xB39D2C46u, new SeqEntityStateCommand());
     prototypes.Add(0x5226D5B6u, new SeqEnableScriptedEntitiesCommand());
     prototypes.Add(0xAD4079D1u, new SeqMinigameControlCommand());
     prototypes.Add(0xFD97E64Du, new SeqHudTypeCommand());

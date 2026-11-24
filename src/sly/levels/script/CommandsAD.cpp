@@ -5,6 +5,8 @@
 #include "sly/levels/DeferredRequests.h"
 #include "sly/levels/GameServices.h"
 #include "sly/levels/ScriptServices.h"
+#include "sly/gameplay/SequenceCommands.h"
+#include "sly/gameplay/Sequencer.h"
 
 namespace sly {
 namespace levels {
@@ -306,8 +308,52 @@ void SwitchCostumeCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
         SequenceAddSwapAnimSet(m_entity, m_def, m_flag14, m_flag15, m_wait);
 }
 
-// TODO(0x000A71EC SyncSequenceCommand) "SyncSequence" (#265): list of "Seq" child names;
-// parser 0x000A7244, Execute 0x000A7404.
+// ---------------------------------------------------------------------------
+// "SyncSequence" (#265): waits in the running sequence until every sequence
+// listed by the <Seq Name=...> children has finished.
+
+class SyncSequenceCommand : public ApeAnimScriptCommand {
+public:
+    SyncSequenceCommand();
+    explicit SyncSequenceCommand(XmlElement* element);
+    ~SyncSequenceCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
+    ApeAnimScriptCommand* Create(XmlElement* element) const override;
+
+private:
+    std::vector<uint32_t> m_sequences;   // +0x0C (console ApeArray of hashes, capacity 4)
+};
+
+// @func 0x000A71EC SyncSequenceCommand::SyncSequenceCommand
+SyncSequenceCommand::SyncSequenceCommand() { m_sequences.reserve(4); }
+
+// @func 0x000A7244 SyncSequenceCommand::SyncSequenceCommand (parsing)
+SyncSequenceCommand::SyncSequenceCommand(XmlElement* element) : SyncSequenceCommand()
+{
+    for (XmlElement* child = element->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        if (child->GetNameHash() != AnimHash("Seq"))
+            continue;
+        uint32_t name = 0;
+        child->GetHash(AnimHash("Name"), &name, 0);
+        m_sequences.push_back(name);
+    }
+}
+
+// NOTE: the destructors are at 0x007428E0 / 0x00742948 (outside this range).
+SyncSequenceCommand::~SyncSequenceCommand() = default;
+
+// @func 0x000A7394 SyncSequenceCommand::Create
+ApeAnimScriptCommand* SyncSequenceCommand::Create(XmlElement* element) const
+{
+    return new SyncSequenceCommand(element);
+}
+
+// @func 0x000A7404 SyncSequenceCommand::Execute
+void SyncSequenceCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    if (!m_sequences.empty())
+        gameplay::AddSequenceCommand(new gameplay::SeqWaitForSequencesCommand(m_sequences));
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x2D2232FC (name unknown): waits for a sound group in the sequence.
@@ -499,11 +545,12 @@ void RegisterScriptCommandsAD()
     prototypes.Add(0xDAD61703u, new SeqStartStateCommand());
     prototypes.Add(0x390D5F47u, new SeqGroupVolumeCommand());
     prototypes.Add(0x7EA392FCu, new SeqLevelHeadlineCommand());
-    // #260 "SeqSpawnEntity" (0x1BC5155F) and #265 "SyncSequence" (0xFD7AAF5C) are not ported yet.
+    // #260 "SeqSpawnEntity" (0x1BC5155F) is not ported yet.
     prototypes.Add(AnimHash("StartSequence"), new StartSequenceCommand());
     prototypes.Add(0xB89DA664u, new SeqStopSoundCommand());
     prototypes.Add(AnimHash("SeqStopMusic"), new SeqStopMusicCommand());
     prototypes.Add(AnimHash("SwitchCostume"), new SwitchCostumeCommand());
+    prototypes.Add(AnimHash("SyncSequence"), new SyncSequenceCommand());
     prototypes.Add(0x2D2232FCu, new SeqWaitForSoundCommand());
     prototypes.Add(0x7DE1DF64u, new SeqDarkScreenCommand());
     prototypes.Add(0x83F48558u, new QueueEntityStateCommand());

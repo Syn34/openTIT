@@ -146,6 +146,11 @@ void AudioStopCategory(uint32_t category, bool flag) { (void)category; (void)fla
 void AudioStopAll() {}
 
 void SoundVarStop(ape::ApeAnimScriptVar* var, bool flag) { (void)var; (void)flag; }
+// TODO(0x0044A78C / 0x0044CEB0): sound registers are not modelled by the audio port.
+void AudioSetVoiceRegister(uint32_t voice, int32_t reg, int8_t value) { (void)voice; (void)reg; (void)value; }
+void AudioSetGlobalRegister(int32_t reg, int8_t value) { (void)reg; (void)value; }
+// TODO(0x010AFEA4): the audio port keeps the music voice private.
+uint32_t AudioMusicVoice() { return 0; }
 void MusicStop(bool flag) { (void)flag; }
 void CharacterSwapBinocucom(WorldObject* character, uint32_t componentDef) { (void)character; (void)componentDef; }
 void EntitySwapInventory(WorldObject* entity, uint32_t componentDef) { (void)entity; (void)componentDef; }
@@ -213,6 +218,10 @@ void SequenceAddWaitForButton(float waitTime, int32_t playerNum, uint32_t button
 void SequenceAddTransitionPrompt(int32_t playerNum) { (void)playerNum; }
 void SequenceAddArcQte(float value, float arcAngle, float lookTime, int32_t playerNum) { (void)value; (void)arcAngle; (void)lookTime; (void)playerNum; }
 void SequenceAddParisChaseQte(uint32_t hash, bool flag10, bool flag11) { (void)hash; (void)flag10; (void)flag11; }
+void SequenceAddActorQte(int32_t player, uint32_t button, float value28, float value2C, float value30, float value34)
+{
+    (void)player; (void)button; (void)value28; (void)value2C; (void)value30; (void)value34;
+}
 void SequenceAddEnableScriptedEntities(bool enabled) { (void)enabled; }
 void SequenceAddMinigameControl(const bool flags[6]) { (void)flags; }
 void SequenceAddHudType(uint32_t type, bool visible, bool force, uint32_t left, uint32_t right, bool wait, bool flag) { (void)type; (void)visible; (void)force; (void)left; (void)right; (void)wait; (void)flag; }
