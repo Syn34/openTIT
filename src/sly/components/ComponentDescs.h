@@ -23,6 +23,7 @@ using entity::ComponentDesc;
 
 // Component type numbers of the descriptions below (ComponentDesc::type).
 enum ComponentDescType : uint32_t {
+    kCompDesc_Physics        = 0x00,
     kCompDesc_Anim           = 0x02,
     kCompDesc_ControlAI      = 0x06,
     kCompDesc_AnimMap        = 0x0E,
@@ -31,14 +32,31 @@ enum ComponentDescType : uint32_t {
     kCompDesc_SimplePhysics  = 0x1F,
     kCompDesc_JumpRope       = 0x21,
     kCompDesc_AeSpline       = 0x22,
+    kCompDesc_Buoyancy       = 0x20,
     kCompDesc_Tracker        = 0x26,
     kCompDesc_Vortex         = 0x27,
     kCompDesc_Scoring        = 0x28,
     kCompDesc_SystemCracker  = 0x29,
     kCompDesc_MagNet         = 0x2A,
     kCompDesc_SpeedBoost     = 0x2B,
+    kCompDesc_WallClimb      = 0x2C,
     kCompDesc_BallRoll       = 0x2D,
     kCompDesc_DamageSequence = 0x2F,
+};
+
+// <PHYSICS> (vtable 0x00B1BFC8, 0xA0 bytes): the entity's rigid body.
+struct PhysicsComponentDesc : ComponentDesc {
+    explicit PhysicsComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Physics) {}
+    void* world = nullptr;       // 0x14 level physics world when parsed
+    uint32_t field18[2] = {};    // 0x18 NOTE: not set by the parser
+    ape::Matrix34 transform = {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f},
+                               {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};  // 0x20 identity
+    uint32_t field60 = 0;        // 0x60
+    float mass = 100.0f;         // 0x64
+    ape::Vec3 size = {0.65f, 1.0f, 0.5f, 0.0f};    // 0x70
+    ape::Vec3 offset = {0.0f, 0.0f, 0.0f, 0.0f};   // 0x80
+    bool enabled = true;         // 0x90
+    bool flag91 = false;         // 0x91 attribute 0x8BB0F765. NOTE: name unknown
 };
 
 // <Anim> (vtable 0x00B1434C, 0x1C bytes).
@@ -177,7 +195,49 @@ struct DamageSequenceComponentDesc : ComponentDesc {
     bool flag29 = false;         // 0x29 attribute 0x173A6338. NOTE: name unknown
 };
 
+// <Buoyancy> (vtable 0x00B1CAA0, 0x64 bytes): floating on water.
+struct BuoyancyComponentDesc : ComponentDesc {
+    explicit BuoyancyComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Buoyancy) {}
+    float maxDepth = 4.0f;       // 0x14
+    float floatSpeed = 2.0f;     // 0x18
+    float sinkSpeed = 1.0f;      // 0x1C
+    float value20 = 0.4f;        // 0x20 attribute 0xFFF7B927. NOTE: name unknown
+    float value24 = 0.5f;        // 0x24 attribute 0x7F154347. NOTE: name unknown
+    float value28 = 0.6f;        // 0x28 attribute 0x827EF485. NOTE: name unknown
+    ape::Vec3 field2C{};         // 0x2C..0x38 NOTE: not set by the parser (left uninitialised)
+    float value3C = 3.0f;        // 0x3C attribute 0x4801705E. NOTE: name unknown
+    float value40 = 0.2f;        // 0x40 attribute 0xCD0D2AF5. NOTE: name unknown
+    float value44 = 3.0f;        // 0x44 attribute 0x708A4E60. NOTE: name unknown
+    float tiltSpeed = 1.0f;      // 0x48
+    float value4C = 1.0f;        // 0x4C attribute 0xC4F41CF6. NOTE: name unknown
+    float maxRotationX = 30.0f;  // 0x50
+    float maxRotationY = 0.0f;   // 0x54
+    float maxRotationZ = 30.0f;  // 0x58
+    uint32_t contactScript = 0;  // 0x5C
+    float contactInterval = 1.0f; // 0x60
+};
+
+// <WallClimb> (vtable 0x00B1D148, 0x70 bytes). Angles are read in degrees.
+struct WallClimbComponentDesc : ComponentDesc {
+    explicit WallClimbComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_WallClimb) {}
+    float grabAngleH = 60.0f;    // 0x14 radians after parsing
+    float grabDistance = 8.0f;   // 0x18
+    float maxAngleV = 15.0f;     // 0x1C radians after parsing
+    float maxAngleH = 30.0f;     // 0x20 radians after parsing
+    float maxDistance = 0.5f;    // 0x24
+    float stickThreshold = 0.3f; // 0x28
+    uint32_t field2C = 0;        // 0x2C NOTE: not set by the parser
+    ape::Vec3 offset30 = {0.8f, 1.4f, 0.8f, 0.0f};    // 0x30 NOTE: role unknown, not read
+    ape::Vec3 offset40 = {0.0f, 0.0f, -0.45f, 0.0f};  // 0x40 NOTE: role unknown, not read
+    float value50 = 0.0f;        // 0x50 attribute 0x977C8AB2. NOTE: name unknown
+    float value54 = 15.0f;       // 0x54 attribute 0xB081C3B4. NOTE: name unknown
+    float value58 = 9.8f;        // 0x58 attribute 0x01B279B3. NOTE: name unknown
+    float field5C = 0.4f;        // 0x5C NOTE: not read
+    float value60 = 0.5f;        // 0x60 attribute 0x009DAD78. NOTE: name unknown
+};
+
 // Parsers (root = document element, elem = the component element).
+ComponentDesc* ParsePhysicsComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseAnimComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseControlAIComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseAnimMapComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
@@ -193,6 +253,8 @@ ComponentDesc* ParseSystemCrackerComponentDesc(ape::xml::XmlElement* root, ape::
 ComponentDesc* ParseMagNetComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseSpeedBoostComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseBallRollComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseBuoyancyComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseWallClimbComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseDamageSequenceComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 
 } // namespace components

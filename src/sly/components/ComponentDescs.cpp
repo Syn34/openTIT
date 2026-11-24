@@ -1,6 +1,8 @@
 // openTIT - Component descriptions parsed from entity XML.
 #include "sly/components/ComponentDescs.h"
 
+#include "sly/components/ComponentHooks.h"
+
 #include "ape/core/ApeString.h"
 #include "ape/xml/ApeXml.h"
 
@@ -57,6 +59,38 @@ constexpr uint32_t kAttr_EnabledTime    = 0x2B6FE96Eu;
 constexpr uint32_t kAttr_DisabledTime   = 0x4FA1D749u;
 constexpr uint32_t kAttr_DamageSeq29    = 0x173A6338u;   // NOTE: name unknown
 
+constexpr uint32_t kAttr_MaxDepth        = 0x4738D3DFu;
+constexpr uint32_t kAttr_FloatSpeed      = 0xE165E36Bu;
+constexpr uint32_t kAttr_SinkSpeed       = 0x543E5574u;
+constexpr uint32_t kAttr_Buoyancy20      = 0xFFF7B927u;   // NOTE: name unknown
+constexpr uint32_t kAttr_Buoyancy24      = 0x7F154347u;   // NOTE: name unknown
+constexpr uint32_t kAttr_Buoyancy28      = 0x827EF485u;   // NOTE: name unknown
+constexpr uint32_t kAttr_Buoyancy3C      = 0x4801705Eu;   // NOTE: name unknown
+constexpr uint32_t kAttr_Buoyancy40      = 0xCD0D2AF5u;   // NOTE: name unknown
+constexpr uint32_t kAttr_Buoyancy44      = 0x708A4E60u;   // NOTE: name unknown
+constexpr uint32_t kAttr_TiltSpeed       = 0x8E11EB8Au;
+constexpr uint32_t kAttr_Buoyancy4C      = 0xC4F41CF6u;   // NOTE: name unknown
+constexpr uint32_t kAttr_MaxRotationX    = 0x735FF3D6u;
+constexpr uint32_t kAttr_MaxRotationY    = 0x735FF3D7u;
+constexpr uint32_t kAttr_MaxRotationZ    = 0x735FF3D8u;
+constexpr uint32_t kAttr_ContactScript   = 0x143774CBu;
+constexpr uint32_t kAttr_ContactInterval = 0x1E7884C5u;
+constexpr uint32_t kAttr_GrabAngleH      = 0xB5292F41u;
+constexpr uint32_t kAttr_MaxAngleV       = 0x9B3DBC47u;
+constexpr uint32_t kAttr_MaxAngleH       = 0x9B3DBC39u;
+constexpr uint32_t kAttr_GrabDistance    = 0x53A7F241u;
+constexpr uint32_t kAttr_MaxDistance     = 0x06CD2139u;
+constexpr uint32_t kAttr_StickThreshold  = 0x82E789DBu;
+constexpr uint32_t kAttr_WallClimb50     = 0x977C8AB2u;   // NOTE: name unknown
+constexpr uint32_t kAttr_WallClimb54     = 0xB081C3B4u;   // NOTE: name unknown
+constexpr uint32_t kAttr_WallClimb58     = 0x01B279B3u;   // NOTE: name unknown
+constexpr uint32_t kAttr_WallClimb60     = 0x009DAD78u;   // NOTE: name unknown
+
+constexpr uint32_t kAttr_Size            = 0x0026D801u;
+constexpr uint32_t kAttr_Offset          = 0x8ACA5893u;
+constexpr uint32_t kAttr_Enabled         = 0xCADB1721u;
+constexpr uint32_t kAttr_Physics91       = 0x8BB0F765u;   // NOTE: name unknown
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -85,6 +119,21 @@ void ReadPulseField(XmlElement* elem, PulseFieldComponentDesc& desc)
 }
 
 } // namespace
+
+// @func 0x0026EFD4 ParsePhysicsComponentDesc
+ComponentDesc* ParsePhysicsComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    PhysicsComponentDesc* desc = NewNamedDesc<PhysicsComponentDesc>(root, elem, scope);
+    if (desc) {
+        desc->world = LevelPhysicsWorld();
+        elem->GetFloat(kAttr_Mass, &desc->mass, desc->mass);
+        elem->GetVec3(kAttr_Size, &desc->size.x, &desc->size.x);
+        elem->GetVec3(kAttr_Offset, &desc->offset.x, &desc->offset.x);
+        elem->GetBool(kAttr_Enabled, &desc->enabled, desc->enabled);
+        elem->GetBool(kAttr_Physics91, &desc->flag91, desc->flag91);
+    }
+    return desc;
+}
 
 // @func 0x002975F4 ParseAnimComponentDesc
 ComponentDesc* ParseAnimComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
@@ -267,6 +316,53 @@ ComponentDesc* ParseBallRollComponentDesc(XmlElement* root, XmlElement* elem, ui
         elem->GetBool(kAttr_Grow, &desc->grow, false);
         elem->GetHash(kAttr_BallRoll28, &desc->hash28, 0);
         elem->GetHash(kAttr_BallRoll2C, &desc->hash2C, 0);
+    }
+    return desc;
+}
+
+// @func 0x002ACBF8 ParseBuoyancyComponentDesc
+ComponentDesc* ParseBuoyancyComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    BuoyancyComponentDesc* desc = NewNamedDesc<BuoyancyComponentDesc>(root, elem, scope);
+    if (desc) {
+        elem->GetFloat(kAttr_MaxDepth, &desc->maxDepth, desc->maxDepth);
+        elem->GetFloat(kAttr_FloatSpeed, &desc->floatSpeed, desc->floatSpeed);
+        elem->GetFloat(kAttr_SinkSpeed, &desc->sinkSpeed, desc->sinkSpeed);
+        elem->GetFloat(kAttr_Buoyancy20, &desc->value20, desc->value20);
+        elem->GetFloat(kAttr_Buoyancy40, &desc->value40, desc->value40);
+        elem->GetFloat(kAttr_Buoyancy3C, &desc->value3C, desc->value3C);
+        elem->GetFloat(kAttr_Buoyancy24, &desc->value24, desc->value24);
+        elem->GetFloat(kAttr_Buoyancy44, &desc->value44, desc->value44);
+        elem->GetFloat(kAttr_Buoyancy28, &desc->value28, desc->value28);
+        elem->GetFloat(kAttr_MaxRotationX, &desc->maxRotationX, desc->maxRotationX);
+        elem->GetFloat(kAttr_MaxRotationY, &desc->maxRotationY, desc->maxRotationY);
+        elem->GetFloat(kAttr_MaxRotationZ, &desc->maxRotationZ, desc->maxRotationZ);
+        elem->GetFloat(kAttr_TiltSpeed, &desc->tiltSpeed, desc->tiltSpeed);
+        elem->GetFloat(kAttr_Buoyancy4C, &desc->value4C, desc->value4C);
+        elem->GetHash(kAttr_ContactScript, &desc->contactScript, desc->contactScript);
+        elem->GetFloat(kAttr_ContactInterval, &desc->contactInterval, desc->contactInterval);
+    }
+    return desc;
+}
+
+// @func 0x002CC470 ParseWallClimbComponentDesc
+ComponentDesc* ParseWallClimbComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    WallClimbComponentDesc* desc = NewNamedDesc<WallClimbComponentDesc>(root, elem, scope);
+    if (desc) {
+        elem->GetFloat(kAttr_GrabAngleH, &desc->grabAngleH, desc->grabAngleH);
+        elem->GetFloat(kAttr_MaxAngleV, &desc->maxAngleV, desc->maxAngleV);
+        elem->GetFloat(kAttr_MaxAngleH, &desc->maxAngleH, desc->maxAngleH);
+        desc->grabAngleH *= kDegToRad;
+        desc->maxAngleV *= kDegToRad;
+        desc->maxAngleH *= kDegToRad;
+        elem->GetFloat(kAttr_GrabDistance, &desc->grabDistance, desc->grabDistance);
+        elem->GetFloat(kAttr_MaxDistance, &desc->maxDistance, desc->maxDistance);
+        elem->GetFloat(kAttr_StickThreshold, &desc->stickThreshold, desc->stickThreshold);
+        elem->GetFloat(kAttr_WallClimb50, &desc->value50, desc->value50);
+        elem->GetFloat(kAttr_WallClimb54, &desc->value54, desc->value54);
+        elem->GetFloat(kAttr_WallClimb58, &desc->value58, desc->value58);
+        elem->GetFloat(kAttr_WallClimb60, &desc->value60, desc->value60);
     }
     return desc;
 }
