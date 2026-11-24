@@ -127,6 +127,7 @@ public:
     }
     float GetRumble(int motor) const { return m_rumble[motor]; }
 
+    bool IsRumbleEnabled() const { return m_rumbleEnabled; }
     bool IsConnected() const { return (m_flags & kDeviceFlag_Connected) != 0; }
     uint16_t GetFlags() const { return m_flags; }
     uint32_t GetDeviceClass() const { return m_deviceClass; }
