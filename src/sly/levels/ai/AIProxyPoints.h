@@ -23,12 +23,19 @@ namespace levels {
 constexpr uint32_t kUserTag_AIProxyPoint = 0x7B672814u;
 
 // One registered point (0x14 bytes on the console).
+//
+// Points placed as children of another point form a patrol chain: the parent
+// ("head") and its children are linked in a ring through prev/next, every
+// child knows its head, and the head counts its children. A lone point links
+// to itself.
 struct AIProxyPoint {
-    uint32_t userData = 0;          // +0x00 caller supplied
-    WorldObject* object = nullptr;  // +0x04 the point instance
-    // +0x08..+0x0F: the record's own index, stored four times (list links
-    // initialised to "self").
-    uint16_t links[4] = {};
+    const void* properties = nullptr;  // +0x00 property block of the point (caller supplied)
+    WorldObject* object = nullptr;     // +0x04 the point instance
+    int16_t self = 0;                  // +0x08 own index
+    int16_t prev = 0;                  // +0x0A
+    int16_t next = 0;                  // +0x0C
+    int16_t head = 0;                  // +0x0E
+    int32_t childCount = 0;            // +0x10 (head only)
 };
 
 class AIProxyPointTable {
@@ -37,12 +44,18 @@ public:
 
     // Registers `object` (once; a second call returns the existing record).
     // Returns null when the table is full.
-    AIProxyPoint* Register(WorldObject* object, uint32_t userData);
+    AIProxyPoint* Register(WorldObject* object, const void* properties);
     // Registers the point instance named `name` and tags it with its record.
-    void RegisterByName(uint32_t userData, const char* name);
+    void RegisterByName(const void* properties, const char* name);
 
     uint16_t Count() const { return static_cast<uint16_t>(m_points.size()); }
     AIProxyPoint* At(uint16_t index) { return index < m_points.size() ? &m_points[index] : nullptr; }
+    // Index form used by the chain links (negative or out of range: null).
+    AIProxyPoint* AtIndex(int index) { return index >= 0 && index < (int)m_points.size() ? &m_points[index] : nullptr; }
+    // Links every point's child points into its patrol chain (0x000190B4).
+    void BuildChains();
+    // Forgets every point (level shutdown).
+    void Clear() { m_points.clear(); m_byKey.clear(); }
 
 private:
     uint16_t m_capacity;
