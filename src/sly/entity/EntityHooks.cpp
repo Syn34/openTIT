@@ -92,5 +92,8 @@ void ScriptInstanceSetState(void* instance, uint32_t stateName)
     static_cast<ape::ApeAnimScriptInstance*>(instance)->SetStateAndUpdate(stateName);
 }
 
+// TODO(0x00490518)
+void PropertySystemForgetDef(EntityDef* def) { (void)def; }
+
 } // namespace entity
 } // namespace sly

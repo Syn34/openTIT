@@ -19,6 +19,7 @@ namespace entity {
 
 class Entity;
 class EntityComponent;
+class EntityDef;
 struct ComponentDesc;
 
 // -- game object base class (vtable 0x00B219D0, 0x00464xxx) -------------------
@@ -105,6 +106,9 @@ void EntityObjectDCStart(void* object);
 void EntityObjectDCStop(void* object);
 // ApeAnimScriptInstance::SetStateAndUpdate by state name.
 void ScriptInstanceSetState(void* instance, uint32_t stateName);
+
+// 0x00490518: drops whatever the game property system keeps for a definition.
+void PropertySystemForgetDef(EntityDef* def);
 
 } // namespace entity
 } // namespace sly

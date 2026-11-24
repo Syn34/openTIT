@@ -180,7 +180,7 @@ struct SpawnParams {
 // Entity definition (registered by name in the definition map 0x01013B04).
 class EntityDef {
 public:
-    virtual ~EntityDef() = default;
+    virtual ~EntityDef();
     virtual Entity* Spawn(SpawnParams& params) { (void)params; return nullptr; }   // slot 7 (+0x1C)
 
     // Name for a new instance: the requested name, else the source object's
@@ -198,8 +198,10 @@ public:
     uint32_t field_28 = 0;                   // 0x28
     uint32_t nameHash = 0;                   // 0x34
     char name[0x20] = {};                    // 0x38
+    char* field_80 = nullptr;                // 0x80 NOTE: owned buffer, contents unknown
     ape::ApeTArray<SpawnAttachmentDesc>* attachments = nullptr;   // 0x88
 };
+void UnregisterEntityDef(EntityDef* def);
 
 class Entity {
 public:
