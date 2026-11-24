@@ -37,6 +37,7 @@ enum ComponentDescType : uint32_t {
     kCompDesc_IK             = 0x11,
     kCompDesc_FacePlayer     = 0x16,
     kCompDesc_RadarBlip      = 0x19,
+    kCompDesc_Interact       = 0x1B,
     kCompDesc_Mover          = 0x1D,
     kCompDesc_OffscreenMarker = 0x1E,
     kCompDesc_SimplePhysics  = 0x1F,
@@ -97,16 +98,16 @@ struct ContextualMarkerComponentDesc : ComponentDesc {
     explicit ContextualMarkerComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_ContextualMarker) {}
     ape::Vec4 attachRot = {0.0f, 0.0f, 0.0f, 1.0f};       // 0x20 quaternion of AttachRot (degrees)
     ape::Vec3 attachOffset = {0.0f, 0.0f, 0.0f, 0.0f};    // 0x30
-    ape::Vec3 vec40 = {0.0f, 0.0f, 0.0f, 0.0f};           // 0x40 attribute 0xE8B802BD. NOTE: name unknown
-    uint32_t hash50 = 0;         // 0x50 attribute 0xA7E293B8. NOTE: name unknown
-    uint32_t hash54 = 0;         // 0x54 attribute 0x26161B29. NOTE: name unknown
+    ape::Vec3 attachCameraOffset = {0.0f, 0.0f, 0.0f, 0.0f};   // 0x40
+    uint32_t attachPart = 0;     // 0x50
+    uint32_t geomDef = 0;        // 0x54
     float scaleMin = -1.0f;      // 0x58
     float scaleMax = -1.0f;      // 0x5C
     float scaleDistMin = -1.0f;  // 0x60
     float scaleDistMax = -1.0f;  // 0x64
     float scaleFactorFOV = 0.0f; // 0x68
     bool hasScaleFactorFOV = false; // 0x6C the XML gave ScaleFactorFOV
-    bool flag6D = false;         // 0x6D attribute 0xBC175CCC. NOTE: name unknown; uninitialised on the console
+    bool applyRotation = false;  // 0x6D NOTE: uninitialised on the console before the read
     bool startEnabled = false;   // 0x6E NOTE: uninitialised on the console before the read
 };
 
@@ -166,6 +167,29 @@ struct FacePlayerComponentDesc : ComponentDesc {
 struct RadarBlipComponentDesc : ComponentDesc {
     explicit RadarBlipComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_RadarBlip) {}
     uint32_t blipType = 0x03F0D768u;   // 0x14 "Type", default "Enemy"
+};
+
+// <Interact> (vtable 0x00B1CE10, 0x60 bytes): how the player interacts
+// with the entity.
+enum InteractPhysicsState : uint32_t {   // names at 0x00AD3FE4
+    kPhysState_None, kPhysState_Ground, kPhysState_Air, kPhysState_Climb,
+    kPhysState_Crawl, kPhysState_PlayDead, kPhysState_ClimbWall,
+};
+struct InteractComponentDesc : ComponentDesc {
+    explicit InteractComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Interact) {}
+    ape::Vec3 vec20 = {0.0f, 0.0f, 0.0f, 0.0f};    // 0x20 attribute 0x3B6C1F30. NOTE: name unknown
+    ape::Vec3 rotation = {0.0f, 0.0f, 0.0f, 0.0f}; // 0x30 attribute 0x98DB3873, radians. NOTE: name unknown
+    float interactDistSq = -1.0f;    // 0x40 InteractDist, squared when positive
+    float halfAngleThreshold = -1.0f; // 0x44 half of AngleThreshold, radians
+    float halfAngle48 = -1.0f;       // 0x48 attribute 0x17A28676, half angle in radians. NOTE: name unknown
+    uint32_t scriptLifetime = 0;     // 0x4C NOTE: name from a hash match
+    float value50 = 0.0f;            // 0x50 attribute 0x3A20269E. NOTE: name unknown
+    uint32_t physicsStates = 1u << kPhysState_Ground;   // 0x54 mask of InteractPhysicsState
+    // Flag word 0x58, bits 31..23.
+    bool startAvailable = false;     // bit 31
+    bool flags[7] = {false, false, false, false, false, false, true};   // bits 30..24. NOTE: names unknown
+    bool activeNoCull = false;       // bit 23
+    char* text = nullptr;            // 0x5C copy of attribute 0x6E2EE341. NOTE: name unknown
 };
 
 // <Mover> (vtable 0x00B1CEC0, 0x130 bytes): moves the entity along a path
@@ -375,6 +399,7 @@ ComponentDesc* ParseProcAnimComponentDesc(ape::xml::XmlElement* root, ape::xml::
 ComponentDesc* ParseIKComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseFacePlayerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseRadarBlipComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseInteractComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseMoverComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseOffscreenMarkerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseSimplePhysicsComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);

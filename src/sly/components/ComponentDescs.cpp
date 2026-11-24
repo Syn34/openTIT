@@ -5,6 +5,7 @@
 #include "sly/objects/TriggerEnv.h"
 
 #include "ape/core/ApeString.h"
+#include "ape/memory/ApeMem.h"
 #include "ape/xml/ApeXml.h"
 
 namespace sly {
@@ -115,15 +116,15 @@ constexpr uint32_t kTag_LookAtSolver     = 0x5BDDD9A5u;
 
 constexpr uint32_t kAttr_AttachRot      = 0x898B7952u;
 constexpr uint32_t kAttr_AttachOffset   = 0x3818B318u;
-constexpr uint32_t kAttr_Marker40       = 0xE8B802BDu;   // NOTE: name unknown
-constexpr uint32_t kAttr_Marker50       = 0xA7E293B8u;   // NOTE: name unknown
-constexpr uint32_t kAttr_Marker54       = 0x26161B29u;   // NOTE: name unknown
+constexpr uint32_t kAttr_AttachCameraOffset = 0xE8B802BDu;
+constexpr uint32_t kAttr_AttachPart     = 0xA7E293B8u;
+constexpr uint32_t kAttr_GeomDef        = 0x26161B29u;
 constexpr uint32_t kAttr_ScaleMin       = 0xF97D90C8u;
 constexpr uint32_t kAttr_ScaleMax       = 0xF97D8FDAu;
 constexpr uint32_t kAttr_ScaleDistMin   = 0x0F8DA662u;
 constexpr uint32_t kAttr_ScaleDistMax   = 0x0F8DA574u;
 constexpr uint32_t kAttr_ScaleFactorFOV = 0xFDF98B14u;
-constexpr uint32_t kAttr_Marker6D       = 0xBC175CCCu;   // NOTE: name unknown
+constexpr uint32_t kAttr_ApplyRotation  = 0xBC175CCCu;
 
 constexpr uint32_t kAttr_ProcAnim31      = 0x002480E8u;   // NOTE: name unknown
 constexpr uint32_t kAttr_ProcAnim30      = 0x724F4DDAu;   // NOTE: name unknown
@@ -148,6 +149,25 @@ constexpr uint32_t kAttr_CombatHashes[6] = {0xFB92D658u, 0xFB92E002u, 0xFB929D5A
 constexpr uint32_t kAttr_Combat2C        = 0x7CDB801Cu;   // NOTE: name unknown
 constexpr uint32_t kTag_Reaction         = 0xFAF0CA29u;
 constexpr uint32_t kReactionDefault      = 0x86DF6221u;   // "default"
+
+constexpr uint32_t kAttr_Interact20      = 0x3B6C1F30u;   // NOTE: name unknown
+constexpr uint32_t kAttr_Interact30      = 0x98DB3873u;   // NOTE: name unknown
+constexpr uint32_t kAttr_InteractDist    = 0xD98B80DCu;
+constexpr uint32_t kAttr_AngleThreshold  = 0x7D2B8CF8u;
+constexpr uint32_t kAttr_Interact48      = 0x17A28676u;   // NOTE: name unknown
+constexpr uint32_t kAttr_ScriptLifetime  = 0xF89FDD94u;
+constexpr uint32_t kAttr_Interact50      = 0x3A20269Eu;   // NOTE: name unknown
+constexpr uint32_t kAttr_StartAvailable  = 0xC5B578A7u;
+constexpr uint32_t kAttr_InteractFlags[7] = {0xA9991533u, 0x9F79B1C1u, 0x2EC1E492u, 0xD499961Cu,
+                                             0x7EC7743Bu, 0x10823996u, 0xEFDCC30Cu};   // NOTE: names unknown
+constexpr uint32_t kAttr_ActiveNoCull    = 0x0CD89539u;
+constexpr uint32_t kTag_PhysicsState     = 0x51609AAAu;
+constexpr uint32_t kAttr_Enable          = 0x7A281983u;
+constexpr uint32_t kAttr_InteractText    = 0x6E2EE341u;   // NOTE: name unknown
+constexpr uint32_t kPhysicsStateNames[7] = {0x0024A738u /* None */, 0x7DD0CD87u /* Ground */,
+                                            0x0000FD2Au /* Air */, 0x03D3CE95u /* Climb */,
+                                            0x03D66C07u /* Crawl */, 0x9EA8BD98u /* PlayDead */,
+                                            0x419905DFu /* ClimbWall */};
 
 constexpr float kDegToRad = 0.017453292f;
 
@@ -267,16 +287,16 @@ ComponentDesc* ParseContextualMarkerComponentDesc(XmlElement* root, XmlElement* 
         desc->attachRot = objects::QuaternionFromEuler(radians);
     }
     elem->GetVec3(kAttr_AttachOffset, &desc->attachOffset.x, &desc->attachOffset.x);
-    elem->GetVec3(kAttr_Marker40, &desc->vec40.x, &desc->vec40.x);
-    elem->GetHash(kAttr_Marker50, &desc->hash50, desc->hash50);
-    elem->GetHash(kAttr_Marker54, &desc->hash54, desc->hash54);
+    elem->GetVec3(kAttr_AttachCameraOffset, &desc->attachCameraOffset.x, &desc->attachCameraOffset.x);
+    elem->GetHash(kAttr_AttachPart, &desc->attachPart, desc->attachPart);
+    elem->GetHash(kAttr_GeomDef, &desc->geomDef, desc->geomDef);
     elem->GetFloat(kAttr_ScaleMin, &desc->scaleMin, desc->scaleMin);
     elem->GetFloat(kAttr_ScaleMax, &desc->scaleMax, desc->scaleMax);
     elem->GetFloat(kAttr_ScaleDistMin, &desc->scaleDistMin, desc->scaleDistMin);
     elem->GetFloat(kAttr_ScaleDistMax, &desc->scaleDistMax, desc->scaleDistMax);
     desc->hasScaleFactorFOV =
         elem->GetFloat(kAttr_ScaleFactorFOV, &desc->scaleFactorFOV, desc->scaleFactorFOV) == ape::xml::kQuery_Ok;
-    elem->GetBool(kAttr_Marker6D, &desc->flag6D, desc->flag6D);
+    elem->GetBool(kAttr_ApplyRotation, &desc->applyRotation, desc->applyRotation);
     elem->GetBool(kAttr_StartEnabled, &desc->startEnabled, desc->startEnabled);
     return desc;
 }
@@ -375,6 +395,61 @@ ComponentDesc* ParseRadarBlipComponentDesc(XmlElement* root, XmlElement* elem, u
     RadarBlipComponentDesc* desc = new RadarBlipComponentDesc(ape::HashNameNoCase(name));
     desc->scope = scope;
     elem->GetHash(kAttr_Type, &desc->blipType, desc->blipType);
+    return desc;
+}
+
+// @func 0x002B6740 ParseInteractComponentDesc
+ComponentDesc* ParseInteractComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    (void)root;
+    // This parser skips the missing-name report.
+    const char* name = elem->GetString("name");
+    if (!name)
+        return nullptr;
+    InteractComponentDesc* desc = new InteractComponentDesc(ape::HashNameNoCase(name));
+    desc->scope = scope;
+    elem->GetVec3(kAttr_Interact20, &desc->vec20.x, &desc->vec20.x);
+    if (elem->GetVec3(kAttr_Interact30, &desc->rotation.x, &desc->rotation.x) == ape::xml::kQuery_Ok) {
+        desc->rotation.x *= kDegToRad;
+        desc->rotation.y *= kDegToRad;
+        desc->rotation.z *= kDegToRad;
+    }
+    if (elem->GetFloat(kAttr_InteractDist, &desc->interactDistSq, desc->interactDistSq) == ape::xml::kQuery_Ok &&
+        desc->interactDistSq > 0.0f)
+        desc->interactDistSq *= desc->interactDistSq;
+    if (elem->GetFloat(kAttr_AngleThreshold, &desc->halfAngleThreshold, desc->halfAngleThreshold) ==
+        ape::xml::kQuery_Ok)
+        desc->halfAngleThreshold = desc->halfAngleThreshold * kDegToRad * 0.5f;
+    if (elem->GetFloat(kAttr_Interact48, &desc->halfAngle48, desc->halfAngle48) == ape::xml::kQuery_Ok)
+        desc->halfAngle48 = desc->halfAngle48 * kDegToRad * 0.5f;
+    elem->GetHash(kAttr_ScriptLifetime, &desc->scriptLifetime, 0);
+    elem->GetFloat(kAttr_Interact50, &desc->value50, desc->value50);
+    elem->GetBool(kAttr_StartAvailable, &desc->startAvailable, desc->startAvailable);
+    for (int i = 0; i < 7; ++i)
+        elem->GetBool(kAttr_InteractFlags[i], &desc->flags[i], desc->flags[i]);
+    elem->GetBool(kAttr_ActiveNoCull, &desc->activeNoCull, desc->activeNoCull);
+
+    // <PhysicsState Name=... Enable=...> edit the default mask (Ground).
+    desc->physicsStates = 1u << kPhysState_Ground;
+    for (XmlElement* child = elem->FirstChildElement(kTag_PhysicsState); child;
+         child = child->NextSiblingElement(kTag_PhysicsState)) {
+        uint32_t stateName = 0;
+        if (child->GetHash(kAttr_Name, &stateName, 0) != ape::xml::kQuery_Ok)
+            continue;
+        for (uint32_t i = 0; i < 7; ++i) {
+            if (kPhysicsStateNames[i] != stateName)
+                continue;
+            bool enable = true;
+            child->GetBool(kAttr_Enable, &enable, true);
+            if (enable)
+                desc->physicsStates |= 1u << i;
+            else
+                desc->physicsStates &= ~(1u << i);
+            break;
+        }
+    }
+    if (const char* text = elem->GetString(kAttr_InteractText))
+        desc->text = ape::StrDup(text);
     return desc;
 }
 
