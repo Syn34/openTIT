@@ -5,7 +5,13 @@
   the table at 0x00AD4000 (dispatcher 0x00250190). Done: PHYSICS, Anim, ContextualMarker,
   ControlAI, AnimMap, ProcAnim, IK, FacePlayer, RadarBlip, Buoyancy, OffscreenMarker,
   SimplePhysics, JumpRope, AeSpline, tracker, Vortex, Scoring, SystemCracker, MagNet,
-  SpeedBoost, WallClimb, BallRoll, MonsterCloset, DamageSequence.
+  SpeedBoost, WallClimb, BallRoll, MonsterCloset, DamageSequence, Mover, Combat, Interact,
+  targeting, ProcEyes, FX, Wheelchair, Radar, Receptacle.
+* `IKSolverDefs.*`: the IK file's solver definitions (JointTwo/JointThree/LookAt/Foot) and
+  their four registries, plus the file-level parser 0x00292F00.
+* Radar reads two tuning defaults (`EntityComp.Radar.Default*Duration`) that belong to the
+  unported component static initialiser 0x002D6A40; they are defined in `ComponentDescs.cpp`
+  for now and must move there when that initialiser is ported.
 * `ComponentHooks.*`: TODO stubs for calls out of this directory (level physics world).
 * `sly/entity/Entity.h`: `ComponentDesc` gained the registering constructor and the
   scope byte (+0x10) the parsers fill in.
@@ -19,10 +25,9 @@ hashing the executable's strings and word pairs. Hashes with no match keep a
 * Dispatcher 0x00250190: needs every table entry first.
 * Inventory (0x002666C0 with item parser 0x00265D60, sorted insert 0x00266570 and the
   item/group registries 0x0105BE30 / 0x0105BE18; group parser 0x002650D8).
-* Radar (0x00299A60: Ghidra loses the values pushed per child and the 9-entry name table
-  0x00F64BF0), Receptacle (0x002B8328: 0x90-byte slot records built on the stack),
-  targeting, Combat, ProcEyes, Projector, CustomModel, Weapon, FX, Binocucom, Interact,
-  Mover, Wheelchair, Shooting, and the 0xCE95B536 element (0x0028363C).
-* IK solver definitions (0x00291E6C head, 0x00292210 leg, 0x00292618 / 0x002929EC joint
-  solvers): Ghidra drops the copies of the read values; they need the disassembly.
+* Inventory: group file parser 0x00266C3C, group parser 0x002650D8 (two slot classes,
+  vtables 0x00B1BEA0 / 0x00B1BEC8), item parser 0x00265D60 and the component 0x002666C0.
+* Projector,
+  CustomModel, Weapon, Binocucom (its defaults are tuning globals of 0x002D6A40), Shooting,
+  and the 0xCE95B536 element (0x0028363C, a parser that returns null).
 * Description destructors live at 0x0076xxxx (outside this range).
