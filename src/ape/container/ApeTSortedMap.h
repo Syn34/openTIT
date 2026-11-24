@@ -74,6 +74,8 @@ public:
     // used by the console code and its meaning is unknown.
     ApeTSortedMap(uint16_t capacity, ApeAllocator* allocator, uint32_t unused, CompareFn compare);
 
+    // Appends unsorted; the next lookup sorts.
+    // @func 0x007A4390 ApeTSortedMap<V>::Add (copy 1, IFF chunk handlers)
     void Add(uint32_t key, V value)
     {
         Pair* p = static_cast<Pair*>(AppendRaw());
