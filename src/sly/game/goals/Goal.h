@@ -141,6 +141,9 @@ struct GoalHint {
     void Apply(class Goal* owner, bool enable);
 };
 
+// Name hash of each game event type (table 0x00F65BF8, 0x21 entries).
+extern const uint32_t kGameEventNames[0x21];
+
 // HUD progress counter of a goal (slot 13).
 struct GoalProgress {
     uint32_t name = 0;     // text id
@@ -299,6 +302,7 @@ public:
     uint32_t field_960 = 0;             // +0x960
     bool field_96C = false;             // +0x96C
     bool completesParent = false;       // +0x8B6 a completed child completes its group
+    bool showProgressTotal = false;     // +0x8B7 GetProgress() reports a total
     uint32_t checkpoints[9] = {};       // +0x970
     int32_t saveSlot = 0;               // +0x994 index of the goal's job save word
     int32_t index = -1;                 // +0x998 position in the job's goal list

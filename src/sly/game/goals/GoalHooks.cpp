@@ -76,6 +76,22 @@ void GoalAddEntityMarker(GoalMarkerList*, void*) {}
 void* GoalFindEntity(uint32_t) { return nullptr; }
 void* EntityFindDescendant(void*, uint32_t) { return nullptr; }
 
+bool GoalEntityAlive(const void*) { return false; }
+float GoalEntityHealth(const void*) { return 0.0f; }
+float GoalEntityMaxHealth(const void*) { return 0.0f; }
+bool GoalEntityIsActor(const void*) { return false; }
+void JobOwnerUntarget(const Job*, uint32_t) {}
+void JobOwnerAddTarget(const Job*, void*) {}
+void JobOwnerRemoveTarget(const Job*, void*) {}
+void GoalReportStat(void*, uint32_t, uint32_t, int) {}
+void GoalListenTo(Goal*, uint32_t) {}
+void GoalStopListening(Goal*) {}
+void* SpawnMousetrapHelper() { return nullptr; }
+void* GoalEntityParent(const void*) { return nullptr; }
+bool GoalEntityMarkerSuppressed(const void*) { return false; }
+bool GoalEntityAllowsMarker(const void*) { return false; }
+void HudSetFollowWarning(bool) {}
+bool GoalEntityPhotographable(const void*) { return false; }
 void GoalEntityAddRef(void*) {}
 void GoalEntityRelease(void*) {}
 uint32_t GoalEntityName(const void*) { return 0; }
@@ -111,6 +127,7 @@ void GameInstallMinigame(SlyGame*, gameplay::Minigame*) {}
 void GameEndActiveMinigame(SlyGame*) {}
 void MinigameStart(gameplay::Minigame*) {}
 void MinigameCollectMarkers(gameplay::Minigame*, GoalMarkerList*) {}
+void GoalAwardTrophy(uint32_t) {}
 gameplay::Minigame* CreateMinigame(MinigameKind, SlyGame*, const void*, Goal*) { return nullptr; }
 
 } // namespace goals
