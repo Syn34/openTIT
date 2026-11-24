@@ -6,6 +6,7 @@
 #include "ape/container/ApeTSortedMap.h"
 #include "ape/core/ApeString.h"
 #include "ape/world/ApeDef.h"
+#include "ape/world/ApeInstances.h"
 #include "ape/world/ApeObj.h"
 #include "ape/world/ApeRenderNode.h"
 #include "ape/world/ApeSkeleton.h"
@@ -197,6 +198,18 @@ Entity::~Entity()
     delete components;
 }
 
+// @func 0x000DBCF8 Entity::FindAnimClip
+void* Entity::FindAnimClip(uint32_t nameHash)
+{
+    return AnimClipRegistryFind(nameHash);
+}
+
+// @func 0x000DBD20 Entity::FindAnimClipByName
+void* Entity::FindAnimClipByName(const char* name)
+{
+    return FindAnimClip(ape::HashNameNoCase(name));
+}
+
 // @func 0x000D82BC Entity::OnSpawn
 void Entity::OnSpawn()
 {
@@ -234,16 +247,38 @@ bool Entity::PostUpdate(float dt)
     return true;
 }
 
-// TODO(0x000D7A00 Entity::UpdateChildTransforms): places every attached child
-// from the parent's bone/locator matrices (vector heavy).
-// TODO(0x000D85A4 Entity::UpdateTransform): refreshes the world object and
-// calls UpdateChildTransforms when children may have moved.
+// @func 0x000D85A4 Entity::UpdateTransform
+// Refreshes the world object (when children hang off an object without a
+// render node), places the children unless nobody can see them, and applies
+// a deferred visibility change.
 void Entity::UpdateTransform()
 {
+    if (object && children && children->Count() != 0 && !object->GetRenderNode())
+        object->UpdateWorld(false, false);
+
+    if (object) {
+        bool placeChildren = true;
+        const bool geometry = object->GetType() == ape::world::kObjType_GeomInstance;
+        if (!(flags & kEnt_08) && geometry &&
+            !static_cast<const ape::world::ApeRenderObj*>(object)->IsDrawnThisFrame()) {
+            // Invisible geometry only needs its children placed when a
+            // visibility change, a highlight or a listener depends on them.
+            placeChildren = (flags2 & (kEnt2_VisibilityPending | kEnt2_Highlight)) || listener;
+        }
+        if (placeChildren)
+            UpdateChildTransforms();
+    }
+
     if (flags2 & kEnt2_VisibilityPending) {
         ApplyVisibility((flags2 & kEnt2_PendingVisible) != 0);
         flags2 &= uint16_t(~(kEnt2_VisibilityPending | kEnt2_PendingVisible));
     }
+}
+
+// TODO(0x000D7A00 Entity::UpdateChildTransforms): places every attached child
+// from the parent's bone/locator matrices (vector heavy).
+void Entity::UpdateChildTransforms()
+{
 }
 
 // @func 0x000D1288 Entity::GetComponent

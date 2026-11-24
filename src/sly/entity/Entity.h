@@ -226,6 +226,10 @@ public:
     virtual void SetActive(bool active);                           // slot 44
     virtual void SetAttachParent(Entity* parent) { attachParent = parent; }   // slot 46, base 0x007373A4
     virtual void SetFlag1(bool on);                                // slot 45
+    // Animation clip registered under a name (slots 47/48; the hash form
+    // looks the clip up in the global clip registry).
+    virtual void* FindAnimClip(uint32_t nameHash);                 // slot 47 (+0xBC)
+    virtual void* FindAnimClipByName(const char* name);            // slot 48 (+0xC0)
     virtual void SetActiveVisual(bool on) { (void)on; }            // slot 53 (+0xD4)
     virtual void ApplyVisibility(bool visible);                    // slot 55 (+0xDC)
     virtual void OnSuspend();                                      // slot 60 (+0xF0)
@@ -273,6 +277,8 @@ public:
     void SetVisibilityDeferred(bool visible, bool deferred);
     void SetSuspended(bool suspended);
     void UpdateWorldTransform(bool children);
+    // Places the attached children (0x000D7A00).
+    void UpdateChildTransforms();
     void RemoveWatcher(void* watcher);
     bool HasTypeBit(uint32_t bit) const { return (typeBits[bit >> 5] & (1u << (bit & 31))) != 0; }
     void SetName(const char* name);

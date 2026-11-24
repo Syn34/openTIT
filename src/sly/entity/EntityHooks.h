@@ -94,5 +94,8 @@ void EntityLeaveListenerGroup(Entity* entity);
 constexpr uint32_t kUserTag_ReleasedEntity = 0x25431D90u;
 void WorldObjectSetUserData(ape::world::ApeObj* object, uint32_t tag, uint32_t value);
 
+// Global animation clip registry (sorted map 0x0106BBE8, 0x0034A398).
+void* AnimClipRegistryFind(uint32_t nameHash);
+
 } // namespace entity
 } // namespace sly

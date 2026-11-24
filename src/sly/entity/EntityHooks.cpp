@@ -79,5 +79,8 @@ void WorldObjectSetUserData(ape::world::ApeObj* object, uint32_t tag, uint32_t v
     object->field_118 = reinterpret_cast<void*>(static_cast<uintptr_t>(value));
 }
 
+// TODO(0x0034A398) the clip registry belongs to the animation module.
+void* AnimClipRegistryFind(uint32_t nameHash) { (void)nameHash; return nullptr; }
+
 } // namespace entity
 } // namespace sly
