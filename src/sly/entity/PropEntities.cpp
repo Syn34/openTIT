@@ -46,5 +46,71 @@ AlterEgoEntity::~AlterEgoEntity()
     UnregisterEntity(kList_B, this);
 }
 
+// @func 0x0016A740 AlterEgoBentleyDef::~AlterEgoBentleyDef
+// @func 0x0016A7A0 AlterEgoBentleyDef::~AlterEgoBentleyDef (deleting)
+AlterEgoBentleyDef::~AlterEgoBentleyDef()
+{
+    if (collisionShape)
+        ReleaseCollisionShape(collisionShape);
+}
+
+// @func 0x0017CC7C TargetableDefA::~TargetableDefA
+// @func 0x0017CCDC TargetableDefA::~TargetableDefA (deleting)
+TargetableDefA::~TargetableDefA()
+{
+    if (collisionShape)
+        ReleaseCollisionShape(collisionShape);
+}
+
+// @func 0x0018EDB4 TargetableDefB::~TargetableDefB
+// @func 0x0018EEA0 TargetableDefB::~TargetableDefB (deleting)
+TargetableDefB::~TargetableDefB()
+{
+    while (entries.Count() != 0) {
+        delete entries[entries.Count() - 1];
+        entries.RemoveAtSwap(entries.Count() - 1);
+    }
+    if (collisionShape)
+        ReleaseCollisionShape(collisionShape);
+}
+
+// @func 0x001F8F8C TargetableDefC::~TargetableDefC
+// @func 0x001F8FEC TargetableDefC::~TargetableDefC (deleting)
+TargetableDefC::~TargetableDefC()
+{
+    if (collisionShape)
+        ReleaseCollisionShape(collisionShape);
+}
+
+// @func 0x001B3AAC PushBlockDef::~PushBlockDef
+// @func 0x001B3B34 PushBlockDef::~PushBlockDef (deleting)
+PushBlockDef::~PushBlockDef()
+{
+    if (collisionShape)
+        ReleaseCollisionShape(collisionShape);
+}
+
+// @func 0x001A7058 ChainDef::~ChainDef
+// @func 0x001A70D4 ChainDef::~ChainDef (deleting)
+ChainDef::~ChainDef()
+{
+    for (audio::SoundName* sound : sounds)
+        audio::SoundNameRelease(sound);
+}
+
+// @func 0x0016EC4C CompoundEntity::~CompoundEntity
+// @func 0x0016EE20 CompoundEntity::~CompoundEntity (deleting)
+// @func 0x0016EE68 CompoundEntity::~CompoundEntity (deleting thunk, +0x180)
+// @func 0x0016EEB4 CompoundEntity::~CompoundEntity (deleting thunk, +0x17C)
+// @func 0x0016EF00 CompoundEntity::~CompoundEntity (thunk, +0x180)
+// @func 0x0016EF28 CompoundEntity::~CompoundEntity (thunk, +0x17C)
+CompoundEntity::~CompoundEntity()
+{
+    DequeueEntityTransformCallback(this);
+    UnregisterEntity(kList_B, this);
+    for (Part* part : parts)
+        delete part;
+}
+
 } // namespace entity
 } // namespace sly

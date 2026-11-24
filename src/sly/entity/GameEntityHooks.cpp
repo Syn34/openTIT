@@ -16,5 +16,8 @@ audio::VoiceId PlayEntitySound(audio::SoundName* sound, const ape::Vec3* positio
 void ReleaseVoiceLoop(audio::VoiceId voice) { (void)voice; }
 bool GetVoiceParams(audio::VoiceId voice, audio::SoundParams& out) { (void)voice; (void)out; return false; }
 
+void DequeueEntityTransformCallback(Entity* entity) { (void)entity; }
+void HavokFree(void* data, uint32_t bytes) { (void)data; (void)bytes; }
+
 } // namespace entity
 } // namespace sly

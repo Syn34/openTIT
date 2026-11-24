@@ -6,7 +6,10 @@
 // descriptive (the original names are not known).
 #pragma once
 
+#include "sly/entity/GameEntityHooks.h"
 #include "sly/entity/ScriptedEntity.h"
+#include "sly/game/AudioSystem.h"
+#include "ape/memory/ApeTArray.h"
 
 namespace sly {
 namespace entity {
@@ -41,6 +44,74 @@ public:
 class AlterEgoEntity : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
     ~AlterEgoEntity() override;
+};
+
+// Definition of the Bentley alter ego entity (vtable 0x00B14590, 0x110
+// bytes; spawns 0x0016BF00, whose code uses "AlterEgo_Bentley").
+class AlterEgoBentleyDef : public ScriptedEntityDef {
+public:
+    ~AlterEgoBentleyDef() override;
+    void* collisionShape = nullptr;    // 0xF4
+};
+
+// Definitions with a collision object and targeting flags whose entities are
+// not identified yet (vtables 0x00B14B50 / 0x00B14D98 / 0x00B18B00).
+class TargetableDefA : public ScriptedEntityDef {
+public:
+    ~TargetableDefA() override;
+    void* collisionShape = nullptr;    // 0x120
+};
+
+class TargetableDefB : public ScriptedEntityDef {
+public:
+    // Entries of 0x3C bytes owned by the definition. NOTE: contents not decoded.
+    struct Entry {
+        uint8_t data[0x3C];
+    };
+    ~TargetableDefB() override;
+    void* collisionShape = nullptr;    // 0x124
+    ape::ApeTArray<Entry*> entries;    // 0x128
+};
+
+class TargetableDefC : public ScriptedEntityDef {
+public:
+    ~TargetableDefC() override;
+    void* collisionShape = nullptr;    // 0x128
+};
+
+// Push block definition (vtable 0x00B16058, 0x100 bytes; spawns 0x001B4A10).
+class PushBlockDef : public ScriptedEntityDef {
+public:
+    ~PushBlockDef() override;
+    ape::ApeTArray<void*> field_C0;    // 0xC0
+    void* collisionShape = nullptr;    // 0xE4
+};
+
+// Chain definition (vtable 0x00B15150, 0xC0 bytes; derives from the plain
+// definition base; spawns 0x001A7180, which builds "Spline_Chain_%s").
+class ChainDef : public EntityDef {
+public:
+    ~ChainDef() override;
+    audio::SoundName* sounds[5] = {};  // 0xAC
+};
+
+// Scripted entity owning eleven sub-objects and two Havok pointer arrays
+// (vtable 0x00B14730 + 0x00B148CC/0x00B148F4). Registered in entity list B
+// and on the world's transform callback list while alive.
+// NOTE: named from its members; its role is not known yet.
+class CompoundEntity : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
+public:
+    // Sub-objects deleted with the entity (virtual deleting destructor).
+    class Part {
+    public:
+        virtual ~Part() = default;
+    };
+
+    ~CompoundEntity() override;
+
+    HkArray<void*> field_1FC;      // 0x1FC
+    HkArray<void*> field_208;      // 0x208
+    Part* parts[11] = {};          // 0x214
 };
 
 } // namespace entity

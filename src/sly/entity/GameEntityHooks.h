@@ -30,5 +30,31 @@ void ReleaseVoiceLoop(audio::VoiceId voice);
 // no request any more (0x00443CE0).
 bool GetVoiceParams(audio::VoiceId voice, audio::SoundParams& out);
 
+// Takes the entity's transform callback (0x000DD778) off the game world's
+// phase-0 callback list again (0x0046B7A4).
+void DequeueEntityTransformCallback(Entity* entity);
+
+// Frees storage obtained from the Havok heap allocator (0x011DF31C, slot 5).
+void HavokFree(void* data, uint32_t bytes);
+
+// Havok's growable pointer array (data, size, capacity with the
+// "do not free" flag in bit 31), as embedded in some entities.
+template <class T>
+struct HkArray {
+    static constexpr uint32_t kDontFree = 0x80000000u;
+    T* data = nullptr;
+    int32_t size = 0;
+    uint32_t capacityAndFlags = kDontFree;
+
+    ~HkArray()
+    {
+        size = 0;
+        if (!(capacityAndFlags & kDontFree))
+            HavokFree(data, capacityAndFlags * uint32_t(sizeof(T)));
+        data = nullptr;
+        capacityAndFlags = kDontFree;
+    }
+};
+
 } // namespace entity
 } // namespace sly
