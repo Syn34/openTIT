@@ -514,3 +514,52 @@ public:
 
 } // namespace goals
 } // namespace sly
+
+namespace sly {
+namespace goals {
+
+// "OperationMousetrap" (vtable 0x00B1EB70): a goal group that also keeps
+// two sets of entities targeted by the job owner's targeting gadget and
+// completes once every entity of the second set is gone.
+class GoalOperationMousetrap : public GoalGroup {
+public:
+    enum Phase : int32_t {
+        kPhase_None   = 0,   // nothing targeted
+        kPhase_SetB   = 1,   // the second set is targeted
+        kPhase_SetA   = 2,   // the first set is targeted
+        kPhase_Helper = 3,   // the helper entity is targeted
+    };
+    // Messages that switch between the two sets.
+    static constexpr uint32_t kMsg_TargetSetA = 0xF41445FE;
+    static constexpr uint32_t kMsg_TargetSetB = 0x3281C093;
+
+    using GoalGroup::GoalGroup;
+    ~GoalOperationMousetrap() override;
+    void HandleMessage(const GoalMessage& msg) override;
+    uint8_t Update(int player, const GameEvent& e) override;
+    void ResetHints(bool stopHintScript) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+
+    // 0x00333BC8: changes which entities are targeted.
+    void SetPhase(int32_t phase, bool force);
+    // 0x00334114: drops every target and entity reference.
+    void Stop();
+    // 0x00334954: spawns the helper entity if there is none.
+    void SpawnHelper();
+    // 0x00334B74: resolves the entity names and starts targeting.
+    void Start();
+    // 0x00334D88: per-update logic while active.
+    void Tick();
+
+    ape::ApeTArray<uint32_t> namesA;   // +0xA20
+    ape::ApeTArray<uint32_t> namesB;   // +0xA34
+    ape::ApeTArray<void*> entitiesA;   // +0xA48
+    ape::ApeTArray<void*> entitiesB;   // +0xA5C
+    void* helper = nullptr;            // +0xA70
+    int32_t phase = kPhase_None;       // +0xA74
+    bool started = false;              // +0xA78
+    bool wantSetA = true;              // +0xA79
+};
+
+} // namespace goals
+} // namespace sly

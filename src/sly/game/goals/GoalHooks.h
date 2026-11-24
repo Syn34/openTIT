@@ -146,6 +146,19 @@ bool GoalEntityIsActor(const void* entity);
 // Targeting component of the job owner (Job +0x08, 0x000D949C): drops
 // `entityName` from its targets (0x0029F510).
 void JobOwnerUntarget(const Job* job, uint32_t entityName);
+// Targeting component of the job owner: adds a highlighted target for an
+// entity (0x0029F760, then the record is filled: type 1, radius 62.99)
+// or removes it (0x0029F7A0).
+void JobOwnerAddTarget(const Job* job, void* entity);
+void JobOwnerRemoveTarget(const Job* job, void* entity);
+// Event listener groups of a goal (0x0048FA54 add, 0x0048F298 remove).
+void GoalListenTo(Goal* goal, uint32_t group);
+void GoalStopListening(Goal* goal);
+// Spawns the Operation Mousetrap helper entity (definition 0x30667928, then
+// placed through its slot 21 from a level locator); returns it, or null.
+void* SpawnMousetrapHelper();
+// field_150 of an entity: the object it is attached to.
+void* GoalEntityParent(const void* entity);
 // Marker filters: field_C0 bit 22 with +0x19C >= 0 (the entity hides its
 // marker while targeted), and class bit 35 (+0xB8): markers allowed.
 bool GoalEntityMarkerSuppressed(const void* entity);

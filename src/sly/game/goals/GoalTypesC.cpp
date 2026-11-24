@@ -452,3 +452,217 @@ void GoalMarkEntity::SetStatus(uint8_t newStatus, bool force)
 
 } // namespace goals
 } // namespace sly
+
+namespace sly {
+namespace goals {
+
+// ===========================================================================
+// GoalOperationMousetrap
+
+namespace {
+constexpr uint32_t kMousetrapListenerGroup = 0x7BADF81E;
+} // namespace
+
+// @func 0x00334304 GoalOperationMousetrap::~GoalOperationMousetrap
+// @func 0x003343D0 GoalOperationMousetrap::~GoalOperationMousetrap (deleting)
+GoalOperationMousetrap::~GoalOperationMousetrap()
+{
+    Stop();
+}
+
+// @func 0x00333BC8 GoalOperationMousetrap::SetPhase
+void GoalOperationMousetrap::SetPhase(int32_t newPhase, bool force)
+{
+    if (newPhase == phase && !force)
+        return;
+    auto setTargeted = [this](void* entity, bool on) {
+        if (on)
+            JobOwnerAddTarget(job, entity);
+        else
+            JobOwnerRemoveTarget(job, entity);
+    };
+    switch (newPhase) {
+    case kPhase_None:
+    case kPhase_SetB:
+        for (void* entity : entitiesB)
+            setTargeted(entity, newPhase == kPhase_SetB);
+        for (void* entity : entitiesA)
+            setTargeted(entity, false);
+        if (helper)
+            setTargeted(helper, false);
+        break;
+    case kPhase_SetA:
+        for (void* entity : entitiesB)
+            setTargeted(entity, false);
+        for (void* entity : entitiesA)
+            setTargeted(entity, true);
+        if (helper)
+            setTargeted(helper, false);
+        break;
+    case kPhase_Helper:
+        if (!helper)
+            break;
+        for (void* entity : entitiesB)
+            setTargeted(entity, false);
+        for (void* entity : entitiesA)
+            setTargeted(entity, false);
+        setTargeted(helper, true);
+        break;
+    default:
+        break;
+    }
+    phase = newPhase;
+}
+
+// @func 0x00334114 GoalOperationMousetrap::Stop
+void GoalOperationMousetrap::Stop()
+{
+    if (!started)
+        return;
+    SetPhase(kPhase_None, true);
+    for (void* entity : entitiesA) {
+        JobOwnerRemoveTarget(job, entity);
+        GoalEntityRelease(entity);
+    }
+    entitiesA.Clear();
+    for (void* entity : entitiesB) {
+        JobOwnerRemoveTarget(job, entity);
+        GoalEntityRelease(entity);
+    }
+    entitiesB.Clear();
+    if (helper) {
+        JobOwnerRemoveTarget(job, helper);
+        GoalEntityRelease(helper);
+        helper = nullptr;
+    }
+    GoalStopListening(this);
+    started = false;
+}
+
+// @func 0x00334954 GoalOperationMousetrap::SpawnHelper
+void GoalOperationMousetrap::SpawnHelper()
+{
+    if (helper)
+        return;
+    helper = SpawnMousetrapHelper();
+    if (helper)
+        GoalEntityAddRef(helper);
+}
+
+// @func 0x00334B74 GoalOperationMousetrap::Start
+void GoalOperationMousetrap::Start()
+{
+    if (started)
+        return;
+    for (uint32_t name : namesA) {
+        if (void* entity = GoalFindEntity(name)) {
+            GoalEntityAddRef(entity);
+            entitiesA.PushBack(entity);
+        }
+    }
+    for (uint32_t name : namesB) {
+        if (void* entity = GoalFindEntity(name)) {
+            GoalEntityAddRef(entity);
+            entitiesB.PushBack(entity);
+        }
+    }
+    SpawnHelper();
+    GoalListenTo(this, kMousetrapListenerGroup);
+    wantSetA = true;
+    SetPhase(kPhase_SetA, true);
+    started = true;
+}
+
+// @func 0x00334D88 GoalOperationMousetrap::Tick
+void GoalOperationMousetrap::Tick()
+{
+    if (!started)
+        Start();
+
+    switch (phase) {
+    case kPhase_SetB:
+        if (wantSetA)
+            SetPhase(kPhase_SetA, false);
+        break;
+    case kPhase_SetA:
+        if (!wantSetA)
+            SetPhase(kPhase_SetB, false);
+        break;
+    case kPhase_Helper:
+        // The helper was picked up (or is gone): back to the normal sets.
+        if (!helper || !GoalEntityAlive(helper) || GoalEntityParent(helper))
+            SetPhase(wantSetA ? kPhase_SetA : kPhase_SetB, false);
+        break;
+    default:
+        break;
+    }
+
+    if (helper && !GoalEntityAlive(helper)) {
+        JobOwnerRemoveTarget(job, helper);
+        GoalEntityRelease(helper);
+        helper = nullptr;
+        SpawnHelper();
+        SetPhase(kPhase_Helper, false);
+    }
+
+    // Drop dead entities; the goal completes once the second set is empty.
+    for (uint32_t i = 0; i < entitiesA.Count(); ++i) {
+        void* entity = entitiesA[i];
+        if (GoalEntityAlive(entity))
+            continue;
+        JobOwnerRemoveTarget(job, entity);
+        GoalEntityRelease(entity);
+        entitiesA.RemoveAtSwap(i--);
+    }
+    bool allGone = true;
+    for (uint32_t i = 0; i < entitiesB.Count(); ++i) {
+        void* entity = entitiesB[i];
+        if (GoalEntityAlive(entity)) {
+            allGone = false;
+            continue;
+        }
+        JobOwnerRemoveTarget(job, entity);
+        GoalEntityRelease(entity);
+        entitiesB.RemoveAtSwap(i--);
+    }
+    if (allGone)
+        SetStatus(kGoal_Complete, false);
+}
+
+// @func 0x00335174 GoalOperationMousetrap::Update
+uint8_t GoalOperationMousetrap::Update(int player, const GameEvent& e)
+{
+    if (status == kGoal_Active) {
+        Tick();
+        return status;
+    }
+    return GoalGroup::Update(player, e);
+}
+
+// @func 0x003351D0 GoalOperationMousetrap::HandleMessage
+void GoalOperationMousetrap::HandleMessage(const GoalMessage& msg)
+{
+    if (msg.id == kMsg_TargetSetA)
+        wantSetA = true;
+    else if (msg.id == kMsg_TargetSetB)
+        wantSetA = false;
+}
+
+// @func 0x0033521C GoalOperationMousetrap::ResetHints
+void GoalOperationMousetrap::ResetHints(bool stopHintScript)
+{
+    (void)stopHintScript;   // the console always passes false on
+    GoalGroup::ResetHints(false);
+    Stop();
+}
+
+// @func 0x00335258 GoalOperationMousetrap::SetStatus
+void GoalOperationMousetrap::SetStatus(uint8_t newStatus, bool force)
+{
+    GoalGroup::SetStatus(newStatus, force);
+    if (newStatus != kGoal_Active || force)
+        Stop();
+}
+
+} // namespace goals
+} // namespace sly

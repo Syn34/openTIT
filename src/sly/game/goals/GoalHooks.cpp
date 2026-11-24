@@ -81,6 +81,12 @@ float GoalEntityHealth(const void*) { return 0.0f; }
 float GoalEntityMaxHealth(const void*) { return 0.0f; }
 bool GoalEntityIsActor(const void*) { return false; }
 void JobOwnerUntarget(const Job*, uint32_t) {}
+void JobOwnerAddTarget(const Job*, void*) {}
+void JobOwnerRemoveTarget(const Job*, void*) {}
+void GoalListenTo(Goal*, uint32_t) {}
+void GoalStopListening(Goal*) {}
+void* SpawnMousetrapHelper() { return nullptr; }
+void* GoalEntityParent(const void*) { return nullptr; }
 bool GoalEntityMarkerSuppressed(const void*) { return false; }
 bool GoalEntityAllowsMarker(const void*) { return false; }
 void HudSetFollowWarning(bool) {}
