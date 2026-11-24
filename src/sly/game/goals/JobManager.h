@@ -84,6 +84,9 @@ public:
     int CountFlaggedJobs() const;
     // Collected bits over all jobs (0x002E6270).
     int CountJobBits() const;
+    // Awards the trophies for finishing the first and the sixth episode
+    // (counts episodes with flag 0x40) (0x002E619C).
+    void CheckEpisodeTrophies() const;
 
     Job* jobs = nullptr;             // +0x14
     uint32_t jobCount = 0;           // +0x18
@@ -112,6 +115,12 @@ uint32_t CurrentJobValue();
 // Goal `index` of the player's goal list (game world +0x10C0, count
 // +0x10C8), null for -1 or out of range (0x002E6A3C).
 Goal* PlayerGoalAt(uint32_t index);
+
+// Sets the unlock flag of the unlockable whose key is `key` (0x002E2874).
+void UnlockByKey(uint32_t key);
+// Unlockables (array 0x010681FC, count 0x01068204; key at record +0x60).
+uint32_t UnlockableCount();
+uint32_t UnlockableKey(uint32_t index);
 
 // Enables or disables the targeting component of every local player
 // (0x002E4A0C).

@@ -5,6 +5,7 @@
 #include "sly/entity/Entity.h"
 #include "sly/entity/EntityHooks.h"
 #include "sly/game/SlyGame.h"
+#include "ape/core/ApeString.h"
 #include "sly/game/goals/Goal.h"
 
 namespace sly {
@@ -22,6 +23,8 @@ PlayerProgress& CurrentProgress() { return g_progressStandIn; }
 uint32_t PlayerGoalCount() { return 0; }
 Goal* PlayerGoalListAt(uint32_t) { return nullptr; }
 uint32_t LiveJobId() { return 0; }
+uint32_t UnlockableCount() { return 0; }
+uint32_t UnlockableKey(uint32_t) { return 0; }
 void TargetingSetEnabled(void*, bool) {}
 
 // @func 0x002E1220 JobManager::FindEpisode
@@ -155,6 +158,39 @@ int JobManager::CountJobBits() const
             ++count;
     }
     return count;
+}
+
+// @func 0x002E619C JobManager::CheckEpisodeTrophies
+void JobManager::CheckEpisodeTrophies() const
+{
+    constexpr uint32_t kTrophy_FirstEpisode = 0xC2900B80u;   // NOTE: award names unknown
+    constexpr uint32_t kTrophy_SixEpisodes = 0x368BAA71u;
+    if (jobCount == 0)
+        return;
+    const PlayerProgress& progress = CurrentProgress();
+    uint32_t finished = 0;
+    for (uint32_t i = 0; i < jobCount; ++i) {
+        if (jobs[i].episode != 0xFF && (progress.episodes[jobs[i].episode].flags & 0x40u))
+            ++finished;
+    }
+    if (finished == 1)
+        AwardTrophyByName(kTrophy_FirstEpisode);
+    else if (finished > 5)
+        AwardTrophyByName(kTrophy_SixEpisodes);
+}
+
+// @func 0x002E2874 UnlockByKey
+void UnlockByKey(uint32_t key)
+{
+    const uint32_t count = UnlockableCount();
+    for (uint32_t i = 0; i < count; ++i) {
+        if (UnlockableKey(i) == key) {
+            CurrentProgress().unlockBits[i >> 5] |= 1u << (i & 31);
+            return;
+        }
+    }
+    // The console formats the key for a (compiled out) warning.
+    (void)ape::TempHexString(key);
 }
 
 // @func 0x002E4A0C SetPlayersTargeting
