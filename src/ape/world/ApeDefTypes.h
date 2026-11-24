@@ -103,6 +103,10 @@ public:
 
     ApeLightDef();
     void Release() override;
+    // @func 0x005863EC ApeLightDef::VirtualSlot5
+    int VirtualSlot5(void* arg) override { return 0; }
+    // @func 0x0058643C ApeLightDef::VirtualSlot6
+    void VirtualSlot6(int arg) override {}
 
     // Default light: white, model 1, intensity 1, priority 127.
     void Reset();

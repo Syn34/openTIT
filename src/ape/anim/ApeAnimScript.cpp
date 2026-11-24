@@ -66,6 +66,7 @@ uint32_t ElementHash(const xml::XmlElement* element)
 
 // @func 0x00742A50 ApeRefCounted::~ApeRefCounted
 // @func 0x00742A60 ApeRefCounted::~ApeRefCounted (deleting)
+// @func 0x004B6884 ApeRefCounted::~ApeRefCounted (copy 2)
 ApeRefCounted::~ApeRefCounted() = default;
 
 // @func 0x0073B890 ApeRefCounted::Release
