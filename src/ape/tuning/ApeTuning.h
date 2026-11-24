@@ -49,6 +49,7 @@ protected:
 
 class TuningBool final : public TuningVar {
 public:
+    // @func 0x00735FB0 TuningBool::TuningBool
     TuningBool(const char* name, bool value) : TuningVar(name), m_value(value) {}
     ~TuningBool() override;
     Type GetType() const override;
@@ -63,6 +64,7 @@ private:
 
 class TuningInt final : public TuningVar {
 public:
+    // @func 0x007360A8 TuningInt::TuningInt
     TuningInt(const char* name, int32_t value) : TuningVar(name), m_value(value) {}
     ~TuningInt() override;
     Type GetType() const override;
@@ -76,6 +78,7 @@ private:
 
 class TuningFloat final : public TuningVar {
 public:
+    // @func 0x0073616C TuningFloat::TuningFloat
     TuningFloat(const char* name, float value) : TuningVar(name), m_value(value) {}
     ~TuningFloat() override;
     Type GetType() const override;
@@ -100,6 +103,7 @@ private:
 
 class TuningVec3 final : public TuningVar {
 public:
+    // @func 0x00736244 TuningVec3::TuningVec3
     TuningVec3(const char* name, float x, float y, float z) : TuningVar(name), m_value{ x, y, z, 0.0f } {}
     ~TuningVec3() override;
     Type GetType() const override;
@@ -111,6 +115,7 @@ private:
 
 class TuningColor final : public TuningVar {
 public:
+    // @func 0x00736320 TuningColor::TuningColor
     TuningColor(const char* name, xml::Color8 value) : TuningVar(name), m_value(value) {}
     ~TuningColor() override;
     Type GetType() const override;
@@ -133,6 +138,7 @@ private:
 
 class TuningHash final : public TuningVar {
 public:
+    // @func 0x0073650C TuningHash::TuningHash
     TuningHash(const char* name, uint32_t value) : TuningVar(name), m_value(value) {}
     ~TuningHash() override;
     Type GetType() const override;
