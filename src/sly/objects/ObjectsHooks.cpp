@@ -248,5 +248,26 @@ void ScriptInstanceSetPaused(void* instance, bool paused)
     (void)paused;
 }
 
+ObjEntity* ScriptGetEntityVar(void* instance, uint32_t varName) { (void)instance; (void)varName; return nullptr; }
+void ScriptSetEntityVar(void* instance, uint32_t varName, ObjEntity* entity) { (void)instance; (void)varName; (void)entity; }
+void ScriptSetState(void* instance, uint32_t stateName) { (void)instance; (void)stateName; }
+void ScriptSetTriggerVar(void* instance, ObjEntity* trigger) { (void)instance; (void)trigger; }
+int VolumeShapeType(const TriggerVolume* volume) { (void)volume; return -1; }
+ape::Matrix34 VolumeWorldTransform(const TriggerVolume* volume)
+{
+    (void)volume;
+    return ape::Matrix34{{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
+}
+// TODO(0x004ACD68) wind fields: the wind module only has the system part so far.
+WindSystem* WindFieldCreate(const ape::Matrix34& transform, const EntityDef* def) { (void)transform; (void)def; return nullptr; }
+void WindFieldDestroy(WindSystem* field) { (void)field; }
+void WindFieldSetTransform(WindSystem* field, const ape::Matrix34& transform) { (void)field; (void)transform; }
+void WindFieldUpdate(WindSystem* field, float dt) { (void)field; (void)dt; }
+bool WindFieldAddEntity(WindSystem* field, ObjEntity* entity) { (void)field; (void)entity; return false; }
+void WindFieldRemoveEntity(WindSystem* field, ObjEntity* entity, bool immediate) { (void)field; (void)entity; (void)immediate; }
+bool WindFieldHasEntity(const WindSystem* field, const ObjEntity* entity) { (void)field; (void)entity; return false; }
+void WindFieldSetEnabled(WindSystem* field, bool enabled) { (void)field; (void)enabled; }
+uint16_t WindTriggerCapacity() { return 0x20; }
+
 } // namespace objects
 } // namespace sly

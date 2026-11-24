@@ -152,12 +152,33 @@ public:
 
 class WindTrigger : public TriggerBase {
 public:
+    // Called for every entity the wind field accepts (+0x1B8).
+    using EnterCallback = void (*)(WindTrigger* trigger, ObjEntity* entity);
+
     explicit WindTrigger(const TriggerInstanceDesc& desc);
     ~WindTrigger() override;
 
+    void Update(float dt) override;
+    void Release(bool immediate) override;
+    void SetTransform();
+    void OnEnter(ObjEntity* entity) override;
+    void OnExit(ObjEntity* entity) override;
+    void RemoveOccupant(ObjEntity* entity) override;
+    void SetEnabled(bool enabled) override;
+
 private:
-    uint32_t m_scriptLifetime = 0; // 0x1AC
-    bool m_field1BC = false;       // 0x1BC
+    // World transform of the trigger volume (0x00224170).
+    ape::Matrix34 VolumeTransform() const;
+    // Whether the wind applies to `entity` (only flagged entities when the
+    // definition restricts it).
+    bool AffectsEntity(const ObjEntity* entity) const;
+
+    uint32_t m_scriptLifetime = 0;     // 0x1AC
+    void* m_script = nullptr;          // 0x1B0 lifetime script instance
+    WindSystem* m_wind = nullptr;      // 0x1B4
+    EnterCallback m_onEnter = nullptr; // 0x1B8
+    bool m_restricted = false;         // 0x1BC definition field 0xD4
+    bool m_spawnPending = false;       // 0x1BD send "Spawn" on the first update
 };
 
 EntityDef* CreateWindTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,

@@ -11,12 +11,13 @@
 
 #include <cstdint>
 
-namespace sly { namespace audio { struct SoundName; } }
+namespace sly { namespace audio { struct SoundName; } class WindSystem; }
 
 namespace sly {
 namespace objects {
 
 class ObjEntity;
+class EntityDef;
 
 // ---------------------------------------------------------------------------
 // Physics trigger volumes (Havok hkpAabbPhantom / hkpShapePhantom on the console)
@@ -152,6 +153,36 @@ void MixStatePop(MixState* mix, float fadeTime);      // 0x0044D614
 // instance; bit 9 of the instance word +0x88 pauses it.
 void* EntityStartScript(ObjEntity* entity, void* script);
 void ScriptInstanceSetPaused(void* instance, bool paused);
+
+// Script variables of an entity script instance: the object held by an object
+// variable (0x004A66D0) and its setter (0x004A65F0, the entity's world object).
+ObjEntity* ScriptGetEntityVar(void* instance, uint32_t varName);
+void ScriptSetEntityVar(void* instance, uint32_t varName, ObjEntity* entity);
+// ApeAnimScriptInstance::SetStateAndUpdate by state name (0x004CF988).
+void ScriptSetState(void* instance, uint32_t stateName);
+// The trigger variable (type 15, name 0x70D68D3A) that scripts started by a
+// trigger use to reach it.
+void ScriptSetTriggerVar(void* instance, ObjEntity* trigger);
+
+// Volume shape type (phantom virtual slot 7: 0 AABB, 1-2 shape phantoms) and
+// world transform of shape phantoms (+0xA0).
+int VolumeShapeType(const TriggerVolume* volume);
+ape::Matrix34 VolumeWorldTransform(const TriggerVolume* volume);
+
+// Wind fields owned by wind triggers (sly/game wind module, 0x004ACxxx):
+// built from a transform and the trigger's definition (0x004ACD68), moved
+// (0x004ACCD0), ticked (0x004AD7C8), entities added (0x004ADD68, returns
+// false when refused) and removed (0x004AE160, `immediate`).
+WindSystem* WindFieldCreate(const ape::Matrix34& transform, const EntityDef* def);
+void WindFieldDestroy(WindSystem* field);
+void WindFieldSetTransform(WindSystem* field, const ape::Matrix34& transform);
+void WindFieldUpdate(WindSystem* field, float dt);
+bool WindFieldAddEntity(WindSystem* field, ObjEntity* entity);
+void WindFieldRemoveEntity(WindSystem* field, ObjEntity* entity, bool immediate);
+bool WindFieldHasEntity(const WindSystem* field, const ObjEntity* entity);
+void WindFieldSetEnabled(WindSystem* field, bool enabled);
+// Occupant capacity of wind triggers (global 0x00F64A30).
+uint16_t WindTriggerCapacity();
 
 } // namespace objects
 } // namespace sly
