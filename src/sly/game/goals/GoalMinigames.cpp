@@ -22,7 +22,8 @@ struct ConfigParam {
     int word;
     ParamType type;
     uint32_t attr;
-    int32_t intDefault;   // integers only; hashes default to 0, floats to 0.0
+    int32_t intDefault;   // integers only; hashes default to 0
+    float floatDefault = 0.0f;
 };
 
 void ReadConfig(ape::xml::XmlElement* xml, MinigameConfig& config, const ConfigParam* params,
@@ -36,9 +37,8 @@ void ReadConfig(ape::xml::XmlElement* xml, MinigameConfig& config, const ConfigP
             xml->GetHash(p.attr, &word, 0);
             break;
         case ParamType::Float: {
-            float value = 0.0f;
-            std::memcpy(&value, &word, sizeof(value));
-            xml->GetFloat(p.attr, &value, 0.0f);
+            float value = p.floatDefault;
+            xml->GetFloat(p.attr, &value, p.floatDefault);
             std::memcpy(&word, &value, sizeof(word));
             break;
         }
@@ -156,20 +156,21 @@ void GoalBentleyVsPenelope::InstallMinigame()
 namespace {
 
 // Attribute tables of the penguin goals (word index, type, attribute hash,
-// integer default). Float defaults are 0 on the console, overwriting the
-// initial values of the words.
+// integer or float default).
+// The balance game passes the words' initial values as defaults from word 6
+// on (word 8 starts uninitialised on the console; 0 here).
 constexpr ConfigParam kBalanceParams[] = {
     {0, ParamType::Hash, 0xCF4A1DD4, 0},  {2, ParamType::Hash, 0x760CB725, 0},
     {3, ParamType::Hash, 0x9E635873, 0},  {4, ParamType::Float, 0x000110AD, 0},
-    {5, ParamType::Float, 0x79792193, 0}, {6, ParamType::Float, 0x591E0E5E, 0},
-    {7, ParamType::Float, 0xDAC6B163, 0}, {8, ParamType::Float, 0x6EB97B5A, 0},
-    {9, ParamType::Float, 0x7F8F56C5, 0}, {10, ParamType::Float, 0x6AEF6477, 0},
-    {11, ParamType::Float, 0xEA445994, 0}, {12, ParamType::Float, 0xB45F6FDB, 0},
-    {13, ParamType::Float, 0xB45F6EED, 0}, {14, ParamType::Float, 0xD791BA44, 0},
-    {15, ParamType::Float, 0x6993ED21, 0}, {16, ParamType::Float, 0xAF21AF1C, 0},
-    {17, ParamType::Float, 0x58BE11B6, 0}, {18, ParamType::Float, 0x35092DB8, 0},
-    {19, ParamType::Float, 0xFA04CC11, 0}, {20, ParamType::Float, 0xFA04CB23, 0},
-    {21, ParamType::Float, 0x74C4E83D, 0}, {1, ParamType::Float, 0xB7EA3D94, 0},
+    {5, ParamType::Float, 0x79792193, 0}, {6, ParamType::Float, 0x591E0E5E, 0, 1.0f},
+    {7, ParamType::Float, 0xDAC6B163, 0, 0.1f}, {8, ParamType::Float, 0x6EB97B5A, 0},
+    {9, ParamType::Float, 0x7F8F56C5, 0, 5.0f}, {10, ParamType::Float, 0x6AEF6477, 0, 1.0f},
+    {11, ParamType::Float, 0xEA445994, 0, 45.0f}, {12, ParamType::Float, 0xB45F6FDB, 0, 4.0f},
+    {13, ParamType::Float, 0xB45F6EED, 0, 5.0f}, {14, ParamType::Float, 0xD791BA44, 0, 1.0f},
+    {15, ParamType::Float, 0x6993ED21, 0, 10.0f}, {16, ParamType::Float, 0xAF21AF1C, 0, 1.0f},
+    {17, ParamType::Float, 0x58BE11B6, 0, 4.0f}, {18, ParamType::Float, 0x35092DB8, 0, 4.0f},
+    {19, ParamType::Float, 0xFA04CC11, 0, 4.0f}, {20, ParamType::Float, 0xFA04CB23, 0, 4.0f},
+    {21, ParamType::Float, 0x74C4E83D, 0, 4.0f}, {1, ParamType::Float, 0xB7EA3D94, 0, 20.0f},
     {22, ParamType::Int, 0x543CAC2D, 0x19},
 };
 
