@@ -1,5 +1,6 @@
 // openTIT - Application lifecycle.
 #include "sly/SlyApp.h"
+#include "sly/frame/FrameServices.h"
 
 namespace sly {
 
@@ -22,9 +23,39 @@ int32_t AppTick(SlyApp& app)
     return kAppState_Quit;
 }
 
-// TODO(0x00458BAC AppEndFrame)
+// TODO(0x000D0298) updates a list of registered objects (calls 0x0028E320
+// first, then virtual slot 9 on each entry of the list at 0x01013B70).
+static void UpdateRegisteredObjects()
+{
+}
+
+// TODO(0x002F481C) forwards a value queued during the frame (0x01068840,
+// valid flag 0x01068841) to an object reached through the game world.
+static void FlushQueuedWorldValue()
+{
+}
+
+// @func 0x00458BAC AppEndFrame
+// phase 0: end of the simulation frame, 1: end of the render frame,
+// 2: both (single-threaded frame).
 void AppEndFrame(SlyGame* game, int phase)
 {
+    if (phase == 0 || phase == 2) {
+        EndFrameHook();
+        SwapDebugBuffersIfRequested();
+        FlipFrameCounters();
+        UpdateRegisteredObjects();
+        FlushQueuedWorldValue();
+        if (FrameBufferPair* buffers = GetGameFrameBuffers())
+            buffers->Swap();
+        RunEndOfFrameCallbacks();
+    }
+    if (phase == 1 || phase == 2) {
+        // TODO: the console clears the counts of seven per-frame lists inside
+        // the game world (+0x1284EC, stride 0x14). SlyGame is not
+        // reconstructed yet.
+        (void)game;
+    }
 }
 
 // TODO(0x00458940 AppShutdown)
