@@ -282,5 +282,7 @@ void ShowJobPrompt(ObjEntity* entity, const char* text, const char* buttons) { (
 
 bool TextDisplayHasSeen(uint32_t messageId) { (void)messageId; return false; }
 
+uint32_t EntityClass2(const ObjEntity* entity) { (void)entity; return 0; }
+
 } // namespace objects
 } // namespace sly

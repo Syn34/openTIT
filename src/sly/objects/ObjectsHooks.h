@@ -210,5 +210,8 @@ void ShowJobPrompt(ObjEntity* entity, const char* text, const char* buttons);
 // seen (0x002D9994 on game state +0x28 with a text field of that id, kind 13).
 bool TextDisplayHasSeen(uint32_t messageId);
 
+// Second class word of an entity (+0xC8).
+uint32_t EntityClass2(const ObjEntity* entity);
+
 } // namespace objects
 } // namespace sly
