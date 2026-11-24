@@ -5,6 +5,7 @@
 #include "sly/entity/Entity.h"
 #include "sly/entity/EntityHooks.h"
 #include "sly/game/SlyGame.h"
+#include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
 #include "sly/game/goals/Goal.h"
 
@@ -24,6 +25,8 @@ uint32_t PlayerGoalCount() { return 0; }
 Goal* PlayerGoalListAt(uint32_t) { return nullptr; }
 uint32_t LiveJobId() { return 0; }
 int GameWorldState(int) { return 0; }
+void JobManagerCleanup(JobManager*) {}
+void PlayerResetJobState(int) {}
 void GameWorldSetState(int, int) {}
 void GameWorldSetStateData(uint32_t, uint32_t) {}
 uint32_t UnlockableCount() { return 0; }
@@ -199,6 +202,65 @@ void JobManager::FlushPendingRequest()
     pendingRequest[0] = 0;
     pendingRequest[1] = 0;
     flags &= ~kPending;
+}
+
+void JobManager::ResetRunningJob()
+{
+    constexpr uint32_t kSharedScriptLibrary = 0x7719A548u;
+    JobManagerCleanup(this);
+    if (ape::ApeAnimScriptLibrary* library = ape::ApeAnimScriptLibrary::Get(kSharedScriptLibrary))
+        library->Clear();
+    instance = nullptr;
+    trackedGoal = nullptr;
+    field_30 = 0;
+    const int players = g_game ? g_game->localPlayerCount : 0;
+    for (int i = 0; i < players; ++i)
+        PlayerResetJobState(i);
+}
+
+// @func 0x002E0860 JobManager::EndJob
+void JobManager::EndJob(bool keepCurrent)
+{
+    ResetRunningJob();
+    if (!keepCurrent)
+        currentJob = nullptr;
+}
+
+// @func 0x002E22A0 JobManager::SelectJobByValue
+void JobManager::SelectJobByValue(uint32_t value)
+{
+    for (uint32_t i = 0; i < jobCount; ++i) {
+        if (jobs[i].field_2D4 == value) {
+            ResetRunningJob();
+            currentJob = &jobs[i];
+            return;
+        }
+    }
+}
+
+// @func 0x002E2D7C JobManager::CollectJobs
+void JobManager::CollectJobs(uint32_t nameHash, ape::ApeTArray<Job*>& out) const
+{
+    if (nameHash == 0)
+        return;
+    for (uint32_t i = 0; i < jobCount; ++i) {
+        if (jobs[i].nameHash == nameHash)
+            out.PushBack(&jobs[i]);
+    }
+}
+
+// @func 0x002E5060 JobManager::FinishJobInstance
+void JobManager::FinishJobInstance()
+{
+    if (!instance)
+        return;
+    uint16_t& episodeFlags = CurrentProgress().episodes[currentJob->episode].flags;
+    if (!(episodeFlags & 0x20u)) {
+        // NOTE: the flag is only ever set here (the clearing branch leaves it 0).
+        if (instance->field_1F7 == 0)
+            episodeFlags = static_cast<uint16_t>(episodeFlags | 0x20u);
+    }
+    ResetRunningJob();
 }
 
 // @func 0x002E2874 UnlockByKey

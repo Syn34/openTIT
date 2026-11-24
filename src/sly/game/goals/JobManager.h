@@ -4,6 +4,8 @@
 // progress record they read is modelled as far as these use it.
 #pragma once
 
+#include "ape/memory/ApeTArray.h"
+
 #include <cstdint>
 
 namespace sly {
@@ -92,16 +94,43 @@ public:
     // layer 2 to 0, then passes the request's two words as the state data
     // (0x002E2E78; 0x002E2FD4 is an identical copy).
     void FlushPendingRequest();
+    // Ends the running job: cleans it up, empties the shared anim script
+    // library and resets the players' job state; the current job is kept
+    // only with `keepCurrent` (0x002E0860).
+    void EndJob(bool keepCurrent);
+    // Makes the job whose value (+0x2D4) is `value` the current one, ending
+    // the running job (0x002E22A0).
+    void SelectJobByValue(uint32_t value);
+    // Appends every job named `nameHash` to `out` (0x002E2D7C).
+    void CollectJobs(uint32_t nameHash, ape::ApeTArray<Job*>& out) const;
+    // Ends the running job instance, first updating its episode's flag 0x20
+    // (0x002E5060).
+    void FinishJobInstance();
 
     Job* jobs = nullptr;             // +0x14
     uint32_t jobCount = 0;           // +0x18
     Episode* episodes = nullptr;     // +0x1C
     uint32_t episodeCount = 0;       // +0x20
     Job* currentJob = nullptr;       // +0x24
+    struct JobInstance* instance = nullptr;  // +0x28 the running job (byte +0x1F7: NOTE failed?)
+    uint32_t field_30 = 0;           // +0x30
     Goal* trackedGoal = nullptr;     // +0x48
     uint32_t pendingRequest[2] = {}; // +0x58
     uint32_t flags = 0;              // +0x64 bit 29: a request is pending
+
+private:
+    void ResetRunningJob();
 };
+
+// The running instance of a job (opaque; byte +0x1F7 read).
+struct JobInstance {
+    uint8_t data[0x1F7] = {};
+    uint8_t field_1F7 = 0;
+};
+// 0x002DDAB0: cleans up the running job (outside this range).
+void JobManagerCleanup(JobManager* manager);
+// 0x0045C7A8 on a local player's block (game world +0x1070 + i * 0x20C80).
+void PlayerResetJobState(int player);
 
 // The job manager (0x00F64C20).
 JobManager* GetJobManager();
