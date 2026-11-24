@@ -23,7 +23,9 @@
   simple component classes: ControlAI (0x00B1C1B8), type-0x23 control (0x00B1C518, read as
   ControlExt), AnimMap (0x00B1C628), IK (0x00B1C7E0, ctor 0x0025E960), RadarBlip
   (0x00B1C930), Vortex (0x00B1CBB8), Scoring (0x00B1CC80), Mover (0x00B1CED0, ctor
-  0x00258008). Their destructors are byte-identical copies of the base destructor, each tagged
+  0x00258008), Inventory (0x00B1BF00, ctor 0x0025E7E4, dtor 0x0026694C; Update 0x00267058 and
+  the spawn helpers 0x0026621C.. are not ported). The simple classes' destructors are
+  byte-identical copies of the base destructor, each tagged
   on its own class.
 * `ComponentHooks.*`: TODO stubs for calls out of this directory (level physics world).
 * `sly/entity/Entity.h`: `ComponentDesc` gained the registering constructor and the

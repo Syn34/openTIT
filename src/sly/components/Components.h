@@ -14,6 +14,7 @@
 #include "sly/entity/Entity.h"
 
 #include "ape/container/ApeTSortedMap.h"
+#include "ape/memory/ApeTArray.h"
 
 #include <cstdint>
 #include <utility>
@@ -176,6 +177,37 @@ public:
     int32_t pointCount = 0;          // 0x34
     int32_t current = -1;            // 0x38 point being approached (-1 = none)
     ape::Vec3 points[kMaxPoints] = {};   // 0x40 world positions
+};
+
+struct InventoryComponentDesc;
+
+// Something an inventory entry holds (8-byte records).
+struct InventoryHeldItem {
+    uint32_t key;                    // +0x00 NOTE: role unknown
+    entity::Entity* entity;          // +0x04
+};
+
+// One live inventory item (0x40 bytes).
+struct InventoryEntry {
+    uint32_t field_00 = 0;
+    uint32_t field_04 = 0;
+    ape::ApeTArray<InventoryHeldItem> held;   // +0x08
+    ape::ApeTArray<uint32_t> field_1C;        // +0x1C NOTE: element type unknown (4 bytes)
+    entity::Entity* entity = nullptr;         // +0x34 the item's own entity
+};
+
+// <Inventory> (type 0x12, vtable 0x00B1BF00, 0x38 bytes): the items an
+// entity carries (and can drop or have pickpocketed).
+class InventoryComponent : public EntityComponent {
+public:
+    explicit InventoryComponent(const InventoryComponentDesc* desc);
+    ~InventoryComponent() override;
+
+    const InventoryComponentDesc* desc = nullptr;   // 0x18
+    ape::ApeTArray<InventoryEntry*> entries;        // 0x1C
+    uint32_t field_30 = 0;                          // 0x30
+    bool flag34_31 = false;                         // 0x34 bit 31. NOTE: role unknown
+    bool flag34_30 = false;                         // 0x34 bit 30. NOTE: role unknown
 };
 
 } // namespace components

@@ -3,6 +3,9 @@
 
 #include "sly/components/ComponentHooks.h"
 #include "sly/components/IKSolverDefs.h"
+#include "sly/components/InventoryDescs.h"
+
+#include "ape/world/ApeObj.h"
 
 namespace sly {
 namespace components {
@@ -254,6 +257,38 @@ MoverComponent::MoverComponent(const MoverComponentDesc* desc)
 // @func 0x002B9FF8 MoverComponent::~MoverComponent
 // @func 0x002BA0F4 MoverComponent::~MoverComponent (deleting)
 MoverComponent::~MoverComponent() = default;
+
+// ===========================================================================
+// Inventory
+// ===========================================================================
+
+// @func 0x0025E7E4 InventoryComponent::InventoryComponent
+InventoryComponent::InventoryComponent(const InventoryComponentDesc* inventoryDesc)
+    : EntityComponent(inventoryDesc), desc(inventoryDesc), entries(4)
+{
+    // The owner's world object gets its world transform now, before items
+    // are attached to it.
+    if (owner->object)
+        owner->object->UpdateWorld(false, false);
+}
+
+// @func 0x0026694C InventoryComponent::~InventoryComponent
+// @func 0x00266BF4 InventoryComponent::~InventoryComponent (deleting)
+InventoryComponent::~InventoryComponent()
+{
+    // Live item entities go with the inventory.
+    for (InventoryEntry* entry : entries) {
+        for (InventoryHeldItem& item : entry->held) {
+            if (item.entity && item.entity->IsAlive())
+                item.entity->Release(true);
+        }
+        entry->held.Clear();
+        if (entry->entity && entry->entity->IsAlive())
+            entry->entity->Release(true);
+        delete entry;
+    }
+    entries.Clear();
+}
 
 } // namespace components
 } // namespace sly
