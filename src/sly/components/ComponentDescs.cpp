@@ -98,6 +98,14 @@ constexpr uint32_t kAttr_OnscreenColor   = 0x7087CB18u;
 constexpr uint32_t kAttr_OffscreenColor  = 0x83D09DA8u;
 constexpr uint32_t kAttr_Marker28        = 0xF6DB9816u;   // NOTE: name unknown
 
+constexpr uint32_t kTag_ClosetSpawn      = 0x7480D3BAu;   // NOTE: element name unknown
+constexpr uint32_t kAttr_Def             = 0x000107E5u;
+constexpr uint32_t kAttr_SpawnPoint      = 0x6D4342F5u;
+constexpr uint32_t kAttr_RespawnCooldown = 0x7307C873u;
+constexpr uint32_t kAttr_RespawnEnabled  = 0x83CA0519u;
+// Spawn kinds by "Type" (0x00AD538C): none, "Mine".
+constexpr uint32_t kClosetSpawnTypes[2] = {0u, 0x00241C53u};
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -395,6 +403,34 @@ ComponentDesc* ParseWallClimbComponentDesc(XmlElement* root, XmlElement* elem, u
         elem->GetFloat(kAttr_WallClimb58, &desc->value58, desc->value58);
         elem->GetFloat(kAttr_WallClimb60, &desc->value60, desc->value60);
     }
+    return desc;
+}
+
+// @func 0x002B44AC ParseMonsterClosetComponentDesc
+ComponentDesc* ParseMonsterClosetComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    MonsterClosetComponentDesc* desc = NewNamedDesc<MonsterClosetComponentDesc>(root, elem, scope);
+    if (!desc)
+        return nullptr;
+    for (XmlElement* child = elem->FirstChildElement(kTag_ClosetSpawn); child;
+         child = child->NextSiblingElement(kTag_ClosetSpawn)) {
+        MonsterClosetSpawn spawn;
+        uint32_t typeName = 0;
+        child->GetHash(kAttr_Def, &spawn.def, 0);
+        child->GetHash(kAttr_SpawnPoint, &spawn.spawnPoint, spawn.spawnPoint);
+        child->GetFloat(kAttr_RespawnCooldown, &spawn.respawnCooldown, spawn.respawnCooldown);
+        child->GetBool(kAttr_RespawnEnabled, &spawn.respawnEnabled, spawn.respawnEnabled);
+        child->GetHash(kAttr_Type, &typeName, 0);
+        // No early exit: the last matching kind wins; unknown kinds become 0.
+        uint32_t type = 0;
+        for (uint32_t i = 0; i < 2; ++i)
+            if (typeName == kClosetSpawnTypes[i])
+                type = i;
+        spawn.type = type;
+        if (spawn.def != 0)
+            desc->spawns.PushBack(spawn);
+    }
+    elem->GetFloat(kAttr_RespawnCooldown, &desc->respawnCooldown, desc->respawnCooldown);
     return desc;
 }
 

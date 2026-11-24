@@ -12,6 +12,7 @@
 
 #include "sly/entity/Entity.h"
 
+#include "ape/memory/ApeTArray.h"
 #include "ape/xml/ApeXml.h"
 
 #include <cstdint>
@@ -44,6 +45,7 @@ enum ComponentDescType : uint32_t {
     kCompDesc_SpeedBoost     = 0x2B,
     kCompDesc_WallClimb      = 0x2C,
     kCompDesc_BallRoll       = 0x2D,
+    kCompDesc_MonsterCloset  = 0x2E,
     kCompDesc_DamageSequence = 0x2F,
 };
 
@@ -202,6 +204,25 @@ struct BallRollComponentDesc : ComponentDesc {
     uint32_t hash2C = 0;         // 0x2C attribute 0x2BCD00F1. NOTE: name unknown
 };
 
+// <MonsterCloset> (vtable 0x00B1CD48, 0x2C bytes): spawns entities, one
+// <Spawn>-style child element (tag hash 0x7480D3BA) per kind.
+struct MonsterClosetSpawn {
+    uint32_t type = 0;           // 0x00 index of "Type" in {none, "Mine"}
+    uint32_t def = 0;            // 0x04 entity definition
+    uint32_t spawnPoint = 0;     // 0x08
+    float respawnCooldown = 0.0f; // 0x0C
+    bool respawnEnabled = true;  // 0x10
+};
+struct MonsterClosetComponentDesc : ComponentDesc {
+    explicit MonsterClosetComponentDesc(uint32_t nameHash)
+        : ComponentDesc(nameHash, kCompDesc_MonsterCloset)
+    {
+        spawns.Init(0x20, nullptr, true);
+    }
+    ape::ApeTArray<MonsterClosetSpawn> spawns;   // 0x14
+    float respawnCooldown = 0.0f;                // 0x28
+};
+
 // <DamageSequence> (vtable 0x00B1D258, 0x2C bytes).
 struct DamageSequenceComponentDesc : ComponentDesc {
     explicit DamageSequenceComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_DamageSequence) {}
@@ -275,6 +296,7 @@ ComponentDesc* ParseSpeedBoostComponentDesc(ape::xml::XmlElement* root, ape::xml
 ComponentDesc* ParseBallRollComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseBuoyancyComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseWallClimbComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseMonsterClosetComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseDamageSequenceComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 
 } // namespace components
