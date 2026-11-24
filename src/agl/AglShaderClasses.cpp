@@ -2920,7 +2920,7 @@ public:
     // @func 0x007AB27C SlyCharacterClass::~SlyCharacterClass
     // @func 0x007AEBFC SlyCharacterClass::~SlyCharacterClass (deleting)
     ~SlyCharacterClass() override = default;
-    // TODO(0x005BC4F0 SlyCharacterClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyCharacterClass() : AglShaderClass("SlyCharacter") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3122,7 +3122,7 @@ public:
     // @func 0x007AB45C SlyCharacterCollectibleClass::~SlyCharacterCollectibleClass
     // @func 0x007AF04C SlyCharacterCollectibleClass::~SlyCharacterCollectibleClass (deleting)
     ~SlyCharacterCollectibleClass() override = default;
-    // TODO(0x005C3528 SlyCharacterCollectibleClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyCharacterCollectibleClass() : AglShaderClass("SlyCharacterCollectible") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -4124,6 +4124,52 @@ bool SlyShrubClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* 
     std::memcpy(material->GetConstant(0), &level, sizeof(level));
     for (uint32_t i = 1; i < 7; ++i)
         *material->GetConstant(i) = desc->paramCount > i ? desc->params[i] : 0.0f;
+    return true;
+}
+
+// @func 0x005BC4F0 SlyCharacterClass::SetupMaterial
+bool SlyCharacterClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (desc->paramCount == 0)
+        return true;
+    // Environment layer; default texture 5 when the character has none.
+    if (!AddEnvMapLayer(material, desc)) {
+        material->AddTexture(GetDefaultTexture(5));
+        material->field_78 = 3;
+    }
+    // NOTE: when the detail texture is missing the console looks up the
+    // projected texture and fetches its name without using it (stripped
+    // debug output); nothing is done here.
+    AddDetailLayers(material, desc);
+    // Constant 4: rim width (param 4, default 15, never negative); 7 cleared.
+    const float rim = desc->paramCount > 4 ? desc->params[4] : 15.0f;
+    *material->GetConstant(4) = rim > 0.0f ? rim : 0.0f;
+    *material->GetConstant(7) = 0.0f;
+    return true;
+}
+
+// Same as the character class, except that the second detail layer ignores
+// the quality flag and constant 7 is left alone.
+// @func 0x005C3528 SlyCharacterCollectibleClass::SetupMaterial
+bool SlyCharacterCollectibleClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (desc->paramCount == 0)
+        return true;
+    if (!AddEnvMapLayer(material, desc)) {
+        material->AddTexture(GetDefaultTexture(5));
+        material->field_78 = 3;
+    }
+    if (MaterialParamsEnabled()) {
+        if (AglTexture* detail = FindTexture(desc->detailHash)) {
+            AddLayerLikeFirst(material, detail);
+            for (uint32_t i = 0; i < 3; ++i)
+                *material->GetConstant(i) = desc->params[i];
+            if (AglTexture* detail2 = FindTexture(desc->detail2Hash))
+                AddLayerLikeFirst(material, detail2);
+        }
+    }
+    const float rim = desc->paramCount > 4 ? desc->params[4] : 15.0f;
+    *material->GetConstant(4) = rim > 0.0f ? rim : 0.0f;
     return true;
 }
 
