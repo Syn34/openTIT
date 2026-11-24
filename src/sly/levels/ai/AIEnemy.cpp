@@ -2,7 +2,10 @@
 #include "sly/levels/ai/AIBehaviours.h"
 
 #include "ape/core/ApeString.h"
+#include "sly/game/GameEvent.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ai/AIHooks.h"
+#include "sly/levels/ai/AIProxyPoints.h"
 
 #include <cmath>
 
@@ -104,6 +107,23 @@ void EnemyAI::LockEntityAnimation()
 {
     EntitySetEngaged(entity, true);
     entity->flags2 |= entity::kEnt2_NoUpdate;
+}
+
+// @func 0x0003094C EnemyAI::Engage
+void EnemyAI::Engage(Entity* newTarget)
+{
+    if (!(flags0 & kF0_Bit0)) {
+        if (!PropBool(settings, AIProp::Enemy_CombatAlways)) {
+            GameEvent alert;
+            InitEvent03(alert, AsWorldObject(entity), 0, 0, 0);
+            GameWorldPostEvent(0, alert);
+        }
+        flags0 |= kF0_Bit0;
+        if (!(enemyFlagsB & kEB_Bit1))
+            field_1C = 0x13;
+    }
+    SetTarget(newTarget);
+    field_1B8 = 0;
 }
 
 // @func 0x00032740 EnemyAI::IsCharacterDead
@@ -231,6 +251,18 @@ void EnemyAI::OnTurnInPlace()
 {
     if (state != 0x27)
         SetState(kState_TurnInPlace);
+}
+
+// @func 0x0003BAB8 EnemyAI::OnProxyPointReached
+void EnemyAI::OnProxyPointReached()
+{
+    const PropertyBlock* props =
+        proxyPoint ? static_cast<const PropertyBlock*>(proxyPoint->properties) : nullptr;
+    if (const char* anim = PropString(props, AIProp::ProxyPt_Anim)) {
+        proxyClip = ape::HashNameNoCase(anim);
+        SetState(0x0D);
+    }
+    AIController::OnProxyPointReached();
 }
 
 // @func 0x0003BBB8 EnemyAI::NavFilter

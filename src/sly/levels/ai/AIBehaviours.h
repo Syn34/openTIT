@@ -194,8 +194,13 @@ public:
     void UpdateMovement(float dt) override;
     float GravitySpeed() override;
 
+    void OnProxyPointReached() override;
+
     // Lets go of the target and any claim when engaged (0x0002EC04).
     void Disengage();
+    // Enters combat against `target`; the first time also posts the alert
+    // game event unless the settings say "CombatAlways" (0x0003094C).
+    void Engage(Entity* target);
     // Looks for a better target (0x0002F900).
     void RefreshTarget();
     // Takes over the entity's animation (0x00030A70).
@@ -205,10 +210,12 @@ public:
 
     uint8_t field_180 = 0;            // +0x180
     uint8_t field_181 = 0;            // +0x181
+    uint32_t proxyClip = 0;           // +0x184 clip named by the reached proxy point
     float attackTimer = 0.0f;         // +0x198 (InitialAttackTime on activation)
     ape::Vec3 field_19C{};            // +0x19C
     float field_1B0 = 0.0f;           // +0x1B0 NOTE: interactions are refused while positive
     uint32_t field_1B4 = 0;           // +0x1B4
+    uint32_t field_1B8 = 0;           // +0x1B8
     ape::Vec3 field_1BC{};            // +0x1BC
     uint32_t field_1C8 = 0;           // +0x1C8
     uint8_t enemyFlagsA = 0;          // +0x1D0

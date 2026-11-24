@@ -29,6 +29,7 @@ using entity::EntityComponent;
 // (sly/game/WorldInterface.h); the AI works on entity::Entity. Both name the
 // same console objects.
 inline Entity* AsEntity(WorldObject* object) { return reinterpret_cast<Entity*>(object); }
+inline WorldObject* AsWorldObject(Entity* entity) { return reinterpret_cast<WorldObject*>(entity); }
 
 // -- level object properties ---------------------------------------------------
 // A placed level object carries the values of the properties of its property
