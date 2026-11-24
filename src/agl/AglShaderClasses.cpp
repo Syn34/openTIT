@@ -3086,7 +3086,7 @@ public:
     // @func 0x007AB40C SlyCharacterFakeFurClass::~SlyCharacterFakeFurClass
     // @func 0x007AEF94 SlyCharacterFakeFurClass::~SlyCharacterFakeFurClass (deleting)
     ~SlyCharacterFakeFurClass() override = default;
-    // TODO(0x005C25B8 SlyCharacterFakeFurClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyCharacterFakeFurClass() : AglShaderClass("SlyCharacterFakeFur") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3569,7 +3569,7 @@ public:
     // @func 0x007AB8BC SlyTerrainSnowDecalClass::~SlyTerrainSnowDecalClass
     // @func 0x007AFE0C SlyTerrainSnowDecalClass::~SlyTerrainSnowDecalClass (deleting)
     ~SlyTerrainSnowDecalClass() override = default;
-    // TODO(0x005D0CA0 SlyTerrainSnowDecalClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyTerrainSnowDecalClass() : AglShaderClass("SlyTerrainSnowDecal") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -4181,8 +4181,15 @@ static uint32_t SwapRedBlue(uint32_t color)
     return ((color >> 16) & 0xFFu) | ((color << 16) & 0xFF0000u) | (color & 0xFF00FF00u);
 }
 
+static bool SetupCharacter2Material(AglMaterial* material, const AglMaterialDesc* desc);
+
 // @func 0x005BDD30 SlyCharacter2Class::SetupMaterial
 bool SlyCharacter2Class::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    return SetupCharacter2Material(material, desc);
+}
+
+static bool SetupCharacter2Material(AglMaterial* material, const AglMaterialDesc* desc)
 {
     const uint32_t count = desc->paramCount;
     if (count == 0)
@@ -4430,6 +4437,75 @@ bool SlyTerrainSnowClass::SetupMaterial(AglMaterial* material, const AglMaterial
     *material->GetConstant(12) = ParamOr(desc, 12, 15.0f);
     *material->GetConstant(15) = 0.0f;
     *material->GetConstant(16) = 0.0f;
+    return true;
+}
+
+// Fake fur: its own fur texture layer and constant 13, then the regular
+// second generation character set-up.
+// @func 0x005C25B8 SlyCharacterFakeFurClass::SetupMaterial
+bool SlyCharacterFakeFurClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (desc->paramCount != 0) {
+        AglTexture* fur = FindTexture(desc->diffuseHash);
+        if (fur) {
+            fur->SetWrap(1, 1, 1);
+            fur->sampler[0] = 1;
+            fur->sampler[1] = 1;
+            fur->sampler[2] = 1;
+            fur->sampler[6] |= 1;
+        } else {
+            fur = GetDefaultTexture(0);
+        }
+        material->AddTexture(fur);
+        *material->GetConstant(13) = ParamOr(desc, 13, 1.0f);
+    }
+    return SetupCharacter2Material(material, desc);
+}
+
+// @func 0x005D0CA0 SlyTerrainSnowDecalClass::SetupMaterial
+bool SlyTerrainSnowDecalClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (!MaterialParamsEnabled() || desc->paramCount == 0)
+        return true;
+    // Snow, base and two decal layers; every one of them is required.
+    AglTexture* snow = FindTexture(desc->textureHash);
+    if (!snow)
+        return false;
+    material->AddTexture(snow);
+    snow->SetWrap(1, 1, 1);
+    AglTexture* base = FindTexture(desc->diffuseHash);
+    if (!base)
+        return false;
+    AddRepeated(material, base);
+    AglTexture* decal1 = FindTexture(desc->detailHash);
+    if (!decal1)
+        return false;
+    AddRepeated(material, decal1);
+    *material->GetConstant(8) = ParamOr(desc, 8, 1.0f);
+    *material->GetConstant(9) = ParamOr(desc, 9, 1.0f);
+    *material->GetConstant(12) = ParamOr(desc, 12, 0.0f) * kDegToRad;
+    AglTexture* decal2 = FindTexture(desc->detail2Hash);
+    if (!decal2)
+        return false;
+    AddRepeated(material, decal2);
+    *material->GetConstant(10) = ParamOr(desc, 10, 1.0f);
+    *material->GetConstant(11) = ParamOr(desc, 11, 1.0f);
+    *material->GetConstant(13) = ParamOr(desc, 13, 0.0f) * kDegToRad;
+
+    SetConstantBits(material, 0, SwapRedBlue(ParamBitsOr(desc, 0, 0xFFFFFFFFu)));
+    SetConstantBits(material, 1, SwapRedBlue(ParamBitsOr(desc, 1, 0xFF661919u)));
+    *material->GetConstant(2) = ParamOr(desc, 2, 0.0001f);
+    *material->GetConstant(3) = ParamOr(desc, 3, 0.0001f);
+    *material->GetConstant(4) = ParamOr(desc, 4, 1.0f);
+    *material->GetConstant(5) = ParamOr(desc, 5, 0.3f);
+    *material->GetConstant(6) = ParamOr(desc, 6, 0.5f);
+    *material->GetConstant(16) = ParamOr(desc, 16, 0.0001f);
+    *material->GetConstant(17) = ParamOr(desc, 17, 0.0001f);
+    SetConstantBits(material, 7, SwapRedBlue(ParamBitsOr(desc, 7, 0xFFFFFFFFu)));
+    *material->GetConstant(14) = ParamOr(desc, 14, 30.0f);
+    *material->GetConstant(15) = ParamOr(desc, 15, 15.0f);
+    *material->GetConstant(18) = 0.0f;
+    *material->GetConstant(19) = 0.0f;
     return true;
 }
 
