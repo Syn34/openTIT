@@ -58,5 +58,19 @@ bool EntityProjectileMine::Release(bool kill)
     return PhysicalEntity::Release(kill);
 }
 
+// @func 0x000F498C EntityProjectileMine::SetState
+void EntityProjectileMine::SetState(int newState)
+{
+    armed = newState == 1 && Def()->armOnApproach;
+    state = newState;
+}
+
+// @func 0x000F5E28 EntityProjectileMine::SetTargetPoint
+void EntityProjectileMine::SetTargetPoint(const ape::Vec3& point)
+{
+    targetPoint = { point.x, point.y, point.z, targetPoint.pad };
+    SetState(1);
+}
+
 } // namespace entity
 } // namespace sly

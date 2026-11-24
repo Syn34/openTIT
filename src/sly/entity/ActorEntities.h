@@ -59,6 +59,7 @@ public:
     ~ActorEntity() override { delete field_184; }
     // Minimal versions of 0x000E4720 / 0x000E4544 / 0x000E7730 (entity module).
     bool Update(float dt) override { return ScriptedEntity::Update(dt); }
+    bool PostUpdate(float dt) override { return ScriptedEntity::PostUpdate(dt); }
     bool Release(bool kill) override { return ScriptedEntity::Release(kill); }
     void SetActive(bool active) override { ScriptedEntity::SetActive(active); }
 
@@ -104,6 +105,7 @@ public:
 class InteractivePropB : public ActorEntity {
 public:
     ~InteractivePropB() override;
+    void SetVisible(bool visible, bool immediate, bool children, bool components) override;
 };
 
 // Actor with seven per-instance sounds (vtable 0x00B159B8); base of the
@@ -133,6 +135,9 @@ public:
 class SoundActorB17270 : public SoundActor {
 public:
     ~SoundActorB17270() override;
+    // Offers interaction kind 2 (bit value 4).
+    // @func 0x001CEC84 SoundActorB17270::InteractionOffer
+    uint32_t InteractionOffer(int kind, Entity* other) override { (void)kind; (void)other; return 4; }
     ape::ApeTArray<void*> field_32C;          // 0x32C emptied before it is freed
 };
 
@@ -154,6 +159,16 @@ public:
 class TweenActor : public ActorEntity {
 public:
     ~TweenActor() override;
+    bool Update(float dt) override;
+    bool PostUpdate(float dt) override;
+    // The actor places itself; the base transform update is skipped.
+    void UpdateTransform(float dt) override;
+    // Hiding the actor also triggers its reset while one is pending.
+    void ApplyVisibility(bool visible) override;
+    // 0x001EE680
+    void Reset(bool flag);
+
+    uint32_t field_358 = 0;                   // 0x358 NOTE: non-zero while a reset is pending
     FloatTween tween_220;                     // 0x220
     ape::ApeTArray<void*> field_280;          // 0x280
     IntTween tween_36C;                       // 0x36C

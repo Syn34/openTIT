@@ -87,6 +87,7 @@ public:
 class TargetableDefC : public ScriptedEntityDef {
 public:
     ~TargetableDefC() override;
+    uint8_t targetingFlags[6] = {};    // 0x120
     void* collisionShape = nullptr;    // 0x128
 };
 
@@ -124,6 +125,15 @@ public:
     uint16_t linkCount = 0;                      // 0x760
     ape::world::ApeObj* spline = nullptr;        // 0x768 NOTE: the chain's spline instance
     ape::world::ApeObj* field_76C = nullptr;     // 0x76C
+};
+
+// Common base of the entities of TargetableDefC (vtables 0x00B18B48,
+// 0x00B18D30 and 0x00B18F60 share its methods; their destructors are not in
+// this range).
+class TargetableCBase : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
+public:
+    uint32_t InteractionNeeds(int kind, Entity* other) override;
+    const TargetableDefC* Def() const { return static_cast<const TargetableDefC*>(def); }
 };
 
 class TargetableA;

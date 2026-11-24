@@ -28,6 +28,7 @@ public:
 class ProjectileMineDef : public PhysicalEntityDef {
 public:
     ~ProjectileMineDef() override;
+    bool armOnApproach = false;   // 0x1B4 NOTE: name from use (arms the mine in state 1)
 };
 
 // Plain projectile (0x2F0 bytes; constructor 0x000F2488).
@@ -42,6 +43,10 @@ public:
     ~ProjectileB() override;
     bool PostUpdate(float dt) override;
     bool Release(bool kill) override;
+    // @func 0x000F43FC ProjectileB::SetField280
+    void SetField280(const ape::Vec3& value) { field_280 = { value.x, value.y, value.z, field_280.pad }; }
+
+    ape::Vec3 field_280{};    // 0x280
 };
 
 // Mine that drifts along a spline path (0x2F0 bytes; constructor 0x000F4A08).
@@ -49,6 +54,15 @@ class EntityProjectileMine : public PhysicalEntity {
 public:
     ~EntityProjectileMine() override;
     bool Release(bool kill) override;
+    // Mine states (0x000F498C); state 1 arms it when the definition says so.
+    void SetState(int newState);
+    // Heads for `point` and switches to state 1 (0x000F5E28).
+    void SetTargetPoint(const ape::Vec3& point);
+    const ProjectileMineDef* Def() const { return static_cast<const ProjectileMineDef*>(def); }
+
+    bool armed = false;       // 0x270
+    int32_t state = 0;        // 0x274
+    ape::Vec3 targetPoint{};  // 0x2E0
 
     FloatTween tween_284;     // 0x284
     FloatTween tween_2A8;     // 0x2A8

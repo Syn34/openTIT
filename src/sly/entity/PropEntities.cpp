@@ -101,6 +101,12 @@ TargetableDefC::~TargetableDefC()
         ReleaseCollisionShape(collisionShape);
 }
 
+// @func 0x001FC6CC TargetableCBase::InteractionNeeds
+uint32_t TargetableCBase::InteractionNeeds(int kind, Entity* /*other*/)
+{
+    return Def()->targetingFlags[kind];
+}
+
 // @func 0x001B3AAC PushBlockDef::~PushBlockDef
 // @func 0x001B3B34 PushBlockDef::~PushBlockDef (deleting)
 PushBlockDef::~PushBlockDef()

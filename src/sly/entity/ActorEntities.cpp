@@ -167,5 +167,39 @@ ObjectActor::~ObjectActor()
 // @func 0x001ED834 TweenActor::~TweenActor (thunk, +0x17C)
 TweenActor::~TweenActor() = default;
 
+// @func 0x001EEE40 TweenActor::Update
+bool TweenActor::Update(float dt)
+{
+    return ActorEntity::Update(dt);
+}
+
+// @func 0x001EEE78 TweenActor::PostUpdate
+bool TweenActor::PostUpdate(float dt)
+{
+    return ActorEntity::PostUpdate(dt);
+}
+
+// @func 0x001F4088 TweenActor::UpdateTransform
+void TweenActor::UpdateTransform(float /*dt*/) {}
+
+// @func 0x001F509C TweenActor::ApplyVisibility
+void TweenActor::ApplyVisibility(bool visible)
+{
+    if (!visible && field_358)
+        Reset(true);
+}
+
+// TODO(0x001EE680 TweenActor::Reset)
+void TweenActor::Reset(bool flag)
+{
+    (void)flag;
+}
+
+// @func 0x001F7128 InteractivePropB::SetVisible
+void InteractivePropB::SetVisible(bool visible, bool immediate, bool children, bool components)
+{
+    Entity::SetVisible(visible, immediate, children, components);
+}
+
 } // namespace entity
 } // namespace sly
