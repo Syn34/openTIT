@@ -14,6 +14,10 @@ namespace entity {
 
 class Entity;
 
+// Engine game object virtual slot 3 (0x00464B90): leaves the world.
+void EntityShutdown(Entity* entity);
+// Marks an anim script as orphaned (its flag word +0x88 gets bit 9).
+void DetachAnimScript(void* script);
 // Entity virtual slot 8 (+0x20): script state of a layer.
 int EntityGetState(const Entity* entity, int layer);
 

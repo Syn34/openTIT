@@ -3,6 +3,7 @@
 
 #include "sly/camera/CameraMode.h"
 #include "sly/camera/CameraSprings.h"
+#include "sly/entity/EntityInterfaces.h"
 
 namespace ape::world { class ApeCameraDef; class ApeObj; class ApeSplineInstance; }
 
@@ -157,28 +158,14 @@ public:
     float yawSpeed = 0.0f;             // 0xB4
 };
 
-// Listener interface shared with the entities (console vtable 0x00B1200C,
-// defaults at 0x0074354C-0x007435B4): three callbacks, then the destructor,
-// then three more callbacks. NOTE: it looks like a physics step listener; the
-// default camera receives slot 0 with the state of its probe bodies.
-class StepListener {
-public:
-    virtual void OnStep(const void* info) { (void)info; }    // slot 0
-    virtual void Slot1() {}
-    virtual void Slot2() {}
-    virtual ~StepListener() = default;                         // slots 3/4
-    virtual void Slot5() {}
-    virtual void Slot6() {}
-    virtual void Slot7() {}
-};
-
-// "Default" (type 11, vtable 0x00B13B90 + 0x00B13BE4 at +0x0C, 0x410 bytes):
+// "Default" (type 11, vtable 0x00B13B90 + 0x00B13BE4 at +0x0C, 0x410 bytes;
+// it mixes in the entities' +0x17C listener interface at +0x0C):
 // the follow camera of the player characters. It keeps two sets of
 // CameraSettings (current and target, blended), a stack of setting
 // overrides pushed by character states and triggers, and Havok probe
 // bodies/phantoms for collision.
 // NOTE: the constructor (0x000FF0D8) and the update stages are not ported yet.
-class DefaultCameraMode : public CameraMode, public StepListener {
+class DefaultCameraMode : public CameraMode, public entity::EntityInterface17C {
 public:
     static constexpr int kMaxOverrides = 17;
 
