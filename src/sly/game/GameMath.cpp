@@ -113,6 +113,73 @@ bool SegmentPlaneIntersection(const ape::Vec4& plane, const ape::Vec3& a, const 
     return true;
 }
 
+// Closest points of two segments with the parameters clamped to [0, 1].
+// @func 0x004A44C8 SegmentSegmentDistanceSq
+float SegmentSegmentDistanceSq(const ape::Vec3& a0, const ape::Vec3& a1, const ape::Vec3& b0, const ape::Vec3& b1)
+{
+    constexpr float kSmall = 1e-5f;
+    const float ux = a1.x - a0.x, uy = a1.y - a0.y, uz = a1.z - a0.z;
+    const float vx = b1.x - b0.x, vy = b1.y - b0.y, vz = b1.z - b0.z;
+    const float wx = a0.x - b0.x, wy = a0.y - b0.y, wz = a0.z - b0.z;
+    const float a = ux * ux + uy * uy + uz * uz;
+    const float b = ux * vx + uy * vy + uz * vz;
+    const float c = vx * vx + vy * vy + vz * vz;
+    const float d = ux * wx + uy * wy + uz * wz;
+    const float e = vx * wx + vy * wy + vz * wz;
+    const float denom = a * c - b * b;
+
+    float sN, sD = denom, tN, tD = c;
+    if (denom < kSmall) {
+        // Parallel: take the start of the first segment.
+        sN = 0.0f;
+        sD = 1.0f;
+        tN = e;
+    } else {
+        sN = b * e - c * d;
+        tN = a * e - b * d;
+        if (sN < 0.0f) {
+            sN = 0.0f;
+            tN = e;
+        } else if (sN > sD) {
+            sN = sD;
+            tN = e + b;
+        }
+    }
+    if (tN < 0.0f) {
+        tN = 0.0f;
+        if (-d < 0.0f) {
+            sN = 0.0f;
+        } else if (-d > a) {
+            sN = sD;
+        } else {
+            sN = -d;
+            sD = a;
+        }
+    } else if (tN > tD) {
+        tN = tD;
+        if (b - d < 0.0f) {
+            sN = 0.0f;
+        } else if (b - d > a) {
+            sN = sD;
+        } else {
+            sN = b - d;
+            sD = a;
+        }
+    }
+    const float sc = std::fabs(sN) < kSmall ? 0.0f : sN / sD;
+    const float tc = std::fabs(tN) < kSmall ? 0.0f : tN / tD;
+    const float dx = wx + sc * ux - tc * vx;
+    const float dy = wy + sc * uy - tc * vy;
+    const float dz = wz + sc * uz - tc * vz;
+    return dx * dx + dy * dy + dz * dz;
+}
+
+// @func 0x004A4704 SegmentsWithin
+bool SegmentsWithin(float radius, const ape::Vec3& a0, const ape::Vec3& a1, const ape::Vec3& b0, const ape::Vec3& b1)
+{
+    return SegmentSegmentDistanceSq(a0, a1, b0, b1) <= radius * radius;
+}
+
 // @func 0x004A7130 PolygonAreaXZ
 float PolygonAreaXZ(const ape::Vec3* points, uint32_t count)
 {

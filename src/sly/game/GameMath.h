@@ -40,6 +40,11 @@ float BlendKeep(float from, float to, float keep, float dt);
 // segment is parallel to the plane.
 bool SegmentPlaneIntersection(const ape::Vec4& plane, const ape::Vec3& a, const ape::Vec3& b, ape::Vec3& out);
 
+// Squared distance between the segments a0-a1 and b0-b1.
+float SegmentSegmentDistanceSq(const ape::Vec3& a0, const ape::Vec3& a1, const ape::Vec3& b0, const ape::Vec3& b1);
+// True when the two segments come within `radius` of each other.
+bool SegmentsWithin(float radius, const ape::Vec3& a0, const ape::Vec3& a1, const ape::Vec3& b0, const ape::Vec3& b1);
+
 // Signed area of a polygon in the XZ plane.
 float PolygonAreaXZ(const ape::Vec3* points, uint32_t count);
 
