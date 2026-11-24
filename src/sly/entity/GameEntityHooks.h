@@ -18,6 +18,9 @@ class Entity;
 void EntityShutdown(Entity* entity);
 // Marks an anim script as orphaned (its flag word +0x88 gets bit 9).
 void DetachAnimScript(void* script);
+// Orphans an anim script instance (flags +0x88: set bit 9, clear bit 10) and
+// hands it to the deferred release list (0x004D0280).
+void OrphanAndReleaseAnimScript(void* script);
 // Entity virtual slot 8 (+0x20): script state of a layer.
 int EntityGetState(const Entity* entity, int layer);
 
