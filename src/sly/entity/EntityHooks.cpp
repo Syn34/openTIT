@@ -1,6 +1,8 @@
 // openTIT - Entity layer calls into systems that are not ported yet (see EntityHooks.h).
 #include "sly/entity/EntityHooks.h"
 
+#include "ape/anim/ApeAnimScript.h"
+
 #include "ape/world/ApeObj.h"
 
 namespace sly {
@@ -81,6 +83,14 @@ void WorldObjectSetUserData(ape::world::ApeObj* object, uint32_t tag, uint32_t v
 
 // TODO(0x0034A398) the clip registry belongs to the animation module.
 void* AnimClipRegistryFind(uint32_t nameHash) { (void)nameHash; return nullptr; }
+
+void Component1DOnMessage(EntityComponent* component) { (void)component; }
+void EntityObjectDCStart(void* object) { (void)object; }
+void EntityObjectDCStop(void* object) { (void)object; }
+void ScriptInstanceSetState(void* instance, uint32_t stateName)
+{
+    static_cast<ape::ApeAnimScriptInstance*>(instance)->SetStateAndUpdate(stateName);
+}
 
 } // namespace entity
 } // namespace sly

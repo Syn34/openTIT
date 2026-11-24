@@ -97,5 +97,14 @@ void WorldObjectSetUserData(ape::world::ApeObj* object, uint32_t tag, uint32_t v
 // Global animation clip registry (sorted map 0x0106BBE8, 0x0034A398).
 void* AnimClipRegistryFind(uint32_t nameHash);
 
+// Message handlers outside the entity module: component 0x1D's reaction to
+// message 0x2FE47F7F (0x00257F10), and the two calls on the object at +0xDC
+// (virtual slots 6 and 7).
+void Component1DOnMessage(EntityComponent* component);
+void EntityObjectDCStart(void* object);
+void EntityObjectDCStop(void* object);
+// ApeAnimScriptInstance::SetStateAndUpdate by state name.
+void ScriptInstanceSetState(void* instance, uint32_t stateName);
+
 } // namespace entity
 } // namespace sly

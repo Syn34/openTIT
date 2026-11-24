@@ -210,6 +210,64 @@ void* Entity::FindAnimClipByName(const char* name)
     return FindAnimClip(ape::HashNameNoCase(name));
 }
 
+// @func 0x000DA348 Entity::SetAlpha
+void Entity::SetAlpha(uint8_t alpha, bool includeChildren, bool flag, bool absolute)
+{
+    if (object && object->GetType() == ape::world::kObjType_GeomInstance) {
+        uint8_t value = alpha;
+        if ((flags2 & kEnt2_AlphaSet) && !absolute)
+            value = static_cast<uint8_t>((uint32_t)alpha * EntityGeomByteA8(this) / 0xFF);
+        object->VirtualSlot13(value, flag);
+        flags2 |= kEnt2_AlphaSet;
+    }
+    if (includeChildren && children) {
+        for (EntityChildLink& link : *children) {
+            if (link.child)
+                link.child->SetAlpha(alpha, includeChildren, absolute, false);
+        }
+    }
+    ForEachComponent(this, [alpha, includeChildren](EntityComponent* c) { c->SetAlpha(alpha, includeChildren); });
+}
+
+namespace {
+constexpr uint32_t kMsg_Ignored1 = 0x4F9AEC6Bu;
+constexpr uint32_t kMsg_Component1D = 0x2FE47F7Fu;
+constexpr uint32_t kMsg_Ignored2 = 0x2B68FE90u;
+constexpr uint32_t kMsg_StartDC = 0x21595665u;
+constexpr uint32_t kMsg_StopDC = 0x00C73980u;
+constexpr uint32_t kMsg_ScriptState = 0xD77F98D6u;   // argument: state of the entity's anim script
+} // namespace
+
+// @func 0x000DAF24 Entity::HandleMessage
+void Entity::HandleMessage(const EntityMessage& msg)
+{
+    switch (msg.id) {
+    case kMsg_Ignored1:
+    case kMsg_Ignored2:
+        break;
+    case kMsg_Component1D:
+        if (EntityComponent* component = GetComponent(kComp_1D))
+            Component1DOnMessage(component);
+        break;
+    case kMsg_StartDC:
+        if (field_DC)
+            EntityObjectDCStart(field_DC);
+        break;
+    case kMsg_StopDC:
+        if (field_DC)
+            EntityObjectDCStop(field_DC);
+        break;
+    case kMsg_ScriptState:
+        if (void* script = GetAnimScript())
+            ScriptInstanceSetState(script, msg.argument);
+        break;
+    default:
+        break;
+    }
+    if (listener)
+        listener->OnMessage(msg);
+}
+
 // @func 0x000D82BC Entity::OnSpawn
 void Entity::OnSpawn()
 {

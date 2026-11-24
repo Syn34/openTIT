@@ -73,6 +73,7 @@ public:
     // NOTE: slot 11 (+0x2C); the flag's meaning depends on the component.
     virtual void SetOption(bool value) { (void)value; }
     virtual void SetVisible(bool visible, bool immediate) { (void)visible; (void)immediate; } // slot 12
+    virtual void SetAlpha(uint8_t alpha, bool children) { (void)alpha; (void)children; }      // slot 14
     virtual void OnTimeScale(uint32_t value, bool recurse) { (void)value; (void)recurse; }    // slot 15
 
     uint32_t id = 0;          // 0x04 per-entity identifier (name hash of the component)
@@ -137,6 +138,7 @@ enum EntityFlags : uint32_t {
 // Second flag word (+0xB0, 16 bits).
 enum EntityFlags2 : uint16_t {
     kEnt2_SoundsMuted     = 0x0010,
+    kEnt2_AlphaSet        = 0x0020,  // an opacity has been applied (later ones scale the geometry alpha)
     kEnt2_Highlight       = 0x0040,
     kEnt2_PendingVisible  = 0x0080,  // value applied with kEnt2_VisibilityPending
     kEnt2_VisibilityPending = 0x0100,
@@ -218,11 +220,15 @@ public:
     virtual uint32_t GetRenderId();                                // slot 25
     virtual void SetRenderId(uint32_t id);                         // slot 26
     virtual void Detached(float blend);                            // slot 28 (+0x70)
+    // Opacity of the geometry (scaled by the geometry's own alpha unless
+    // `absolute`), optionally of the children too; components are told.
+    virtual void SetAlpha(uint8_t alpha, bool children, bool flag, bool absolute); // slot 29 (+0x74)
     virtual void SetHighlight(bool on, bool children);             // slot 31
     virtual void SetTimeScale(uint32_t value, bool children);      // slot 32
     virtual void* GetHudScript();                                  // slot 33
     virtual ape::world::ApeObj* GetRenderObject();                 // slot 36 (+0x90)
     virtual ape::Aabb GetBounds(bool world);                       // slot 40
+    virtual void HandleMessage(const struct EntityMessage& msg);   // slot 43 (+0xAC)
     virtual void SetActive(bool active);                           // slot 44
     virtual void SetAttachParent(Entity* parent) { attachParent = parent; }   // slot 46, base 0x007373A4
     virtual void SetFlag1(bool on);                                // slot 45
@@ -316,12 +322,21 @@ public:
     uint32_t renderId = 0;                         // 0xCC
     float cullDistance = 0.0f;                     // 0xD4
     EntityDef* def = nullptr;                      // 0xD8
+    void* field_DC = nullptr;                      // 0xDC NOTE: object driven by messages 0x21595665/0x00C73980
     class EntityListener* listener = nullptr;      // 0xF4
     ape::ApeTArray<EntityComponent*>* components = nullptr;   // 0xF8 (allocated on first add)
     ape::ApeTArray<void*>* watchers = nullptr;     // 0xFC NOTE: objects interested in this entity
     EntitySoundSlot sounds[4];                     // 0x100
     Entity* attachParent = nullptr;                // 0x150
     ape::ApeTArray<EntityChildLink>* children = nullptr;      // 0x154 (records of 0xF0 bytes)
+};
+
+// Message delivered to entities (id at +0x08, argument at +0x0C).
+struct EntityMessage {
+    uint32_t field_00 = 0;
+    uint32_t field_04 = 0;
+    uint32_t id = 0;          // +0x08
+    uint32_t argument = 0;    // +0x0C
 };
 
 // Receives the entity's messages (+0xF4, virtual slot 12).
