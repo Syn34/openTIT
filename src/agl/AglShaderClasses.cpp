@@ -2087,6 +2087,9 @@ public:
     ~TextureWarpClass() override = default;
     TextureWarpClass() : AglShaderClass("TextureWarp") {}
     void CreateTechniques() override;
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
+    // Warp layer and parameters; also used by the water classes.
+    bool SetupWarp(AglMaterial* material, const AglMaterialDesc* desc);
 };
 
 // TODO(0x005AF080 TextureWarpClass::CreateTechniques)
@@ -2568,7 +2571,7 @@ public:
     // @func 0x007AAF0C WaterClass::~WaterClass
     // @func 0x007AE3F4 WaterClass::~WaterClass (deleting)
     ~WaterClass() override = default;
-    // TODO(0x005B6528 WaterClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     WaterClass() : AglShaderClass("Water") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3598,7 +3601,8 @@ public:
     // @func 0x007AB90C SlyTextureWarpClass::~SlyTextureWarpClass
     // @func 0x007AFEC4 SlyTextureWarpClass::~SlyTextureWarpClass (deleting)
     ~SlyTextureWarpClass() override = default;
-    // TODO(0x005D2334 SlyTextureWarpClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
+    bool SetupWarp(AglMaterial* material, const AglMaterialDesc* desc);
     SlyTextureWarpClass() : AglShaderClass("SlyTextureWarp") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3622,7 +3626,7 @@ public:
     // @func 0x007AB95C SlyWaterClass::~SlyWaterClass
     // @func 0x007AFF7C SlyWaterClass::~SlyWaterClass (deleting)
     ~SlyWaterClass() override = default;
-    // TODO(0x005D2F20 SlyWaterClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyWaterClass() : AglShaderClass("SlyWater") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3722,7 +3726,8 @@ public:
     // @func 0x007ABA9C ShoTextureWarpClass::~ShoTextureWarpClass
     // NOTE: the deleting destructor is 0x007B0260.
     ~ShoTextureWarpClass() override = default;
-    // TODO(0x005D803C ShoTextureWarpClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
+    bool SetupWarp(AglMaterial* material, const AglMaterialDesc* desc);
     ShoTextureWarpClass() : AglShaderClass("SHO_TextureWarp") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -4506,6 +4511,92 @@ bool SlyTerrainSnowDecalClass::SetupMaterial(AglMaterial* material, const AglMat
     *material->GetConstant(15) = ParamOr(desc, 15, 15.0f);
     *material->GetConstant(18) = 0.0f;
     *material->GetConstant(19) = 0.0f;
+    return true;
+}
+
+// Shared body of the texture warp classes: the warped texture (repeated)
+// with eight parameters and two rotations (degrees, params 8 and 9).
+// NOTE: the console converts params 8/9 to radians inside the record.
+static bool ApplyTextureWarpSetup(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    AglTexture* texture = FindTexture(desc->diffuseHash);
+    if (!texture)
+        return false;
+    AddRepeated(material, texture);
+    for (uint32_t i = 0; i < 8; ++i)
+        *material->GetConstant(i) = desc->params[i];
+    if (desc->paramCount < 9) {
+        *material->GetConstant(8) = 0.0f;
+        *material->GetConstant(9) = 0.0f;
+    } else {
+        *material->GetConstant(8) = desc->params[8] * kDegToRad;
+        *material->GetConstant(9) = desc->params[9] * kDegToRad;
+    }
+    return true;
+}
+
+// @func 0x005AF298 TextureWarpClass::SetupWarp
+bool TextureWarpClass::SetupWarp(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    return ApplyTextureWarpSetup(material, desc);
+}
+
+// @func 0x005AF4EC TextureWarpClass::SetupMaterial
+bool TextureWarpClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    return SetupWarp(material, desc);
+}
+
+// @func 0x005D20E0 SlyTextureWarpClass::SetupWarp
+bool SlyTextureWarpClass::SetupWarp(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    return ApplyTextureWarpSetup(material, desc);
+}
+
+// @func 0x005D2334 SlyTextureWarpClass::SetupMaterial
+bool SlyTextureWarpClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    return SetupWarp(material, desc);
+}
+
+// @func 0x005D7DE8 ShoTextureWarpClass::SetupWarp
+bool ShoTextureWarpClass::SetupWarp(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    return ApplyTextureWarpSetup(material, desc);
+}
+
+// @func 0x005D803C ShoTextureWarpClass::SetupMaterial
+bool ShoTextureWarpClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    return SetupWarp(material, desc);
+}
+
+// Water: the texture warp set-up, then wave parameters 10..20.
+// @func 0x005B6528 WaterClass::SetupMaterial
+bool WaterClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    // The console runs the shared TextureWarp class's set-up (0x01196B20).
+    if (!ApplyTextureWarpSetup(material, desc))
+        return false;
+    SetConstantBits(material, 10, ParamBitsOr(desc, 10, 1));
+    for (uint32_t i = 11; i <= 20; ++i)
+        *material->GetConstant(i) = ParamOr(desc, i, 0.0f);
+    return true;
+}
+
+// @func 0x005D2F20 SlyWaterClass::SetupMaterial
+bool SlyWaterClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (!ApplyTextureWarpSetup(material, desc))
+        return false;
+    *material->GetConstant(10) = ParamOr(desc, 10, 16.0f);
+    *material->GetConstant(11) = ParamOr(desc, 11, 4.0f);
+    *material->GetConstant(12) = ParamOr(desc, 12, 1.0f);
+    *material->GetConstant(13) = ParamOr(desc, 13, 1.0f);
+    *material->GetConstant(14) = ParamOr(desc, 14, 1.0f);
+    SetConstantBits(material, 15, ParamBitsOr(desc, 15, 1));
+    if (AglTexture* foam = FindTexture(desc->detailHash))
+        AddRepeated(material, foam);
     return true;
 }
 
