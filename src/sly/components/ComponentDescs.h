@@ -31,6 +31,7 @@ enum ComponentDescType : uint32_t {
     kCompDesc_ContextualMarker = 0x04,
     kCompDesc_ControlAI      = 0x06,
     kCompDesc_AnimMap        = 0x0E,
+    kCompDesc_ProcAnim       = 0x0F,
     kCompDesc_IK             = 0x11,
     kCompDesc_FacePlayer     = 0x16,
     kCompDesc_RadarBlip      = 0x19,
@@ -105,6 +106,22 @@ struct AnimMapComponentDesc : ComponentDesc {
     uint32_t tree = 0;           // 0x18
     uint32_t blendMap = 0;       // 0x1C
     uint32_t animSet = 0;        // 0x20 "set"
+};
+
+// <ProcAnim> (vtable 0x00B1C568, 0x80 bytes): spring-driven bone chain.
+struct ProcAnimComponentDesc : ComponentDesc {
+    explicit ProcAnimComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_ProcAnim) {}
+    // Flag word 0x20.
+    bool flag31 = false;         // bit 31 attribute 0x002480E8. NOTE: name unknown
+    bool flag30 = false;         // bit 30 attribute 0x724F4DDA. NOTE: name unknown
+    uint8_t iterate = 2;         // bits 22..29
+    float spring = 0.05f;        // 0x24
+    float dampingWorld = 0.1f;   // 0x28
+    float dampingLocal = 0.1f;   // 0x2C
+    float angleMax = 30.0f;      // 0x30
+    ape::Vec3 gravity = {0.0f, -9.81f, 0.0f, 0.0f};   // 0x40
+    ape::Vec3 vec50 = {0.0f, 0.0f, 0.0f, 0.0f};       // 0x50 attribute 0x34BF0B12. NOTE: name unknown
+    ape::ApeTArray<uint32_t> bones;                    // 0x60 boneName of each child (tag 0xA0702B13)
 };
 
 // <IK> (vtable 0x00B1C7D0, 0x60 bytes): names of the IK solvers the
@@ -315,6 +332,7 @@ ComponentDesc* ParseAnimComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlE
 ComponentDesc* ParseContextualMarkerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseControlAIComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseAnimMapComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseProcAnimComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseIKComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseFacePlayerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseRadarBlipComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);

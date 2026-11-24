@@ -125,6 +125,17 @@ constexpr uint32_t kAttr_ScaleDistMax   = 0x0F8DA574u;
 constexpr uint32_t kAttr_ScaleFactorFOV = 0xFDF98B14u;
 constexpr uint32_t kAttr_Marker6D       = 0xBC175CCCu;   // NOTE: name unknown
 
+constexpr uint32_t kAttr_ProcAnim31      = 0x002480E8u;   // NOTE: name unknown
+constexpr uint32_t kAttr_ProcAnim30      = 0x724F4DDAu;   // NOTE: name unknown
+constexpr uint32_t kAttr_Iterate         = 0xA8F0945Au;
+constexpr uint32_t kAttr_Spring          = 0x922FF60Du;
+constexpr uint32_t kAttr_DampingWorld    = 0xE42E17D0u;
+constexpr uint32_t kAttr_DampingLocal    = 0xE392DBA9u;
+constexpr uint32_t kAttr_AngleMax        = 0xFBCA07B1u;
+constexpr uint32_t kAttr_Gravity         = 0x3B83FE2Eu;
+constexpr uint32_t kAttr_ProcAnim50      = 0x34BF0B12u;   // NOTE: name unknown
+constexpr uint32_t kTag_ProcAnimBone     = 0xA0702B13u;   // NOTE: element name unknown
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -241,6 +252,34 @@ ComponentDesc* ParseAnimMapComponentDesc(XmlElement* root, XmlElement* elem, uin
         elem->GetHash(kAttr_Tree, &desc->tree, desc->tree);
         elem->GetHash(kAttr_BlendMap, &desc->blendMap, desc->blendMap);
         elem->GetHash(kAttr_Set, &desc->animSet, desc->animSet);
+    }
+    return desc;
+}
+
+// @func 0x00283D58 ParseProcAnimComponentDesc
+ComponentDesc* ParseProcAnimComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    ProcAnimComponentDesc* desc = NewNamedDesc<ProcAnimComponentDesc>(root, elem, scope);
+    if (!desc)
+        return nullptr;
+    elem->GetBool(kAttr_ProcAnim31, &desc->flag31, desc->flag31);
+    elem->GetBool(kAttr_ProcAnim30, &desc->flag30, desc->flag30);
+    int32_t iterate = desc->iterate;
+    elem->GetInt(kAttr_Iterate, &iterate, iterate);
+    desc->iterate = (uint8_t)iterate;
+    elem->GetFloat(kAttr_Spring, &desc->spring, desc->spring);
+    elem->GetFloat(kAttr_DampingWorld, &desc->dampingWorld, desc->dampingWorld);
+    elem->GetFloat(kAttr_DampingLocal, &desc->dampingLocal, desc->dampingLocal);
+    elem->GetFloat(kAttr_AngleMax, &desc->angleMax, desc->angleMax);
+    elem->GetVec3(kAttr_Gravity, &desc->gravity.x, &desc->gravity.x);
+    elem->GetVec3(kAttr_ProcAnim50, &desc->vec50.x, &desc->vec50.x);
+    for (XmlElement* child = elem->FirstChildElement(kTag_ProcAnimBone); child;
+         child = child->NextSiblingElement(kTag_ProcAnimBone)) {
+        uint32_t bone = 0;
+        if (child->GetHash(kAttr_BoneName, &bone, 0) == ape::xml::kQuery_Ok)
+            desc->bones.PushBack(bone);
+        else
+            (void)root->GetDocumentPath();   // compiled-out error report
     }
     return desc;
 }
