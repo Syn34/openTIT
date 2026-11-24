@@ -85,11 +85,20 @@ public:
     explicit DamageTrigger(const DamageTriggerInstanceDesc& desc);
     ~DamageTrigger() override;
 
+    void Update(float dt) override;
+    void OnEnter(ObjEntity* entity) override;
+    void OnExit(ObjEntity* entity) override;
+
     const ape::Vec4& PushOrientation() const { return m_orientation; }
 
 private:
+    // Sends one hit of `amount` to an occupant; true when the target took it.
+    bool ApplyDamage(ObjEntity* target, float amount, uint32_t reactType);
+    // Bit of an occupant's slot in m_pendingHits (0 when it is not an occupant).
+    uint32_t OccupantBit(const ObjEntity* entity) const;
+
     ape::Vec4 m_orientation{};   // 0x1B0 quaternion from the rotation angles
-    uint32_t m_field1C0 = 0;     // 0x1C0
+    uint32_t m_pendingHits = 0;  // 0x1C0 occupants still owed the entry hit (bit per slot)
     uint32_t m_reactType;        // 0x1C4
     float m_amount;              // 0x1C8
     float m_value2;              // 0x1CC

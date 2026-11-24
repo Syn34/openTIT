@@ -266,5 +266,8 @@ uint32_t EntityClass2(const ObjEntity* entity) { (void)entity; return 0; }
 void CameraRemoveMode(void* mode, float blendTime) { (void)mode; (void)blendTime; }
 void CameraModeDelete(void* mode) { (void)mode; }
 
+// TODO(0x0021B2FC) entity virtual slot 86 (hit reaction) not ported.
+void EntityTakeHit(ObjEntity* target, EntityHit& hit) { (void)target; (void)hit; }
+
 } // namespace objects
 } // namespace sly
