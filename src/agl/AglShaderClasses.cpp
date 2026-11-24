@@ -3198,7 +3198,7 @@ public:
     // @func 0x007AB4FC SlyDecal4Class::~SlyDecal4Class
     // @func 0x007AF1C4 SlyDecal4Class::~SlyDecal4Class (deleting)
     ~SlyDecal4Class() override = default;
-    // TODO(0x005C5300 SlyDecal4Class::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyDecal4Class() : AglShaderClass("SlyDecal4") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3250,7 +3250,7 @@ public:
     // @func 0x007AB59C SlyHeightFogClass::~SlyHeightFogClass
     // @func 0x007AF33C SlyHeightFogClass::~SlyHeightFogClass (deleting)
     ~SlyHeightFogClass() override = default;
-    // TODO(0x005C7DE8 SlyHeightFogClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyHeightFogClass() : AglShaderClass("SlyHeightFog") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -4221,6 +4221,91 @@ bool ShoNightBlendClass::SetupMaterial(AglMaterial* material, const AglMaterialD
     if (!night)
         night = GetDefaultTexture(0);
     AddLayerLikeFirst(material, night);
+    return true;
+}
+
+// Exported parameter `index`, or `fallback` when fewer were exported.
+static float ParamOr(const AglMaterialDesc* desc, uint32_t index, float fallback)
+{
+    return desc->paramCount > index ? desc->params[index] : fallback;
+}
+
+static void AddRepeated(AglMaterial* material, AglTexture* texture)
+{
+    texture->SetWrap(1, 1, 1);
+    material->AddTexture(texture);
+}
+
+constexpr float kDegToRad = 0.017453292f;
+
+// Four blended decal layers, each with a scale pair and a rotation.
+// @func 0x005C5300 SlyDecal4Class::SetupMaterial
+bool SlyDecal4Class::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (desc->paramCount == 0)
+        return true;
+    if (AglTexture* base = FindTexture(desc->diffuseHash))
+        AddRepeated(material, base);
+    AglTexture* layer1 = FindTexture(desc->detailHash);
+    if (!layer1)
+        return false;
+    AddRepeated(material, layer1);
+    *material->GetConstant(0) = ParamOr(desc, 0, 1.0f);
+    *material->GetConstant(1) = ParamOr(desc, 1, 1.0f);
+    *material->GetConstant(6) = ParamOr(desc, 6, 0.0f) * kDegToRad;
+    AglTexture* layer2 = FindTexture(desc->detail2Hash);
+    if (!layer2)
+        return false;
+    AddRepeated(material, layer2);
+    *material->GetConstant(2) = ParamOr(desc, 2, 1.0f);
+    *material->GetConstant(3) = ParamOr(desc, 3, 1.0f);
+    *material->GetConstant(7) = ParamOr(desc, 7, 0.0f) * kDegToRad;
+    AglTexture* layer3 = FindTexture(desc->textureHash);
+    if (!layer3)
+        return false;
+    AddRepeated(material, layer3);
+    *material->GetConstant(4) = ParamOr(desc, 4, 1.0f);
+    *material->GetConstant(5) = ParamOr(desc, 5, 1.0f);
+    *material->GetConstant(8) = ParamOr(desc, 8, 0.0f) * kDegToRad;
+    return true;
+}
+
+// @func 0x005C7DE8 SlyHeightFogClass::SetupMaterial
+bool SlyHeightFogClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (AglTexture* base = FindTexture(desc->diffuseHash))
+        AddRepeated(material, base);
+    // The fog ramp is sampled clamped with default filtering; its mip count
+    // goes to constant 17 (as an integer).
+    if (AglTexture* ramp = FindTexture(desc->detailHash)) {
+        ramp->sampler[0] = 0;
+        ramp->sampler[1] = 0;
+        ramp->sampler[2] = 0;
+        ramp->sampler[6] |= 1;
+        ramp->SetWrap(3, 3, 3);
+        material->AddTexture(ramp);
+        const uint32_t mips = ramp->image.MipCount();
+        std::memcpy(material->GetConstant(17), &mips, sizeof(mips));
+    }
+    // NOTE: the console converts params 2 and 8 from degrees in place in
+    // the record; the converted values are only used here.
+    *material->GetConstant(0) = desc->params[0];
+    *material->GetConstant(1) = desc->params[1];
+    *material->GetConstant(2) = desc->params[2] * kDegToRad;
+    *material->GetConstant(3) = ParamOr(desc, 3, 0.0f);
+    *material->GetConstant(4) = ParamOr(desc, 4, 1.0f);
+    *material->GetConstant(5) = ParamOr(desc, 5, 0.0f);
+    *material->GetConstant(6) = desc->params[6];
+    *material->GetConstant(7) = desc->params[7];
+    *material->GetConstant(8) = desc->params[8] * kDegToRad;
+    *material->GetConstant(9) = ParamOr(desc, 9, 0.0f);
+    *material->GetConstant(10) = ParamOr(desc, 10, 1.0f);
+    *material->GetConstant(11) = ParamOr(desc, 11, 0.0f);
+    *material->GetConstant(12) = ParamOr(desc, 12, 1.0f);
+    *material->GetConstant(13) = ParamOr(desc, 13, 1.0f);
+    *material->GetConstant(14) = ParamOr(desc, 14, 0.5f);
+    *material->GetConstant(15) = ParamOr(desc, 15, 5.0f);
+    *material->GetConstant(16) = ParamOr(desc, 16, 0.2f);
     return true;
 }
 
