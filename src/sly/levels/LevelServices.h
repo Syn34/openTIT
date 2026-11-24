@@ -439,5 +439,29 @@ void SentryLightReverse(WorldObject* light);
 // 0x0001B590 on the level AI object 0x00F557F0: a smoke cloud.
 void LevelAIAddSmoke(WorldObject* owner, float radius, float duration, int32_t mode, const ape::Vec3& position);
 
+// ---------------------------------------------------------------------------
+// Sun light / shadow settings (render object 0x00F66FD0)
+
+struct SunLightCascade {
+    float splitStart = 0.0f;   // +0x04
+    float splitEnd = 0.0f;     // +0x08
+    float depthMin = 0.0f;     // +0x14
+    float depthMax = 0.0f;     // +0x18
+};
+struct SunLightSettings {
+    SunLightCascade* cascade[2] = {};   // +0x04, +0x08
+    ape::Vec3 direction{};              // +0x20
+    int32_t mode = 0;                   // +0x5C shadow mode (0 or 1)
+    float value100 = 0.0f;              // +0x100 NOTE: meaning unknown
+    float value108 = 0.0f;              // +0x108 NOTE: meaning unknown
+    float value10C = 0.0f;              // +0x10C NOTE: meaning unknown
+};
+// The level's settings, or null.
+SunLightSettings* GetSunLightSettings();
+// Virtual slot 6 of the settings object: the shadow range.
+void SunLightSetRange(SunLightSettings& light, float range);
+// 0x0042A740: puts back the values saved when the level started.
+void SunLightRestoreDefaults();
+
 } // namespace levels
 } // namespace sly

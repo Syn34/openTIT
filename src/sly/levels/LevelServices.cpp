@@ -186,5 +186,9 @@ void SentryLightSetSpline(WorldObject* light, void* spline) { (void)light; (void
 void SentryLightReverse(WorldObject* light) { (void)light; }
 void LevelAIAddSmoke(WorldObject* owner, float radius, float duration, int32_t mode, const ape::Vec3& position) { (void)owner; (void)radius; (void)duration; (void)mode; (void)position; }
 
+SunLightSettings* GetSunLightSettings() { return nullptr; }
+void SunLightSetRange(SunLightSettings& light, float range) { (void)light; (void)range; }
+void SunLightRestoreDefaults() {}
+
 } // namespace levels
 } // namespace sly
