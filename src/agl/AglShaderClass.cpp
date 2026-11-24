@@ -95,6 +95,11 @@ bool RegisterShaderClass(AglShaderClass* shaderClass)
     return true;
 }
 
+bool AreSlyShadersDisabled()
+{
+    return g_slyClassesDisabled;
+}
+
 void SetShaderClassSetsDisabled(bool basic, bool sac, bool sly)
 {
     g_basicClassesDisabled = basic;

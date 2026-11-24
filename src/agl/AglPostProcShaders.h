@@ -36,6 +36,21 @@ struct AglPassShaders {
     AglShaderPair warp;
     // Stencil shadows (0x010DF950..).
     AglShaderPair stencilShadow, stencilShadowDrawQuad;
+    // Thermal vision (0x01164178..0x01164184): one vertex program, normal
+    // and "_MN" fragment programs.
+    AglVertexProgram* thermalVisionVP = nullptr;
+    AglFragmentProgram* thermalVisionFP[2] = {};
+    // Depth of field (0x01164148..0x0116415C): plain, no-bloom, directional
+    // and directional no-bloom variants.
+    AglVertexProgram* dofVP = nullptr;
+    AglFragmentProgram* dofFP[4] = {};
+    // Bloom noise (0x01164160..0x01164174).
+    AglShaderPair bloomNoiseDownSample;
+    AglVertexProgram* bloomNoiseVP = nullptr;
+    AglFragmentProgram* bloomNoiseNoBloomFP = nullptr;
+    AglFragmentProgram* bloomNoiseFP = nullptr;
+    // Sly dark screen fade (0x010F0B50).
+    AglShaderPair darkScreen;
 };
 
 AglPassShaders& GetPassShaders();
@@ -54,5 +69,9 @@ void LoadBloomShaders();
 void LoadMonochromeShaders();
 void LoadWarpShaders();
 void LoadStencilShadowShaders();
+void LoadThermalVisionShaders();
+void LoadDofShaders();
+void LoadBloomNoiseShaders();
+void LoadDarkScreenShaders();
 
 } // namespace agl

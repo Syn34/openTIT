@@ -6,6 +6,8 @@
 
 #include <cstdint>
 
+namespace ape::iff { struct IffReader; }
+
 namespace agl {
 
 class AglResource;
@@ -80,6 +82,11 @@ public:
     bool LoadGtf(const void* data, uint32_t size, bool inPlace);
     // Loads an image file by extension ("BMP", "TGA" or "GTF").
     bool Load(const void* data, uint32_t size, const char* extension);
+    // Loads a loose image file referenced by a level (falls back to the
+    // default image; returns false).
+    bool LoadExternal(const char* path);
+    // @func 0x0053A9C4 AglTexture::HasImage
+    bool HasImage() const { return image.mem.data != nullptr; }
 };
 
 bool DecodeBmp(const uint8_t* data, uint32_t size, AglDecodedImage* out);
@@ -114,6 +121,25 @@ AglTexture* TextureCreateFromImage(const AglTextureImage& source, AglSurface* de
 void RegisterTextureName(AglTexture* texture);
 void UnregisterTextureName(AglTexture* texture);
 AglTexture* FindTexture(uint32_t nameHash);
+
+// Texture search paths (level "include" chunks) and the loose texture directory.
+int TexturePathChunkHandler(ape::iff::IffReader* reader, void* arg);
+void SetTextureDirectory(const char* directory);
+const char* GetTextureDirectory();
+void ClearTexturePaths();
+// Loads an image file into a new texture; on failure returns default
+// texture 0 (with a new reference) when 'useDefaultOnFailure' is set.
+AglTexture* TextureLoadFile(const char* path, bool useDefaultOnFailure);
+
+// Level chunk handlers: texture header ('arg' receives the texture),
+// loose texture file name, and "use the default image".
+int TextureHeaderChunkHandler(ape::iff::IffReader* reader, void* arg);
+int TextureFileChunkHandler(ape::iff::IffReader* reader, void* arg);
+int TextureDefaultChunkHandler(ape::iff::IffReader* reader, void* arg);
+// Called for every texture a level creates (0x00F8F118).
+void SetTextureCreateHook(void (*hook)(AglTexture* texture, void* userdata, int), void* userdata);
+// Debug switch (0x010C5AC0 bit 7): use the default image for loose textures.
+void SetUseDefaultForLooseTextures(bool enable);
 
 // Package buffer used by ApplyHeader (set while a level package loads).
 void SetTexturePackBuffer(const uint8_t* buffer);

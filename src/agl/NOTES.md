@@ -125,3 +125,75 @@ The full link was failing because of files outside `src/agl`: missing
   mode, 0x54/0x58 parameters) come from the few SetupMaterial functions done.
 * The flag at 0x010C5AB8 (sign bit disables material parameters) is unexplained.
 * `AglLightSet::variant` is a 0/1 selector of every lit technique pair.
+
+## Third pass (agl3: render targets, post-process chain, draw list, queries, loaders)
+
+### New files
+
+* `AglRenderTarget.h/.cpp`: `AglRenderTarget` (pool object 0x730, the game's "view"):
+  camera/view matrices, projection types (ortho / perspective / oblique), viewport,
+  fog layers, render callbacks, post-process chain, the render copy used by the
+  render thread (`CopyToRenderCopy` 0x005109B0, `UpdateAll` 0x00511F8C, now called
+  by `EndFrame`), `UpdateMatrices` 0x005115F0, frustum planes 0x004FDEA0, view
+  constant block (0x010DD780). Replaces the placeholder in `AglResources.h`.
+  Vtable: 0 dtor, 1 deleting dtor, 2 Release, 4 OnProjectionUpdated (stereo,
+  0x005483EC), 5 ApplyViewport, 6 SetOrthoProjection, 7 RunPostProcess.
+* `AglPostProc.h/.cpp`: the ten-effect chain (0x0051F850) and the effect classes
+  whose constructors/setup are known (screen warp grid, motion trail, thermal vision,
+  fading effects, god rays / motion trail tuning). The pass bodies (`Apply`, e.g.
+  0x0053DF98 bloom, 0x00540D1C DoF, 0x00545A38 warp, 0x005437F0 god rays, 0x00544870
+  motion trail, 0x0054664C thermal vision) are still TODO. `AglPostProcShaders` gained
+  the thermal vision, DoF, bloom noise and dark screen shader sets.
+* `AglDrawList.h/.cpp`: the packet stream at 0x010DDBB4 (set projection/view/world,
+  material, texture, scissor, state byte, callback, immediate primitive). The packet
+  reader (render thread replay) was not found; the PC format is its own.
+* `AglOcclusion.h/.cpp`: the 16 occlusion queries (0x010DFAD0) incl. the EndFrame
+  helpers 0x00548938 and 0x00548A10. Reports use `Device::GetReport`.
+* `AglPrimitives.h/.cpp`: vertex declarations (`AglVertexDecl`, 0x80 bytes), sphere
+  mesh, `CreateSubMesh` 0x0052374C, debug meshes.
+* `AglTexturePaths.cpp`, `AglLoaders.cpp`: texture search paths, loose texture files,
+  IFF chunk handlers (texture header/file/default, topology header, include, index
+  buffer, bone table).
+* `AglStencilShadow.h/.cpp`, `AglShadowMap.h/.cpp`: stencil shadow geometry/settings,
+  shadow cascade settings and the shadow map base object (fields mostly unnamed).
+
+### Changes to earlier files
+
+* `AglSubMesh::Lock` (0x004FCE70) was a misreading: 0x6D is the vertex stream count;
+  renamed `AddVertexStream`. Submesh fields 0x28/0x40/0x44 named (vertex count, index
+  count, vertex declaration). `AglTopology` got its mesh list, bounds, LOD and name.
+* `AglRenderSurface` now has a destructor (0x0051AD90). NOTE: the console releases the
+  surfaces of texture wrappers too; here texture wrappers skip that because the
+  texture (or the caller, for shared depth buffers) owns those surfaces.
+* `AglState`: `InvalidateRenderState` (0x0051279C) and render-loop caches;
+  `BindRenderSurface` (0x0053B668) is a simplified untagged version (stereo eye
+  buffer selection not done).
+* `AglDisplay`: display settings struct, stereo settings (0x00536958..0x00536A38).
+  0x00536290 (stereo projection offset, a utility routine with its own parameter
+  checks) is approximated untagged.
+* `AglMaterial`: CopyFrom 0x00509090, Clone 0x0050956C, built-in materials 0x0050F0F0,
+  blend mode classification 0x0050061C.
+
+### Facts for other modules
+
+* The shared resource id counter 0x01164CD0 is used by render targets too.
+* IFF reader flag bit 2 (console reader +0xC & 4) marks a "resolve only" pass: texture
+  chunks look textures up instead of creating them. Bit 1 means the index data is
+  byte swapped. `ape::iff::IffReaderFlags` could name both.
+* 0x0055E940 (plane from a matrix, used for the oblique projection) and 0x00536290 are
+  outside/unfinished; `UpdateMatrices` uses a stand-in for the oblique clip plane.
+* 0x00F8F118 (+8 function, +0xC user data) is a "texture created" hook.
+
+### Not done / uncertain
+
+* BeginRender 0x00521D20 / EndRender 0x00522140 (draw buckets, job lists), the draw
+  list reader, 0x00527708 (query sphere draw, listing truncated), the particle system
+  (0x004FF4C0.., 0x005019B8.., property chunk loaders 0x005286BC..0x0052A7C0: their
+  field names are in the strings, the consumer objects are not modelled), mesh loaders
+  0x00524B68 / 0x0051C704 / 0x0051CD48, display/video mode set-up 0x0052FD2C /
+  0x0053AC38, and the post-process pass bodies.
+* Names guessed: `AglShadowSettings::depthBias`, the stereo layout values,
+  `SetRenderSettingInt/Float` (0x00527650/0x0052765C, globals 0x00F66FC8/0x00F66FCC),
+  `AglRenderHook` (0x00F66FD0).
+* Build: `src/agl` compiles warning-free. The full link currently fails only because
+  `src/sly/levels/script/CommandsL.cpp` (another agent's work) does not compile.

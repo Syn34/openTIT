@@ -24,6 +24,25 @@ const AglGlobalShaderParam kThresholdParams[] = {        // 0x00F676E0 / 0x00F67
 const AglGlobalShaderParam kAlphaParams[] = {            // 0x00F676F0 / 0x00F67710
     { "vAlpha", 0 }, { nullptr, 0 },
 };
+const AglGlobalShaderParam kThermalVisionParams[] = {  // 0x00F67808
+    { "gps_vColorTint", 0 }, { "gps_vVisionParams", 1 }, { "gps_vNoiseParams", 2 },
+    { "gps_vScanLineParams", 3 }, { nullptr, 0 },
+};
+const AglGlobalShaderParam kDofParams[] = {             // 0x00F67738
+    { "gps_vColor", 0 }, { "gps_vDepthParams", 1 }, { "gps_mCamClipToViewMtx[0]", 2 },
+    { "gps_mCamClipToViewMtx[1]", 3 }, { "gps_mCamClipToViewMtx[2]", 4 },
+    { "gps_mCamClipToViewMtx[3]", 5 }, { "gps_vViewSpcDir", 6 }, { nullptr, 0 },
+};
+const AglGlobalShaderParam kBloomNoiseParams[] = {      // 0x00F67790
+    { "gps_vIndirectMtx1[0]", 0 }, { "gps_vIndirectMtx1[1]", 1 }, { "gps_vIndirectMtx1[2]", 2 },
+    { "gps_vIndirectMtx2[0]", 3 }, { "gps_vIndirectMtx2[1]", 4 }, { "gps_vIndirectMtx2[2]", 5 },
+    { "gps_vIndirectMtx3[0]", 6 }, { "gps_vIndirectMtx3[1]", 7 }, { "gps_vIndirectMtx3[2]", 8 },
+    { "gps_vWeights", 9 }, { "gps_vNoiseColorTint", 10 }, { "gps_vMaskParamsX", 11 },
+    { "gps_vMaskParamsY", 12 }, { nullptr, 0 },
+};
+const AglGlobalShaderParam kDarkScreenParams[] = {      // 0x00F670C0
+    { "gps_vDepthParams", 0 }, { "gps_vParams", 1 }, { nullptr, 0 },
+};
 const AglGlobalShaderParam kNoParams[] = {               // 0x00F67720, 0x00F67830, 0x00F67838
     { nullptr, 0 },
 };
@@ -177,6 +196,49 @@ void LoadStencilShadowShaders()
 {
     LoadPair(&g_shaders.stencilShadow, "StencilShadow", kNoParams);
     LoadPair(&g_shaders.stencilShadowDrawQuad, "StencilShadow_DrawQuad", kNoParams);
+}
+
+// @func 0x00546334 AglPostProc::LoadThermalVisionShaders
+void LoadThermalVisionShaders()
+{
+    g_shaders.thermalVisionVP = LoadVertexProgram("PostProc_ThermalVision");
+    g_shaders.thermalVisionFP[0] = LoadFragmentProgram("PostProc_ThermalVision", kThermalVisionParams);
+    g_shaders.thermalVisionFP[1] = LoadFragmentProgram("PostProc_ThermalVision_MN", kThermalVisionParams);
+    // NOTE: the console also registers the thermal vision shader class
+    // (static object 0x011640F0) here; its class code is outside Agl.
+    EnsureFragmentRegisters(g_shaders.thermalVisionFP[0], 32);
+    EnsureFragmentRegisters(g_shaders.thermalVisionFP[1], 32);
+}
+
+// @func 0x00540824 AglPostProc::LoadDofShaders
+void LoadDofShaders()
+{
+    static const char* const kNames[4] = {
+        "PostProc_DofApply", "PostProc_DofApply_NB", "PostProc_DofApply_DIR", "PostProc_DofApply_DIR_NB",
+    };
+    g_shaders.dofVP = LoadVertexProgram(kNames[0]);
+    for (int i = 0; i < 4; ++i)
+        g_shaders.dofFP[i] = LoadFragmentProgram(kNames[i], kDofParams);
+    for (AglFragmentProgram* fp : g_shaders.dofFP)
+        EnsureFragmentRegisters(fp, 32);
+}
+
+// @func 0x005420CC AglPostProc::LoadBloomNoiseShaders
+void LoadBloomNoiseShaders()
+{
+    LoadPair(&g_shaders.bloomNoiseDownSample, "PostProc_BloomDownSample4x", kThresholdParams);
+    g_shaders.bloomNoiseVP = LoadVertexProgram("PostProc_BloomNoise");
+    g_shaders.bloomNoiseNoBloomFP = LoadFragmentProgram("PostProc_BloomNoise_NoBloom", kBloomNoiseParams);
+    g_shaders.bloomNoiseFP = LoadFragmentProgram("PostProc_BloomNoise", kBloomNoiseParams);
+    EnsureFragmentRegisters(g_shaders.bloomNoiseDownSample.fragment, 32);
+    EnsureFragmentRegisters(g_shaders.bloomNoiseNoBloomFP, 32);
+    EnsureFragmentRegisters(g_shaders.bloomNoiseFP, 32);
+}
+
+void LoadDarkScreenShaders()
+{
+    LoadPair(&g_shaders.darkScreen, "Sly_PostProc_DarkScreen", kDarkScreenParams);
+    EnsureFragmentRegisters(g_shaders.darkScreen.fragment, 32);
 }
 
 } // namespace agl

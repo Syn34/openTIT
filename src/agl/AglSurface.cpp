@@ -311,6 +311,20 @@ void SurfaceDestroy(AglSurface* surface)
     delete surface;
 }
 
+// @func 0x00537684 AglSurface::Release
+void SurfaceRelease(AglSurface** slot)
+{
+    AglSurface* surface = *slot;
+    if (surface && !surface->isView) {
+        // Tile and z-cull regions are bookkeeping only on PC.
+        if (surface->tileIndex >= 0)
+            g_tilesUsed = static_cast<uint16_t>(g_tilesUsed & ~(1u << surface->tileIndex));
+        MemBlockFree(&surface->mem);
+        delete surface;
+    }
+    *slot = nullptr;
+}
+
 // @func 0x0052F06C AglSurface::FreeMemory
 // Releases a surface's memory and, unless it is a view, its tile region.
 void SurfaceFreeMemory(AglSurface* surface)

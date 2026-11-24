@@ -70,6 +70,17 @@ struct AglRenderState {
 
     AglStencilState stencilFront;
     AglStencilState stencilBack;
+
+    // Draw state caches of the renderer loop (0x010F10A4..0x010F10C0, 0x010F10F8).
+    uint32_t field_10A4 = 0;
+    int32_t field_10A8 = -1;
+    uint32_t field_10B0 = 0;
+    const void* technique = nullptr;                 // 0x010F10B4: technique of the last draw
+    const void* techniqueBlock = nullptr;            // 0x010F10B8: its pre-recorded program block
+    const void* material = nullptr;                  // 0x010F10BC
+    uint16_t field_10C0 = 0xFFFF;
+    uint32_t field_10F8 = 0;
+    bool materialDirty = false;                      // 0x010F10FC bit 31
 };
 
 AglRenderState& GetRenderState();
@@ -77,6 +88,15 @@ gpu::CommandList& Cmd();
 
 // Resets the state shadow and the GPU to Agl's defaults (start of frame).
 void ResetRenderState();
+// Forgets every cached state (after code that drove the GPU directly), so
+// the next draw sets everything again.
+void InvalidateRenderState();
+// Particles that only draw where stencil bit 0x20 is set (masked emitters).
+void ApplyParticleStencilMask(bool masked);
+
+// Binds the color and depth surfaces of a render surface (the back buffer
+// picks the buffers of the current eye) and optionally clears them.
+void BindRenderSurface(const class AglRenderSurface* surface, bool clear);
 // Binds render targets. 'color' goes to target 'index'; the depth target is
 // shared. Null color uses the depth target's size for the viewport.
 void SetRenderTargets(const AglSurface* depth, const AglSurface* color, int index);

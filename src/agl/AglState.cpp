@@ -1,6 +1,9 @@
 // openTIT - Agl render context: the command list being recorded and the GPU state shadow.
 #include "agl/AglState.h"
 
+#include "agl/AglDisplay.h"
+#include "agl/AglDrawList.h"
+#include "agl/AglResources.h"
 #include "agl/AglShader.h"
 
 namespace agl {
@@ -331,6 +334,67 @@ void ApiSetDefault3DState()
 void ApiCommitDrawState()
 {
     CommitDrawState();
+}
+
+// @func 0x0051279C InvalidateRenderState
+void InvalidateRenderState()
+{
+    AglRenderState& st = g_state;
+    st.field_10A4 = 0;
+    st.field_10A8 = -1;
+    st.field_10B0 = 0;
+    st.technique = nullptr;
+    st.techniqueBlock = nullptr;
+    st.material = nullptr;
+    st.field_10C0 = 0xFFFF;
+    st.field_10F8 = 0;
+    for (auto& texture : st.textures)
+        texture = nullptr;
+    st.field_1178 = -1;
+    st.samplerMinFilter[0] = st.samplerMinFilter[1] = 0;
+    st.materialDirty = false;
+    st.stencilFront = AglStencilState();
+    st.stencilBack = AglStencilState();
+    GetDrawList().InvalidateCache();
+}
+
+// @func 0x005011A0 ApplyParticleStencilMask
+void ApplyParticleStencilMask(bool masked)
+{
+    if (!masked)
+        return;
+    gpu::CommandList& cmd = Cmd();
+    cmd.SetStencilTestEnable(true);
+    AglStencilState& front = g_state.stencilFront;
+    front.fail = front.depthFail = front.depthPass = gpu::StencilOp::Keep;
+    front.func = gpu::CompareFunc::Equal;
+    front.ref = 0x20;
+    front.mask = 0x20;
+    front.writeMask = 0xFF;
+    cmd.SetStencilOp(front.fail, front.depthFail, front.depthPass);
+    cmd.SetStencilMask(front.writeMask);
+    cmd.SetStencilFunc(front.func, front.ref, front.mask);
+}
+
+// TODO(0x0053B668 AglRenderSurface::Bind)
+// The console version also chooses the buffers of the current eye for the
+// back buffer in stereo mode and enables multisampling for it.
+void BindRenderSurface(const AglRenderSurface* surface, bool clear)
+{
+    if (!surface)
+        return;
+    SetRenderTargets(surface->depth, surface->color, 0);
+    gpu::CommandList& cmd = Cmd();
+    cmd.SetColorMask(surface->colorMask);
+    cmd.SetDepthTestEnable(g_state.depthEnabled);
+    cmd.SetDepthFunc(gpu::CompareFunc::LEqual);
+    const uint16_t rect[4] = { 0, 0, static_cast<uint16_t>(surface->width), static_cast<uint16_t>(surface->height) };
+    SetViewportRect(rect);
+    if (clear && surface->clearMask != 0) {
+        const uint32_t color = 0xFF000000u | (uint32_t(surface->clearColor[0]) << 16) |
+                               (uint32_t(surface->clearColor[1]) << 8) | surface->clearColor[2];
+        ClearTargets(1.0f, surface->clearMask, color, 0, 0xFF);
+    }
 }
 
 } // namespace agl

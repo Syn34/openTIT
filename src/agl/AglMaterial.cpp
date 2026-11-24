@@ -141,6 +141,110 @@ float* AglMaterial::GetConstant(uint32_t index)
     return constants + index;
 }
 
+// @func 0x00509090 AglMaterial::CopyFrom
+void AglMaterial::CopyFrom(const AglMaterial& source)
+{
+    for (int i = 0; i < source.textureCount; ++i)
+        AddTexture(source.textures[i]);
+    field_28 = source.field_28;
+    field_2D = source.field_2D;
+    std::memcpy(color0, source.color0, sizeof(color0));
+    std::memcpy(color1, source.color1, sizeof(color1));
+    field_60 = source.field_60;
+    // Flag bits 3..7 are material settings; the low bits are bookkeeping.
+    flags = static_cast<uint8_t>((flags & 0x07) | (source.flags & 0xF8));
+    blendEnable = source.blendEnable;
+    blendSrc = source.blendSrc;
+    field_68 = source.field_68;
+    blendEquation = source.blendEquation;
+    blendDst = source.blendDst;
+    depthTest = source.depthTest;
+    depthFunc = source.depthFunc;
+    field_70 = source.field_70;
+    cullFrontFace = source.cullFrontFace;
+    field_78 = source.field_78;
+    if (source.constants && source.constantCapacity != 0) {
+        GetConstant(source.constantCapacity - 1u);
+        std::memcpy(constants, source.constants, size_t(source.constantCapacity) * sizeof(float));
+    }
+    if (source.anim) {
+        if (!anim)
+            anim = ape::ApeTListAllocator<AglMaterialAnim>::GetAllocator().New();
+        *anim = *source.anim;
+    }
+}
+
+// @func 0x0050956C AglMaterial::Clone
+AglMaterial* AglMaterial::Clone(const AglMaterial& source)
+{
+    AglMaterial* material = Create();
+    material->shaderClass = source.shaderClass;
+    material->CopyFrom(source);
+    return material;
+}
+
+// @func 0x0050061C AglMaterial::GetBlendMode
+AglMaterial::BlendMode AglMaterial::GetBlendMode() const
+{
+    if (!blendEnable)
+        return kBlend_None;
+    using gpu::BlendEquation;
+    using gpu::BlendFactor;
+    if (blendSrc == BlendFactor::One && blendDst == BlendFactor::Zero && blendEquation == BlendEquation::Add)
+        return kBlend_None;
+    if (blendSrc != BlendFactor::SrcAlpha)
+        return kBlend_None;
+    if (blendDst == BlendFactor::OneMinusSrcAlpha && blendEquation == BlendEquation::Add)
+        return kBlend_Alpha;
+    if (blendDst == BlendFactor::One && blendEquation == BlendEquation::Add)
+        return kBlend_Additive;
+    if (blendDst == BlendFactor::One && blendEquation == BlendEquation::ReverseSubtract)
+        return kBlend_Subtractive;
+    return kBlend_None;
+}
+
+// --- built-in materials -------------------------------------------------------------
+
+namespace {
+AglMaterial* g_builtinMaterials[6] = {};   // 0x010F0C60
+}
+
+// @func 0x0050F0F0 GetBuiltinMaterial
+AglMaterial* GetBuiltinMaterial(int index)
+{
+    AglMaterial*& slot = g_builtinMaterials[index];
+    if (slot)
+        return slot;
+    // Class name hashes of the debug/primitive shader classes.
+    constexpr uint32_t kTexturedClass = 0x1808E1E8;
+    constexpr uint32_t kClass3 = 0x38FF7607;
+    constexpr uint32_t kClass2 = 0x05199F6B;
+    constexpr uint32_t kColorClass = 0x03DE9E33;
+    AglTexture* texture = nullptr;
+    uint32_t classHash = kColorClass;
+    uint16_t cull = static_cast<uint16_t>(gpu::FrontFace::CW);
+    switch (index) {
+    case 5: classHash = kTexturedClass; texture = GetDefaultTexture(kAglTex_White2); break;
+    case 4: classHash = kTexturedClass; texture = GetDefaultTexture(kAglTex_White); break;
+    case 3: classHash = kClass3; break;
+    case 2: classHash = kClass2; break;
+    case 1: cull = 0; break;   // double sided
+    default: break;
+    }
+    AglMaterial* material = AglMaterial::Create();
+    material->shaderClass = FindShaderClass(classHash);
+    slot = material;
+    if (texture)
+        material->AddTexture(texture);
+    // Alpha blended.
+    material->blendEquation = gpu::BlendEquation::Add;
+    material->blendDst = gpu::BlendFactor::OneMinusSrcAlpha;
+    material->blendEnable = true;
+    material->blendSrc = gpu::BlendFactor::SrcAlpha;
+    material->cullFrontFace = cull;
+    return material;
+}
+
 // --- material animation --------------------------------------------------------------
 
 // TODO(0x0050B980 AglMaterialAnim::GetUVMatrix)

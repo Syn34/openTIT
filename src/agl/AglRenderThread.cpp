@@ -2,6 +2,8 @@
 #include "agl/AglRenderThread.h"
 
 #include "agl/AglDeferred.h"
+#include "agl/AglOcclusion.h"
+#include "agl/AglRenderTarget.h"
 
 #include "ape/core/ApeThread.h"
 
@@ -128,26 +130,10 @@ struct FrameCounters {
 };
 FrameCounters g_frames;
 
-// Objects whose release waits for the end of the frame (0x010E05D4, count at 0x010E0614).
+// Queries whose release waits for the end of the frame (0x010E05D4, count at 0x010E0614).
 constexpr int kMaxEndOfFrameReleases = 16;
-void* g_endOfFrameReleases[kMaxEndOfFrameReleases] = {};
+AglOcclusionQuery* g_endOfFrameReleases[kMaxEndOfFrameReleases] = {};
 uint32_t g_endOfFrameReleaseCount = 0;
-
-// TODO(0x00548938 ReleaseEndOfFrameObject)
-void ReleaseEndOfFrameObject(void* /*object*/)
-{
-}
-
-// TODO(0x00548A10 UpdateQueryRing)
-// Collects GPU report results of the 16 query rings.
-void UpdateQueryRings()
-{
-}
-
-// TODO(0x00511F8C AglRenderTarget::UpdateAll)
-void UpdateRenderTargets()
-{
-}
 
 // Engine services called at the end of a frame that live outside Agl
 // (0x0056B4E8, 0x0056E038, 0x0056E1F0, 0x0056B2B8: debug drawing and the
@@ -159,10 +145,16 @@ void ResetDebugDraw() {}
 
 } // namespace
 
-void QueueEndOfFrameRelease(void* object)
+// @func 0x00527A48 QueueEndOfFrameRelease
+void QueueEndOfFrameRelease(AglOcclusionQuery* query)
 {
     if (g_endOfFrameReleaseCount < kMaxEndOfFrameReleases)
-        g_endOfFrameReleases[g_endOfFrameReleaseCount++] = object;
+        g_endOfFrameReleases[g_endOfFrameReleaseCount++] = query;
+}
+
+void ResetEndOfFrameReleases()
+{
+    g_endOfFrameReleaseCount = 0;
 }
 
 uint32_t GetRenderFrame()
@@ -185,13 +177,13 @@ void EndFrame(int phase)
 
     if (mainPart && g_endOfFrameReleaseCount != 0) {
         for (uint32_t i = 0; i < g_endOfFrameReleaseCount; ++i)
-            ReleaseEndOfFrameObject(g_endOfFrameReleases[i]);
+            ReleaseOcclusionQuery(g_endOfFrameReleases[i]);
         g_endOfFrameReleaseCount = 0;
     }
     if (renderPart)
-        UpdateQueryRings();
+        UpdateOcclusionQueries();
     if (mainPart) {
-        UpdateRenderTargets();
+        AglRenderTarget::UpdateAll();
         FlushDebugDraw();
     }
     if (renderPart) {
@@ -207,7 +199,7 @@ void EndFrame(int phase)
         g_frames.pendingFrame = g_frames.frame;
     }
     if (phase == 3) {
-        UpdateRenderTargets();
+        AglRenderTarget::UpdateAll();
         FlushDebugDraw();
         ResetDebugDraw();
     }

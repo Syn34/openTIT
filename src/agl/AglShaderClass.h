@@ -148,6 +148,8 @@ bool RegisterShaderClass(AglShaderClass* shaderClass);
 // Registers the built-in classes (the game specific sets can be disabled).
 bool RegisterShaderClasses();
 void SetShaderClassSetsDisabled(bool basic, bool sac, bool sly);
+// True when the Sly specific shader classes are switched off (0x010C5ABE).
+bool AreSlyShadersDisabled();
 // Registered class with the given name hash, following the aliases of
 // retired class names; null if unknown.
 AglShaderClass* FindShaderClass(uint32_t nameHash);

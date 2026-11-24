@@ -43,21 +43,25 @@ public:
     static AglSubMesh* Create();
     static void Destroy(void* object);
     void Release() override;
-    // Marks the buffers as being written by the CPU (nested).
-    // @func 0x004FCE70 AglSubMesh::Lock
-    void Lock() { ++lockCount; }
+    // Claims the next vertex stream slot (vertices + streamIndex). The
+    // first pass named this Lock; the counter at 0x6D is the number of
+    // vertex streams (the sphere/quad builders use it as the stream index).
+    // @func 0x004FCE70 AglSubMesh::AddVertexStream
+    uint8_t AddVertexStream() { return vertexStreamCount++; }
+    // Total GPU memory of the buffers, in 16-byte units.
+    uint32_t GetMemoryUnits() const;
 
     uint16_t resourceFlags = 0;
     uint32_t id = 0;
     uint32_t field_C = 0;
-    AglResource* owner = nullptr;           // 0x10: released with the submesh
+    AglResource* owner = nullptr;           // 0x10: material, released with the submesh
     const char* name = "SubMeshName:Not set";
     AglMemBlock vertices;                   // 0x18
-    uint32_t field_28 = 0;
+    uint32_t vertexCount = 0;               // 0x28
     AglMemBlock indices;                    // 0x2C
-    uint32_t field_3C = 1;
-    uint32_t field_40 = 0;
-    uint32_t field_44 = 0;
+    uint32_t field_3C = 1;                  // index format (1: 16-bit)
+    uint32_t indexCount = 0;                // 0x40
+    const struct AglVertexDecl* vertexDecl = nullptr;   // 0x44
     void* field_48 = nullptr;               // engine heap block owned by the submesh
     uint32_t primitive = 6;                 // gpu::PrimitiveType (triangle strips by default)
     uint32_t serial = 0;                    // creation order
@@ -66,7 +70,7 @@ public:
     float boundCenter[3] = {};              // 0x5C
     float boundRadius = 0.0f;               // 0x68
     uint8_t field_6C = 0;
-    uint8_t lockCount = 0;                  // 0x6D
+    uint8_t vertexStreamCount = 0;          // 0x6D
     void* platformData = nullptr;           // 0x70: GPU side buffers (platform subclass)
 };
 
@@ -76,7 +80,31 @@ public:
     static void Destroy(void* object);
     void Release() override;
 
-    uint8_t field_8[0x70 - 8] = {};
+    // One drawable piece: geometry and the material slot it uses.
+    struct MeshEntry {
+        AglSubMesh* mesh;
+        uint32_t material;
+    };
+
+    // Names every submesh after the topology.
+    void SetName(const char* topologyName);
+    // Walks the submeshes' memory sizes (the console's report output was
+    // compiled out, so nothing is returned).
+    void QueryMemoryUnits() const;
+    void SetFlags(bool flag80, bool flag40, bool flag20);
+    // LOD distance scale (0 without LOD settings).
+    float GetLodScale() const;
+
+    uint8_t field_8[0x30 - 8] = {};
+    MeshEntry* meshes = nullptr;            // 0x30
+    uint16_t meshCount = 0;                 // 0x34
+    uint8_t flags = 0;                      // 0x36 (bits 5..7 set by SetFlags)
+    float boundCenter[3] = {};              // 0x40
+    float boundRadius = 0.0f;               // 0x4C
+    uint32_t hash = 0;                      // 0x50
+    const float* lod = nullptr;             // 0x58: LOD settings, scale at [4]
+    const char* name = nullptr;             // 0x60
+    uint8_t field_64[0x70 - 0x64] = {};
 };
 
 class AglShaderClass;
@@ -107,6 +135,19 @@ public:
     void AddTexture(AglTexture* texture);
     // Address of float constant 'index', growing the constant block as needed.
     float* GetConstant(uint32_t index);
+    // Copies textures, colors, render state, constants and animation of
+    // 'source' (the shader class is not copied).
+    void CopyFrom(const AglMaterial& source);
+    // A new material with the same class and settings.
+    static AglMaterial* Clone(const AglMaterial& source);
+
+    enum BlendMode {
+        kBlend_None = 0,         // opaque (or an unrecognised combination)
+        kBlend_Alpha = 2,        // src alpha, 1 - src alpha
+        kBlend_Additive = 3,     // src alpha, one
+        kBlend_Subtractive = 4,  // src alpha, one, reverse subtract
+    };
+    BlendMode GetBlendMode() const;
 
     enum Flags : uint8_t {
         kFlag_08  = 0x08,
@@ -150,14 +191,24 @@ public:
     uint32_t field_84[3] = {};
 };
 
+// Shared materials of the debug/primitive drawing code (0: vertex color,
+// 1: vertex color double sided, 2 and 3: other primitive classes, 4 and 5:
+// textured with default texture 0 or 1). All alpha blended; created on
+// first use.
+AglMaterial* GetBuiltinMaterial(int index);
+
 // A set of render targets (color and/or depth surface) with its clear
 // settings, optionally exposed as a texture. Not to be confused with
 // AglSurface, the image itself.
 class AglRenderSurface : public AglResource {
 public:
     AglRenderSurface();
+    ~AglRenderSurface() override;
 
     static AglRenderSurface* Create();
+    // Full-surface viewport and scissor for callers that pass none (each
+    // pointer is set to a shared rectangle when null).
+    void GetDefaultRects(const uint16_t** viewport, const uint16_t** scissor) const;
     static void Destroy(void* object);
     void Release() override;
     // Wraps 'texture' (and the given surfaces) in a new render surface.
@@ -192,15 +243,6 @@ public:
     uint32_t field_90 = 0;
     int8_t field_94 = 0;                 // sign bit tested by the display code
     uint32_t field_98 = 0;
-};
-
-class AglRenderTarget : public AglResource {
-public:
-    static AglRenderTarget* Create();
-    static void Destroy(void* object);
-    void Release() override;
-
-    uint8_t field_8[0x730 - 8] = {};
 };
 
 } // namespace agl

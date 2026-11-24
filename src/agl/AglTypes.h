@@ -152,6 +152,8 @@ AglSurface* SurfaceCreateView(const AglSurface* source, uint16_t width, uint16_t
 // Releases the surface memory and tile region (the object stays valid).
 void SurfaceFreeMemory(AglSurface* surface);
 void SurfaceDestroy(AglSurface* surface);
+// Releases the surface held in '*slot' (views are only dropped) and clears the slot.
+void SurfaceRelease(AglSurface** slot);
 void SurfaceBindTile(AglSurface* surface, bool depth);
 void SurfaceBindZcull(AglSurface* surface);
 
