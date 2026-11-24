@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace sly {
 
@@ -264,6 +265,74 @@ float PolygonAreaXZ(const ape::Vec3* points, uint32_t count)
         previous = i;
     }
     return sum * 0.5f;
+}
+
+namespace {
+
+// Whether corner (u, v, w) of the remaining polygon can be cut off: it is
+// convex (counter-clockwise in XZ) and no other remaining point lies inside.
+// @func 0x004A6F40 IsPolygonEar
+bool IsPolygonEar(const ape::Vec3* points, int u, int v, int w, int count, const int* order)
+{
+    const ape::Vec3& a = points[order[u]];
+    const ape::Vec3& b = points[order[v]];
+    const ape::Vec3& c = points[order[w]];
+    if ((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x) < 1e-6f)
+        return false;
+    for (int i = 0; i < count; ++i) {
+        if (i == u || i == v || i == w)
+            continue;
+        const ape::Vec3& p = points[order[i]];
+        if ((c.x - b.x) * (p.z - b.z) - (c.z - b.z) * (p.x - b.x) >= 0.0f &&
+            (a.x - c.x) * (p.z - c.z) - (a.z - c.z) * (p.x - c.x) >= 0.0f &&
+            (p.z - a.z) * (b.x - a.x) - (p.x - a.x) * (b.z - a.z) >= 0.0f)
+            return false;
+    }
+    return true;
+}
+
+} // namespace
+
+// @func 0x004A71D0 TriangulatePolygonXZ
+void TriangulatePolygonXZ(const ape::ApeTArray<ape::Vec3>& polygon, ape::ApeTArray<ape::Vec3>& triangles)
+{
+    int remaining = int(polygon.Count()) - 1;   // the closing point is not used
+    if (remaining <= 2)
+        return;
+    const ape::Vec3* points = polygon.Data();
+    std::vector<int> order(static_cast<size_t>(remaining));
+    // Walk the points counter-clockwise.
+    if (PolygonAreaXZ(points, polygon.Count()) > 0.0f) {
+        for (int i = 0; i < remaining; ++i)
+            order[size_t(i)] = i;
+    } else {
+        for (int i = 0; i < remaining; ++i)
+            order[size_t(i)] = remaining - 1 - i;
+    }
+
+    int attempts = 2 * remaining;   // guards against bad (self-intersecting) input
+    int v = remaining - 1;
+    while (remaining > 2) {
+        if (attempts-- <= 0)
+            return;
+        int u = v;
+        if (u >= remaining)
+            u = 0;
+        v = u + 1;
+        if (v >= remaining)
+            v = 0;
+        int w = v + 1;
+        if (w >= remaining)
+            w = 0;
+        if (IsPolygonEar(points, u, v, w, remaining, order.data())) {
+            triangles.PushBack(points[order[size_t(u)]]);
+            triangles.PushBack(points[order[size_t(v)]]);
+            triangles.PushBack(points[order[size_t(w)]]);
+            order.erase(order.begin() + v);
+            --remaining;
+            attempts = 2 * remaining;
+        }
+    }
 }
 
 // @func 0x004A21F8 FindSplineInHierarchy

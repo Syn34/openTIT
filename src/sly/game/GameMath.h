@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ape/math/ApeMath.h"
+#include "ape/memory/ApeTArray.h"
 
 #include <cstdint>
 
@@ -65,6 +66,11 @@ bool SegmentsWithin(float radius, const ape::Vec3& a0, const ape::Vec3& a1, cons
 
 // Signed area of a polygon in the XZ plane.
 float PolygonAreaXZ(const ape::Vec3* points, uint32_t count);
+
+// Triangulates a simple polygon in the XZ plane by ear clipping. The
+// polygon repeats its first point at the end; three points per triangle
+// are appended to `triangles`.
+void TriangulatePolygonXZ(const ape::ApeTArray<ape::Vec3>& polygon, ape::ApeTArray<ape::Vec3>& triangles);
 
 // Spline instance named `nameHash` among `first`, its following siblings and
 // all their descendants (depth first).
