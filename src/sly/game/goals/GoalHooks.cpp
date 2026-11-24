@@ -125,6 +125,7 @@ void GameInstallMinigame(SlyGame*, gameplay::Minigame*) {}
 void GameEndActiveMinigame(SlyGame*) {}
 void MinigameStart(gameplay::Minigame*) {}
 void MinigameCollectMarkers(gameplay::Minigame*, GoalMarkerList*) {}
+void GoalAwardTrophy(uint32_t) {}
 gameplay::Minigame* CreateMinigame(MinigameKind, SlyGame*, const void*, Goal*) { return nullptr; }
 
 } // namespace goals

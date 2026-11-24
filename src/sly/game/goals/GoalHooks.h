@@ -220,7 +220,10 @@ enum class MinigameKind {
     Fencing,             // 0x003D8B34
     Fishing,             // 0x003B3148
     Qte,                 // 0x003D3704
+    PenguinMontage,      // 0x0041F1FC
 };
+// 0x000B27B4: awards the trophy registered under `name`.
+void GoalAwardTrophy(uint32_t name);
 gameplay::Minigame* CreateMinigame(MinigameKind kind, SlyGame* game, const void* config,
                                    Goal* owner);
 

@@ -270,6 +270,33 @@ public:
     ape::ApeTArray<uint32_t> field_A50;                                    // +0xA50
 };
 
+// "GoalPenguinMontageGame" (vtable 0x00B1EEE0): a run of penguin
+// minigames in rounds; completing it without losing a round awards a
+// trophy.
+class GoalPenguinMontageGame : public MinigameGoal {
+public:
+    static constexpr uint32_t kTrophy_NoLoss = 0xCBB04602;
+    static constexpr int kRoundCount = 6;
+
+    using MinigameGoal::MinigameGoal;
+    ~GoalPenguinMontageGame() override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+    void InstallMinigame() override;
+
+    // File-static flag 0x0106B62C: a round was lost during this montage.
+    // NOTE: set by the montage minigame (outside this module).
+    static bool s_roundLost;
+
+    // One round (0x3C bytes on the console). NOTE: built by 0x003396A8 /
+    // 0x00339388 (not ported): the sub-goals of the round and their weights.
+    struct Round {
+        ape::ApeTArray<uint64_t> entries;   // +0x04 (8-byte records)
+        uint8_t data[0x24] = {};
+    };
+    uint32_t field_A14 = 0;          // +0xA14 (XML 0xCF4A1DD4)
+    Round rounds[kRoundCount];       // +0xA18
+};
+
 // "GoalBartenderGame" (vtable 0x00B1E3E0).
 class GoalBartenderGame : public MinigameGoal {
 public:
