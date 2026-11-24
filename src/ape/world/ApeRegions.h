@@ -72,6 +72,11 @@ extern ApeRegionSet* g_regionSet;
 // World bounding box of an object (its definition's bounds transformed).
 Aabb& GetObjectWorldBounds(const ApeObj& object, Aabb& out);
 
+// Builds a region's bounds (and planes when rotated) from its box, rotation
+// quaternion and the level offset; also the oriented box plane helper.
+void BuildRegionVolume(ApeRegion& region, const Aabb& box, const Vec4& rotation, const Vec3& offset);
+void BuildBoxPlanes(Plane planes[6], const Aabb& box, const Matrix34& m);
+
 // Mask of the regions whose volume contains a world box.
 uint32_t ComputeRegionMask(const ApeRegionSet& set, const Aabb& worldBox);
 // Region with the given name hash, or null.

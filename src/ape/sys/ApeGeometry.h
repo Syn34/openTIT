@@ -32,6 +32,8 @@ bool FrustumContainsAabb(const Plane planes[6], const Aabb& box);
 // True when the plane dot(normal, p) == 0 passes through the box spanning
 // [-extents - center, extents - center] (the plane's w is not used).
 bool PlaneIntersectsBox(const Plane& plane, const Vec3& center, const Vec3& extents);
+// True when the triangle touches the box centre +- extents.
+bool TriangleIntersectsBox(const Vec3& center, const Vec3& extents, const Vec3 triangle[3]);
 
 // --- camera matrices (0x0056A0D0-0x0056A578) --------------------------------------
 // All of these write a 4x4 matrix for row vectors (clip = v * M) with a

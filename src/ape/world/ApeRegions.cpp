@@ -7,7 +7,11 @@
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
 
+#include "ape/math/ApeMatrixOps.h"
+#include "ape/world/ApeInstances.h"
+
 #include <cfloat>
+#include <cmath>
 
 #include <cstring>
 
@@ -20,18 +24,57 @@ uint16_t g_worldCounter3000 = 0;
 
 namespace {
 
-// TODO(0x00576F28 BuildRegionVolume): the console builds the region's
-// bounds and oriented planes from the box corners, the rotation quaternion
-// and a scene global (0x011944E0). That routine belongs to the scene module
-// and is not ported; only the axis aligned bounds are filled in here.
-void BuildRegionVolume(ApeRegion& region, const Vec3& minPoint, const Vec3& maxPoint, const Vec4& rotation)
+bool QuatIsIdentity(const Quat& q)
 {
-    region.bounds.min = minPoint;
-    region.bounds.max = maxPoint;
-    std::memset(region.planes, 0, sizeof(region.planes));
+    constexpr float kEpsilon = 1e-5f;
+    return std::fabs(q.x) < kEpsilon && std::fabs(q.y) < kEpsilon && std::fabs(q.z) < kEpsilon &&
+           std::fabs(q.w - 1.0f) < kEpsilon;
 }
 
 } // namespace
+
+// The six planes bounding `box` after transforming it by `m`, normals
+// pointing inside (a point p is inside when dot(normal, p) + w >= 0).
+// NOTE: decoded from behaviour; the console routine is vector code Ghidra
+// cannot read, so the plane order (-x, +x, -y, +y, -z, +z faces) is a guess.
+// @func 0x00576BD8 BuildBoxPlanes
+void BuildBoxPlanes(Plane planes[6], const Aabb& box, const Matrix34& m)
+{
+    const Vec3* axes[3] = {&m.xAxis, &m.yAxis, &m.zAxis};
+    const float mins[3] = {box.min.x, box.min.y, box.min.z};
+    const float maxs[3] = {box.max.x, box.max.y, box.max.z};
+    for (int axis = 0; axis < 3; ++axis) {
+        const Vec3& a = *axes[axis];
+        const float length = std::sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+        const float inv = length > 0.0f ? 1.0f / length : 0.0f;
+        const Vec3 n = {a.x * inv, a.y * inv, a.z * inv, 0.0f};
+        // Offset of the face along the (unit) axis in world space.
+        const float originAlong = n.x * m.translation.x + n.y * m.translation.y + n.z * m.translation.z;
+        const float minAlong = originAlong + mins[axis] * length;
+        const float maxAlong = originAlong + maxs[axis] * length;
+        planes[axis * 2] = {n.x, n.y, n.z, -minAlong};
+        planes[axis * 2 + 1] = {-n.x, -n.y, -n.z, maxAlong};
+    }
+}
+
+// Region volume from its box, rotation and the level offset: the bounds of
+// the box rotated about its centre and, for a real rotation, the oriented
+// planes.
+// @func 0x00576F28 BuildRegionVolume
+void BuildRegionVolume(ApeRegion& region, const Aabb& box, const Quat& rotation, const Vec3& offset)
+{
+    Vec3 center;
+    AabbCenter(box, center);
+    Matrix34 transform;
+    Matrix34FromQuat(transform, rotation, {center.x + offset.x, center.y + offset.y, center.z + offset.z, 0.0f});
+    Aabb localBox = {{FLT_MAX, FLT_MAX, FLT_MAX, 0.0f}, {-FLT_MAX, -FLT_MAX, -FLT_MAX, 0.0f}};
+    AabbTranslated(localBox, box, {-center.x, -center.y, -center.z, 0.0f});
+    AabbTransform(region.bounds, localBox, transform);
+    if (!QuatIsIdentity(rotation)) {
+        region.flags |= kRegionFlag_Oriented;
+        BuildBoxPlanes(region.planes, localBox, transform);
+    }
+}
 
 // @func 0x0057711C ApeRegionSet::ApeRegionSet
 ApeRegionSet::ApeRegionSet() : ApeBase(kObjType_RegionSet)
@@ -191,9 +234,8 @@ int LoadRegionChunk(iff::IffReader* reader, void* arg)
     region.group = set.groupCount;
     region.id = regionId;
     region.visibleMask = visibleMask | (1u << (regionId & 0x3F));
-    BuildRegionVolume(region, {minPoint[0], minPoint[1], minPoint[2], 0.0f},
-                      {maxPoint[0], maxPoint[1], maxPoint[2], 0.0f},
-                      {rotation[0], rotation[1], rotation[2], rotation[3]});
+    const Aabb box = {{minPoint[0], minPoint[1], minPoint[2], 0.0f}, {maxPoint[0], maxPoint[1], maxPoint[2], 0.0f}};
+    BuildRegionVolume(region, box, {rotation[0], rotation[1], rotation[2], rotation[3]}, g_levelInstanceOffset);
     StrCopyBounded(region.name, name, sizeof(region.name));
     // The hash of the name is computed and then replaced by the stored one.
     region.nameHash = nameHash;
