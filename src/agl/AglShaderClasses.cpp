@@ -2998,7 +2998,7 @@ public:
     // @func 0x007AB31C SlyCharacterEyeClass::~SlyCharacterEyeClass
     // @func 0x007AED6C SlyCharacterEyeClass::~SlyCharacterEyeClass (deleting)
     ~SlyCharacterEyeClass() override = default;
-    // TODO(0x005BF608 SlyCharacterEyeClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyCharacterEyeClass() : AglShaderClass("SlyCharacterEye") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3373,7 +3373,7 @@ public:
     // @func 0x007AB6DC SlyPropClass::~SlyPropClass
     // @func 0x007AF630 SlyPropClass::~SlyPropClass (deleting)
     ~SlyPropClass() override = default;
-    // TODO(0x005CBE90 SlyPropClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyPropClass() : AglShaderClass("SlyProp") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -4306,6 +4306,60 @@ bool SlyHeightFogClass::SetupMaterial(AglMaterial* material, const AglMaterialDe
     *material->GetConstant(14) = ParamOr(desc, 14, 0.5f);
     *material->GetConstant(15) = ParamOr(desc, 15, 5.0f);
     *material->GetConstant(16) = ParamOr(desc, 16, 0.2f);
+    return true;
+}
+
+// @func 0x005BF608 SlyCharacterEyeClass::SetupMaterial
+bool SlyCharacterEyeClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (desc->paramCount == 0)
+        return true;
+    material->textures[0]->SetWrap(3, 3, 1);
+    AglTexture* highlight = FindTexture(desc->textureHash);
+    if (!highlight)
+        highlight = GetDefaultTexture(0);
+    material->AddTexture(highlight);
+    highlight->SetWrap(3, 3, 1);
+    AglTexture* reflection = FindTexture(desc->detail2Hash);
+    if (!reflection)
+        reflection = GetDefaultTexture(5);
+    material->AddTexture(reflection);
+    reflection->SetWrap(3, 3, 1);
+
+    *material->GetConstant(0) = ParamOr(desc, 0, 1.0f);
+    // Constant 1: pupil angle in radians (param 1 in degrees, default 9.75).
+    const float angle = ParamOr(desc, 1, 9.75f);
+    *material->GetConstant(1) = (angle > 0.0f ? angle : 9.75f) * kDegToRad;
+    // Fixed shading parameters of the eye shader (constants 2..31).
+    static const float kEyeDefaults[30] = {
+        1.0f, 0.0f, 0.0f, -0.1f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, -0.1f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.1f,
+        2.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.5f, 0.5f, 0.5f,
+    };
+    for (uint32_t i = 0; i < 30; ++i)
+        *material->GetConstant(2 + i) = kEyeDefaults[i];
+    return true;
+}
+
+// @func 0x005CBE90 SlyPropClass::SetupMaterial
+bool SlyPropClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    int32_t usesProp = 0;
+    if (desc->paramCount >= 4)
+        std::memcpy(&usesProp, &desc->params[3], sizeof(usesProp));
+    if (usesProp == 0) {
+        // Props without their switch are drawn as terrain: the record is
+        // rewritten for SlyTerrain (fade distance, range) and rejected.
+        const float fade = desc->paramCount > 4 ? desc->params[4] : 30.0f;
+        desc->params[3] = fade;
+        desc->params[4] = 5.0f;
+        desc->paramCount = 4;
+        desc->replacementClass = ape::HashNameNoCase("SlyTerrain");
+        return false;
+    }
+    if (!MaterialParamsEnabled())
+        return true;
+    AddDetailLayers(material, desc);
     return true;
 }
 

@@ -60,11 +60,12 @@ struct AglMaterialDesc {
     // 0x50: set by retired classes to the name hash of the class that should
     // draw the material instead (their SetupMaterial then returns false).
     mutable uint32_t replacementClass = 0;
-    uint8_t paramCount = 0;                  // 0x54: number of 'params' exported
+    // Retired classes also rewrite the parameters for their replacement.
+    mutable uint8_t paramCount = 0;          // 0x54: number of 'params' exported
     uint8_t field_55[3] = {};
     // 0x58: class specific parameters. Some classes store integers here
     // (read them with ParamBits()).
-    float params[18] = {};               // 0x58..0x9F
+    mutable float params[18] = {};       // 0x58..0x9F
     int32_t field_A0 = 0;                // 0xA0 NOTE: read by the water classes
 
     uint32_t ParamBits(int index) const;
