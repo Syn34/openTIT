@@ -3,6 +3,8 @@
 #include "sly/levels/script/ScriptCommands.h"
 
 #include "sly/levels/GameServices.h"
+#include "sly/game/GameEvent.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
 namespace sly {
@@ -78,6 +80,7 @@ class AnimLayerCommand : public ApeAnimScriptCommand {
 public:
     AnimLayerCommand();
     ~AnimLayerCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -106,7 +109,53 @@ ApeAnimScriptCommand* AnimLayerCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00085B10 AnimLayerCommand::Execute) animation player layer calls (0x0034C834..).
+// @func 0x00085B10 AnimLayerCommand::Execute
+// Reverses the playback direction of an animation layer. With the float
+// variable (attribute 0xA4871DCB) the new speed is chosen so that the clip
+// plays through in that many seconds. A clip that ends up playing backwards
+// and does not loop is moved to its end first.
+void AnimLayerCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = nullptr;
+    if (m_object != 0) {
+        ape::ApeRefCounted* object = instance->ResolveObject(m_object, false);
+        if (!object)
+            object = instance->ResolveObject(m_object, true);
+        if (!object)
+            return;
+        entity = EntityFromObject(object);
+    } else if (m_entity != 0) {
+        entity = FindEntity(m_entity);
+    }
+    void* controller = nullptr;
+    if (entity) {
+        if (void* character = EntityCharacter(entity))
+            controller = CharacterAnimController(character);
+    }
+    if (!controller)
+        controller = ScriptObjectAnimController(instance, m_object);
+    if (!controller)
+        return;
+    void* anim = AnimControllerFindLayer(controller, static_cast<int32_t>(m_layer));
+    if (!anim)
+        return;
+
+    const float current = AnimSpeed(anim);
+    float speed = current;
+    if (m_floatVar != 0) {
+        ApeAnimScriptVar* var = instance->FindVar(m_floatVar);
+        if (var && var->GetType() == AnimScriptVarType::Float) {
+            const float seconds = var->GetFloat();
+            speed = seconds > 0.0f ? AnimLength(anim) / seconds : 1.0f;
+            if (current < 0.0f)
+                speed = -speed;
+        }
+    }
+    speed = -speed;
+    AnimSetSpeed(anim, speed);
+    if (speed < 0.0f && !AnimIsLooping(anim))
+        AnimJumpToEnd(anim);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x8D0B7E84 (name unknown): resets parts of a character's state.
@@ -167,6 +216,7 @@ class ScoreEventCommand : public ApeAnimScriptCommand {
 public:
     ScoreEventCommand();
     ~ScoreEventCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -210,8 +260,68 @@ ApeAnimScriptCommand* ScoreEventCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00086000 ScoreEventCommand::Execute) builds one of several statistics event
-// records (0x00464EA0, 0x00465494, ...) from the entities and posts it (0x00482D14).
+// @func 0x00086000 ScoreEventCommand::Execute
+// Posts a statistics game event about an entity ("object"/"Entity", or the
+// entity named by "EntityNameVar") caused by another (attribute 0xECCE69B4
+// object, or the entity named by 0x33D74B44 / 0xDC6BAA58). The event type is
+// the index of "Type".
+void ScoreEventCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    auto entityByName = [instance](uint32_t nameVar, uint32_t name) {
+        if (nameVar != 0) {
+            ApeAnimScriptVar* var = instance->FindVar(nameVar);
+            if (var && var->GetType() == AnimScriptVarType::Hash && var->GetHash() != 0)
+                name = var->GetHash();
+        }
+        return FindEntity(name);
+    };
+    WorldObject* entity = EntityFromVar(instance, m_object);
+    if (!entity)
+        entity = entityByName(m_entityNameVar, m_entity);
+    WorldObject* source = EntityFromVar(instance, m_hash18);
+    if (!source)
+        source = entityByName(m_hash20, m_hash1C);
+
+    if (m_type == 0)
+        return;
+    auto ownerName = [](const WorldObject* e) {
+        const WorldObject* parent = EntityAttachParent(e);
+        return parent ? EntityName(parent) : 0u;
+    };
+    GameEvent event;
+    uint8_t player = 0;
+    if (m_type == kEvent_1C) {
+        if (entity)
+            InitEvent1C(event, m_data, EntityDefName(entity), EntityName(entity));
+        else
+            InitEvent1C(event, m_data, 0, 0);
+    } else {
+        if (!entity)
+            return;
+        if (EntityClassBits(entity) & 1)
+            player = EntityPlayerByte(entity);
+        switch (m_type) {
+        case kEvent_10:
+            InitEvent10(event, source, EntityDefName(entity), EntityName(entity), ownerName(entity));
+            break;
+        case kEvent_0B:
+            InitEvent0B(event, source, EntityName(entity), ownerName(entity));
+            break;
+        case kEvent_04:
+            InitEvent04(event, source, EntityName(entity), ownerName(entity));
+            break;
+        case kEvent_03:
+            InitEvent03(event, source, EntityDefName(entity), EntityName(entity), ownerName(entity));
+            break;
+        case kEvent_01:
+            InitEvent01(event, source, EntityDefName(entity), EntityName(entity), ownerName(entity), 0, 0);
+            break;
+        default:
+            return;
+        }
+    }
+    GameWorldPostEvent(player, event);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x2FE3EEC7 (name unknown): state/clip query on an entity with a target.
@@ -220,6 +330,7 @@ class EntityStateTargetCommand : public ApeAnimScriptCommand {
 public:
     EntityStateTargetCommand();
     ~EntityStateTargetCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -255,8 +366,28 @@ ApeAnimScriptCommand* EntityStateTargetCommand::Create(XmlElement* element) cons
     return command;
 }
 
-// TODO(0x000866D4 EntityStateTargetCommand::Execute) resolves the entity and target
-// (through 0x0009A190) and applies the state/clip value.
+// @func 0x000866D4 EntityStateTargetCommand::Execute
+// Tells an entity's listener to enter a state with a clip and a target
+// (the int variable "TargetVar" overrides "Target" when non-zero).
+void EntityStateTargetCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = m_entity != 0 ? ResolveEventEntity(instance, m_entity) : nullptr;
+    if (!entity && m_object != 0)
+        entity = EntityFromObject(instance->ResolveObject(m_object, false));
+
+    uint32_t target = m_target;
+    if (m_targetVar != 0) {
+        ApeAnimScriptVar* var = instance->FindVar(m_targetVar);
+        if (var && var->GetType() == AnimScriptVarType::Int && var->GetInt() != 0)
+            target = static_cast<uint32_t>(var->GetInt());
+    }
+    if (!entity) {
+        if (!m_flag28)
+            ScriptWarning("EntityStateTarget: no entity %s", m_entity != 0 ? m_entity : m_object);
+        return;
+    }
+    EntityListenerSetState(entity, m_state, m_clip, target, m_value);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xCB0BC14E (name unknown): sets bit 3 of the game world option byte +0x2D.

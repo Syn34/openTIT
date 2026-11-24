@@ -1,5 +1,9 @@
 // openTIT - Audio front end.
 #include "sly/game/AudioSystem.h"
+#include "ape/xml/ApeXml.h"
+#include "sly/game/SoundZones.h"
+
+#include <vector>
 
 #include "ape/core/ApeString.h"
 #include "ape/file/ApeFile.h"
@@ -94,6 +98,96 @@ SoundCategory CategoryFromHash(uint32_t nameHash)
 // ---------------------------------------------------------------------------
 // SoundName
 // ---------------------------------------------------------------------------
+
+namespace {
+std::map<uint32_t, SoundBankDefs*> g_soundBanks;              // 0x010AFEB0
+SoundBankDefs* g_defaultSoundBank = nullptr;                  // 0x00F65B60
+uint32_t g_defaultSoundBankHash = 0;                          // 0x010B00D8
+std::vector<std::pair<uint32_t, SoundBankDefs*>> g_globalSoundBanks;   // 0x010AFEB8
+
+SoundDef* FindInBank(const SoundBankDefs* bank, uint32_t soundHash)
+{
+    if (!bank)
+        return nullptr;
+    auto it = bank->defs.find(soundHash);
+    return it == bank->defs.end() ? nullptr : it->second;
+}
+} // namespace
+
+void RegisterSoundBank(uint32_t bankHash, SoundBankDefs* bank)
+{
+    g_soundBanks[bankHash] = bank;
+}
+
+void UnregisterSoundBank(uint32_t bankHash)
+{
+    g_soundBanks.erase(bankHash);
+}
+
+void SetDefaultSoundBank(uint32_t bankHash, SoundBankDefs* bank)
+{
+    g_defaultSoundBankHash = bankHash;
+    g_defaultSoundBank = bank;
+}
+
+void AddGlobalSoundBank(uint32_t bankHash, SoundBankDefs* bank)
+{
+    g_globalSoundBanks.emplace_back(bankHash, bank);
+}
+
+// @func 0x00441AC0 FindSoundDef
+SoundDef* FindSoundDef(uint32_t soundHash, uint32_t* bankHash)
+{
+    if (!AudioEnabled() || soundHash == 0)
+        return nullptr;
+    SoundDef* def = nullptr;
+    if (*bankHash != 0) {
+        SoundBankDefs* bank = *bankHash == g_defaultSoundBankHash ? g_defaultSoundBank : nullptr;
+        if (!bank) {
+            auto it = g_soundBanks.find(*bankHash);
+            bank = it == g_soundBanks.end() ? nullptr : it->second;
+        }
+        def = FindInBank(bank, soundHash);
+    }
+    if (!def && g_defaultSoundBank) {
+        def = FindInBank(g_defaultSoundBank, soundHash);
+        if (def)
+            *bankHash = g_defaultSoundBankHash;
+    }
+    if (!def) {
+        for (const auto& entry : g_globalSoundBanks) {
+            if (SoundDef* found = FindInBank(entry.second, soundHash)) {
+                *bankHash = entry.first;
+                return found;
+            }
+        }
+    }
+    return def;
+}
+
+// @func 0x00446984 CreateSoundName
+SoundName* CreateSoundName(uint32_t soundHash, uint32_t bankHash)
+{
+    if (soundHash == 0)
+        return nullptr;
+    uint32_t foundBank = bankHash;
+    SoundDef* def = FindSoundDef(soundHash, &foundBank);
+    SoundName* name = SoundName::Create(def);
+    name->refCount = 1;
+    // NOTE: the console stores the requested bank, not the one the sound
+    // was found in.
+    name->bank = bankHash;
+    name->soundHash = soundHash;
+    return name;
+}
+
+// @func 0x0044BD74 ResolveSoundNames
+void ResolveSoundNames()
+{
+    for (SoundName* name = g_soundNames; name; name = name->next)
+        if (!name->def)
+            name->def = FindSoundDef(name->soundHash, &name->bank);
+}
 
 SoundName* SoundName::Create(SoundDef* def)
 {
@@ -740,10 +834,125 @@ void UpdateVoiceOverPath()
     Backend().SetStreamRoot(2, path);
 }
 
-// TODO(0x004480D0 LoadSoundZones) and TODO(0x00447D88 LoadMixStates): parse
-// Audio\Global\SoundZones.xml and Audio\Global\MixStates.xml.
+// TODO(0x004480D0 LoadSoundZones): parse Audio\Global\SoundZones.xml.
 static void LoadSoundZones(const char* path) { (void)path; }
-static void LoadMixStates(const char* path) { (void)path; }
+
+namespace {
+
+// Mix states are authored as an Excel XML spreadsheet: one row per mix,
+// the first cell the mix name, then 31 parameter cells.
+constexpr uint32_t kXlsWorkbook = 0x30C0017Au;     // "Workbook"
+constexpr uint32_t kXlsWorksheet = 0xE82C68CEu;    // "Worksheet"
+constexpr uint32_t kXlsWorksheetNs = 0x058E9C34u;  // "ss:Worksheet"
+constexpr uint32_t kXlsTable = 0x04BE43AEu;        // "Table"
+constexpr uint32_t kXlsRow = 0x00013DBAu;          // "Row"
+constexpr uint32_t kXlsCell = 0x001F8162u;         // "Cell"
+constexpr uint32_t kXlsData = 0x001FE7AAu;         // "Data"
+constexpr uint32_t kMixHeaderName = 0x63717A3Fu;   // NOTE: name of the header row's first cell
+constexpr uint32_t kDefaultMixName = 0x86DF6221u;  // "Default"
+
+// Mix used until a "Default" row is loaded (0x010AFF14): every parameter set to 1.
+MixState g_initialMix;
+
+void ResetMixState(MixState& mix, MixOp op)
+{
+    for (MixParam& param : mix.params) {
+        param.op = op;
+        param.value = 1.0f;
+    }
+}
+
+const char* CellText(ape::xml::XmlElement* cell)
+{
+    ape::xml::XmlElement* data = cell->FirstChildElement(kXlsData);
+    if (!data)
+        return nullptr;
+    const char* text = data->GetText();
+    return (text && *text) ? text : nullptr;
+}
+
+} // namespace
+
+// Parses one spreadsheet row into `mix`. A parameter cell holds "=v" (set),
+// "+v" (add), "*v" (scale), "NOP" (no change) or a bare number (set).
+// Returns false for the header row and rows without cells.
+// @func 0x00441830 ParseMixStateRow
+bool ParseMixStateRow(MixState& mix, ape::xml::XmlElement* row)
+{
+    ape::xml::XmlElement* cell = row->FirstChildElement(kXlsCell);
+    ResetMixState(mix, kMixOp_None);
+    if (!cell)
+        return false;
+    mix.nameHash = 0;
+    if (const char* name = CellText(cell))
+        mix.nameHash = ape::HashNameNoCase(name);
+    if (mix.nameHash == kMixHeaderName)
+        return false;
+
+    cell = cell->NextSiblingElement(kXlsCell);
+    for (int i = 0; i < kMixParamCount && cell; ++i, cell = cell->NextSiblingElement(kXlsCell)) {
+        const char* text = CellText(cell);
+        if (!text)
+            continue;
+        MixParam& param = mix.params[i];
+        const char* number = nullptr;
+        if (const char* p = ape::StrChr(text, '=')) {
+            param.op = kMixOp_Set;
+            number = p + 1;
+        } else if (const char* p = ape::StrChr(text, '+')) {
+            param.op = kMixOp_Add;
+            number = p + 1;
+        } else if (const char* p = ape::StrRChr(text, '*')) {
+            param.op = kMixOp_Scale;
+            number = p + 1;
+        } else if (ape::StrCaseCompare(text, "NOP") == 0) {
+            param.op = kMixOp_None;
+            continue;
+        } else {
+            param.op = kMixOp_Set;
+            number = text;
+        }
+        param.value = ape::StrToFloat(number);
+    }
+    return true;
+}
+
+// @func 0x00447D88 LoadMixStates
+static void LoadMixStates(const char* path)
+{
+    ape::xml::XmlDocument document(path);
+    ResetMixState(g_initialMix, kMixOp_Set);
+    g_baseMix = &g_initialMix;
+    RecomputeMix(0.0f);
+    if (!document.LoadFile(0))
+        return;
+    ape::xml::XmlElement* workbook = document.FirstChildElement(kXlsWorkbook);
+    if (!workbook)
+        return;
+    ape::xml::XmlElement* sheet = workbook->FirstChildElement(kXlsWorksheet);
+    if (!sheet)
+        sheet = workbook->FirstChildElement(kXlsWorksheetNs);
+    ape::xml::XmlElement* table = sheet ? sheet->FirstChildElement(kXlsTable) : nullptr;
+    if (!table)
+        return;
+    ape::xml::XmlElement* row = table->FirstChildElement(kXlsRow);
+    if (row) {
+        // The first row holds the column titles.
+        MixState* pending = nullptr;
+        for (row = row->NextSiblingElement(kXlsRow); row; row = row->NextSiblingElement(kXlsRow)) {
+            if (!pending)
+                pending = new MixState();
+            if (!ParseMixStateRow(*pending, row) || FindMixState(pending->nameHash))
+                continue;   // the record is reused for the next row
+            if (pending->nameHash == kDefaultMixName)
+                g_baseMix = pending;
+            RegisterMixState(pending->nameHash, pending);
+            pending = nullptr;
+        }
+        delete pending;
+    }
+    RecomputeMix(0.0f);
+}
 
 // @func 0x00448730 AudioInit
 bool AudioInit()

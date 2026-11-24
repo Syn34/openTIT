@@ -127,6 +127,10 @@ public:
     ApeCameraDef();
     void Release() override;
     void Reset();
+    // @func 0x0059CA7C ApeCameraDef::VirtualSlot5
+    int VirtualSlot5(void* arg) override { return 0; }
+    // @func 0x0059CAC8 ApeCameraDef::VirtualSlot6
+    void VirtualSlot6(int arg) override {}
 
     Matrix34 m_transform;          // 0x70
     float m_fov = 0.0f;            // 0xB0
@@ -140,6 +144,8 @@ public:
 
     ApeEmitterDef();
     void Release() override;
+    // @func 0x0059D6B8 ApeEmitterDef::VirtualSlot6
+    void VirtualSlot6(int arg) override {}
 
     // NOTE: the particle system members (0x70 particle definition, 0x74
     // particle ring buffer) belong to the renderer and are not ported.
@@ -158,6 +164,8 @@ public:
     void Release() override;
     // @func 0x007A9ED0 ApePointDef::VirtualSlot5
     int VirtualSlot5(void* /*arg*/) override { return 0; }
+    // @func 0x0059E204 ApePointDef::VirtualSlot6
+    void VirtualSlot6(int arg) override {}
 
     // Shared definition used by point instances created at run time.
     static ApePointDef* GetDefault();
@@ -180,6 +188,8 @@ public:
     void Release() override;
     // @func 0x007A9ED8 ApeSplineDef::VirtualSlot5
     int VirtualSlot5(void* /*arg*/) override { return 0; }
+    // @func 0x0059F5CC ApeSplineDef::VirtualSlot6
+    void VirtualSlot6(int arg) override {}
 
     void InitFromHeader(const ApeSplineDefHeader& header);
     // Recomputes the arc length (unless skipped) and the bounds.

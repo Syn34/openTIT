@@ -11,12 +11,14 @@
 
 #include <cstdint>
 
-namespace sly { namespace audio { struct SoundName; } }
+namespace sly { namespace audio { struct SoundName; struct SoundZone; struct MixState; } }
+namespace sly { namespace audio { struct SoundName; } class WindSystem; }
 
 namespace sly {
 namespace objects {
 
 class ObjEntity;
+class EntityDef;
 
 // ---------------------------------------------------------------------------
 // Physics trigger volumes (Havok hkpAabbPhantom / hkpShapePhantom on the console)
@@ -130,8 +132,8 @@ ape::Vec3 GetListenerPosition();
 ObjEntity* GetPlayerEntity();
 
 // Sound zones and mix states (sly/game audio).
-struct SoundZone;   // opaque
-struct MixState;    // opaque
+using SoundZone = audio::SoundZone;   // sly/game/SoundZones.h
+using MixState = audio::MixState;     // sly/game/AudioSystem.h
 SoundZone* FindSoundZone(uint32_t nameHash);          // 0x0044C404
 MixState* FindMixState(uint32_t nameHash);            // 0x0044C43C
 float SoundZoneFadeDistance(const SoundZone* zone);   // zone +0x10
@@ -144,6 +146,78 @@ void SoundZoneDeactivate(SoundZone* zone);            // 0x00441CB8
 void SoundZoneSetWeight(SoundZone* zone, float weight); // 0x00441D18
 void MixStatePush(MixState* mix, float fadeTime);     // 0x0044D5BC
 void MixStatePop(MixState* mix, float fadeTime);      // 0x0044D614
+
+// ---------------------------------------------------------------------------
+// Anim scripts run by entities
+// ---------------------------------------------------------------------------
+// Starts `script` on the entity (0x000DCA20 with (0, 1)) and returns the
+// instance; bit 9 of the instance word +0x88 pauses it.
+void* EntityStartScript(ObjEntity* entity, void* script);
+void ScriptInstanceSetPaused(void* instance, bool paused);
+
+// Script variables of an entity script instance: the object held by an object
+// variable (0x004A66D0) and its setter (0x004A65F0, the entity's world object).
+ObjEntity* ScriptGetEntityVar(void* instance, uint32_t varName);
+void ScriptSetEntityVar(void* instance, uint32_t varName, ObjEntity* entity);
+// ApeAnimScriptInstance::SetStateAndUpdate by state name (0x004CF988).
+void ScriptSetState(void* instance, uint32_t stateName);
+// The trigger variable (type 15, name 0x70D68D3A) that scripts started by a
+// trigger use to reach it.
+void ScriptSetTriggerVar(void* instance, ObjEntity* trigger);
+
+// Volume shape type (phantom virtual slot 7: 0 AABB, 1-2 shape phantoms) and
+// world transform of shape phantoms (+0xA0).
+int VolumeShapeType(const TriggerVolume* volume);
+ape::Matrix34 VolumeWorldTransform(const TriggerVolume* volume);
+
+// Wind fields owned by wind triggers (sly/game wind module, 0x004ACxxx):
+// built from a transform and the trigger's definition (0x004ACD68), moved
+// (0x004ACCD0), ticked (0x004AD7C8), entities added (0x004ADD68, returns
+// false when refused) and removed (0x004AE160, `immediate`).
+WindSystem* WindFieldCreate(const ape::Matrix34& transform, const EntityDef* def);
+void WindFieldDestroy(WindSystem* field);
+void WindFieldSetTransform(WindSystem* field, const ape::Matrix34& transform);
+void WindFieldUpdate(WindSystem* field, float dt);
+bool WindFieldAddEntity(WindSystem* field, ObjEntity* entity);
+void WindFieldRemoveEntity(WindSystem* field, ObjEntity* entity, bool immediate);
+bool WindFieldHasEntity(const WindSystem* field, const ObjEntity* entity);
+void WindFieldSetEnabled(WindSystem* field, bool enabled);
+// Occupant capacity of wind triggers (global 0x00F64A30).
+uint16_t WindTriggerCapacity();
+
+// Entity::SetVisibilityDeferred (0x000DD02C): visible/awake state, optionally
+// applied later.
+void EntitySetVisibilityDeferred(ObjEntity* entity, bool visible, bool deferred);
+// Health of killable entities (+0x15C).
+float EntityHealth(const ObjEntity* entity);
+
+// Jobs (game state 0x00F64C20): a job's state index (0x002D98A4: 0
+// unavailable, 1 available, 2 complete), whether a job is running (+0x28),
+// whether the game state blocks new jobs (bit 29 of +0x10), whether the
+// entity may start this job (0x002E4ED0), and the start itself (0x002E1E98
+// with the start goal).
+int JobState(const void* job);
+bool GameStateHasActiveJob();
+bool GameStateJobsBlocked();
+bool GameStateCanStartJob(ObjEntity* entity, void* job);
+void GameStateStartJob(ObjEntity* entity, void* job, uint32_t startGoal);
+// Ability byte of a character (+0x290 + index): bit 7 = locked, bit 6 = shown anyway.
+uint8_t CharacterAbilityState(const ObjEntity* character, int ability);
+// Yes/no prompt of the game world (0x00489A60) whose answer starts the job
+// (callback 0x00F39CA0).
+void ShowJobPrompt(ObjEntity* entity, const char* text, const char* buttons);
+
+// Whether the game state's text display reports the message as already
+// seen (0x002D9994 on game state +0x28 with a text field of that id, kind 13).
+bool TextDisplayHasSeen(uint32_t messageId);
+
+// Second class word of an entity (+0xC8).
+uint32_t EntityClass2(const ObjEntity* entity);
+
+// Game camera (game world +0x1281E0): removes a camera mode with a blend
+// time (0x000FBB88, negative = default), and deletes a mode (virtual slot 1).
+void CameraRemoveMode(void* mode, float blendTime);
+void CameraModeDelete(void* mode);
 
 } // namespace objects
 } // namespace sly

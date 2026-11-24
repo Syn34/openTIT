@@ -4,6 +4,7 @@
 
 #include "ape/core/ApeString.h"
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
 namespace sly {
@@ -174,6 +175,7 @@ class SwapDefCommand : public ApeAnimScriptCommand {
 public:
     SwapDefCommand();
     ~SwapDefCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -199,7 +201,31 @@ ApeAnimScriptCommand* SwapDefCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00096F40 SwapDefCommand::Execute) definition lookup (0x0073A1A4) and 0x0028728C.
+// @func 0x00096F40 SwapDefCommand::Execute
+// Gives an entity's world object another definition: the definition of a
+// world object named "def", else the level definition of that name. The new
+// definition must be of the same object kind.
+void SwapDefCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_def == 0)
+        return;
+    WorldObject* entity = ResolveEntity(instance, m_object, m_entity);
+    if (!entity)
+        return;
+    ape::ApeRefCounted* object = EntityWorldObject(entity);
+    if (!object)
+        return;
+
+    void* def = nullptr;
+    if (ape::ApeRefCounted* model = instance->ResolveObject(m_def, false))
+        def = ObjectDef(model);
+    else
+        def = FindLevelDef(m_def);
+    if (!def || DefKind(ObjectDef(object)) != DefKind(def))
+        return;
+    ObjectSetDef(object, def);
+    EntityRefreshRenderComponents(entity);
+}
 
 // "SwapInventory" (NOTE: name from a hash match)
 class SwapInventoryCommand : public ApeAnimScriptCommand {
@@ -323,6 +349,7 @@ public:
     SwapWeaponCommand();
     explicit SwapWeaponCommand(XmlElement* element);
     ~SwapWeaponCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -371,8 +398,18 @@ ApeAnimScriptCommand* SwapWeaponCommand::Create(XmlElement* element) const
     return new SwapWeaponCommand(element);
 }
 
-// TODO(0x00097B24 SwapWeaponCommand::Execute) entity lookup then 0x001CAA88 with the
-// weapon settings.
+// @func 0x00097B24 SwapWeaponCommand::Execute
+void SwapWeaponCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = EntityFromVar(instance, m_refObject);
+    if (!entity)
+        entity = FindEntity(m_entity);
+    if (!entity)
+        return;
+    EntitySwapWeapon(entity, m_weaponComp, m_speedOverride, m_interval1C, m_interval20, m_angle);
+    if (EntityIsGadgetTurret(entity))
+        TurretResetAim(entity);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x8A36758E (name unknown): definition switch with three flags.
@@ -381,6 +418,7 @@ class DefFlagsCommand : public ApeAnimScriptCommand {
 public:
     DefFlagsCommand();
     ~DefFlagsCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -408,8 +446,36 @@ ApeAnimScriptCommand* DefFlagsCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x00097E50 DefFlagsCommand::Execute) walks the entities of the definition
-// (0x000C9FC8, 0x00124E58, 0x00238270, 0x0024B1A8, 0x00261328).
+// @func 0x00097E50 DefFlagsCommand::Execute
+// Switches the player to another definition: characters (optionally only
+// when the definition differs, attribute 0xB555B755), and the two vehicle
+// classes (class2 flags 0x800 and 0x2000). Attribute 0x00D8E5D6 chooses the
+// immediate form; with 0xA18DAB9F the character is also reset.
+void DefFlagsCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    if (m_def == 0)
+        return;
+    WorldObject* player = PlayerEntity();
+    if (!player)
+        return;
+    const bool deferred = !m_flag10;
+    if (EntityIsCharacter(player)) {
+        void* def = FindEntityDefByName(m_def);
+        if (!def)
+            return;
+        if (m_flag12 && EntityDefName(player) == EntityDefNameOf(def))
+            return;
+        CharacterSwapDef(player, def, deferred);
+        if (m_flag10 && m_flag11)
+            CharacterResetAfterSwap(player);
+    } else if (EntityHasClass2Flag(player, kEntityClass2_Vehicle800)) {
+        if (void* def = FindEntityDefByName(m_def))
+            VehicleSwapDef800(player, def, deferred);
+    } else if (EntityHasClass2Flag(player, kEntityClass2_Vehicle2000)) {
+        if (void* def = FindEntityDefByName(m_def))
+            VehicleSwapDef2000(player, def, deferred);
+    }
+}
 
 // ---------------------------------------------------------------------------
 

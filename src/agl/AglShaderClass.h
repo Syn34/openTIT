@@ -51,7 +51,8 @@ struct AglRenderItem {
 struct AglMaterialDesc {
     uint32_t field_0 = 0;
     uint32_t diffuseHash = 0;                // 0x04
-    uint8_t field_8[8] = {};
+    uint32_t detailHash = 0;                 // 0x08 detail layer texture
+    uint32_t detail2Hash = 0;                // 0x0C second detail layer texture
     uint32_t textureHash = 0;                // 0x10
     uint8_t field_14[0x38] = {};
     uint8_t wrapMode = 0;                    // 0x4C

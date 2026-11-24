@@ -5,6 +5,9 @@
 #include "sly/game/AudioSystem.h"
 #include "sly/game/Upgrades.h"
 #include "sly/levels/GameServices.h"
+#include "sly/gameplay/SequenceCommands.h"
+#include "sly/gameplay/Sequencer.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
 #include <cstring>
@@ -50,6 +53,7 @@ class SeqPauseCommand : public ApeAnimScriptCommand {
 public:
     SeqPauseCommand();
     ~SeqPauseCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -73,8 +77,14 @@ ApeAnimScriptCommand* SeqPauseCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0009F888 SeqPauseCommand::Execute) resolves the time variable and appends the
-// sequence wait command (0x00431EEC).
+// @func 0x0009F888 SeqPauseCommand::Execute
+// Appends a wait of "Time" seconds (or the float variable "TimeVar").
+void SeqPauseCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    const float time = ResolveFloat(instance, m_timeVar, m_time);
+    if (time > 0.0f)
+        gameplay::AddSequenceCommand(new gameplay::SeqWaitCommand(time));
+}
 
 // ---------------------------------------------------------------------------
 // The sequence switches that take a single "pause" flag. Each builds a

@@ -4,6 +4,9 @@
 // system is ported and can be called directly.
 #include "sly/objects/ObjectsHooks.h"
 
+#include "sly/game/AudioSystem.h"
+#include "sly/game/SoundZones.h"
+
 #include "ape/world/ApeBase.h"
 
 namespace sly {
@@ -163,12 +166,9 @@ void* FindJob(uint32_t jobNameHash)
 }
 
 // --- audio -------------------------------------------------------------------
-// TODO(0x00446984 FindSoundName)
 audio::SoundName* FindSoundName(uint32_t soundHash, uint32_t bankHash)
 {
-    (void)soundHash;
-    (void)bankHash;
-    return nullptr;
+    return audio::CreateSoundName(soundHash, bankHash);
 }
 
 // TODO(0x0044C474)
@@ -191,36 +191,15 @@ void SetVoice3D(uint32_t voice, const ape::Vec3& position, float volume)
 ape::Vec3 GetListenerPosition() { return ape::world::kWorldZero; }
 ObjEntity* GetPlayerEntity() { return nullptr; }
 
-// TODO(0x0044C404)
-SoundZone* FindSoundZone(uint32_t nameHash)
-{
-    (void)nameHash;
-    return nullptr;
-}
-// TODO(0x0044C43C)
-MixState* FindMixState(uint32_t nameHash)
-{
-    (void)nameHash;
-    return nullptr;
-}
-float SoundZoneFadeDistance(const SoundZone* zone) { (void)zone; return 0.0f; }
-float SoundZoneRadius(const SoundZone* zone) { (void)zone; return 0.0f; }
-void* SoundZoneActiveTrigger(const SoundZone* zone) { (void)zone; return nullptr; }
-void SetSoundZoneActiveTrigger(SoundZone* zone, void* trigger)
-{
-    (void)zone;
-    (void)trigger;
-}
-// TODO(0x00441C68)
-void SoundZoneActivate(SoundZone* zone) { (void)zone; }
-// TODO(0x00441CB8)
-void SoundZoneDeactivate(SoundZone* zone) { (void)zone; }
-// TODO(0x00441D18)
-void SoundZoneSetWeight(SoundZone* zone, float weight)
-{
-    (void)zone;
-    (void)weight;
-}
+SoundZone* FindSoundZone(uint32_t nameHash) { return audio::FindSoundZone(nameHash); }
+MixState* FindMixState(uint32_t nameHash) { return audio::FindMixState(nameHash); }
+float SoundZoneFadeDistance(const SoundZone* zone) { return zone->fadeDistance; }
+float SoundZoneRadius(const SoundZone* zone) { return zone->radius; }
+void* SoundZoneActiveTrigger(const SoundZone* zone) { return zone->activeTriggers; }
+void SetSoundZoneActiveTrigger(SoundZone* zone, void* trigger) { zone->activeTriggers = trigger; }
+void SoundZoneActivate(SoundZone* zone) { audio::ActivateSoundZone(zone); }
+void SoundZoneDeactivate(SoundZone* zone) { audio::DeactivateSoundZone(zone); }
+void SoundZoneSetWeight(SoundZone* zone, float weight) { audio::SetSoundZoneWeight(zone, weight); }
 // TODO(0x0044D5BC)
 void MixStatePush(MixState* mix, float fadeTime)
 {
@@ -233,6 +212,59 @@ void MixStatePop(MixState* mix, float fadeTime)
     (void)mix;
     (void)fadeTime;
 }
+
+// TODO(0x000DCA20) entity script instances live in the entity module.
+void* EntityStartScript(ObjEntity* entity, void* script)
+{
+    (void)entity;
+    (void)script;
+    return nullptr;
+}
+
+void ScriptInstanceSetPaused(void* instance, bool paused)
+{
+    (void)instance;
+    (void)paused;
+}
+
+ObjEntity* ScriptGetEntityVar(void* instance, uint32_t varName) { (void)instance; (void)varName; return nullptr; }
+void ScriptSetEntityVar(void* instance, uint32_t varName, ObjEntity* entity) { (void)instance; (void)varName; (void)entity; }
+void ScriptSetState(void* instance, uint32_t stateName) { (void)instance; (void)stateName; }
+void ScriptSetTriggerVar(void* instance, ObjEntity* trigger) { (void)instance; (void)trigger; }
+int VolumeShapeType(const TriggerVolume* volume) { (void)volume; return -1; }
+ape::Matrix34 VolumeWorldTransform(const TriggerVolume* volume)
+{
+    (void)volume;
+    return ape::Matrix34{{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
+}
+// TODO(0x004ACD68) wind fields: the wind module only has the system part so far.
+WindSystem* WindFieldCreate(const ape::Matrix34& transform, const EntityDef* def) { (void)transform; (void)def; return nullptr; }
+void WindFieldDestroy(WindSystem* field) { (void)field; }
+void WindFieldSetTransform(WindSystem* field, const ape::Matrix34& transform) { (void)field; (void)transform; }
+void WindFieldUpdate(WindSystem* field, float dt) { (void)field; (void)dt; }
+bool WindFieldAddEntity(WindSystem* field, ObjEntity* entity) { (void)field; (void)entity; return false; }
+void WindFieldRemoveEntity(WindSystem* field, ObjEntity* entity, bool immediate) { (void)field; (void)entity; (void)immediate; }
+bool WindFieldHasEntity(const WindSystem* field, const ObjEntity* entity) { (void)field; (void)entity; return false; }
+void WindFieldSetEnabled(WindSystem* field, bool enabled) { (void)field; (void)enabled; }
+uint16_t WindTriggerCapacity() { return 0x20; }
+
+void EntitySetVisibilityDeferred(ObjEntity* entity, bool visible, bool deferred) { (void)entity; (void)visible; (void)deferred; }
+float EntityHealth(const ObjEntity* entity) { (void)entity; return 0.0f; }
+
+int JobState(const void* job) { (void)job; return 0; }
+bool GameStateHasActiveJob() { return false; }
+bool GameStateJobsBlocked() { return false; }
+bool GameStateCanStartJob(ObjEntity* entity, void* job) { (void)entity; (void)job; return false; }
+void GameStateStartJob(ObjEntity* entity, void* job, uint32_t startGoal) { (void)entity; (void)job; (void)startGoal; }
+uint8_t CharacterAbilityState(const ObjEntity* character, int ability) { (void)character; (void)ability; return 0; }
+void ShowJobPrompt(ObjEntity* entity, const char* text, const char* buttons) { (void)entity; (void)text; (void)buttons; }
+
+bool TextDisplayHasSeen(uint32_t messageId) { (void)messageId; return false; }
+
+uint32_t EntityClass2(const ObjEntity* entity) { (void)entity; return 0; }
+
+void CameraRemoveMode(void* mode, float blendTime) { (void)mode; (void)blendTime; }
+void CameraModeDelete(void* mode) { (void)mode; }
 
 } // namespace objects
 } // namespace sly

@@ -5,6 +5,7 @@
 #include "ape/core/ApeString.h"
 #include "sly/game/Upgrades.h"
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
 namespace sly {
@@ -189,6 +190,7 @@ public:
     ChainParamsCommand();
     explicit ChainParamsCommand(XmlElement* element);
     ~ChainParamsCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
     enum : uint32_t {
@@ -264,8 +266,43 @@ ApeAnimScriptCommand* ChainParamsCommand::Create(XmlElement* element) const
     return new ChainParamsCommand(element);
 }
 
-// TODO(0x00088ABC ChainParamsCommand::Execute) finds the component (0x000D92B0) and
-// copies the masked values into its simulation settings.
+// @func 0x00088ABC ChainParamsCommand::Execute
+// Overrides the parameters given in the script on a chain component (named,
+// else the entity's first component of type 0x0F).
+void ChainParamsCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    WorldObject* entity = ResolveEntity(instance, m_object, m_entity);
+    if (!entity) {
+        ScriptWarning("ChainParams: no entity %s", m_entity);
+        return;
+    }
+    void* component = m_componentName != 0 ? EntityFindComponentById(entity, m_componentName)
+                                           : EntityFindComponentOfType(entity, kComponent_Chain);
+    if (!component) {
+        ScriptWarning("ChainParams: no component %s", m_componentName);
+        return;
+    }
+    ChainComponentParams& params = ChainParams(component);
+    if (m_mask & kHas1C)
+        params.flag31 = m_flag1C;
+    if (m_mask & kHasIterate)
+        params.iterations = static_cast<uint8_t>(m_iterate);
+    if (m_mask & kHasSpring)
+        params.spring = m_spring;
+    if (m_mask & kHas28)
+        params.value28 = m_value28;
+    if (m_mask & kHas2C)
+        params.value2C = m_value2C;
+    if (m_mask & kHasAngleMax)
+        params.angleMax = m_angleMax;
+    if (m_mask & kHasGravity)
+        params.gravity = m_gravity;
+    if (m_mask & kHas50)
+        params.vector50 = m_vector50;
+    // NOTE: the console tests kHas1C again here, not kHas60.
+    if (m_mask & kHas1C)
+        params.flag30 = m_flag60;
+}
 
 // ---------------------------------------------------------------------------
 // "SetControllerRumble" (NOTE: name from a hash match)

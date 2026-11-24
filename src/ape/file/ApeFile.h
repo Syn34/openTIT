@@ -126,6 +126,8 @@ AsyncFileHandle* MountDeviceArchive(const char* path, const AsyncFileParams& par
 
 // Mounts "Image.zip" from the data root if present (and not disabled).
 bool MountImageArchive();
+// Mount handle of Image.zip (0 when it was not mounted).
+int GetImageArchiveHandle();
 extern bool g_disableImageArchive; // NOTE: global at 0x010C5A7C, set by unknown code
 
 } // namespace ape::file

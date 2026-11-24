@@ -5,6 +5,7 @@
 #include "ape/core/ApeString.h"
 #include "sly/game/AudioSystem.h"
 #include "sly/levels/GameServices.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/PlayerNotifyFlags.h"
 #include "sly/levels/ScriptServices.h"
 
@@ -375,6 +376,7 @@ class SetPlayerSpawnCommand : public ApeAnimScriptCommand {
 public:
     SetPlayerSpawnCommand();
     ~SetPlayerSpawnCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -398,9 +400,18 @@ ApeAnimScriptCommand* SetPlayerSpawnCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0008D564 SetPlayerSpawnCommand::Execute) copies the point instance's
-// transform (point list 0x00F8F154) and calls 0x00488298 on the world; the
-// transform layout passed is not decoded.
+// @func 0x0008D564 SetPlayerSpawnCommand::Execute
+// Moves a player's respawn point to a point instance (identity when the
+// instance does not exist).
+void SetPlayerSpawnCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    if (m_playerIndex < 0 || m_spawnPt == 0)
+        return;
+    ape::Matrix34 transform = IdentityTransform();
+    if (WorldObject* point = FindPointInstance(m_spawnPt))
+        transform = PointInstanceTransform(point);
+    GameWorldSetPlayerSpawn(m_playerIndex, transform);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0xA1BA0E32 (name unknown): mounts or dismounts a player on an entity.

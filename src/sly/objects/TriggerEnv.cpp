@@ -1,6 +1,8 @@
 // openTIT - Damage and wind trigger volumes.
 #include "sly/objects/TriggerEnv.h"
 
+#include "ape/anim/ApeAnimScript.h"
+
 #include "sly/objects/TriggerTypes.h"
 
 #include "ape/math/ApeMath.h"
@@ -279,19 +281,150 @@ ObjEntity* WindTriggerDef::Create(EntityPlacement* placement)
     return trigger;
 }
 
-// TODO(0x00224448 WindTrigger::WindTrigger) the wind source set-up (0x00224170
-// parameter block, lifetime anim script, WindInstance 0x004ACD68) is not ported;
-// the occupant capacity comes from the wind system (0x00F64A30).
-WindTrigger::WindTrigger(const TriggerInstanceDesc& desc)
-    : TriggerBase(desc, 0x20, true)
+namespace {
+constexpr uint32_t kScriptVarEntered = 0x1ABD6576;   // NOTE: name unknown (last entity in)
+constexpr uint32_t kScriptVarExited = 0x2C73353E;    // NOTE: name unknown (last entity out)
+constexpr uint32_t kScriptStateSpawn = 0x04B6FB5B;   // "Spawn"
+constexpr uint32_t kScriptStateOnEnter = 0xDC175839; // "OnEnter"
+constexpr uint32_t kScriptStateOnExit = 0x8B3AB37D;  // "OnExit"
+constexpr uint64_t kClassWindAffected = 0x100000;    // entity class bit honoured by restricted winds
+} // namespace
+
+// @func 0x00224170 WindTrigger::VolumeTransform
+ape::Matrix34 WindTrigger::VolumeTransform() const
 {
-    const WindTriggerDef* windDef = static_cast<const WindTriggerDef*>(def);
-    m_scriptLifetime = windDef->scriptLifetime;
-    m_field1BC = windDef->field_D4;
+    ape::Matrix34 transform{{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f},
+                            {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
+    if (!m_volume || !VolumeIsInWorld(m_volume))
+        return transform;
+    const int shape = VolumeShapeType(m_volume);
+    if (shape == 0) {
+        // AABB phantoms: centre of the box, no rotation.
+        const ape::Aabb box = VolumeGetAabb(m_volume);
+        ape::AabbCenter(box, transform.translation);
+    } else if (shape == 1 || shape == 2) {
+        transform = VolumeWorldTransform(m_volume);
+    }
+    return transform;
 }
 
-// TODO(0x0022499C WindTrigger::~WindTrigger) releases the wind source and script.
-WindTrigger::~WindTrigger() = default;
+// @func 0x00224448 WindTrigger::WindTrigger
+WindTrigger::WindTrigger(const TriggerInstanceDesc& desc)
+    : TriggerBase(desc, WindTriggerCapacity(), true)
+{
+    const ape::Matrix34 transform = VolumeTransform();
+    const WindTriggerDef* windDef = static_cast<const WindTriggerDef*>(def);
+    m_scriptLifetime = windDef->scriptLifetime;
+    m_restricted = windDef->field_D4;
+    // The lifetime script receives the trigger and gets "Spawn" on the first update.
+    if (void* script = ape::ApeAnimScriptLibrary::FindScriptAnywhere(m_scriptLifetime, 0, true)) {
+        m_script = EntityStartScript(this, script);
+        if (m_script) {
+            ScriptInstanceSetPaused(m_script, false);
+            m_spawnPending = true;
+            ScriptSetTriggerVar(m_script, this);
+        }
+    }
+    m_wind = WindFieldCreate(transform, def);
+}
+
+// @func 0x0022499C WindTrigger::~WindTrigger
+// @func 0x00224B00 WindTrigger::~WindTrigger (deleting)
+WindTrigger::~WindTrigger()
+{
+    if (m_script)
+        ScriptInstanceSetPaused(m_script, true);
+}
+
+// @func 0x00224B48 WindTrigger::Release
+void WindTrigger::Release(bool immediate)
+{
+    if (immediate && m_wind) {
+        WindFieldDestroy(m_wind);
+        m_wind = nullptr;
+    }
+    TriggerBase::Release(immediate);
+}
+
+bool WindTrigger::AffectsEntity(const ObjEntity* entity) const
+{
+    return !m_restricted || (entity->classBits & kClassWindAffected) != 0;
+}
+
+// @func 0x00224BC8 WindTrigger::Update
+void WindTrigger::Update(float dt)
+{
+    if (m_spawnPending) {
+        m_spawnPending = false;
+        if (m_script)
+            ScriptSetState(m_script, kScriptStateSpawn);
+    }
+    WindFieldUpdate(m_wind, dt);
+    TriggerBase::Update(dt);
+    // Keep the field's entity set in step with the occupants that are alive.
+    for (ObjEntity* occupant : m_occupants) {
+        if (!occupant->IsAlive())
+            continue;
+        const bool wanted = AffectsEntity(occupant);
+        const bool present = WindFieldHasEntity(m_wind, occupant);
+        if (present && !wanted)
+            WindFieldRemoveEntity(m_wind, occupant, true);
+        else if (!present && wanted)
+            WindFieldAddEntity(m_wind, occupant);
+    }
+}
+
+// @func 0x00224D50 WindTrigger::SetTransform
+void WindTrigger::SetTransform()
+{
+    // NOTE: the base part (0x0020D7E8, trigger SetTransform) is not ported.
+    if (m_wind)
+        WindFieldSetTransform(m_wind, VolumeTransform());
+}
+
+// @func 0x00224E20 WindTrigger::OnEnter
+void WindTrigger::OnEnter(ObjEntity* entity)
+{
+    TriggerBase::OnEnter(entity);
+    if (AffectsEntity(entity) && m_wind && WindFieldAddEntity(m_wind, entity) && m_onEnter)
+        m_onEnter(this, entity);
+    if (m_script) {
+        if (ScriptGetEntityVar(m_script, kScriptVarEntered) == entity)
+            ScriptSetEntityVar(m_script, kScriptVarEntered, nullptr);
+        ScriptSetEntityVar(m_script, kScriptVarExited, entity);
+        ScriptSetState(m_script, kScriptStateOnEnter);
+    }
+}
+
+// @func 0x00224F48 WindTrigger::OnExit
+void WindTrigger::OnExit(ObjEntity* entity)
+{
+    if (m_wind)
+        WindFieldRemoveEntity(m_wind, entity, false);
+    if (m_script) {
+        if (ScriptGetEntityVar(m_script, kScriptVarExited) == entity)
+            ScriptSetEntityVar(m_script, kScriptVarExited, nullptr);
+        ScriptSetEntityVar(m_script, kScriptVarEntered, entity);
+        ScriptSetState(m_script, kScriptStateOnExit);
+    }
+    TriggerBase::OnExit(entity);
+}
+
+// @func 0x00225010 WindTrigger::RemoveOccupant
+void WindTrigger::RemoveOccupant(ObjEntity* entity)
+{
+    if (m_wind)
+        WindFieldRemoveEntity(m_wind, entity, true);
+    TriggerBase::RemoveOccupant(entity);
+}
+
+// @func 0x0022506C WindTrigger::SetEnabled
+void WindTrigger::SetEnabled(bool enabled)
+{
+    if (m_wind)
+        WindFieldSetEnabled(m_wind, enabled);
+    ChangeEnabled(enabled);
+}
 
 } // namespace objects
 } // namespace sly

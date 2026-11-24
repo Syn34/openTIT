@@ -200,9 +200,12 @@ public:
     explicit JobTrigger(const JobTriggerInstanceDesc& desc);
     ~JobTrigger() override;
     void Release(bool immediate) override;
+    void OnEnter(ObjEntity* entity) override;
     bool IsDebugDisplayed() const override;
     // The job this trigger belongs to (0x00221068) and its field +0x1E8 (0x0022104C).
-    void* GetJob() const { return m_job; }
+    void* GetJob() const;
+    // True while the job can be started (state 1, "available").
+    bool IsJobAvailable() const;
     uint32_t GetJobField1E8() const;
 
 private:
@@ -271,11 +274,26 @@ class UpdateEnableTrigger : public TriggerBase {
 public:
     explicit UpdateEnableTrigger(const TriggerInstanceDesc& desc);
     ~UpdateEnableTrigger() override;
+    void Update(float dt) override;
+    void OnEnter(ObjEntity* entity) override;
+    void OnExit(ObjEntity* entity) override;
     bool IsDebugDisplayed() const override;
 
 private:
-    uint32_t m_field1AC = 0;        // 0x1AC
-    std::vector<ObjEntity*> m_tracked;   // 0x1B0 (capacity 2)
+    // Characters and players inside, with whether each was a player when last
+    // seen (a character can become the player).
+    struct Tracked {
+        ObjEntity* entity = nullptr;
+        bool isPlayer = false;
+    };
+    // Wakes every occupant that sleeps without a player near.
+    void WakeOccupants();
+    // A player left: when none remain, the sleeping occupants (except `leaving`)
+    // are put back to sleep (0x002257B4).
+    void PlayerLeft(ObjEntity* leaving);
+
+    uint32_t m_playerCount = 0;          // 0x1AC players inside
+    std::vector<Tracked> m_tracked;      // 0x1B0 (capacity 2)
 };
 
 EntityDef* CreateUpdateEnableTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,

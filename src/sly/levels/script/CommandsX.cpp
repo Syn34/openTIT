@@ -9,6 +9,9 @@
 
 #include "ape/core/ApeString.h"
 #include "sly/levels/GameServices.h"
+#include "sly/gameplay/SequenceCommands2.h"
+#include "sly/gameplay/Sequencer.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/levels/ScriptServices.h"
 
 #include <cstring>
@@ -142,6 +145,7 @@ public:
     SeqLinkCommand();
     explicit SeqLinkCommand(XmlElement* element);
     ~SeqLinkCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -197,7 +201,35 @@ ApeAnimScriptCommand* SeqLinkCommand::Create(XmlElement* element) const
     return new SeqLinkCommand(element);
 }
 
-// TODO(0x0009AA20 SeqLinkCommand::Execute) builds the sequence link command (0x00431254 ...).
+// @func 0x0009AA20 SeqLinkCommand::Execute
+// Appends a "place entity" step to the running sequence. The node name, the
+// offset and the rotation may come from variables (int, vec3, vec3).
+void SeqLinkCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_parentEntity == 0 || m_childEntity == 0)
+        return;
+    uint32_t node = m_hash14;
+    if (m_hash18 != 0) {
+        ApeAnimScriptVar* var = instance->FindVar(m_hash18);
+        if (var && var->GetType() == AnimScriptVarType::Int)
+            node = static_cast<uint32_t>(var->GetInt());
+    }
+    ape::Vec3 offset = m_vector20;
+    if (m_hash30 != 0) {
+        ApeAnimScriptVar* var = instance->FindVar(m_hash30);
+        if (var && var->GetType() == AnimScriptVarType::Vec3)
+            offset = static_cast<ape::ApeAnimScriptVec3Var*>(var)->GetVec3();
+    }
+    ape::Vec3 rotation = m_angles40;
+    if (m_hash50 != 0) {
+        ApeAnimScriptVar* var = instance->FindVar(m_hash50);
+        if (var && var->GetType() == AnimScriptVarType::Vec3)
+            rotation = static_cast<ape::ApeAnimScriptVec3Var*>(var)->GetVec3();
+    }
+    gameplay::AddSequenceCommand(new gameplay::SeqPlaceEntityCommand(
+        m_parentEntity, m_childEntity, node, offset, rotation, m_hash54, m_vector60, m_angles70,
+        m_flag80, m_flag81, m_flag82, m_flag83));
+}
 
 // ---------------------------------------------------------------------------
 // "SeqPostMessage" style command (hash 0xFC622478, name unknown): posts a
@@ -259,6 +291,7 @@ class SeqCameraCutCommand : public ApeAnimScriptCommand {
 public:
     SeqCameraCutCommand();
     ~SeqCameraCutCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -284,8 +317,25 @@ ApeAnimScriptCommand* SeqCameraCutCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0009ADE0 SeqCameraCutCommand::Execute) point lookup and the sequence camera command
-// (0x0043280C).
+// @func 0x0009ADE0 SeqCameraCutCommand::Execute
+// Appends a camera cut to a camera instance and/or a point instance.
+void SeqCameraCutCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
+{
+    WorldObject* camera = nullptr;
+    if (m_cameraDef != 0) {
+        camera = FindCameraInstance(m_cameraDef);
+        if (!camera)
+            ScriptWarning("SeqCameraCut: no camera %s", m_cameraDef);
+    }
+    WorldObject* point = nullptr;
+    if (m_point != 0) {
+        point = FindPointInstance(m_point);
+        if (!point)
+            ScriptWarning("SeqCameraCut: no point %s", m_point);
+    }
+    if (camera || point)
+        gameplay::AddSequenceCommand(new gameplay::SeqSetCameraViewCommand(camera, point, m_fov));
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x99F875FE (name unknown): releases the sequence camera.
@@ -433,6 +483,7 @@ class SeqDamageCommand : public ApeAnimScriptCommand {
 public:
     SeqDamageCommand();
     ~SeqDamageCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -466,7 +517,21 @@ ApeAnimScriptCommand* SeqDamageCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x0009BB80 SeqDamageCommand::Execute) builds the sequence damage command (0x004338B4).
+// @func 0x0009BB80 SeqDamageCommand::Execute
+// Appends a hit on an entity (the part may come from an int variable).
+void SeqDamageCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    uint32_t part = m_child;
+    if (m_hash14 != 0) {
+        ApeAnimScriptVar* var = instance->FindVar(m_hash14);
+        if (var && var->GetType() == AnimScriptVarType::Int)
+            part = static_cast<uint32_t>(var->GetInt());
+    }
+    if (m_object == 0)
+        return;
+    gameplay::AddSequenceCommand(new gameplay::SeqHitEntityCommand(
+        m_damage, m_value20, m_object, part, m_hash18, static_cast<int32_t>(m_type)));
+}
 
 // ---------------------------------------------------------------------------
 // "SeqAttach" style command (hash 0xFF8D82F5, name unknown)

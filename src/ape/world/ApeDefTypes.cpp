@@ -429,8 +429,9 @@ int LoadCameraDefRecordChunk(iff::IffReader* reader, void* arg)
 
 ApeEmitterDef::ApeEmitterDef() : ApeDef(kObjType_EmitterDef) {}
 
-// TODO(0x0059D52C ApeEmitterDef::Release): the console version also tears
-// down the particle members (0x0059D360); only the shared part is done here.
+// The particle members are torn down by the destructor (0x0059D360, not
+// ported) once the deferred destruction runs.
+// @func 0x0059D52C ApeEmitterDef::Release
 void ApeEmitterDef::Release()
 {
     if (DropRef())

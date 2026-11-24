@@ -16,11 +16,19 @@ namespace ape { class ApeRefCounted; class ApeAnimScriptObjectVar; class ApeAnim
 namespace sly {
 
 class WorldObject;
+struct GameEvent;
 struct Laser;
 struct LaserField;
 struct LaserGroup;
 
 namespace levels {
+
+// Identity transform (the console copies the global 0x01164B50).
+inline ape::Matrix34 IdentityTransform()
+{
+    return ape::Matrix34{{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f},
+                         {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
+}
 
 // ---------------------------------------------------------------------------
 // Lasers (laser manager 0x00F657FC: groups of 0x70 bytes in a sorted map at
@@ -309,6 +317,81 @@ void EntityRelease(WorldObject* entity, bool kill);
 // enable while health (+0x15C) is positive and clear their blend timer when
 // disabled - and class2 flag 0x2000 (bit 7 of +0x568).
 void EntityApplyOverrideColor(WorldObject* entity, bool enabled, const ape::xml::Color8& color);
+
+// 0x002A8F18: the binocucom scans a geometry instance.
+void BinocucomScanObject(void* binocucom, ape::ApeRefCounted* geometry);
+// Playing animations: speed (0x003541E0), loop flag (bit 27 of +0x0C) and
+// a jump to the end (0x003540BC with the global clock 0x00F64C9C).
+void AnimSetSpeed(void* anim, float speed);
+bool AnimIsLooping(const void* anim);
+void AnimJumpToEnd(void* anim);
+// Top byte of the entity flags (+0xAC): the player slot of player entities.
+uint8_t EntityPlayerByte(const WorldObject* entity);
+
+// 0x00482D14 on the game world: posts a statistics event for a player.
+void GameWorldPostEvent(uint8_t player, const GameEvent& event);
+
+// Listener (+0xF4) virtual slot 41 (+0xA4): enter `state` with a clip and
+// a target name.
+void EntityListenerSetState(WorldObject* entity, uint32_t state, uint32_t clip, uint32_t target, float value);
+// Entity::GetComponent (0x000D1288) by type; chain components are type 0x0F.
+constexpr uint32_t kComponent_Chain = 0x0F;
+void* EntityFindComponentOfType(WorldObject* entity, uint32_t type);
+// Chain component parameters (+0x20 bits 31/30 and 22-29, floats +0x24..+0x30,
+// vectors +0x40/+0x50). NOTE: meaning of the unnamed values unknown.
+struct ChainComponentParams {
+    bool flag31 = false;
+    bool flag30 = false;
+    uint8_t iterations = 0;
+    float spring = 0.0f;
+    float value28 = 0.0f;
+    float value2C = 0.0f;
+    float angleMax = 0.0f;
+    ape::Vec3 gravity{};
+    ape::Vec3 vector50{};
+};
+ChainComponentParams& ChainParams(void* chainComponent);
+// World transform of a point instance and the player respawn setter
+// (0x00488298 on the game world).
+ape::Matrix34 PointInstanceTransform(const WorldObject* point);
+void GameWorldSetPlayerSpawn(int player, const ape::Matrix34& transform);
+
+// 0x00254814: pauses an animation layer of a character; Entity::SetAnimPaused
+// (0x000DC314) for other entities.
+void CharacterPauseAnimLayer(void* character, uint32_t layer);
+void EntitySetAnimPaused(WorldObject* entity, uint32_t layer, bool paused);
+// Definitions: an object's definition (+0xD0), a level definition by name
+// (sorted map of 0x00F8F12C), the object kind of a definition (bits 10-15 of
+// +0x04), ApeObj virtual slot 11 (SetDef), and the refresh of the entity's
+// render components (type 0x10, 0x00287318) after a swap.
+void* ObjectDef(const ape::ApeRefCounted* object);
+void* FindLevelDef(uint32_t nameHash);
+int DefKind(const void* def);
+void ObjectSetDef(ape::ApeRefCounted* object, void* def);
+void EntityRefreshRenderComponents(WorldObject* entity);
+// Entity virtual slot 18 (+0x48): swaps the weapon component; turrets then
+// reset their aim (0x001CAA88).
+void EntitySwapWeapon(WorldObject* entity, uint32_t component, float speed, float interval1,
+                      float interval2, float angle);
+void TurretResetAim(WorldObject* turret);
+
+// Entity definitions by name (FindEntityDef 0x000C9FC8) and their name (+0x34).
+void* FindEntityDefByName(uint32_t nameHash);
+uint32_t EntityDefNameOf(const void* def);
+// Second class word (+0xC8) of an entity.
+constexpr uint32_t kEntityClass2_Vehicle800 = 0x800;    // NOTE: vehicle class with swap 0x00238270
+constexpr uint32_t kEntityClass2_Vehicle2000 = 0x2000;  // NOTE: vehicle class with swap 0x0024B1E8
+bool EntityHasClass2Flag(const WorldObject* entity, uint32_t mask);
+// Definition swaps: characters 0x00124D58, vehicles 0x00238270 / 0x0024B1E8.
+void CharacterSwapDef(WorldObject* character, void* def, bool deferred);
+void VehicleSwapDef800(WorldObject* vehicle, void* def, bool deferred);
+void VehicleSwapDef2000(WorldObject* vehicle, void* def, bool deferred);
+// After an immediate swap: state layer 0 to state 0 (virtual slot 7) and
+// 0x00261328(component 0x00, 1).
+void CharacterResetAfterSwap(WorldObject* character);
+
+// Camera instance of the loaded level by name (sorted map of 0x00F8F134).
+WorldObject* FindCameraInstance(uint32_t nameHash);
 
 } // namespace levels
 } // namespace sly
