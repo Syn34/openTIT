@@ -76,6 +76,9 @@ public:
 class AglShadowMap : public AglShadowMapBase {
 public:
     AglShadowMap();
+    // @func 0x0079E9B4 AglShadowMap::~AglShadowMap
+    // @func 0x007A2338 AglShadowMap::~AglShadowMap (deleting)
+    ~AglShadowMap() override = default;
 
     float field_600 = 1.0f;
 };
