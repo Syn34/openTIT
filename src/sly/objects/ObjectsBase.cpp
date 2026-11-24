@@ -14,7 +14,7 @@
 namespace sly {
 namespace objects {
 
-// Stand-in for 0x000C387C (entity module).
+// @func 0x000C387C InheritDefDesc
 void InheritDefDesc(const EntityDefDesc& from, EntityDefDesc& to)
 {
     for (int i = 0; i < 8; ++i)
