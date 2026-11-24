@@ -71,7 +71,13 @@ struct ComponentDesc {
 // Base of all entity components.
 class EntityComponent {
 public:
-    virtual ~EntityComponent() = default;                          // slots 0/1
+    EntityComponent() = default;
+    // Base part every component constructor inlines (out of line at
+    // 0x00250298): name, owner and type come from the description and the
+    // component joins the live component registry (sly/components).
+    explicit EntityComponent(const ComponentDesc* desc);
+    // Leaves the live component registry and the update list (0x00250384).
+    virtual ~EntityComponent();                                    // slots 0/1
     virtual void OnOwnerSpawned(Entity* owner) { (void)owner; }    // slot 5 (+0x14)
     virtual void Update(float dt) { (void)dt; }                    // slot 6 (+0x18)
     virtual void PostUpdate(float dt) { (void)dt; }                // slot 7 (+0x1C)
@@ -85,6 +91,7 @@ public:
     Entity* owner = nullptr;  // 0x08
     uint32_t type = 0;        // 0x0C ComponentType
     bool enabled = true;      // 0x10 updated by the owner when set
+    uint32_t field_14 = 0;    // 0x14 NOTE: cleared by the base constructor, role unknown
 };
 
 // Interaction component (type kComp_Interaction).
@@ -379,6 +386,8 @@ public:
 // second one is used by 81 callers (most entity destructors).
 enum EntityList { kList_All, kList_B, kList_C, kList_D, kListCount };
 void RegisterEntity(EntityList list, Entity* entity);
+// Removes any object from a list (the lists also hold components).
+void UnregisterObject(EntityList list, const void* object);
 void UnregisterEntity(EntityList list, Entity* entity);
 uint32_t EntityCount(EntityList list);
 Entity* EntityAt(EntityList list, uint32_t index);

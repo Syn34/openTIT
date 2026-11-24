@@ -8,6 +8,12 @@ namespace components {
 void* LevelPhysicsWorld() { return nullptr; }
 
 
+// TODO(0x000250A0): the AI brain lives in sly/levels/ai.
+void AIBrainFillInput(void* brain, uint8_t* input) { (void)brain; (void)input; }
+// TODO(0x003482B0 / 0x00348650): anim tree and blend map registries.
+void* FindAnimTree(uint32_t nameHash) { (void)nameHash; return nullptr; }
+void* FindAnimBlendMap(uint32_t nameHash) { (void)nameHash; return nullptr; }
+
 // TODO(0x00063D54 ParseBossGrizzComponentDesc): not ported yet.
 entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t)
 {
