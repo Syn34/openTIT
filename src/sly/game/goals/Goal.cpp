@@ -20,7 +20,7 @@ constexpr uint32_t kGoalScriptLibrary = 0x7719A548;
 constexpr uint32_t kHintState_End      = 0x00010CBB;   // "End"
 constexpr uint32_t kHintState_Activate = 0xDCCA6EB0;
 constexpr uint32_t kHintState_Complete = 0x264D6485;
-// Message id (table 0x00F65BF8, entry 0x17) that is forwarded as event 0x17.
+// Message id (kGameEventNames entry 0x17) that is forwarded as event 0x17.
 constexpr uint32_t kMsg_GoalEvent = 0x71445310;
 // Checkpoint name that matches the player character.
 constexpr uint32_t kCheckpoint_Sly = 0x00014120;       // "Sly"
@@ -41,6 +41,14 @@ GoalScript* ScriptAt(const GoalScriptCursor& cursor, uint32_t i)
 }
 
 } // namespace
+
+const uint32_t kGameEventNames[0x21] = {
+    0x00000000, 0x879F2BDA, 0x6362ED0A, 0x03B7913C, 0xA0D76C20, 0x57C506B6, 0x04C20F25,
+    0xBE194E0B, 0x084A5778, 0x1EE967E4, 0xBE52171E, 0x2990B813, 0x0886499B, 0x6A46FCAF,
+    0xAC70D594, 0xCC517C5C, 0x69988172, 0xFE2D0293, 0x65631C62, 0xD8F4C1C9, 0xDFEA6076,
+    0x7113F25D, 0xB1BC9747, 0x71445310, 0x62C083CB, 0x78B40788, 0x3F7B9656, 0xCDCED4B4,
+    0x77297F71, 0x2B1FBAB8, 0xFB0005EA, 0x5E503067, 0x1DD1C81B,
+};
 
 Goal::Goal(const GoalDesc* desc)
 {

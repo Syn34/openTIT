@@ -151,6 +151,8 @@ void JobOwnerUntarget(const Job* job, uint32_t entityName);
 // or removes it (0x0029F7A0).
 void JobOwnerAddTarget(const Job* job, void* entity);
 void JobOwnerRemoveTarget(const Job* job, void* entity);
+// 0x00470660: stat counter `stat` of `category` += amount for an object.
+void GoalReportStat(void* object, uint32_t category, uint32_t stat, int amount);
 // Event listener groups of a goal (0x0048FA54 add, 0x0048F298 remove).
 void GoalListenTo(Goal* goal, uint32_t group);
 void GoalStopListening(Goal* goal);

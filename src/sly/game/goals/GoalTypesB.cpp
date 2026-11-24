@@ -332,3 +332,264 @@ void GoalInteraction::SetStatus(uint8_t newStatus, bool force)
 
 } // namespace goals
 } // namespace sly
+
+#include "ape/core/ApeString.h"
+
+#include <cstdio>
+
+namespace sly {
+namespace goals {
+
+// ===========================================================================
+// GoalScore
+
+namespace {
+constexpr uint32_t kScore_StateScored  = 0x04B14672;
+constexpr uint32_t kScore_StatCategory = 0xA8B960FF;
+constexpr uint32_t kScore_StatName     = 0x36FB367F;
+constexpr uint32_t kScore_TargetEvent  = 0x879F2BDA;   // kGameEventNames[1]
+
+// Adds `delta` to a completion count, clamped to the score range when set.
+uint8_t ClampProgress(uint32_t value, const GoalScore& goal)
+{
+    uint8_t progress = uint8_t(value);
+    if (goal.scoreFlags & GoalScore::kScore_HasMin) {
+        const uint8_t low = uint8_t(int(goal.minScore));
+        if (progress < low)
+            progress = low;
+    }
+    if (goal.scoreFlags & GoalScore::kScore_HasMax) {
+        const uint8_t high = uint8_t(int(goal.maxScore));
+        if (high < progress)
+            progress = high;
+    }
+    return progress;
+}
+} // namespace
+
+// @func 0x0033F0C8 GoalScore::Update
+uint8_t GoalScore::Update(int player, const GameEvent& e)
+{
+    if (status != kGoal_Active)
+        return Goal::Update(player, e);
+
+    const uint32_t type = e.type;
+    bool accepted = false;
+    bool valueFound = false;
+    bool sourceFound = false;
+    int32_t valuePoints = 1;
+    int32_t sourcePoints = 1;
+    uint32_t sourceGroup = 0;
+    uint32_t sourceFlags = 0;
+    float delta = 0.0f;
+
+    if (type < 0x21 && kGameEventNames[type] == eventName) {
+        // Events 7-10 always score; the others only for listed objects.
+        const bool always = type >= 7 && type <= 10;
+        bool lookup = always || values.Count() != 0 || sources.Count() != 0;
+        if (lookup) {
+            if (values.Count() != 0 && e.groupId != 0) {
+                for (const Value& value : values) {
+                    if (value.group == e.groupId) {
+                        valuePoints = value.points;
+                        valueFound = true;
+                        break;
+                    }
+                }
+            }
+            if (!valueFound && e.objectId != 0) {
+                for (const Source& source : sources) {
+                    if (source.name == e.objectId &&
+                        (source.parent == e.ownerId || source.parent == 0)) {
+                        sourceGroup = source.group;
+                        sourcePoints = source.points;
+                        sourceFlags = source.flags & 0xC0000000u;
+                        sourceFound = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!lookup || valueFound || sourceFound) {
+            accepted = true;
+            if (type == 0x17 && e.arg0 != sourceGroup)
+                accepted = false;
+            if (type == 0x1A && !e.arg0)
+                accepted = false;
+            // NOTE: event 0x1A also compares field_CC of its argument with
+            // the source's group; the argument type is not modelled.
+            if (type == 0x1C && e.arg0 != customData)
+                accepted = false;
+        } else {
+            accepted = always;
+        }
+
+        if (accepted) {
+            delta = valueFound ? float(valuePoints) : (sourceFound ? float(sourcePoints) : 1.0f);
+            if (scoreFlags & kScore_ReportStat)
+                GoalReportStat(e.source, kScore_StatCategory, kScore_StatName, int(delta));
+            float next = score + delta;
+            if ((scoreFlags & kScore_HasMin) && next < minScore)
+                next = minScore;
+            if ((scoreFlags & kScore_HasMax) && next > maxScore)
+                next = maxScore;
+            score = next;
+            if (hintScript) {
+                hintScript->SetStateAndUpdate(kScore_StateScored);
+                char state[32];
+                std::snprintf(state, sizeof(state), "score%i", unsigned(score));
+                hintScript->SetStateAndUpdate(ape::HashNameNoCase(state));
+            }
+            if (sourceFound && (sourceFlags & kSource_Marked)) {
+                if (sourceFlags & kSource_Unmark) {
+                    for (uint32_t i = 0; i < marked.Count(); ++i) {
+                        void* entity = marked[i].entity;
+                        if (entity && GoalEntityName(entity) == e.objectId) {
+                            GoalEntityRelease(entity);
+                            for (uint32_t j = i; j + 1 < marked.Count(); ++j)
+                                marked[j] = marked[j + 1];
+                            marked.PopBack();
+                            break;
+                        }
+                    }
+                }
+                if (eventName == kScore_TargetEvent)
+                    JobOwnerUntarget(job, e.objectId);
+            }
+            if (scoreFlags & kScore_NotifyAdvance)
+                JobManagerGroupAdvanced();
+        }
+    }
+
+    // Without a score change only a single-shot goal re-tests its target.
+    if (!accepted && repeatCount != 0)
+        return Goal::Update(player, e);
+
+    bool reached = false;
+    bool failed = false;
+    switch (compare) {
+    case kCompare_AtLeast: reached = target <= score; break;
+    case kCompare_Greater: reached = target < score; break;
+    case kCompare_Near:    reached = std::fabs(score - target) <= tolerance; break;
+    case kCompare_AtMost:
+        reached = score <= target;
+        failed = !reached && accepted;
+        break;
+    case kCompare_Less:
+        reached = score < target;
+        failed = !reached && accepted;
+        break;
+    default:
+        return Goal::Update(player, e);
+    }
+    if (reached) {
+        if (repeatCount == 0)
+            return kGoal_Complete;
+        repeatProgress = ClampProgress(repeatProgress + uint32_t(int(delta)), *this);
+        if (repeatCount <= repeatProgress)
+            SetStatus(kGoal_Complete, false);
+    } else if (failed) {
+        SetStatus(kGoal_Failed, false);
+    }
+    return Goal::Update(player, e);
+}
+
+// @func 0x0033F834 GoalScore::Reset
+void GoalScore::Reset(bool fromSave, int requested)
+{
+    if (fromSave && failRestarts) {
+        score = 0.0f;
+        ReapplyHints(parentGoal);
+    }
+    Goal::Reset(fromSave, requested);
+}
+
+// @func 0x0033FB84 GoalScore::ResetHints
+void GoalScore::ResetHints(bool stopHintScript)
+{
+    score = 0.0f;
+    if (marked.Count() != 0) {
+        for (Marked& entry : marked)
+            if (entry.entity)
+                GoalEntityRelease(entry.entity);
+        marked.Clear();
+    }
+    Goal::ResetHints(stopHintScript);
+}
+
+// @func 0x0033FC68 GoalScore::ReapplyHints
+void GoalScore::ReapplyHints(Goal* owner)
+{
+    Goal::ReapplyHints(owner);
+    if (status != kGoal_Active)
+        return;
+    ResetHints(false);
+    for (const Source& source : sources) {
+        if (source.name == 0 || !(source.flags & (kSource_Marked | kSource_CountMissing)))
+            continue;
+        void* entity = nullptr;
+        if (source.parent == 0) {
+            entity = GoalFindEntity(source.name);
+        } else if (void* parent = GoalFindEntity(source.parent)) {
+            entity = EntityFindDescendant(parent, source.name);
+        }
+        if (entity) {
+            if (source.flags & kSource_Marked) {
+                GoalEntityAddRef(entity);
+                Marked entry;
+                entry.entity = entity;
+                marked.PushBack(entry);
+            }
+            continue;
+        }
+        // Already gone (collected before a reload): count it.
+        if ((source.flags & kSource_CountMissing) && repeatCount != 0) {
+            repeatProgress = ClampProgress(repeatProgress + uint32_t(source.points), *this);
+            if (repeatCount <= repeatProgress)
+                SetStatus(kGoal_Complete, false);
+        }
+    }
+}
+
+// @func 0x0033F8D0 GoalScore::GetProgress
+bool GoalScore::GetProgress(GoalProgress* out)
+{
+    if (progressName == 0)
+        return false;
+    int done = int(score) + progressBase;
+    if (status == kGoal_Complete)
+        done = int(target);
+    out->name = progressName;
+    out->done = done;
+    out->total = showProgressTotal ? int(target + float(progressBase)) : 0;
+    return true;
+}
+
+// @func 0x0033F968 GoalScore::CollectMarkers
+void GoalScore::CollectMarkers(GoalMarkerList* list)
+{
+    if (status != kGoal_Active)
+        return;
+    for (Marked& entry : marked)
+        if (entry.entity && !GoalEntityMarkerSuppressed(entry.entity))
+            GoalAddEntityMarker(list, entry.entity);
+}
+
+// @func 0x0033FF5C GoalScore::SetStatus
+void GoalScore::SetStatus(uint8_t newStatus, bool force)
+{
+    if (force || newStatus != status) {
+        if (status == kGoal_Active)
+            GoalStopListening(this);
+        if (newStatus == kGoal_Active) {
+            if (eventName != 0)
+                GoalListenTo(this, eventName);
+        } else {
+            ResetHints(false);
+        }
+    }
+    Goal::SetStatus(newStatus, force);
+}
+
+} // namespace goals
+} // namespace sly

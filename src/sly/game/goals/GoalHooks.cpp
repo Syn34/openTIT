@@ -83,6 +83,7 @@ bool GoalEntityIsActor(const void*) { return false; }
 void JobOwnerUntarget(const Job*, uint32_t) {}
 void JobOwnerAddTarget(const Job*, void*) {}
 void JobOwnerRemoveTarget(const Job*, void*) {}
+void GoalReportStat(void*, uint32_t, uint32_t, int) {}
 void GoalListenTo(Goal*, uint32_t) {}
 void GoalStopListening(Goal*) {}
 void* SpawnMousetrapHelper() { return nullptr; }

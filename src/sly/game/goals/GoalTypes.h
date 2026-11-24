@@ -590,3 +590,75 @@ public:
 
 } // namespace goals
 } // namespace sly
+
+namespace sly {
+namespace goals {
+
+// "GoalScore" (vtable 0x00B1F048; factory 0x0033E7D8 and destructor not
+// ported): counts events of one type ("scoreType") and compares the score
+// with a target.
+class GoalScore : public Goal {
+public:
+    enum Compare : uint8_t {
+        kCompare_Less = 0, kCompare_AtMost = 1, kCompare_Near = 2,
+        kCompare_Greater = 3, kCompare_AtLeast = 4,
+    };
+    enum ScoreFlags : uint32_t {
+        kScore_ReportStat    = 0x10000000,   // (XML 0x58FA06CA)
+        kScore_HasMax        = 0x20000000,
+        kScore_HasMin        = 0x40000000,
+        kScore_NotifyAdvance = 0x80000000,   // (XML 0x512CF5D9)
+    };
+    // An entity that is marked while it can still score (0x20 bytes).
+    struct Marked {
+        uint8_t pad[0x10];
+        void* entity = nullptr;   // +0x10
+        uint8_t pad2[0x0C];
+    };
+    // A scoring object (0x30 bytes).
+    struct Source {
+        uint8_t pad[0x10];
+        uint32_t name = 0;       // +0x10 object (or child) name
+        uint32_t parent = 0;     // +0x14 parent entity, 0 for none
+        uint32_t group = 0;      // +0x18 compared with event arguments
+        uint32_t field_1C = 0;
+        int32_t points = 1;      // +0x20
+        uint32_t flags = 0;      // +0x24 SourceFlags
+        uint8_t pad3[0x08];
+    };
+    enum SourceFlags : uint32_t {
+        kSource_CountMissing = 0x00800000,   // a missing entity counts as scored
+        kSource_Unmark       = 0x40000000,   // drop its marker when it scores
+        kSource_Marked       = 0x80000000,   // shown with a marker
+    };
+    // Points per event group id (8 bytes).
+    struct Value {
+        uint32_t group = 0;
+        int32_t points = 1;
+    };
+
+    using Goal::Goal;
+    uint8_t Update(int player, const GameEvent& e) override;
+    void Reset(bool fromSave, int status) override;
+    void ResetHints(bool stopHintScript) override;
+    void ReapplyHints(Goal* owner) override;
+    bool GetProgress(GoalProgress* out) override;
+    void CollectMarkers(GoalMarkerList* list) override;
+    void SetStatus(uint8_t newStatus, bool force) override;
+
+    ape::ApeTArray<Marked> marked;    // +0xA0C
+    ape::ApeTArray<Source> sources;   // +0xA20
+    ape::ApeTArray<Value> values;     // +0xA34
+    uint32_t eventName = 0;           // +0xA48 "scoreType"
+    uint32_t customData = 0;          // +0xA4C "customData"
+    uint8_t compare = kCompare_AtLeast; // +0xA50
+    float target = 0.0f;              // +0xA54
+    float tolerance = 0.0f;           // +0xA58
+    float minScore = 0.0f;            // +0xA5C
+    float maxScore = 0.0f;            // +0xA60
+    float score = 0.0f;               // +0xA64
+    uint32_t scoreFlags = 0;          // +0xA68 ScoreFlags
+};
+
+} // namespace goals
+} // namespace sly
