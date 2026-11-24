@@ -15,12 +15,18 @@ using goals::Goal;
 // Progress record of the current profile (game world +0x50, one 0xFD8-byte
 // record per profile, indexed by the profile byte at +0x1070). NOTE: only the
 // fields the job manager touches are named; offsets are record-relative.
+struct EpisodeProgress {
+    uint16_t flags = 0;              // bits 3-4 started/finished, bit 5 NOTE: set while its job runs
+    uint16_t field_02 = 0;
+};
 struct PlayerProgress {
+    uint16_t jobBits[0x28] = {};     // +0x07C per job group, one bit per collected item. NOTE: count assumed
+    uint32_t field_A0 = 0;           // +0x0A0 value of the running job (job +0x32C)
     uint8_t field_149 = 0;           // +0x149 NOTE: a yes/no option
     uint32_t field_14C = 0;          // +0x14C
     uint8_t inJob = 0;               // +0x150 1 while a job runs
     uint32_t currentJobValue = 0;    // +0x154 job record +0x2D4 of the running job
-    uint32_t episodeState[0x20] = {};// +0x1A0 per episode, bits 3-4: started/finished
+    EpisodeProgress episodes[0x20];  // +0x1A0 NOTE: count assumed
     uint32_t unlockBits[2] = {};     // +0xF64 40 unlock flags
 };
 // The current profile's record. NOTE: the game world does not model its
@@ -33,9 +39,13 @@ struct Job {
     uint32_t field_2D4 = 0;          // +0x2D4 copied to the progress record when it starts
     uint8_t pad_2D8[0x10] = {};
     uint32_t nameHash = 0;           // +0x2E8
-    uint8_t pad_2EC[0x4A] = {};
+    uint8_t pad_2EC[0x40] = {};
+    uint32_t field_32C = 0;          // +0x32C
+    uint8_t pad_330[6] = {};
     uint8_t episode = 0;             // +0x336
-    uint8_t pad_337[5] = {};
+    uint8_t pad_337[2] = {};
+    uint8_t bitGroup = 0xFF;         // +0x339 index into PlayerProgress::jobBits, 0xFF = none
+    uint8_t pad_33A[2] = {};
     uint8_t active = 0;              // +0x33C
 };
 
@@ -64,6 +74,16 @@ public:
     bool TrackedGoalHasFlag40() const;
     // Marks the progress record as inside (or outside) a job (0x002E6DC4).
     void SetInJob(bool inJob);
+    // The goal at `goal`'s list position belongs to the job running now
+    // (0x002E2104).
+    bool IsGoalLive(const Goal* goal) const;
+    // Sets or clears flag 0x20 of the running job's episode and records the
+    // job's value (0x002E26A8).
+    void SetCurrentEpisodeFlag(bool on);
+    // Jobs whose episode has flag 0x20 and that have a value (0x002E2A98).
+    int CountFlaggedJobs() const;
+    // Collected bits over all jobs (0x002E6270).
+    int CountJobBits() const;
 
     Job* jobs = nullptr;             // +0x14
     uint32_t jobCount = 0;           // +0x18
@@ -93,10 +113,18 @@ uint32_t CurrentJobValue();
 // +0x10C8), null for -1 or out of range (0x002E6A3C).
 Goal* PlayerGoalAt(uint32_t index);
 
+// Enables or disables the targeting component of every local player
+// (0x002E4A0C).
+void SetPlayersTargeting(bool enabled);
+
 // Player goal list (game world +0x10C0 / +0x10C8). Stubs until the game
 // world models it.
 uint32_t PlayerGoalCount();
 Goal* PlayerGoalListAt(uint32_t index);
+// Game world +0x128114: id of the job that is running (0 = none).
+uint32_t LiveJobId();
+// 0x0029D838 on a targeting component.
+void TargetingSetEnabled(void* targeting, bool enabled);
 
 } // namespace game
 } // namespace sly

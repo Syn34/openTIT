@@ -12,7 +12,11 @@ Goal* JobGoalAt(const Job*, uint32_t) { return nullptr; }
 uint32_t JobGoalSaveWord(const Job*, int) { return 0; }
 void JobSetGoalSaveWord(Job*, int, uint32_t) {}
 uint8_t JobOwnerFlag(const Job*) { return 0; }
-bool IsGoalInLiveJob(const Goal*) { return false; }
+bool IsGoalInLiveJob(const Goal* goal)
+{
+    game::JobManager* manager = game::GetJobManager();
+    return manager && manager->IsGoalLive(goal);
+}
 void JobManagerGoalFailed(Goal*, uint8_t) {}
 void JobManagerBeforeFailSequence() {}
 Goal* JobManagerTrackedGoal()
@@ -31,7 +35,7 @@ const GoalScriptBinding* JobManagerJobBindings(size_t* count)
     return nullptr;
 }
 void JobManagerSetTimerGoal(Goal*) {}
-void JobManagerGroupAdvanced() {}
+void JobManagerGroupAdvanced() { game::SetPlayersTargeting(true); }
 uint16_t GameHudLockCount(SlyGame*) { return 0; }
 bool PlayerPosition(float out[3])
 {
