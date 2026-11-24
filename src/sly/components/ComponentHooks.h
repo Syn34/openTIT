@@ -20,7 +20,7 @@ void* FindAnimTree(uint32_t nameHash);
 void* FindAnimBlendMap(uint32_t nameHash);
 // IK component update (0x002934E0) and vortex pull (0x002B0B10) are not ported.
 
-// <BossGrizz> component parser (0x00063D54, not ported yet).
+// <BossGrizz> component parser (forwards to levels::ai::ParseBossGrizzComponentDesc).
 entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                        uint8_t scope);
 
