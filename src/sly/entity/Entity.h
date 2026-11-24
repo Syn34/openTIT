@@ -124,6 +124,7 @@ enum EntityFlags : uint32_t {
     kEnt_08         = 0x00000008,  // transform owned by someone else (no child update)
     kEnt_80         = 0x00000080,  // slot 23
     kEnt_Visible    = 0x00000100,
+    kEnt_RestoreObject = 0x00000400,  // restore the world object's transform when destroyed
     kEnt_TransformChanged = 0x00000800,
     kEnt_4000       = 0x00004000,
     kEnt_8000       = 0x00008000,
@@ -140,6 +141,7 @@ enum EntityFlags2 : uint16_t {
     kEnt2_PendingVisible  = 0x0080,  // value applied with kEnt2_VisibilityPending
     kEnt2_VisibilityPending = 0x0100,
     kEnt2_NoUpdate        = 0x1000,
+    kEnt2_InListenerGroup = 0x2000,  // registered in an event listener group (0x0048F298 removes it)
 };
 
 // Class bits (+0xB8, 64 bits on the console).
@@ -291,6 +293,9 @@ public:
     uint32_t SoundSlotCount() const { return (flags & kEnt_SoundCountMask) >> kEnt_SoundCountShift; }
 
     // -- data -------------------------------------------------------------------
+    // 0x20 local transform the world object had before the entity took it
+    // over; put back on destruction when kEnt_RestoreObject is set.
+    ape::Matrix34 objectRestoreTransform{};
     ape::Matrix34 transform;                       // 0x60 world transform (translation = position)
     ape::Vec3& Position() { return transform.translation; }   // 0x90
     const ape::Vec3& Position() const { return transform.translation; }

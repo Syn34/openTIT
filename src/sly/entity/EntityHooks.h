@@ -86,5 +86,13 @@ bool ForwardVisibilityToComponents();
 // Bit 7 of byte +0x140 of component 0x20. NOTE: read as "keep hidden".
 bool ComponentHidesRender(EntityComponent* component);
 
+// Animation controllers are deleted through their virtual slot 1.
+void AnimControllerDestroy(void* controller);
+// 0x0048F298 (entity, true): removes the entity from its event listener group.
+void EntityLeaveListenerGroup(Entity* entity);
+// User data tag a released world object keeps (with the entity's render id).
+constexpr uint32_t kUserTag_ReleasedEntity = 0x25431D90u;
+void WorldObjectSetUserData(ape::world::ApeObj* object, uint32_t tag, uint32_t value);
+
 } // namespace entity
 } // namespace sly

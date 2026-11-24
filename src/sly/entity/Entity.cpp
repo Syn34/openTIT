@@ -168,14 +168,33 @@ Entity::Entity()
     transform.translation = { 0.0f, 0.0f, 0.0f, 1.0f };
 }
 
+// @func 0x000DF8B4 Entity::~Entity
+// @func 0x000DF8E0 Entity::~Entity (deleting)
+// @func 0x000D7024 Entity::~Entity (base part, vtable 0x00B12278)
+// Hands the world object back: its original transform is restored when the
+// entity had taken it over, it is hidden, tagged with the render id and
+// released. The component, watcher and child arrays are freed (the
+// components themselves are owned and released elsewhere).
 Entity::~Entity()
 {
-    if (components) {
-        for (EntityComponent* component : *components)
-            delete component;
-        delete components;
+    if (animController) {
+        AnimControllerDestroy(animController);
+        animController = nullptr;
+    }
+    if (flags2 & kEnt2_InListenerGroup)
+        EntityLeaveListenerGroup(this);
+    if (object) {
+        if (flags & kEnt_RestoreObject) {
+            object->SetLocal(objectRestoreTransform);
+            object->MarkDirty();
+            object->SetVisible(false, true);
+        }
+        WorldObjectSetUserData(object, kUserTag_ReleasedEntity, renderId);
+        object->Release();
     }
     delete children;
+    delete watchers;
+    delete components;
 }
 
 // @func 0x000D82BC Entity::OnSpawn

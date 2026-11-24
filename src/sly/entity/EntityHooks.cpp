@@ -69,5 +69,15 @@ bool ForwardVisibilityToComponents() { return false; }
 // TODO: component 0x20 byte +0x140 bit 7 (component class not modelled).
 bool ComponentHidesRender(EntityComponent*) { return false; }
 
+// TODO(0x0034xxxx) the animation controller is not ported.
+void AnimControllerDestroy(void* controller) { (void)controller; }
+// TODO(0x0048F298)
+void EntityLeaveListenerGroup(Entity* entity) { (void)entity; }
+void WorldObjectSetUserData(ape::world::ApeObj* object, uint32_t tag, uint32_t value)
+{
+    object->field_114 = reinterpret_cast<void*>(static_cast<uintptr_t>(tag));
+    object->field_118 = reinterpret_cast<void*>(static_cast<uintptr_t>(value));
+}
+
 } // namespace entity
 } // namespace sly
