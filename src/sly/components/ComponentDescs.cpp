@@ -252,6 +252,13 @@ constexpr uint32_t kMarkerTypeDefault    = 0x7DDC7E2Du;   // NOTE: name unknown
 const char* const kRadarModeNames[9] = {"location", "entity", "binoPhoto", "binoRecord", "hacking",
                                         "vehicle", "blueprint", "follow", "switch"};
 
+constexpr uint32_t kTag_ReceptacleSlot   = 0xA7E419C2u;   // NOTE: element name unknown
+constexpr uint32_t kTag_ReceptacleDef    = 0xD5B4E11Bu;   // NOTE: element name unknown
+constexpr uint32_t kAttr_Pos             = 0x00013634u;
+constexpr uint32_t kAttr_Rot             = 0x00013DB7u;
+constexpr uint32_t kAttr_EntityDef       = 0x79F40122u;
+constexpr uint32_t kAttr_LockEntities    = 0x4BEF99ECu;
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -715,6 +722,35 @@ ComponentDesc* ParseInteractComponentDesc(XmlElement* root, XmlElement* elem, ui
     }
     if (const char* text = elem->GetString(kAttr_InteractText))
         desc->text = ape::StrDup(text);
+    return desc;
+}
+
+// @func 0x002B8328 ParseReceptacleComponentDesc
+ComponentDesc* ParseReceptacleComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    ReceptacleComponentDesc* desc = NewNamedDesc<ReceptacleComponentDesc>(root, elem, scope);
+    if (!desc)
+        return nullptr;   // NOTE: the console still reads LockEntities into the null description
+    for (XmlElement* child = elem->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        const uint32_t tag = child->GetNameHash();
+        if (tag == kTag_ReceptacleSlot) {
+            ReceptacleSlot slot;
+            child->GetHash(kAttr_Name, &slot.name, 0);
+            child->GetHash(kAttr_Part, &slot.part, slot.part);
+            child->GetVec3(kAttr_Pos, &slot.pos.x, &slot.pos.x);
+            child->GetVec3(kAttr_Rot, &slot.rot.x, &slot.rot.x);
+            slot.rot.x *= kDegToRad;
+            slot.rot.y *= kDegToRad;
+            slot.rot.z *= kDegToRad;
+            desc->slots.PushBack(slot);
+        } else if (tag == kTag_ReceptacleDef) {
+            uint32_t def = 0;
+            child->GetHash(kAttr_EntityDef, &def, 0);
+            if (def != 0 && desc->acceptedDefs.Count() < 0xC)
+                desc->acceptedDefs.PushBack(def);
+        }
+    }
+    elem->GetBool(kAttr_LockEntities, &desc->lockEntities, desc->lockEntities);
     return desc;
 }
 

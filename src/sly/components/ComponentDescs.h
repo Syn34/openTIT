@@ -42,6 +42,7 @@ enum ComponentDescType : uint32_t {
     kCompDesc_Radar          = 0x18,
     kCompDesc_RadarBlip      = 0x19,
     kCompDesc_Interact       = 0x1B,
+    kCompDesc_Receptacle     = 0x1C,
     kCompDesc_Mover          = 0x1D,
     kCompDesc_OffscreenMarker = 0x1E,
     kCompDesc_SimplePhysics  = 0x1F,
@@ -302,6 +303,38 @@ struct InteractComponentDesc : ComponentDesc {
     char* text = nullptr;            // 0x5C copy of attribute 0x6E2EE341. NOTE: name unknown
 };
 
+// <Receptacle> (vtable 0x00B1CE68, 0x40 bytes): slots that accept carried
+// entities (child elements 0xA7E419C2) and the definitions it accepts
+// (child elements 0xD5B4E11B, at most 12).
+struct ReceptacleSlot {
+    uint32_t name = 0;           // +0x00
+    uint32_t part = 0;           // +0x04
+    int32_t field08 = -1;        // +0x08
+    uint32_t field0C = 0;        // +0x0C
+    ape::Vec3 rot = {0.0f, 0.0f, 0.0f, 0.0f};      // +0x10 radians (degrees in the XML)
+    ape::Vec3 pos = {0.0f, 0.0f, 0.0f, 0.0f};      // +0x20
+    uint32_t field30 = 0;        // +0x30
+    uint32_t pad34[3] = {};
+    ape::Vec3 vec40 = {0.0f, 0.0f, 0.0f, 0.0f};    // +0x40
+    ape::Vec4 quat50 = {0.0f, 0.0f, 0.0f, 1.0f};   // +0x50
+    uint32_t field60 = 0;        // +0x60
+    uint32_t field64 = 0;        // +0x64
+    uint32_t pad68[2] = {};
+    ape::Vec3 vec70 = {0.0f, 0.0f, 0.0f, 0.0f};    // +0x70
+    uint32_t field80 = 0;        // +0x80
+    uint32_t pad84[3] = {};
+};
+struct ReceptacleComponentDesc : ComponentDesc {
+    explicit ReceptacleComponentDesc(uint32_t nameHash)
+        : ComponentDesc(nameHash, kCompDesc_Receptacle)
+    {
+        acceptedDefs.Init(0xC, nullptr, true);
+    }
+    ape::ApeTArray<ReceptacleSlot> slots;      // 0x14
+    ape::ApeTArray<uint32_t> acceptedDefs;     // 0x28
+    bool lockEntities = false;                 // 0x3C
+};
+
 // <Mover> (vtable 0x00B1CEC0, 0x130 bytes): moves the entity along a path
 // of up to eight child points.
 struct MoverPoint {
@@ -533,6 +566,7 @@ ComponentDesc* ParseFxComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlEle
 ComponentDesc* ParseRadarComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseRadarBlipComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseInteractComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseReceptacleComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseMoverComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseOffscreenMarkerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseSimplePhysicsComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
