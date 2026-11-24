@@ -2959,7 +2959,7 @@ public:
     // @func 0x007AB2CC SlyCharacter2Class::~SlyCharacter2Class
     // @func 0x007AECB4 SlyCharacter2Class::~SlyCharacter2Class (deleting)
     ~SlyCharacter2Class() override = default;
-    // TODO(0x005BDD30 SlyCharacter2Class::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyCharacter2Class() : AglShaderClass("SlyCharacter2") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3746,7 +3746,7 @@ public:
     // NOTE: the deleting destructor is 0x007B031C.
     ~ShoNightBlendClass() override = default;
     // TODO(0x005D8C6C ShoNightBlendClass::SelectTechnique)
-    // TODO(0x005D8B9C ShoNightBlendClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     ShoNightBlendClass() : AglShaderClass("SHO_NightBlend") {}
     void CreateTechniques() override;
 };
@@ -4170,6 +4170,57 @@ bool SlyCharacterCollectibleClass::SetupMaterial(AglMaterial* material, const Ag
     }
     const float rim = desc->paramCount > 4 ? desc->params[4] : 15.0f;
     *material->GetConstant(4) = rim > 0.0f ? rim : 0.0f;
+    return true;
+}
+
+// Param bits holding a colour with red and blue swapped into the order the
+// shaders expect.
+static uint32_t SwapRedBlue(uint32_t color)
+{
+    return ((color >> 16) & 0xFFu) | ((color << 16) & 0xFF0000u) | (color & 0xFF00FF00u);
+}
+
+// @func 0x005BDD30 SlyCharacter2Class::SetupMaterial
+bool SlyCharacter2Class::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    const uint32_t count = desc->paramCount;
+    if (count == 0)
+        return true;
+    AglTexture* ramp = FindTexture(desc->textureHash);
+    if (!ramp)
+        ramp = GetDefaultTexture(3);
+    material->AddTexture(ramp);
+    ramp->SetWrap(3, 3, 1);
+    AddDetailLayers(material, desc);
+
+    const float rim = count > 4 ? desc->params[4] : 15.0f;
+    *material->GetConstant(4) = rim > 0.0f ? rim : 0.0f;
+    const float* extra = desc->params;
+    *material->GetConstant(7) = count > 7 ? extra[7] : 2.5f;
+    *material->GetConstant(9) = count > 9 ? extra[9] : 2.0f;
+    *material->GetConstant(10) = count > 10 ? extra[10] : 1.0f;
+    *material->GetConstant(12) = count > 12 ? extra[12] : 1.0f;
+    uint32_t color8 = 0xFFFFFFFFu, color11 = 0xFFFFFFFFu;
+    if (count > 8)
+        std::memcpy(&color8, &extra[8], sizeof(color8));
+    if (count > 11)
+        std::memcpy(&color11, &extra[11], sizeof(color11));
+    color8 = SwapRedBlue(color8);
+    color11 = SwapRedBlue(color11);
+    std::memcpy(material->GetConstant(8), &color8, sizeof(color8));
+    std::memcpy(material->GetConstant(11), &color11, sizeof(color11));
+    return true;
+}
+
+// @func 0x005D8B9C ShoNightBlendClass::SetupMaterial
+bool ShoNightBlendClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (!MaterialParamsEnabled())
+        return true;
+    AglTexture* night = FindTexture(desc->diffuseHash);
+    if (!night)
+        night = GetDefaultTexture(0);
+    AddLayerLikeFirst(material, night);
     return true;
 }
 
