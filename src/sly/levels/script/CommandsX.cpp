@@ -386,6 +386,7 @@ void SeqCameraShakeCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqMoveToPointCommand : public ApeAnimScriptCommand {
 public:
     SeqMoveToPointCommand();
+    ~SeqMoveToPointCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -397,6 +398,10 @@ private:
 
 // @func 0x0009B78C SeqMoveToPointCommand::SeqMoveToPointCommand
 SeqMoveToPointCommand::SeqMoveToPointCommand() = default;
+
+// @func 0x007403F0 SeqMoveToPointCommand::~SeqMoveToPointCommand
+// @func 0x00740420 SeqMoveToPointCommand::~SeqMoveToPointCommand (deleting)
+SeqMoveToPointCommand::~SeqMoveToPointCommand() = default;
 
 // @func 0x0009B7DC SeqMoveToPointCommand::Create
 ApeAnimScriptCommand* SeqMoveToPointCommand::Create(XmlElement* element) const
@@ -427,6 +432,7 @@ void SeqMoveToPointCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqDamageCommand : public ApeAnimScriptCommand {
 public:
     SeqDamageCommand();
+    ~SeqDamageCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -441,6 +447,10 @@ private:
 
 // @func 0x0009B9A4 SeqDamageCommand::SeqDamageCommand
 SeqDamageCommand::SeqDamageCommand() = default;
+
+// @func 0x00740478 SeqDamageCommand::~SeqDamageCommand
+// @func 0x007404A8 SeqDamageCommand::~SeqDamageCommand (deleting)
+SeqDamageCommand::~SeqDamageCommand() = default;
 
 // @func 0x0009B9FC SeqDamageCommand::Create
 ApeAnimScriptCommand* SeqDamageCommand::Create(XmlElement* element) const
@@ -464,6 +474,7 @@ ApeAnimScriptCommand* SeqDamageCommand::Create(XmlElement* element) const
 class SeqAttachCommand : public ApeAnimScriptCommand {
 public:
     SeqAttachCommand();
+    ~SeqAttachCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -474,6 +485,10 @@ private:
 
 // @func 0x0009BCA4 SeqAttachCommand::SeqAttachCommand
 SeqAttachCommand::SeqAttachCommand() = default;
+
+// @func 0x00740500 SeqAttachCommand::~SeqAttachCommand
+// @func 0x00740530 SeqAttachCommand::~SeqAttachCommand (deleting)
+SeqAttachCommand::~SeqAttachCommand() = default;
 
 // @func 0x0009BCEC SeqAttachCommand::Create
 ApeAnimScriptCommand* SeqAttachCommand::Create(XmlElement* element) const

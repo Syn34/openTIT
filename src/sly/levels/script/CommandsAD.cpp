@@ -48,6 +48,7 @@ constexpr uint32_t kAttrVisible17 = 0x834744B0u;    // NOTE: name unknown
 class SeqStartStateCommand : public ApeAnimScriptCommand {
 public:
     SeqStartStateCommand();
+    ~SeqStartStateCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -59,6 +60,10 @@ private:
 
 // @func 0x000A5F08 SeqStartStateCommand::SeqStartStateCommand
 SeqStartStateCommand::SeqStartStateCommand() = default;
+
+// @func 0x007424D0 SeqStartStateCommand::~SeqStartStateCommand
+// @func 0x00742500 SeqStartStateCommand::~SeqStartStateCommand (deleting)
+SeqStartStateCommand::~SeqStartStateCommand() = default;
 
 // @func 0x000A5F58 SeqStartStateCommand::Create
 ApeAnimScriptCommand* SeqStartStateCommand::Create(XmlElement* element) const
@@ -83,6 +88,7 @@ void SeqStartStateCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqGroupVolumeCommand : public ApeAnimScriptCommand {
 public:
     SeqGroupVolumeCommand();
+    ~SeqGroupVolumeCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -93,6 +99,10 @@ private:
 
 // @func 0x000A60E4 SeqGroupVolumeCommand::SeqGroupVolumeCommand
 SeqGroupVolumeCommand::SeqGroupVolumeCommand() = default;
+
+// @func 0x00742558 SeqGroupVolumeCommand::~SeqGroupVolumeCommand
+// @func 0x00742588 SeqGroupVolumeCommand::~SeqGroupVolumeCommand (deleting)
+SeqGroupVolumeCommand::~SeqGroupVolumeCommand() = default;
 
 // @func 0x000A6134 SeqGroupVolumeCommand::Create
 ApeAnimScriptCommand* SeqGroupVolumeCommand::Create(XmlElement* element) const
@@ -118,12 +128,17 @@ void SeqGroupVolumeCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqLevelHeadlineCommand : public ApeAnimScriptCommand {
 public:
     SeqLevelHeadlineCommand();
+    ~SeqLevelHeadlineCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 };
 
 // @func 0x000A629C SeqLevelHeadlineCommand::SeqLevelHeadlineCommand
 SeqLevelHeadlineCommand::SeqLevelHeadlineCommand() = default;
+
+// @func 0x007425E0 SeqLevelHeadlineCommand::~SeqLevelHeadlineCommand
+// @func 0x00742610 SeqLevelHeadlineCommand::~SeqLevelHeadlineCommand (deleting)
+SeqLevelHeadlineCommand::~SeqLevelHeadlineCommand() = default;
 
 // @func 0x000A62DC SeqLevelHeadlineCommand::Create
 ApeAnimScriptCommand* SeqLevelHeadlineCommand::Create(XmlElement*) const
@@ -146,6 +161,7 @@ void SeqLevelHeadlineCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState
 class StartSequenceCommand : public ApeAnimScriptCommand {
 public:
     StartSequenceCommand();
+    ~StartSequenceCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -155,6 +171,10 @@ private:
 
 // @func 0x000A6A3C StartSequenceCommand::StartSequenceCommand
 StartSequenceCommand::StartSequenceCommand() = default;
+
+// @func 0x007426F0 StartSequenceCommand::~StartSequenceCommand
+// @func 0x00742720 StartSequenceCommand::~StartSequenceCommand (deleting)
+StartSequenceCommand::~StartSequenceCommand() = default;
 
 // @func 0x000A6A84 StartSequenceCommand::Create
 ApeAnimScriptCommand* StartSequenceCommand::Create(XmlElement* element) const
@@ -174,6 +194,7 @@ ApeAnimScriptCommand* StartSequenceCommand::Create(XmlElement* element) const
 class SeqStopSoundCommand : public ApeAnimScriptCommand {
 public:
     SeqStopSoundCommand();
+    ~SeqStopSoundCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -185,6 +206,10 @@ private:
 
 // @func 0x000A6CA4 SeqStopSoundCommand::SeqStopSoundCommand
 SeqStopSoundCommand::SeqStopSoundCommand() = default;
+
+// @func 0x00742778 SeqStopSoundCommand::~SeqStopSoundCommand
+// @func 0x007427A8 SeqStopSoundCommand::~SeqStopSoundCommand (deleting)
+SeqStopSoundCommand::~SeqStopSoundCommand() = default;
 
 // @func 0x000A6CF4 SeqStopSoundCommand::Create
 ApeAnimScriptCommand* SeqStopSoundCommand::Create(XmlElement* element) const
@@ -208,6 +233,7 @@ void SeqStopSoundCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqStopMusicCommand : public ApeAnimScriptCommand {
 public:
     SeqStopMusicCommand();
+    ~SeqStopMusicCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -217,6 +243,10 @@ private:
 
 // @func 0x000A6E60 SeqStopMusicCommand::SeqStopMusicCommand
 SeqStopMusicCommand::SeqStopMusicCommand() = default;
+
+// @func 0x00740090 SeqStopMusicCommand::~SeqStopMusicCommand
+// @func 0x00742800 SeqStopMusicCommand::~SeqStopMusicCommand (deleting)
+SeqStopMusicCommand::~SeqStopMusicCommand() = default;
 
 // @func 0x000A6EA8 SeqStopMusicCommand::Create
 ApeAnimScriptCommand* SeqStopMusicCommand::Create(XmlElement* element) const
@@ -238,6 +268,7 @@ void SeqStopMusicCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SwitchCostumeCommand : public ApeAnimScriptCommand {
 public:
     SwitchCostumeCommand();
+    ~SwitchCostumeCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -251,6 +282,10 @@ private:
 
 // @func 0x000A6FC0 SwitchCostumeCommand::SwitchCostumeCommand
 SwitchCostumeCommand::SwitchCostumeCommand() = default;
+
+// @func 0x00742858 SwitchCostumeCommand::~SwitchCostumeCommand
+// @func 0x00742888 SwitchCostumeCommand::~SwitchCostumeCommand (deleting)
+SwitchCostumeCommand::~SwitchCostumeCommand() = default;
 
 // @func 0x000A7018 SwitchCostumeCommand::Create
 ApeAnimScriptCommand* SwitchCostumeCommand::Create(XmlElement* element) const
@@ -280,6 +315,7 @@ void SwitchCostumeCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqWaitForSoundCommand : public ApeAnimScriptCommand {
 public:
     SeqWaitForSoundCommand();
+    ~SeqWaitForSoundCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -290,6 +326,10 @@ private:
 
 // @func 0x000A7488 SeqWaitForSoundCommand::SeqWaitForSoundCommand
 SeqWaitForSoundCommand::SeqWaitForSoundCommand() = default;
+
+// @func 0x007429C8 SeqWaitForSoundCommand::~SeqWaitForSoundCommand
+// @func 0x007429F8 SeqWaitForSoundCommand::~SeqWaitForSoundCommand (deleting)
+SeqWaitForSoundCommand::~SeqWaitForSoundCommand() = default;
 
 // @func 0x000A74D0 SeqWaitForSoundCommand::Create
 ApeAnimScriptCommand* SeqWaitForSoundCommand::Create(XmlElement* element) const
@@ -312,6 +352,7 @@ void SeqWaitForSoundCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*
 class SeqDarkScreenCommand : public ApeAnimScriptCommand {
 public:
     SeqDarkScreenCommand();
+    ~SeqDarkScreenCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -325,6 +366,10 @@ private:
 
 // @func 0x0009C014 SeqDarkScreenCommand::SeqDarkScreenCommand
 SeqDarkScreenCommand::SeqDarkScreenCommand() = default;
+
+// @func 0x00740610 SeqDarkScreenCommand::~SeqDarkScreenCommand
+// @func 0x00740640 SeqDarkScreenCommand::~SeqDarkScreenCommand (deleting)
+SeqDarkScreenCommand::~SeqDarkScreenCommand() = default;
 
 // @func 0x0009C078 SeqDarkScreenCommand::Create
 ApeAnimScriptCommand* SeqDarkScreenCommand::Create(XmlElement* element) const
