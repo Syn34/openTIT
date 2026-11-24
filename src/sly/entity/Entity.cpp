@@ -449,7 +449,7 @@ void Entity::SetCullDistance(float distance, bool recurse)
 // @func 0x007348D8 Entity::SetClassBits
 void Entity::SetClassBits(uint64_t bits, bool on, bool recurse)
 {
-    classBits = on ? (classBits | bits) : (classBits & ~bits);
+    SetClassBit(bits, on);
     if (!recurse)
         return;
     ForEachChild(this, [bits, on](EntityChildLink& link) {

@@ -263,6 +263,8 @@ public:
     void SetCullDistance(float distance, bool children);
     // Sets or clears EntityClassBits, optionally on all attached children.
     void SetClassBits(uint64_t bits, bool on, bool children);
+    // @func 0x0074B684 Entity::SetClassBit
+    void SetClassBit(uint64_t bits, bool on) { classBits = on ? (classBits | bits) : (classBits & ~bits); }
     void SetScale(const ape::Vec3& scale, bool children);
     void SetLocalTransform(const ape::Matrix34& transform);
 
