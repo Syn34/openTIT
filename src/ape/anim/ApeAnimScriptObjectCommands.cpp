@@ -205,6 +205,8 @@ ApeAnimScriptSpawnObjectCommand::ApeAnimScriptSpawnObjectCommand(xml::XmlElement
         m_visible = visible ? 1 : 0;
 }
 
+// @func 0x00794210 ApeAnimScriptSpawnObjectCommand::~ApeAnimScriptSpawnObjectCommand
+// @func 0x00794220 ApeAnimScriptSpawnObjectCommand::~ApeAnimScriptSpawnObjectCommand (deleting)
 ApeAnimScriptSpawnObjectCommand::~ApeAnimScriptSpawnObjectCommand() = default;
 
 // @func 0x004C2324 ApeAnimScriptSpawnObjectCommand::Create
@@ -450,6 +452,8 @@ xml::XmlElement* ApeAnimScriptSetColorCommand::CreateDebugElement() const
 // ---------------------------------------------------------------------------
 // EnableProcAnim
 
+// @func 0x00793BB4 ApeAnimScriptEnableProcAnimCommand::~ApeAnimScriptEnableProcAnimCommand
+// @func 0x007944DC ApeAnimScriptEnableProcAnimCommand::~ApeAnimScriptEnableProcAnimCommand (deleting)
 ApeAnimScriptEnableProcAnimCommand::~ApeAnimScriptEnableProcAnimCommand() = default;
 
 // @func 0x004CCD18 ApeAnimScriptEnableProcAnimCommand::Create
@@ -475,6 +479,8 @@ xml::XmlElement* ApeAnimScriptEnableProcAnimCommand::CreateDebugElement() const
 // ---------------------------------------------------------------------------
 // SetScale
 
+// @func 0x00793B94 ApeAnimScriptSetScaleCommand::~ApeAnimScriptSetScaleCommand
+// @func 0x00794454 ApeAnimScriptSetScaleCommand::~ApeAnimScriptSetScaleCommand (deleting)
 ApeAnimScriptSetScaleCommand::~ApeAnimScriptSetScaleCommand() = default;
 
 // @func 0x004CB328 ApeAnimScriptSetScaleCommand::Create
@@ -580,6 +586,8 @@ ApeAnimScriptCommand* ApeAnimScriptInterpScaleCommand::Create(xml::XmlElement* e
 // ---------------------------------------------------------------------------
 // CreateProcAnim
 
+// @func 0x00793BA4 ApeAnimScriptCreateProcAnimCommand::~ApeAnimScriptCreateProcAnimCommand
+// @func 0x00794498 ApeAnimScriptCreateProcAnimCommand::~ApeAnimScriptCreateProcAnimCommand (deleting)
 ApeAnimScriptCreateProcAnimCommand::~ApeAnimScriptCreateProcAnimCommand() = default;
 
 // @func 0x004CC0BC ApeAnimScriptCreateProcAnimCommand::Create

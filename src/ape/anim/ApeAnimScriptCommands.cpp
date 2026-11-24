@@ -3,6 +3,7 @@
 
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
+#include "ape/math/ApeMath.h"
 #include "ape/xml/ApeXml.h"
 
 namespace ape {
@@ -275,8 +276,103 @@ xml::XmlElement* ApeAnimScriptCallCommand::CreateDebugElement() const
 }
 
 // ---------------------------------------------------------------------------
+// CallRandom
+
+namespace {
+constexpr uint32_t kElemScript = AnimHash("Script");
+constexpr uint32_t kAttrWeight = AnimHash("Weight");
+constexpr uint32_t kAttrValueName = AnimHash("Value");
+constexpr uint32_t kAttrPercent = 0xEE1B3C3Bu;   // NOTE: name unknown
+}
+
+// Prototype used by the registry.
+// @func 0x004B9DA4 ApeAnimScriptCallRandomCommand::ApeAnimScriptCallRandomCommand
+ApeAnimScriptCallRandomCommand::ApeAnimScriptCallRandomCommand()
+{
+    m_choices.reserve(kMaxScripts);
+    m_params.reserve(kMaxParams);
+}
+
+// @func 0x004C8360 ApeAnimScriptCallRandomCommand::ApeAnimScriptCallRandomCommand(xml)
+ApeAnimScriptCallRandomCommand::ApeAnimScriptCallRandomCommand(xml::XmlElement* element)
+    : ApeAnimScriptCallRandomCommand()
+{
+    element->GetBool(kAttrPercent, &m_percent, false);
+    if (m_percent)
+        m_totalWeight = 100.0f;
+    for (xml::XmlElement* child = element->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        if (!child->IsValid())
+            continue;
+        const uint32_t name = child->GetNameHash();
+        if (name == kElemScript) {
+            if (m_choices.size() >= kMaxScripts)
+                continue;
+            Choice choice = {0.0f, 0, 0};
+            child->GetFloat(kAttrWeight, &choice.weight, 0.0f);
+            child->GetHash(kAttrScript, &choice.script, 0);
+            if (!choice.script || !(choice.weight > 0.0f))
+                continue;
+            child->GetHash(kAttrScriptLib, &choice.library, 0);
+            m_choices.push_back(choice);
+            if (!m_percent)
+                m_totalWeight += choice.weight;
+        } else if (name == kElemParam) {
+            if (m_params.size() >= kMaxParams)
+                continue;
+            Param param = {0, 0};
+            child->GetHash(kAttrName, &param.name, 0);
+            child->GetHash(kAttrValueName, &param.value, 0);
+            if (param.name && param.value)
+                m_params.push_back(param);
+        }
+    }
+}
+
+// @func 0x004C87C0 ApeAnimScriptCallRandomCommand::Create
+ApeAnimScriptCommand* ApeAnimScriptCallRandomCommand::Create(xml::XmlElement* element) const
+{
+    return new ApeAnimScriptCallRandomCommand(element);
+}
+
+// @func 0x004C8838 ApeAnimScriptCallRandomCommand::Execute
+void ApeAnimScriptCallRandomCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state)
+{
+    if (m_choices.empty())
+        return;
+    const float roll = m_totalWeight * RandomUnit(g_gameRandom);
+    size_t pick = 0;
+    float sum = 0.0f;
+    for (; pick < m_choices.size(); ++pick) {
+        sum += m_choices[pick].weight;
+        if (roll <= sum)
+            break;
+    }
+    if (pick == m_choices.size()) {
+        if (m_percent)
+            return;   // the roll fell into the unlisted remainder
+        // NOTE: only reachable through rounding; the console reads one entry
+        // past the list here, the last entry is used instead.
+        pick = m_choices.size() - 1;
+    }
+    ApeAnimScript* script = ApeAnimScriptLibrary::FindScriptAnywhere(m_choices[pick].script,
+                                                                     m_choices[pick].library, true);
+    if (!script)
+        return;
+    auto* callee = new ApeAnimScriptInstance(script);
+    // NOTE: without a calling instance the new instance is never attached.
+    if (!instance)
+        return;
+    for (const Param& param : m_params)
+        if (ApeAnimScriptVar* var = instance->FindVar(param.value))
+            PassParameter(callee, param.name, var);
+    instance->AddChild(callee);
+}
+
+// ---------------------------------------------------------------------------
 // StopChildScript
 
+// @func 0x00794400 ApeAnimScriptStopChildScriptCommand::~ApeAnimScriptStopChildScriptCommand
+// @func 0x00794410 ApeAnimScriptStopChildScriptCommand::~ApeAnimScriptStopChildScriptCommand (deleting)
 ApeAnimScriptStopChildScriptCommand::~ApeAnimScriptStopChildScriptCommand() = default;
 
 // @func 0x004C8DB4 ApeAnimScriptStopChildScriptCommand::Create

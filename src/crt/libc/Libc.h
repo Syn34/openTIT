@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <ctime>
 #include <cwchar>
+#include <exception>
 #include <memory>
 
 namespace crt {
@@ -209,5 +210,18 @@ float ATanF(float x);
 float ATan2F(float y, float x);
 float ATanKernelF(float x, uint32_t octant);
 int FloatClassify(const float* value);
+
+// ---------------------------------------------------------------------------
+// C++ runtime support (CxxRuntime.cpp)
+// ---------------------------------------------------------------------------
+[[noreturn]] void ReportUncaughtException(const std::exception& exception);
+void* OperatorNewAligned(size_t size, size_t alignment);
+void* OperatorNewArrayAligned(size_t size, size_t alignment);
+void OperatorDelete(void* block);
+[[noreturn]] void DefaultTerminateHandler();
+std::terminate_handler SetTerminateHandler(std::terminate_handler handler);
+[[noreturn]] void Terminate();
+[[noreturn]] void PureVirtualCalled();
+void* MemCpyAligned(void* dst, const void* src, size_t bytes);
 
 } // namespace crt

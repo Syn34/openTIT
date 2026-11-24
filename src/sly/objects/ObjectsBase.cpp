@@ -68,6 +68,17 @@ EntityPlacement::EntityPlacement(const char* placementName, EntityDef* ownerDef)
 }
 
 // Stand-in for 0x000CDB28 (entity module): the transform and name.
+// Also inlined into every placement destructor on the console.
+// @func 0x00746F5C EntityPlacement::~EntityPlacement
+// @func 0x00746FCC EntityPlacement::~EntityPlacement (deleting)
+EntityPlacement::~EntityPlacement()
+{
+    if (ownedArray) {
+        ownedArray->Release();
+        delete ownedArray;
+    }
+}
+
 void EntityPlacement::FillInstanceDesc(EntityInstanceDesc& desc) const
 {
     desc.transform = transform;

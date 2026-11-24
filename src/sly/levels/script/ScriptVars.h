@@ -8,7 +8,7 @@
 //
 // Vtables 0x00B11B38..0x00B11D38 (15 slots, same layout as ApeAnimScriptVar).
 // The small type/size getters and the string variable's destructors are
-// shared out-of-line copies at 0x00742AB0..0x00742C6C (outside this module).
+// out-of-line copies at 0x00742AB0..0x00742C6C.
 #pragma once
 
 #include "ape/anim/ApeAnimScript.h"
@@ -50,8 +50,34 @@ public:
     ScriptHandleVar();
     ~ScriptHandleVar() override;
 
+    // @func 0x00742BB4 ScriptHandleVar<T, kType>::IsNumber (trigger)
+    // @func 0x00742BD4 ScriptHandleVar<T, kType>::IsNumber (spawner)
+    // @func 0x00742BF4 ScriptHandleVar<T, kType>::IsNumber (spawn group)
+    // @func 0x00742C14 ScriptHandleVar<T, kType>::IsNumber (laser)
+    // @func 0x00742C34 ScriptHandleVar<T, kType>::IsNumber (laser field)
+    // @func 0x00742C54 ScriptHandleVar<T, kType>::IsNumber (laser group)
+    bool IsNumber() const override { return false; }
+    // @func 0x00742BBC ScriptHandleVar<T, kType>::IsReference (trigger)
+    // @func 0x00742BDC ScriptHandleVar<T, kType>::IsReference (spawner)
+    // @func 0x00742BFC ScriptHandleVar<T, kType>::IsReference (spawn group)
+    // @func 0x00742C1C ScriptHandleVar<T, kType>::IsReference (laser)
+    // @func 0x00742C3C ScriptHandleVar<T, kType>::IsReference (laser field)
+    // @func 0x00742C5C ScriptHandleVar<T, kType>::IsReference (laser group)
+    bool IsReference() const override { return false; }
+    // @func 0x00742BC4 ScriptHandleVar<T, kType>::GetType (trigger)
+    // @func 0x00742BE4 ScriptHandleVar<T, kType>::GetType (spawner)
+    // @func 0x00742C04 ScriptHandleVar<T, kType>::GetType (spawn group)
+    // @func 0x00742C24 ScriptHandleVar<T, kType>::GetType (laser)
+    // @func 0x00742C44 ScriptHandleVar<T, kType>::GetType (laser field)
+    // @func 0x00742C64 ScriptHandleVar<T, kType>::GetType (laser group)
     ape::AnimScriptVarType GetType() const override { return static_cast<ape::AnimScriptVarType>(kType); }
     ape::ApeAnimScriptVar* Clone() const override;
+    // @func 0x00742BCC ScriptHandleVar<T, kType>::GetSize (trigger)
+    // @func 0x00742BEC ScriptHandleVar<T, kType>::GetSize (spawner)
+    // @func 0x00742C0C ScriptHandleVar<T, kType>::GetSize (spawn group)
+    // @func 0x00742C2C ScriptHandleVar<T, kType>::GetSize (laser)
+    // @func 0x00742C4C ScriptHandleVar<T, kType>::GetSize (laser field)
+    // @func 0x00742C6C ScriptHandleVar<T, kType>::GetSize (laser group)
     uint32_t GetSize() const override { return 0x18; }
     ape::ApeAnimScriptVar* Create(ape::xml::XmlElement* element) const override;
 
@@ -68,8 +94,14 @@ public:
     ScriptSoundVar();
     ~ScriptSoundVar() override;
 
+    // @func 0x00742AEC ScriptSoundVar::IsNumber
+    bool IsNumber() const override { return false; }
+    // @func 0x00742AF4 ScriptSoundVar::IsReference
+    bool IsReference() const override { return false; }
+    // @func 0x00742AFC ScriptSoundVar::GetType
     ape::AnimScriptVarType GetType() const override { return static_cast<ape::AnimScriptVarType>(kVarType_Sound); }
     ape::ApeAnimScriptVar* Clone() const override;
+    // @func 0x00742B04 ScriptSoundVar::GetSize
     uint32_t GetSize() const override { return 0x18; }
     ape::ApeAnimScriptVar* Create(ape::xml::XmlElement* element) const override;
 
@@ -91,9 +123,18 @@ using ScriptLaserGroupVar = ScriptHandleVar<LaserGroup*, kVarType_LaserGroup>;
 class ScriptStringVar : public ape::ApeAnimScriptVar {
 public:
     ScriptStringVar();
+    // @func 0x00742B0C ScriptStringVar::~ScriptStringVar
+    // @func 0x00742B3C ScriptStringVar::~ScriptStringVar (deleting)
+    ~ScriptStringVar() override = default;
 
+    // @func 0x00742B94 ScriptStringVar::IsNumber
+    bool IsNumber() const override { return false; }
+    // @func 0x00742B9C ScriptStringVar::IsReference
+    bool IsReference() const override { return false; }
+    // @func 0x00742BA4 ScriptStringVar::GetType
     ape::AnimScriptVarType GetType() const override { return static_cast<ape::AnimScriptVarType>(kVarType_String); }
     ape::ApeAnimScriptVar* Clone() const override;
+    // @func 0x00742BAC ScriptStringVar::GetSize
     uint32_t GetSize() const override { return 0x58; }
     ape::ApeAnimScriptVar* Create(ape::xml::XmlElement* element) const override;
 

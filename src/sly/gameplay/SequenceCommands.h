@@ -22,6 +22,7 @@ namespace gameplay {
 class SeqMixStateCommand : public SequenceCommand {
 public:
     SeqMixStateCommand(float blendTime, bool push, const audio::MixState* state);
+    ~SeqMixStateCommand() override;
     void Execute() override;
 
 private:
@@ -35,6 +36,7 @@ private:
 class SeqPostMessageCommand : public SequenceCommand {
 public:
     SeqPostMessageCommand(uint32_t listenerKey, uint32_t message, uint32_t argument);
+    ~SeqPostMessageCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -49,6 +51,7 @@ private:
 class SeqCameraShakeCommand : public SequenceCommand {
 public:
     SeqCameraShakeCommand(uint32_t entityHash, const CameraShakeParams& params, bool blocking);
+    ~SeqCameraShakeCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -61,7 +64,10 @@ private:
 class SeqAttachCommand : public SequenceCommand {
 public:
     SeqAttachCommand(uint32_t childHash, uint32_t parentHash);
+    ~SeqAttachCommand() override;
     void Execute() override;
+    // @func 0x0077FBB0 SeqAttachCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     WorldObject* m_child = nullptr;   // +0x0C
@@ -74,7 +80,10 @@ private:
 class SeqEnableComponentCommand : public SequenceCommand {
 public:
     SeqEnableComponentCommand(uint32_t entityHash, uint32_t componentHash, bool enable);
+    ~SeqEnableComponentCommand() override;
     void Execute() override;
+    // @func 0x0077FC40 SeqEnableComponentCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     uint32_t m_entityHash = 0;      // +0x0C
@@ -86,6 +95,7 @@ private:
 class SeqScreenFadeCommand : public SequenceCommand {
 public:
     SeqScreenFadeCommand(float red, float green, float target, float duration, bool fadeOut);
+    ~SeqScreenFadeCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -103,7 +113,10 @@ private:
 class SeqEnablePhysicsCommand : public SequenceCommand {
 public:
     SeqEnablePhysicsCommand(uint32_t entityHash, bool enable, bool alsoBody);
+    ~SeqEnablePhysicsCommand() override;
     void Execute() override;
+    // @func 0x0077FD58 SeqEnablePhysicsCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     uint32_t m_entityHash = 0;   // +0x0C
@@ -115,6 +128,7 @@ private:
 class SeqEndSequenceCommand : public SequenceCommand {
 public:
     SeqEndSequenceCommand();
+    ~SeqEndSequenceCommand() override;
     void Execute() override;
 };
 
@@ -122,6 +136,7 @@ public:
 class SeqPlayAnimationCommand : public SequenceCommand {
 public:
     SeqPlayAnimationCommand(uint32_t entityHash, uint32_t animHash, bool loop, bool hideFirst);
+    ~SeqPlayAnimationCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -136,6 +151,7 @@ private:
 class SeqSuppressAudioCommand : public SequenceCommand {
 public:
     SeqSuppressAudioCommand(uint32_t entityHash, bool suppress);
+    ~SeqSuppressAudioCommand() override;
     void Execute() override;
 
 private:
@@ -166,6 +182,7 @@ class SeqColorFilterCommand : public SequenceCommand {
 public:
     SeqColorFilterCommand(float red, float green, float blue, uint32_t mode, bool hold,
                           bool blocking);
+    ~SeqColorFilterCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -182,6 +199,7 @@ class SeqDepthOfFieldCommand : public SequenceCommand {
 public:
     SeqDepthOfFieldCommand(float nearStart, float nearEnd, float farStart, float farEnd,
                            bool both, bool blocking);
+    ~SeqDepthOfFieldCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -195,6 +213,7 @@ class SeqFocusPullCommand : public SequenceCommand {
 public:
     SeqFocusPullCommand(const float params[7], uint32_t targetHash, uint32_t mode,
                         bool flag30, bool flag31, bool blocking);
+    ~SeqFocusPullCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -210,6 +229,7 @@ private:
 class SeqCameraEffectCommand : public SequenceCommand {
 public:
     SeqCameraEffectCommand(const CameraEffectParams& params, bool blocking);
+    ~SeqCameraEffectCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -222,6 +242,7 @@ private:
 class SeqAmbientTintCommand : public SequenceCommand {
 public:
     SeqAmbientTintCommand(float red, float green, float blue);
+    ~SeqAmbientTintCommand() override;
     void Execute() override;
 
 private:
@@ -234,7 +255,10 @@ private:
 class SeqRemoveEntityCommand : public SequenceCommand {
 public:
     SeqRemoveEntityCommand(uint32_t entityHash, bool playDespawn);
+    ~SeqRemoveEntityCommand() override;
     void Execute() override;
+    // @func 0x007804B0 SeqRemoveEntityCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     uint32_t m_entityHash = 0;   // +0x0C
@@ -245,6 +269,7 @@ private:
 class SeqWaitCommand : public SequenceCommand {
 public:
     explicit SeqWaitCommand(float duration);
+    ~SeqWaitCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -257,6 +282,7 @@ private:
 class SeqHideHudCommand : public SequenceCommand {
 public:
     explicit SeqHideHudCommand(bool hide);
+    ~SeqHideHudCommand() override;
     void Execute() override;
 
 private:
@@ -266,6 +292,7 @@ private:
 class SeqShowHudCommand : public SequenceCommand {
 public:
     explicit SeqShowHudCommand(bool show);
+    ~SeqShowHudCommand() override;
     void Execute() override;
 
 private:
@@ -275,6 +302,7 @@ private:
 class SeqLockInputCommand : public SequenceCommand {
 public:
     explicit SeqLockInputCommand(bool lock);
+    ~SeqLockInputCommand() override;
     void Execute() override;
 
 private:
@@ -284,6 +312,7 @@ private:
 class SeqHudCounterCommand : public SequenceCommand {
 public:
     explicit SeqHudCounterCommand(bool visible);
+    ~SeqHudCounterCommand() override;
     void Execute() override;
 
 private:
@@ -327,6 +356,7 @@ class SeqWaitForButtonCommand : public SequenceCommand {
 public:
     SeqWaitForButtonCommand(float timeout, int player, uint32_t buttonMask,
                             uint32_t listenerKey, uint32_t message);
+    ~SeqWaitForButtonCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -345,6 +375,7 @@ private:
 class SeqTransitionPromptCommand : public SequenceCommand {
 public:
     explicit SeqTransitionPromptCommand(uint32_t target);
+    ~SeqTransitionPromptCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -361,6 +392,7 @@ class SeqMoveEntityCommand : public SequenceCommand {
 public:
     SeqMoveEntityCommand(float time, uint32_t entityHash, uint32_t a, uint32_t b, uint32_t c,
                          bool quiet, bool blocking);
+    ~SeqMoveEntityCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -378,6 +410,7 @@ private:
 class SeqEnableScriptedEntitiesCommand : public SequenceCommand {
 public:
     explicit SeqEnableScriptedEntitiesCommand(bool enable);
+    ~SeqEnableScriptedEntitiesCommand() override;
     void Execute() override;
 
 private:
@@ -389,6 +422,7 @@ class SeqMinigameControlCommand : public SequenceCommand {
 public:
     SeqMinigameControlCommand(bool resetAll, bool resetScore, bool resetTimer, bool showIntro,
                               bool startPlayer, bool resetRound);
+    ~SeqMinigameControlCommand() override;
     void Execute() override;
 
 private:
@@ -404,6 +438,7 @@ private:
 class SeqHudTimerCommand : public SequenceCommand {
 public:
     explicit SeqHudTimerCommand(float seconds);
+    ~SeqHudTimerCommand() override;
     void Execute() override;
 
 private:
@@ -415,6 +450,7 @@ private:
 class SeqCutsceneFlagCommand : public SequenceCommand {
 public:
     explicit SeqCutsceneFlagCommand(bool value);
+    ~SeqCutsceneFlagCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -425,6 +461,7 @@ private:
 class SeqPausePlayerCommand : public SequenceCommand {
 public:
     explicit SeqPausePlayerCommand(bool value);
+    ~SeqPausePlayerCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -435,6 +472,7 @@ private:
 class SeqPauseAiCommand : public SequenceCommand {
 public:
     explicit SeqPauseAiCommand(bool value);
+    ~SeqPauseAiCommand() override;
     void Execute() override;
     bool Update(float dt) override;
 
@@ -448,7 +486,10 @@ public:
     SeqSetEntityCommand(WorldObject* entity, uint32_t alias, bool show, bool hideOnRelease,
                         bool keepShownState, bool resetPose, bool neverShow, bool keepAnimSet,
                         bool clearAiState, bool transferIfRegistered);
+    ~SeqSetEntityCommand() override;
     void Execute() override;
+    // @func 0x007811B8 SeqSetEntityCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     WorldObject* m_entity = nullptr;   // +0x0C (one reference held)
@@ -467,6 +508,7 @@ private:
 class SeqEmitterParamCommand : public SequenceCommand {
 public:
     SeqEmitterParamCommand(uint32_t entityHash, uint32_t value);
+    ~SeqEmitterParamCommand() override;
     void Execute() override;
 
 private:
@@ -492,7 +534,10 @@ class SeqSetEntityVisibleCommand : public SequenceCommand {
 public:
     SeqSetEntityVisibleCommand(uint32_t entityHash, uint32_t childHash, bool visible,
                                bool shadows, bool children, bool effects, bool optional);
+    ~SeqSetEntityVisibleCommand() override;
     void Execute() override;
+    // @func 0x00781358 SeqSetEntityVisibleCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     uint32_t m_entityHash = 0;   // +0x0C
@@ -508,7 +553,10 @@ private:
 class SeqSetEntityUpdateCommand : public SequenceCommand {
 public:
     SeqSetEntityUpdateCommand(uint32_t entityHash, bool update);
+    ~SeqSetEntityUpdateCommand() override;
     void Execute() override;
+    // @func 0x007813E8 SeqSetEntityUpdateCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     uint32_t m_entityHash = 0;   // +0x0C
@@ -519,6 +567,7 @@ private:
 class SeqStartAnimationCommand : public SequenceCommand {
 public:
     SeqStartAnimationCommand(uint32_t entityHash, uint32_t animHash, bool loop);
+    ~SeqStartAnimationCommand() override;
     void Execute() override;
 
 private:
@@ -532,6 +581,7 @@ private:
 class SeqTimeScaleCommand : public SequenceCommand {
 public:
     SeqTimeScaleCommand(int kind, float scale);
+    ~SeqTimeScaleCommand() override;
     void Execute() override;
 
 private:
@@ -543,14 +593,20 @@ private:
 class SeqLevelHeadlineCommand : public SequenceCommand {
 public:
     SeqLevelHeadlineCommand();
+    ~SeqLevelHeadlineCommand() override;
     void Execute() override;
+    // @func 0x007816A8 SeqLevelHeadlineCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 };
 
 // Starts another (already built) sequence (0x00B213A0).
 class SeqStartSequenceCommand : public SequenceCommand {
 public:
     explicit SeqStartSequenceCommand(uint32_t sequenceHash);
+    ~SeqStartSequenceCommand() override;
     void Execute() override;
+    // @func 0x007817C8 SeqStartSequenceCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     uint32_t m_sequenceHash = 0;   // +0x0C
@@ -560,7 +616,10 @@ private:
 class SeqStopSoundCommand : public SequenceCommand {
 public:
     SeqStopSoundCommand(uint32_t categoryHash, uint32_t trackKey, bool force);
+    ~SeqStopSoundCommand() override;
     void Execute() override;
+    // @func 0x00781858 SeqStopSoundCommand::Update
+    bool Update(float /*dt*/) override { return true; }
 
 private:
     uint32_t m_categoryHash = 0;   // +0x0C
@@ -572,6 +631,7 @@ private:
 class SeqStopMusicCommand : public SequenceCommand {
 public:
     explicit SeqStopMusicCommand(bool release);
+    ~SeqStopMusicCommand() override;
     void Execute() override;
 
 private:
@@ -582,6 +642,7 @@ private:
 class SeqWaitForSequencesCommand : public SequenceCommand {
 public:
     explicit SeqWaitForSequencesCommand(const std::vector<uint32_t>& sequenceHashes);
+    ~SeqWaitForSequencesCommand() override;
     bool Update(float dt) override;
 
 private:
@@ -592,6 +653,7 @@ private:
 class SeqWaitForSoundCommand : public SequenceCommand {
 public:
     SeqWaitForSoundCommand(uint32_t categoryHash, uint32_t trackKey);
+    ~SeqWaitForSoundCommand() override;
     bool Update(float dt) override;
 
 private:

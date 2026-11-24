@@ -46,6 +46,11 @@ class AlertTriggerDef : public TriggerDef {
 public:
     explicit AlertTriggerDef(const AlertTriggerDefDesc& desc);
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075AE44 AlertTriggerDef::~AlertTriggerDef (deleting)
+    ~AlertTriggerDef() override = default;
     bool ignoreDisguise = false;    // 0xB0
 };
 
@@ -68,6 +73,11 @@ class CrawlTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075B320 CrawlTriggerDef::~CrawlTriggerDef (deleting)
+    ~CrawlTriggerDef() override = default;
 };
 
 class CrawlTrigger : public TriggerBase {
@@ -94,12 +104,20 @@ class FilteredTriggerDef : public TriggerDef {
 public:
     FilteredTriggerDef(const TriggerDefDesc& desc, int state) : TriggerDef(desc), physicsState(state) {}
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075B5C8 FilteredTriggerDef::~FilteredTriggerDef (deleting)
+    ~FilteredTriggerDef() override = default;
     int physicsState = -1;          // 0xB0
 };
 
 class FilteredTriggerPlacement : public TriggerPlacement {
 public:
     explicit FilteredTriggerPlacement(const char* placementName);
+    // @func 0x00759AB0 FilteredTriggerPlacement::~FilteredTriggerPlacement
+    // @func 0x0075B620 FilteredTriggerPlacement::~FilteredTriggerPlacement (deleting)
+    ~FilteredTriggerPlacement() override = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
     int physicsState = -1;          // 0xBC
 };
@@ -145,11 +163,19 @@ class JobTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075B89C JobTriggerDef::~JobTriggerDef (deleting)
+    ~JobTriggerDef() override = default;
 };
 
 class JobTriggerPlacement : public TriggerPlacement {
 public:
     explicit JobTriggerPlacement(const char* placementName);
+    // @func 0x00759BBC JobTriggerPlacement::~JobTriggerPlacement
+    // @func 0x0075B8F4 JobTriggerPlacement::~JobTriggerPlacement (deleting)
+    ~JobTriggerPlacement() override = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
     uint32_t jobName = 0;           // 0xBC
     uint32_t startGoal = 0;         // 0xC0
@@ -205,6 +231,11 @@ class JumpDirTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075B9AC JumpDirTriggerDef::~JumpDirTriggerDef (deleting)
+    ~JumpDirTriggerDef() override = default;
 };
 
 class JumpDirTrigger : public TriggerBase {
@@ -232,6 +263,11 @@ class UpdateEnableTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075BE68 UpdateEnableTriggerDef::~UpdateEnableTriggerDef (deleting)
+    ~UpdateEnableTriggerDef() override = default;
 };
 
 class UpdateEnableTrigger : public TriggerBase {

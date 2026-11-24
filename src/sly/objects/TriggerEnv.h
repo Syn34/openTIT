@@ -52,12 +52,20 @@ class DamageTriggerDef : public TriggerDef {
 public:
     explicit DamageTriggerDef(const DamageTriggerDefDesc& desc);
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075B3A8 DamageTriggerDef::~DamageTriggerDef (deleting)
+    ~DamageTriggerDef() override = default;
     DamageParams params;         // 0xB0..0xD3
 };
 
 class DamageTriggerPlacement : public TriggerPlacement {
 public:
     explicit DamageTriggerPlacement(const char* placementName);
+    // @func 0x007599D0 DamageTriggerPlacement::~DamageTriggerPlacement
+    // @func 0x0075B400 DamageTriggerPlacement::~DamageTriggerPlacement (deleting)
+    ~DamageTriggerPlacement() override = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
     DamageParams params;         // 0xC0..0xE3
 };
@@ -137,6 +145,11 @@ class WindTriggerDef : public TriggerDef {
 public:
     explicit WindTriggerDef(const WindTriggerDefDesc& desc);
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075BDE0 WindTriggerDef::~WindTriggerDef (deleting)
+    ~WindTriggerDef() override = default;
 
     uint32_t scriptLifetime = 0;   // 0xB0
     uint32_t windGroup = 0;        // 0xB4

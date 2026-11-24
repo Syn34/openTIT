@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <vector>
 
 namespace sly {
@@ -66,13 +67,34 @@ struct SoundDef {
 // Reference-counted handle to a SoundDef (0x18-byte bucket objects kept in a
 // global list at 0x00F65B7C).
 struct SoundName {
-    SoundDef* def = nullptr;    // +0x00
+    SoundDef* def = nullptr;    // +0x00 null until a bank defines the sound
     SoundName* next = nullptr;  // +0x04
     SoundName* prev = nullptr;  // +0x08
+    uint32_t bank = 0;          // +0x0C bank the sound was found in (or asked for)
+    uint32_t soundHash = 0;     // +0x10
     int32_t refCount = 0;       // +0x14
 
     static SoundName* Create(SoundDef* def);
 };
+
+// Sound definitions of one loaded bank, by sound name hash.
+struct SoundBankDefs {
+    std::map<uint32_t, SoundDef*> defs;
+};
+// Bank registry (0x010AFEB0), the level's default bank (0x00F65B60, name
+// 0x010B00D8) and the always searched banks (0x010AFEB8).
+void RegisterSoundBank(uint32_t bankHash, SoundBankDefs* bank);
+void UnregisterSoundBank(uint32_t bankHash);
+void SetDefaultSoundBank(uint32_t bankHash, SoundBankDefs* bank);
+void AddGlobalSoundBank(uint32_t bankHash, SoundBankDefs* bank);
+// Looks a sound up in bank *bankHash, then the default bank, then the global
+// banks; *bankHash is updated to the bank that had it. Null when audio is
+// off or the sound is unknown.
+SoundDef* FindSoundDef(uint32_t soundHash, uint32_t* bankHash);
+// New reference (count 1) to a sound, resolved now if possible.
+SoundName* CreateSoundName(uint32_t soundHash, uint32_t bankHash);
+// Retries the lookup of every unresolved sound name (after a bank load).
+void ResolveSoundNames();
 
 void SoundNameAddRef(SoundName* name);
 void SoundNameRelease(SoundName* name);

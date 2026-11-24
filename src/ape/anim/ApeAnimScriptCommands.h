@@ -94,6 +94,38 @@ private:
     bool m_all = false;
 };
 
+// "CallRandom": starts one of several scripts, picked at random by weight,
+// as a child of the running instance.
+class ApeAnimScriptCallRandomCommand : public ApeAnimScriptCommand {
+public:
+    static constexpr uint32_t kMaxScripts = 32;
+    static constexpr uint32_t kMaxParams = 4;
+
+    ApeAnimScriptCallRandomCommand();
+    explicit ApeAnimScriptCallRandomCommand(xml::XmlElement* element);
+    ~ApeAnimScriptCallRandomCommand() override = default;
+
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
+    ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
+
+private:
+    struct Choice {
+        float weight;             // "Weight"
+        uint32_t script;          // "Script"
+        uint32_t library;         // "ScriptLib"
+    };
+    struct Param {
+        uint32_t name;            // "name": callee variable
+        uint32_t value;           // "Value": caller variable
+    };
+    std::vector<Choice> m_choices;  // "Script" children
+    std::vector<Param> m_params;    // "Param" children
+    float m_totalWeight = 0.0f;
+    // NOTE: attribute 0xEE1B3C3B (name unknown): weights are percentages of
+    // 100, so a roll past the listed weights starts nothing.
+    bool m_percent = false;
+};
+
 class ApeAnimScriptChangeStateCommand : public ApeAnimScriptCommand {
 public:
     ApeAnimScriptChangeStateCommand() = default;

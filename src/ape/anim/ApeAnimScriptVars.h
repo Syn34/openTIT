@@ -16,12 +16,17 @@ class ApeAnimScriptHashVar : public ApeAnimScriptVar {
 public:
     ApeAnimScriptHashVar() = default;
     ~ApeAnimScriptHashVar() override;
+    // @func 0x00793D4C ApeAnimScriptHashVar::IsNumber
+    bool IsNumber() const override { return false; }
 
+    // @func 0x00793DC4 ApeAnimScriptHashVar::GetHash
     uint32_t GetHash() const override { return m_value; }
+    // @func 0x00793DCC ApeAnimScriptHashVar::GetType
     AnimScriptVarType GetType() const override { return AnimScriptVarType::Hash; }
     ApeAnimScriptVar* Clone() const override;
     char* ToString(char* buffer) const override;
     int Unknown2C() const override;
+    // @func 0x00793E18 ApeAnimScriptHashVar::GetSize
     uint32_t GetSize() const override { return 0x18; }
     ApeAnimScriptVar* Create(xml::XmlElement* element) const override;
 
@@ -37,13 +42,18 @@ public:
     ApeAnimScriptIntVar() = default;
     ~ApeAnimScriptIntVar() override;
 
+    // @func 0x00793E20 ApeAnimScriptIntVar::IsNumber
     bool IsNumber() const override { return true; }
+    // @func 0x00793E28 ApeAnimScriptIntVar::GetFloat
     float GetFloat() const override { return (float)m_value; }
+    // @func 0x00793E4C ApeAnimScriptIntVar::GetInt
     int32_t GetInt() const override { return m_value; }
+    // @func 0x00793E54 ApeAnimScriptIntVar::GetType
     AnimScriptVarType GetType() const override { return AnimScriptVarType::Int; }
     ApeAnimScriptVar* Clone() const override;
     char* ToString(char* buffer) const override;
     int Unknown2C() const override;
+    // @func 0x00793EA4 ApeAnimScriptIntVar::GetSize
     uint32_t GetSize() const override { return 0x18; }
     ApeAnimScriptVar* Create(xml::XmlElement* element) const override;
 
@@ -58,13 +68,18 @@ public:
     ApeAnimScriptFloatVar() = default;
     ~ApeAnimScriptFloatVar() override;
 
+    // @func 0x00793EAC ApeAnimScriptFloatVar::IsNumber
     bool IsNumber() const override { return true; }
+    // @func 0x00793EB4 ApeAnimScriptFloatVar::GetFloat
     float GetFloat() const override { return m_value; }
+    // @func 0x00793EBC ApeAnimScriptFloatVar::GetInt
     int32_t GetInt() const override { return (int32_t)m_value; }
+    // @func 0x00793ED8 ApeAnimScriptFloatVar::GetType
     AnimScriptVarType GetType() const override { return AnimScriptVarType::Float; }
     ApeAnimScriptVar* Clone() const override;
     char* ToString(char* buffer) const override;
     int Unknown2C() const override;
+    // @func 0x00793F2C ApeAnimScriptFloatVar::GetSize
     uint32_t GetSize() const override { return 0x18; }
     ApeAnimScriptVar* Create(xml::XmlElement* element) const override;
 
@@ -80,13 +95,18 @@ class ApeAnimScriptObjectVar : public ApeAnimScriptVar {
 public:
     ApeAnimScriptObjectVar() = default;
     ~ApeAnimScriptObjectVar() override;
+    // @func 0x00793F34 ApeAnimScriptObjectVar::IsNumber
+    bool IsNumber() const override { return false; }
 
+    // @func 0x00793F3C ApeAnimScriptObjectVar::IsReference
     bool IsReference() const override { return true; }
+    // @func 0x00793F44 ApeAnimScriptObjectVar::GetType
     AnimScriptVarType GetType() const override { return AnimScriptVarType::Object; }
     ApeAnimScriptVar* Clone() const override;
     char* ToString(char* buffer) const override;
     int Unknown2C() const override;
     void OnOwnerDestroyed() override;
+    // @func 0x00794040 ApeAnimScriptObjectVar::GetSize
     uint32_t GetSize() const override { return 0x28; }
     ApeAnimScriptVar* Create(xml::XmlElement* element) const override;
 
@@ -115,10 +135,16 @@ class ApeAnimScriptVec3Var : public ApeAnimScriptVar {
 public:
     ApeAnimScriptVec3Var();
     ~ApeAnimScriptVec3Var() override;
+    // @func 0x00794048 ApeAnimScriptVec3Var::IsNumber
+    bool IsNumber() const override { return false; }
 
+    // @func 0x00794050 ApeAnimScriptVec3Var::GetType
     AnimScriptVarType GetType() const override { return AnimScriptVarType::Vec3; }
     ApeAnimScriptVar* Clone() const override;
+    // @func 0x00794058 ApeAnimScriptVec3Var::ToString
+    char* ToString(char* buffer) const override { buffer[0] = '\0'; return buffer; }
     int Unknown2C() const override;
+    // @func 0x00794068 ApeAnimScriptVec3Var::GetSize
     uint32_t GetSize() const override { return 0x30; }
     ApeAnimScriptVar* Create(xml::XmlElement* element) const override;
 
@@ -133,10 +159,16 @@ class ApeAnimScriptMatrixVar : public ApeAnimScriptVar {
 public:
     ApeAnimScriptMatrixVar();
     ~ApeAnimScriptMatrixVar() override;
+    // @func 0x00794070 ApeAnimScriptMatrixVar::IsNumber
+    bool IsNumber() const override { return false; }
 
+    // @func 0x00794078 ApeAnimScriptMatrixVar::GetType
     AnimScriptVarType GetType() const override { return AnimScriptVarType::Matrix; }
     ApeAnimScriptVar* Clone() const override;
+    // @func 0x00794080 ApeAnimScriptMatrixVar::ToString
+    char* ToString(char* buffer) const override { buffer[0] = '\0'; return buffer; }
     int Unknown2C() const override;
+    // @func 0x00794090 ApeAnimScriptMatrixVar::GetSize
     uint32_t GetSize() const override { return 0x60; }
     ApeAnimScriptVar* Create(xml::XmlElement* element) const override;
 
@@ -152,9 +184,13 @@ class ApeAnimScriptControllerVar : public ApeAnimScriptVar {
 public:
     ApeAnimScriptControllerVar() = default;
     ~ApeAnimScriptControllerVar() override;
+    // @func 0x00794098 ApeAnimScriptControllerVar::IsNumber
+    bool IsNumber() const override { return false; }
 
+    // @func 0x007940A0 ApeAnimScriptControllerVar::GetType
     AnimScriptVarType GetType() const override { return AnimScriptVarType::Controller; }
     ApeAnimScriptVar* Clone() const override;
+    // @func 0x007940A8 ApeAnimScriptControllerVar::GetSize
     uint32_t GetSize() const override { return 0x1C; }
     ApeAnimScriptVar* Create(xml::XmlElement* element) const override;
 
@@ -171,9 +207,15 @@ public:
     ApeAnimScriptGuiVar() = default;
     explicit ApeAnimScriptGuiVar(xml::XmlElement* element);
     ~ApeAnimScriptGuiVar() override;
+    // @func 0x007940B0 ApeAnimScriptGuiVar::IsNumber
+    bool IsNumber() const override { return false; }
+    // @func 0x007940B8 ApeAnimScriptGuiVar::IsReference
+    bool IsReference() const override { return false; }
 
+    // @func 0x007940C0 ApeAnimScriptGuiVar::GetType
     AnimScriptVarType GetType() const override { return AnimScriptVarType::Gui; }
     ApeAnimScriptVar* Clone() const override;
+    // @func 0x007940C8 ApeAnimScriptGuiVar::GetSize
     uint32_t GetSize() const override { return 0x2C; }
     ApeAnimScriptVar* Create(xml::XmlElement* element) const override;
 
@@ -191,9 +233,15 @@ class ApeAnimScriptMaterialVar : public ApeAnimScriptVar {
 public:
     ApeAnimScriptMaterialVar() = default;
     ~ApeAnimScriptMaterialVar() override;
+    // @func 0x00794190 ApeAnimScriptMaterialVar::IsNumber
+    bool IsNumber() const override { return false; }
+    // @func 0x00794198 ApeAnimScriptMaterialVar::IsReference
+    bool IsReference() const override { return false; }
 
+    // @func 0x007941A0 ApeAnimScriptMaterialVar::GetType
     AnimScriptVarType GetType() const override { return AnimScriptVarType::Material; }
     ApeAnimScriptVar* Clone() const override;
+    // @func 0x007941A8 ApeAnimScriptMaterialVar::GetSize
     uint32_t GetSize() const override { return 0x1C; }
     ApeAnimScriptVar* Create(xml::XmlElement* element) const override;
 
@@ -226,10 +274,15 @@ public:
     explicit ApeAnimScriptTimeFunctionVar(xml::XmlElement* element);
     ~ApeAnimScriptTimeFunctionVar() override;
 
+    // @func 0x00794124 ApeAnimScriptTimeFunctionVar::IsNumber
     bool IsNumber() const override { return true; }
     float GetFloat() const override;
+    // @func 0x0079412C ApeAnimScriptTimeFunctionVar::GetType
     AnimScriptVarType GetType() const override { return AnimScriptVarType::TimeFunction; }
     ApeAnimScriptVar* Clone() const override;
+    // @func 0x00794180 ApeAnimScriptTimeFunctionVar::Unknown2C
+    int Unknown2C() const override { return 0; }
+    // @func 0x00794188 ApeAnimScriptTimeFunctionVar::GetSize
     uint32_t GetSize() const override { return 0x44; }
     ApeAnimScriptVar* Create(xml::XmlElement* element) const override;
 

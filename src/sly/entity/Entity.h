@@ -232,18 +232,24 @@ public:
     virtual ape::Aabb GetBounds(bool world);                       // slot 40
     virtual void HandleMessage(const struct EntityMessage& msg);   // slot 43 (+0xAC)
     virtual void SetActive(bool active);                           // slot 44
-    virtual void SetAttachParent(Entity* parent) { attachParent = parent; }   // slot 46, base 0x007373A4
+    // @func 0x007373A4 Entity::SetAttachParent
+    virtual void SetAttachParent(Entity* parent) { attachParent = parent; }   // slot 46
     virtual void SetFlag1(bool on);                                // slot 45
     // Animation clip registered under a name (slots 47/48; the hash form
     // looks the clip up in the global clip registry).
     virtual void* FindAnimClip(uint32_t nameHash);                 // slot 47 (+0xBC)
     virtual void* FindAnimClipByName(const char* name);            // slot 48 (+0xC0)
-    virtual void SetActiveVisual(bool on) { (void)on; }            // slot 53 (+0xD4)
+    // Slot 53 (+0xD4): the base version only records the state (flags bit 6).
+    // @func 0x007373AC Entity::SetActiveVisual
+    virtual void SetActiveVisual(bool on) { flags = on ? (flags | 0x40u) : (flags & ~0x40u); }
     virtual void ApplyVisibility(bool visible);                    // slot 55 (+0xDC)
     virtual void OnSuspend();                                      // slot 60 (+0xF0)
     virtual void OnResume();                                       // slot 61 (+0xF4)
+    // @func 0x0074705C Entity::GetAnimScript
     virtual void* GetAnimScript() { return nullptr; }              // slot 68 (+0x110)
+    // @func 0x007437C0 Entity::InteractionOffer
     virtual uint32_t InteractionOffer(int kind, Entity* other) { (void)kind; (void)other; return 0; }   // slot 74
+    // @func 0x007437C8 Entity::InteractionNeeds
     virtual uint32_t InteractionNeeds(int kind, Entity* other) { (void)kind; (void)other; return 0; }   // slot 75
     virtual bool CanInteractWith(Entity* other, int kind);         // slot 76
     virtual void OnInteractStart(Entity* other, int kind);         // slot 77

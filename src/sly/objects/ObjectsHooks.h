@@ -11,6 +11,7 @@
 
 #include <cstdint>
 
+namespace sly { namespace audio { struct SoundName; struct SoundZone; struct MixState; } }
 namespace sly { namespace audio { struct SoundName; } class WindSystem; }
 
 namespace sly {
@@ -131,8 +132,8 @@ ape::Vec3 GetListenerPosition();
 ObjEntity* GetPlayerEntity();
 
 // Sound zones and mix states (sly/game audio).
-struct SoundZone;   // opaque
-struct MixState;    // opaque
+using SoundZone = audio::SoundZone;   // sly/game/SoundZones.h
+using MixState = audio::MixState;     // sly/game/AudioSystem.h
 SoundZone* FindSoundZone(uint32_t nameHash);          // 0x0044C404
 MixState* FindMixState(uint32_t nameHash);            // 0x0044C43C
 float SoundZoneFadeDistance(const SoundZone* zone);   // zone +0x10

@@ -73,11 +73,14 @@ EntityDef* CreateTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElement* el
 // ---------------------------------------------------------------------------
 class TriggerPlacement : public EntityPlacement {
 public:
-    // Console 0x00746148 (outside this range): the flag defaults come from the
-    // definition when one is given, otherwise from the arguments.
+    // The flag defaults come from the definition when one is given,
+    // otherwise from the arguments.
     TriggerPlacement(const char* placementName, EntityDef* ownerDef, TriggerVolume* volume,
                      bool aabbVolume, bool ownsVolume, bool startEnabled, bool playersOnly,
                      bool allEvents, bool skipOptional);
+    // @func 0x00746060 TriggerPlacement::~TriggerPlacement
+    // @func 0x00759DA8 TriggerPlacement::~TriggerPlacement (deleting)
+    ~TriggerPlacement() override = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
 
     TriggerVolume* volume = nullptr;   // 0xB4 phantom assigned by the level loader

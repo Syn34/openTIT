@@ -1343,9 +1343,9 @@ public:
 };
 
 class SlyCharacter2Technique : public AglTechnique {
-    // TODO(0x005BD298 SlyCharacter2Technique::BeginMaterial)
     // TODO(0x005BD3B0 SlyCharacter2Technique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABD0C SlyCharacter2Technique::~SlyCharacter2Technique
     // @func 0x007AEC70 SlyCharacter2Technique::~SlyCharacter2Technique (deleting)
@@ -1373,9 +1373,9 @@ public:
 };
 
 class SlyCharacterFurFinTechnique : public AglTechnique {
-    // TODO(0x005C1368 SlyCharacterFurFinTechnique::BeginMaterial)
     // TODO(0x005C13DC SlyCharacterFurFinTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABD3C SlyCharacterFurFinTechnique::~SlyCharacterFurFinTechnique
     // @func 0x007AEE98 SlyCharacterFurFinTechnique::~SlyCharacterFurFinTechnique (deleting)
@@ -1383,9 +1383,9 @@ public:
 };
 
 class SlyCharacterFakeFurTechnique : public AglTechnique {
-    // TODO(0x005C1E40 SlyCharacterFakeFurTechnique::BeginMaterial)
     // TODO(0x005C1EB8 SlyCharacterFakeFurTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABD4C SlyCharacterFakeFurTechnique::~SlyCharacterFakeFurTechnique
     // @func 0x007AEF50 SlyCharacterFakeFurTechnique::~SlyCharacterFakeFurTechnique (deleting)
@@ -1403,9 +1403,9 @@ public:
 };
 
 class SlyDecalTechnique : public AglTechnique {
-    // TODO(0x005C38C0 SlyDecalTechnique::BeginMaterial)
     // TODO(0x005C39C8 SlyDecalTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABD6C SlyDecalTechnique::~SlyDecalTechnique
     // @func 0x007AF0C4 SlyDecalTechnique::~SlyDecalTechnique (deleting)
     ~SlyDecalTechnique() override = default;
@@ -1769,6 +1769,52 @@ void SlyTerrainTechnique::BeginMaterial(AglMaterial* material)
     if (material->anim)
         UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
     UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// Shared by the second generation character techniques: colour constants
+// and the rim parameters (constants 10 and 12) in vertex register 0x21 and
+// fragment constant 4.
+static void BeginCharacter2Material(AglMaterial* material)
+{
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    UploadMaterialColor(material, 0.0f);
+    const float rim[4] = {MaterialConstant(material, 10), MaterialConstant(material, 12), 0.0f, 0.0f};
+    Cmd().SetVertexProgramConstants(0x21, 4, rim);
+    SetShaderConstant(4, rim);
+}
+
+// @func 0x005BD298 SlyCharacter2Technique::BeginMaterial
+void SlyCharacter2Technique::BeginMaterial(AglMaterial* material)
+{
+    BeginCharacter2Material(material);
+}
+
+// @func 0x005C1E40 SlyCharacterFakeFurTechnique::BeginMaterial
+void SlyCharacterFakeFurTechnique::BeginMaterial(AglMaterial* material)
+{
+    BeginCharacter2Material(material);
+    const float fur[4] = {MaterialConstant(material, 13), 0.0f, 0.0f, 0.0f};
+    SetShaderConstant(5, fur);
+}
+
+// @func 0x005C1368 SlyCharacterFurFinTechnique::BeginMaterial
+void SlyCharacterFurFinTechnique::BeginMaterial(AglMaterial* material)
+{
+    const float fin[4] = {MaterialConstant(material, 0), MaterialConstant(material, 1), 0.0f, 0.0f};
+    Cmd().SetVertexProgramConstants(7, 4, fin);
+}
+
+// @func 0x005C38C0 SlyDecalTechnique::BeginMaterial
+void SlyDecalTechnique::BeginMaterial(AglMaterial* material)
+{
+    // Constants 0/1 scale the texture coordinates, 2..4 tint the decal.
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, MaterialConstant(material, 0), MaterialConstant(material, 1));
+    const float flag[4] = {MaterialSwitchValue(material), 0.0f, 0.0f, 0.0f};
+    SetShaderConstant(3, flag);
+    const float tint[4] = {MaterialConstant(material, 2), MaterialConstant(material, 3),
+                           MaterialConstant(material, 4), 0.0f};
+    SetShaderConstant(0, tint);
 }
 
 // @func 0x005B182C ProjTxrDeferredTechnique::BeginMaterial
@@ -2364,7 +2410,7 @@ public:
     // @func 0x007AAD7C DiffuseClass::~DiffuseClass
     // @func 0x007ADA14 DiffuseClass::~DiffuseClass (deleting)
     ~DiffuseClass() override = default;
-    // TODO(0x005B2DF0 DiffuseClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     DiffuseClass() : AglShaderClass("Diffuse") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -2428,7 +2474,7 @@ public:
     // @func 0x007AAE1C EnvMapClass::~EnvMapClass
     // @func 0x007AE1C4 EnvMapClass::~EnvMapClass (deleting)
     ~EnvMapClass() override = default;
-    // TODO(0x005B44B4 EnvMapClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     EnvMapClass() : AglShaderClass("EnvMap") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -2716,7 +2762,7 @@ public:
     // @func 0x007AB0EC SacEnvMapClass::~SacEnvMapClass
     // @func 0x007AE85C SacEnvMapClass::~SacEnvMapClass (deleting)
     ~SacEnvMapClass() override = default;
-    // TODO(0x005B9A1C SacEnvMapClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SacEnvMapClass() : AglShaderClass("SAC_EnvMap") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -2849,7 +2895,7 @@ public:
     // @func 0x007AB22C SlyCausticsClass::~SlyCausticsClass
     // @func 0x007AEB44 SlyCausticsClass::~SlyCausticsClass (deleting)
     ~SlyCausticsClass() override = default;
-    // TODO(0x005BB23C SlyCausticsClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyCausticsClass() : AglShaderClass("SlyCaustics") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -2874,7 +2920,7 @@ public:
     // @func 0x007AB27C SlyCharacterClass::~SlyCharacterClass
     // @func 0x007AEBFC SlyCharacterClass::~SlyCharacterClass (deleting)
     ~SlyCharacterClass() override = default;
-    // TODO(0x005BC4F0 SlyCharacterClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyCharacterClass() : AglShaderClass("SlyCharacter") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3076,7 +3122,7 @@ public:
     // @func 0x007AB45C SlyCharacterCollectibleClass::~SlyCharacterCollectibleClass
     // @func 0x007AF04C SlyCharacterCollectibleClass::~SlyCharacterCollectibleClass (deleting)
     ~SlyCharacterCollectibleClass() override = default;
-    // TODO(0x005C3528 SlyCharacterCollectibleClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyCharacterCollectibleClass() : AglShaderClass("SlyCharacterCollectible") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3113,7 +3159,7 @@ public:
     // @func 0x007AB4AC SlyDecalClass::~SlyDecalClass
     // @func 0x007AF108 SlyDecalClass::~SlyDecalClass (deleting)
     ~SlyDecalClass() override = default;
-    // TODO(0x005C45D0 SlyDecalClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyDecalClass() : AglShaderClass("SlyDecal") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3179,7 +3225,7 @@ public:
     // @func 0x007AB54C SlyEnvMapClass::~SlyEnvMapClass
     // @func 0x007AF280 SlyEnvMapClass::~SlyEnvMapClass (deleting)
     ~SlyEnvMapClass() override = default;
-    // TODO(0x005C67E0 SlyEnvMapClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyEnvMapClass() : AglShaderClass("SlyEnvMap") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3239,7 +3285,7 @@ public:
     // @func 0x007AB5EC SlyMirrorClass::~SlyMirrorClass
     // @func 0x007AF3F8 SlyMirrorClass::~SlyMirrorClass (deleting)
     ~SlyMirrorClass() override = default;
-    // TODO(0x005C95FC SlyMirrorClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyMirrorClass() : AglShaderClass("SlyMirror") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3264,7 +3310,7 @@ public:
     // @func 0x007AB63C SlyPanoramaClass::~SlyPanoramaClass
     // @func 0x007AF4B4 SlyPanoramaClass::~SlyPanoramaClass (deleting)
     ~SlyPanoramaClass() override = default;
-    // TODO(0x005CA818 SlyPanoramaClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyPanoramaClass() : AglShaderClass("SlyPanorama") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3352,7 +3398,7 @@ public:
     // @func 0x007AB81C SlyTerrainClass::~SlyTerrainClass
     // @func 0x007AF6EC SlyTerrainClass::~SlyTerrainClass (deleting)
     ~SlyTerrainClass() override = default;
-    // TODO(0x005CD100 SlyTerrainClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyTerrainClass() : AglShaderClass("SlyTerrain") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3466,7 +3512,7 @@ public:
     // @func 0x007AB7CC SlyShrubClass::~SlyShrubClass
     // @func 0x007AFC94 SlyShrubClass::~SlyShrubClass (deleting)
     ~SlyShrubClass() override = default;
-    // TODO(0x005CE368 SlyShrubClass::SetupMaterial)
+    bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     SlyShrubClass() : AglShaderClass("SlyShrub") {}
     void CreateTechniques() override;
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
@@ -3884,6 +3930,247 @@ AglShaderClass* const* GetSlyShaderClasses()
 AglShaderClass* const* GetUnlistedShaderClasses()
 {
     return kUnlistedClasses;
+}
+
+// --- SetupMaterial helpers -------------------------------------------------------
+
+// Second render-quality bit of the material flag byte: no second detail layer.
+static bool SecondDetailLayerDisabled()
+{
+    return (uint8_t(g_materialParamsFlag) & 0x40) != 0;
+}
+
+// Adds `texture` as the next layer, wrapping like the material's first layer.
+static void AddLayerLikeFirst(AglMaterial* material, AglTexture* texture)
+{
+    material->AddTexture(texture);
+    const AglTexture* first = material->textures[0];
+    texture->SetWrap(first->sampler[3], first->sampler[4], 1);
+}
+
+// Optional detail layers shared by many classes: the detail texture with its
+// tint (params 0..2 -> constants 0..2) and a second detail texture. Returns
+// whether the detail texture was added.
+static bool AddDetailLayers(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (!MaterialParamsEnabled() || desc->paramCount == 0)
+        return false;
+    AglTexture* detail = FindTexture(desc->detailHash);
+    if (!detail)
+        return false;
+    AddLayerLikeFirst(material, detail);
+    for (uint32_t i = 0; i < 3; ++i)
+        *material->GetConstant(i) = desc->params[i];
+    if (!SecondDetailLayerDisabled())
+        if (AglTexture* detail2 = FindTexture(desc->detail2Hash))
+            AddLayerLikeFirst(material, detail2);
+    return true;
+}
+
+// Environment map base layer (wrap s, clamp t) and the material word 0x78
+// switch from the desc wrap mode. False without the texture.
+static bool AddEnvMapLayer(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    AglTexture* envMap = FindTexture(desc->diffuseHash);
+    if (!envMap)
+        return false;
+    envMap->SetWrap(1, 3, 1);
+    material->AddTexture(envMap);
+    material->field_78 = desc->wrapMode == 2 ? 2 : 3;
+    return true;
+}
+
+// @func 0x005B2DF0 DiffuseClass::SetupMaterial
+bool DiffuseClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (!MaterialParamsEnabled() || desc->paramCount == 0)
+        return true;
+    AddDetailLayers(material, desc);
+    // Constant 3: integer alpha reference (1 when not exported).
+    int32_t alphaRef = 1;
+    if (desc->paramCount > 2)
+        std::memcpy(&alphaRef, &desc->params[3], sizeof(alphaRef));
+    std::memcpy(material->GetConstant(3), &alphaRef, sizeof(alphaRef));
+    return true;
+}
+
+// @func 0x005B44B4 EnvMapClass::SetupMaterial
+bool EnvMapClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (!AddEnvMapLayer(material, desc))
+        return false;
+    AddDetailLayers(material, desc);
+    return true;
+}
+
+// @func 0x005B9A1C SacEnvMapClass::SetupMaterial
+bool SacEnvMapClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (!AddEnvMapLayer(material, desc))
+        return false;
+    AddDetailLayers(material, desc);
+    return true;
+}
+
+// @func 0x005C67E0 SlyEnvMapClass::SetupMaterial
+bool SlyEnvMapClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (!AddEnvMapLayer(material, desc))
+        return false;
+    AddDetailLayers(material, desc);
+    // Constant 3 switches the reflection mask on when param 3 is set.
+    int32_t mask = 0;
+    if (desc->paramCount >= 4)
+        std::memcpy(&mask, &desc->params[3], sizeof(mask));
+    *material->GetConstant(3) = mask != 0 ? 1.0f : 0.0f;
+    return true;
+}
+
+// @func 0x005C95FC SlyMirrorClass::SetupMaterial
+bool SlyMirrorClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    // The reflection itself is bound at draw time; layer 0 is a placeholder.
+    material->AddTexture(GetDefaultTexture(5));
+    AddDetailLayers(material, desc);
+    return true;
+}
+
+// @func 0x005CA818 SlyPanoramaClass::SetupMaterial
+bool SlyPanoramaClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    AddDetailLayers(material, desc);
+    return true;
+}
+
+// @func 0x005CD100 SlyTerrainClass::SetupMaterial
+bool SlyTerrainClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (!MaterialParamsEnabled() || desc->paramCount == 0)
+        return true;
+    AglTexture* detail = FindTexture(desc->detailHash);
+    if (!detail)
+        return true;
+    AddLayerLikeFirst(material, detail);
+    for (uint32_t i = 0; i < 3; ++i)
+        *material->GetConstant(i) = desc->params[i];
+    // Constants 3/4: detail fade distance (param 3, default 30) and range.
+    *material->GetConstant(3) = desc->paramCount > 3 ? desc->params[3] : 30.0f;
+    *material->GetConstant(4) = 5.0f;
+    if (!SecondDetailLayerDisabled())
+        if (AglTexture* detail2 = FindTexture(desc->detail2Hash))
+            AddLayerLikeFirst(material, detail2);
+    return true;
+}
+
+// Main texture repeated in both directions plus the word 0x78 switch from
+// the desc wrap mode. False without the texture.
+static bool AddRepeatedMainLayer(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    AglTexture* texture = FindTexture(desc->textureHash);
+    if (!texture)
+        return false;
+    texture->SetWrap(1, 1, 1);
+    material->AddTexture(texture);
+    material->field_78 = desc->wrapMode == 2 ? 2 : 3;
+    return true;
+}
+
+// @func 0x005BB23C SlyCausticsClass::SetupMaterial
+bool SlyCausticsClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (!AddRepeatedMainLayer(material, desc))
+        return false;
+    for (uint32_t i = 0; i < 4; ++i)
+        *material->GetConstant(i) = desc->params[i];
+    return true;
+}
+
+// @func 0x005C45D0 SlyDecalClass::SetupMaterial
+bool SlyDecalClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (desc->paramCount == 0)
+        return true;
+    if (!AddRepeatedMainLayer(material, desc))
+        return false;
+    *material->GetConstant(0) = desc->params[0];
+    *material->GetConstant(1) = desc->params[1];
+    if (!MaterialParamsEnabled())
+        return true;
+    // Detail and colour layers; a missing one is replaced by default texture 4.
+    AglTexture* detail = FindTexture(desc->detailHash);
+    AglTexture* color = FindTexture(desc->diffuseHash);
+    if (!detail && !color)
+        return true;
+    AddLayerLikeFirst(material, detail ? detail : GetDefaultTexture(4));
+    AddLayerLikeFirst(material, color ? color : GetDefaultTexture(4));
+    for (uint32_t i = 2; i < 5; ++i)
+        *material->GetConstant(i) = desc->params[i];
+    if (!SecondDetailLayerDisabled())
+        if (AglTexture* detail2 = FindTexture(desc->detail2Hash))
+            AddLayerLikeFirst(material, detail2);
+    return true;
+}
+
+// @func 0x005CE368 SlyShrubClass::SetupMaterial
+bool SlyShrubClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    // Constant 0 holds an integer (0..255) read from the raw bits of param 0.
+    uint32_t level = 0;
+    if (desc->paramCount != 0) {
+        std::memcpy(&level, &desc->params[0], sizeof(level));
+        if (level >= 0x100)
+            level = 0xFF;
+    }
+    std::memcpy(material->GetConstant(0), &level, sizeof(level));
+    for (uint32_t i = 1; i < 7; ++i)
+        *material->GetConstant(i) = desc->paramCount > i ? desc->params[i] : 0.0f;
+    return true;
+}
+
+// @func 0x005BC4F0 SlyCharacterClass::SetupMaterial
+bool SlyCharacterClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (desc->paramCount == 0)
+        return true;
+    // Environment layer; default texture 5 when the character has none.
+    if (!AddEnvMapLayer(material, desc)) {
+        material->AddTexture(GetDefaultTexture(5));
+        material->field_78 = 3;
+    }
+    // NOTE: when the detail texture is missing the console looks up the
+    // projected texture and fetches its name without using it (stripped
+    // debug output); nothing is done here.
+    AddDetailLayers(material, desc);
+    // Constant 4: rim width (param 4, default 15, never negative); 7 cleared.
+    const float rim = desc->paramCount > 4 ? desc->params[4] : 15.0f;
+    *material->GetConstant(4) = rim > 0.0f ? rim : 0.0f;
+    *material->GetConstant(7) = 0.0f;
+    return true;
+}
+
+// Same as the character class, except that the second detail layer ignores
+// the quality flag and constant 7 is left alone.
+// @func 0x005C3528 SlyCharacterCollectibleClass::SetupMaterial
+bool SlyCharacterCollectibleClass::SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc)
+{
+    if (desc->paramCount == 0)
+        return true;
+    if (!AddEnvMapLayer(material, desc)) {
+        material->AddTexture(GetDefaultTexture(5));
+        material->field_78 = 3;
+    }
+    if (MaterialParamsEnabled()) {
+        if (AglTexture* detail = FindTexture(desc->detailHash)) {
+            AddLayerLikeFirst(material, detail);
+            for (uint32_t i = 0; i < 3; ++i)
+                *material->GetConstant(i) = desc->params[i];
+            if (AglTexture* detail2 = FindTexture(desc->detail2Hash))
+                AddLayerLikeFirst(material, detail2);
+        }
+    }
+    const float rim = desc->paramCount > 4 ? desc->params[4] : 15.0f;
+    *material->GetConstant(4) = rim > 0.0f ? rim : 0.0f;
+    return true;
 }
 
 } // namespace agl

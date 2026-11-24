@@ -287,4 +287,9 @@ bool MountImageArchive()
     return true;
 }
 
+int GetImageArchiveHandle()
+{
+    return g_fs.imageArchiveCount;
+}
+
 } // namespace ape::file

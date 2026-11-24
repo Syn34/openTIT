@@ -52,6 +52,7 @@ ApeAnimScriptVar* ApeAnimScriptHashVar::Clone() const
     return copy;
 }
 
+// @func 0x00793DD4 ApeAnimScriptHashVar::ToString
 char* ApeAnimScriptHashVar::ToString(char* buffer) const
 {
     std::sprintf(buffer, "0x%08x", m_value);
@@ -89,6 +90,7 @@ ApeAnimScriptVar* ApeAnimScriptIntVar::Clone() const
     return copy;
 }
 
+// @func 0x00793E5C ApeAnimScriptIntVar::ToString
 char* ApeAnimScriptIntVar::ToString(char* buffer) const
 {
     std::sprintf(buffer, "%d", m_value);
@@ -132,6 +134,7 @@ ApeAnimScriptVar* ApeAnimScriptFloatVar::Clone() const
     return copy;
 }
 
+// @func 0x00793EE0 ApeAnimScriptFloatVar::ToString
 char* ApeAnimScriptFloatVar::ToString(char* buffer) const
 {
     std::sprintf(buffer, "%.5f", m_value);
@@ -192,6 +195,7 @@ ApeAnimScriptVar* ApeAnimScriptObjectVar::Clone() const
     return copy;
 }
 
+// @func 0x00793F4C ApeAnimScriptObjectVar::ToString
 char* ApeAnimScriptObjectVar::ToString(char* buffer) const
 {
     std::strcpy(buffer, "- empty -");
@@ -206,6 +210,7 @@ int ApeAnimScriptObjectVar::Unknown2C() const
     return 0;
 }
 
+// @func 0x00793FE0 ApeAnimScriptObjectVar::OnOwnerDestroyed
 void ApeAnimScriptObjectVar::OnOwnerDestroyed()
 {
     if (m_object && m_notifyObject && g_varHooks.onObjectReleasedByScript)
@@ -502,6 +507,8 @@ ApeAnimScriptTimeFunctionVar::ApeAnimScriptTimeFunctionVar(xml::XmlElement* elem
     element->GetFloat(AnimHash("End"), &m_end, 0.0f);
 }
 
+// @func 0x007940D0 ApeAnimScriptTimeFunctionVar::~ApeAnimScriptTimeFunctionVar
+// @func 0x007940E0 ApeAnimScriptTimeFunctionVar::~ApeAnimScriptTimeFunctionVar (deleting)
 ApeAnimScriptTimeFunctionVar::~ApeAnimScriptTimeFunctionVar() = default;
 
 // @func 0x004C0420 ApeAnimScriptTimeFunctionVar::Evaluate

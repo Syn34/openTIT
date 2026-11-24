@@ -96,6 +96,11 @@ class SoundZoneTriggerDef : public TriggerDef {
 public:
     SoundZoneTriggerDef(const TriggerDefDesc& desc, uint32_t zoneHash, uint32_t mixHash, float fade);
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075AECC SoundZoneTriggerDef::~SoundZoneTriggerDef (deleting)
+    ~SoundZoneTriggerDef() override = default;
 
     uint32_t zoneName = 0;                // 0xB0
     SoundZone* zone = nullptr;            // 0xB4

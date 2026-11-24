@@ -1,6 +1,8 @@
 // openTIT - Ape engine scalar/vector math helpers.
 #include "ape/math/ApeMath.h"
 
+#include "crt/libc/Libc.h"
+
 #include <cmath>
 
 namespace ape {
@@ -11,6 +13,59 @@ RandomState g_gameRandom = { 0, 0 };
 float Max(float a, float b)
 {
     return (a - b < 0.0f) ? b : a;
+}
+
+// @func 0x007558D4 Min
+float Min(float a, float b)
+{
+    return (b - a < 0.0f) ? b : a;
+}
+
+// @func 0x0074C45C MaxOf
+float MaxOf(const float& a, const float& b)
+{
+    return (a - b < 0.0f) ? b : a;
+}
+
+// @func 0x0074CFD4 MinOf
+float MinOf(const float& a, const float& b)
+{
+    return (a - b < 0.0f) ? a : b;
+}
+
+// @func 0x0074C708 Saturate
+float Saturate(float value)
+{
+    if (1.0f - value < 0.0f)
+        value = 1.0f;
+    if (value < 0.0f)
+        value = 0.0f;
+    return value;
+}
+
+// @func 0x007352E8 SafeACos
+float SafeACos(float cosine)
+{
+    if (cosine + 1.0f < 0.0f)
+        cosine = -1.0f;
+    return crt::ACosF(cosine - 1.0f < 0.0f ? cosine : 1.0f);
+}
+
+// @func 0x00748D08 AngleFromCosine
+float AngleFromCosine(float cosine)
+{
+    return SafeACos(Clamp(cosine, -1.0f, 1.0f));
+}
+
+// @func 0x00767A04 CompareFloats (copy 1)
+// @func 0x0077D7C4 CompareFloats (copy 2)
+int CompareFloats(const void* a, const void* b)
+{
+    const float fa = *static_cast<const float*>(a);
+    const float fb = *static_cast<const float*>(b);
+    if (fa > fb)
+        return 1;
+    return fa < fb ? -1 : 0;
 }
 
 // @func 0x00734E4C Clamp
@@ -151,6 +206,108 @@ void Vec3Normalize(Vec3& v)
     v.z *= inv;
 }
 
+// @func 0x0074C600 Vec3AddInPlace
+void Vec3AddInPlace(Vec3& a, const Vec3& b)
+{
+    a.x += b.x;
+    a.y += b.y;
+    a.z += b.z;
+}
+
+// @func 0x00742C74 Vec3SubInPlace
+void Vec3SubInPlace(Vec3& a, const Vec3& b)
+{
+    a.x -= b.x;
+    a.y -= b.y;
+    a.z -= b.z;
+}
+
+// @func 0x00735CDC Vec3Mul
+void Vec3Mul(Vec3& out, const Vec3& a, const Vec3& b)
+{
+    out.x = a.x * b.x;
+    out.y = a.y * b.y;
+    out.z = a.z * b.z;
+}
+
+// @func 0x0074B5C0 Vec3Divide
+void Vec3Divide(float s, Vec3& out, const Vec3& v)
+{
+    const float inv = 1.0f / s;
+    out.x = v.x * inv;
+    out.y = v.y * inv;
+    out.z = v.z * inv;
+}
+
+// @func 0x0074B6B0 Vec3Negate
+void Vec3Negate(Vec3& out, const Vec3& v)
+{
+    out.x = -v.x;
+    out.y = -v.y;
+    out.z = -v.z;
+}
+
+// @func 0x00748AFC Vec3Cross
+// @func 0x00755DAC Vec3Cross (copy 2)
+void Vec3Cross(Vec3& out, const Vec3& a, const Vec3& b)
+{
+    const float x = a.y * b.z - a.z * b.y;
+    const float y = a.z * b.x - a.x * b.z;
+    const float z = a.x * b.y - a.y * b.x;
+    out.x = x;
+    out.y = y;
+    out.z = z;
+}
+
+// @func 0x00735BA0 Vec3Lerp
+void Vec3Lerp(float t, Vec3& out, const Vec3& a, const Vec3& b)
+{
+    out.x = a.x + (b.x - a.x) * t;
+    out.y = a.y + (b.y - a.y) * t;
+    out.z = a.z + (b.z - a.z) * t;
+}
+
+// @func 0x00748A98 Vec3NearlyEqual
+bool Vec3NearlyEqual(float epsilon, const Vec3& a, const Vec3& b)
+{
+    return std::fabs(a.x - b.x) < epsilon && std::fabs(a.y - b.y) < epsilon &&
+           std::fabs(a.z - b.z) < epsilon;
+}
+
+// @func 0x00755D88 Vec2Add
+void Vec2Add(float out[2], const float a[2], const float b[2])
+{
+    out[0] = a[0] + b[0];
+    out[1] = a[1] + b[1];
+}
+
+// @func 0x00742CA8 Vec2AddInPlace
+void Vec2AddInPlace(float a[2], const float b[2])
+{
+    a[0] += b[0];
+    a[1] += b[1];
+}
+
+// @func 0x0074C7F8 Vec2Scale
+void Vec2Scale(float s, float out[2], const float v[2])
+{
+    out[0] = v[0] * s;
+    out[1] = v[1] * s;
+}
+
+// @func 0x00755DEC Vec2ScaleInPlace
+void Vec2ScaleInPlace(float s, float v[2])
+{
+    v[0] *= s;
+    v[1] *= s;
+}
+
+// @func 0x0077AECC Vec2LengthSq
+float Vec2LengthSq(const float v[2])
+{
+    return v[0] * v[0] + v[1] * v[1];
+}
+
 // @func 0x00735960 Vec4FromVec3
 void Vec4FromVec3(float w, Vec4& out, const Vec3& v)
 {
@@ -204,6 +361,12 @@ float RandomUnit(RandomState& state)
     state.value = mixed & 0xFFFF;
     state.seed = RotateLeft(mixed, 16);
     return (float)previous * kInv65535;
+}
+
+// @func 0x007342D8 RandomRange
+float RandomRange(float minValue, float maxValue, RandomState& state)
+{
+    return (maxValue - minValue) * RandomUnit(state) + minValue;
 }
 
 // @func 0x00735470 RandomDirection2D

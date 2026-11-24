@@ -60,6 +60,7 @@ const ape::Vec3 kZero = {0.0f, 0.0f, 0.0f, 0.0f};  // NOTE: console global 0x011
 class SeqTimeLimitCommand : public ApeAnimScriptCommand {
 public:
     SeqTimeLimitCommand();
+    ~SeqTimeLimitCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -69,6 +70,10 @@ private:
 
 // @func 0x000A42C0 SeqTimeLimitCommand::SeqTimeLimitCommand
 SeqTimeLimitCommand::SeqTimeLimitCommand() = default;
+
+// @func 0x00741E44 SeqTimeLimitCommand::~SeqTimeLimitCommand
+// @func 0x00741E74 SeqTimeLimitCommand::~SeqTimeLimitCommand (deleting)
+SeqTimeLimitCommand::~SeqTimeLimitCommand() = default;
 
 // @func 0x000A4318 SeqTimeLimitCommand::Create
 ApeAnimScriptCommand* SeqTimeLimitCommand::Create(XmlElement* element) const
@@ -90,6 +95,7 @@ void SeqTimeLimitCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqSkippableCommand : public ApeAnimScriptCommand {
 public:
     SeqSkippableCommand();
+    ~SeqSkippableCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -99,6 +105,10 @@ private:
 
 // @func 0x000A443C SeqSkippableCommand::SeqSkippableCommand
 SeqSkippableCommand::SeqSkippableCommand() = default;
+
+// @func 0x00741ECC SeqSkippableCommand::~SeqSkippableCommand
+// @func 0x00741EFC SeqSkippableCommand::~SeqSkippableCommand (deleting)
+SeqSkippableCommand::~SeqSkippableCommand() = default;
 
 // @func 0x000A4484 SeqSkippableCommand::Create
 ApeAnimScriptCommand* SeqSkippableCommand::Create(XmlElement* element) const
@@ -122,6 +132,7 @@ class SetEntityCommand : public ApeAnimScriptCommand {
 public:
     SetEntityCommand();
     explicit SetEntityCommand(XmlElement* element);
+    ~SetEntityCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -135,6 +146,10 @@ private:
 
 // @func 0x000A4878 SetEntityCommand::SetEntityCommand
 SetEntityCommand::SetEntityCommand() = default;
+
+// @func 0x00742064 SetEntityCommand::~SetEntityCommand
+// @func 0x00742094 SetEntityCommand::~SetEntityCommand (deleting)
+SetEntityCommand::~SetEntityCommand() = default;
 
 // @func 0x000A48F0 SetEntityCommand::SetEntityCommand
 SetEntityCommand::SetEntityCommand(XmlElement* element)
@@ -163,6 +178,7 @@ ApeAnimScriptCommand* SetEntityCommand::Create(XmlElement* element) const
 class SetEntityUpdateCommand : public ApeAnimScriptCommand {
 public:
     SetEntityUpdateCommand();
+    ~SetEntityUpdateCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -173,6 +189,10 @@ private:
 
 // @func 0x000A536C SetEntityUpdateCommand::SetEntityUpdateCommand
 SetEntityUpdateCommand::SetEntityUpdateCommand() = default;
+
+// @func 0x00742284 SetEntityUpdateCommand::~SetEntityUpdateCommand
+// @func 0x007422B4 SetEntityUpdateCommand::~SetEntityUpdateCommand (deleting)
+SetEntityUpdateCommand::~SetEntityUpdateCommand() = default;
 
 // @func 0x000A53B4 SetEntityUpdateCommand::Create
 ApeAnimScriptCommand* SetEntityUpdateCommand::Create(XmlElement* element) const
@@ -196,6 +216,7 @@ void SetEntityUpdateCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*
 class SetEntityVisibleCommand : public ApeAnimScriptCommand {
 public:
     SetEntityVisibleCommand();
+    ~SetEntityVisibleCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -211,6 +232,10 @@ private:
 
 // @func 0x000A50E4 SetEntityVisibleCommand::SetEntityVisibleCommand
 SetEntityVisibleCommand::SetEntityVisibleCommand() = default;
+
+// @func 0x007421FC SetEntityVisibleCommand::~SetEntityVisibleCommand
+// @func 0x0074222C SetEntityVisibleCommand::~SetEntityVisibleCommand (deleting)
+SetEntityVisibleCommand::~SetEntityVisibleCommand() = default;
 
 // @func 0x000A5144 SetEntityVisibleCommand::Create
 ApeAnimScriptCommand* SetEntityVisibleCommand::Create(XmlElement* element) const
@@ -240,6 +265,7 @@ void SetEntityVisibleCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState
 class SeqEmitterParamCommand : public ApeAnimScriptCommand {
 public:
     SeqEmitterParamCommand();
+    ~SeqEmitterParamCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -250,6 +276,10 @@ private:
 
 // @func 0x000A4DB4 SeqEmitterParamCommand::SeqEmitterParamCommand
 SeqEmitterParamCommand::SeqEmitterParamCommand() = default;
+
+// @func 0x007420EC SeqEmitterParamCommand::~SeqEmitterParamCommand
+// @func 0x0074211C SeqEmitterParamCommand::~SeqEmitterParamCommand (deleting)
+SeqEmitterParamCommand::~SeqEmitterParamCommand() = default;
 
 // @func 0x000A4E04 SeqEmitterParamCommand::Create
 ApeAnimScriptCommand* SeqEmitterParamCommand::Create(XmlElement* element) const
@@ -272,6 +302,7 @@ void SeqEmitterParamCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*
 class SeqLetterboxCommand : public ApeAnimScriptCommand {
 public:
     SeqLetterboxCommand();
+    ~SeqLetterboxCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -282,6 +313,10 @@ private:
 
 // @func 0x000A4F4C SeqLetterboxCommand::SeqLetterboxCommand
 SeqLetterboxCommand::SeqLetterboxCommand() = default;
+
+// @func 0x00742174 SeqLetterboxCommand::~SeqLetterboxCommand
+// @func 0x007421A4 SeqLetterboxCommand::~SeqLetterboxCommand (deleting)
+SeqLetterboxCommand::~SeqLetterboxCommand() = default;
 
 // @func 0x000A4F9C SeqLetterboxCommand::Create
 ApeAnimScriptCommand* SeqLetterboxCommand::Create(XmlElement* element) const
@@ -337,7 +372,8 @@ void SeqSetMusicCommand::Link()
     RefreshSound();
 }
 
-// The destructors live outside this module (0x0074230C / 0x00742358).
+// @func 0x0074230C SeqSetMusicCommand::~SeqSetMusicCommand
+// @func 0x00742358 SeqSetMusicCommand::~SeqSetMusicCommand (deleting)
 SeqSetMusicCommand::~SeqSetMusicCommand()
 {
     audio::SoundNameRelease(m_sound);
@@ -373,6 +409,7 @@ void SeqSetMusicCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqPauseAiCommand : public ApeAnimScriptCommand {
 public:
     SeqPauseAiCommand();
+    ~SeqPauseAiCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -382,6 +419,10 @@ private:
 
 // @func 0x000A4710 SeqPauseAiCommand::SeqPauseAiCommand
 SeqPauseAiCommand::SeqPauseAiCommand() = default;
+
+// @func 0x00741FDC SeqPauseAiCommand::~SeqPauseAiCommand
+// @func 0x0074200C SeqPauseAiCommand::~SeqPauseAiCommand (deleting)
+SeqPauseAiCommand::~SeqPauseAiCommand() = default;
 
 // @func 0x000A4758 SeqPauseAiCommand::Create
 ApeAnimScriptCommand* SeqPauseAiCommand::Create(XmlElement* element) const
@@ -401,6 +442,7 @@ void SeqPauseAiCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqPausePlayerCommand : public ApeAnimScriptCommand {
 public:
     SeqPausePlayerCommand();
+    ~SeqPausePlayerCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -410,6 +452,10 @@ private:
 
 // @func 0x000A45A4 SeqPausePlayerCommand::SeqPausePlayerCommand
 SeqPausePlayerCommand::SeqPausePlayerCommand() = default;
+
+// @func 0x00741F54 SeqPausePlayerCommand::~SeqPausePlayerCommand
+// @func 0x00741F84 SeqPausePlayerCommand::~SeqPausePlayerCommand (deleting)
+SeqPausePlayerCommand::~SeqPausePlayerCommand() = default;
 
 // @func 0x000A45EC SeqPausePlayerCommand::Create
 ApeAnimScriptCommand* SeqPausePlayerCommand::Create(XmlElement* element) const
@@ -431,6 +477,7 @@ void SeqPausePlayerCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqEnablePartCommand : public ApeAnimScriptCommand {
 public:
     SeqEnablePartCommand();
+    ~SeqEnablePartCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -442,6 +489,10 @@ private:
 
 // @func 0x000A4078 SeqEnablePartCommand::SeqEnablePartCommand
 SeqEnablePartCommand::SeqEnablePartCommand() = default;
+
+// @func 0x00741DBC SeqEnablePartCommand::~SeqEnablePartCommand
+// @func 0x00741DEC SeqEnablePartCommand::~SeqEnablePartCommand (deleting)
+SeqEnablePartCommand::~SeqEnablePartCommand() = default;
 
 // @func 0x000A40C8 SeqEnablePartCommand::Create
 ApeAnimScriptCommand* SeqEnablePartCommand::Create(XmlElement* element) const
@@ -463,6 +514,7 @@ ApeAnimScriptCommand* SeqEnablePartCommand::Create(XmlElement* element) const
 class SeqShowPartCommand : public ApeAnimScriptCommand {
 public:
     SeqShowPartCommand();
+    ~SeqShowPartCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -474,6 +526,10 @@ private:
 
 // @func 0x000A57EC SeqShowPartCommand::SeqShowPartCommand
 SeqShowPartCommand::SeqShowPartCommand() = default;
+
+// @func 0x007423C0 SeqShowPartCommand::~SeqShowPartCommand
+// @func 0x007423F0 SeqShowPartCommand::~SeqShowPartCommand (deleting)
+SeqShowPartCommand::~SeqShowPartCommand() = default;
 
 // @func 0x000A583C SeqShowPartCommand::Create
 ApeAnimScriptCommand* SeqShowPartCommand::Create(XmlElement* element) const
@@ -496,6 +552,7 @@ class SetPositionCommand : public ApeAnimScriptCommand {
 public:
     SetPositionCommand();
     explicit SetPositionCommand(XmlElement* element);
+    ~SetPositionCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -513,6 +570,10 @@ private:
 
 // @func 0x000A5A04 SetPositionCommand::SetPositionCommand
 SetPositionCommand::SetPositionCommand() = default;
+
+// @func 0x00742448 SetPositionCommand::~SetPositionCommand
+// @func 0x00742478 SetPositionCommand::~SetPositionCommand (deleting)
+SetPositionCommand::~SetPositionCommand() = default;
 
 // @func 0x000A5AA8 SetPositionCommand::SetPositionCommand
 SetPositionCommand::SetPositionCommand(XmlElement* element)

@@ -85,6 +85,7 @@ class SeqFocusPullCommand : public ApeAnimScriptCommand {
 public:
     SeqFocusPullCommand();
     explicit SeqFocusPullCommand(XmlElement* element);
+    ~SeqFocusPullCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -105,6 +106,10 @@ private:
 
 // @func 0x0009D7C8 SeqFocusPullCommand::SeqFocusPullCommand
 SeqFocusPullCommand::SeqFocusPullCommand() = default;
+
+// @func 0x00740BE4 SeqFocusPullCommand::~SeqFocusPullCommand
+// @func 0x00740C14 SeqFocusPullCommand::~SeqFocusPullCommand (deleting)
+SeqFocusPullCommand::~SeqFocusPullCommand() = default;
 
 // @func 0x0009D850 SeqFocusPullCommand::SeqFocusPullCommand
 SeqFocusPullCommand::SeqFocusPullCommand(XmlElement* element)
@@ -142,6 +147,7 @@ void SeqFocusPullCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqShootCommand : public ApeAnimScriptCommand {
 public:
     SeqShootCommand();
+    ~SeqShootCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -155,6 +161,10 @@ private:
 
 // @func 0x0009DBA0 SeqShootCommand::SeqShootCommand
 SeqShootCommand::SeqShootCommand() = default;
+
+// @func 0x00740C6C SeqShootCommand::~SeqShootCommand
+// @func 0x00740C9C SeqShootCommand::~SeqShootCommand (deleting)
+SeqShootCommand::~SeqShootCommand() = default;
 
 // @func 0x0009DBF8 SeqShootCommand::Create
 ApeAnimScriptCommand* SeqShootCommand::Create(XmlElement* element) const
@@ -184,6 +194,7 @@ class SeqObjectShakeCommand : public ApeAnimScriptCommand {
 public:
     SeqObjectShakeCommand();
     explicit SeqObjectShakeCommand(XmlElement* element);
+    ~SeqObjectShakeCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -212,6 +223,10 @@ private:
 
 // @func 0x0009DDF4 SeqObjectShakeCommand::SeqObjectShakeCommand
 SeqObjectShakeCommand::SeqObjectShakeCommand() = default;
+
+// @func 0x00740CF4 SeqObjectShakeCommand::~SeqObjectShakeCommand
+// @func 0x00740D24 SeqObjectShakeCommand::~SeqObjectShakeCommand (deleting)
+SeqObjectShakeCommand::~SeqObjectShakeCommand() = default;
 
 // @func 0x0009DEE8 SeqObjectShakeCommand::SeqObjectShakeCommand
 SeqObjectShakeCommand::SeqObjectShakeCommand(XmlElement* element)
@@ -257,6 +272,7 @@ class SeqCameraWeightCommand : public ApeAnimScriptCommand {
 public:
     SeqCameraWeightCommand();
     explicit SeqCameraWeightCommand(XmlElement* element);
+    ~SeqCameraWeightCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -268,6 +284,10 @@ private:
 
 // @func 0x0009E4CC SeqCameraWeightCommand::SeqCameraWeightCommand
 SeqCameraWeightCommand::SeqCameraWeightCommand() = default;
+
+// @func 0x00740D7C SeqCameraWeightCommand::~SeqCameraWeightCommand
+// @func 0x00740DAC SeqCameraWeightCommand::~SeqCameraWeightCommand (deleting)
+SeqCameraWeightCommand::~SeqCameraWeightCommand() = default;
 
 // @func 0x0009E528 SeqCameraWeightCommand::SeqCameraWeightCommand
 SeqCameraWeightCommand::SeqCameraWeightCommand(XmlElement* element)
@@ -306,6 +326,7 @@ void SeqCameraWeightCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*
 class SeqJumpToCommand : public ApeAnimScriptCommand {
 public:
     SeqJumpToCommand();
+    ~SeqJumpToCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -319,6 +340,10 @@ private:
 
 // @func 0x0009E78C SeqJumpToCommand::SeqJumpToCommand
 SeqJumpToCommand::SeqJumpToCommand() = default;
+
+// @func 0x00740E04 SeqJumpToCommand::~SeqJumpToCommand
+// @func 0x00740E34 SeqJumpToCommand::~SeqJumpToCommand (deleting)
+SeqJumpToCommand::~SeqJumpToCommand() = default;
 
 // @func 0x0009E7E4 SeqJumpToCommand::Create
 ApeAnimScriptCommand* SeqJumpToCommand::Create(XmlElement* element) const
@@ -351,6 +376,7 @@ void SeqJumpToCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqKillEntityCommand : public ApeAnimScriptCommand {
 public:
     SeqKillEntityCommand();
+    ~SeqKillEntityCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -361,6 +387,10 @@ private:
 
 // @func 0x0009EA0C SeqKillEntityCommand::SeqKillEntityCommand
 SeqKillEntityCommand::SeqKillEntityCommand() = default;
+
+// @func 0x00740E8C SeqKillEntityCommand::~SeqKillEntityCommand
+// @func 0x00740EBC SeqKillEntityCommand::~SeqKillEntityCommand (deleting)
+SeqKillEntityCommand::~SeqKillEntityCommand() = default;
 
 // @func 0x0009EA54 SeqKillEntityCommand::Create
 ApeAnimScriptCommand* SeqKillEntityCommand::Create(XmlElement* element) const
@@ -384,6 +414,7 @@ void SeqKillEntityCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqLookAtCommand : public ApeAnimScriptCommand {
 public:
     SeqLookAtCommand();
+    ~SeqLookAtCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -399,6 +430,10 @@ private:
 
 // @func 0x0009EBA0 SeqLookAtCommand::SeqLookAtCommand
 SeqLookAtCommand::SeqLookAtCommand() = default;
+
+// @func 0x00740F14 SeqLookAtCommand::~SeqLookAtCommand
+// @func 0x00740F44 SeqLookAtCommand::~SeqLookAtCommand (deleting)
+SeqLookAtCommand::~SeqLookAtCommand() = default;
 
 // @func 0x0009EC00 SeqLookAtCommand::Create
 ApeAnimScriptCommand* SeqLookAtCommand::Create(XmlElement* element) const
@@ -427,6 +462,7 @@ void SeqLookAtCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqMoveAlongCommand : public ApeAnimScriptCommand {
 public:
     SeqMoveAlongCommand();
+    ~SeqMoveAlongCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -443,6 +479,10 @@ private:
 
 // @func 0x0009EE54 SeqMoveAlongCommand::SeqMoveAlongCommand
 SeqMoveAlongCommand::SeqMoveAlongCommand() = default;
+
+// @func 0x00740F9C SeqMoveAlongCommand::~SeqMoveAlongCommand
+// @func 0x00740FCC SeqMoveAlongCommand::~SeqMoveAlongCommand (deleting)
+SeqMoveAlongCommand::~SeqMoveAlongCommand() = default;
 
 // @func 0x0009EEBC SeqMoveAlongCommand::Create
 ApeAnimScriptCommand* SeqMoveAlongCommand::Create(XmlElement* element) const
@@ -474,6 +514,7 @@ void SeqMoveAlongCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 class SeqMoveToCommand : public ApeAnimScriptCommand {
 public:
     SeqMoveToCommand();
+    ~SeqMoveToCommand() override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -488,6 +529,10 @@ private:
 
 // @func 0x0009F3FC SeqMoveToCommand::SeqMoveToCommand
 SeqMoveToCommand::SeqMoveToCommand() = default;
+
+// @func 0x007410AC SeqMoveToCommand::~SeqMoveToCommand
+// @func 0x007410DC SeqMoveToCommand::~SeqMoveToCommand (deleting)
+SeqMoveToCommand::~SeqMoveToCommand() = default;
 
 // @func 0x0009F464 SeqMoveToCommand::Create
 ApeAnimScriptCommand* SeqMoveToCommand::Create(XmlElement* element) const
@@ -512,6 +557,7 @@ ApeAnimScriptCommand* SeqMoveToCommand::Create(XmlElement* element) const
 class SeqMoveCameraCommand : public ApeAnimScriptCommand {
 public:
     SeqMoveCameraCommand();
+    ~SeqMoveCameraCommand() override;
     void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
@@ -528,6 +574,10 @@ private:
 
 // @func 0x0009F154 SeqMoveCameraCommand::SeqMoveCameraCommand
 SeqMoveCameraCommand::SeqMoveCameraCommand() = default;
+
+// @func 0x00741024 SeqMoveCameraCommand::~SeqMoveCameraCommand
+// @func 0x00741054 SeqMoveCameraCommand::~SeqMoveCameraCommand (deleting)
+SeqMoveCameraCommand::~SeqMoveCameraCommand() = default;
 
 // @func 0x0009F1B4 SeqMoveCameraCommand::Create
 ApeAnimScriptCommand* SeqMoveCameraCommand::Create(XmlElement* element) const

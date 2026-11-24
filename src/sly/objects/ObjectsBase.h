@@ -20,6 +20,7 @@
 
 #include "ape/math/ApeBounds.h"
 #include "ape/math/ApeMath.h"
+#include "ape/memory/ApeTArray.h"
 
 #include <cstdint>
 #include <vector>
@@ -135,7 +136,8 @@ struct EntityInstanceDesc {
 class EntityPlacement {
 public:
     EntityPlacement(const char* placementName, EntityDef* ownerDef);
-    virtual ~EntityPlacement() = default;
+    // Releases the optional array at 0x10 (see below).
+    virtual ~EntityPlacement();
     // Slot 2 (base 0x000CDB28): copies the placement into an instance description.
     virtual void FillInstanceDesc(EntityInstanceDesc& desc) const;
 
@@ -144,6 +146,9 @@ public:
 
     uint32_t flags = 0;                // 0x04 PlacementFlags
     uint32_t typeBits = 0;             // 0x08 class-specific type bit (see EntityDef::typeBits)
+    // 0x10: array owned by the placement, freed with it. NOTE: element type
+    // and the code that fills it are in the entity module (not modelled).
+    ape::ApeArrayBase* ownedArray = nullptr;
     ape::Matrix34 transform{};         // 0x20
     EntityDef* def = nullptr;          // 0x78
     float field_7C = 0.0f;             // 0x7C (from the def, overridable)

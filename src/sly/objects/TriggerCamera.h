@@ -51,6 +51,11 @@ class CameraTriggerDef : public TriggerDef {
 public:
     explicit CameraTriggerDef(const CameraTriggerDefDesc& desc);
     ObjEntity* Create(EntityPlacement* placement) override;
+    // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
+    // tagged there); the deleting variant returns the block to the bucket
+    // allocator.
+    // @func 0x0075B210 CameraTriggerDef::~CameraTriggerDef (deleting)
+    ~CameraTriggerDef() override = default;
     uint16_t allowedStates = 0xFFFF;   // 0xB0
     uint16_t excludedStates = 0;       // 0xB2
     uint32_t field_B4 = 0;             // 0xB4
@@ -59,6 +64,9 @@ public:
 class CameraTriggerPlacement : public TriggerPlacement {
 public:
     explicit CameraTriggerPlacement(const char* placementName);
+    // @func 0x007460D0 CameraTriggerPlacement::~CameraTriggerPlacement
+    // @func 0x0075B268 CameraTriggerPlacement::~CameraTriggerPlacement (deleting)
+    ~CameraTriggerPlacement() override = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
 
     uint32_t field_BC = 0;             // 0xBC
