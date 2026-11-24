@@ -264,6 +264,26 @@ public:
 };
 class ElJefeAI : public AIController {
 public:
+    // One fight stage (0x14 bytes from +0x19C).
+    struct Stage {
+        uint32_t field_00 = 0;
+        AIProxyPoint* point = nullptr;   // +0x04 where El Jefe stands
+        uint32_t field_08[3] = {};
+    };
+    static constexpr int kMaxStages = 0x34;   // NOTE: count assumed (stages run up to +0x600)
+    static constexpr int kMaxSpawned = 0x80;  // NOTE: capacity assumed (array runs up to +0x91C)
+
+    void Detach() override;
+    ape::Vec3 GetTargetPosition() override;
+    void OnTauntChance() override;
+
+    Stage stages[kMaxStages];           // +0x19C
+    uint32_t field_41C = 0;             // +0x41C
+    int32_t stageIndex = 0;             // +0x704
+    uint8_t field_713 = 0;              // +0x713
+    int32_t spawnedCount = 0;           // +0x718
+    Entity* spawned[kMaxSpawned] = {};  // +0x71C entities the fight spawned
+    AICameraMode* camera = nullptr;     // +0x91C
 };
 class MsDecibelAI : public AIController {
 public:

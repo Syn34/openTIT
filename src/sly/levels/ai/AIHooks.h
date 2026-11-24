@@ -333,6 +333,13 @@ void SendGameEvent(Entity* sender, Entity* receiver, uint32_t event, uint32_t da
 // `range` of the sender.
 void BroadcastInRange(Entity* sender, float range, uint32_t group, uint32_t event, uint32_t argument);
 
+// Camera mode objects the bosses create: removed from the camera manager
+// (game world +0x1281E0, 0x000FBB88 with a 1 s blend) and deleted.
+class AICameraMode;
+void ReleaseCameraMode(AICameraMode* mode);
+// Game world byte +0x1285A5. NOTE: set while El Jefe's fight runs.
+void GameWorldSetBossFlag(bool on);
+
 // -- HUD -----------------------------------------------------------------------------
 // hud::SetContextByString (0x00369D14) / hud::SetContext (0x00369D00) with
 // the entity as the context value (a 32-bit pointer on the console).
