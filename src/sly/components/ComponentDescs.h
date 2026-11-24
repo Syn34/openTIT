@@ -35,6 +35,7 @@ enum ComponentDescType : uint32_t {
     kCompDesc_ControlAI      = 0x06,
     kCompDesc_AnimMap        = 0x0E,
     kCompDesc_ProcAnim       = 0x0F,
+    kCompDesc_ProcEyes       = 0x10,
     kCompDesc_IK             = 0x11,
     kCompDesc_FacePlayer     = 0x16,
     kCompDesc_RadarBlip      = 0x19,
@@ -164,6 +165,30 @@ struct ProcAnimComponentDesc : ComponentDesc {
     ape::Vec3 gravity = {0.0f, -9.81f, 0.0f, 0.0f};   // 0x40
     ape::Vec3 vec50 = {0.0f, 0.0f, 0.0f, 0.0f};       // 0x50 attribute 0x34BF0B12. NOTE: name unknown
     ape::ApeTArray<uint32_t> bones;                    // 0x60 boneName of each child (tag 0xA0702B13)
+};
+
+// <ProcEyes> (vtable 0x00B1C5C0, 0x28 bytes): procedural eyes, one <Eye>
+// element per eye.
+struct ProcEye {
+    uint32_t name = 0;           // +0x00 required
+    uint32_t material = 0;       // +0x04 required
+    uint32_t hash08 = 0;         // +0x08 attribute 0xE79D4302, optional. NOTE: name unknown
+    uint32_t bone = 0;           // +0x0C required
+    uint32_t eyelidBone = 0;     // +0x10 required
+    uint32_t hash14 = 0;         // +0x14 attribute 0x1A1D3D81, required. NOTE: name unknown
+    uint32_t hash18 = 0;         // +0x18 attribute 0x98247D0B, required. NOTE: name unknown
+    bool enableBlink = false;    // +0x1C required
+    uint8_t byte1D = 0;          // +0x1D
+    float blinkMin = 0.0f;       // +0x20 attribute 0xD9DE2696 ("...Min"), read with blinking. NOTE: name unknown
+    float blinkMax = 0.0f;       // +0x24 attribute 0xD9DE25A8 ("...Max"). NOTE: name unknown
+    float blink28 = 0.0f;        // +0x28 attribute 0xD211F8D0. NOTE: name unknown
+    float upperRotPivot[2] = {0.5f, 0.5f};   // +0x2C UpperRotPivotU/V
+    float lowerRotPivot[2] = {0.5f, 0.5f};   // +0x34 LowerRotPivotU/V
+};
+struct ProcEyesComponentDesc : ComponentDesc {
+    explicit ProcEyesComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_ProcEyes) {}
+    bool flag11 = false;         // 0x11 attribute 0x2A9B2CB7 (in the base's padding). NOTE: name unknown
+    ape::ApeTArray<ProcEye> eyes;   // 0x14
 };
 
 // <IK> (vtable 0x00B1C7D0, 0x60 bytes): names of the IK solvers the
@@ -421,6 +446,7 @@ ComponentDesc* ParseContextualMarkerComponentDesc(ape::xml::XmlElement* root, ap
 ComponentDesc* ParseControlAIComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseAnimMapComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseProcAnimComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+ComponentDesc* ParseProcEyesComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseIKComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseFacePlayerComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 ComponentDesc* ParseRadarBlipComponentDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);

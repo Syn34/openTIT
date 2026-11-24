@@ -185,6 +185,23 @@ constexpr uint32_t kTargetingKinds[6] = {0x96EC7B40u, 0x036166E2u, 0x04C1AEC6u /
                                          0x50A58636u /* Interact */, 0x03CEF0FBu /* Carry */,
                                          0x6362ED0Au /* Collect */};
 
+constexpr uint32_t kAttr_ProcEyes11      = 0x2A9B2CB7u;   // NOTE: name unknown
+constexpr uint32_t kTag_Eye              = 0x00010E11u;
+constexpr uint32_t kAttr_Material        = 0x40795527u;
+constexpr uint32_t kAttr_Eye08           = 0xE79D4302u;   // NOTE: name unknown
+constexpr uint32_t kAttr_Bone            = 0x001F32C4u;
+constexpr uint32_t kAttr_EyelidBone      = 0x980FFA7Au;
+constexpr uint32_t kAttr_Eye14           = 0x1A1D3D81u;   // NOTE: name unknown
+constexpr uint32_t kAttr_Eye18           = 0x98247D0Bu;   // NOTE: name unknown
+constexpr uint32_t kAttr_EnableBlink     = 0x2B501799u;
+constexpr uint32_t kAttr_BlinkMin        = 0xD9DE2696u;   // NOTE: name unknown
+constexpr uint32_t kAttr_BlinkMax        = 0xD9DE25A8u;   // NOTE: name unknown
+constexpr uint32_t kAttr_Blink28         = 0xD211F8D0u;   // NOTE: name unknown
+constexpr uint32_t kAttr_UpperRotPivotU  = 0xC4E89AA8u;
+constexpr uint32_t kAttr_UpperRotPivotV  = 0xC4E89AA9u;
+constexpr uint32_t kAttr_LowerRotPivotU  = 0x1B750329u;
+constexpr uint32_t kAttr_LowerRotPivotV  = 0x1B75032Au;
+
 constexpr float kDegToRad = 0.017453292f;
 
 // Shared start of every parser: the description named by the element's
@@ -395,6 +412,43 @@ ComponentDesc* ParseProcAnimComponentDesc(XmlElement* root, XmlElement* elem, ui
             desc->bones.PushBack(bone);
         else
             (void)root->GetDocumentPath();   // compiled-out error report
+    }
+    return desc;
+}
+
+// @func 0x00286378 ParseProcEyesComponentDesc
+ComponentDesc* ParseProcEyesComponentDesc(XmlElement* root, XmlElement* elem, uint8_t scope)
+{
+    ProcEyesComponentDesc* desc = NewNamedDesc<ProcEyesComponentDesc>(root, elem, scope);
+    if (!desc)
+        return nullptr;
+    elem->GetBool(kAttr_ProcEyes11, &desc->flag11, false);
+    // Missing required attributes only trigger the compiled-out error report.
+    auto require = [root](int result) {
+        if (result != ape::xml::kQuery_Ok)
+            (void)root->GetDocumentPath();
+    };
+    for (XmlElement* child = elem->FirstChildElement(kTag_Eye); child;
+         child = child->NextSiblingElement(kTag_Eye)) {
+        ProcEye eye;
+        require(child->GetHash(kAttr_Name, &eye.name, 0));
+        require(child->GetHash(kAttr_Material, &eye.material, 0));
+        child->GetHash(kAttr_Eye08, &eye.hash08, 0);
+        require(child->GetHash(kAttr_Bone, &eye.bone, 0));
+        require(child->GetHash(kAttr_Eye14, &eye.hash14, 0));
+        require(child->GetHash(kAttr_EyelidBone, &eye.eyelidBone, 0));
+        require(child->GetHash(kAttr_Eye18, &eye.hash18, 0));
+        require(child->GetBool(kAttr_EnableBlink, &eye.enableBlink, false));
+        if (eye.enableBlink) {
+            require(child->GetFloat(kAttr_BlinkMin, &eye.blinkMin, 0.0f));
+            require(child->GetFloat(kAttr_BlinkMax, &eye.blinkMax, 0.0f));
+            require(child->GetFloat(kAttr_Blink28, &eye.blink28, 0.0f));
+        }
+        child->GetFloat(kAttr_UpperRotPivotU, &eye.upperRotPivot[0], eye.upperRotPivot[0]);
+        child->GetFloat(kAttr_UpperRotPivotV, &eye.upperRotPivot[1], eye.upperRotPivot[1]);
+        child->GetFloat(kAttr_LowerRotPivotU, &eye.lowerRotPivot[0], eye.lowerRotPivot[0]);
+        child->GetFloat(kAttr_LowerRotPivotV, &eye.lowerRotPivot[1], eye.lowerRotPivot[1]);
+        desc->eyes.PushBack(eye);
     }
     return desc;
 }
