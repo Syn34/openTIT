@@ -8,6 +8,7 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
 #include "sly/game/goals/Goal.h"
+#include "sly/game/goals/GoalHooks.h"
 #include "sly/game/hud/HudManager.h"
 
 namespace sly {
@@ -27,6 +28,30 @@ int GameWorldState(int) { return 0; }
 void PlayerResetJobState(int) {}
 // TODO(0x00488D68): the game world state machine is not ported.
 void GameWorldRestartState() {}
+// TODO(game world +0x1070 / +0x1280F0 / +0x128160 / +0x1281E0 / +0x128114,
+// 0x00486460, 0x0012BF70, 0x00487670, 0x00484BE0, 0x00488178): the players
+// block, the playable characters and the level instances are not modelled.
+int PlayerCharacterSlot() { return 0; }
+entity::Entity* PlayerEntity() { return nullptr; }
+ape::Matrix34& PlayerSpawnTransform()
+{
+    static ape::Matrix34 transform{};
+    return transform;
+}
+entity::Entity* PlayableCharacter(int) { return nullptr; }
+void DefaultSpawnTransform(int, ape::Matrix34*) {}
+bool PointInstanceWorldTransform(uint32_t, ape::Matrix34*) { return false; }
+bool TakeRespawnOverride(ape::Matrix34*, bool* wasSet)
+{
+    *wasSet = false;
+    return false;
+}
+void CharacterSnapToGround(entity::Entity*) {}
+void GameCameraReset() {}
+void GameWorldUseAssociatedPlayer(Goal*) {}
+void GameWorldSwitchPlayerCharacter(uint32_t) {}
+void GameWorldRespawnPlayer() {}
+uint32_t RunningLevel() { return 0; }
 void GameWorldSetState(int, int) {}
 void GameWorldSetStateData(uint32_t, uint32_t) {}
 bool CurrentLevelJobValue(uint32_t*) { return false; }
@@ -493,6 +518,164 @@ void JobManager::CancelPendingStart()
     ClearGoals();
     ResetRunningJob();
     currentJob = nullptr;
+}
+
+namespace {
+constexpr int kCompanionSlots = 9;
+constexpr uint32_t kGoalFlag_HasAssociatedPlayer = 0x20;
+constexpr uint32_t kGoalFlag_LockMask = 0x7;
+constexpr uint32_t kCharacter_Sly = 0x00014120u;
+constexpr uint32_t kManager_ClearingGoals = 1u << 30;
+constexpr uint32_t kManager_RestorePending = 1u << 31;
+constexpr uint32_t kManager_Bit28 = 1u << 28;
+
+// The checkpoint transform of slot `index` of `goal`: its point instance,
+// else the default spawn transform of the slot.
+void CheckpointTransform(Goal* goal, int index, ape::Matrix34* out)
+{
+    const uint32_t point = goal->Field8F4(index);
+    if (!point || !PointInstanceWorldTransform(point, out))
+        DefaultSpawnTransform(index, out);
+}
+
+void ResetCharacterControl(entity::Entity* character)
+{
+    if (entity::EntityComponent* control = entity::EntityComponent03(character))
+        control->ResetState();
+}
+} // namespace
+
+// @func 0x002DE41C JobManager::PlacePlayerForGoal
+void JobManager::PlacePlayerForGoal(Goal* goal)
+{
+    entity::Entity* player = PlayerEntity();
+    int index = goal ? goal->CheckpointIndexOf(player) : -1;
+    if (index == -1)
+        index = PlayerCharacterSlot();
+    ape::Matrix34& spawn = PlayerSpawnTransform();
+    bool teleported = false;
+    if (goal && goal->Field8F4(index)) {
+        CheckpointTransform(goal, index, &spawn);
+    } else {
+        bool overrideSet = false;
+        teleported = TakeRespawnOverride(&spawn, &overrideSet);
+        if (!teleported)
+            DefaultSpawnTransform(index, &spawn);
+    }
+    if (player) {
+        player->SetTransform(spawn);
+        ResetCharacterControl(player);
+        if (teleported && (player->typeBits[0] & 0x8u))
+            CharacterSnapToGround(player);
+        GameCameraReset();
+    }
+}
+
+// @func 0x002DE794 JobManager::PlaceCompanionsForGoal
+void JobManager::PlaceCompanionsForGoal(Goal* goal)
+{
+    if (!goal)
+        return;
+    for (int slot = 0; slot < kCompanionSlots; ++slot) {
+        entity::Entity* character = PlayableCharacter(slot);
+        if (slot == PlayerCharacterSlot() || !character)
+            continue;
+        int index = goal->CheckpointIndexOf(character);
+        if (index == -1)
+            index = slot;
+        ape::Matrix34 transform{};
+        CheckpointTransform(goal, index, &transform);
+        character->SetTransform(transform);
+        ResetCharacterControl(character);
+    }
+}
+
+// @func 0x002DEA50 JobManager::SelectGoal
+void JobManager::SelectGoal(Goal* goal, bool keepPlayers, bool requestLevel)
+{
+    if (!goal)
+        return;
+    flags |= kManager_ClearingGoals;
+    if (!keepPlayers) {
+        if (goal->checkpoints[0] != 0 && (goal->flags & kGoalFlag_HasAssociatedPlayer))
+            GameWorldUseAssociatedPlayer(goal);
+        PlaceCompanionsForGoal(goal);
+    }
+    for (uint32_t i = 0; i < PlayerGoalCount(); ++i) {
+        Goal* candidate = PlayerGoalListAt(i);
+        if (candidate != goal) {
+            // Every goal before the selected one counts as completed.
+            candidate->Reset(true, goals::kGoal_Complete);
+            const uint32_t word = goals::JobGoalSaveWord(candidate->job, candidate->saveSlot);
+            goals::JobSetGoalSaveWord(candidate->job, candidate->saveSlot, word & ~0x0C000000u);
+            continue;
+        }
+        goal->SetFlags(goal->flags & ~kGoalFlag_LockMask);
+        trackedGoal = goal;
+        goal->Reset(true, -1);
+        if (keepPlayers)
+            break;
+        PlacePlayerForGoal(goal);
+        if (!(goal->flags & kGoalFlag_HasAssociatedPlayer)) {
+            uint32_t character = goal->field_964;
+            if (character == 0 && instance)
+                character = instance->associatedDef;
+            entity::Entity* player = PlayerEntity();
+            if (character != 0 && player) {
+                const uint32_t playerDef = player->def ? player->def->nameHash : 0;
+                const bool isSly = character == kCharacter_Sly &&
+                                   (goals::EntityIsSlyClass(player) ||
+                                    (goals::EntityIsCharacter(player) && goals::EntityGroupField_C0(player) == kCharacter_Sly));
+                if (playerDef != character && !isSly) {
+                    GameWorldSwitchPlayerCharacter(character);
+                    break;
+                }
+            }
+        }
+        GameWorldRespawnPlayer();
+        break;
+    }
+    flags &= ~kManager_ClearingGoals;
+    const uint32_t level = trackedGoal ? trackedGoal->Field960() : 0;
+    if (level != 0 && requestLevel && RunningLevel() != level)
+        GameWorldRequestLevel(level);
+}
+
+// @func 0x002DEDB4 JobManager::RestoreGoals
+void JobManager::RestoreGoals(bool fromSave, bool restoreFlags)
+{
+    if (!instance)
+        return;
+    if (fromSave && (flags & kManager_RestorePending)) {
+        flags &= ~kManager_RestorePending;
+        if (trackedGoalId != 0) {
+            SelectGoal(PlayerFindGoal(trackedGoalId), false, false);
+            trackedGoalId = 0;
+        }
+    } else {
+        bool anyActive = false;
+        uint32_t lastComplete = 0xFFFFFFFFu;
+        const uint32_t count = PlayerGoalCount();
+        for (uint32_t i = 0; i < count; ++i) {
+            Goal* goal = PlayerGoalListAt(i);
+            if (restoreFlags)
+                goal->flags = goal->initialFlags;
+            goal->Reset(fromSave, -1);
+            if (fromSave) {
+                if (goal->GetStatus() == goals::kGoal_Complete)
+                    lastComplete = i;
+                if (!anyActive && goal->GetStatus() == goals::kGoal_Active)
+                    anyActive = true;
+            }
+        }
+        if (!anyActive && lastComplete != 0xFFFFFFFFu && lastComplete + 1 < count) {
+            Goal* next = PlayerGoalListAt(lastComplete + 1);
+            next->SetFlags(next->flags & ~kGoalFlag_LockMask);
+            next->Reset(fromSave, -1);
+            trackedGoal = next;
+        }
+    }
+    flags &= ~kManager_Bit28;
 }
 
 } // namespace game

@@ -10,7 +10,7 @@
 
 #include <cstdint>
 
-namespace ape { class ApeAllocator; }
+namespace ape { class ApeAllocator; struct Matrix34; }
 
 namespace sly {
 class Spawner;
@@ -431,6 +431,24 @@ public:
     // Without a pending start, lets every goal reset its hints; with one,
     // drops it and ends the running job and episode (0x002E4D64).
     void CancelPendingStart();
+    // Places the local player at the checkpoint of `goal` that belongs to
+    // the player's character (default spawn point without one, or a
+    // pending respawn override without a goal) and resets the camera
+    // (0x002DE41C).
+    void PlacePlayerForGoal(Goal* goal);
+    // Places the other playable characters at their checkpoints of `goal`
+    // (0x002DE794).
+    void PlaceCompanionsForGoal(Goal* goal);
+    // Makes `goal` the tracked goal: the goals before it are completed, the
+    // players are placed (unless `keepPlayers`), the player switches to the
+    // goal's character and, with `requestLevel`, the goal's level is asked
+    // for (0x002DEA50).
+    void SelectGoal(Goal* goal, bool keepPlayers, bool requestLevel);
+    // Resets every goal of the running job (from the save words with
+    // `fromSave`, restoring the initial flags with `restoreFlags`) and
+    // tracks the goal after the last completed one; a pending goal id is
+    // selected instead (0x002DEDB4).
+    void RestoreGoals(bool fromSave, bool restoreFlags);
     // Ends the running job instance, first updating its episode's flag 0x20
     // (0x002E5060).
     void FinishJobInstance();
@@ -496,6 +514,33 @@ Goal* PlayerFindGoal(uint32_t id);
 void GameWorldRequestLevel(uint32_t levelName);
 // Puts the game world's state machine into state 3 (0x00488D68).
 void GameWorldRestartState();
+// The local player's block (game world +0x1070): character slot (+0x02),
+// controlled entity (+0x08) and its spawn transform (+0x10).
+int PlayerCharacterSlot();
+entity::Entity* PlayerEntity();
+ape::Matrix34& PlayerSpawnTransform();
+// The playable character entities by slot (game world +0x1280F0, nine).
+entity::Entity* PlayableCharacter(int slot);
+// Default spawn transform of character slot `slot` (0x00486460).
+void DefaultSpawnTransform(int slot, ape::Matrix34* out);
+// World transform of a placed point instance; false if there is none.
+bool PointInstanceWorldTransform(uint32_t name, ape::Matrix34* out);
+// A one-shot respawn point set by scripts (game world +0x128160); taking it
+// clears it. False if none is set or the point is missing.
+bool TakeRespawnOverride(ape::Matrix34* out, bool* wasSet);
+// Character entity snaps to the ground after a teleport (0x0012BF70).
+void CharacterSnapToGround(entity::Entity* character);
+// The active game camera resets behind the player (game world +0x1281E0,
+// camera of slot +0x159, virtual slot 7).
+void GameCameraReset();
+// Game world helpers of the goal selection: the player switches to the
+// goal's associated player (0x00487670), to the character of definition
+// `def` (0x00484BE0), or respawns as it is (0x00488178).
+void GameWorldUseAssociatedPlayer(Goal* goal);
+void GameWorldSwitchPlayerCharacter(uint32_t def);
+void GameWorldRespawnPlayer();
+// Running level (game world +0x128114).
+uint32_t RunningLevel();
 // Goal `index` of the player's goal list (game world +0x10C0, count
 // +0x10C8), null for -1 or out of range (0x002E6A3C).
 Goal* PlayerGoalAt(uint32_t index);
