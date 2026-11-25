@@ -154,6 +154,18 @@ ape::Vec3 RigidBodyEntity::BodyVelocity() const
     return rigidBody ? RigidBodyLinearVelocity(rigidBody) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
 }
 
+bool RigidBodyEntity::CanBePickedUp(Entity* other, int kind, const PropDamageSettings& settings,
+                                    const Entity* refused)
+{
+    if (kind == 0) {
+        if (!settings.CanHurt() || (other && other == refused))
+            return false;
+    } else if (kind != 4) {
+        return false;
+    }
+    return Entity::CanInteractWith(other, kind);
+}
+
 void RigidBodyEntity::MoveBody(void* body, const ape::Matrix34& transform)
 {
     const ape::Vec3 from = RigidBodyPosition(body);
@@ -308,6 +320,31 @@ void AlterEgoEntity::SetTransform(const ape::Matrix34& m)
     Entity::SetTransform(m);
     if (rigidBody && RigidBodyInWorld(rigidBody))
         MoveBody(rigidBody, m);
+}
+
+// @func 0x0017A008 AlterEgoEntity::CanInteractWith
+bool AlterEgoEntity::CanInteractWith(Entity* other, int kind)
+{
+    if (alterState != 1)
+        return false;
+    switch (kind) {
+    case 0:
+        if (Def()->deathFlags & 0x80000000u)
+            return false;
+        if (other && other == refusedPartner)
+            return false;
+        break;
+    case 3:
+        break;
+    case 4:
+        if (!rigidBody || RigidBodyMass(rigidBody) <= 0.0f || Def()->field_C4 > 0.0f ||
+            (classBits & 0x10000))
+            return false;
+        break;
+    default:
+        return false;
+    }
+    return Entity::CanInteractWith(other, kind);
 }
 
 // @func 0x00178650 AlterEgoEntity::SetVelocity
@@ -595,6 +632,14 @@ void TargetableB::SetTransform(const ape::Matrix34& m)
         static_cast<levels::ai::AIController*>(listener)->SetTransform(m);
 }
 
+// @func 0x00193270 TargetableB::CanInteractWith
+bool TargetableB::CanInteractWith(Entity* other, int kind)
+{
+    if (GetTargetState() != 2 && GetTargetState() < 8)
+        return false;
+    return CanBePickedUp(other, kind, Def()->damage, refusedPartner);
+}
+
 // @func 0x00192370 TargetableB::SetVelocity
 void TargetableB::SetVelocity(const ape::Vec3& velocity) { SetBodyVelocity(rigidBody, velocity); }
 
@@ -690,6 +735,14 @@ void TargetableA::SetTransform(const ape::Matrix34& m)
     Entity::SetTransform(m);
     if (rigidBody)
         MoveBody(rigidBody, m);
+}
+
+// @func 0x00185B28 TargetableA::CanInteractWith
+bool TargetableA::CanInteractWith(Entity* other, int kind)
+{
+    if (GetTargetState() != 3 && GetTargetState() < 11)
+        return false;
+    return CanBePickedUp(other, kind, Def()->damage, refusedPartner);
 }
 
 // @func 0x00184A80 TargetableA::SetVelocity

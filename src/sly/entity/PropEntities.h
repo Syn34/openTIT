@@ -71,6 +71,10 @@ public:
     // Moves a body to `transform`; when its position changed the bodies
     // linked to it wake up.
     static void MoveBody(void* body, const ape::Matrix34& transform);
+    // Interaction kinds 0 and 4 of the props that can be picked up: kind 0
+    // needs some damage reaction and refuses `refused`; other kinds fail.
+    // NOTE: the console also multiplies the caller's score by 5 for kind 0.
+    bool CanBePickedUp(Entity* other, int kind, const PropDamageSettings& settings, const Entity* refused);
     // Sets a body's linear velocity unless it is keyframed or fixed or out of the world.
     static void SetBodyVelocity(void* body, const ape::Vec3& velocity);
     // Slot 35: linear velocity of the body (zero without one).
@@ -144,6 +148,8 @@ public:
     void OnHitCategory4(EntityHitRecord& hit) override;
     bool Damage(float amount, Entity* source, uint32_t type) override;   // slot 88
     float ProjectileDamageScale() const override;
+    // Slot 76: only in the dynamic or destroyed states.
+    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
     // Slot 99: moves the body in or out of the physics world (0x00167570).
     virtual void SetPropState(int32_t state, uint32_t arg);
 
@@ -169,12 +175,12 @@ public:
     // without one. NOTE: the slot is not declared on EntityDef yet.
     void GetBounds(ape::Aabb& out) const;
     ~AlterEgoDef() override;
-    uint32_t field_C4 = 0;             // 0xC4
+    float field_C4 = 0.0f;             // 0xC4 NOTE: positive values refuse interactions of kind 4
     PropDamageSettings damage;         // 0xC8
     uint8_t targetingFlags[6] = {};    // 0xF4
     void* collisionShape = nullptr;    // 0xFC
     // Bit 29: dies landing hard on static geometry; bit 30: dies touching a
-    // player-side entity (type bits 3 or 74).
+    // player-side entity (type bits 3 or 74); bit 31: cannot be picked up.
     uint32_t deathFlags = 0;           // 0x100
 };
 
@@ -205,11 +211,14 @@ public:
     void OnHitCategory3(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
     float ProjectileDamageScale() const override;     // slot 89
+    // Slot 76: only in alter state 1; kind 4 needs a body with mass.
+    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     const AlterEgoDef* Def() const { return static_cast<const AlterEgoDef*>(def); }
 
     int32_t alterState = 0;              // 0x188
     uint32_t field_18C = 0;              // 0x18C cleared by states 1 and 3
+    Entity* refusedPartner = nullptr;    // 0x194 NOTE: refused for interactions of kind 0
     uint32_t collisionGroup = 0;         // 0x198
     void* animScript1A0 = nullptr;       // 0x1A0
     void* animScript1A4 = nullptr;       // 0x1A4
@@ -423,7 +432,10 @@ public:
     void* bodyAction = nullptr;              // 0x188
     uint8_t stateHistory[4] = {};            // 0x1B8 indexed by historyIndex
     uint32_t historyIndex = 0;               // 0x1BC
+    Entity* refusedPartner = nullptr;        // 0x198 NOTE: refused for interactions of kind 0
     uint32_t collisionGroup = 0;             // 0x19C
+    // Slot 76: only in state 2 or from state 8 on.
+    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     // Empty override of the +0x17C interface's slot 5.
@@ -491,6 +503,7 @@ public:
     void* bodyAction = nullptr;              // 0x188
     uint8_t stateHistory[7] = {};            // 0x1B1 indexed by historyIndex
     uint32_t historyIndex = 0;               // 0x1B8
+    Entity* refusedPartner = nullptr;        // 0x198 NOTE: refused for interactions of kind 0
     uint32_t collisionGroup = 0;             // 0x19C
     // Slot 95: the state of layer 0; slot 97 asks slot 95.
     virtual int GetTargetState();
@@ -500,6 +513,8 @@ public:
     virtual void Slot104() {}
     // @func 0x0018E380 TargetableA::Slot105
     virtual void Slot105() {}
+    // Slot 76: only in state 3 or from state 11 on.
+    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
     // Both answer with the definition's targeting flag for the kind.
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;

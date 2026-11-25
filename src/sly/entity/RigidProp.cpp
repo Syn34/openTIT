@@ -77,6 +77,14 @@ void RigidProp::SetTransform(const ape::Matrix34& m)
         MoveBody(rigidBody, m);
 }
 
+// @func 0x00169280 RigidProp::CanInteractWith
+bool RigidProp::CanInteractWith(Entity* other, int kind)
+{
+    if (propState != kProp_Dynamic && propState < kProp_Destroyed)
+        return false;
+    return CanBePickedUp(other, kind, Def()->damage, interactor);
+}
+
 // @func 0x00168620 RigidProp::SetVelocity
 void RigidProp::SetVelocity(const ape::Vec3& velocity)
 {
