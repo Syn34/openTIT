@@ -371,14 +371,97 @@ public:
 class GoalBartenderGame : public MinigameGoal {
 public:
     int TypeId() const override;
-    using MinigameGoal::MinigameGoal;
+    // Configuration read from the goal's child elements (0x290 bytes). Most
+    // attribute names were not recovered; those fields keep their hash.
+    struct Config {
+        // <General>
+        char globalImpatienceStr[0x20] = {};   // +0x000 "globalImpatienceStr"
+        uint32_t pad_020 = 0;
+        uint32_t lifetimeScript = 0;           // +0x024 "LifetimeScript"
+        float general_E879F570 = 0.0f;         // +0x028
+        int32_t general_251D3437 = 0;          // +0x02C
+        int32_t general_1051D289 = 0;          // +0x030
+        float general_CDBE582D = 0.0f;         // +0x034
+        bool general_CD9D94BE = false;         // +0x038
+        // <thresholdTutorial/Easy/Med/Hard/Insane>: one block per difficulty.
+        // The Min/Max names follow from the attribute hashes (they differ
+        // exactly as "...Min"/"...Max" do).
+        struct Threshold {
+            float valueMin = 0.0f;             // 0x3FBAC754
+            float valueMax = 0.0f;             // 0x3FBAC666
+            int32_t field_08 = 0;              // 0x5D241D8F
+            int32_t field_0C = 0;              // 0xEE981F14
+        };
+        Threshold thresholds[5];               // +0x03C
+        // <Player>
+        uint32_t playerStartDef = 0;           // +0x08C "StartDef"
+        int32_t defaultSlot = 0;               // +0x090 the <SLOT> marked with 0x6CE66A2D
+        float player_E6DF8EF6 = 0.0f;          // +0x094 (never negative)
+        uint32_t playerIdleAnim = 0;           // +0x098 0x31F8E7E5 NOTE: "IdleAnim" as in the fishing goal
+        uint32_t player_DF38C969 = 0;          // +0x09C
+        uint32_t player_4271AD5C = 0;          // +0x0A0
+        float player_E3997805 = 0.0f;          // +0x0A4
+        uint32_t player_5B3F95D7 = 0;          // +0x0A8
+        float player_89CE80B0 = 0.0f;          // +0x0AC
+        uint32_t player_5533B0E5 = 0;          // +0x0B0
+        uint32_t pad_0B4[3] = {};
+        // <EnemySmall/EnemyMed/EnemyLarge> (0x60 bytes each).
+        struct Customer {
+            ape::Vec3 position{};              // +0x00 0xC2ABB83E
+            uint32_t startDef = 0;             // +0x10 "StartDef"
+            uint32_t field_14 = 0;             // +0x14 0x17A49D68
+            uint32_t field_18 = 0;             // +0x18 0x474E5E89
+            float field_1C = 0.0f;             // +0x1C 0x6E89F748
+            uint32_t field_20 = 0;             // +0x20 0x41074EEF
+            uint32_t idleAnim = 0;             // +0x24 0x31F8E7E5
+            uint32_t field_28 = 0;             // +0x28 0x2449B426
+            uint32_t outroAnim = 0;            // +0x2C NOTE: hash matches "OutroAnim"
+            float outroAnimBlend = 0.0f;       // +0x30 NOTE: hash matches "OutroAnimBlend"
+            uint32_t introAnim = 0;            // +0x34 NOTE: hash matches "IntroAnim"
+            float introAnimBlend = 0.0f;       // +0x38 NOTE: hash matches "IntroAnimBlend"
+            float introTime = -1.0f;           // +0x3C NOTE: hash matches "IntroTime"
+            float outroTime = -1.0f;           // +0x40 NOTE: hash matches "OutroTime"
+            float field_44 = -1.0f;            // +0x44 0x4756EF45
+            int32_t countMin = 0;              // +0x48 0x71782B46 (Min/Max pair)
+            int32_t countMax = 0;              // +0x4C 0x71782A58
+            float delayMin = 0.0f;             // +0x50 0x1CA14B34 (Min/Max pair)
+            float delayMax = 0.0f;             // +0x54 0x1CA14A46
+            uint32_t pad_58[2] = {};
+        };
+        Customer customers[3];                 // +0x0C0
+        // <Camera>
+        uint32_t cameraStartDef = 0;           // +0x1E0 "StartDef"
+        float cameraFov = 0.0f;                // +0x1E4 0x000110AD (the fishing goal's "Fov")
+        // <Input>
+        float input[4] = {};                   // +0x1E8 0x59317222, 0xD8159D71, 0x3AE281B8, 0x6F8C1771
+        uint32_t pad_1F8[2] = {};
+        // <Beer>
+        ape::Vec3 beer_A1235AD9{};             // +0x200
+        ape::Vec3 beer_4036DEFB{};             // +0x210
+        ape::Vec3 beerAngleMin{};              // +0x220 0x8E871BCF, degrees in the XML, radians here
+        ape::Vec3 beerAngleMax{};              // +0x230 0x8E871AE1
+        uint32_t beerStartDef = 0;             // +0x240 "StartDef"
+        uint32_t beer_A7E293B8 = 0;            // +0x244
+        float beer_04B70827 = 0.0f;            // +0x248
+        uint32_t pad_24C = 0;
+        // <hud>
+        uint32_t thoughtBubbleBeerPart[3] = {};   // +0x250 "thoughtBubbleBeerPart1..3"
+        uint32_t hud[10] = {};                 // +0x25C 0xD022E3C4, 0xC0FBF301, 0x5A3AC546, 0x8A6C8565,
+                                               //        0x42C471A7, 0xFCD882C9, 0x3C21F2EE, 0xBD2FAFC8,
+                                               //        0x4B0999AE, 0x2D4954B6
+        uint32_t pad_284[3] = {};
+    };
+    // A <SLOT> element: three hashes (12 bytes).
+    struct Entry { uint32_t a, b, c; };   // 0x1D8E76AC, 0xB68383F7, 0xDC0D416E
+
+    // 0x00328D24
+    GoalBartenderGame(const GoalDesc* desc, const Config& parsed, const ape::ApeTArray<Entry>& slots);
     ~GoalBartenderGame() override;
+    // 0x003292C8
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
     void InstallMinigame() override;
 
-    // NOTE: drink/customer parameters built by 0x003292C8/0x00328D24 (not
-    // ported); kept opaque.
-    uint8_t config[0x290] = {};   // +0xA20
-    struct Entry { uint32_t a, b, c; };
+    Config config;                   // +0xA20
     ape::ApeTArray<Entry> entries;   // +0xCB0
 };
 
@@ -762,24 +845,65 @@ namespace sly {
 namespace goals {
 
 // "GoalBinocucomPhoto" (vtable 0x00B1E5D0): photograph a set of entities
-// with the binocucom. Only the target bookkeeping is ported; the camera
-// test (Update 0x0032BCD0), SetStatus (0x0032AC78), the factory (0x0032B358)
-// and the marker builder (0x0032AAE8) are TODO.
+// with the binocucom. While active the goal is on a global list of photo
+// goals; one target of one goal at a time gets an occlusion query around it
+// so the binocucom knows whether the target is hidden.
 class GoalBinocucomPhoto : public Goal {
 public:
     int TypeId() const override;
+    // Option bits of a target (+0x80). Bits 31-26 are the shared marker
+    // options (also read by the entity-child and interaction goals); 25-23
+    // default to set.
+    enum TargetOptions : uint32_t {
+        kTarget_Option3B66FD69 = 0x80000000u,
+        kTarget_Option5D28E3FC = 0x40000000u,
+        kTarget_Option9446A097 = 0x20000000u,
+        kTarget_OptionD9159FE7 = 0x10000000u,
+        kTarget_Option09DA53D5 = 0x08000000u,
+        kTarget_Option65567820 = 0x04000000u,
+        kTarget_OptionDE86C5DE = 0x02000000u,
+        kTarget_Option9896A7D0 = 0x01000000u,
+        kTarget_OptionFAA75B88 = 0x00800000u,
+    };
     // One photo target (0x90 bytes on the console).
     struct Target {
-        uint8_t pad[0x10];
-        uint32_t name = 0;        // +0x10
-        void* entity = nullptr;   // +0x14
-        uint8_t pad2[0x18];
-        bool pending = true;      // +0x30 still to be photographed
-        uint8_t pad3[0x5F];
+        ape::Vec3 markerOffset{};       // +0x00 XML 0x4A4D4D4D
+        uint32_t name = 0;              // +0x10 "Name"
+        void* entity = nullptr;         // +0x14 resolved
+        float angle = 0.0f;             // +0x18 "Angle" (degrees)
+        float distMin = 0.0f;           // +0x1C "DistMin"
+        float distMax = 0.0f;           // +0x20 "DistMax"
+        float distMinClose = 0.0f;      // +0x24 "DistMinClose"
+        float distMaxClose = 0.0f;      // +0x28 "DistMaxClose"
+        float distCull = 0.0f;          // +0x2C "DistCull"
+        bool pending = true;            // +0x30 still to be photographed
+        // Texts from the string table (null without one): +0x34 the
+        // check box line, +0x38 the target name, +0x3C the photo name.
+        const char* checkBoxText = nullptr;
+        const char* targetText = nullptr;
+        const char* photoText = nullptr;
+        ape::Vec3 offset{};             // +0x40 "Offset" (in the bone's space)
+        uint32_t bone = 0;              // +0x50 XML 0x39F79104: bone the target sits on
+        ape::Vec3 angles{};             // +0x60 XML 0xB095DE33 (degrees)
+        float displayTime = 0.0f;       // +0x70 XML 0x001D691D NOTE: default from DefaultDisplayTime
+        bool occluded = true;           // +0x74 last occlusion query result
+        float occlusionRadius = 0.0f;   // +0x78 "OcclusionRadius"
+        float visibleFraction = 1.0f;   // +0x7C XML 0x6E3DE0E2 (0..1): visible pixel share needed
+        uint32_t options = 0;           // +0x80 TargetOptions
+        float field_84 = 1.0f;          // +0x84 XML 0x2D72DAD4
+    };
+
+    // Goal flags (+0xA28).
+    enum PhotoFlags : uint32_t {
+        kPhoto_GadgetFlag   = 0x80000000u,   // XML 0x254881FC: binocucom flag 0x800 while active
+        kPhoto_ReportGroup  = 0x40000000u,   // XML 0x81213F1D: each photo advances the job's group
+        kPhoto_CharacterFlag = 0x20000000u,  // XML 0x5845B273: character flag +0x2C7 bit 6 while active
     };
 
     using Goal::Goal;
     ~GoalBinocucomPhoto() override;
+    // 0x0032B358
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
     uint8_t Update(int player, const GameEvent& e) override;
     void Reset(bool fromSave, int status) override;
     void ResetHints(bool stopHintScript) override;
@@ -789,11 +913,18 @@ public:
     void SetStatus(uint8_t newStatus, bool force) override;
     void BuildMarker(const Target& target, GoalMarker* marker) const;
 
-    ape::ApeTArray<Target> targets;   // +0xA0C
+    ape::ApeTArray<Target> targets;      // +0xA0C (at most eight)
+    GoalBinocucomPhoto* nextActive = nullptr;   // +0xA20 list of active photo goals
+    uint32_t photoFilter = 0;            // +0xA24 XML 0x1F6AE7F0: binocucom photo filter
+    uint32_t photoFlags = 0;             // +0xA28 PhotoFlags
 
 private:
     // Resolves every target; fails the goal if one is gone. False if it failed.
     bool ResolveTargets(bool pending);
+    // Steps the occlusion test of the current target (event 10).
+    void UpdateOcclusion();
+    void AddToActiveList();
+    void RemoveFromActiveList();
 };
 
 } // namespace goals

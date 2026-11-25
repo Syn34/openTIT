@@ -66,6 +66,10 @@ public:
 class AmbientSoundTrigger : public PolledTrigger {
 public:
     explicit AmbientSoundTrigger(const TriggerInstanceDesc& desc);
+    // The destructor runs the class's own volume rebuild once more (called
+    // directly on the console).
+    ~AmbientSoundTrigger() override;
+    void RebuildVolume() override;
     void OnCreated() override;
     void Update(float dt) override;
     void OnEnter(ObjEntity* entity) override;
@@ -123,6 +127,9 @@ public:
 class SoundZoneTrigger : public PolledTrigger {
 public:
     explicit SoundZoneTrigger(const TriggerInstanceDesc& desc);
+    // Like AmbientSoundTrigger's destructor.
+    ~SoundZoneTrigger() override;
+    void RebuildVolume() override;
     void OnCreated() override;
     void Update(float dt) override;
     void OnEnter(ObjEntity* entity) override;

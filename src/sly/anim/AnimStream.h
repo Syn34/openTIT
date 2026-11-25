@@ -35,7 +35,11 @@ public:
 class IffStreamReader : public HkStreamReader {
 public:
     explicit IffStreamReader(ape::iff::IffReader* reader) : file(reader), ok(reader != nullptr) {}
-    // Slot 4 (0x00771DBC, other module).
+    // @func 0x00771D40 IffStreamReader::~IffStreamReader
+    // @func 0x00771D50 IffStreamReader::~IffStreamReader (deleting)
+    ~IffStreamReader() override = default;
+    // Slot 4.
+    // @func 0x00771DBC IffStreamReader::IsOk
     bool IsOk() const override { return ok; }
     // Slot 5 (0x003555BC).
     int Read(void* buffer, int size) override;
@@ -54,10 +58,12 @@ public:
     bool IsOk() const override;                    // 0x00347B04
     int Read(void* buffer, int size) override;     // 0x00347B2C
     int Skip(int size) override;                   // 0x00347BFC
-    bool MarkSupported() const override { return true; }      // slot 7 (0x00770E78)
+    // @func 0x00770E78 FileStreamReader::MarkSupported
+    bool MarkSupported() const override { return true; }      // slot 7
     int SetMark(int limit) override;               // 0x00347CB8
     int RewindToMark() override;                   // 0x00347D38
-    bool SeekTellSupported() const override { return true; }  // slot 10 (0x00770E84)
+    // @func 0x00770E84 FileStreamReader::SeekTellSupported
+    bool SeekTellSupported() const override { return true; }  // slot 10
     int Seek(int offset, int whence) override;     // 0x00347DE8
     int Tell() const override;                     // 0x00347EA0
 

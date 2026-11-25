@@ -46,12 +46,26 @@ public:
 class HudArElement : public HudElement {
 public:
     explicit HudArElement(HudObjectDef* def) : HudElement(def) { typeFlags |= kHud_Type20000; }
+    // @func 0x00773724 HudArElement::~HudArElement
+    // @func 0x00773750 HudArElement::~HudArElement (deleting)
+    ~HudArElement() override = default;
     // Slot 3 (0x00389C3C): the common element's reset.
     void Refresh() override;
 
     uint32_t field_190[5] = {};   // +0x190
     bool field_1A4 = true;        // +0x1A4
     bool field_1A5 = true;        // +0x1A5
+};
+
+// The plain element the element factory (0x0035AC7C, 0x003677C4) builds
+// for definitions without a special type (vtable 0x00B1F6E0): it adds
+// nothing to HudElement.
+class HudPlainElement : public HudElement {
+public:
+    using HudElement::HudElement;
+    // @func 0x00772A3C HudPlainElement::~HudPlainElement
+    // @func 0x00772A68 HudPlainElement::~HudPlainElement (deleting)
+    ~HudPlainElement() override = default;
 };
 
 } // namespace hud

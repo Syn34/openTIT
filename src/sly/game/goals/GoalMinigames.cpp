@@ -2,9 +2,11 @@
 // fencing, fishing, QTE, bartender).
 #include "sly/game/goals/GoalTypes.h"
 
+#include "ape/core/ApeString.h"
 #include "ape/xml/ApeXml.h"
 #include "sly/game/goals/GoalHooks.h"
 
+#include <cstdio>
 #include <cstring>
 
 namespace sly {
@@ -516,15 +518,223 @@ void GoalQteGame::InstallMinigame()
     GameInstallMinigame(game, CreateMinigame(MinigameKind::Qte, game, &steps, this));
 }
 
+// @func 0x00328D24 GoalBartenderGame::GoalBartenderGame
+GoalBartenderGame::GoalBartenderGame(const GoalDesc* desc, const Config& parsed,
+                                     const ape::ApeTArray<Entry>& slots)
+    : MinigameGoal(desc), config(parsed), entries(16)
+{
+    minigame = nullptr;
+    result &= ~(kResult_Won | kResult_Lost);
+    for (uint32_t i = 0; i < slots.Count(); ++i)
+        entries.PushBack(slots[i]);
+}
+
 // @func 0x003291DC GoalBartenderGame::~GoalBartenderGame
 // @func 0x00329240 GoalBartenderGame::~GoalBartenderGame (deleting)
 GoalBartenderGame::~GoalBartenderGame() = default;
+
+namespace {
+constexpr uint32_t kBar_General = 0x260494C8u;     // "General"
+constexpr uint32_t kBar_Player = 0x8CD18EE1u;      // "Player"
+constexpr uint32_t kBar_Camera = 0x760CB725u;      // "Camera"
+constexpr uint32_t kBar_Input = 0x04295FAAu;       // "Input"
+constexpr uint32_t kBar_Beer = 0x001F0C30u;        // "Beer"
+constexpr uint32_t kBar_Hud = 0x000118D7u;         // "hud"
+constexpr uint32_t kBar_Slot = 0x0026E1FEu;        // "SLOT"
+constexpr uint32_t kBar_StartDef = 0x7D22BC63u;    // "StartDef"
+constexpr uint32_t kBar_MaxSlots = 16;
+constexpr float kDegToRad = 0.017453292f;
+
+// Difficulty block of a <threshold...> element, -1 if the name is not one.
+int ThresholdIndex(uint32_t name)
+{
+    switch (name) {
+    case 0x24FD94A9u: return 0;   // "thresholdTutorial"
+    case 0x182132CDu: return 1;   // "thresholdEasy"
+    case 0xB674CD81u: return 2;   // "thresholdMed"
+    case 0x18228FB6u: return 3;   // "thresholdHard"
+    case 0x9C29F735u: return 4;   // "thresholdInsane"
+    default: return -1;
+    }
+}
+
+// Customer block of an <Enemy...> element, -1 if the name is not one.
+int CustomerIndex(uint32_t name)
+{
+    switch (name) {
+    case 0x8A2B267Fu: return 0;   // "EnemySmall"
+    case 0x97FC3944u: return 1;   // "EnemyMed"
+    case 0x89C34CB3u: return 2;   // "EnemyLarge"
+    default: return -1;
+    }
+}
+
+void ReadHash(ape::xml::XmlElement* xml, uint32_t attribute, uint32_t& value)
+{
+    xml->GetHash(attribute, &value, value);
+}
+
+void ReadFloat(ape::xml::XmlElement* xml, uint32_t attribute, float& value)
+{
+    xml->GetFloat(attribute, &value, value);
+}
+
+void ReadInt(ape::xml::XmlElement* xml, uint32_t attribute, int32_t& value)
+{
+    xml->GetInt(attribute, &value, value);
+}
+
+// Reads a vector attribute in place; true if the attribute was there.
+bool ReadVec3InPlace(ape::xml::XmlElement* xml, uint32_t attribute, ape::Vec3& value)
+{
+    float v[3] = {value.x, value.y, value.z};
+    const bool found = xml->GetVec3(attribute, v, v) == ape::xml::kQuery_Ok;
+    value.x = v[0];
+    value.y = v[1];
+    value.z = v[2];
+    return found;
+}
+
+void ReadAngles(ape::xml::XmlElement* xml, uint32_t attribute, ape::Vec3& value)
+{
+    if (ReadVec3InPlace(xml, attribute, value)) {
+        value.x *= kDegToRad;
+        value.y *= kDegToRad;
+        value.z *= kDegToRad;
+    }
+}
+} // namespace
+
+// @func 0x003292C8 GoalBartenderGame::Create
+Goal* GoalBartenderGame::Create(ape::xml::XmlElement* xml, const GoalDesc* desc)
+{
+    Config config;
+    ape::ApeTArray<Entry> slots(16);
+
+    for (ape::xml::XmlElement* child = xml->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        const uint32_t element = child->IsValid() ? child->GetNameHash() : 0;
+
+        if (int index = ThresholdIndex(element); index >= 0) {
+            Config::Threshold& t = config.thresholds[index];
+            ReadFloat(child, 0x3FBAC754u, t.valueMin);
+            ReadFloat(child, 0x3FBAC666u, t.valueMax);
+            ReadInt(child, 0x5D241D8Fu, t.field_08);
+            ReadInt(child, 0xEE981F14u, t.field_0C);
+            continue;
+        }
+        if (int index = CustomerIndex(element); index >= 0) {
+            Config::Customer& c = config.customers[index];
+            ReadVec3InPlace(child, 0xC2ABB83Eu, c.position);
+            ReadHash(child, kBar_StartDef, c.startDef);
+            ReadHash(child, 0x17A49D68u, c.field_14);
+            ReadHash(child, 0x474E5E89u, c.field_18);
+            ReadFloat(child, 0x6E89F748u, c.field_1C);
+            ReadHash(child, 0x41074EEFu, c.field_20);
+            ReadHash(child, 0x31F8E7E5u, c.idleAnim);
+            ReadHash(child, 0x2449B426u, c.field_28);
+            ReadHash(child, 0x2AD2F67Cu, c.outroAnim);
+            ReadFloat(child, 0x67F55F35u, c.outroAnimBlend);
+            ReadHash(child, 0xDA10225Du, c.introAnim);
+            ReadFloat(child, 0x972D77F4u, c.introAnimBlend);
+            ReadFloat(child, 0xDA18B319u, c.introTime);
+            ReadFloat(child, 0x2ADB8738u, c.outroTime);
+            ReadFloat(child, 0x4756EF45u, c.field_44);
+            ReadInt(child, 0x71782B46u, c.countMin);
+            ReadInt(child, 0x71782A58u, c.countMax);
+            ReadFloat(child, 0x1CA14B34u, c.delayMin);
+            ReadFloat(child, 0x1CA14A46u, c.delayMax);
+            continue;
+        }
+
+        switch (element) {
+        case kBar_General: {
+            const char* text = child->GetString("globalImpatienceStr");
+            if (text && *text) {
+                std::strncpy(config.globalImpatienceStr, text, sizeof(config.globalImpatienceStr) - 1);
+                config.globalImpatienceStr[sizeof(config.globalImpatienceStr) - 1] = '\0';
+            }
+            ReadHash(child, 0xCF4A1DD4u, config.lifetimeScript);
+            ReadFloat(child, 0xE879F570u, config.general_E879F570);
+            ReadInt(child, 0x251D3437u, config.general_251D3437);
+            ReadInt(child, 0x1051D289u, config.general_1051D289);
+            ReadFloat(child, 0xCDBE582Du, config.general_CDBE582D);
+            child->GetBool(0xCD9D94BEu, &config.general_CD9D94BE, config.general_CD9D94BE);
+            break;
+        }
+        case kBar_Player:
+            ReadHash(child, kBar_StartDef, config.playerStartDef);
+            ReadFloat(child, 0xE6DF8EF6u, config.player_E6DF8EF6);
+            ReadHash(child, 0x31F8E7E5u, config.playerIdleAnim);
+            ReadHash(child, 0xDF38C969u, config.player_DF38C969);
+            ReadHash(child, 0x4271AD5Cu, config.player_4271AD5C);
+            ReadFloat(child, 0xE3997805u, config.player_E3997805);
+            ReadHash(child, 0x5B3F95D7u, config.player_5B3F95D7);
+            ReadFloat(child, 0x89CE80B0u, config.player_89CE80B0);
+            ReadHash(child, 0x5533B0E5u, config.player_5533B0E5);
+            if (config.player_E6DF8EF6 < 0.0f)
+                config.player_E6DF8EF6 = 0.0f;
+            break;
+        case kBar_Camera:
+            ReadHash(child, kBar_StartDef, config.cameraStartDef);
+            ReadFloat(child, 0x000110ADu, config.cameraFov);
+            break;
+        case kBar_Input:
+            ReadFloat(child, 0x59317222u, config.input[0]);
+            ReadFloat(child, 0xD8159D71u, config.input[1]);
+            ReadFloat(child, 0x3AE281B8u, config.input[2]);
+            ReadFloat(child, 0x6F8C1771u, config.input[3]);
+            break;
+        case kBar_Beer:
+            ReadVec3InPlace(child, 0xA1235AD9u, config.beer_A1235AD9);
+            ReadVec3InPlace(child, 0x4036DEFBu, config.beer_4036DEFB);
+            ReadAngles(child, 0x8E871BCFu, config.beerAngleMin);
+            ReadAngles(child, 0x8E871AE1u, config.beerAngleMax);
+            ReadHash(child, kBar_StartDef, config.beerStartDef);
+            ReadHash(child, 0xA7E293B8u, config.beer_A7E293B8);
+            ReadFloat(child, 0x04B70827u, config.beer_04B70827);
+            break;
+        case kBar_Hud: {
+            static const uint32_t kHudAttributes[10] = {
+                0xD022E3C4u, 0xC0FBF301u, 0x5A3AC546u, 0x8A6C8565u, 0x42C471A7u,
+                0xFCD882C9u, 0x3C21F2EEu, 0xBD2FAFC8u, 0x4B0999AEu, 0x2D4954B6u,
+            };
+            for (int i = 0; i < 10; ++i)
+                ReadHash(child, kHudAttributes[i], config.hud[i]);
+            for (int i = 0; i < 3; ++i) {
+                char name[32];
+                std::snprintf(name, sizeof(name), "thoughtBubbleBeerPart%i", i + 1);
+                ReadHash(child, ape::HashNameNoCase(name), config.thoughtBubbleBeerPart[i]);
+            }
+            break;
+        }
+        case kBar_Slot: {
+            if (slots.Count() >= kBar_MaxSlots)
+                break;
+            Entry entry{0, 0, 0};
+            child->GetHash(0x1D8E76ACu, &entry.a, 0);
+            child->GetHash(0xB68383F7u, &entry.b, entry.b);
+            if (entry.a == 0 || entry.b == 0)
+                break;
+            child->GetHash(0xDC0D416Eu, &entry.c, 0);
+            bool isDefault = false;
+            child->GetBool(0x6CE66A2Du, &isDefault, false);
+            if (isDefault)
+                config.defaultSlot = slots.Count();
+            slots.PushBack(entry);
+            break;
+        }
+        default:
+            break;
+        }
+    }
+    return new GoalBartenderGame(desc, config, slots);
+}
 
 // @func 0x0032A27C GoalBartenderGame::InstallMinigame
 void GoalBartenderGame::InstallMinigame()
 {
     // NOTE: the console also hands over `entries` (+0xCB0).
-    GameInstallMinigame(game, CreateMinigame(MinigameKind::Bartender, game, config, this));
+    GameInstallMinigame(game, CreateMinigame(MinigameKind::Bartender, game, &config, this));
 }
 
 } // namespace goals

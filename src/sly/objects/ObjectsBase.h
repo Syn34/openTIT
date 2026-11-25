@@ -198,6 +198,8 @@ public:
     // Slot 57/58: told by a trigger volume that this entity entered / left it.
     virtual void OnEnteredTrigger(ObjEntity* trigger) { (void)trigger; }
     virtual void OnLeftTrigger(ObjEntity* trigger) { (void)trigger; }
+    // Slot 68: the entity's anim script instance (none by default).
+    virtual void* GetAnimScript() { return nullptr; }
     // Slot 80: NOTE: non-zero suppresses the "entered" game event for players.
     virtual int IsEventSuppressed() const { return 0; }
 

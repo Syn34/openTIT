@@ -158,11 +158,37 @@ struct GoalTarget {
 
 // One waypoint marker (0x80 bytes on the console; built by the goals, drawn
 // by the HUD). Only the entity is decoded.
+// One waypoint/marker for the HUD (0x80 bytes on the console). Only the
+// fields the photo goal fills are named (0x0032AAE8); the generic entity
+// marker is built by GoalAddEntityMarker.
 struct GoalMarker {
+    enum Kind : uint32_t { kKind_Photo = 2 };
     uint32_t field_00 = 0;
     uint32_t field_04 = 0;
-    void* entity = nullptr;   // +0x08
-    uint8_t rest[0x74] = {};
+    void* entity = nullptr;         // +0x08
+    uint32_t field_0C = 0;
+    float position[3] = {};         // +0x10 offset of the marker from the entity
+    uint32_t field_1C = 0;
+    uint32_t field_20 = 0;
+    uint32_t kind = 0;              // +0x24 Kind
+    uint32_t field_28 = 0;
+    float angle = 0.0f;             // +0x2C photo angle (degrees)
+    uint32_t bone = 0;              // +0x30
+    float angles[3] = {};           // +0x34 (radians)
+    float distMin = 0.0f;           // +0x40
+    float distMax = 0.0f;           // +0x44
+    float distMinClose = 0.0f;      // +0x48
+    float distMaxClose = 0.0f;      // +0x4C
+    float distCull = 0.0f;          // +0x50
+    const char* texts[3] = {};      // +0x54 check box / target / photo texts
+    bool pending = false;           // +0x60
+    float offset[3] = {};           // +0x64
+    float displayTime = 0.0f;       // +0x70
+    // +0x74: occlusion state in the top byte, photo options 6-8 in bits 23-21.
+    uint32_t flags74 = 0;
+    // +0x78: photo options 0-5 in bits 28-23.
+    uint32_t flags78 = 0;
+    float field_7C = 0.0f;          // +0x7C
 };
 
 // List the markers are collected into (0x0075EBFC appends).

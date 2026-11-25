@@ -21,6 +21,10 @@ const BismarqueStepList& BismarqueAI::CurrentSteps() const
     return p.normal;
 }
 
+// @func 0x007392D8 BismarqueAI::~BismarqueAI
+// @func 0x00739464 BismarqueAI::~BismarqueAI (deleting)
+BismarqueAI::~BismarqueAI() = default;
+
 // @func 0x0003E040 BismarqueAI::CurrentStep
 const BismarqueStep& BismarqueAI::CurrentStep() const
 {

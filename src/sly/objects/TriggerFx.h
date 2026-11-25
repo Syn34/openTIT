@@ -90,6 +90,9 @@ public:
     void OnStay(ObjEntity* entity) override;
     void SetEnabled(bool enabled) override;
     bool IsDebugDisplayed() const override;
+    // Slot 68: the lifetime script is the trigger's anim script.
+    // @func 0x0075B7E4 FxTrigger::GetAnimScript
+    void* GetAnimScript() override { return m_script; }
     // Starts the lifetime script again if it is not running (0x002202BC).
     void RestartScript();
     // TODO(0x0021F240 FxTrigger::Update, 0x0021F9E8 OnEnter, 0x0021FF58 OnExit
@@ -105,6 +108,14 @@ protected:
     bool m_messageSeen = false;      // 0x1D4 bit 30
     bool m_scriptRunning = false;    // 0x1D4 bit 29
     bool m_hasTexts = false;         // 0x1D4 bit 28
+};
+
+// The FX trigger the definitions and the laser field phantoms actually build
+// (vtable 0x00B1A8B0). NOTE: it adds nothing to FxTrigger.
+class ScriptedFxTrigger : public FxTrigger {
+public:
+    using FxTrigger::FxTrigger;
+    ~ScriptedFxTrigger() override;
 };
 
 EntityDef* CreateFxTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,

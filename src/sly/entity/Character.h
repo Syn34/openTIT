@@ -285,6 +285,25 @@ public:
     float ProjectileReflectAngle() override { return damage.projectileAngle; }
     // @func 0x00738300 Character::ProjectileReflectVelScalar
     float ProjectileReflectVelScalar() override { return damage.projectileVelScalar; }
+    // Slots 15/16 and 94: the components the character keeps at hand
+    // (+0x190 the character component, +0x18C component type 0x00, +0x194
+    // NOTE: kind unknown).
+    // NOTE: the character constructor (not ported) fills the cache; until it
+    // does, the entity's component lookup stands in for an empty entry.
+    // @func 0x0073834C Character::GetCharacterComponent
+    EntityComponent* GetCharacterComponent() override
+    {
+        return cachedComponents[1] ? cachedComponents[1] : ScriptedEntity::GetCharacterComponent();
+    }
+    // @func 0x00738344 Character::GetComponent00
+    EntityComponent* GetComponent00() override
+    {
+        return cachedComponents[0] ? cachedComponents[0] : ScriptedEntity::GetComponent00();
+    }
+    // @func 0x00738354 Character::GetComponent194
+    virtual EntityComponent* GetComponent194() { return cachedComponents[2]; }
+    // Slot 20: the position moved by the character's centre offset (+0x1D0).
+    ape::Vec3 GetCenter() override;
     // Slots 95/96. NOTE: empty in every character class; meaning unknown.
     // @func 0x0073835C Character::Slot95
     virtual void Slot95() {}
@@ -299,7 +318,7 @@ public:
     // Hands the character to its "ControlAI" component (created on first use).
     void UseAIController();
     CharacterController* extController = nullptr;   // 0x188 "TmpExtControl"
-    uint32_t field_18C[3] = {};                     // 0x18C cleared on release
+    EntityComponent* cachedComponents[3] = {};      // 0x18C cleared on release (see slots 15/16/94)
     void* animScript198 = nullptr;                  // 0x198 orphaned on release
     void* animScript19C = nullptr;                  // 0x19C
     Entity* reference1A4 = nullptr;                 // 0x1A4 counted
@@ -308,6 +327,7 @@ public:
     int32_t skinMode = kSkin_Default;               // 0x1B0 SkinMode
     uint32_t field_1B4 = 0;                         // 0x1B4 cleared by ResetState
     uint32_t field_1B8 = 0;                         // 0x1B8 cleared by ResetState / ResetFade
+    ape::Vec3 centerOffset{};                       // 0x1D0 added to the position by GetCenter
     uint32_t cullHandle = 0;                        // 0x1E0
     int16_t cullHandleUsed = 0;                     // 0x1E2
     ape::world::ApeObj* aimArcObject = nullptr;     // 0x1E4 aim UI arc

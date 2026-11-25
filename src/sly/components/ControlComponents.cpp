@@ -102,11 +102,18 @@ void ControlComponent::Update(float dt)
 
 // -- pad controllers ---------------------------------------------------------------
 
-// NOTE: the destructors of these classes are at 0x007633D4.. (outside this
-// range) and only run the base destructor.
+// The destructors only run the base destructor.
+// @func 0x007633D4 ControlPlayerComponent::~ControlPlayerComponent
+// @func 0x007634D0 ControlPlayerComponent::~ControlPlayerComponent (deleting)
 ControlPlayerComponent::~ControlPlayerComponent() = default;
+// @func 0x007635F0 ControlPassiveComponent::~ControlPassiveComponent
+// @func 0x007636EC ControlPassiveComponent::~ControlPassiveComponent (deleting)
 ControlPassiveComponent::~ControlPassiveComponent() = default;
+// @func 0x00763850 ControlVehicleComponent::~ControlVehicleComponent
+// @func 0x0076394C ControlVehicleComponent::~ControlVehicleComponent (deleting)
 ControlVehicleComponent::~ControlVehicleComponent() = default;
+// @func 0x00763AB0 ControlRadarComponent::~ControlRadarComponent
+// @func 0x00763BAC ControlRadarComponent::~ControlRadarComponent (deleting)
 ControlRadarComponent::~ControlRadarComponent() = default;
 
 // @func 0x0027C9A0 ControlPlayerComponent::ButtonForAction

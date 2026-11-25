@@ -51,6 +51,13 @@ void Character::ApplyVisibility(bool visible)
     Entity::ApplyVisibility(visible);
 }
 
+// @func 0x00738308 Character::GetCenter
+ape::Vec3 Character::GetCenter()
+{
+    const ape::Vec3& p = transform.translation;
+    return { p.x + centerOffset.x, p.y + centerOffset.y, p.z + centerOffset.z, 0.0f };
+}
+
 // @func 0x00129148 Character::GetRenderObject
 ape::world::ApeObj* Character::GetRenderObject()
 {

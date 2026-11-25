@@ -1,6 +1,8 @@
 // openTIT - Shader sets of the Agl post-processing and shadow passes.
 #include "agl/AglPostProcShaders.h"
 
+#include "agl/AglShaderClass.h"
+
 namespace agl {
 
 namespace {
@@ -197,6 +199,20 @@ void LoadStencilShadowShaders()
     LoadPair(&g_shaders.stencilShadow, "StencilShadow", kNoParams);
     LoadPair(&g_shaders.stencilShadowDrawQuad, "StencilShadow_DrawQuad", kNoParams);
 }
+
+// The material class objects of the thermal vision pass draw with
+// ("PostProc_ThermalObject", static object 0x011640F0, vtable 0x00B241B0).
+class ThermalObjectClass : public AglShaderClass {
+public:
+    ThermalObjectClass() : AglShaderClass("PostProc_ThermalObject") {}
+    // @func 0x007A2BA4 ThermalObjectClass::~ThermalObjectClass
+    // @func 0x007A3D44 ThermalObjectClass::~ThermalObjectClass (deleting)
+    ~ThermalObjectClass() override = default;
+    // TODO(0x0054D4C0 ThermalObjectClass::CreateTechniques)
+    void CreateTechniques() override {}
+};
+
+ThermalObjectClass g_thermalObjectClass;
 
 // @func 0x00546334 AglPostProc::LoadThermalVisionShaders
 void LoadThermalVisionShaders()

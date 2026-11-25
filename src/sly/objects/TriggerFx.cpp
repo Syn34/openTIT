@@ -109,7 +109,7 @@ ObjEntity* FxTriggerDef::Create(EntityPlacement* placement)
         return nullptr;
     FxTriggerInstanceDesc desc(GetInstanceName(placement), this);
     placement->FillInstanceDesc(desc);
-    FxTrigger* trigger = new FxTrigger(desc);
+    FxTrigger* trigger = new ScriptedFxTrigger(desc);
     trigger->OnCreated();
     return trigger;
 }
@@ -178,6 +178,10 @@ FxTrigger::FxTrigger(const FxTriggerInstanceDesc& desc)
         }
     }
 }
+
+// @func 0x0075B7EC ScriptedFxTrigger::~ScriptedFxTrigger
+// @func 0x0075B818 ScriptedFxTrigger::~ScriptedFxTrigger (deleting)
+ScriptedFxTrigger::~ScriptedFxTrigger() = default;
 
 // @func 0x0021F088 FxTrigger::~FxTrigger
 // @func 0x0021F1EC FxTrigger::~FxTrigger (deleting)

@@ -9,6 +9,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "ape/math/ApeMath.h"
+
 namespace ape { class ApeAnimScriptInstance; }
 
 namespace sly {
@@ -189,6 +191,30 @@ bool GameWorldToScreen(const float position[3], float screen[2]);
 bool InteractionFlag22(const void* interaction);
 void* InteractionOwner(const void* interaction);
 void InteractionTouch(void* interaction);
+
+// Job +0x08: the character the job runs on (the player).
+void* JobOwnerCharacter(const Job* job);
+// 0x000D94CC: binocucom gadget of a character (null if it has none).
+void* CharacterBinocucom(void* character);
+// 0x002A6044: the binocucom view is up.
+bool BinocucomViewUp(void* binocucom);
+// Binocucom +0xFC: the photo filter in use.
+void BinocucomSetPhotoFilter(void* binocucom, void* filter);
+// Binocucom +0xF4 bit 11, set while a photo goal asks for it.
+void BinocucomSetPhotoFlag(void* binocucom, bool on);
+// Photo filter table (sorted map at +0x10 of the object at 0x00F8F154);
+// null if there is no filter of that name.
+void* FindPhotoFilter(uint32_t name);
+// Character byte +0x2C7 bit 6. NOTE: meaning unknown (photo goals set it
+// while active).
+void CharacterSetPhotoFlag(void* character, bool on);
+// Slot 2 of the character's input map (+0x17C) returns a state word; sets
+// `bit` in it (photo goals set bit 10 while the view is down and bit 11 on
+// leaving). No effect without an input map.
+void CharacterInputMapSetBit(void* character, uint32_t bit);
+// 0x000DAABC: world transform of a bone of an entity (by name; the entity's
+// own transform for 0 or an unknown name).
+ape::Matrix34 GoalEntityBoneTransform(void* entity, uint32_t bone);
 
 // ---------------------------------------------------------------------------
 // HUD (0x003568E0 HudFind and friends, sly/game HUD module, not ported)

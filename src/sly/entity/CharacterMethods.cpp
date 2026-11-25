@@ -528,7 +528,7 @@ bool Character::Release(bool kill)
         SetCountedReference(reference1AC, nullptr);
         SetCountedReference(reference1A4, nullptr);
         field_17C = nullptr;
-        field_18C[0] = field_18C[1] = field_18C[2] = 0;
+        cachedComponents[0] = cachedComponents[1] = cachedComponents[2] = nullptr;
 
         // The active controller may be one of the other two; delete each once.
         if (extController != controller && extController)

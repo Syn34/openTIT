@@ -16,11 +16,18 @@ int ApeStringPool::TotalCapacity()
     return s_totalCapacity;
 }
 
+// Buffer from the default heap (16-byte aligned).
+// @func 0x00735F28 ApeStringPool::AllocateDefault
+char* ApeStringPool::AllocateDefault(int size)
+{
+    return static_cast<char*>(MemAlloc((size_t)size, 0, 16));
+}
+
 char* ApeStringPool::Allocate(int size) const
 {
     if (m_altHeap)
         return static_cast<char*>(SysAlloc(16, (size_t)size, 1, 0));
-    return static_cast<char*>(MemAlloc((size_t)size, 0, 16));
+    return AllocateDefault(size);
 }
 
 void ApeStringPool::Free(char* data) const
