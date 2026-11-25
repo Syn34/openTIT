@@ -5,9 +5,9 @@
 // scene, the level's region set. Up to eight scenes are registered in a
 // global slot table.
 //
-// Only construction, destruction and creation are ported; the loading and
-// query virtuals of the scene classes (console vtables 0x00B24728 and
-// 0x00B24770, 0x00586440-0x0059AF54) are not.
+// Loading (LoadSceneFile), the post-load set-up (FinishSceneLoad) and
+// destruction are ported; the render/query virtuals of the scene classes
+// (console vtables 0x00B24728 and 0x00B24770) are not.
 #pragma once
 
 #include "ape/memory/ApeTArray.h"
@@ -19,6 +19,15 @@ class ApeStringPool;
 }
 
 namespace ape::world {
+
+// An object a scene owns: everything created while its files were loaded
+// (definitions, instances, textures, materials). The console keeps plain
+// pointers to objects with a common base whose virtual slot 2 releases
+// them; here the release function is stored with the pointer.
+struct ApeSceneObject {
+    void* object;
+    void (*release)(void* object, bool clearSlot);
+};
 
 enum ApeSceneCreateFlags : uint32_t {
     kSceneCreate_OwnsRegions = 0x01,   // creates (and later releases) the level region set
@@ -38,7 +47,9 @@ public:
 
     bool OwnsRegions() const { return (m_flags & kFlag_OwnsRegions) != 0; }
     uint8_t GetSlot() const { return m_slot; }
+    const char* GetName() const { return m_name; }
     ApeTArray<void*>& LoadedObjects() { return m_loadedObjects; }
+    ApeTArray<ApeSceneObject>& Objects() { return m_objects; }
 
     enum Flags : uint8_t {
         kFlag_10          = 0x10,   // NOTE: from create flag 0x04
@@ -49,8 +60,12 @@ public:
 
 protected:
     friend ApeScene* CreateScene(uint32_t createFlags);
+    friend bool LoadSceneFile(ApeScene* scene, const char* path, bool flag);
+    friend void FinishSceneLoad(ApeScene* scene);
+    friend void DestroyScene(ApeScene* scene);
 
-    ApeTArray<void*> m_objects;         // 0x24 (capacity 0x4000)
+    char m_name[32] = {};               // 0x04 file the scene was loaded from
+    ApeTArray<ApeSceneObject> m_objects; // 0x24 (capacity 0x4000)
     uint8_t m_slot = 0;                 // 0x38 1-based index in the scene table, 0 for none
     ApeStringPool* m_strings = nullptr; // 0x3C
     uint8_t m_flags = 0;                // 0x40
@@ -75,7 +90,8 @@ ApeScene* CreateScene(uint32_t createFlags);
 // Registered scene in slot `index` (0..7), or null.
 ApeScene* GetScene(int index);
 // Loads the scene file at `path` into `scene` (the texture folder is the
-// file's "levels/" prefix).
+// file's "levels/" prefix). `flag` is passed to the IFF reader as its
+// flag bit 0 (NOTE: meaning unknown). False when the file cannot be opened.
 bool LoadSceneFile(ApeScene* scene, const char* path, bool flag);
 // Sets up the objects loaded into `scene` and ends its load state.
 void FinishSceneLoad(ApeScene* scene);

@@ -2,9 +2,12 @@
 #include "sly/levels/nav/NavGraph.h"
 
 #include "sly/entity/Entity.h"
+#include "sly/entity/PhysicsHooks.h"
 #include "sly/levels/ai/AIHooks.h"
 
 #include "ape/core/ApeString.h"
+#include "ape/math/ApeBounds.h"
+#include "ape/math/ApeMatrixOps.h"
 #include "ape/file/ApeFile.h"
 #include "ape/memory/ApeMem.h"
 
@@ -103,6 +106,66 @@ void RemoveNavObstacle(NavManager& nav, NavObstacleHandle handle)
     }
     // NOTE: the console's handles are reference counted; it also drops the
     // caller's reference here. Raw handles need no such step.
+}
+
+// @func 0x00011410 AddBodyNavObstacle
+NavObstacleHandle AddBodyNavObstacle(NavManager& nav, void* body, const char* name, uint32_t mask)
+{
+    using namespace entity;
+    NavObstacleDesc desc;
+    desc.transform = RigidBodyTransform(body);
+    desc.name = name;
+    desc.mask = mask;
+
+    // Shapes that carry their own offset are placed by it; their box is
+    // assumed to be centred on that frame.
+    const void* shape = RigidBodyShape(body);
+    bool placedByShape = false;
+    if (shape) {
+        switch (HavokShapeType(shape)) {
+        case kHavokShape_ConvexTranslate: {
+            const ape::Vec3 offset = HavokShapeTranslation(shape);
+            const ape::Matrix34& m = desc.transform;
+            desc.transform.translation.x += m.xAxis.x * offset.x + m.yAxis.x * offset.y + m.zAxis.x * offset.z;
+            desc.transform.translation.y += m.xAxis.y * offset.x + m.yAxis.y * offset.y + m.zAxis.y * offset.z;
+            desc.transform.translation.z += m.xAxis.z * offset.x + m.yAxis.z * offset.y + m.zAxis.z * offset.z;
+            placedByShape = true;
+            break;
+        }
+        case kHavokShape_ConvexTransform:
+        case kHavokShape_Transform: {
+            const ape::Matrix34 local = HavokShapeTransform(shape);
+            const ape::Matrix34 bodyTransform = desc.transform;
+            ape::Matrix34MulRotation(desc.transform, local, bodyTransform);
+            const ape::Vec3& t = local.translation;
+            desc.transform.translation.x = bodyTransform.translation.x + t.x * bodyTransform.xAxis.x +
+                                           t.y * bodyTransform.yAxis.x + t.z * bodyTransform.zAxis.x;
+            desc.transform.translation.y = bodyTransform.translation.y + t.x * bodyTransform.xAxis.y +
+                                           t.y * bodyTransform.yAxis.y + t.z * bodyTransform.zAxis.y;
+            desc.transform.translation.z = bodyTransform.translation.z + t.x * bodyTransform.xAxis.z +
+                                           t.y * bodyTransform.yAxis.z + t.z * bodyTransform.zAxis.z;
+            placedByShape = true;
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
+    // The box spans the shape's bounds in its own frame.
+    ape::Aabb local;
+    HavokShapeLocalAabb(shape, local);
+    desc.extents = {local.max.x - local.min.x, local.max.y - local.min.y, local.max.z - local.min.z, 0.0f};
+    if (!placedByShape) {
+        // Plain shapes may be off centre: the box goes where the shape's
+        // world bounds are centred.
+        ape::Aabb world;
+        HavokShapeAabb(shape, desc.transform, world);
+        desc.transform.translation.x = (world.min.x + world.max.x) * 0.5f;
+        desc.transform.translation.y = (world.min.y + world.max.y) * 0.5f;
+        desc.transform.translation.z = (world.min.z + world.max.z) * 0.5f;
+    }
+    return AddNavObstacle(nav, desc);
 }
 
 NavManager* GetNavManager() { return g_navManager; }

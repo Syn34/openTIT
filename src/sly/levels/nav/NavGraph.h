@@ -29,6 +29,8 @@ using NavObstacleHandle = void*;
 struct NavObstacleDesc {
     ape::Matrix34 transform;
     ape::Vec3 extents;
+    const char* name = nullptr;   // debug name (the owner's name)
+    uint32_t mask = 0xFFFF;       // NOTE: obstacle filter mask; meaning of the bits unknown
 };
 
 class NavPowerInterface {
@@ -128,6 +130,10 @@ bool IsNearNavMesh(const NavManager& nav, const ape::Vec3& position, float radiu
 NavObstacleHandle AddNavObstacle(NavManager& nav, const NavObstacleDesc& desc);
 // Destroys a remembered obstacle.
 void RemoveNavObstacle(NavManager& nav, NavObstacleHandle handle);
+// Obstacle shaped like a physics body: a box the size of the body's shape,
+// placed with the body (and the shape's own offset, for shapes that wrap a
+// child shape with a translation or a transform).
+NavObstacleHandle AddBodyNavObstacle(NavManager& nav, void* body, const char* name, uint32_t mask);
 
 } // namespace levels
 } // namespace sly

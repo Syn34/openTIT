@@ -15,6 +15,10 @@
 namespace agl {
 class AglMaterial;
 }
+namespace ape::world {
+class ApeDef;
+class ApeObj;
+}
 
 namespace ape {
 
@@ -351,27 +355,32 @@ public:
     float spacing = 3.4028235e38f;        // +0xBC
 };
 
-// Type 8 (element hash 0x30CF0025, vtable 0x00B22DD0): wraps another object
-// (+0xA8) whose visibility follows the GUI object.
+struct GuiType8Desc : GuiObjectDesc {
+    const char* objName = "";            // +0x80 "objName": instance (or geometry definition) to show
+    world::ApeObj* instance = nullptr;   // +0x84 instance to show instead of objName
+    world::ApeDef* def = nullptr;        // +0x88 definition to instantiate instead of objName
+    bool noClone = false;                // +0x8C "noclone": show the instance itself, not a copy
+};
+
+// Type 8 (element hash 0x30CF0025, vtable 0x00B22DD0, 0xB0 bytes): shows a
+// world object instance (+0xA8) in the GUI. The instance is a copy of the
+// named one (or a new instance of the named geometry definition) unless
+// "noclone" is set; its visibility follows the GUI object.
 class ApeGuiType8 : public ApeGuiObject {
 public:
-    // The wrapped object's interface as far as it is used here.
-    class Target {
-    public:
-        virtual ~Target() = default;
-        // Console slot 2: drops the reference held by the GUI object.
-        virtual void Release() = 0;
-        // NOTE: console slot 10 called with (visible, true).
-        virtual void SetVisible(bool visible, bool flag) = 0;
-    };
-
-    explicit ApeGuiType8(const GuiObjectDesc& desc) : ApeGuiObject(desc) {}
+    explicit ApeGuiType8(const GuiType8Desc& desc);
     ~ApeGuiType8() override;
+    ApeGuiObject* Clone(const char* name, ApeGuiObject* parent, void* owner, bool recursive) const override;
     int32_t GetType() const override;
     void SetVisible(bool visible) override;
     void Draw() override;
 
-    Target* target = nullptr;   // +0xA8
+    world::ApeObj* target = nullptr;   // +0xA8 (one reference)
+
+private:
+    // Gives the children of 'object' (with 'recursive' all descendants)
+    // the target's scale and mirrors their positions to match.
+    void ApplyScaleToChildren(world::ApeObj* object, bool recursive);
 };
 
 // "clipregion" (type 9, vtable 0x00B22E98, 0xC0 bytes): clips its

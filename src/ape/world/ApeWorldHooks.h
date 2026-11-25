@@ -32,6 +32,10 @@ struct ApeWorldRenderHooks {
     void (*drawMesh)(AglMesh* mesh, void* drawParams) = nullptr;
     // Propagates a value to the mesh (0x0050A19C). NOTE: purpose unknown.
     void (*meshSlot6)(AglMesh* mesh, int value) = nullptr;
+    // Number of drawable parts of a mesh and the flags byte of a part's
+    // material (renderer mesh +0x34, material +0x64).
+    uint16_t (*getMeshPartCount)(AglMesh* mesh) = nullptr;
+    uint8_t (*getMeshPartMaterialFlags)(AglMesh* mesh, int part) = nullptr;
     // Creates / frees the light linking state of a render object
     // (0x00526494 / 0x0050CAE8).
     AglLightLink* (*createLightLink)() = nullptr;

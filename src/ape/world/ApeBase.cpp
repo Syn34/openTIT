@@ -24,15 +24,15 @@ ApeBase::ApeBase(uint32_t type)
 {
 }
 
-void (*g_tagReleaseHook)(ApeBase* object) = nullptr;
+void (*g_sceneObjectDestroyedHook)(ApeBase* object) = nullptr;
 
 // @func 0x00558A48 ApeBase::~ApeBase
 // @func 0x00558B84 ApeBase::~ApeBase (deleting)
 // @func 0x00558CE8 ApeBase::~ApeBase (copy called by derived destructors)
 ApeBase::~ApeBase()
 {
-    if (m_tagFlags != 0 && g_tagReleaseHook)
-        g_tagReleaseHook(this);
+    if (m_sceneSlot != 0 && g_sceneObjectDestroyedHook)
+        g_sceneObjectDestroyedHook(this);
     if (m_tags) {
         m_tags->Release();
         m_tags = nullptr;

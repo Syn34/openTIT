@@ -257,6 +257,10 @@ public:
     ape::ApeTArray<SpawnAttachmentDesc>* attachments = nullptr;   // 0x88
 };
 void UnregisterEntityDef(EntityDef* def);
+// Draws a flash/fade colour (RGBA) over the entity's geometry this frame
+// and over every attached child's (0x000D8F08); `additive` selects the
+// renderer's additive variant (NOTE: the name of the flag is a guess).
+void EntityApplyFade(Entity* entity, const uint8_t* color, bool additive);
 
 class Entity {
 public:
@@ -278,7 +282,7 @@ public:
     virtual EntityComponent* GetComponent0D();                     // slot 17
     virtual ape::Vec3 GetCenter();                                 // slot 20
     virtual void SetVisible(bool visible, bool immediate, bool children, bool components); // slot 22
-    virtual void SetFlag80(bool on);                               // slot 23
+    virtual void SetFlag80(bool on, int part = -1);                               // slot 23
     virtual uint32_t GetRenderId();                                // slot 25
     virtual void SetRenderId(uint32_t id);                         // slot 26
     virtual void Detached(float blend);                            // slot 28 (+0x70)
@@ -291,6 +295,10 @@ public:
     virtual void SetTimeScale(uint32_t value, bool children);      // slot 32
     virtual void* GetHudScript();                                  // slot 33
     virtual ape::world::ApeObj* GetRenderObject();                 // slot 36 (+0x90)
+    // Slot 37 (+0x94): world object (and bone, -1 for the whole object)
+    // that a Havok collidable belongs to; null when it is not one of the
+    // entity's bodies.
+    virtual ape::world::ApeObj* ObjectForCollidable(const void* collidable, int32_t* bone);
     virtual ape::Aabb GetBounds(bool world);                       // slot 40
     virtual void HandleMessage(const struct EntityMessage& msg);   // slot 43 (+0xAC)
     virtual void SetActive(bool active);                           // slot 44
@@ -316,7 +324,7 @@ public:
     virtual uint32_t InteractionOffer(int kind, Entity* other) { (void)kind; (void)other; return 0; }   // slot 74
     // @func 0x007437C8 Entity::InteractionNeeds
     virtual uint32_t InteractionNeeds(int kind, Entity* other) { (void)kind; (void)other; return 0; }   // slot 75
-    virtual bool CanInteractWith(Entity* other, int kind);         // slot 76
+    virtual bool CanInteractWith(Entity* other, int kind, float* priority = nullptr);         // slot 76
     virtual void OnInteractStart(Entity* other, int kind);         // slot 77
     virtual void OnInteractEnd(Entity* other, int kind);           // slot 78
     // Slot 10: drops one reference; with `kill` the entity leaves the world.

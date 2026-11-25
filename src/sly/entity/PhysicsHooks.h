@@ -26,12 +26,25 @@ void RigidBodySetFilterGroup(void* body, uint32_t collisionGroup);
 // getConstraint 0x0091A7D8).
 int RigidBodyConstraintCount(void* body);
 void* RigidBodyConstraint(void* body, int index);
+// Whole collision filter word of a body (+0x2C: collision layer in bits
+// 0-4, group in bits 16-31). Setting it re-filters a body that is in a
+// world (0x00930B70).
+uint32_t RigidBodyFilterInfo(void* body);
+void RigidBodySetFilterInfo(void* body, uint32_t info);
+// Gravity of the game physics world (game world +0x1281D4, float +0x54).
+float PhysicsWorldGravity();
 // Collision group of a body (filter word +0x2C bits 16-31).
 uint32_t RigidBodyCollisionGroup(void* body);
 // Adds an action to the game physics world (hkpWorld::addAction 0x0092E9D8).
 void PhysicsAddAction(void* action);
 // Motion type byte (+0xE8): 4 = keyframed, 5 = fixed.
+constexpr uint32_t kMotionType_Keyframed = 4;
+constexpr uint32_t kMotionType_Fixed = 5;
+// hkpRigidBody::setMotionType (0x0091D470, activation on, queued).
+void RigidBodySetMotionType(void* body, uint32_t type);
 uint8_t RigidBodyMotionType(void* body);
+// Wakes the body (hkpEntity::activate 0x0091A4C8).
+void RigidBodyActivate(void* body);
 // Wakes the body (0x0091A4C8) and applies a linear impulse (motion slot 21).
 void RigidBodyApplyImpulse(void* body, const ape::Vec3& impulse);
 // Wakes the body and sets its linear velocity (motion slot 17).
@@ -58,7 +71,29 @@ void RigidBodyClearUserProperties(void* body);
 void* NavAddBodyObstacle(void* body, const ape::Aabb& bounds, const char* name, uint32_t mask);
 // Local bounds of a collision shape (shape virtual getAabb at the identity
 // transform, tolerance 0).
-void HavokShapeLocalAabb(void* shape, ape::Aabb& out);
+void HavokShapeLocalAabb(const void* shape, ape::Aabb& out);
+// World transform of a body (its motion state's transform, +0xF0).
+ape::Matrix34 RigidBodyTransform(void* body);
+// Collision shape of a body (its collidable's shape, +0x10).
+const void* RigidBodyShape(void* body);
+// Shape type byte (+0x08) values the game tells apart.
+// NOTE: names from the fields read for each type (+0x20 translation,
+// +0x30 transform).
+enum HavokShapeKind : uint8_t {
+    kHavokShape_ConvexTranslate = 10,
+    kHavokShape_ConvexTransform = 11,
+    kHavokShape_Transform       = 14,
+};
+uint8_t HavokShapeType(const void* shape);
+// Translation of a convex translate shape (+0x20) / transform of a
+// transform shape (+0x30, through 0x007CF51C / 0x007CF188).
+ape::Vec3 HavokShapeTranslation(const void* shape);
+ape::Matrix34 HavokShapeTransform(const void* shape);
+// Bounds of a shape placed at `transform` (shape virtual getAabb, tolerance 0).
+void HavokShapeAabb(const void* shape, const ape::Matrix34& transform, ape::Aabb& out);
+// Body that owns a collidable: for collidables of type 1 (byte +0x18) the
+// owner sits at the signed offset in byte +0x10; null otherwise.
+void* CollidableOwnerBody(const void* collidable);
 // hkReferencedObject::removeReference (0x007D4EA8).
 void HavokRelease(void* object);
 

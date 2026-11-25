@@ -42,9 +42,9 @@ bool RigidProp::Release(bool kill)
 // @func 0x001684EC RigidProp::SetFlag80
 // The flag takes the body out of the physics world; clearing it puts a
 // dynamic prop's body back.
-void RigidProp::SetFlag80(bool on)
+void RigidProp::SetFlag80(bool on, int part)
 {
-    Entity::SetFlag80(on);
+    Entity::SetFlag80(on, part);
     if (!rigidBody || RigidBodyInWorld(rigidBody) != on)
         return;
     if (on) {
@@ -100,11 +100,11 @@ void RigidProp::SetTransform(const ape::Matrix34& m)
 }
 
 // @func 0x00169280 RigidProp::CanInteractWith
-bool RigidProp::CanInteractWith(Entity* other, int kind)
+bool RigidProp::CanInteractWith(Entity* other, int kind, float* priority)
 {
     if (propState != kProp_Dynamic && propState < kProp_Destroyed)
         return false;
-    return CanBePickedUp(other, kind, Def()->damage, interactor);
+    return CanBePickedUp(other, kind, Def()->damage, interactor, priority);
 }
 
 // @func 0x00168620 RigidProp::SetVelocity

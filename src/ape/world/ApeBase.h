@@ -57,8 +57,9 @@ constexpr float kScaleEpsilon = 1e-5f;
 
 struct ApeTagBlock;   // shared parameter block (ATAG/TAG2), see ApeTags.h
 
-// Called by the base destructor for objects with tag flags (0x01164CD4).
-extern void (*g_tagReleaseHook)(class ApeBase* object);
+// Called by the base destructor for objects owned by a scene (0x01164CD4,
+// installed by the world module: removes the object from its scene).
+extern void (*g_sceneObjectDestroyedHook)(class ApeBase* object);
 
 class ApeBase {
 public:
@@ -92,12 +93,17 @@ public:
     // Replaces the tag block (counted reference).
     void SetTags(ApeTagBlock* tags);
 
+    // 1-based slot of the scene that owns the object (0 for none), see
+    // ApeScene.h.
+    uint8_t GetSceneSlot() const { return m_sceneSlot; }
+    void SetSceneSlot(uint8_t slot) { m_sceneSlot = uint8_t(slot & 0x0F); }
+
 protected:
     int16_t m_refCount = 1;
     uint8_t m_type = 0;            // ApeObjType
     // NOTE: the low 10 bits of the console word holding the count and type
-    // are preserved by every constructor and never read in this module.
-    uint8_t m_tagFlags = 0;        // NOTE: 4 bits; non-zero runs the tag release hook
+    // are preserved by every constructor; bits 6..9 are the scene slot.
+    uint8_t m_sceneSlot = 0;       // 4 bits; non-zero runs the scene hook on destruction
     bool m_registered = false;
     uint32_t m_uniqueId = 0;
     ApeTagBlock* m_tags = nullptr;
