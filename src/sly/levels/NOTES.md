@@ -219,3 +219,15 @@ destructors, Link, debug elements and most Execute functions), priority targets
   SeqMoveTo Execute (the sequencer port takes a WorldObject*/uint32 where the console passes
   an ape world object / point instance pointer), the AR debug server (0x000A85C0..0x000ABAD4,
   vtable 0x00B11D80, render target "RenderTarget_SlyAR"), BossGrizz (0x00060100..0x00064B8C).
+
+## Fifth pass (agent3)
+* `ai/AITuning.*` now holds all 367 tuning variables built by the static initialiser
+  0x00067738 (destructor 0x00065424); `ai/AISettingParams.*` the 138 AI setting parameters
+  by `AIProp` (`AIPropParam`).
+* `ai/AIBossGrizz.*`: BossGrizzDesc (type 0x30), QTE buttons, attack patterns and the
+  component; `ai/AICharacterSpawner.*` (AISpawnerSettings, CharacterSpawner);
+  `ai/AIIceCaveSentry.cpp` (SentryAIVariant); `ai/AIAnimEventKnowledge.cpp` (the anim event
+  knowledge callbacks are not yet wired into the AnimClipManager).
+* `ARServer.*`: the AR debug server (ARState at 0x00F558C4, derived from
+  `gameplay::DebugNetServer`). Discovery (0x000A88C0), Update (0x000A9768) and 0x000AB7B0
+  remain TODO.

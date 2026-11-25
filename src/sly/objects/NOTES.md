@@ -114,3 +114,8 @@
 * Not decodable with the current tools: trigger SetTransform 0x0020D7E8 and the polled
   trigger's IsInside 0x0020FD30 use Cell `lvlx` loads that the disassembler stops at.
 * The operand order of the in-place matrix multiply 0x005541F0 used by ApplyDamage is assumed.
+
+## Fourth pass (agent3)
+* `TriggerSound.*`: PolledTrigger::IsInside, AmbientSoundTrigger::ComputeSoundParams (inner
+  radius / falloff fields), SoundZoneTrigger fade weight (fade curve from
+  `SoundZone::fadeCurve`, +0x04) and Update.
