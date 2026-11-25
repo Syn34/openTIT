@@ -246,7 +246,7 @@ public:
         kFlag_InheritRgb   = 1u << 27,
         kFlag_InheritScale = 1u << 28,
         kFlag_Expand       = 1u << 29,   // fill the parent ("expand"; XML attribute 0x7ABBD29A)
-        kFlag_30           = 1u << 30,   // attribute 0xFFD1EC91
+        kFlag_30           = 1u << 30,   // attribute 0xFFD1EC91: can take the pad focus
         kFlag_Visible      = 1u << 31,
     };
 
@@ -388,6 +388,17 @@ struct GuiEvent {
 };
 using GuiFilter = bool (*)(const GuiEvent* event);
 void SetGuiFilter(GuiFilter filter, void* userData);
+// GUI event 3 asks whether an object may take the focus of a pad (the
+// argument is the best candidate so far).
+constexpr uint32_t kGuiEvent_CanFocus = 3;
+// Focus search among the visible focusable objects of a subtree (the last
+// match in drawing order wins): the object under 'point' closest to its
+// origin, or the object best placed in direction 'dir' from 'current'
+// (angle and distance; the screen wraps around). 'best' holds the best
+// score so far.
+ApeGuiObject* FindGuiFocusAt(ApeGuiObject* object, uint32_t pad, const float point[2], float* best);
+ApeGuiObject* FindGuiFocusInDirection(ApeGuiObject* object, uint32_t pad, ApeGuiObject* current, const float dir[2],
+                                      float* best);
 // Sends an event to the handler; true when none is installed.
 bool SendGuiEvent(uint32_t type, uint32_t pad, ApeGuiObject* object, uintptr_t param);
 
