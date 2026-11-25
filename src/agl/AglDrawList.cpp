@@ -147,6 +147,11 @@ void AglDrawList::SetWorldMatrix(const ape::Matrix44& world, uint32_t tag)
     Write(&world, sizeof(world), 16);
 }
 
+void AglDrawList::SetWorldMatrix(const ape::Matrix34& world, uint32_t tag)
+{
+    SetWorldMatrix(ToMatrix44(world), tag);
+}
+
 // @func 0x0052173C AglDrawList::SetScissor
 void AglDrawList::SetScissor(const uint16_t* rect, uint32_t tag)
 {
@@ -230,6 +235,11 @@ void AglDrawList::AllocPrimitive(AglDrawPrimitive* out, uint8_t primitive, uint3
     out->field_6 = 0;
     out->field_8 = 0;
     m_vertexUsed += count;
+}
+
+// @func 0x00523748 AglDrawList::EndPrimitive
+void AglDrawList::EndPrimitive()
+{
 }
 
 } // namespace agl

@@ -79,6 +79,8 @@ public:
 
     void Marker(uint32_t tag);
     void SetWorldMatrix(const ape::Matrix44& world, uint32_t tag);
+    // Same for an affine matrix (the console reads it as four rows).
+    void SetWorldMatrix(const ape::Matrix34& world, uint32_t tag);
     // Scissor rectangle, clipped to the view; null restores the full view.
     void SetScissor(const uint16_t* rect, uint32_t tag);
     void SetMaterial(AglMaterial* material, uint32_t tag);
@@ -89,6 +91,9 @@ public:
     void AddCallback(Callback fn, void* arg, uint32_t tag);
     // Reserves 'count' vertices for a primitive of type 'primitive'.
     void AllocPrimitive(AglDrawPrimitive* out, uint8_t primitive, uint32_t count, uint32_t tag);
+    // Closes the primitive filled in since AllocPrimitive (nothing to do;
+    // the vertices are written in place).
+    void EndPrimitive();
 
     size_t GetSize() const { return m_cursor; }
     const uint8_t* GetData() const { return m_packets.data(); }

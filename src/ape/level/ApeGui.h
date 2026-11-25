@@ -14,7 +14,9 @@
 #include <cstdint>
 
 namespace agl {
+class AglDrawList;
 class AglMaterial;
+class AglRenderTarget;
 class AglTexture;
 }
 
@@ -185,7 +187,7 @@ enum GuiObjectType : int32_t {
     kGuiObject_Type6 = 6,
     kGuiObject_Type7 = 7,
     kGuiObject_Type8 = 8,
-    kGuiObject_Type9 = 9,
+    kGuiObject_ClipRegion = 9,
 };
 
 // Horizontal (bits 0-1) and vertical (bits 4-5) parts of the "anchor" and
@@ -248,8 +250,10 @@ public:
     ApeGuiObject(const ApeGuiObject&) = delete;
     ApeGuiObject& operator=(const ApeGuiObject&) = delete;
 
-    // NOTE: slot 2 returns 0 in every class seen; its meaning is unknown.
-    virtual void* VirtualSlot2() const;
+    // Creates a copy named 'name' under 'parent' (a root object when null),
+    // owned by 'owner'; with 'recursive' the children are copied as well.
+    // The base class cannot be copied and returns null.
+    virtual ApeGuiObject* Clone(const char* name, ApeGuiObject* parent, void* owner, bool recursive) const;
     virtual int32_t GetType() const = 0;
 
     virtual const Matrix34& GetTransform() const;
@@ -285,22 +289,44 @@ public:
     virtual void SetInheritAlpha(bool value);
     virtual bool GetRender3d() const;
     virtual void SetRender3d(bool value);
-    // Size used to place the object in its parent (alignment/anchoring).
+    // Size used to place the object in its parent (alignment/anchoring), in
+    // screen units (the world scale applied).
     virtual void GetLayoutSize(float out[2]) const;
+    // Centre of the object's rectangle in screen space.
+    virtual Vec3 GetCenter() const;
     // Marks the object and its subtree dirty.
     virtual void Invalidate();
-    // Base implementations walk the visible subtree.
-    virtual void Render(void* context);
-    virtual void Update();
+    // Advances animations by 'dt' seconds (base: the visible subtree).
+    virtual void Tick(float dt);
+    // Records the object's geometry into the GUI draw list (base: the
+    // visible subtree).
+    virtual void Draw();
+    // The object's rectangle relative to its origin ('min', 'max') and the
+    // matrix placing that origin on the screen.
+    virtual void GetScreenRect(float min[2], float max[2], Matrix34& world) const;
+    // The matrix placing the object's origin: the parent's matrix, the
+    // anchor point in the parent and the object's own transform.
+    virtual Matrix34 GetWorldMatrix() const;
     // Scale including the inherited parent scale (when kFlag_InheritScale).
     virtual Vec3 GetWorldScale() const;
     // Colour modulated by the parent's world colour (inherit rgb / alpha).
     virtual xml::Color8 GetWorldColor() const;
+    // Topmost visible object of the subtree containing the screen point.
+    virtual ApeGuiObject* HitTest(const float point[2]);
     // Animatable property by name (optionally of a given value type).
     virtual const GuiProperty* FindProperty(const char* name) const;
     virtual const GuiProperty* FindProperty(const char* name, const void* type) const;
 
+    // Text objects only (console slot 47 of the label classes).
     virtual void SetText(const char* text, bool translate) {}
+
+    // Moves the object to the end of its sibling list so it draws last (on
+    // top); with 'recursive' its ancestors are moved as well.
+    void BringToFront(bool recursive);
+    // Fills a construction description that copies this object.
+    void FillCloneDesc(GuiObjectDesc& desc, const char* name, ApeGuiObject* parent, void* owner) const;
+    // Copies every child of this object under 'parent'.
+    void CloneChildren(ApeGuiObject* parent, void* owner) const;
 
     bool HasFlag(uint32_t flag) const { return (flags & flag) != 0; }
     void SetFlag(uint32_t flag, bool on) { flags = on ? (flags | flag) : (flags & ~flag); }
@@ -310,8 +336,9 @@ public:
     char name[0x20] = {};            // +0x60
     uint32_t nameHash = 0;           // +0x80
     xml::Color8 color{};             // +0x84
-    uint32_t flags = 0;              // +0x88 Flags; bits 22-23 blend, 14-21 align, 6-13 anchor
-    float layoutSize[2] = {};        // +0x8C
+    // mutable: GetLayoutSize caches its result and clears kFlag_Dirty.
+    mutable uint32_t flags = 0;      // +0x88 Flags; bits 22-23 blend, 14-21 align, 6-13 anchor
+    mutable float layoutSize[2] = {}; // +0x8C cached layout size
     ApeGuiObject* parent = nullptr;  // +0x94
     ApeGuiObject* firstChild = nullptr; // +0x98
     ApeGuiObject* nextSibling = nullptr; // +0x9C
@@ -344,14 +371,52 @@ StringTable* GetGuiStringTable();
 // second one has no pad argument. Their exact contract is not known.
 using GuiPadFilter = bool (*)(uint32_t pad, void* userData);
 void SetGuiPadFilter(GuiPadFilter filter, void* userData);
-using GuiFilter = bool (*)(void* userData);
+// GUI events are reported to one handler the game installs. The event
+// carries a type (1, 2 and 0x10 are sent by the game's menu code), a pad
+// index, the handler's user data, the object concerned and one argument.
+struct GuiEvent {
+    uint32_t type;      // +0x00
+    uint32_t pad;       // +0x04
+    void* userData;     // +0x08
+    ApeGuiObject* object; // +0x0C
+    uint32_t param;     // +0x10
+};
+using GuiFilter = bool (*)(const GuiEvent* event);
 void SetGuiFilter(GuiFilter filter, void* userData);
+// Sends an event to the handler; true when none is installed.
+bool SendGuiEvent(uint32_t type, uint32_t pad, ApeGuiObject* object, uint32_t param);
 
 // Four opaque values the game stores for the GUI system (cleared when the
 // GUI shuts down). NOTE: their meaning is unknown.
 constexpr int kGuiSlotCount = 4;
 void SetGuiSlot(int index, void* value);
 void* GetGuiSlot(int index);
+
+// ---------------------------------------------------------------------------
+// Rendering state
+// ---------------------------------------------------------------------------
+
+// Creates the GUI render target ("RenderTarget_GUI", orthographic). The
+// viewport is the whole back buffer unless 'viewport' (x, y, w, h) is given.
+bool InitGuiRendering(const int16_t* viewport);
+// Destroys every GUI animation, object and resource.
+void DestroyGuiObjects();
+// Shuts the GUI down (objects and the render target).
+void ShutdownGui();
+// Size of the GUI screen in pixels (the back buffer).
+void GetGuiScreenSize(float out[2]);
+// The draw list GUI objects record into: the override when one is set,
+// otherwise the game's list.
+agl::AglDrawList& GetGuiDrawList();
+void SetGuiDrawListOverride(agl::AglDrawList* list);
+// The GUI's own render target (0x00F6684C).
+agl::AglRenderTarget* GetGuiRenderTarget();
+// Render target that "render3d" objects are projected with (0x00F66850).
+agl::AglRenderTarget* GetGui3dRenderTarget();
+void SetGui3dRenderTarget(agl::AglRenderTarget* target);
+// Render target the GUI is being drawn into (0x00F6688C).
+agl::AglRenderTarget* GetGuiDrawTarget();
+void SetGuiDrawTarget(agl::AglRenderTarget* target);
 
 // Reads one pixel of an uncompressed bitmap as RGBA (alpha 255). Supports
 // 24, 8, 4 and 1 bits per pixel; 'palette' holds BGRx entries. Rows are
