@@ -10,9 +10,8 @@
 // entities, spawners, lasers... that are enabled while the goal is active).
 //
 // Console layout: the base object is 0xA0C bytes (vtable 0x00B1E1F8); its
-// constructor 0x00769BD8 and destructor 0x00769480 live outside this
-// module's address range, as do the one-line virtual defaults 0x00769Axx
-// (implemented inline here, untagged). Subclass data starts at +0xA0C.
+// constructor 0x00769BD8 and destructor 0x00769480 are approximated (see
+// Goal.cpp). Subclass data starts at +0xA0C.
 #pragma once
 
 #include "ape/memory/ApeTArray.h"
@@ -204,11 +203,13 @@ public:
 
     // slot 2 (+0x08)
     virtual void HandleMessage(const GoalMessage& msg);
-    // slot 3: per class type id (0x0076Bxxx, out of range).
+    // slot 3: per class type id.
+    // @func 0x00769A20 Goal::TypeId
     virtual int TypeId() const { return 0; }
     // slot 4 (+0x10): processes one game event for `player`; returns the status.
     virtual uint8_t Update(int player, const GameEvent& e);
     // slot 5 (+0x14)
+    // @func 0x00769A28 Goal::OnLevelLoaded
     virtual void OnLevelLoaded() {}
     // slot 6 (+0x18): resets the goal, `fromSave` takes the status from the
     // job's save word; `status` -1 picks it from the flags.
@@ -220,40 +221,53 @@ public:
     // slot 9 (+0x24)
     virtual void ReapplyHints(Goal* owner);
     // slot 10 (+0x28)
+    // @func 0x00769A2C Goal::SetFlags
     virtual void SetFlags(uint32_t value) { flags = value; }
     // slots 11/12 (+0x2C/+0x30): "???" for a hidden goal.
+    // @func 0x00769A34 Goal::GetName
     virtual const char* GetName() { return status == kGoal_Locked2 ? "???" : name; }
+    // @func 0x00769A58 Goal::GetDescription
     virtual const char* GetDescription() { return status == kGoal_Locked2 ? "???" : description; }
     // slot 13 (+0x34): progress counter shown by the HUD; false if none.
+    // @func 0x00769A7C Goal::GetProgress
     virtual bool GetProgress(struct GoalProgress* out) { (void)out; return false; }
     // slot 14 (+0x38)
+    // @func 0x00769A84 Goal::IsComplete
     virtual bool IsComplete() { return status == kGoal_Complete; }
     // slot 15 (+0x3C): adds the goal's waypoint markers (minigame goals let
     // the minigame do it).
+    // @func 0x00769A98 Goal::CollectMarkers
     virtual void CollectMarkers(struct GoalMarkerList* list) { (void)list; }
     // slot 16 (+0x40): the entity the HUD points at; false if none.
     virtual bool GetTarget(struct GoalTarget* out);
     // slot 17 (+0x44)
+    // @func 0x00769A9C Goal::Field8A0
     virtual uint32_t Field8A0() { return field_8A0; }
     // slot 18 (+0x48)
+    // @func 0x00769AA4 Goal::CollectAllMarkers
     virtual void CollectAllMarkers(struct GoalMarkerList* list) { CollectMarkers(list); }
     // slot 19 (+0x4C)
+    // @func 0x00769AE0 Goal::Field8F4
     virtual uint32_t Field8F4(int i) { return field_8F4[i]; }
     // slot 20 (+0x50)
+    // @func 0x00769AF8 Goal::Field960
     virtual uint32_t Field960() const { return field_960; }
     // slot 21 (+0x54): text of the current cycle entry and its fade value.
     virtual const char* CurrentCycleText(float* fade);
     // slot 22 (+0x58)
     virtual void ResetCycle();
     // slot 23 (+0x5C)
+    // @func 0x00769B00 Goal::Field96C
     virtual bool Field96C() const { return field_96C; }
     // slot 24 (+0x60)
+    // @func 0x00769B08 Goal::FreezeStatus
     virtual void FreezeStatus(bool frozen)
     {
         flags = frozen ? (flags | kGoalFlag_StatusFrozen) : (flags & ~kGoalFlag_StatusFrozen);
     }
     // slot 25 (+0x64): true when the goal's own scripts suppress the
     // following goal's start scripts.
+    // @func 0x00769B34 Goal::BlocksNextScripts
     virtual bool BlocksNextScripts() const { return false; }
     // slot 26 (+0x68)
     virtual void SetStatus(uint8_t newStatus, bool force);
