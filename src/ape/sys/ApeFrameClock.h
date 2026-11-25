@@ -8,9 +8,12 @@
 // replace this header when it is reconstructed.
 #pragma once
 
+#include <cstdint>
+
 namespace ape {
 
 struct FrameClock {
+    uint32_t frame = 0;       // +0x00 frame number (NOTE: advanced by the clock owner)
     float deltaTime = 0.0f;   // +0x04 seconds elapsed in the current frame
     float fixedStep = 0.0f;   // +0x08 forced frame time (0 = real time)
 };
