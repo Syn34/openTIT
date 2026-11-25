@@ -1232,6 +1232,23 @@ void Character::SetPhysicsTarget(const ape::Vec3& point)
         PhysicsCompSetTarget(physics, point);
 }
 
+// @func 0x0012E824 Character::AddWatcher
+void Character::AddWatcher(CharacterWatcher* watcher)
+{
+    watchers530.PushBack(watcher);
+}
+
+// @func 0x0012E8B0 Character::RemoveCharacterWatcher
+void Character::RemoveCharacterWatcher(CharacterWatcher* watcher)
+{
+    for (size_t i = 0; i < watchers530.Count(); ++i) {
+        if (watchers530[i] == watcher) {
+            watchers530.RemoveAtSwap(i);
+            return;
+        }
+    }
+}
+
 // TODO(0x00124D58 Character::SwapCharacter)
 void Character::SwapCharacter(EntityDef* newDef, bool keepState)
 {

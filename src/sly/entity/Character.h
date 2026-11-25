@@ -215,6 +215,10 @@ public:
     // Point the physics component steers to (component +0x2A0, flag bit 23) (0x0012BC20).
     void SetPhysicsTarget(const ape::Vec3& point);
 
+    // Watchers told when the character leaves (+0x530) (0x0012E824 / 0x0012E8B0).
+    void AddWatcher(CharacterWatcher* watcher);
+    void RemoveCharacterWatcher(CharacterWatcher* watcher);
+
     // Hit reactions (slots 83-87) and damage (slot 88).
     void OnHitCategory0(EntityHitRecord& hit) override;   // physics impact
     void OnHitCategory1(EntityHitRecord& hit) override;   // melee
