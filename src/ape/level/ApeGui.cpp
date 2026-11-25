@@ -1,9 +1,13 @@
 // openTIT - Ape engine GUI core: resources, the object tree and globals.
 #include "ape/level/ApeGui.h"
 
+#include "agl/AglDisplay.h"
+#include "agl/AglDrawList.h"
+#include "agl/AglRenderTarget.h"
 #include "agl/AglResources.h"
 #include "agl/AglTexture.h"
 #include "ape/core/ApeString.h"
+#include "ape/level/ApeGuiProperties.h"
 #include "ape/level/ApeGuiTypes.h"
 #include "platform/Platform.h"
 
@@ -37,6 +41,11 @@ void* s_padFilterData = nullptr;                    // 0x00F66870
 GuiFilter s_filter = nullptr;                       // 0x00F66874
 void* s_filterData = nullptr;                       // 0x00F66878
 void* s_slots[kGuiSlotCount] = {};                  // 0x010C2AD8
+
+agl::AglRenderTarget* s_guiTarget = nullptr;        // 0x00F6684C
+agl::AglRenderTarget* s_gui3dTarget = nullptr;      // 0x00F66850
+agl::AglRenderTarget* s_guiDrawTarget = nullptr;    // 0x00F6688C
+agl::AglDrawList* s_drawListOverride = nullptr;     // 0x00F66890
 
 bool IsIdentifierChar(char c)
 {
@@ -658,6 +667,101 @@ void ReadBitmapPixel(uint8_t outRgba[4], const uint8_t* pixels, const uint8_t* p
         outRgba[0] = outRgba[1] = outRgba[2] = 0;
     }
     outRgba[3] = 0xFF;
+}
+
+// ---------------------------------------------------------------------------
+// Rendering state
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// @func 0x004D5870 GuiPreRenderCallback
+// Render callbacks of the GUI target (before / after); nothing to do.
+void GuiPreRenderCallback(void*)
+{
+}
+
+// @func 0x004D5874 GuiPostRenderCallback
+void GuiPostRenderCallback(void*)
+{
+}
+
+} // namespace
+
+// @func 0x004D35AC InitGuiRendering
+bool InitGuiRendering(const int16_t* viewport)
+{
+    s_guiTarget = agl::AglRenderTarget::CreatePrimary(2, false);
+    StrCopyBounded(s_guiTarget->name, "RenderTarget_GUI", sizeof(s_guiTarget->name));
+    s_guiTarget->SetProjectionType(agl::kAglProjection_Ortho);
+    s_guiTarget->AddRenderCallback(0, GuiPreRenderCallback, nullptr, 0);
+    s_guiTarget->AddRenderCallback(1, GuiPostRenderCallback, nullptr, 0);
+
+    const agl::AglDisplaySettings& display = agl::GetDisplaySettings();
+    g_guiViewport = { 0, 0, (int16_t)display.width, (int16_t)display.height };
+    if (viewport)
+        g_guiViewport = { viewport[0], viewport[1], viewport[2], viewport[3] };
+    const uint16_t rect[4] = { (uint16_t)g_guiViewport.x, (uint16_t)g_guiViewport.y,
+                               (uint16_t)g_guiViewport.width, (uint16_t)g_guiViewport.height };
+    s_guiTarget->SetViewport(rect);
+
+    s_stringTable = nullptr;
+    s_drawListOverride = nullptr;
+    for (void*& slot : s_slots)
+        slot = nullptr;
+    return true;
+}
+
+// @func 0x004D4104 GetGuiScreenSize
+void GetGuiScreenSize(float out[2])
+{
+    const agl::AglDisplaySettings& display = agl::GetDisplaySettings();
+    out[0] = (float)display.width;
+    out[1] = (float)display.height;
+}
+
+// @func 0x004D3DA4 SendGuiEvent
+bool SendGuiEvent(uint32_t type, uint32_t pad, ApeGuiObject* object, uint32_t param)
+{
+    if (!s_filter)
+        return true;
+    const GuiEvent event = { type, pad, s_filterData, object, param };
+    return s_filter(&event);
+}
+
+agl::AglDrawList& GetGuiDrawList()
+{
+    return s_drawListOverride ? *s_drawListOverride : agl::GetDrawList();
+}
+
+void SetGuiDrawListOverride(agl::AglDrawList* list)
+{
+    s_drawListOverride = list;
+}
+
+agl::AglRenderTarget* GetGuiRenderTarget()
+{
+    return s_guiTarget;
+}
+
+agl::AglRenderTarget* GetGui3dRenderTarget()
+{
+    return s_gui3dTarget;
+}
+
+void SetGui3dRenderTarget(agl::AglRenderTarget* target)
+{
+    s_gui3dTarget = target;
+}
+
+agl::AglRenderTarget* GetGuiDrawTarget()
+{
+    return s_guiDrawTarget;
+}
+
+void SetGuiDrawTarget(agl::AglRenderTarget* target)
+{
+    s_guiDrawTarget = target;
 }
 
 } // namespace ape

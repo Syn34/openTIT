@@ -199,8 +199,8 @@ ApeGuiObject::~ApeGuiObject()
     ForgetGuiSlots(this);
 }
 
-// @func 0x007882F4 ApeGuiObject::VirtualSlot2
-void* ApeGuiObject::VirtualSlot2() const
+// @func 0x007882F4 ApeGuiObject::Clone
+ApeGuiObject* ApeGuiObject::Clone(const char*, ApeGuiObject*, void*, bool) const
 {
     return nullptr;
 }
@@ -413,22 +413,22 @@ void ApeGuiObject::Invalidate()
         child->Invalidate();
 }
 
-// @func 0x004D89CC ApeGuiObject::Render
-void ApeGuiObject::Render(void* context)
+// @func 0x004D89CC ApeGuiObject::Tick
+void ApeGuiObject::Tick(float dt)
 {
     if (!IsVisible())
         return;
     for (ApeGuiObject* child = firstChild; child; child = child->nextSibling)
-        child->Render(context);
+        child->Tick(dt);
 }
 
-// @func 0x004E05A4 ApeGuiObject::Update
-void ApeGuiObject::Update()
+// @func 0x004E05A4 ApeGuiObject::Draw
+void ApeGuiObject::Draw()
 {
     if (!IsVisible())
         return;
     for (ApeGuiObject* child = firstChild; child; child = child->nextSibling)
-        child->Update();
+        child->Draw();
 }
 
 // @func 0x004D7E70 ApeGuiObject::GetWorldScale
@@ -777,7 +777,7 @@ void ApeGuiGroup::SetSize(const float value[2])
 }
 
 // ---------------------------------------------------------------------------
-// Types 8 and 9
+// Type 8 and the clip region
 // ---------------------------------------------------------------------------
 
 // @func 0x004E8F54 ApeGuiType8::~ApeGuiType8
@@ -802,31 +802,31 @@ void ApeGuiType8::SetVisible(bool visible)
         target->SetVisible(visible, true);
 }
 
-// @func 0x004E9414 ApeGuiType8::Update
-// The wrapped object updates itself.
-void ApeGuiType8::Update()
+// @func 0x004E9414 ApeGuiType8::Draw
+// The wrapped object draws itself.
+void ApeGuiType8::Draw()
 {
 }
 
-// @func 0x00794D54 ApeGuiType9::~ApeGuiType9
-// @func 0x007968F4 ApeGuiType9::~ApeGuiType9 (deleting)
-ApeGuiType9::~ApeGuiType9() = default;
+// @func 0x00794D54 ApeGuiClipRegion::~ApeGuiClipRegion
+// @func 0x007968F4 ApeGuiClipRegion::~ApeGuiClipRegion (deleting)
+ApeGuiClipRegion::~ApeGuiClipRegion() = default;
 
-// @func 0x0079688C ApeGuiType9::GetType
-int32_t ApeGuiType9::GetType() const
+// @func 0x0079688C ApeGuiClipRegion::GetType
+int32_t ApeGuiClipRegion::GetType() const
 {
-    return kGuiObject_Type9;
+    return kGuiObject_ClipRegion;
 }
 
-// @func 0x00796894 ApeGuiType9::GetSize
-void ApeGuiType9::GetSize(float out[2]) const
+// @func 0x00796894 ApeGuiClipRegion::GetSize
+void ApeGuiClipRegion::GetSize(float out[2]) const
 {
     out[0] = size[0];
     out[1] = size[1];
 }
 
-// @func 0x007968A8 ApeGuiType9::SetSize
-void ApeGuiType9::SetSize(const float value[2])
+// @func 0x007968A8 ApeGuiClipRegion::SetSize
+void ApeGuiClipRegion::SetSize(const float value[2])
 {
     size[0] = value[0];
     size[1] = value[1];
