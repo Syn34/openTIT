@@ -173,6 +173,9 @@ enum EntityFlags : uint32_t {
     kEnt_TransformChanged = 0x00000800,
     kEnt_4000       = 0x00004000,
     kEnt_8000       = 0x00008000,
+    kEnt_NoObjectSync = 0x00001000,  // the world object is not moved with the entity
+    kEnt_RootMotion = 0x00002000,    // slot 13 applies root motion
+    kEnt_10000      = 0x00010000,    // NOTE: updated like kEnt_Visible
     kEnt_SoundCountShift = 19,     // bits 19-21: number of sound slots in use
     kEnt_SoundCountMask  = 0x7u << 19,
     kEnt_Hidden     = 0x00020000,  // bit 17: set by ApplyVisibility(false)
@@ -200,8 +203,8 @@ enum EntityClassBits : uint64_t {
 // One sound attached to an entity (+0x100, stride 0x0C).
 struct EntitySoundSlot {
     uint32_t voice = 0;       // audio::VoiceId
-    int32_t id = -1;
-    uint32_t field_08 = 0;
+    int32_t id = -1;          // bone the sound follows, -1 for none
+    void* attachObject = nullptr;   // world object it follows without a bone (else the entity)
 };
 
 // Attachment record a definition adds to every spawn (0xC0 bytes on the
@@ -280,6 +283,10 @@ public:
     virtual bool PostUpdate(float dt);                             // slot 5
     // Slot 12. NOTE: the frame time is passed through but unused by the base.
     virtual void UpdateTransform(float dt = 0.0f);                 // slot 12
+    // Slot 13 (+0x34): applies the root motion of the playing animation to
+    // the transform while flags bit 13 is set (cleared when a non-looping
+    // animation is over).
+    virtual void ApplyRootMotion(float dt);
     // Slot 14 (+0x38): fade and flash pass of the frame (characters, props);
     // nothing by default.
     // @func 0x000D8FC0 Entity::UpdateFade
@@ -512,6 +519,14 @@ public:
     // @func 0x0074CC74 Entity::AddRef
     void AddRef() { ++interactionCount; }
     uint32_t SoundSlotCount() const { return (flags & kEnt_SoundCountMask) >> kEnt_SoundCountShift; }
+    // Frame of something attached to the entity: a bone (when `bone` >= 0),
+    // else `attachObject`'s world transform, else the entity's, with a local
+    // rotation and offset applied first.
+    ape::Matrix34 AttachTransform(int bone, const ape::world::ApeObj* attachObject, const ape::Vec4& rotation,
+                                  const ape::Vec3& offset) const;
+    // Velocity estimate and the positions of the attached sounds (finished
+    // ones are dropped).
+    void UpdateMotion(float dt);
 
     // -- data -------------------------------------------------------------------
     // 0x20 local transform the world object had before the entity took it
@@ -536,6 +551,8 @@ public:
     ape::ApeTArray<EntityComponent*>* components = nullptr;   // 0xF8 (allocated on first add)
     ape::ApeTArray<void*>* watchers = nullptr;     // 0xFC NOTE: objects interested in this entity
     EntitySoundSlot sounds[4];                     // 0x100
+    ape::Vec3 lastPosition{};                      // 0x130 position at the last update
+    ape::Vec3 velocity{};                          // 0x140 estimated from the position change
     Entity* attachParent = nullptr;                // 0x150
     ape::ApeTArray<EntityChildLink>* children = nullptr;      // 0x154 (records of 0xF0 bytes)
 };
@@ -571,6 +588,12 @@ void UnregisterEntity(EntityList list, Entity* entity);
 void AddToInstanceRenderList(EntityComponent* component);
 uint32_t EntityCount(EntityList list);
 Entity* EntityAt(EntityList list, uint32_t index);
+
+// One entity's share of the frame: the update step (flags, slot 4, child
+// transforms, motion) and the post-update step (slot 5, world object sync,
+// root motion, animation).
+void EntityUpdateStep(Entity* entity, float dt);
+void EntityPostUpdateStep(Entity* entity, float dt);
 
 Entity* FindEntity(uint32_t nameHash);
 Entity* FindNearestEntity(const ape::Vec3& position);

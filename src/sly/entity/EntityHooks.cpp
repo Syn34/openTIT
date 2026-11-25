@@ -136,6 +136,22 @@ void ScriptInstanceSetState(void* instance, uint32_t stateName)
 // TODO(0x00490518)
 void PropertySystemForgetDef(EntityDef* def) { (void)def; }
 
+// TODO(0x00443CE0)
+bool VoiceUpdate3D(uint32_t voice, const ape::Vec3& position, const ape::Vec3& velocity)
+{
+    (void)position; (void)velocity;
+    return voice != 0;
+}
+// TODO(0x00298EE4 / 0x00299674)
+void CharacterCompBeginAnim(EntityComponent* character) { (void)character; }
+void CharacterCompEndAnim(EntityComponent* character) { (void)character; }
+// TODO(0x000DC730 Entity::GetRootMotion)
+ape::Matrix34 EntityRootMotionDelta(Entity* entity, float dt)
+{
+    (void)entity; (void)dt;
+    return { { 1.0f, 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 0.0f, 1.0f } };
+}
+
 void MeshSetTint(ape::world::AglMesh* mesh, const uint8_t color[4], float amount)
 {
     (void)mesh; (void)color; (void)amount;

@@ -121,6 +121,9 @@ public:
     bool PostUpdate(float dt) override;
     // Slot 4: while active, keyframed part bodies are driven to their parts.
     bool Update(float dt) override;
+    // Slot 13: root motion moves only the world object (the actor's
+    // transform follows it through the object).
+    void ApplyRootMotion(float dt) override;
     bool Release(bool kill) override;                                  // slot 10
     void SetActive(bool active) override;
     ape::Vec3 GetCenter() override;                                    // slot 20

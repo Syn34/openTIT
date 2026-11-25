@@ -2,6 +2,7 @@
 // slot overrides that work on them (vtable 0x00B12898, 0x000E2FF0-0x000E8000).
 #include "sly/entity/ActorEntities.h"
 
+#include "sly/anim/AnimController.h"
 #include "sly/anim/AnimLayer.h"
 #include "sly/entity/CharacterHooks.h"
 #include "sly/entity/EntityHooks.h"
@@ -383,6 +384,24 @@ bool ActorEntity::PostUpdate(float dt)
         SetPhysState(kActorPhys_Remove);
     }
     return true;
+}
+
+// @func 0x000E7810 ActorEntity::ApplyRootMotion
+void ActorEntity::ApplyRootMotion(float dt)
+{
+    if (animController) {
+        const ape::Matrix34 delta = EntityRootMotionDelta(this, dt);
+        if (!SameTransform(delta, ape::world::kWorldIdentity)) {
+            ape::Matrix34 moved;
+            ape::world::Matrix34Mul(moved, delta, transform);
+            SetLocalTransform(moved);
+        }
+    }
+    auto* layer = animController ? static_cast<anim::AnimController*>(animController)->FindLayer(0) : nullptr;
+    if (layer && !layer->IsDone(false))
+        return;
+    if (!layer || !(layer->flags & anim::AnimLayer::kFlag_Looping))
+        flags &= ~uint32_t(kEnt_RootMotion);
 }
 
 // -- physics states ------------------------------------------------------------------------

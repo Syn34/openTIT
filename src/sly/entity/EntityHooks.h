@@ -167,6 +167,16 @@ void PropertySystemForgetDef(EntityDef* def);
 // NOTE: the render-side callback is 0x005A1584; the part/material mapping
 // needs the mesh and material layouts of the renderer.
 void QueueObjectFlash(ape::world::ApeObj* object, const uint8_t color[4], bool additive);
+// 0x00443CE0 with a 3D request (flags: position, velocity): moves a
+// playing voice; false when the voice has stopped.
+bool VoiceUpdate3D(uint32_t voice, const ape::Vec3& position, const ape::Vec3& velocity);
+// Character component around an animation update: 0x00298EE4 before,
+// 0x00299674 after.
+void CharacterCompBeginAnim(EntityComponent* character);
+void CharacterCompEndAnim(EntityComponent* character);
+// Entity slot 52 (+0xD0, base 0x000DC730): root motion step of the playing
+// animation as a transform (identity without one).
+ape::Matrix34 EntityRootMotionDelta(Entity* entity, float dt);
 // Tint record of a renderer mesh (mesh +0x5C, optional): colour bytes at
 // +0x08 and amount at +0x0C.
 void MeshSetTint(ape::world::AglMesh* mesh, const uint8_t color[4], float amount);

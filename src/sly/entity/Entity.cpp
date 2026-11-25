@@ -1005,7 +1005,7 @@ void Entity::SetSoundsMuted(bool muted)
         for (uint32_t i = 0; i < SoundSlotCount(); ++i) {
             audio::StopVoice(sounds[i].voice, true);
             sounds[i].voice = 0;
-            sounds[i].field_08 = 0;
+            sounds[i].attachObject = nullptr;
             sounds[i].id = -1;
         }
     }
@@ -1250,7 +1250,7 @@ bool Entity::Release(bool kill)
     for (uint32_t i = 0; i < SoundSlotCount(); ++i) {
         audio::StopVoice(sounds[i].voice, true);
         sounds[i].voice = 0;
-        sounds[i].field_08 = 0;
+        sounds[i].attachObject = nullptr;
         sounds[i].id = -1;
     }
 
