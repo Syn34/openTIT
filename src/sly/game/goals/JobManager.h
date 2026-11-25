@@ -6,6 +6,7 @@
 
 #include "ape/container/ApeTSortedMap.h"
 #include "ape/memory/ApeTArray.h"
+#include "sly/game/Upgrades.h"
 
 #include <cstdint>
 
@@ -140,16 +141,66 @@ struct Job {
     void Start();
 };
 
-// Episode record (0x218 bytes).
+// Episode record (0x218 bytes, console constructor 0x002D9740). The job
+// manager's running instance (+0x28) points at one.
 struct Episode {
-    uint8_t data[0x1D4] = {};
-    uint32_t nameHash = 0;           // +0x1D4
-    uint8_t pad_1D8[0x1C] = {};
+    Episode();
+
+    // A <HideoutCharacter> entry (0xC bytes, 0xB copied).
+    struct HideoutCharacter {
+        uint32_t name = 0;
+        uint32_t field_04 = 0;       // NOTE: attribute 0x09999BDC
+        bool selectable = true;
+        bool field_09 = false;       // NOTE: attribute 0xABB46BE6
+        bool field_0A = false;       // NOTE: attribute 0xB15553D6
+    };
+    struct ScriptPath {
+        char path[0x81];
+    };
+
+    // State of the job in the current profile's record (0x002D98A4).
+    uint8_t State() const;
+    // Replaces the stored copy of the text with the same id by `text`'s
+    // string and marks it changed (0x002D98DC).
+    void StoreText(const TextField& text);
+    // Copies the stored text with `text`'s id over `text`; false if there is
+    // none (0x002D9994).
+    bool LoadText(TextField& text) const;
+
+    char name[0x41];                 // +0x000
+    char desc[0x41];                 // +0x041
+    char jobScript[0x81];            // +0x082
+    char movieOnJobComplete[0x81];   // +0x103
+    char abbrev[0x10];               // +0x184
+    uint8_t field_194 = 0;           // +0x194
+    ape::ApeTArray<ScriptPath> scriptPaths;          // +0x198
+    ape::ApeTArray<TextField> texts;                 // +0x1AC
+    ape::ApeTArray<HideoutCharacter> characters;     // +0x1C0
+    uint32_t nameHash = 0;           // +0x1D4 id
+    uint32_t field_1D8 = 0;          // +0x1D8 NOTE: attribute 0x53B55808
+    uint32_t field_1DC = 0;          // +0x1DC NOTE: attribute 0xC9F8B7B3
+    uint32_t field_1E0 = 0;          // +0x1E0 NOTE: attribute 0xA3A3941F
+    uint32_t field_1E4 = 0;          // +0x1E4 NOTE: attribute 0x41299858
+    uint32_t field_1E8 = 0xD433715Au;  // +0x1E8 NOTE: attribute 0x6E6EDD6B
+    uint32_t associatedDef = 0;      // +0x1EC
+    float field_1F0 = -1.0f;         // +0x1F0 NOTE: attribute 0x74BC9C7B
     uint8_t episode = 0;             // +0x1F4 index of its 0x35C-byte record
     uint8_t order = 0;               // +0x1F5 stage it belongs to
     uint8_t index = 0;               // +0x1F6 PlayerProgress::jobStates slot
-    uint8_t pad_1F7[0x21] = {};
+    uint8_t field_1F7 = 0;           // +0x1F7 attribute "disguiseLocked"
+    uint8_t field_1F8 = 0;           // +0x1F8 NOTE: bool attribute 0xE587C810
+    uint8_t field_1F9 = 1;           // +0x1F9 NOTE: bool attribute 0x6AAB7C29
+    uint8_t field_1FA = 0;           // +0x1FA NOTE: int attribute 0xBE8B7B06
+    // Streaming of the job's script packages (0x002D9A14-0x002DA5E0, not
+    // ported): load state, request, buffer and the per-package requests.
+    int32_t loadState = 0;           // +0x1FC
+    void* request = nullptr;         // +0x200
+    void* buffer = nullptr;          // +0x208
+    uint32_t bufferSize = 0;         // +0x20C
+    void* packageRequests = nullptr; // +0x210
+    void* goals = nullptr;           // +0x214
 };
+using JobInstance = Episode;
 
 // Collectible records of the mask (0x0106819C) and treasure (0x01068184)
 // tables, keyed by name hash.
@@ -231,7 +282,7 @@ public:
     Episode* episodes = nullptr;     // +0x1C
     uint32_t episodeCount = 0;       // +0x20
     Job* currentJob = nullptr;       // +0x24
-    struct JobInstance* instance = nullptr;  // +0x28 the running job (byte +0x1F7: NOTE failed?)
+    Episode* instance = nullptr;     // +0x28 the running job
     uint32_t field_30 = 0;           // +0x30
     Goal* trackedGoal = nullptr;     // +0x48
     uint32_t pendingRequest[2] = {}; // +0x58
@@ -241,11 +292,6 @@ private:
     void ResetRunningJob();
 };
 
-// The running instance of a job (opaque; byte +0x1F7 read).
-struct JobInstance {
-    uint8_t data[0x1F7] = {};
-    uint8_t field_1F7 = 0;
-};
 // 0x002DDAB0: cleans up the running job (outside this range).
 void JobManagerCleanup(JobManager* manager);
 // 0x0045C7A8 on a local player's block (game world +0x1070 + i * 0x20C80).

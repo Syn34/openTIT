@@ -1,6 +1,7 @@
 // openTIT - TODO stubs for the game systems used by the level and script code.
 // Each returns what the original returns for a missing object.
 #include "sly/levels/GameServices.h"
+#include "sly/game/goals/JobManager.h"
 
 #include "sly/game/AudioSystem.h"
 #include "sly/game/SoundZones.h"
@@ -64,8 +65,16 @@ uint8_t GameWorldFlags2C() { return 0; }
 uint8_t GameWorldFlags2D() { return 0; }
 // TODO(0x0049EC08 TextFieldParse)
 bool TextFieldParse(ape::xml::XmlElement* element, TextField* text) { (void)element; (void)text; return false; }
-bool TextDisplayAvailable() { return false; }
-void TextDisplayShow(const TextField& text) { (void)text; }
+bool TextDisplayAvailable()
+{
+    game::JobManager* manager = game::GetJobManager();
+    return manager && manager->instance;
+}
+void TextDisplayShow(TextField& text)
+{
+    if (game::JobManager* manager = game::GetJobManager(); manager && manager->instance)
+        manager->instance->LoadText(text);
+}
 void TextFieldNotify(ape::ApeAnimScriptInstance* instance, const TextField& text) { (void)instance; (void)text; }
 void AwardTrophyByName(uint32_t awardName) { (void)awardName; }
 void* FindHudObject(uint32_t nameHash) { (void)nameHash; return nullptr; }

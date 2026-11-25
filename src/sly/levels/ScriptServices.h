@@ -131,7 +131,7 @@ const char* EntityNameString(WorldObject* entity);
 void ControllerRumble(int controllerIndex, float strength, float duration);
 // 0x0049E8E4: fills a text from a script variable.
 void TextFieldApplyVar(TextField* text, ape::ApeAnimScriptVar* var);
-// 0x002D98DC on the game state's text display (+0x28).
+// Stores the text in the running job (job manager +0x28, Episode::StoreText).
 void TextDisplayShowMessage(const TextField& text);
 // Float +0xA0C of the game-state object +0x50 (if present). NOTE: a limit, meaning unknown.
 void GameStateSetLimit(float limit);

@@ -65,6 +65,49 @@ ape::ApeTSortedMap<CollectibleRecord*>& TreasureTable() { return g_treasures; }
 // TODO(0x0049E038): sets the profile's unlock flags of the job's rewards.
 void UnlockJobRewards(uint32_t) {}
 
+// @func 0x002D9740 Episode::Episode
+Episode::Episode()
+    : scriptPaths(4)
+    , texts(0x10)
+    , characters(8)
+{
+    name[0] = '\0';
+    desc[0] = '\0';
+    jobScript[0] = '\0';
+    movieOnJobComplete[0] = '\0';
+    abbrev[0] = '\0';
+}
+
+// @func 0x002D98A4 Episode::State
+uint8_t Episode::State() const
+{
+    return CurrentProgress().jobStates[index];
+}
+
+// @func 0x002D98DC Episode::StoreText
+void Episode::StoreText(const TextField& text)
+{
+    for (TextField& stored : texts) {
+        if (stored.id == text.id) {
+            std::memcpy(stored.text, text.text, sizeof(stored.text));
+            stored.flagB = true;
+            return;
+        }
+    }
+}
+
+// @func 0x002D9994 Episode::LoadText
+bool Episode::LoadText(TextField& text) const
+{
+    for (const TextField& stored : texts) {
+        if (stored.id == text.id) {
+            text = stored;
+            return true;
+        }
+    }
+    return false;
+}
+
 // @func 0x002DA734 Job::Job
 Job::Job()
 {

@@ -126,9 +126,10 @@ uint8_t GameWorldFlags2D();
 // Script text messages.
 // Parses a text element into `text`; false if the element is not a text (0x0049EC08).
 bool TextFieldParse(ape::xml::XmlElement* element, TextField* text);
-// True when the game state has a text display (game state +0x28).
+// True while a job runs (job manager +0x28).
 bool TextDisplayAvailable();
-void TextDisplayShow(const TextField& text);                                  // 0x002D9994
+// Replaces `text` by the running job's stored copy (Episode::LoadText).
+void TextDisplayShow(TextField& text);
 void TextFieldNotify(ape::ApeAnimScriptInstance* instance, const TextField& text); // 0x0049F080
 
 // Trophies by award name (name map 0x00F64624, 0x000B27B4).
