@@ -28,12 +28,15 @@ bool Compare(uint32_t op, T var, T value)
 }
 } // namespace
 
-// The four trivial causes (0x00775714, 0x0077584C, 0x00775984, 0x00775ABC;
-// outside this module's range): CNever is never true, the others always
-// (the state causes are only asked when their state is entered/left).
+// The four trivial causes: CNever is never true, the others always (the
+// state causes are only asked when their state is entered/left).
+// @func 0x00775714 CAlways::Evaluate
 bool CAlwaysEvaluate(KRef*, KnowledgeData*) { return true; }
+// @func 0x0077584C CNever::Evaluate
 bool CNeverEvaluate(KRef*, KnowledgeData*) { return false; }
+// @func 0x00775984 COnEnterState::Evaluate
 bool COnEnterStateEvaluate(KRef*, KnowledgeData*) { return true; }
+// @func 0x00775ABC COnExitState::Evaluate
 bool COnExitStateEvaluate(KRef*, KnowledgeData*) { return true; }
 
 // True every "Frequency" seconds.

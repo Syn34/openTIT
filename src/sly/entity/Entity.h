@@ -20,6 +20,7 @@
 #include <cstdint>
 
 namespace ape::world { class ApeObj; struct ApeSkeletonBone; }
+namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; }
 
 namespace sly {
 namespace entity {
@@ -78,13 +79,43 @@ public:
     explicit EntityComponent(const ComponentDesc* desc);
     // Leaves the live component registry and the update list (0x00250384).
     virtual ~EntityComponent();                                    // slots 0/1
+    // Slots 2/3 (+0x08/+0x0C): component-specific blocks other systems
+    // read; none by default. NOTE: names unknown (the control components
+    // return their input flags and input record, other kinds data blocks).
+    // @func 0x00737584 EntityComponent::DataBlockA
+    virtual void* DataBlockA() { return nullptr; }
+    // @func 0x0073758C EntityComponent::DataBlockB
+    virtual void* DataBlockB() { return nullptr; }
+    // Slot 4 (+0x10). NOTE: name assumed (control components clear their input).
+    // @func 0x00737594 EntityComponent::ResetState
+    virtual void ResetState() {}
+    // @func 0x00762AAC EntityComponent::OnOwnerSpawned
     virtual void OnOwnerSpawned(Entity* owner) { (void)owner; }    // slot 5 (+0x14)
+    // @func 0x00762AB0 EntityComponent::Update
     virtual void Update(float dt) { (void)dt; }                    // slot 6 (+0x18)
+    // @func 0x00762AB4 EntityComponent::PostUpdate
     virtual void PostUpdate(float dt) { (void)dt; }                // slot 7 (+0x1C)
-    // NOTE: slot 11 (+0x2C); the flag's meaning depends on the component.
-    virtual void SetOption(bool value) { (void)value; }
+    // Slot 8 (+0x20, 0x00264D6C): NOTE: empty by default, meaning unknown.
+    virtual void Slot8() {}
+    // Slot 9 (+0x24). NOTE: empty by default, meaning unknown.
+    // @func 0x00737598 EntityComponent::Slot9
+    virtual void Slot9() {}
+    // Slot 10 (+0x28). NOTE: returns 0 by default, meaning unknown.
+    // @func 0x0073759C EntityComponent::Slot10
+    virtual int Slot10() { return 0; }
+    // Slot 11 (+0x2C): by default switches the component on or off; some
+    // components give the flag their own meaning.
+    // @func 0x007375A4 EntityComponent::SetOption
+    virtual void SetOption(bool value) { enabled = value; }
+    // @func 0x007375AC EntityComponent::SetVisible
     virtual void SetVisible(bool visible, bool immediate) { (void)visible; (void)immediate; } // slot 12
+    // Slot 13 (+0x34): visibility pushed down from the owner; by default the
+    // same as SetVisible. NOTE: name assumed.
+    // @func 0x007375B0 EntityComponent::SetVisibleFromOwner
+    virtual void SetVisibleFromOwner(bool visible, bool immediate) { SetVisible(visible, immediate); }
+    // @func 0x007375F4 EntityComponent::SetAlpha
     virtual void SetAlpha(uint8_t alpha, bool children) { (void)alpha; (void)children; }      // slot 14
+    // @func 0x007375F8 EntityComponent::OnTimeScale
     virtual void OnTimeScale(uint32_t value, bool recurse) { (void)value; (void)recurse; }    // slot 15
 
     uint32_t id = 0;          // 0x04 per-entity identifier (name hash of the component)
@@ -315,6 +346,16 @@ public:
     void RemoveWatcher(void* watcher);
     bool HasTypeBit(uint32_t bit) const { return (typeBits[bit >> 5] & (1u << (bit & 31))) != 0; }
     void SetName(const char* name);
+    // Switches the entity's anim script (slot 68) to a state.
+    void SetScriptState(uint32_t stateHash);
+    // Runs `script` for this entity: "this" refers to the entity, "thisName"
+    // holds its name and the matrix variable the transform of `bone` (or of
+    // the entity). With `autoRun` the instance is registered and removed
+    // once finished. Null without a script.
+    ape::ApeAnimScriptInstance* StartScript(ape::ApeAnimScript* script, uint32_t bone, bool autoRun);
+    // Same with a script of the default library by hash / by name.
+    ape::ApeAnimScriptInstance* StartScript(uint32_t scriptHash, uint32_t bone, bool autoRun);
+    ape::ApeAnimScriptInstance* StartScriptByName(const char* scriptName, uint32_t bone, bool autoRun);
     float GetAnimDuration(uint32_t anim) const;
     float GetAnimElapsed(bool normalized, uint32_t anim) const;
     float GetAnimProgress(uint32_t anim) const;
@@ -391,6 +432,9 @@ void RegisterEntity(EntityList list, Entity* entity);
 // Removes any object from a list (the lists also hold components).
 void UnregisterObject(EntityList list, const void* object);
 void UnregisterEntity(EntityList list, Entity* entity);
+// Adds a component to the instance render list (list C, "s_instRenderList");
+// a second add is refused with a warning (0x000D6614).
+void AddToInstanceRenderList(EntityComponent* component);
 uint32_t EntityCount(EntityList list);
 Entity* EntityAt(EntityList list, uint32_t index);
 

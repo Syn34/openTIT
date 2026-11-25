@@ -76,7 +76,7 @@ public:
     // Appends a line to the log ring (16 lines, oldest dropped).
     static void Log(const char* text);
 
-private:
+protected:
     struct Client {
         uint32_t field_00 = 0;
         uint16_t field_04 = 0;

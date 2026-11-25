@@ -11,6 +11,7 @@ uint32_t JobGoalCount(const Job*) { return 0; }
 Goal* JobGoalAt(const Job*, uint32_t) { return nullptr; }
 uint32_t JobGoalSaveWord(const Job*, int) { return 0; }
 void JobSetGoalSaveWord(Job*, int, uint32_t) {}
+int JobTakeGoalSaveSlot(Job*) { return 0; }
 uint8_t JobOwnerFlag(const Job*) { return 0; }
 bool IsGoalInLiveJob(const Goal* goal)
 {

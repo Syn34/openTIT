@@ -13,7 +13,7 @@
 #include <cstdint>
 
 namespace ape::world { class ApeObj; }
-namespace ape { class ApeAnimScriptInstance; }
+namespace ape { class ApeAnimScriptInstance; class ApeRefCounted; }
 
 namespace sly {
 namespace entity {
@@ -36,6 +36,14 @@ bool GameObjectPostUpdate(Entity* entity, float dt);
 EntityComponent* CreateComponent(ComponentDesc* desc);
 // Offset of the "centre" component (type 0x1F) from the entity origin (0x002BC1E0).
 ape::Vec3 CenterComponentOffset(EntityComponent* component);
+
+// -- scripts ----------------------------------------------------------------------
+// The entity's world object (+0xA0) as an anim script object reference.
+// NOTE: the port keeps world objects and script references separate.
+ape::ApeRefCounted* EntityWorldObjectRef(Entity* entity);
+// 0x000CE688: world transform of skeleton bone `boneHash` of the entity
+// (the entity transform when 0 or missing), after updating the world object.
+ape::Matrix34 EntityBoneWorldTransform(Entity* entity, uint32_t boneHash);
 
 // -- release ---------------------------------------------------------------------
 // 0x0046B6CC on the game world: drops the entity from its 13 per-frame event

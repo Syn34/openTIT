@@ -10,7 +10,10 @@
 namespace sly {
 namespace entity {
 
-// Minimal version of 0x000E281C (entity module).
+// @func 0x000E281C ActorDef::~ActorDef
+// @func 0x000E29EC ActorDef::~ActorDef (deleting)
+// @func 0x000E2A34 ActorDef::~ActorDef (forwarding copy, called by derived destructors)
+// Releases the Havok objects of the part table, then the definition base.
 ActorDef::~ActorDef()
 {
     if (parts) {

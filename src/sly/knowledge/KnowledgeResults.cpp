@@ -56,7 +56,7 @@ void StoreVariable(KRef* ref, KnowledgeData* list, bool asBool)
 
 } // namespace
 
-// RDoNothing (0x00776444, outside this range) does nothing.
+// @func 0x00776444 RDoNothing::Execute
 bool RDoNothingExecute(KRef*, KnowledgeData*) { return false; }
 
 // @func 0x00391868 RNachiDebug::Execute
@@ -356,7 +356,6 @@ bool RSetMaxRotationRateExecute(KRef* ref, KnowledgeData* list)
     return false;
 }
 
-// NOTE: reads four fields although the type declares one ("Rot").
 // @func 0x003955EC RMotionExTuning::Execute
 bool RMotionExTuningExecute(KRef* ref, KnowledgeData* list)
 {

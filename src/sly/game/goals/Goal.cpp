@@ -2,6 +2,7 @@
 #include "sly/game/goals/Goal.h"
 
 #include "ape/anim/ApeAnimScript.h"
+#include "ape/core/ApeString.h"
 #include "sly/game/SpawnManager.h"
 #include "sly/game/goals/GoalHooks.h"
 #include "sly/gameplay/Sequencer.h"
@@ -50,48 +51,166 @@ const uint32_t kGameEventNames[0x21] = {
     0x77297F71, 0x2B1FBAB8, 0xFB0005EA, 0x5E503067, 0x1DD1C81B,
 };
 
-Goal::Goal(const GoalDesc* desc)
+void GoalCycleEntry::SetText(const char* value)
 {
-    // Untagged stand-in for 0x00769BD8 (outside this module's range).
-    if (!desc)
-        return;
-    game = desc->game;
-    job = desc->job;
-    repeatCount = desc->repeatCount;
-    flags = desc->flags;
-    initialFlags = desc->flags;
-    if (desc->name)
-        std::strncpy(name, desc->name, sizeof(name) - 1);
-    if (desc->description)
-        std::strncpy(description, desc->description, sizeof(description) - 1);
+    delete[] text;
+    text = nullptr;
+    if (value && *value) {
+        text = new char[std::strlen(value) + 1];
+        std::strcpy(text, value);
+    }
 }
 
+namespace {
+
+// Bounded copy that always terminates (at most `size - 1` characters).
+void CopyText(char* dst, const char* src, size_t size)
+{
+    dst[0] = '\0';
+    if (src) {
+        std::strncpy(dst, src, size - 1);
+        dst[size - 1] = '\0';
+    }
+}
+
+// Deep copy of a parsed script list: each script keeps its bindings, its
+// name and whether it is a sequence / restarts; the run state starts clear.
+GoalScriptList* CopyScriptList(const GoalScriptList& source)
+{
+    auto* list = new GoalScriptList();
+    for (uint32_t i = 0; i < source.Count(); ++i) {
+        const GoalScript* from = (*source.scripts)[i];
+        auto* script = new GoalScript();
+        script->bindings.Init(4, nullptr, false);
+        for (const GoalScriptBinding& binding : from->bindings)
+            script->bindings.PushBack(binding);
+        script->name = from->name;
+        script->flags = from->flags & (kScript_Restart | kScript_IsSequence);
+        if (!list->scripts)
+            list->scripts = new ape::ApeTArray<GoalScript*>();
+        list->scripts->PushBack(script);
+    }
+    return list;
+}
+
+} // namespace
+
+// @func 0x00769BD8 Goal::Goal
+Goal::Goal(const GoalDesc* desc)
+{
+    game = desc->game;
+    job = desc->job;
+    repeatCount = (uint8_t)desc->repeatCount;
+    repeatProgress = 0;
+    status = kGoal_None;
+    flags = desc->flags;
+    initialFlags = desc->flags;
+    targetName = desc->targetName;
+    field_8A0 = desc->field_20;
+    progressName = desc->progressName;
+    progressBase = desc->progressBase;
+    hintScriptName = desc->hintScriptName;
+    hintScript = nullptr;
+    field_8B4 = desc->field_30;
+    field_8B5 = desc->field_31;
+    completesParent = desc->completesParent;
+    showProgressTotal = desc->showProgressTotal;
+    for (GoalScriptCursor& cursor : scripts)
+        cursor = GoalScriptCursor();
+
+    field_960 = desc->field_DC;
+    field_964 = desc->field_E0;
+    field_968 = desc->field_E4;
+    field_96C = desc->field_E8;
+    index = desc->index;
+    showDescription = desc->showDescription;
+    field_9B0 = desc->field_130;
+    field_9B4 = desc->field_134;
+
+    for (int i = 0; i < 4; ++i) {
+        const GoalBlob& from = desc->blobs[i];
+        GoalBlob& to = blobs[i];
+        delete[] to.data;
+        to.extra = from.extra;
+        to.size = from.size;
+        to.data = new uint8_t[from.size];
+        if (from.size)
+            std::memcpy(to.data, from.data, from.size);
+    }
+
+    cycleIndex = 0;
+    countsForGroup = true;
+    failRestarts = desc->failRestarts;
+    targetFlag = desc->targetFlag;
+    nameHash = ape::HashNameNoCase(desc->name);
+    nextGoal = nullptr;
+    parentGoal = nullptr;
+
+    for (int slot = 0; slot < kScriptSlotCount; ++slot) {
+        const GoalScriptList* source = desc->scripts[slot].list;
+        if (source && source->Count())
+            scripts[slot].list = CopyScriptList(*source);
+    }
+
+    hints = nullptr;
+    if (desc->hints && desc->hints->Count()) {
+        for (const GoalHint& hint : *desc->hints) {
+            if (!hints)
+                hints = new ape::ApeTArray<GoalHint>();
+            hints->PushBack(hint);
+        }
+    }
+
+    std::memcpy(field_8F4, desc->field_70, sizeof(field_8F4));
+    std::memcpy(checkpoints, desc->checkpoints, sizeof(checkpoints));
+    CopyText(name, desc->name, sizeof(name));
+    CopyText(description, desc->description, sizeof(description));
+    CopyText(field_49C, desc->text2, sizeof(field_49C));
+    std::memcpy(field_8E4, desc->field_60, sizeof(field_8E4));
+
+    // Goals are numbered in creation order within their job.
+    saveSlot = JobTakeGoalSaveSlot(job);
+
+    cycle = nullptr;
+    cycleCount = desc->cycleCount;
+    if (cycleCount) {
+        cycle = new GoalCycleEntry[(size_t)cycleCount];
+        for (int i = 0; i < cycleCount; ++i) {
+            cycle[i].duration = desc->cycle[i].duration;
+            cycle[i].SetText(desc->cycle[i].text);
+        }
+    }
+    CopyText(field_99D, desc->field_120, sizeof(field_99D));
+}
+
+// NOTE: the console goal derives from the event-listener base (vtable
+// 0x00B21A30) whose destructor 0x0048F6B0 leaves every listener group the
+// object joined; GoalStopListening stands in for it.
+// @func 0x00769480 Goal::~Goal
+// @func 0x00769744 Goal::~Goal (deleting)
 Goal::~Goal()
 {
-    // Untagged stand-in for 0x00769480 (outside this module's range).
+    delete[] cycle;
+    cycle = nullptr;
     for (GoalScriptCursor& cursor : scripts) {
-        if (!cursor.list)
+        GoalScriptList* list = cursor.list;
+        if (!list)
             continue;
-        if (cursor.list->scripts) {
-            for (GoalScript* script : *cursor.list->scripts)
+        if (list->scripts) {
+            for (GoalScript* script : *list->scripts)
                 delete script;
-            delete cursor.list->scripts;
+            delete list->scripts;
         }
-        delete cursor.list;
+        delete list;
         cursor.list = nullptr;
+    }
+    for (int i = 3; i >= 0; --i) {
+        delete[] blobs[i].data;
+        blobs[i].data = nullptr;
     }
     delete hints;
     hints = nullptr;
-    for (GoalBlob& blob : blobs) {
-        delete[] blob.data;
-        blob.data = nullptr;
-    }
-    if (cycle) {
-        for (int i = 0; i < cycleCount; ++i)
-            delete[] cycle[i].text;
-        delete[] cycle;
-        cycle = nullptr;
-    }
+    GoalStopListening(this);
 }
 
 // @func 0x00321BE4 Goal::HandleMessage
