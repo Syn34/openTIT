@@ -38,9 +38,8 @@ public:
     // derived states save what they change on Enter and restore it on Exit).
     // The base versions do nothing.
     virtual void Enter(void* owner);
-    virtual void Update(void* owner, float dt);
-    // @func 0x0074F0DC AlterEgoBentleyState::Slot4
     virtual void Exit(void* owner);
+    // @func 0x0074F0DC AlterEgoBentleyState::Slot4
     virtual void Slot4() {}
     // Slots 5/6: names of the state (empty in every class).
     // @func 0x0074F0E0 AlterEgoBentleyState::Name
