@@ -526,6 +526,11 @@ public:
     // loading element), starts the job and prepares the scripts of the goal
     // to play, then plays it once its sequences are streamed (0x002E0C38).
     void UpdatePendingStart();
+    // Respawns the player for `goal`: in the goal's level the player takes
+    // the goal's character (or associated player), otherwise the level is
+    // asked for; a checkpoint with "teleportToCheckPoint" moves the player
+    // there (0x002E3AEC). NOTE: only the local player's block is modelled.
+    void RespawnForGoal(Goal* goal, int player);
     bool StartJobFromHub(Episode* job, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
                          bool levelRequestFlag, bool skipBookkeeping, bool track);
     // Ends the running job instance, first updating its episode's flag 0x20
@@ -608,7 +613,8 @@ bool PointInstanceWorldTransform(uint32_t name, ape::Matrix34* out);
 // A one-shot respawn point set by scripts (game world +0x128160); taking it
 // clears it. False if none is set or the point is missing.
 bool TakeRespawnOverride(ape::Matrix34* out, bool* wasSet);
-// Character entity snaps to the ground after a teleport (0x0012BF70).
+// Character entity is put on its path after a teleport (0x0012BF70).
+// NOTE: used for the checkpoints' "attachToSpline" option.
 void CharacterSnapToGround(entity::Entity* character);
 // The active game camera resets behind the player (game world +0x1281E0,
 // camera of slot +0x159, virtual slot 7).
@@ -618,7 +624,7 @@ void GameCameraReset();
 // `def` (0x00484BE0), or respawns as it is (0x00488178).
 void GameWorldUseAssociatedPlayer(Goal* goal);
 void GameWorldSwitchPlayerCharacter(uint32_t def);
-void GameWorldRespawnPlayer();
+void GameWorldRespawnPlayer(const ape::Matrix34& transform);
 // Profile byte of player `player`'s block (game world +0x1070 + player *
 // 0x20C80).
 uint8_t PlayerBlockProfile(int player);

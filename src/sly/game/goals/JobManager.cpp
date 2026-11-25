@@ -51,7 +51,7 @@ void CharacterSnapToGround(entity::Entity*) {}
 void GameCameraReset() {}
 void GameWorldUseAssociatedPlayer(Goal*) {}
 void GameWorldSwitchPlayerCharacter(uint32_t) {}
-void GameWorldRespawnPlayer() {}
+void GameWorldRespawnPlayer(const ape::Matrix34&) {}
 uint32_t RunningLevel() { return 0; }
 uint8_t PlayerBlockProfile(int) { return 0; }
 uint8_t& ProfilePendingCount(uint8_t profile)
@@ -645,7 +645,7 @@ void JobManager::SelectGoal(Goal* goal, bool keepPlayers, bool requestLevel)
                 }
             }
         }
-        GameWorldRespawnPlayer();
+        GameWorldRespawnPlayer(PlayerSpawnTransform());
         break;
     }
     flags &= ~kManager_ClearingGoals;
@@ -992,6 +992,51 @@ void JobManager::UpdatePendingStart()
     }
     if (failingGoal)
         failingGoal->RunScriptSlot(goals::kScripts_Failed);
+}
+
+// @func 0x002E3AEC JobManager::RespawnForGoal
+void JobManager::RespawnForGoal(Goal* goal, int player)
+{
+    (void)player;
+    entity::Entity* playerEntity = PlayerEntity();
+    const uint32_t level = goal->Field960();
+    if (level == 0 || level == RunningLevel()) {
+        const uint32_t character = goal->field_964;
+        bool switched = false;
+        if (character != 0 && playerEntity) {
+            const uint32_t playerDef = playerEntity->def ? playerEntity->def->nameHash : 0;
+            const bool isSly = character == kCharacter_Sly &&
+                               (goals::EntityIsSlyClass(playerEntity) ||
+                                (goals::EntityIsCharacter(playerEntity) &&
+                                 goals::EntityGroupField_C0(playerEntity) == kCharacter_Sly));
+            if (playerDef != character && !isSly) {
+                if (!goal->Field96C())
+                    GameWorldSwitchPlayerCharacter(character);
+                switched = true;
+            }
+        }
+        if (!switched && goal->checkpoints[0] != 0 && (goal->flags & kGoalFlag_HasAssociatedPlayer) &&
+            !goal->Field96C())
+            GameWorldUseAssociatedPlayer(goal);
+    } else {
+        GameWorldRequestLevel(level);
+    }
+
+    int index = goal->CheckpointIndexOf(playerEntity);
+    if (index == -1)
+        index = PlayerCharacterSlot();
+    const uint8_t bit = static_cast<uint8_t>(1u << (index & 7));
+    const goals::GoalBlob& teleport = goal->blobs[2];      // "teleportToCheckPoint"
+    const goals::GoalBlob& attachToPath = goal->blobs[1];  // "attachToSplineAtCheckPoint"
+    if (!teleport.data || !(teleport.data[index >> 3] & bit))
+        return;
+    const uint32_t point = goal->Field8F4(index);
+    ape::Matrix34 transform{};
+    if (!point || !PointInstanceWorldTransform(point, &transform))
+        return;
+    GameWorldRespawnPlayer(transform);
+    if (attachToPath.data && (attachToPath.data[index >> 3] & bit))
+        CharacterSnapToGround(playerEntity);
 }
 
 } // namespace game
