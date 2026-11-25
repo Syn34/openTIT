@@ -1232,6 +1232,41 @@ void Character::SetPhysicsTarget(const ape::Vec3& point)
         PhysicsCompSetTarget(physics, point);
 }
 
+// @func 0x0012E41C Character::ClearGadgetAbilities
+void Character::ClearGadgetAbilities()
+{
+    if (!def || DefOf(this)->characterName != kChar_Bentley)
+        return;
+    void* list = GadgetAbilityList();
+    if (!list)
+        return;
+    for (int i = 0; i < GadgetAbilityCount(list); ++i) {
+        const uint32_t name = GadgetAbility(list, i);
+        if (name == 0)
+            continue;
+        const int index = AbilityIndex(name);
+        if (index >= 0)
+            abilities.state[index] &= ~kAbility_Available;
+    }
+}
+
+// @func 0x0012E534 Character::SetGadget
+void Character::SetGadget(uint32_t templateName)
+{
+    if (EntityComponent* gadget = EntityGadget(this)) {
+        if (gadget->id == templateName)
+            return;
+        RemoveComponent(gadget);
+    }
+    if (templateName == 0)
+        return;
+    ClearGadgetAbilities();
+    if (ComponentDesc* desc = FindComponentTemplate(templateName)) {
+        AddComponent(desc, true);
+        desc->owner = nullptr;
+    }
+}
+
 // @func 0x0012E824 Character::AddWatcher
 void Character::AddWatcher(CharacterWatcher* watcher)
 {

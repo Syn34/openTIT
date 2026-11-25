@@ -215,6 +215,12 @@ public:
     // Point the physics component steers to (component +0x2A0, flag bit 23) (0x0012BC20).
     void SetPhysicsTarget(const ape::Vec3& point);
 
+    // Bentley loses the abilities the gadget list grants (0x0012E41C).
+    void ClearGadgetAbilities();
+    // Replaces the gadget component (type 0x1A) by one built from the named
+    // component template; null removes it (0x0012E534).
+    void SetGadget(uint32_t templateName);
+
     // Watchers told when the character leaves (+0x530) (0x0012E824 / 0x0012E8B0).
     void AddWatcher(CharacterWatcher* watcher);
     void RemoveCharacterWatcher(CharacterWatcher* watcher);

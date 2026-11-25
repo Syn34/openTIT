@@ -111,6 +111,11 @@ uint32_t ProfileSelection(uint8_t profile, uint32_t offset);
 bool LevelPlayerHasAbility(uint32_t player, int ability);
 // Ability names bought for a character (0x0049E43C).
 uint32_t PurchasedAbilities(uint32_t character, uint32_t* out, uint32_t max);
+// Ability list of the gadget system (0x00365BA4 on 0x00F64D34): its size
+// (0x00376A08) and entries (0x003769C4).
+void* GadgetAbilityList();
+int GadgetAbilityCount(void* list);
+uint32_t GadgetAbility(void* list, int index);
 // World flag lookup by name (0x0048FC68).
 bool WorldFlag(uint32_t name);
 // The game physics world exists (game world +0x1281D4, +0x04).

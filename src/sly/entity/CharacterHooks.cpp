@@ -98,6 +98,9 @@ bool IgnoresKillOrder(Entity* entity) { (void)entity; return false; }
 void* EntityPlayDirectorScriptInstance(Entity* entity, uint32_t script) { (void)entity; (void)script; return nullptr; }
 void CullManagerRelease(uint32_t handle) { (void)handle; }
 void PhysicsCompSetTarget(EntityComponent* component, const ape::Vec3& point) { (void)component; (void)point; }
+void* GadgetAbilityList() { return nullptr; }
+int GadgetAbilityCount(void* list) { (void)list; return 0; }
+uint32_t GadgetAbility(void* list, int index) { (void)list; (void)index; return 0; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }
