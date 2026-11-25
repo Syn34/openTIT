@@ -63,8 +63,8 @@ AglOwningEffect::~AglOwningEffect()
 
 // --- thermal vision ------------------------------------------------------
 
-// @func 0x0051F708 AglThermalVisionEffect::AglThermalVisionEffect
-AglThermalVisionEffect::AglThermalVisionEffect()
+// @func 0x0051F708 AglThermalVisionBase::AglThermalVisionBase
+AglThermalVisionBase::AglThermalVisionBase()
     : AglPostProcEffect(nullptr)
 {
 }
