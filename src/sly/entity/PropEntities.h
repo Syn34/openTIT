@@ -431,11 +431,17 @@ public:
     bool Release(bool kill) override;                 // slot 10
     ape::Vec3 GetVelocity() override;                 // slot 35
     bool CanBeDamaged() const override;               // slot 82
+    // Collisions and projectiles also record the direction they came from.
+    void OnHitCategory0(EntityHitRecord& hit) override;
+    void OnHitCategory4(EntityHitRecord& hit) override;
     float ProjectileDamageScale() const override;     // slot 89
+    // Heading (degrees, 0..360) from the entity to a hit position.
+    float HeadingTo(const ape::Vec3& point) const;
     // Slot 99: physics state (0x0016BC0C, not ported).
     virtual void SetPropState(int32_t state, uint32_t arg);
     void* bodyAction = nullptr;              // 0x188
     int32_t propState = 0;                   // 0x18C
+    int32_t hitHeading = 0;                  // 0x2E0 degrees
     const PropDamageSettings& DamageSettings() const;
     // Empty overrides of the +0x17C interface's slots 5 and 6.
     void Interface17CSlot5() override;

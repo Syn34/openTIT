@@ -12,6 +12,7 @@
 #include "sly/entity/PhysicsHooks.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace sly {
 namespace entity {
@@ -438,6 +439,48 @@ void CompoundEntity::SetPropState(int32_t state, uint32_t arg) { (void)arg; prop
 
 // @func 0x0016F2B4 CompoundEntity::GetVelocity
 ape::Vec3 CompoundEntity::GetVelocity() { return BodyVelocity(); }
+
+float CompoundEntity::HeadingTo(const ape::Vec3& point) const
+{
+    // NOTE: the console converts with 3.1415 rather than pi.
+    float degrees = std::atan2(point.y - Position().y, point.x - Position().x) * 180.0f / 3.1415f;
+    if (degrees < 0.0f)
+        degrees += 360.0f;
+    if (degrees > 360.0f)
+        degrees -= 360.0f;
+    return degrees;
+}
+
+// @func 0x0016F570 CompoundEntity::OnHitCategory0
+// Collisions hurt above a speed threshold (without the deferred-hit check
+// of the other entities) and record their direction.
+void CompoundEntity::OnHitCategory0(EntityHitRecord& hit)
+{
+    const PropDamageSettings& settings = DamageSettings();
+    if (settings.collisionScale <= 0.0f || settings.collisionMax <= 0.0f)
+        return;
+    const float speed = hit.data.collision.speed;
+    if (speed <= settings.collisionThreshold)
+        return;
+    const float amount = std::min((speed - settings.collisionThreshold) * settings.collisionScale,
+                                  settings.collisionMax);
+    propdamage::SetFatal(hit, Damage(amount, hit.source, kType_PhysicsImpact));
+    hitHeading = int(HeadingTo(hit.vec10));
+}
+
+// @func 0x001702C8 CompoundEntity::OnHitCategory4
+// Projectiles from type-10 sources pass through.
+void CompoundEntity::OnHitCategory4(EntityHitRecord& hit)
+{
+    Entity* source = hit.source;
+    if (source && (source->typeBits[0] & 0x400))
+        return;
+    const float scale = DamageSettings().projectileScale;
+    if (scale <= 0.0f)
+        return;
+    propdamage::SetFatal(hit, Damage(hit.data.projectile.damage * scale, source, hit.reaction));
+    hitHeading = int(HeadingTo(hit.vec10));
+}
 
 // @func 0x0016F4F8 CompoundEntity::CanBeDamaged
 bool CompoundEntity::CanBeDamaged() const { return DamageSettings().CanHurt(); }
