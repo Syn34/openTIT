@@ -66,7 +66,12 @@ struct CameraSettings {
     float headingLowSpeedInterp = 0.0f;  // 0x70
     float headingHighSpeedInterp = 0.0f; // 0x74
     bool field_78 = false;               // 0x78 NOTE: set by the owner's definition only
-    float field_7C = 0.0f;               // 0x7C NOTE: set by the owner's definition only
+    // 0x7C: fields an override replaces (bit per field in declaration order:
+    // bit 0 interp ... bit 3 posAdjust ... bit 25 headingHighSpeedInterp).
+    uint32_t overrideMask = 0;
+
+    // Copies the fields `overrideMask` of `other` selects.
+    void ApplyOverride(const CameraSettings& other);
 };
 
 } // namespace camera

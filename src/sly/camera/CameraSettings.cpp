@@ -15,14 +15,14 @@ CameraSettings::CameraSettings()
 {
     LoadDefaults();
     field_78 = false;
-    field_7C = 0.0f;
+    overrideMask = 0;
 }
 
 // @func 0x000FD974 CameraSettings::Reset
 void CameraSettings::Reset()
 {
     field_78 = false;
-    field_7C = 0.0f;
+    overrideMask = 0;
     LoadDefaults();
 }
 
@@ -70,6 +70,33 @@ void Approach(float& value, float target, float rate, float dt)
 }
 
 } // namespace
+
+void CameraSettings::ApplyOverride(const CameraSettings& other)
+{
+    const uint32_t mask = other.overrideMask;
+    // Scalar fields by their bit (bit 3 is posAdjust, bit 20 lookAheadVelMode).
+    static float CameraSettings::* const kFloats[26] = {
+        &CameraSettings::interp, &CameraSettings::fovInterp, &CameraSettings::fov, nullptr,
+        &CameraSettings::posAdjustTime, &CameraSettings::gimbalRadius, &CameraSettings::angleHome,
+        &CameraSettings::angleMin, &CameraSettings::angleMax, &CameraSettings::lookAheadXZ,
+        &CameraSettings::lookAheadY, &CameraSettings::targetYMinSoft, &CameraSettings::targetYMaxSoft,
+        &CameraSettings::horzInputRotScalar, &CameraSettings::lookAtXZInterp, &CameraSettings::lookAtYUpInterp,
+        &CameraSettings::lookAtYDownInterp, &CameraSettings::vertInputRotScalar,
+        &CameraSettings::vertInputRotVelInterp, &CameraSettings::colRadius, nullptr,
+        &CameraSettings::headingMaxRate, &CameraSettings::headingLowSpeed, &CameraSettings::headingHighSpeed,
+        &CameraSettings::headingLowSpeedInterp, &CameraSettings::headingHighSpeedInterp,
+    };
+    for (int bit = 0; bit < 26; ++bit) {
+        if (!(mask & (1u << bit)))
+            continue;
+        if (kFloats[bit])
+            this->*kFloats[bit] = other.*kFloats[bit];
+        else if (bit == 3)
+            posAdjust = { other.posAdjust.x, other.posAdjust.y, other.posAdjust.z, posAdjust.pad };
+        else
+            lookAheadVelMode = other.lookAheadVelMode;
+    }
+}
 
 // @func 0x000FDB88 CameraSettings::BlendToward
 void CameraSettings::BlendToward(float dt, const CameraSettings& target)

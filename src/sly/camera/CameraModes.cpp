@@ -569,6 +569,16 @@ void DefaultCameraMode::SetTarget(Entity* entity)
     }
 }
 
+// @func 0x000FE3E8 DefaultCameraMode::ResolveSettings
+void DefaultCameraMode::ResolveSettings(CameraSettings& out) const
+{
+    out = targetSettings;
+    for (int i = 0; i < overrideCount; ++i) {
+        if (overrides[i])
+            out.ApplyOverride(*overrides[i]);
+    }
+}
+
 // @func 0x000FEF54 DefaultCameraMode::PushOverride
 void DefaultCameraMode::PushOverride(CameraSettings* settings, bool keepOnTop)
 {
@@ -634,10 +644,10 @@ void DefaultCameraMode::ResetSettings()
 {
     targetSettings.LoadDefaults();
     const bool flag = targetSettings.field_78;
-    const float extra = targetSettings.field_7C;
+    const uint32_t mask = targetSettings.overrideMask;
     current = targetSettings;
     current.field_78 = flag;
-    current.field_7C = extra;
+    current.overrideMask = mask;
     angleInterp = g_cameraDefaultAngleInterp;
 }
 

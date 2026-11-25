@@ -228,6 +228,8 @@ public:
     // never removed.
     void PushOverride(CameraSettings* settings, bool keepOnTop);
     CameraSettings* RemoveOverride(CameraSettings* settings);
+    // The target settings with every override applied in stack order (0x000FE3E8).
+    void ResolveSettings(CameraSettings& out) const;
     // 0x001071C4
     void SetField214(bool value) { field_214 = value; }
 
