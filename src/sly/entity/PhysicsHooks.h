@@ -39,6 +39,8 @@ void RigidBodySetLinearVelocity(void* body, const ape::Vec3& velocity);
 // Linear velocity (+0x1B0) and centre of mass (+0x140) of the body's motion.
 ape::Vec3 RigidBodyLinearVelocity(void* body);
 ape::Vec3 RigidBodyCenterOfMass(void* body);
+// Position of the body (its motion state's transform, +0x120).
+ape::Vec3 RigidBodyPosition(void* body);
 // Drops the game's two user properties of a body (0x0093FED8, keys
 // 0xA734004D and 0x91C7CF5B) before it is released.
 void RigidBodyClearUserProperties(void* body);

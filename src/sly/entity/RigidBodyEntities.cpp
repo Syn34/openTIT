@@ -847,6 +847,16 @@ void CompoundEntity::SetFlag80(bool on)
     ToggleBodyInWorld(rigidBody, bodyAction, on, propState == 6);
 }
 
+// @func 0x00175C00 CompoundEntity::DriveTowards
+void CompoundEntity::DriveTowards(const ape::Vec3& target, float dt)
+{
+    if (!rigidBody || dt <= 0.0f)
+        return;
+    const ape::Vec3 from = RigidBodyPosition(rigidBody);
+    const float rate = 1.0f / dt;
+    SetVelocity({ (target.x - from.x) * rate, (target.y - from.y) * rate, (target.z - from.z) * rate, 0.0f });
+}
+
 // @func 0x0016F1C0 CompoundEntity::SetVelocity
 void CompoundEntity::SetVelocity(const ape::Vec3& velocity) { SetBodyVelocity(rigidBody, velocity); }
 

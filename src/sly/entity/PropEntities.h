@@ -565,6 +565,8 @@ public:
     float HeadingTo(const ape::Vec3& point) const;
     // Slot 99: physics state (0x0016BC0C, not ported).
     virtual void SetPropState(int32_t state, uint32_t arg);
+    // Slot 100: sets the velocity that brings the body to `target` in `dt`.
+    virtual void DriveTowards(const ape::Vec3& target, float dt);
     void* bodyAction = nullptr;              // 0x188
     int32_t propState = 0;                   // 0x18C 6: body active
     int32_t hitHeading = 0;                  // 0x2E0 degrees
