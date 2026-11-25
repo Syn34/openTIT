@@ -164,7 +164,7 @@ const GoalElement kGoalElements[] = {
     {0xD4D8DBBC, GoalPenguinSlingshotGame::Create},
     {0xC766004C, GoalInteraction::Create},
     {0x1A2AB2B1, GoalBinocucomPower::Create},
-    {0x1A2767DE, CreateBinocucomPhotoGoal},
+    {0x1A2767DE, GoalBinocucomPhoto::Create},
     {0x17DEB587, GoalPenguinPunchGame::Create},
     {0x11F2CC84, GoalFollow::Create},
     {0x225F0BF2, GoalTimer::Create},
@@ -175,7 +175,7 @@ const GoalElement kGoalElements[] = {
     {0x36610C4F, CreateGoalSet},                  // "GoalSet"
     {0x2DFF7805, GoalBinocucomRecord::Create},
     {0x5F3BC8F0, GoalMarkEntity::Create},
-    {0x49836CC6, CreateBartenderGoal},
+    {0x49836CC6, GoalBartenderGame::Create},
     {0x44390A06, GoalEntityChild::Create},
     {0x7A6E6B01, CreateQteGoal},                  // "GoalQTEGame"
     {0x70DEDF48, GoalCameraEntity::Create},
@@ -577,12 +577,8 @@ Goal* CreateGoalSet(XmlElement* xml, const GoalDesc* desc)
 Goal* CreateGoal9E69AF49(XmlElement*, const GoalDesc*) { return nullptr; }
 // TODO(0x003396A8 GoalPenguinMontageGame::Create)
 Goal* CreatePenguinMontageGoal(XmlElement*, const GoalDesc*) { return nullptr; }
-// TODO(0x0032B358 GoalBinocucomPhoto::Create)
-Goal* CreateBinocucomPhotoGoal(XmlElement*, const GoalDesc*) { return nullptr; }
 // TODO(0x0033DC0C GoalShootingGallery::Create)
 Goal* CreateShootingGalleryGoal(XmlElement*, const GoalDesc*) { return nullptr; }
-// TODO(0x003292C8 GoalBartenderGame::Create)
-Goal* CreateBartenderGoal(XmlElement*, const GoalDesc*) { return nullptr; }
 // TODO(0x0033A520 GoalQteGame::Create)
 Goal* CreateQteGoal(XmlElement*, const GoalDesc*) { return nullptr; }
 
