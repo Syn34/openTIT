@@ -66,6 +66,10 @@ public:
     // 0x00298D98: records the state of the layer `anim` in its slot.
     void RefreshLayerSlot(uint32_t anim);
 
+    // 0x00298270: plays the clip `clip` additively on the layer `anim` as its
+    // secondary control (weighted by field_17C, with bone weight list
+    // `weightList`). False when there is no controller or clip.
+    bool PlayAdditive(uint32_t clip, uint32_t anim, bool loop, uint32_t weightList);
     // Queries and controls by layer (0 = default layer); a missing layer reads as
     // done / time 0.
     void StopSecondary(uint32_t anim);                       // 0x00298748

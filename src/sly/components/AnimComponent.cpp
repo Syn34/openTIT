@@ -185,6 +185,21 @@ void AnimComponent::RefreshLayerSlot(uint32_t anim)
     slot->loops = layer ? layer->OverflowCount() : 0;
 }
 
+// @func 0x00298270 AnimComponent::PlayAdditive
+bool AnimComponent::PlayAdditive(uint32_t clip, uint32_t anim, bool loop, uint32_t weightList)
+{
+    auto* binding = controller ? static_cast<anim::HkaAnimationBinding*>(anim::FindAnimClip(clip)) : nullptr;
+    if (!binding)
+        return false;   // NOTE: the console warns with the owner's name
+    anim::AnimLayer* layer = controller->FindLayer(anim);
+    if (!layer)
+        return true;    // NOTE: warns as well, but reports success
+    binding->blendHint = anim::HkaAnimationBinding::kBlend_Additive;
+    layer->AddSecondaryControl(binding, loop, 1.0f, 0.0f, weightList);
+    layer->SetSecondaryMasterWeight(field_17C);
+    return true;
+}
+
 // @func 0x00298748 AnimComponent::StopSecondary
 void AnimComponent::StopSecondary(uint32_t anim)
 {
