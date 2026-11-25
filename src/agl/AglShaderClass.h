@@ -51,6 +51,15 @@ struct AglRenderItem {
     int8_t field_47 = -1;
 };
 
+// Fog of a draw: vertex constant 0x20 gets the layer's start, 1 / (end -
+// start) and whether fog is on; fragment constant 'colorConstant' gets the
+// fog colour. Fog is on when 'enable' is set and the layer of the render
+// target being drawn has fog.
+void ApplyFog(int layer, bool enable, uint32_t colorConstant);
+// ApplyFog for a render item: layer from item flag 0x40, enabled by
+// material flag 0x40 (NOTE: "receives fog").
+void ApplyItemFog(const AglRenderItem* item, uint32_t colorConstant);
+
 // Description of a material as stored in level data (the parts SetupMaterial reads).
 struct AglMaterialDesc {
     uint32_t field_0 = 0;

@@ -66,7 +66,8 @@ struct AglRenderState {
     const AglTextureImage* textures[kMaxBoundTextures] = {};
     uint8_t samplerMinFilter[2] = {};
     uint8_t samplerMagFilter[2] = {};
-    int32_t field_1178 = -1;
+    int32_t fogLayer = -1;                           // 0x010F1178: fog layer of the last ApplyFog
+    bool fogEnabled[2] = {};                         // 0x010F117C
 
     AglStencilState stencilFront;
     AglStencilState stencilBack;

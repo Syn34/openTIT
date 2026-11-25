@@ -1076,6 +1076,28 @@ void UploadWorldViewProj(const AglRenderItem* item, uint32_t reg)
 
 } // namespace
 
+// @func 0x0050CF50 ApplyFog
+void ApplyFog(int layer, bool enable, uint32_t colorConstant)
+{
+    AglRenderState& state = GetRenderState();
+    state.fogLayer = layer;
+    state.fogEnabled[layer] = enable;
+    const AglFog& fog = GetRenderingTarget()->renderCopy->fog[layer];
+    const float params[4] = { fog.start, 1.0f / (fog.end - fog.start), 0.0f,
+                              enable && fog.enable ? 1.0f : 0.0f };
+    Cmd().SetVertexProgramConstants(0x20, 4, params);
+    float color[4];
+    for (int i = 0; i < 4; ++i)
+        color[i] = float(fog.color[i]) * (1.0f / 255.0f);
+    SetShaderConstant(colorConstant, color);
+}
+
+// @func 0x0050D0E0 ApplyItemFog
+void ApplyItemFog(const AglRenderItem* item, uint32_t colorConstant)
+{
+    ApplyFog((item->flags >> 6) & 1, (item->material->flags & AglMaterial::kFlag_40) != 0, colorConstant);
+}
+
 // --- techniques -------------------------------------------------------------------
 
 class DebugTechnique : public AglTechnique {
@@ -1213,8 +1235,8 @@ public:
 
 class GeoParticleTechnique : public AglTechnique {
     // TODO(0x005B0388 GeoParticleTechnique::BeginMaterial)
-    // TODO(0x005B0440 GeoParticleTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     // @func 0x007ABBBC GeoParticleTechnique::~GeoParticleTechnique
     // @func 0x007AD018 GeoParticleTechnique::~GeoParticleTechnique (deleting)
     ~GeoParticleTechnique() override = default;
@@ -1224,13 +1246,35 @@ public:
 
 class SprParticleTechnique : public AglTechnique {
     // TODO(0x005B06B0 SprParticleTechnique::BeginMaterial)
-    // TODO(0x005B095C SprParticleTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABBCC SprParticleTechnique::~SprParticleTechnique
     // @func 0x007AD1CC SprParticleTechnique::~SprParticleTechnique (deleting)
     ~SprParticleTechnique() override = default;
 };
+
+// @func 0x005B0440 GeoParticleTechnique::Draw
+// Geometry particles are drawn only with a colour (vertex constant 4).
+void GeoParticleTechnique::Draw(AglRenderItem* item)
+{
+    const auto* rgba = static_cast<const uint8_t*>(item->field_40);
+    if (!rgba)
+        return;
+    UploadWorldViewProj(item, 0);
+    float color[4];
+    for (int i = 0; i < 4; ++i)
+        color[i] = float(rgba[i]) * (1.0f / 255.0f);
+    Cmd().SetVertexProgramConstants(4, 4, color);
+    item->geometry->Draw(item);
+}
+
+// @func 0x005B095C SprParticleTechnique::Draw
+void SprParticleTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    item->geometry->Draw(item);
+}
 
 class ProjTxrTechnique : public AglTechnique {
     // TODO(0x005B0FB0 ProjTxrTechnique::Draw)
@@ -1244,8 +1288,8 @@ public:
 };
 
 class ProjTxrDeferredTechnique : public AglTechnique {
-    // TODO(0x005B1830 ProjTxrDeferredTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABBEC ProjTxrDeferredTechnique::~ProjTxrDeferredTechnique
     // @func 0x007AD5D0 ProjTxrDeferredTechnique::~ProjTxrDeferredTechnique (deleting)
@@ -1253,6 +1297,13 @@ public:
     // @func 0x007AD5CC ProjTxrDeferredTechnique::End
     void End(AglMaterial* /*material*/) override {}
 };
+
+// @func 0x005B1830 ProjTxrDeferredTechnique::Draw
+void ProjTxrDeferredTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    item->geometry->Draw(item);
+}
 
 class FluidSimTechnique : public AglTechnique {
 public:
@@ -1266,8 +1317,8 @@ public:
 };
 
 class ZPassTechnique : public AglTechnique {
-    // TODO(0x005B1AE8 ZPassTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABC0C ZPassTechnique::~ZPassTechnique
     // @func 0x007AD918 ZPassTechnique::~ZPassTechnique (deleting)
@@ -1275,6 +1326,14 @@ public:
     // @func 0x007AD914 ZPassTechnique::End
     void End(AglMaterial* /*material*/) override {}
 };
+
+// @func 0x005B1AE8 ZPassTechnique::Draw
+// Depth only: positions are all the pass needs.
+void ZPassTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    item->geometry->Draw(item);
+}
 
 class DiffuseTechnique : public AglTechnique {
     // TODO(0x005B1FA0 DiffuseTechnique::Draw)
