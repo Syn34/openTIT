@@ -160,5 +160,13 @@ void ScriptInstanceSetState(void* instance, uint32_t stateName);
 // 0x00490518: drops whatever the game property system keeps for a definition.
 void PropertySystemForgetDef(EntityDef* def);
 
+// 0x000D8C18: queues a flash/fade draw of every geometry instance under
+// `object` (the instance's parts drawn again with the renderer's two
+// built-in overlay materials in `color`); with `additive` the instance is
+// also flagged first (0x004A6DF0) and the draw uses mode 10 instead of 3.
+// NOTE: the render-side callback is 0x005A1584; the part/material mapping
+// needs the mesh and material layouts of the renderer.
+void QueueObjectFlash(ape::world::ApeObj* object, const uint8_t color[4], bool additive);
+
 } // namespace entity
 } // namespace sly

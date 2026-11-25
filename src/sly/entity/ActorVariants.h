@@ -8,11 +8,6 @@
 namespace sly {
 namespace entity {
 
-// Base version of an actor's message handler (0x000E5E44, entity module).
-void ActorHandleMessageBase(ActorEntity* actor, const EntityMessage& msg);
-// Base version of an actor's slot 21 (0x000E5EF0, entity module): the
-// transform, then its parts and phantoms.
-void ActorSetTransformBase(ActorEntity* actor, const ape::Matrix34& m);
 
 // A group of member actors that react together (vtable 0x00B15310;
 // destructor 0x00751314).
@@ -126,7 +121,7 @@ public:
     // Drops the script's held object and plays the release state.
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
     // Only player interaction, and only in mode 1 (+0x188 >> 1).
-    bool CanInteractWith(Entity* other, int kind) override;  // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;  // slot 76
 
     uint32_t mode = 0;                   // 0x188
 };
