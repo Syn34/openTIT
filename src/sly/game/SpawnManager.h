@@ -85,7 +85,8 @@ public:
     // Slot 10: name of the entity definition to spawn (base 0x004562B8: the
     // setting's EntityDefName).
     virtual const char* SpawnDefName() const { return settings ? settings->entityDefName : nullptr; }
-    // Slot 11: name of an object to spawn instead (base 0x0077E8A4: none).
+    // Slot 11: name of an object to spawn instead (none by default).
+    // @func 0x0077E8A4 Spawner::SpawnObjectName
     virtual const char* SpawnObjectName() const { return nullptr; }
 
     // Object the spawn is placed relative to (null: use the spawn point).
