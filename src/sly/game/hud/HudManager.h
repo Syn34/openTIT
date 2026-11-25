@@ -12,6 +12,7 @@
 #include "sly/game/Tween.h"
 
 namespace ape::world { class ApeObj; }
+namespace ape { class ApeGuiObject; }
 namespace sly { namespace anim { class AnimController; } }
 
 #include <cstdint>
@@ -52,6 +53,15 @@ struct HudObjectDef {
     uint32_t name = 0;               // +0x44
     int32_t anchor = kAnchor_None;   // +0x54 HudAnchor
     float offset[3] = {};            // +0x60 space the element takes in its stack
+    uint32_t textFieldCount = 0;     // +0x98 text fields of the element
+};
+
+// A text field of an element (16 bytes, array at HudObject +0x148).
+struct HudTextField {
+    uint32_t field_00 = 0;
+    ape::ApeGuiObject* object = nullptr;   // +0x04 shown with the element
+    uint32_t field_08 = 0;                 // +0x08 non-zero: show `object`
+    ape::ApeGuiObject* label = nullptr;    // +0x0C the label holding the text
 };
 
 // Base of the HUD elements (vtable 0x00B1F678). NOTE: the console's base is
@@ -77,6 +87,10 @@ public:
 
     // 0x00362BEC: queues the element to be hidden at the end of the frame.
     void HideNow();
+    // 0x003632C8: sets the text of text field `index` (null text keeps it).
+    void SetFieldText(const char* text, uint32_t index);
+    // 0x0036336C: scale of text field `index` (unit scale without one).
+    void FieldScale(float out[3], uint32_t index) const;
     // Name the element is registered under (its own or its definition's).
     uint32_t RegisteredName() const { return name ? name : (def ? def->name : 0); }
 
@@ -121,6 +135,7 @@ public:
     uint32_t updateFlags = 0;      // +0xD0 bit 31 cleared by ResetUpdateFlags()
     float targetValue = 0.0f;      // +0xD8
     float shownValue = 0.0f;       // +0xDC
+    HudTextField* textFields = nullptr;   // +0x148 def->textFieldCount entries
     uint32_t stateFlags = 0;       // +0x18C StateFlags
 };
 
@@ -169,7 +184,14 @@ HudObject* FindType20000(uint32_t name);           // 0x00365B28
 // 0x00365C24: the active type-0x200 element (preferred name, then fallback).
 HudObject* FindActiveType200();
 
-void SetSuppressed(HudObject* object, bool suppressed);              // 0x00367518
+void SetSuppressed(HudObject* object, bool suppressed);
+// Null-safe text field helpers.
+void SetFieldText(HudObject* object, const char* text, uint32_t index);       // 0x00367530
+void SetFieldTextByName(uint32_t name, const char* text, uint32_t index);     // 0x003675D8
+// Glyph animation of the first text field: play mode by name / frame time
+// in seconds (< 0: 3 s).
+void SetFieldAnimMode(HudObject* object, uint32_t modeName);                  // 0x003676DC
+void SetFieldAnimPeriod(HudObject* object, float seconds);                    // 0x00367758              // 0x00367518
 void ShowTextByName(float fade, uint32_t name, const char* text, bool flag);   // 0x0036735C
 void ShowByName(uint32_t name, bool a, bool intro, bool b);          // 0x0036742C
 void ShowType4000ByName(uint32_t name, bool a, bool intro, bool b);  // 0x00367B28

@@ -2,6 +2,7 @@
 #include "sly/game/hud/HudManager.h"
 
 #include "ape/core/ApeString.h"
+#include "ape/level/ApeGuiTypes.h"
 #include "ape/world/ApeBase.h"
 #include "ape/world/ApeObj.h"
 #include "sly/anim/AnimController.h"
@@ -71,6 +72,78 @@ void HudObject::SetActive(bool active)
 {
     if (object)
         object->SetVisible(active, true);
+}
+
+// @func 0x003632C8 HudObject::SetFieldText
+void HudObject::SetFieldText(const char* text, uint32_t index)
+{
+    if (!text || index >= def->textFieldCount)
+        return;
+    if (ape::ApeGuiObject* label = textFields[index].label) {
+        label->SetText(text, false);
+        label->Invalidate();
+    }
+}
+
+// @func 0x0036336C HudObject::FieldScale
+void HudObject::FieldScale(float out[3], uint32_t index) const
+{
+    const ape::Vec3& unit = ape::world::kWorldUnitScale;
+    out[0] = unit.x;
+    out[1] = unit.y;
+    out[2] = unit.z;
+    if (index >= def->textFieldCount)
+        return;
+    if (const ape::ApeGuiObject* label = textFields[index].label) {
+        const ape::Vec3& scale = label->GetScale();
+        out[0] = scale.x;
+        out[1] = scale.y;
+        out[2] = scale.z;
+    }
+}
+
+// @func 0x00367530 hud::SetFieldText
+void SetFieldText(HudObject* object, const char* text, uint32_t index)
+{
+    if (object)
+        object->SetFieldText(text, index);
+}
+
+// @func 0x003675D8 hud::SetFieldTextByName
+void SetFieldTextByName(uint32_t name, const char* text, uint32_t index)
+{
+    if (name == 0)
+        return;
+    if (HudObject* object = Find(name))
+        object->SetFieldText(text, index);
+}
+
+namespace {
+ape::ApeGuiLabel* FirstLabel(HudObject* object)
+{
+    if (!object || object->def->textFieldCount == 0)
+        return nullptr;
+    return static_cast<ape::ApeGuiLabel*>(object->textFields[0].label);
+}
+} // namespace
+
+// @func 0x003676DC hud::SetFieldAnimMode
+void SetFieldAnimMode(HudObject* object, uint32_t modeName)
+{
+    if (ape::ApeGuiLabel* label = FirstLabel(object))
+        label->animMode = uint8_t(ape::ParseGuiAnimPlayMode(modeName) & 0xF);
+}
+
+// @func 0x00367758 hud::SetFieldAnimPeriod
+void SetFieldAnimPeriod(HudObject* object, float seconds)
+{
+    ape::ApeGuiLabel* label = FirstLabel(object);
+    if (!label)
+        return;
+    if (seconds < 0.0f)
+        seconds = 3.0f;
+    // Stored as a rate.
+    label->animPeriod = seconds >= 1e-5f ? 1.0f / seconds : 3.4028235e38f;
 }
 
 // @func 0x00362BEC HudObject::HideNow
