@@ -12,8 +12,6 @@ namespace hud {
 // 0x0046C7B0 on the game world: HUD elements may be placed this frame.
 // NOTE: meaning inferred from the only caller (HudObject::Update).
 bool HudPlacementEnabled();
-// 0x0035B470 on the anchor stacks (0x0106C330): re-stacks the visible elements.
-void RefreshAnchorStacks();
 class HudObject;
 }
 }

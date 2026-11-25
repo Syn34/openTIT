@@ -30,7 +30,7 @@ public:
     // Slot 3 (0x00370860): a sticky element starts over shown.
     void Refresh() override;
     // Slot 4 (0x00370928): forgets the entries.
-    virtual void ClearEntries();
+    void BeginFrame() override;
     // Slot 5 (0x00370130).
     void SetActive(bool active) override;
     // Slot 6 (0x00370934): nothing.

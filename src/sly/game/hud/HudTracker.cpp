@@ -140,8 +140,8 @@ void HudTracker::Refresh()
     animState |= 1u;
 }
 
-// @func 0x00370928 HudTracker::ClearEntries
-void HudTracker::ClearEntries()
+// @func 0x00370928 HudTracker::BeginFrame
+void HudTracker::BeginFrame()
 {
     entries.Clear();
 }

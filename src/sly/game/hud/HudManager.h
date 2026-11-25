@@ -138,6 +138,9 @@ public:
     virtual void Update(float dt);
     // Slot 3 (0x0036A410): deactivated and back at its stack origin.
     virtual void Refresh();
+    // Slot 4 (0x00772940, empty in the base): start of a frame (tracker
+    // lists forget their entries).
+    virtual void BeginFrame() {}
     // Slot 5 (0x0036A470): shows or hides the element's object.
     virtual void SetActive(bool active);
     // Slot 6 (0x00772944, other module): bit 0 of +0xA0 (set by the
@@ -273,8 +276,28 @@ void ReshowText(float fade, HudObject* object, const char* text, bool timed);
 // The element's object is visible (ApeObj flags bit 15).
 bool ObjectVisible(const ape::world::ApeObj* object);
 // 0x00365A54: enables or disables every element (slot 6); disabling also
-// refreshes the anchor stacks (0x0035B470, not ported).
+// drops the text override.
 void SetAllEnabled(bool enabled, bool flag);
+
+// A temporary restyling of an element's first label (0x0106C330).
+struct HudTextOverride {
+    ape::Matrix34 transform{};          // +0x00
+    uint8_t savedColor[4] = {};         // +0x40 label colour to restore
+    ape::Vec3 savedScale{};             // +0x50 label scale to restore (zero: nothing saved)
+    uint32_t field_60 = 0;
+    HudObject* owner = nullptr;         // +0x64 refreshed when the override ends
+    HudObject* element = nullptr;       // +0x68 element whose label is restyled
+    uint32_t field_6C[5] = {};
+    bool field_84 = false;
+};
+HudTextOverride& TextOverride();
+// 0x0035B470: restores the label and clears the override.
+void ResetTextOverride(HudTextOverride& state);
+
+void RefreshElement(HudObject* object);                             // 0x0035B3BC
+void SetFieldScale(HudObject* object, const ape::Vec3& scale, uint32_t index);   // 0x0035B404
+void BeginFrameAll();                                               // 0x0035C070
+void DetachAnimScripts();                                           // 0x0035C028
 
 // Screen position of elements whose definition gives none (0x0106C9F0).
 extern ape::Vec3 g_defaultHudOffset;

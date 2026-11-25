@@ -217,7 +217,69 @@ void SetAllEnabled(bool enabled, bool flag)
     for (uint32_t i = 0; i < state.objects.Count(); ++i)
         state.objects.Data()[i].value->SetEnabled(enabled, flag);
     if (!state.allEnabled)
-        RefreshAnchorStacks();
+        ResetTextOverride(TextOverride());
+}
+
+HudTextOverride& TextOverride()
+{
+    static HudTextOverride state;
+    return state;
+}
+
+// @func 0x0035B470 hud::ResetTextOverride
+void ResetTextOverride(HudTextOverride& state)
+{
+    HudObject* element = state.element;
+    const ape::Vec3& zero = ape::world::kWorldZero;
+    const bool saved = state.savedScale.x != zero.x || state.savedScale.y != zero.y || state.savedScale.z != zero.z;
+    if (element && saved && element->def->textFieldCount != 0) {
+        if (ape::ApeGuiObject* label = element->textFields[0].label) {
+            label->SetColor({state.savedColor[0], state.savedColor[1], state.savedColor[2], state.savedColor[3]});
+            label->SetScale(state.savedScale);
+        }
+    }
+    // Everything but the two element pointers is cleared.
+    HudObject* owner = state.owner;
+    state = HudTextOverride{};
+    state.owner = owner;
+    state.element = element;
+    for (uint8_t& c : state.savedColor)
+        c = 0xFF;   // NOTE: engine colour table entry 0 (0x01164CA0), assumed opaque white
+    state.savedScale = zero;
+    if (state.owner)
+        state.owner->Refresh();
+}
+
+// @func 0x0035B3BC hud::RefreshElement
+void RefreshElement(HudObject* object)
+{
+    if (object)
+        object->Refresh();
+}
+
+// @func 0x0035B404 hud::SetFieldScale
+void SetFieldScale(HudObject* object, const ape::Vec3& scale, uint32_t index)
+{
+    if (index >= object->def->textFieldCount)
+        return;
+    if (ape::ApeGuiObject* label = object->textFields[index].label)
+        label->SetScale(scale);
+}
+
+// @func 0x0035C070 hud::BeginFrameAll
+void BeginFrameAll()
+{
+    HudManagerState& state = Hud();
+    for (uint32_t i = 0; i < state.objects.Count(); ++i)
+        state.objects.Data()[i].value->BeginFrame();
+}
+
+// @func 0x0035C028 hud::DetachAnimScripts
+void DetachAnimScripts()
+{
+    HudManagerState& state = Hud();
+    for (uint32_t i = 0; i < state.objects.Count(); ++i)
+        state.objects.Data()[i].value->animScript = nullptr;
 }
 
 const uint32_t kHudStateNames[5] = {
