@@ -11,6 +11,7 @@
 #include "sly/game/Tween.h"
 
 namespace ape::world { class ApeObj; }
+namespace sly::camera { class CameraMode; }
 
 namespace sly {
 namespace entity {
@@ -57,6 +58,13 @@ public:
     uint8_t interactionFlags[6] = {};   // 0x170 per interaction kind (InteractivePropC)
     uint32_t bufferSize = 0;        // 0x254
     void* buffer = nullptr;         // 0x258 owned
+};
+
+// The definition InteractivePropA actually uses (vtable 0x00B17B88).
+// NOTE: only the flag its overrides read is modelled.
+class InteractivePropAUseDef : public ActorDef {
+public:
+    uint32_t sharedUse = 0;         // 0x130 non-zero: several users at once
 };
 
 // Safe definition (vtable 0x00B17FF0, 0x1E0 bytes; the safe entity code
@@ -109,6 +117,11 @@ class InteractivePropA : public ActorEntity {
 public:
     ~InteractivePropA() override;
     bool Update(float dt) override;
+    // A player may not use the prop while one user holds it and the player
+    // is busy (player block +0x10DC positive, unless the driver is idle).
+    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    // Stops a playing scripted animation of the user.
+    bool InteractionBegin(Entity* user) override;              // slot 62
 };
 
 // Definition of SearchlightActor (vtable 0x00B18230; destructor outside this
@@ -133,8 +146,15 @@ public:
     // 0x001EB0BC / 0x001EB0DC
     ape::Vec3 CameraOffset() const;
     ape::Vec4 Field150() const;
+    // The user takes the light: the spotlight camera rides on it and the user
+    // is hidden while the light model shows.
+    bool InteractionBegin(Entity* user) override;     // slot 62
 
     const SearchlightDef* Def() const { return static_cast<const SearchlightDef*>(def); }
+
+    camera::CameraMode* cameraMode = nullptr;   // 0x1A8 spotlight camera mode
+    Entity* user = nullptr;                     // 0x1AC
+    ape::world::ApeObj* lightObject = nullptr;  // 0x1B8
 };
 
 // Interactive prop driven by an anim script variable (vtable 0x00B18908,
@@ -145,7 +165,7 @@ public:
     void SetVisible(bool visible, bool immediate, bool children, bool components) override;
     bool Release(bool kill) override;                 // slot 10
     // Takes over the interacting entity's transform and starts state 1.
-    bool InteractionBegin() override;                 // slot 62
+    bool InteractionBegin(Entity* user) override;                 // slot 62
     // NOTE: both only look the interaction component up.
     void InteractionCancel() override;                // slot 63
     void InteractionEnd(bool completed) override;     // slot 64
@@ -409,7 +429,7 @@ public:
     void Reset(bool flag);
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
     void SetVisible(bool visible, bool immediate, bool children, bool components) override;   // slot 22
-    bool InteractionBegin() override;                 // slot 62
+    bool InteractionBegin(Entity* user) override;                 // slot 62
     void InteractionCancel() override;                // slot 63: Reset(false)
     void InteractionEnd(bool completed) override;     // slot 64: Reset(completed)
     // 0x001EDD84 (not ported): takes the interacting entity.
@@ -424,6 +444,24 @@ public:
     ape::ApeTArray<void*> field_280;          // 0x280
     IntTween tween_36C;                       // 0x36C
     ape::ApeTArray<void*> field_3A0;          // 0x3A0
+};
+
+// Safe (vtable 0x00B18038; destructor 0x00756A1C outside this range; the
+// "SafeA_*" animations): the player cracks it in a camera of its own.
+class Safe : public ActorEntity {
+public:
+    bool Release(bool kill) override;                 // slot 10
+    // Leaves the safe camera and shows the user again.
+    void InteractionCancel() override;                // slot 63
+    // Offers interaction kind 1 again.
+    void InteractionEnd(bool completed) override;     // slot 64
+
+    void* script228 = nullptr;                // 0x228 owned anim script instance
+    camera::CameraMode* cameraMode = nullptr; // 0x238
+    audio::SoundName* sound248 = nullptr;     // 0x248
+    audio::SoundName* sound24C = nullptr;     // 0x24C
+    audio::SoundName* sounds250[3] = {};      // 0x250
+    audio::SoundName* sounds25C[3] = {};      // 0x25C
 };
 
 } // namespace entity

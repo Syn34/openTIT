@@ -182,6 +182,17 @@ void AddPlayerScore(uint32_t player, int points);
 // The active minigame forgets a figure of that model (0x003DE47C).
 void MinigameFigureRemoved(uint32_t model);
 
+// Player block float +0x10DC (game world +0x1070 + player * 0x20C80):
+// positive while the player is busy. NOTE: meaning guessed.
+float PlayerBlockBusyTime(uint32_t player);
+// Takes the safe's update callback (0x00F33C18) off the game world's list 3 (0x0046B7A4).
+void GameWorldDequeueSafeCallback(Entity* safe);
+// Game world toggles used when leaving a safe (0x00489F88 with 0, 0x0048A068 with 1).
+// NOTE: names guessed.
+void GameWorldSetHudHidden(bool hidden);
+void GameWorldSetPlayerControl(bool enabled);
+// Interaction component flag word +0x7C: clears bit 20.
+void InteractionClearFlag20(EntityComponent* interaction);
 // Word +0x14 of an actor group member's record takes the group counter.
 void GroupRecordSetCounter(void* record, uint32_t counter);
 // Interaction component: the entity interacting (+0x40) and the number of
