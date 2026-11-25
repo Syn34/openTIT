@@ -1,4 +1,5 @@
-// openTIT - Destructors of the component descriptions.
+// openTIT - Destructors of the component descriptions, the control
+// component defaults and the inventory slot defaults.
 //
 // Each description class has its own destructor (they leave the named
 // template table through the ComponentDesc base); most have nothing else
@@ -6,8 +7,11 @@
 #include "sly/components/ComponentDescs.h"
 #include "sly/components/ComponentDescs2.h"
 #include "sly/components/InventoryDescs.h"
+#include "sly/components/Components.h"
 
 #include "ape/memory/ApeMem.h"
+
+#include <cstring>
 
 namespace sly {
 namespace components {
@@ -167,6 +171,26 @@ ShootingComponentDesc::~ShootingComponentDesc() = default;
 // @func 0x00762D34 InventoryComponentDesc::~InventoryComponentDesc
 // @func 0x00762DB4 InventoryComponentDesc::~InventoryComponentDesc (deleting)
 InventoryComponentDesc::~InventoryComponentDesc() = default;
+
+// ---------------------------------------------------------------------------
+// Control component base (vtable 0x00B1C118): defaults shared by the
+// control components.
+
+// @func 0x00763174 ControlComponent::~ControlComponent
+// @func 0x00763270 ControlComponent::~ControlComponent (deleting)
+ControlComponent::~ControlComponent() = default;
+
+// @func 0x00763390 ControlComponent::DataBlockA
+void* ControlComponent::DataBlockA() { return inputFlags; }
+
+// @func 0x0076339C ControlComponent::DataBlockB
+void* ControlComponent::DataBlockB() { return input; }
+
+// @func 0x007633A8 ControlComponent::ResetState
+void ControlComponent::ResetState() { std::memset(input, 0, sizeof(input)); }
+
+// @func 0x007633CC ControlComponent::ControlSlot16
+int ControlComponent::ControlSlot16() { return 0; }
 
 // ---------------------------------------------------------------------------
 // Inventory slot descriptions (vtables 0x00B1BE78 base, 0x00B1BEA0 entity,

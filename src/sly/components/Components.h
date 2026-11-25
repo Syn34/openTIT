@@ -17,6 +17,7 @@
 #include "ape/memory/ApeTArray.h"
 
 #include <cstdint>
+#include <cstring>
 #include <utility>
 #include <vector>
 
@@ -36,8 +37,14 @@ ape::ApeTSortedMap<void*>& AnimMaps();
 class ControlComponent : public EntityComponent {
 public:
     explicit ControlComponent(const ComponentDesc* desc) : EntityComponent(desc) {}
-    // NOTE: the base destructor is at 0x00763174 (outside this range).
-    ~ControlComponent() override = default;
+    ~ControlComponent() override;
+
+    void* DataBlockA() override;
+    void* DataBlockB() override;
+    // Clears the input record.
+    void ResetState() override;
+    // Slot 16 (+0x40). NOTE: returns 0 in every control class seen; meaning unknown.
+    virtual int ControlSlot16();
 
     uint8_t inputFlags[4] = {};      // 0x18
     uint8_t input[0x30] = {};        // 0x20 controller input record. NOTE: layout unknown
