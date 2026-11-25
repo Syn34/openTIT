@@ -206,4 +206,104 @@ AglSubMesh* CreateSphereMesh(AglMaterial* material, int rings, int segments)
     return mesh;
 }
 
+// @func 0x0051BC20 CreateIndexedSphereMesh
+AglSubMesh* CreateIndexedSphereMesh(AglMaterial* material, int rings, int segments)
+{
+    // One vertex per cell centre; each band between two rings is a strip
+    // of (segments + 1) index pairs, bands separated by a restart index.
+    const uint32_t vertexCount = static_cast<uint32_t>(rings * segments);
+    const uint32_t bands = rings > 0 ? static_cast<uint32_t>(rings - 1) : 0;
+    const uint32_t indexCount = static_cast<uint32_t>(rings * segments * 2 - segments * 2 + (rings - 1) * 2 + rings - 2);
+    AglSubMesh* mesh = AglSubMesh::Create();
+    if (!mesh)
+        return nullptr;
+    mesh->name = "SphereIdx";
+    const AglVertexDecl* decl = GetPrimitiveVertexDecl(true);
+    mesh->vertexDecl = decl;
+    if (vertexCount != 0) {
+        mesh->AddVertexStream();
+        MemBlockAlloc(&mesh->vertices, vertexCount * decl->stride, 0x80, gpu::MemoryLocation::Local, 2);
+    }
+    mesh->vertexCount = vertexCount;
+    if (indexCount != 0) {
+        mesh->field_3C = 1;   // 16-bit indices
+        MemBlockAlloc(&mesh->indices, indexCount * 2, 0x80, gpu::MemoryLocation::Local, 2);
+    }
+    mesh->indexCount = indexCount;
+    mesh->primitive = static_cast<uint32_t>(gpu::PrimitiveType::TriangleStrip);
+    SetOwner(mesh, material);
+
+    auto* out = static_cast<PrimitiveVertex*>(mesh->vertices.data);
+    if (!out)
+        return mesh;
+    const float ringStep = kPi / static_cast<float>(rings);
+    const float segmentStep = kTwoPi / static_cast<float>(segments);
+    for (int ring = 0; ring < rings; ++ring) {
+        const float a = static_cast<float>(ring) * ringStep + ringStep * 0.5f;
+        const float sinA = ape::FastSin(a), cosA = ape::FastCos(a);
+        for (int seg = 0; seg < segments; ++seg) {
+            const float b = static_cast<float>(seg) * segmentStep + segmentStep * 0.5f;
+            const float x = sinA * ape::FastSin(b);
+            const float z = sinA * ape::FastCos(b);
+            // NOTE: the texture coordinates are the x and y of the position.
+            *out++ = { { x, cosA, z }, { 0xFF, 0xFF, 0xFF, 0xFF }, { x, cosA } };
+        }
+    }
+
+    auto* index = static_cast<uint16_t*>(mesh->indices.data);
+    for (uint32_t band = 0; band < bands; ++band) {
+        if (band > 0)
+            *index++ = 0xFFFF;   // strip restart
+        const int first = static_cast<int>(band) * segments;
+        for (int k = 0; k <= segments; ++k) {
+            const int column = k % segments;
+            *index++ = static_cast<uint16_t>(first + column);
+            *index++ = static_cast<uint16_t>(first + column + segments);
+        }
+    }
+    return mesh;
+}
+
+// @func 0x0051C1A8 CreateBoxMesh
+AglSubMesh* CreateBoxMesh(AglMaterial* material, bool solid)
+{
+    // Corner i of the unit cube has x, y, z = -0.5 where bit 0, 1, 2 of i is set.
+    static const uint8_t kEdges[24] = {   // 0x00F67145: twelve edges
+        0, 1, 1, 3, 3, 2, 2, 0, 4, 5, 5, 7, 7, 6, 6, 4, 0, 4, 1, 5, 2, 6, 3, 7,
+    };
+    static const uint8_t kFaces[36] = {   // 0x00F6715D: twelve triangles
+        0, 1, 2, 1, 3, 2, 1, 0, 4, 1, 4, 5, 2, 6, 4, 2, 4, 0,
+        3, 1, 5, 3, 5, 7, 7, 5, 4, 7, 4, 6, 3, 7, 6, 3, 6, 2,
+    };
+    const uint8_t* table = solid ? kFaces : kEdges;
+    const uint32_t indexCount = solid ? 36 : 24;
+
+    AglSubMesh* mesh = AglSubMesh::Create();
+    if (!mesh)
+        return nullptr;
+    mesh->name = "Cube";
+    const AglVertexDecl* decl = GetPrimitiveVertexDecl(true);
+    mesh->vertexDecl = decl;
+    mesh->AddVertexStream();
+    MemBlockAlloc(&mesh->vertices, 8 * decl->stride, 0x80, gpu::MemoryLocation::Local, 2);
+    mesh->vertexCount = 8;
+    mesh->field_3C = 1;   // 16-bit indices
+    MemBlockAlloc(&mesh->indices, indexCount * 2, 0x80, gpu::MemoryLocation::Local, 2);
+    mesh->indexCount = indexCount;
+    mesh->primitive = static_cast<uint32_t>(solid ? gpu::PrimitiveType::Triangles : gpu::PrimitiveType::Lines);
+    SetOwner(mesh, material);
+
+    auto* out = static_cast<PrimitiveVertex*>(mesh->vertices.data);
+    if (!out)
+        return mesh;
+    for (int corner = 0; corner < 8; ++corner) {
+        out[corner] = { { (corner & 1) ? -0.5f : 0.5f, (corner & 2) ? -0.5f : 0.5f, (corner & 4) ? -0.5f : 0.5f },
+                        { 0xFF, 0xFF, 0xFF, 0xFF }, { 0.0f, 0.0f } };
+    }
+    auto* index = static_cast<uint16_t*>(mesh->indices.data);
+    for (uint32_t i = 0; i < indexCount; ++i)
+        index[i] = table[i];
+    return mesh;
+}
+
 } // namespace agl

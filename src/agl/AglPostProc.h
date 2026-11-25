@@ -8,6 +8,8 @@
 // AglPostProcShaders.h) draw full-screen quads with the scene as input.
 #pragma once
 
+#include "agl/AglTypes.h"
+
 #include <cstdint>
 
 namespace agl {
@@ -46,9 +48,12 @@ public:
 };
 
 // An effect that fades out over 'fadeTime' seconds when disabled.
+// (vtable 0x00B23630; the motion trail derives from it)
 class AglFadingEffect : public AglPostProcEffect {
 public:
     using AglPostProcEffect::AglPostProcEffect;
+    ~AglFadingEffect() override;
+    void Apply() override;
 
     void SetEnabled(bool on) override;
     // Advances the fade-out; the effect switches off at the end.
@@ -69,9 +74,12 @@ public:
     class AglResource* resource = nullptr;   // 0x14
 };
 
-class AglThermalVisionEffect : public AglPostProcEffect {
+// Engine part of the thermal vision effect (vtable 0x00B23670); the game's
+// effect (AglThermalVisionEffect, vtable 0x00B24090) draws it.
+class AglThermalVisionBase : public AglPostProcEffect {
 public:
-    AglThermalVisionEffect();
+    AglThermalVisionBase();
+    ~AglThermalVisionBase() override;
     void Apply() override;
 
     void* field_14 = nullptr;
@@ -90,6 +98,12 @@ public:
     float field_6C = 0.0f;
 };
 
+class AglThermalVisionEffect : public AglThermalVisionBase {
+public:
+    ~AglThermalVisionEffect() override;
+    void Apply() override;
+};
+
 // Distorts the screen with a grid of displaced vertices.
 class AglScreenWarpEffect : public AglOwningEffect {
 public:
@@ -97,6 +111,8 @@ public:
     static constexpr int kMaxIndices = 0x11E;
 
     AglScreenWarpEffect();
+    // Frees the three GPU blocks of the game's warp passes (vtable 0x00B24070).
+    ~AglScreenWarpEffect() override;
     void Apply() override;
     // Rebuilds the triangle strip of a columns x rows grid (at most 15 x 15).
     void SetGridSize(uint8_t columns, uint8_t rows);
@@ -115,6 +131,7 @@ public:
     uint32_t field_1670 = 0;
     uint32_t field_1674 = 0;
     float rect[6] = {};                      // 0x1678: screen rectangle and size
+    AglMemBlock blocks[3];                   // 0x16A4 NOTE: contents not decoded
 };
 
 // Smears the previous frames along the camera motion.
@@ -149,9 +166,93 @@ struct AglPostProcTuning {
 };
 AglPostProcTuning& GetPostProcTuning();
 
-class AglGodRaysEffect : public AglPostProcEffect {
+// Engine-side bases of the effects (Apply is pure in several of them on
+// the console; the game derives the final classes, whose destructors are in
+// the 0x0079E4xx range).
+class AglGodRaysBase : public AglPostProcEffect {        // vtable 0x00B23610
 public:
-    AglGodRaysEffect() : AglPostProcEffect("GodRays") {}
+    using AglPostProcEffect::AglPostProcEffect;
+    ~AglGodRaysBase() override;
+};
+class AglBlurBase : public AglPostProcEffect {           // vtable 0x00B23514
+public:
+    using AglPostProcEffect::AglPostProcEffect;
+    ~AglBlurBase() override;
+};
+class AglDofBase : public AglPostProcEffect {            // vtable 0x00B2356C
+public:
+    using AglPostProcEffect::AglPostProcEffect;
+    ~AglDofBase() override;
+};
+class AglRadialBlurBase : public AglPostProcEffect {     // vtable 0x00B23590
+public:
+    using AglPostProcEffect::AglPostProcEffect;
+    ~AglRadialBlurBase() override;
+};
+class AglDesaturationBase : public AglPostProcEffect {   // vtable 0x00B2353C
+public:
+    using AglPostProcEffect::AglPostProcEffect;
+    ~AglDesaturationBase() override;
+    bool IsActive() const override;
+};
+// Bloom (vtable 0x00B234E8): copies its settings from another chain's bloom.
+class AglBloomBase : public AglPostProcEffect {
+public:
+    using AglPostProcEffect::AglPostProcEffect;
+    ~AglBloomBase() override;
+    void Apply() override;
+    // Takes over the enable flag and the bloom parameters of `other`.
+    virtual void CopyBloomSettings(const AglBloomBase& other);
+
+    float field_20[3] = {};        // 0x20 NOTE: bloom parameters, meanings unknown
+    float field_30 = 0.0f;         // 0x30
+    uint8_t field_34 = 0;          // 0x34
+};
+// Bloom noise (vtable 0x00B235DC): copies its settings from another chain's.
+class AglBloomNoiseBase : public AglPostProcEffect {
+public:
+    using AglPostProcEffect::AglPostProcEffect;
+    ~AglBloomNoiseBase() override;
+    void Apply() override;
+    // Takes over the enable flag and the noise parameters of `other`.
+    virtual void CopyNoiseSettings(const AglBloomNoiseBase& other);
+
+    // NOTE: parameter blocks, meanings unknown.
+    struct Layer {
+        float values[6] = {};
+    };
+    Layer layers[3];               // 0x14
+    uint8_t field_5C[4] = {};      // 0x5C
+    float field_60[8] = {};        // 0x60..0x7C
+    float field_80 = 0.0f;         // 0x80
+    float field_84 = 0.0f;         // 0x84
+    float field_90 = 0.0f;         // 0x90
+    float field_94 = 0.0f;         // 0x94
+    float field_98 = 0.0f;         // 0x98
+    float field_A0 = 0.0f;         // 0xA0
+};
+
+// The game's bloom, desaturation and radial blur effects.
+class AglBloomEffect : public AglBloomBase {             // vtable 0x00B23F38
+public:
+    AglBloomEffect() : AglBloomBase("Bloom") {}
+    ~AglBloomEffect() override;
+};
+class AglDesaturationEffect : public AglDesaturationBase {   // vtable 0x00B240B0
+public:
+    AglDesaturationEffect() : AglDesaturationBase("Desaturation") {}
+    ~AglDesaturationEffect() override;
+};
+class AglRadialBlurEffect : public AglRadialBlurBase {   // vtable 0x00B235BC
+public:
+    AglRadialBlurEffect() : AglRadialBlurBase("RadialBlur") {}
+    ~AglRadialBlurEffect() override;
+    void Apply() override;
+};
+
+class AglGodRaysEffect : public AglGodRaysBase {
+public:
+    AglGodRaysEffect() : AglGodRaysBase("GodRays") {}
     // @func 0x0079E6BC AglGodRaysEffect::~AglGodRaysEffect
     // @func 0x007A3678 AglGodRaysEffect::~AglGodRaysEffect (deleting)
     ~AglGodRaysEffect() override = default;
@@ -162,26 +263,26 @@ public:
 };
 
 // Effects whose set-up only marks them initialised.
-class AglBlurEffect : public AglPostProcEffect {
+class AglBlurEffect : public AglBlurBase {
 public:
-    AglBlurEffect() : AglPostProcEffect("Blur") {}
+    AglBlurEffect() : AglBlurBase("Blur") {}
     // @func 0x0079E448 AglBlurEffect::~AglBlurEffect
     // @func 0x007A3568 AglBlurEffect::~AglBlurEffect (deleting)
     ~AglBlurEffect() override = default;
     void Init() override;
 };
-class AglDofEffect : public AglPostProcEffect {
+class AglDofEffect : public AglDofBase {
 public:
-    AglDofEffect() : AglPostProcEffect("DoF") {}
+    AglDofEffect() : AglDofBase("DoF") {}
     // @func 0x0079E488 AglDofEffect::~AglDofEffect
     // @func 0x007A35F0 AglDofEffect::~AglDofEffect (deleting)
     ~AglDofEffect() override = default;
     void Init() override;
 };
 
-class AglBloomNoiseEffect : public AglPostProcEffect {
+class AglBloomNoiseEffect : public AglBloomNoiseBase {
 public:
-    using AglPostProcEffect::AglPostProcEffect;
+    using AglBloomNoiseBase::AglBloomNoiseBase;
     // @func 0x0079E4B8 AglBloomNoiseEffect::~AglBloomNoiseEffect
     // @func 0x007A3634 AglBloomNoiseEffect::~AglBloomNoiseEffect (deleting)
     ~AglBloomNoiseEffect() override = default;
@@ -197,13 +298,17 @@ public:
     static constexpr int kEffectCount = 10;
 
     AglPostProcChain();
+    // @func 0x007A1B48 AglPostProcChain::~AglPostProcChain
+    // @func 0x007A1CBC AglPostProcChain::~AglPostProcChain (deleting)
     virtual ~AglPostProcChain();
 
     AglPostProcChain(const AglPostProcChain&) = delete;
     AglPostProcChain& operator=(const AglPostProcChain&) = delete;
 
     // Brackets the effects of one frame (no state of their own on the console).
+    // @func 0x007A1B40 AglPostProcChain::Begin
     virtual void Begin() {}
+    // @func 0x007A1B44 AglPostProcChain::End
     virtual void End() {}
 
     enum EffectIndex {
@@ -214,11 +319,11 @@ public:
     AglPostProcEffect* effects[kEffectCount] = {};
 
 private:
-    AglPostProcEffect m_bloom{"Bloom"};
+    AglBloomEffect m_bloom;
     AglDofEffect m_dof;
-    AglPostProcEffect m_desaturation{"Desaturation"};
+    AglDesaturationEffect m_desaturation;
     AglBlurEffect m_blur;
-    AglPostProcEffect m_radialBlur{"RadialBlur"};
+    AglRadialBlurEffect m_radialBlur;
     AglScreenWarpEffect m_screenWarp;
     AglGodRaysEffect m_godRays;
     AglMotionTrailEffect m_motionTrail;

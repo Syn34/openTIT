@@ -317,6 +317,9 @@ void BeginLoadedObjectList(ApeTArray<void*>* list)
     s_objectList = list;
 }
 
+// @func 0x00564F10 ApeLoadedData::ApeLoadedData
+ApeLoadedData::ApeLoadedData() : size(0), data(nullptr) {}
+
 // @func 0x007A39B4 ApeLoadedData::~ApeLoadedData
 // @func 0x007A39C4 ApeLoadedData::~ApeLoadedData (deleting)
 ApeLoadedData::~ApeLoadedData() = default;

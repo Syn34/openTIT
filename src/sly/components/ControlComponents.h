@@ -103,6 +103,7 @@ class ControlScriptedA : public ControlScriptedComponent {
 public:
     explicit ControlScriptedA(const entity::ComponentDesc* desc) : ControlScriptedComponent(desc, 2, 0x30) {}
     ~ControlScriptedA() override;
+    // @func 0x0076380C ControlScriptedA::Update
     void Update(float dt) override { machine.Update(dt); }
     bool OnStateMessage(const Message& message) override;
 
@@ -121,6 +122,7 @@ class ControlScriptedB : public ControlScriptedComponent {
 public:
     explicit ControlScriptedB(const entity::ComponentDesc* desc) : ControlScriptedComponent(desc, 2, 0x20) {}
     ~ControlScriptedB() override;
+    // @func 0x00763A6C ControlScriptedB::Update
     void Update(float dt) override { machine.Update(dt); }
     bool OnStateMessage(const Message& message) override;
 

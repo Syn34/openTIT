@@ -40,6 +40,33 @@ void PolledTrigger::RebuildVolume()
 {
 }
 
+// @func 0x0075A3AC AmbientSoundTrigger::~AmbientSoundTrigger
+// @func 0x0075A4FC AmbientSoundTrigger::~AmbientSoundTrigger (deleting)
+AmbientSoundTrigger::~AmbientSoundTrigger()
+{
+    RebuildVolume();
+}
+
+// TODO(0x002108A8 AmbientSoundTrigger::RebuildVolume): the phantom shape of
+// the sound volume (vector code) is not ported.
+void AmbientSoundTrigger::RebuildVolume()
+{
+    PolledTrigger::RebuildVolume();
+}
+
+// @func 0x0075AF24 SoundZoneTrigger::~SoundZoneTrigger
+// @func 0x0075B074 SoundZoneTrigger::~SoundZoneTrigger (deleting)
+SoundZoneTrigger::~SoundZoneTrigger()
+{
+    RebuildVolume();
+}
+
+// TODO(0x00213398 SoundZoneTrigger::RebuildVolume): not ported.
+void SoundZoneTrigger::RebuildVolume()
+{
+    PolledTrigger::RebuildVolume();
+}
+
 // @func 0x0020FD30 PolledTrigger::IsInside
 // Sphere volumes compare the squared distance with the squared radius (strict);
 // box volumes bring the point into the trigger's frame (transposed rotation of

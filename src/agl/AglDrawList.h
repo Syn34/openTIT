@@ -94,6 +94,9 @@ public:
     // Closes the primitive filled in since AllocPrimitive (nothing to do;
     // the vertices are written in place).
     void EndPrimitive();
+    // True when a primitive of 'vertexCount' vertices still fits in this
+    // frame's vertex area (the console also checks the packet ring).
+    bool HasRoomFor(uint32_t vertexCount) const { return m_vertexUsed + vertexCount < m_vertexCapacity; }
 
     size_t GetSize() const { return m_cursor; }
     const uint8_t* GetData() const { return m_packets.data(); }
