@@ -36,11 +36,30 @@
 * Class bits: 5 disguised, 15 carrying (skin variant 4), 17 carried, 36 custom weapon,
   39 heavy carry.
 
+* Entity slot 34 sets the body's linear velocity (35 gets it); slot 14 is the per-frame
+  fade/flash pass (empty base 0x000D8FC0); slot 58 RemoveWatcher pairs with slot 57;
+  slot 69 hands out a tracked entity (the Bentley's shared target).
+* Identified classes: SoundActorB17270 is the gadget turret (aim frame at +0x230,
+  wanted/current aim +0x2C0/+0x2D0, target list +0x32C), SoundActorB174C0 the sentry
+  light (+0x3CC flags), ActorB17990 the input mover, TargetableA the minigame figure
+  (combo +0x670, score +0x674 on the player 0 entity), CompoundEntity the Bentley.
+* Physical entities derive from ScriptedEntity (health at +0x15C, hits in slots 83-87);
+  type bit 13 entities keep their thrower at +0x1B0.
+* Hit record category 0 payload: +0x24 up component of the contact normal, +0x34 the
+  other collidable (layer 16 impacts are ignored by the props).
+* The AltiVec words the reference cannot decode are plain lvlx/lvrx/vsel/vperm/vmaddfp
+  sequences; /home/claude/a2tools/dis2.py (not in the repo) decodes them well enough.
+
 ## Not done
 * The character constructor (0x00120A58), character swap (0x00124D58), damage
   application (0x00125A80), the message handler (0x001305C0) and the movement state
   handlers (0x00131798-0x00165198).
 * Default camera mode constructor and update stages; most mode updates have AltiVec code
   the reference cannot decode.
+* Rigid body Havok contact callbacks (slots 94/96/102 and the +0x17C thunks), the big
+  per-frame updates (slots 4/5) of props, targets and actors, and the boss AI state
+  machines in 0x00010000-0x00060000 (only Bismarque's attack steps are ported).
+* Description copy functions (slot 2 of the definition placement vtables
+  0x00B14390...) need the description structs of the object parsers.
 * Definition loaders/spawns (slot 3/7 of the definitions) and placements (slot 2 of the
   secondary vtables): they need the entity constructor family from the entity module.
