@@ -9,6 +9,10 @@
 
 #include "sly/levels/ai/AIController.h"
 #include "sly/levels/ai/AIHooks.h"
+#include "ape/memory/ApeTArray.h"
+
+#include <array>
+#include <vector>
 
 namespace ape::world { class ApeObj; class ApeSplineInstance; }
 namespace sly::hud { class HudObject; }
@@ -392,6 +396,8 @@ struct BismarquePattern {       // NOTE: only the phase table is known
 
 class BismarqueAI : public AIController {
 public:
+    // Frees the boss's lists (their element types are not decoded).
+    ~BismarqueAI() override;
     bool AllowsInteraction() override;
     bool IsBoss() override;
     void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
@@ -427,6 +433,10 @@ public:
     ape::world::ApeObj* markers[2] = {};   // +0x290
     ape::world::ApeObj* anchors[2] = {};   // +0x298
     float counterCooldown = 0.0f;          // +0x2EC
+    // NOTE: lists and a pool of 16-byte records only freed here.
+    ape::ApeTArray<void*> lists134[6];     // +0x134..+0x198
+    std::vector<std::array<uint8_t, 16>> pool1AC;   // +0x1AC (capacity at +0x1BC)
+    ape::ApeTArray<void*> lists1C4[3];     // +0x1C4..+0x1EC
 };
 class ElJefeAI : public AIController {
 public:
