@@ -22,6 +22,14 @@ ape::Vec3 CenterComponentOffset(EntityComponent*) { return { 0.0f, 0.0f, 0.0f, 0
 
 // TODO(anim controller +0x28 bit 14)
 void AnimControllerSetRunning(void*, bool) {}
+// TODO(0x004705F8 / 0x00470660 / 0x00482D14): game events live in sly/game.
+void EntitySendGameEvent(Entity*, Entity*, uint32_t, uint32_t, bool) {}
+void EntityPostScriptMessage(Entity*, uint32_t, uint32_t, uint32_t) {}
+void GameWorldPostEvent1B(Entity*) {}
+// TODO(listener slot 31)
+bool ListenerIsAlly(EntityListener*) { return false; }
+// TODO(scripted entity +0x16C record)
+void DamageRecordSetType(void*, uint32_t) {}
 // TODO(EntityMessage +0x00): messages carry no sender pointer in the port yet.
 Entity* MessageSenderEntity(const EntityMessage&) { return nullptr; }
 // TODO(0x01032148 physics step flag)

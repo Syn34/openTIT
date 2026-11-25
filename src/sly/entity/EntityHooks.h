@@ -102,6 +102,19 @@ bool ComponentHidesRender(EntityComponent* component);
 // Animation controller flag word +0x28 bit 14. NOTE: cleared while the
 // entity is suspended.
 void AnimControllerSetRunning(void* controller, bool running);
+// -- damage ------------------------------------------------------------------------
+// 0x004705F8: game event from one entity to another.
+void EntitySendGameEvent(Entity* sender, Entity* receiver, uint32_t event, uint32_t data, bool immediate);
+// 0x00470660: script message to the listeners of `key`.
+void EntityPostScriptMessage(Entity* sender, uint32_t key, uint32_t message, uint32_t argument);
+// 0x00465534 + 0x00482D14 on the game world: statistics event 0x1B for player 0.
+void GameWorldPostEvent1B(Entity* source);
+// Listener (+0xF4) slot 31 (+0x7C): the listener is an ally of the player.
+bool ListenerIsAlly(class EntityListener* listener);
+// Object at scripted entity +0x16C: its word +0x14 records the last damage
+// type. NOTE: owner unknown.
+void DamageRecordSetType(void* record, uint32_t type);
+
 // Sender of a message (EntityMessage +0x00, a 32-bit entity pointer on the
 // console that the port's message record cannot hold).
 Entity* MessageSenderEntity(const struct EntityMessage& msg);

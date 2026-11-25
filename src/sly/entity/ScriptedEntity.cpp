@@ -6,6 +6,7 @@
 #include "sly/entity/EntityHooks.h"
 #include "sly/levels/ai/AITuning.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include <vector>
@@ -28,6 +29,13 @@ constexpr size_t kMaxDeferredHits = 0x200;
 constexpr uint32_t kMsg_Impact = 0xB939F916u;
 constexpr uint32_t kReaction_Impact = 0x80F43146u;   // NOTE: name unknown
 constexpr uint16_t kDamageBit_Impact = 0x1000;
+
+constexpr uint32_t kEvent_Damaged = 0x61F07A50u;     // NOTE: names unknown
+constexpr uint32_t kMsgKey_Damage = 0xBD27942Du;
+constexpr uint32_t kMsg_Damaged = 0x69988172u;
+constexpr uint32_t kDamage_Sleep = 0x04B536B7u;      // "Sleep"
+
+constexpr uint64_t kClass_Invulnerable = 0x20000u | 0x40000u;   // class bits 17 / 18
 
 struct DeferredHit {
     EntityHitRecord hit;               // +0x00
@@ -151,6 +159,95 @@ void ScriptedEntity::HandleMessage(const EntityMessage& msg)
         OnHitCategory1(hit);
     }
     Entity::HandleMessage(msg);
+}
+
+bool ScriptedEntity::IsInvulnerable() const
+{
+    return (classBits & kClass_Invulnerable) != 0 || invulnerableTime > 0.0f;
+}
+
+void ScriptedEntity::SetBusyFlag(bool on)
+{
+    flags = on ? (flags | kEnt_08) : (flags & ~uint32_t(kEnt_08));
+    if (on)
+        SetSuspended(false);
+    stateFlags = on ? (stateFlags | kState_Busy) : (stateFlags & ~uint32_t(kState_Busy));
+}
+
+// @func 0x000E1738 ScriptedEntity::Damage
+// Health drops by the damage (or, for definitions counting hits, by one stage
+// per hit) and the entity is invulnerable for the definition's time. Damage
+// stages advance as health falls below their thresholds; reaching zero health
+// (or the last stage) records the killer and marks the entity killed.
+bool ScriptedEntity::Damage(float amount, Entity* source, uint32_t type)
+{
+    if (IsInvulnerable())
+        return true;
+    const ScriptedEntityDef* scriptDef = static_cast<const ScriptedEntityDef*>(def);
+    const uint16_t defFlags = scriptDef ? scriptDef->damageFlags : 0;
+    const uint32_t stageCount = (defFlags >> 4) & 0xF;
+
+    if (health > 0.0f && amount > 0.0f) {
+        if (listener && source != this &&
+            (!source || !source->listener || ListenerIsAlly(source->listener)))
+            EntitySendGameEvent(source, this, kEvent_Damaged, type, true);
+        if (defFlags & 0x0800)
+            EntityPostScriptMessage(this, kMsgKey_Damage, kMsg_Damaged, nameHash);
+        if (type == kDamage_Sleep)
+            GameWorldPostEvent1B(this);
+        invulnerableTime = scriptDef ? scriptDef->invulnerableTime : 0.0f;
+
+        if (defFlags & 0x4000) {
+            // Each hit costs one stage of the health bar.
+            const uint32_t hits = (((stateFlags & kState_StageMask) >> kState_StageShift) + 1) & 0xF;
+            stateFlags = (stateFlags & ~uint32_t(kState_StageMask)) | (hits << kState_StageShift);
+            health = (1.0f - float(hits) / float(stageCount + 1)) * maxHealth;
+            amount = 0.0f;
+            if (stageCount <= hits) {
+                if (!(stateFlags & kState_Immortal))
+                    amount = health;
+                stateFlags = (stateFlags & ~uint32_t(kState_StageMask)) | (stageCount << kState_StageShift);
+            }
+        }
+        stateFlags |= kState_Damaged;
+        if ((defFlags & 0x1000) && !(flags & kEnt_08)) {
+            stateFlags &= ~uint32_t(kState_Busy);
+            flags |= kEnt_08;
+            if (flags & kEnt_Suspended) {
+                flags &= ~uint32_t(kEnt_Suspended);
+                OnResume();
+            }
+        }
+        if (field_16C)
+            DamageRecordSetType(field_16C, type);
+
+        const float remaining = health - amount;
+        health = std::min(remaining, maxHealth) > 0.0f ? std::min(remaining, maxHealth) : 0.0f;
+        if (health == 0.0f) {
+            if (!(stateFlags & kState_Immortal)) {
+                lastAttacker = source;
+                killer = source;
+                stateFlags |= kState_Killed;
+                SetBusyFlag(true);
+            } else {
+                health = 1.0f;
+            }
+        }
+
+        if (!(defFlags & 0x4000) && scriptDef) {
+            for (uint32_t i = 0; i < stageCount && i < 5; ++i) {
+                if (health <= scriptDef->stageHealth[i])
+                    stateFlags = (stateFlags & ~uint32_t(kState_StageMask)) | ((i + 1) << kState_StageShift);
+            }
+        }
+        const uint32_t stage = (stateFlags & kState_StageMask) >> kState_StageShift;
+        if (stage == stageCount && stage != ((stateFlags >> kState_DeathStageShift) & 0xF)) {
+            lastAttacker = source;
+            killer = source;
+            stateFlags |= kState_Killed;
+        }
+    }
+    return health > 0.0f;
 }
 
 // @func 0x000E0B64 ScriptedEntity::SetTimeScale
