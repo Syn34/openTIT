@@ -347,6 +347,23 @@ bool RegisterAnimSkeletons(const char*, uint32_t nameHash, void* resource, uint3
     return true;
 }
 
+// @func 0x0034AF14 LoadSkeletonMapFile
+bool LoadSkeletonMapFile(const char* path, uint32_t nameHash)
+{
+    ape::file::File* file = ape::file::OpenFile(path, "rb");
+    if (!file)
+        return false;
+    const uint32_t size = uint32_t(file->GetSize());
+    // NOTE: the reader does not own the file and nothing closes it (console behaviour).
+    FileStreamReader stream(file, false);
+    void* resource = HkLoadResource(&stream);
+    if (!resource)
+        return false;
+    const bool result = RegisterAnimSkeletonMaps(path, nameHash, resource, size);
+    HkRemoveReference(resource);
+    return result;
+}
+
 // @func 0x0034B0F8 BuildHavokBoneMap
 uint16_t* BuildHavokBoneMap(uint32_t skeletonName, const ape::world::ApeSkeletonDef* def)
 {

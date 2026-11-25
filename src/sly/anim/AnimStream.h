@@ -140,6 +140,9 @@ bool RegisterAnimSkeletonMaps(const char* name, uint32_t nameHash, void* resourc
 // skeleton maps).
 ape::ApeTArray<void*>& AnimSkeletonResources();
 
+// 0x0034AF14: loads a skeleton map from the Havok file `path` and
+// registers it under `nameHash`.
+bool LoadSkeletonMapFile(const char* path, uint32_t nameHash);
 // 0x0034B0F8: map from the bones of `def` to the bones of the registered
 // Havok skeleton `skeletonName` (entry 0 holds the count, then one Havok
 // index per bone, 0xFFFF for none). Havok bone names lose an "xxx:" prefix
