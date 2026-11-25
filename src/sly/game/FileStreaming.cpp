@@ -900,5 +900,11 @@ void QueueCharacterPackPrefetch()
         s_streaming.prefetchQueue.push_back(std::string(kStreamFolder) + "/" + pack + kPackExtension);
 }
 
+// @func 0x00788734 AudioStreamFile::Create
+StreamFile* AudioStreamFile::Create()
+{
+    return new AudioStreamFile();
+}
+
 } // namespace game
 } // namespace sly

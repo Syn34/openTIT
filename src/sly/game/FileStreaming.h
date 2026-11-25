@@ -131,6 +131,25 @@ private:
     void CurrentData(const void** data, uint32_t* size) const;
 };
 
+// A streamed audio file (vtable 0x00B218D8, 0x38 bytes; the audio system
+// registers its factory). NOTE: the audio side of the load is not ported.
+class AudioStreamFile : public StreamFile {
+public:
+    // Built by the registered factory.
+    static StreamFile* Create();
+    // @func 0x00784BC4 AudioStreamFile::~AudioStreamFile
+    // @func 0x00784C18 AudioStreamFile::~AudioStreamFile (deleting)
+    ~AudioStreamFile() override = default;
+    // TODO(0x00446590 AudioStreamFile::Update, 0x00446A68 Start, 0x00446D50 Cancel)
+    int Update(bool wait) override
+    {
+        (void)wait;
+        return 1;
+    }
+
+    uint32_t field_20 = 0;   // +0x20
+};
+
 // The optional prerequisite a group waits for before its files (+0x14).
 // NOTE: no class in this module creates one; its layout (allocator +0x3C,
 // buffer +0x44/+0x48, size +0x4C) and slot 5 come from how the group uses it.
