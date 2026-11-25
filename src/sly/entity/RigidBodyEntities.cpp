@@ -987,6 +987,8 @@ bool CompoundEntity::Damage(float amount, Entity* source, uint32_t type)
     return health > 0.0f;
 }
 
+Entity* CompoundEntity::s_target = nullptr;
+
 // @func 0x00175758 CompoundEntity::HandleMessage
 void CompoundEntity::HandleMessage(const EntityMessage& msg)
 {

@@ -602,6 +602,13 @@ public:
     // Slot 43: a dying entity is forgotten by both Bentleys; its score
     // (times the part level) goes to player 0 when this Bentley killed it.
     void HandleMessage(const EntityMessage& msg) override;
+    // Slot 69: the shared target (see s_target).
+    // @func 0x0017574C CompoundEntity::GetTrackedTarget
+    Entity* GetTrackedTarget() override { return s_target; }
+    // @func 0x00175740 CompoundEntity::SetTarget
+    static void SetTarget(Entity* target) { s_target = target; }
+    // Nearest entity of definition 0x659234F5 the Bentleys go for (0x00F64988).
+    static Entity* s_target;
     float ProjectileDamageScale() const override;     // slot 89
     // Heading (degrees, 0..360) from the entity to a hit position.
     float HeadingTo(const ape::Vec3& point) const;
