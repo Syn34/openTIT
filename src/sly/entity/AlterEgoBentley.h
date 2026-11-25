@@ -6,30 +6,13 @@
 // anim script instance they own. The original class names are not known.
 #pragma once
 
-#include "sly/entity/ScriptedEntity.h"
 
 #include <cstdint>
 
 namespace sly {
 namespace entity {
 
-// The Bentley alter ego entity the states act on (built by 0x0016BF00; the
-// class is not modelled beyond what the states use).
-class AlterEgoBentleyEntity : public ScriptedEntity {
-public:
-    // Plays a power-up effect on the character component unless the entity
-    // is dead with its death effect showing; remembers the effect.
-    void PlayPowerUpFx(uint32_t fx);
-
-    uint32_t buffFlags = 0;          // 0x290 bit 25: a timed buff is running
-    int32_t buffTicks = 0;           // 0x29C
-    uint32_t scriptLevel = 0;        // 0x2A8
-    float speedScale = 1.0f;         // 0x2AC
-    float buffRate = 0.0f;           // 0x2B0
-    uint32_t lastFx = 0;             // 0x2B4 effect last played (0x03DE9A54 = the death effect)
-    uint32_t skinLevel = 0;          // 0x2D0
-    uint32_t skinCount = 0;          // 0x2D8
-};
+class CompoundEntity;   // the Bentley alter ego entity (PropEntities.h)
 
 class AlterEgoBentleyState {
 public:

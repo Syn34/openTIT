@@ -5,6 +5,8 @@
 // state their Release enters and a few details noted per function.
 #include "sly/entity/PropEntities.h"
 
+#include "sly/entity/AlterEgoBentley.h"
+
 #include "sly/entity/EntityHits.h"
 #include "sly/entity/GameEntityHooks.h"
 #include "ape/anim/ApeAnimScript.h"
@@ -530,8 +532,18 @@ void CompoundEntity::OnHitCategory4(EntityHitRecord& hit)
 void CompoundEntity::SetPartLevel(uint32_t level)
 {
     for (uint32_t i = 0; i <= level; ++i)
-        parts[i]->Apply(this);
+        parts[i]->Enter(this);
     partLevel = level;
+}
+
+// @func 0x0016CDE8 CompoundEntity::PlayPowerUpFx
+void CompoundEntity::PlayPowerUpFx(uint32_t fx)
+{
+    constexpr uint32_t kFx_Death = 0x03DE9A54u;   // the "killed" event's effect
+    if (health > 0.0f || lastFx != kFx_Death) {
+        PlayCharacterFx(GetCharacterComponent(), fx, 1.0f, 0.25f);
+        lastFx = fx;
+    }
 }
 
 // @func 0x0016F4F8 CompoundEntity::CanBeDamaged

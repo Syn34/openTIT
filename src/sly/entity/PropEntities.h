@@ -430,21 +430,24 @@ public:
     PropDamageSettings damage;         // 0xC4
 };
 
-// Scripted entity owning eleven sub-objects and two Havok pointer arrays
+class AlterEgoBentleyState;
+
+// The Bentley alter ego entity (built by AlterEgoBentleyDef's spawn
+// 0x0016BF00, "AlterEgo_Bentley"): owns its eleven power-up states and two
+// Havok pointer arrays
 // (vtable 0x00B14730 + 0x00B148CC/0x00B148F4). Registered in entity list B
 // and on the world's transform callback list while alive.
-// NOTE: named from its members; its role is not known yet.
+// NOTE: the class keeps the descriptive name it was given first.
 class CompoundEntity : public RigidBodyEntity {
 public:
     // Sub-objects deleted with the entity (virtual deleting destructor).
-    class Part {
-    public:
-        virtual ~Part() = default;
-        // Slot 2: the part applies itself to the entity. NOTE: name assumed.
-        virtual void Apply(CompoundEntity* owner) { (void)owner; }
-    };
-    // Applies parts 0..`level` and records the level (0x00175B60).
+    // The power-up states (AlterEgoBentley.h) are the entity's parts.
+    using Part = AlterEgoBentleyState;
+    // Enters power-ups 0..`level` and records the level (0x00175B60).
     void SetPartLevel(uint32_t level);
+    // Plays a power-up effect on the character component unless the entity
+    // is dead with its death effect showing; remembers the effect (0x0016CDE8).
+    void PlayPowerUpFx(uint32_t fx);
 
     ~CompoundEntity() override;
     bool Release(bool kill) override;                 // slot 10
@@ -469,7 +472,14 @@ public:
     HkArray<void*> field_1FC;      // 0x1FC
     HkArray<void*> field_208;      // 0x208
     Part* parts[11] = {};          // 0x214
-    uint32_t partLevel = 0;        // 0x29C
+    uint32_t buffFlags = 0;        // 0x290 bit 25: a timed buff is running
+    uint32_t partLevel = 0;        // 0x29C also counts the timed buff's charges used
+    uint32_t scriptLevel = 0;      // 0x2A8
+    float speedScale = 1.0f;       // 0x2AC
+    float buffRate = 0.0f;         // 0x2B0
+    uint32_t lastFx = 0;           // 0x2B4 effect last played (0x03DE9A54 = the death effect)
+    uint32_t skinLevel = 0;        // 0x2D0
+    uint32_t skinCount = 0;        // 0x2D8
 };
 
 } // namespace entity
