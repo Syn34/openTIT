@@ -7,6 +7,8 @@
 
 #include "sly/entity/EntityHits.h"
 #include "sly/entity/GameEntityHooks.h"
+#include "ape/anim/ApeAnimScript.h"
+#include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
 #include "sly/entity/CharacterHooks.h"
 #include "sly/entity/PhysicsHooks.h"
@@ -206,6 +208,15 @@ void AlterEgoEntity::SetAlterState(int32_t state)
     alterState = state;
 }
 
+// @func 0x0017A178 AlterEgoEntity::SendScriptEvent
+void AlterEgoEntity::SendScriptEvent(uint32_t event)
+{
+    if (animScript1A0)
+        static_cast<ape::ApeAnimScriptInstance*>(animScript1A0)->SendEvent(event);
+    if (animScript1A4)
+        static_cast<ape::ApeAnimScriptInstance*>(animScript1A4)->SendEvent(event);
+}
+
 // @func 0x00178744 AlterEgoEntity::GetVelocity
 ape::Vec3 AlterEgoEntity::GetVelocity() { return BodyVelocity(); }
 
@@ -277,6 +288,27 @@ void TargetableB::SetTargetState(int state)
     EntitySetState(this, 0, state);
     stateHistory[historyIndex] = uint8_t(state);
     OnTargetStateChanged();
+}
+
+// @func 0x0018E9FC TargetableB::IsFreeTarget
+bool TargetableB::IsFreeTarget(Entity* entity)
+{
+    if (!(entity->typeBits[0] & 0x200))
+        return true;
+    auto* target = static_cast<TargetableB*>(entity);
+    return !target->holder && (!target->stacking || !target->parent);
+}
+
+// @func 0x001918B0 TargetableB::FindObjectByModel
+ape::world::ApeObj* TargetableB::FindObjectByModel(ape::world::ApeObj* object, uint32_t model)
+{
+    if (object->GetDef()->GetAnimHash() == model)
+        return object;
+    for (ape::world::ApeObj* child = object->GetFirstChild(); child; child = child->GetNextSibling()) {
+        if (ape::world::ApeObj* found = FindObjectByModel(child, model))
+            return found;
+    }
+    return nullptr;
 }
 
 // @func 0x00194714 TargetableB::GetTargetState
@@ -388,6 +420,18 @@ uint32_t TargetableA::InteractionOffer(int kind, Entity* /*other*/) { return Def
 // @func 0x00185AEC TargetableA::InteractionNeeds
 uint32_t TargetableA::InteractionNeeds(int kind, Entity* /*other*/) { return Def()->targetingFlags[kind]; }
 
+// @func 0x00185C9C TargetableA::FindModelPart
+ape::world::ApeObj* TargetableA::FindModelPart() const
+{
+    if (!modelName)
+        return nullptr;
+    for (ape::world::ApeObj* child = model->GetFirstChild(); child; child = child->GetNextSibling()) {
+        if (child->GetDef()->GetAnimHash() == modelName)
+            return child;
+    }
+    return nullptr;
+}
+
 // @func 0x00184B74 TargetableA::GetVelocity
 ape::Vec3 TargetableA::GetVelocity() { return BodyVelocity(); }
 
@@ -480,6 +524,14 @@ void CompoundEntity::OnHitCategory4(EntityHitRecord& hit)
         return;
     propdamage::SetFatal(hit, Damage(hit.data.projectile.damage * scale, source, hit.reaction));
     hitHeading = int(HeadingTo(hit.vec10));
+}
+
+// @func 0x00175B60 CompoundEntity::SetPartLevel
+void CompoundEntity::SetPartLevel(uint32_t level)
+{
+    for (uint32_t i = 0; i <= level; ++i)
+        parts[i]->Apply(this);
+    partLevel = level;
 }
 
 // @func 0x0016F4F8 CompoundEntity::CanBeDamaged
