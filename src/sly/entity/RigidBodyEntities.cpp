@@ -73,10 +73,8 @@ void Collision(ScriptedEntity& self, const PropDamageSettings& settings, EntityH
 // NOTE: the console's push code of this reaction has undecodable instruction
 // data in the reference; it is written like the blast and environment pushes
 // (against the hit direction).
-void Impact(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit)
+void ApplyImpact(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit)
 {
-    if (!self.ReceiveHit(hit))
-        return;
     const float strength = hit.data.impact.push;
     if (IsPushable(body) && strength != 0.0f && settings.impactPush != 0.0f)
         RigidBodyApplyImpulse(body, Scaled(hit.data.impact.direction, -strength * settings.impactPush));
@@ -84,12 +82,16 @@ void Impact(ScriptedEntity& self, void* body, const PropDamageSettings& settings
         SetFatal(hit, self.Damage(hit.data.impact.damage * settings.impactScale, hit.source, kType_Melee));
 }
 
-// Blasts: full effect inside the inner radius, falling off to the outer one.
-void Blast(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit,
-           bool positiveOnly)
+void Impact(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit)
 {
-    if (!self.ReceiveHit(hit))
-        return;
+    if (self.ReceiveHit(hit))
+        ApplyImpact(self, body, settings, hit);
+}
+
+// Blasts: full effect inside the inner radius, falling off to the outer one.
+void ApplyBlast(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit,
+                bool positiveOnly)
+{
     const auto& blast = hit.data.blast;
     float falloff = 1.0f;
     if (blast.innerRadius < blast.distance && blast.innerRadius < blast.outerRadius)
@@ -100,6 +102,13 @@ void Blast(ScriptedEntity& self, void* body, const PropDamageSettings& settings,
     if (positiveOnly ? amount > 0.0f : settings.blastScale > 0.0f)
         self.Damage(amount, hit.source, kType_Blast);
     hit.flags |= EntityHitRecord::kHit_Fatal;
+}
+
+void Blast(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit,
+           bool positiveOnly)
+{
+    if (self.ReceiveHit(hit))
+        ApplyBlast(self, body, settings, hit, positiveOnly);
 }
 
 void Environment(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit)
@@ -637,6 +646,35 @@ void TargetableA::OnHitCategory0(EntityHitRecord& hit) { HitCollision(Def()->dam
 // @func 0x001850F0 TargetableA::OnHitCategory2
 void TargetableA::OnHitCategory2(EntityHitRecord& hit) { HitBlast(Def()->damage, hit, false); }
 
+// @func 0x00184E60 TargetableA::OnHitCategory1
+void TargetableA::OnHitCategory1(EntityHitRecord& hit)
+{
+    if (impactCooldown > 0.0f)
+        return;
+    impactCooldown = 0.25f;
+    propdamage::Impact(*this, rigidBody, Def()->damage, hit);
+}
+
+// @func 0x00185370 TargetableA::OnHitCategory3
+// Hits with damage bits push with a fixed strength and use their own damage type.
+void TargetableA::OnHitCategory3(EntityHitRecord& hit)
+{
+    constexpr uint32_t kType_EnvironmentBits = 0x044DC6ABu;   // NOTE: name unknown
+    if (environmentCooldown > 0.0f)
+        return;
+    environmentCooldown = 0.25f;
+    if (!ReceiveHit(hit))
+        return;
+    if (hit.damageBits != 0)
+        hit.data.knock.knockback = 20.0f;
+    const PropDamageSettings& settings = Def()->damage;
+    if (IsPushable(rigidBody) && hit.data.knock.knockback != 0.0f && settings.environmentPush != 0.0f)
+        RigidBodyApplyImpulse(rigidBody, Scaled(hit.vec10, hit.data.knock.knockback * settings.environmentPush));
+    if (settings.environmentScale > 0.0f)
+        propdamage::SetFatal(hit, Damage(hit.data.knock.amount * settings.environmentScale, hit.source,
+                                         hit.damageBits != 0 ? kType_EnvironmentBits : kType_Environment));
+}
+
 // @func 0x001856B0 TargetableA::OnHitCategory4
 // The figure ignores its own projectiles and those of type-8 sources.
 void TargetableA::OnHitCategory4(EntityHitRecord& hit)
@@ -747,6 +785,27 @@ void CompoundEntity::OnHitCategory0(EntityHitRecord& hit)
                                   settings.collisionMax);
     propdamage::SetFatal(hit, Damage(amount, hit.source, kType_PhysicsImpact));
     hitHeading = int(HeadingTo(hit.vec10));
+}
+
+// @func 0x0016F730 CompoundEntity::OnHitCategory1
+void CompoundEntity::OnHitCategory1(EntityHitRecord& hit)
+{
+    constexpr uint32_t kDef_MarksBuff = 0x659234F5u;   // NOTE: definition name unknown
+    if (hit.source && hit.source->def && hit.source->def->nameHash == kDef_MarksBuff)
+        buffFlags |= 0x800000;
+    const PropDamageSettings& settings = DamageSettings();
+    propdamage::ApplyImpact(*this, rigidBody, settings, hit);
+    if (settings.impactScale > 0.0f)
+        hitHeading = int(HeadingTo(hit.vec10));
+}
+
+// @func 0x0016FA70 CompoundEntity::OnHitCategory2
+void CompoundEntity::OnHitCategory2(EntityHitRecord& hit)
+{
+    const PropDamageSettings& settings = DamageSettings();
+    propdamage::ApplyBlast(*this, rigidBody, settings, hit, false);
+    if (settings.blastScale > 0.0f)
+        hitHeading = int(HeadingTo(hit.vec10));
 }
 
 // @func 0x001702C8 CompoundEntity::OnHitCategory4
@@ -947,6 +1006,26 @@ void TargetableCBase::OnHitCategory0(EntityHitRecord& hit)
     } else if (amount > 0.0f) {
         propdamage::SetFatal(hit, Damage(amount, source, kType_PhysicsImpact));
     }
+}
+
+// @func 0x001FBC80 TargetableCBase::OnHitCategory1
+void TargetableCBase::OnHitCategory1(EntityHitRecord& hit)
+{
+    const TargetableDefC* d = Def();
+    if ((d->hitFlags & (1u << 29)) && (hit.damageBits & 0x1000))
+        return;
+    const float amount = hit.data.impact.damage * d->damage.impactScale;
+    if (!ReceiveHit(hit)) {
+        if (hit.flags & EntityHitRecord::kHit_Deferrable)
+            propdamage::SetFatal(hit, amount < health);
+        return;
+    }
+    const float strength = hit.data.impact.push;
+    if (IsPushable(rigidBody) && strength != 0.0f && d->damage.impactPush != 0.0f)
+        RigidBodyApplyImpulse(rigidBody, Scaled(hit.data.impact.direction, -strength * d->damage.impactPush));
+    if (amount > 0.0f)
+        propdamage::SetFatal(hit, Damage(amount, hit.source, kType_Melee));
+    RecordMeleeHit(this, hit);
 }
 
 // @func 0x001FBF80 TargetableCBase::OnHitCategory2

@@ -48,6 +48,10 @@ struct PropDamageSettings {
 namespace propdamage {
 void Collision(ScriptedEntity& self, const PropDamageSettings& settings, EntityHitRecord& hit);
 void Impact(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit);
+// The reactions of Impact and Blast without the ReceiveHit check.
+void ApplyImpact(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit);
+void ApplyBlast(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit,
+                bool positiveOnly);
 // `positiveOnly`: hurt only when the computed damage is positive
 // (otherwise whenever the scale is).
 void Blast(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit,
@@ -336,6 +340,8 @@ public:
     virtual bool CanBeDamaged() const;
     // Physics impacts can kill outright (see TargetableDefC::hitFlags).
     void OnHitCategory0(EntityHitRecord& hit) override;
+    // Impacts; with definition flag 29 those carrying damage bit 12 are ignored.
+    void OnHitCategory1(EntityHitRecord& hit) override;
     void OnHitCategory2(EntityHitRecord& hit) override;
     void OnHitCategory3(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
@@ -440,7 +446,10 @@ public:
     ape::Vec3 GetAimPoint() override;                 // slot 71
     bool CanBeDamaged() const override;               // slot 82
     void OnHitCategory0(EntityHitRecord& hit) override;
+    // Impacts and environment hits count at most once per 0.25 s each.
+    void OnHitCategory1(EntityHitRecord& hit) override;
     void OnHitCategory2(EntityHitRecord& hit) override;
+    void OnHitCategory3(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
     float ProjectileDamageScale() const override;     // slot 89
     // Slot 94: enters a state of layer 0 and records it.
@@ -479,6 +488,8 @@ public:
     ape::world::ApeObj* object_530 = nullptr; // 0x530 counted
     ape::ApeTArray<void*> field_678;         // 0x678
     HkArray<void*> field_68C;                // 0x68C
+    float impactCooldown = 0.0f;             // 0x64C
+    float environmentCooldown = 0.0f;        // 0x650
     ScriptedEntity* healthSource = nullptr;  // 0x6A8 NOTE: health is mirrored from it in mode 1
     int32_t healthMode = 0;                  // 0x6AC
     // Slot 79: in mode 1 the health goes to the source entity and is copied back.
@@ -524,6 +535,11 @@ public:
     bool CanBeDamaged() const override;               // slot 82
     // Collisions and projectiles also record the direction they came from.
     void OnHitCategory0(EntityHitRecord& hit) override;
+    // Impacts (without the ReceiveHit check) also mark hits from the
+    // 0x659234F5 definition in the buff flags (bit 23).
+    void OnHitCategory1(EntityHitRecord& hit) override;
+    // Blasts, without the ReceiveHit check.
+    void OnHitCategory2(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
     float ProjectileDamageScale() const override;     // slot 89
     // Heading (degrees, 0..360) from the entity to a hit position.
