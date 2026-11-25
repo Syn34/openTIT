@@ -169,6 +169,14 @@ bool ListenerIgnoresDamage(EntityListener* listener);
 void GameWorldPlayerDamaged(uint32_t player);
 void GameWorldNpcDamaged(Entity* entity);
 
+// What an attacking entity (type bit 1) last went for (+0x174).
+Entity* AttackTargetOf(Entity* attacker);
+// Scoring component (type 0x28): its value (+0x18) and paying it out (0x002B21D8).
+float ScoringValue(EntityComponent* scoring);
+void ScoringAward(EntityComponent* scoring, int points, bool flag);
+// Score counter of a player's entity (+0x1D0 of the player 0 entity at game world +0x1078).
+void AddPlayerScore(uint32_t player, int points);
+
 // -- entities ---------------------------------------------------------------------
 // Plays a director script on the entity (0x000DCD20 with 0, 1).
 void EntityPlayDirectorScript(Entity* entity, uint32_t script);

@@ -23,6 +23,18 @@ void ReleaseCollisionShape(void* shape);
 class RigidPropDef : public ScriptedEntityDef {
 public:
     ~RigidPropDef() override;
+    // Damage taken and push applied per hit category (0 = none). NOTE: filled
+    // by the definition parser (0x001668B4, not ported).
+    float impactScale = 0.0f;          // 0xC4 category 1 damage
+    float impactPush = 0.0f;           // 0xC8 category 1 push
+    float blastScale = 0.0f;           // 0xCC category 2 damage
+    float blastPush = 0.0f;            // 0xD0 category 2 push
+    float collisionScale = 0.0f;       // 0xD4 category 0, per unit of speed
+    float collisionThreshold = 0.0f;   // 0xD8 speed below which nothing happens
+    float collisionMax = 0.0f;         // 0xDC
+    float environmentScale = 0.0f;     // 0xE0 category 3 damage
+    float environmentPush = 0.0f;      // 0xE4 category 3 push
+    float projectileScale = 0.0f;      // 0xE8 category 4 damage
     uint8_t targetingFlags[6] = {};    // 0x104 ("targetingFlags", one per interaction kind)
     void* collisionShape = nullptr;    // 0x10C
 };
@@ -31,7 +43,45 @@ public:
 // constructor 0x001676F8 builds its rigid body from the definition's shape).
 class RigidProp : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
+    // Prop states (+0x18C, slot 99). NOTE: names from the transitions.
+    enum PropState : int32_t {
+        kProp_None = 0,
+        kProp_Dynamic = 1,      // the body is in the physics world
+        kProp_Removed = 4,      // states 2-4: the body left the world
+        kProp_Destroyed = 7,    // health ran out
+    };
+
     ~RigidProp() override;
+    bool Release(bool kill) override;                         // slot 10
+    void SetFlag80(bool on) override;                         // slot 23
+    void HandleMessage(const EntityMessage& msg) override;    // slot 43
+    // Slot 35: linear velocity of the body (zero without one).
+    virtual ape::Vec3 GetVelocity();
+    // Slot 71: centre of mass of the body, the position without one.
+    virtual ape::Vec3 GetMassCenter();
+    // Slot 82: some hit category can hurt the prop.
+    virtual bool CanBeDamaged() const;
+    void OnHitCategory0(EntityHitRecord& hit) override;
+    void OnHitCategory1(EntityHitRecord& hit) override;
+    void OnHitCategory2(EntityHitRecord& hit) override;
+    void OnHitCategory3(EntityHitRecord& hit) override;
+    void OnHitCategory4(EntityHitRecord& hit) override;
+    bool Damage(float amount, Entity* source, uint32_t type) override;   // slot 88
+    // Slot 89: damage scale of projectiles.
+    virtual float ProjectileDamageScale() const;
+    // Slot 99: moves the body in or out of the physics world (0x00167570).
+    virtual void SetPropState(int32_t state, uint32_t arg);
+
+    void* rigidBody = nullptr;           // 0x184 Havok rigid body
+    void* bodyAction = nullptr;          // 0x188 NOTE: added to the world with the body
+    int32_t propState = kProp_None;      // 0x18C PropState
+    uint32_t field_190 = 0;              // 0x190 cleared when the body enters the world
+    uint32_t field_194 = 0;              // 0x194
+    Entity* interactor = nullptr;        // 0x198 NOTE: refused as interaction partner of kind 0
+    uint32_t collisionGroup = 0;         // 0x19C
+    uint8_t field_1C0 = 0;               // 0x1C0 cleared when the body leaves the world
+    uint8_t field_1C1 = 0;               // 0x1C1
+    uint32_t field_1C4 = 0;              // 0x1C4
     // Both answer with the definition's targeting flag for the kind.
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
