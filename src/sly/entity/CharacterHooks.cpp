@@ -63,7 +63,9 @@ void AttachAnimScript(ape::ApeAnimScriptInstance* instance) { (void)instance; }
 void PlayerBlockDisguiseEnded(uint32_t player) { (void)player; }
 Entity* AttackTargetOf(Entity* attacker) { (void)attacker; return nullptr; }
 float ScoringValue(EntityComponent* scoring) { (void)scoring; return 0.0f; }
-void ScoringAward(EntityComponent* scoring, int points, bool flag) { (void)scoring; (void)points; (void)flag; }
+void ScoringAward(EntityComponent* scoring, int points, int multiplier) { (void)scoring; (void)points; (void)multiplier; }
+bool ScoringPaid(EntityComponent* scoring) { (void)scoring; return false; }
+void ScoringSetPaid(EntityComponent* scoring) { (void)scoring; }
 void AddPlayerScore(uint32_t player, int points) { (void)player; (void)points; }
 void MinigameFigureRemoved(uint32_t model) { (void)model; }
 float EntityStateTime(Entity* entity, uint32_t layer) { (void)entity; (void)layer; return 0.0f; }

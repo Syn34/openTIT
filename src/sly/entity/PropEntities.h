@@ -485,6 +485,9 @@ public:
     // Slot 88: shares the first player's health; nothing hurts in states 2
     // and 11 (destroyed) or from type-8 sources and what they fired.
     bool Damage(float amount, Entity* source, uint32_t type) override;
+    // Slot 43: state changes by message; kills by the figure (or by what it
+    // fired) raise the combo and pay out the victim's score.
+    void HandleMessage(const EntityMessage& msg) override;
     void OnHitCategory0(EntityHitRecord& hit) override;
     // Impacts and environment hits count at most once per 0.25 s each.
     void OnHitCategory1(EntityHitRecord& hit) override;
@@ -531,7 +534,11 @@ public:
     ape::world::ApeObj* object_530 = nullptr; // 0x530 counted
     ape::ApeTArray<void*> field_678;         // 0x678
     HkArray<void*> field_68C;                // 0x68C
-    uint32_t field_670 = 0;                  // 0x670 cleared by damage
+    ape::Vec3 teleportTarget{};              // 0x630 sender position of the "teleport" message
+    uint32_t combo = 0;                      // 0x670 kills in a row, cleared by damage
+    int32_t comboScore = 0;                  // 0x674 NOTE: read on the player 0 entity
+    bool field_6A4 = false;                  // 0x6A4 set and cleared by messages
+    Entity* lastThrown = nullptr;            // 0x6B0 entity of type bit 13 this figure fired
     float impactCooldown = 0.0f;             // 0x64C
     float environmentCooldown = 0.0f;        // 0x650
     ScriptedEntity* healthSource = nullptr;  // 0x6A8 NOTE: health is mirrored from it in mode 1

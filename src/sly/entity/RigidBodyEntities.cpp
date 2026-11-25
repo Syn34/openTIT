@@ -877,13 +877,71 @@ bool TargetableA::Damage(float amount, Entity* source, uint32_t type)
         health = ClampHealth(lead->health, maxHealth);
     if (health > 0.0f) {
         ScriptedEntity::Damage(amount, source, type);
-        field_670 = 0;
+        combo = 0;
         if (health == 0.0f)
             SetTargetState(kState_Destroyed);
     }
     if (lead && lead != this)
         lead->health = ClampHealth(health, lead->maxHealth);
     return health > 0.0f;
+}
+
+// @func 0x0018E0C0 TargetableA::HandleMessage
+void TargetableA::HandleMessage(const EntityMessage& msg)
+{
+    constexpr uint32_t kMsg_Teleport = 0xDD92E72Bu;      // "teleport"
+    constexpr uint32_t kMsg_DE25AD64 = 0xDE25AD64u;      // NOTE: names unknown
+    constexpr uint32_t kMsg_Killed = 0xCCF83851u;
+    constexpr uint32_t kMsg_D88EEAE2 = 0xD88EEAE2u;
+    constexpr uint32_t kMsg_394E70AC = 0x394E70ACu;
+    constexpr uint32_t kComp_Scoring = 0x28;
+    Entity* sender = MessageSenderEntity(msg);
+    switch (msg.id) {
+    case kMsg_Teleport:
+        if (sender) {
+            teleportTarget = sender->Position();
+            SetTargetState(2);
+        }
+        break;
+    case kMsg_DE25AD64:
+        SetTargetState(3);
+        break;
+    case kMsg_KillOrder:
+        if (msg.argument == kKillOrder_All)
+            SetTargetState(7);
+        break;
+    case kMsg_Killed: {
+        if (!sender || !(sender->typeBits[0] & 0x2))
+            break;
+        // Something this figure fired counts as the figure.
+        Entity* killer = AttackTargetOf(sender);
+        if (killer && killer != this && (killer->typeBits[0] & 0x2000) &&
+            static_cast<PhysicalEntity*>(killer)->owner == this)
+            killer = this;
+        if (killer != this && (sender->typeBits[0] & 0x2000) && static_cast<PhysicalEntity*>(sender)->owner == this)
+            lastThrown = sender;
+        if (killer != this && !(killer && killer == lastThrown))
+            break;
+        ++combo;
+        EntityComponent* scoring = sender->GetComponent(kComp_Scoring);
+        if (!scoring || ScoringPaid(scoring))
+            break;
+        const int points = int(ScoringValue(scoring));
+        if (auto* lead = static_cast<TargetableA*>(PlayerEntity(0)))
+            lead->comboScore += points * int(combo / 10) + points;
+        ScoringAward(scoring, points, int(combo / 10) + 1);
+        ScoringSetPaid(scoring);
+        break;
+    }
+    case kMsg_D88EEAE2:
+        field_6A4 = true;
+        break;
+    case kMsg_394E70AC:
+        field_6A4 = false;
+        break;
+    default:
+        break;
+    }
 }
 
 // @func 0x0018E8E8 TargetableA::AddHealth

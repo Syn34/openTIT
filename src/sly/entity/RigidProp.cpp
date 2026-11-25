@@ -64,7 +64,7 @@ void RigidProp::HandleMessage(const EntityMessage& msg)
         return;
     if (EntityComponent* scoring = sender->GetComponent(kComp_Scoring)) {
         const int points = int(ScoringValue(scoring));
-        ScoringAward(scoring, points, true);
+        ScoringAward(scoring, points, 1);
         AddPlayerScore(0, points);
     }
 }
