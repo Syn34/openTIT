@@ -4,6 +4,12 @@
 
 #include "ape/core/ApeString.h"
 #include "sly/entity/Awards.h"
+#include "sly/entity/Entity.h"
+#include "sly/game/GameEvent.h"
+#include "sly/game/SpawnManager.h"
+#include "sly/game/WorldInterface.h"
+#include "sly/game/goals/Goal.h"
+#include "sly/game/goals/GoalHooks.h"
 #include "sly/tuning/GoalTuning.h"
 
 #include <cstring>
@@ -605,6 +611,107 @@ float JobManager::SafePercent(const PlayerProgress* progress) const
     }
     return withSafe ? (static_cast<float>(opened) / withSafe) * 100.0f : 0.0f;
 }
+
+// @func 0x002E57A8 JobManager::TotalMaskCount
+int JobManager::TotalMaskCount() const
+{
+    int count = 0;
+    for (uint32_t i = 0; i < jobCount; ++i) {
+        if (jobs[i].active)
+            count += CountRecordsOf(g_masks, IndexOfId(jobs[i].field_2D4));
+    }
+    return count;
+}
+
+// @func 0x002E4ED0 JobManager::IsJobCharacter
+bool JobManager::IsJobCharacter(const entity::Entity* entity, const Episode* job) const
+{
+    constexpr uint64_t kClass_SlyDisguise = 0x20;   // NOTE: Entity::classBits bit 5
+    if (!entity || !entity->IsAlive())
+        return false;
+    const uint32_t name = entity->def ? entity->def->nameHash : 0;
+    if (name == 0 || !job || job->associatedDef == 0)
+        return false;
+    if (job->associatedDef == 0x00014120u && (entity->classBits & kClass_SlyDisguise))
+        return true;
+    return CharacterMatches(job->associatedDef, name);
+}
+
+// @func 0x002E5180 JobManager::OnGameEvent
+void JobManager::OnGameEvent(int player, const GameEvent& e)
+{
+    (void)player;
+    constexpr uint32_t kFlag_ClearingGoals = 1u << 30;
+    constexpr uint32_t kGroup_Penguin = 0x021D9F0Cu;        // "Penguin"
+    constexpr uint32_t kHit_Projectile = 0xA77EB5E9u;       // "Projectile"
+    constexpr uint32_t kCharacter_Carmelita = 0xDF0611F9u;
+    constexpr uint32_t kTrophy_Penguins = 0xADE2B55Bu;
+    constexpr uint64_t kClass_Player = 0x1;
+
+    if (!(flags & kFlag_ClearingGoals)) {
+        if (e.type == kEvent_03)
+            field_54 = static_cast<uint32_t>(e.arg0);
+        for (uint32_t i = 0; i < PlayerGoalCount(); ++i) {
+            Goal* goal = PlayerGoalListAt(i);
+            if ((goals::JobGoalSaveWord(goal->job, goal->saveSlot) >> 28) == goals::kGoal_Active && IsGoalLive(goal))
+                goal->Update(0, e);
+        }
+        field_54 = 0;
+    }
+
+    if (e.type != kEvent_01 || e.groupId != kGroup_Penguin || e.arg0 == 0)
+        return;
+    const auto* shooter = reinterpret_cast<const entity::Entity*>(e.arg0);
+    if (!(shooter->classBits & kClass_Player))
+        return;
+    const uint32_t name = shooter->def ? shooter->def->nameHash : 0;
+    if (name != kCharacter_Carmelita || e.arg1 != kHit_Projectile)
+        return;
+    PlayerProgress& progress = CurrentProgress();
+    if (progress.penguinsShot == 0xFF)
+        return;
+    ++progress.penguinsShot;
+    if (progress.penguinsShot >= g_gameEpisodePenguinAwardNumPenguins)
+        AwardTrophyByName(kTrophy_Penguins);
+}
+
+// @func 0x002E6A88 JobManager::RecordArcadeScore
+void JobManager::RecordArcadeScore(int table, int rank) const
+{
+    constexpr uint32_t kTrophy_FirstHighScore = 0x08047E80u;   // "HIGHSCOREFirst"
+    constexpr uint32_t kTrophy_AllHighScores = 0x2480DD71u;    // "HIGHSCOREAll"
+    if (rank >= g_gameEpisodeArcadeAwardScoreIndex)
+        return;
+    PlayerProgress& progress = CurrentProgress();
+    progress.arcade[table].beaten = 1;
+    uint32_t beaten = 0;
+    for (const PlayerProgress::ArcadeScores& scores : progress.arcade)
+        beaten += scores.beaten;
+    if (beaten != 0)
+        AwardTrophyByName(kTrophy_FirstHighScore);
+    if (beaten > 5)
+        AwardTrophyByName(kTrophy_AllHighScores);
+}
+
+namespace {
+CollectibleRecord* RecordOfSpawnPoint(ape::ApeTSortedMap<CollectibleRecord*>& table, const entity::Entity* entity)
+{
+    if (!entity || !entity->field_DC)
+        return nullptr;
+    const auto* spawner = static_cast<const Spawner*>(entity->field_DC);
+    const uint32_t key = spawner->spawnPoint ? WorldObjectKey(spawner->spawnPoint) : 0;
+    if (key == 0)
+        return nullptr;
+    CollectibleRecord** record = table.Find(key);
+    return record ? *record : nullptr;
+}
+} // namespace
+
+// @func 0x002E696C TreasureRecordOf
+CollectibleRecord* TreasureRecordOf(const entity::Entity* entity) { return RecordOfSpawnPoint(g_treasures, entity); }
+
+// @func 0x002E69D4 SafeRecordOf
+CollectibleRecord* SafeRecordOf(const entity::Entity* entity) { return RecordOfSpawnPoint(g_safes, entity); }
 
 } // namespace game
 } // namespace sly

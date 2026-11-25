@@ -12,7 +12,9 @@
 
 namespace sly {
 class Spawner;
+struct GameEvent;
 namespace goals { class Goal; }
+namespace entity { class Entity; }
 
 namespace game {
 using goals::Goal;
@@ -41,12 +43,20 @@ struct PlayerProgress {
     uint8_t entityBits[kEpisodeSlots] = {};   // +0x094 per episode: entities of the index table found
     uint16_t jobBits[kEpisodeSlots] = {};     // +0x07C one bit per treasure (Job::bitGroup)
     uint32_t field_A0 = 0;           // +0x0A0 value of the running job (job +0x32C)
+    uint8_t penguinsShot = 0;        // +0x147 penguins Carmelita shot (stops at 0xFF)
     uint8_t field_149 = 0;           // +0x149 NOTE: a yes/no option
     uint32_t field_14C = 0;          // +0x14C
     uint8_t inJob = 0;               // +0x150 1 while a job runs
     uint32_t currentJobValue = 0;    // +0x154 job record +0x2D4 of the running job
     EpisodeProgress episodes[kEpisodeSlots];  // +0x1A0
     uint8_t jobStates[0x100] = {};   // +0x1D0 JobState by Episode::index. NOTE: count assumed
+    // Arcade high score tables (0x2C bytes each from +0x288); only the first
+    // byte (a high enough score was reached) is read here.
+    struct ArcadeScores {
+        uint8_t beaten = 0;
+        uint8_t rest[0x2B] = {};
+    };
+    ArcadeScores arcade[64];         // +0x288
     uint32_t unlockBits[2] = {};     // +0xF64 40 unlock flags
     uint32_t abilityBits[1] = {};    // +0xFB0 two bits per ability (see PlayerAbilities.h)
 };
@@ -352,6 +362,19 @@ public:
     float MaskPercent(const PlayerProgress* progress) const;
     float TreasurePercent(const PlayerProgress* progress) const;
     float SafePercent(const PlayerProgress* progress) const;
+    // Masks of every active episode (0x002E57A8).
+    int TotalMaskCount() const;
+    // `entity` (alive) is the character `job` is played with (Sly also
+    // matches entities with class bit 5) (0x002E4ED0).
+    bool IsJobCharacter(const entity::Entity* entity, const Episode* job) const;
+    // Passes a game event to the active goals of the running job (unless the
+    // goals are being cleared) and counts the penguins Carmelita shoots for
+    // the trophy (0x002E5180).
+    void OnGameEvent(int player, const GameEvent& e);
+    // Records a score of `rank` on arcade table `table`: a top score (rank
+    // below the award index) marks the table; the first and the sixth tables
+    // marked award trophies (0x002E6A88).
+    void RecordArcadeScore(int table, int rank) const;
     // Ends the running job instance, first updating its episode's flag 0x20
     // (0x002E5060).
     void FinishJobInstance();
@@ -434,6 +457,10 @@ struct MovieEntry {
     char text[0x20] = {};            // +0x08
 };
 ape::ApeTSortedMap<MovieEntry*>& MovieEntries();     // 0x010681E4
+// Treasure / safe record of the spawner that placed `entity` (its spawn
+// point's key), or null (0x002E696C / 0x002E69D4).
+CollectibleRecord* TreasureRecordOf(const entity::Entity* entity);
+CollectibleRecord* SafeRecordOf(const entity::Entity* entity);
 // Movie entry of a movie file name hash, or null (0x002E2D44).
 MovieEntry* FindMovieEntry(uint32_t key);
 // Job value of the running level: the level's own, else (while the
