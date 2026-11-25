@@ -89,7 +89,8 @@ public:
     void SetShadowParams(uint32_t unused, uint32_t a, uint32_t b, bool recurse);
     void SetLodField(uint32_t value);
     bool IsDrawnThisFrame() const;
-    void SetFrameStamp(uint32_t stamp) { m_frameStamp[g_renderWriteBuffer & 1] = stamp; }
+    // @func 0x007A99F8 ApeRenderObj::SetFrameStamp
+    void SetFrameStamp(uint32_t stamp) override { m_frameStamp[g_renderWriteBuffer & 1] = stamp; }
     void RemoveFromDynamicList();
     bool IsDynamic() const { return (m_flags141 & 0x02) != 0; }
     uint8_t GetDrawMode() const { return m_drawMode; }
