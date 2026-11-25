@@ -233,6 +233,10 @@ public:
     float springStiffness = 0.0f;  // +0x180
     float springDamping = 0.0f;    // +0x184
     float animSpeed = 1.0f;        // +0x188
+    // Meter elements: owner (+0xA8, overlaying the text of other kinds) and
+    // the flag byte +0xC0 (bit 5 switches the meter's script variant).
+    uint32_t meterOwner = 0;
+    uint8_t meterFlagsC0 = 0;
     uint32_t updateFlags = 0;      // +0xD0 bit 31 cleared by ResetUpdateFlags()
     float targetValue = 0.0f;      // +0xD8
     float shownValue = 0.0f;       // +0xDC
@@ -257,6 +261,7 @@ struct HudManagerState {
     uint32_t fallbackType200Name = 0;            // 0x00F64D10
     HudObject* meterA = nullptr;                 // 0x00F64CB8
     HudObject* meterB = nullptr;                 // 0x00F64CBC
+    ape::ApeTArray<HudObject*> meters;           // 0x0106C280 every meter element
     ape::ApeTArray<HudObject*> stacks[kAnchor_Count];   // 0x0106C2D4 elements per corner
 };
 
@@ -345,6 +350,12 @@ void RequestScreen(bool skip, const char* name);                     // 0x003696
 void SetPowMeterPrefix(const char* prefix);                          // 0x00369CAC
 void SnapMeterA();                                                   // 0x00369D58
 void SnapMeterB();                                                   // 0x00369658
+// Meter B's anim script state for on/off (0x003697E0) and its variant
+// flag (0x00369874).
+void SetMeterBState(bool on);
+void SetMeterBVariant(bool on);
+// 0x00369BC8: snaps the meter of `owner` to its target value.
+void SnapMeterOf(uint32_t owner);
 void ResetUpdateFlags();                                             // 0x00369500
 bool AnyUpdatingElementVisible();                                    // 0x003695A0
 

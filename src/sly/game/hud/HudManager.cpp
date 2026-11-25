@@ -781,6 +781,41 @@ void SnapMeterB()
         meter->shownValue = meter->targetValue;
 }
 
+namespace {
+void SetVisibleMeterState(HudObject* meter, uint32_t state)
+{
+    if (meter && meter->object && meter->object->IsVisible() && meter->animScript)
+        static_cast<ape::ApeAnimScriptInstance*>(meter->animScript)->SetStateAndUpdate(state);
+}
+} // namespace
+
+// @func 0x003697E0 hud::SetMeterBState
+void SetMeterBState(bool on)
+{
+    SetVisibleMeterState(Hud().meterB, on ? 0xDCDC6875u : 0x019A6705u);   // NOTE: state names unknown
+}
+
+// @func 0x00369874 hud::SetMeterBVariant
+void SetMeterBVariant(bool on)
+{
+    HudObject* meter = Hud().meterB;
+    if (!meter)
+        return;
+    meter->meterFlagsC0 = uint8_t((meter->meterFlagsC0 & ~0x20u) | (on ? 0x20u : 0u));
+    SetVisibleMeterState(meter, on ? 0xDBDDDABDu : 0x009BD94Du);   // NOTE: state names unknown
+}
+
+// @func 0x00369BC8 hud::SnapMeterOf
+void SnapMeterOf(uint32_t owner)
+{
+    for (HudObject* meter : Hud().meters) {
+        if (meter->meterOwner == owner) {
+            meter->shownValue = meter->targetValue;
+            return;
+        }
+    }
+}
+
 // @func 0x00369500 hud::ResetUpdateFlags
 void ResetUpdateFlags()
 {
