@@ -445,6 +445,9 @@ public:
     ape::Vec3 GetVelocity() override;                 // slot 35
     ape::Vec3 GetAimPoint() override;                 // slot 71
     bool CanBeDamaged() const override;               // slot 82
+    // Slot 88: shares the first player's health; nothing hurts in states 2
+    // and 11 (destroyed) or from type-8 sources and what they fired.
+    bool Damage(float amount, Entity* source, uint32_t type) override;
     void OnHitCategory0(EntityHitRecord& hit) override;
     // Impacts and environment hits count at most once per 0.25 s each.
     void OnHitCategory1(EntityHitRecord& hit) override;
@@ -488,6 +491,7 @@ public:
     ape::world::ApeObj* object_530 = nullptr; // 0x530 counted
     ape::ApeTArray<void*> field_678;         // 0x678
     HkArray<void*> field_68C;                // 0x68C
+    uint32_t field_670 = 0;                  // 0x670 cleared by damage
     float impactCooldown = 0.0f;             // 0x64C
     float environmentCooldown = 0.0f;        // 0x650
     ScriptedEntity* healthSource = nullptr;  // 0x6A8 NOTE: health is mirrored from it in mode 1
@@ -541,6 +545,9 @@ public:
     // Blasts, without the ReceiveHit check.
     void OnHitCategory2(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
+    // Slot 88: the Bentleys of both players share the first player's health;
+    // nothing hurts while a timed buff runs or from type-10 sources.
+    bool Damage(float amount, Entity* source, uint32_t type) override;
     float ProjectileDamageScale() const override;     // slot 89
     // Heading (degrees, 0..360) from the entity to a hit position.
     float HeadingTo(const ape::Vec3& point) const;
@@ -571,6 +578,7 @@ public:
     float pulseFrequency = 0.0f;   // 0x2CC
     uint32_t skinLevel = 0;        // 0x2D0
     uint32_t skinCount = 0;        // 0x2D8
+    uint32_t field_2EC = 0;        // 0x2EC cleared by damage
     int32_t playerIndex = 0;       // 0x304 player this Bentley belongs to
     // Slot 79: the second player's Bentley shares the first player's health.
     void AddHealth(float amount) override;

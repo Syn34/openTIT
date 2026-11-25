@@ -10,7 +10,11 @@
 #include "sly/entity/EntityHits.h"
 #include "sly/entity/GameEntityHooks.h"
 #include "sly/entity/EntityHooks.h"
+#include "sly/entity/PhysicalEntity.h"
+#include "sly/gameplay/GameplayWorld.h"
+#include "sly/gameplay/Minigame.h"
 #include "ape/anim/ApeAnimScript.h"
+#include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
 #include "sly/entity/CharacterHooks.h"
@@ -733,6 +737,41 @@ void CompoundEntity::AddHealth(float amount)
     health = ClampHealth(lead->health, maxHealth);
 }
 
+// @func 0x001857A0 TargetableA::Damage
+bool TargetableA::Damage(float amount, Entity* source, uint32_t type)
+{
+    constexpr int kState_Destroyed = 11;
+    constexpr uint32_t kVar_LastAttackerDef = 0xC493B59Du;   // NOTE: name unknown
+    if (GetTargetState() == kState_Destroyed)
+        return false;
+    if (amount <= 0.0f || GetTargetState() == 2)
+        return true;
+    if (source && (source->typeBits[0] & kType_IgnoredByFigures))
+        return true;
+    if (source && (source->typeBits[0] & 0x2000)) {
+        Entity* owner = static_cast<PhysicalEntity*>(source)->owner;
+        if (owner && (owner->typeBits[0] & kType_IgnoredByFigures))
+            return true;
+    }
+    // The script learns which definition the attacker was built from.
+    ape::ApeAnimScriptVar* var = animScript ? animScript->FindVar(kVar_LastAttackerDef) : nullptr;
+    if (var && var->GetType() == ape::AnimScriptVarType::Int && source && (source->flags & kEnt_Alive))
+        static_cast<ape::ApeAnimScriptIntVar*>(var)->SetInt(int32_t(source->def ? source->def->nameHash : 0));
+
+    auto* lead = static_cast<ScriptedEntity*>(PlayerEntity(0));
+    if (lead && lead != this)
+        health = ClampHealth(lead->health, maxHealth);
+    if (health > 0.0f) {
+        ScriptedEntity::Damage(amount, source, type);
+        field_670 = 0;
+        if (health == 0.0f)
+            SetTargetState(kState_Destroyed);
+    }
+    if (lead && lead != this)
+        lead->health = ClampHealth(health, lead->maxHealth);
+    return health > 0.0f;
+}
+
 // @func 0x0018E8E8 TargetableA::AddHealth
 void TargetableA::AddHealth(float amount)
 {
@@ -744,6 +783,36 @@ void TargetableA::AddHealth(float amount)
         return;
     healthSource->AddHealth(amount);
     health = ClampHealth(healthSource->health, maxHealth);
+}
+
+// @func 0x00170418 CompoundEntity::Damage
+bool CompoundEntity::Damage(float amount, Entity* source, uint32_t type)
+{
+    if (amount <= 0.0f)
+        return true;
+    const uint32_t oldFlags = buffFlags;
+    field_2EC = 0;
+    buffFlags |= 0x4000000;
+    if (source && (source->typeBits[0] & 0x400))
+        return true;
+    if (oldFlags & 0x2000000)
+        return health > 0.0f;
+
+    auto* lead = static_cast<ScriptedEntity*>(PlayerEntity(0));
+    if (lead && lead != this)
+        health = ClampHealth(lead->health, maxHealth);
+    if (health >= 0.0f) {
+        ScriptedEntity::Damage(amount, source, type);
+        if (health == 0.0f) {
+            SetPropState(12, 0);
+            gameplay::Minigame* minigame = gameplay::ActiveMinigame();
+            if (minigame && (minigame->flags1C & 0x20))
+                minigame->field_105 = 0;
+        }
+    }
+    if (lead && lead != this)
+        lead->health = ClampHealth(health, lead->maxHealth);
+    return health > 0.0f;
 }
 
 // @func 0x0016F04C CompoundEntity::SetFlag80
