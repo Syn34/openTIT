@@ -79,5 +79,7 @@ bool PadButtonPressed(void* pad, uint32_t mask) { (void)pad; (void)mask; return 
 bool IsGameTimeFrozen() { return false; }
 bool IsShooterSplineForcedToEnd() { return false; }
 
+void DebugDrawSpline(ape::world::ApeObj* spline, const uint8_t color[4]) { (void)spline; (void)color; }
+
 } // namespace camera
 } // namespace sly

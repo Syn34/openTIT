@@ -14,7 +14,7 @@
 #include <cstdint>
 
 namespace sly {
-namespace entity { class Entity; class GameCamera; }
+namespace entity { class Entity; class EntityComponent; class GameCamera; }
 
 namespace camera {
 
