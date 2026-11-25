@@ -92,6 +92,7 @@ void PlayCharacterFx(EntityComponent* component, uint32_t fx, float length, floa
 float SkinRate(EntityComponent* skin) { (void)skin; return 0.0f; }
 void SkinSetRate(EntityComponent* skin, float rate) { (void)skin; (void)rate; }
 void SkinSetScale(EntityComponent* skin, float scale) { (void)skin; (void)scale; }
+float SkinShotInterval(EntityComponent* skin) { (void)skin; return 0.0f; }
 float SkinComputeRate(EntityComponent* skin) { (void)skin; return 0.0f; }
 void SkinSetLevel(EntityComponent* skin, uint32_t level) { (void)skin; (void)level; }
 int32_t SkinVariant(EntityComponent* skin) { (void)skin; return 0; }

@@ -468,7 +468,8 @@ public:
     bool holdWrap = false;         // 0x239
 };
 
-// vtable 0x00B17270 (0x360 bytes).
+// Gadget turret (vtable 0x00B17270, 0x360 bytes; entity type bit 57).
+// NOTE: identified from the turret hooks of the level scripts.
 class SoundActorB17270 : public SoundActor {
 public:
     ~SoundActorB17270() override;
@@ -497,11 +498,28 @@ public:
     // Layer 1 in state 2 plays the struck state 0x803E1667 (unless
     // invulnerable); otherwise layer 1 goes to state 2 and layer 2 to 0.
     void OnStruck();
+    // Wanted aim direction towards `point` from the aim origin.
+    void AimAt(const ape::Vec3& point);
+    // The current aim has reached the wanted direction.
+    bool IsAimed() const;
+    // Shots past the first wait the weapon's interval each (+0x1F4).
+    void ResetAim();
+    // Adds a target (counted reference).
+    void AddTarget(Entity* target);
+    // Lets go of every target and keeps only `target` (if any).
+    void SetOnlyTarget(Entity* target);
 
+    float shotDelay = 0.0f;                   // 0x1F4 NOTE: set by ResetAim
+    ape::Vec3 aimOrigin{};                    // 0x260
+    ape::Vec3 wantedAim{};                    // 0x2C0 unit direction
+    ape::Vec3 currentAim{};                   // 0x2D0 unit direction
+    EntityComponent* weapon = nullptr;        // 0x2E0 skin component; its +0x4D0 is the shot interval
     Entity* linked = nullptr;                 // 0x2F0 released on kill
     float field_2FC = 0.0f;                   // 0x2FC copied into the cool-down by slot 4
     float coolDown = 0.0f;                    // 0x314 slots 3 and 6 wait while positive
-    ape::ApeTArray<void*> field_32C;          // 0x32C emptied before it is freed
+    int32_t shotCount = 0;                    // 0x30C
+    uint32_t field_328 = 0;                   // 0x328 cleared by SetOnlyTarget
+    ape::ApeTArray<Entity*> targets;          // 0x32C counted references
     bool field_355 = false;                   // 0x355 NOTE: selects the alternative states
     bool engaged = false;                     // 0x356
     uint8_t flags357 = 0;                     // 0x357 bit 7 set by slot 4, cleared by slot 5

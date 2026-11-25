@@ -1,5 +1,6 @@
 // openTIT - Scripted actors (see ActorEntities.h).
 #include "sly/entity/ActorEntities.h"
+#include <cmath>
 
 #include "sly/entity/CharacterHooks.h"
 #include "sly/entity/EntityHooks.h"
@@ -763,6 +764,51 @@ void SoundActorB17270::OnHitCategory4(EntityHitRecord& hit)
         OnStruck();
 }
 
+// @func 0x001CF620 SoundActorB17270::AimAt
+void SoundActorB17270::AimAt(const ape::Vec3& point)
+{
+    const float dx = point.x - aimOrigin.x;
+    const float dy = point.y - aimOrigin.y;
+    const float dz = point.z - aimOrigin.z;
+    const float inv = 1.0f / std::sqrt(dz * dz + dx * dx + dy * dy);
+    wantedAim = { dx * inv, dy * inv, dz * inv, wantedAim.pad };
+}
+
+// @func 0x001CF690 SoundActorB17270::IsAimed
+bool SoundActorB17270::IsAimed() const
+{
+    return std::fabs(currentAim.x - wantedAim.x) < 1e-05f && std::fabs(currentAim.y - wantedAim.y) < 1e-05f &&
+           std::fabs(currentAim.z - wantedAim.z) < 1e-05f;
+}
+
+// @func 0x001CAA88 SoundActorB17270::ResetAim
+void SoundActorB17270::ResetAim()
+{
+    const float interval = weapon ? SkinShotInterval(weapon) : 0.0f;
+    if (shotCount > 1 && interval > 0.0f)
+        shotDelay = float(shotCount - 1) * interval;
+}
+
+// @func 0x001CC174 SoundActorB17270::AddTarget
+void SoundActorB17270::AddTarget(Entity* target)
+{
+    target->AddRef();
+    targets.PushBack(target);
+}
+
+// @func 0x001CC214 SoundActorB17270::SetOnlyTarget
+void SoundActorB17270::SetOnlyTarget(Entity* target)
+{
+    for (size_t i = 0; i < targets.Count(); ++i)
+        targets[i]->Release(false);
+    targets.Clear();
+    if (target) {
+        target->AddRef();
+        targets.PushBack(target);
+        field_328 = 0;
+    }
+}
+
 // @func 0x001CFDB0 SoundActorB17270::ResumeSequence
 void SoundActorB17270::ResumeSequence()
 {
@@ -798,7 +844,7 @@ SoundActorB16B48::~SoundActorB16B48() = default;
 // @func 0x001CC0F0 SoundActorB17270::~SoundActorB17270 (thunk, +0x17C)
 SoundActorB17270::~SoundActorB17270()
 {
-    field_32C.Clear();
+    targets.Clear();
 }
 
 // @func 0x001D1D94 SoundActorB174C0::~SoundActorB174C0

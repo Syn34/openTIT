@@ -226,6 +226,8 @@ float SkinRate(EntityComponent* skin);
 void SkinSetRate(EntityComponent* skin, float rate);
 void SkinSetScale(EntityComponent* skin, float scale);
 float SkinComputeRate(EntityComponent* skin);
+// Shot interval of a weapon skin component (+0x4D0).
+float SkinShotInterval(EntityComponent* skin);
 void SkinSetLevel(EntityComponent* skin, uint32_t level);
 int32_t SkinVariant(EntityComponent* skin);
 void SkinSetVariant(EntityComponent* skin, int32_t variant);
