@@ -368,7 +368,7 @@ void SoundActorB16B48::SetLight(bool on)
             } else if (!RigidBodyInWorld(body)) {
                 RigidBodyAddToWorld(body, ~0u);
                 ape::Matrix34 placed;
-                ActorPartTransform(this, placed, d->bodyParts[i], ape::world::kWorldIdentity);
+                PartTransform(placed, d->bodyParts[i], ape::world::kWorldIdentity);
                 RigidBodySetTransform(body, placed);
             }
         }
@@ -518,7 +518,7 @@ void SoundActorB16678::HandleMessage(const EntityMessage& msg)
         switchFlags &= ~0x20;
     else if (msg.id == kMsg_Lock)
         switchFlags |= 0x20;
-    ActorHandleMessageBase(this, msg);
+    ActorEntity::HandleMessage(msg);
 }
 
 namespace {
@@ -796,9 +796,9 @@ bool SoundActorB17270::Release(bool kill)
 }
 
 // @func 0x001CE8B0 SoundActorB17270::CanInteractWith
-bool SoundActorB17270::CanInteractWith(Entity* other, int kind)
+bool SoundActorB17270::CanInteractWith(Entity* other, int kind, float* priority)
 {
-    return kind == 0 && Entity::CanInteractWith(other, kind);
+    return kind == 0 && Entity::CanInteractWith(other, kind, priority);
 }
 
 // @func 0x001CEC8C SoundActorB17270::OnStruck
@@ -827,7 +827,7 @@ void SoundActorB17270::OnHitCategory4(EntityHitRecord& hit)
 // @func 0x001CC440 SoundActorB17270::SetTransform
 void SoundActorB17270::SetTransform(const ape::Matrix34& m)
 {
-    ActorSetTransformBase(this, m);
+    ActorEntity::SetTransform(m);
     baseTransform = m;
     aimFrame = baseTransform;
     ape::Vec3 aim = { aimFrame.zAxis.x, aimFrame.zAxis.y, aimFrame.zAxis.z, 0.0f };
@@ -1089,7 +1089,7 @@ void InteractivePropB::ApplyVisibility(bool visible)
 }
 
 // @func 0x001F6808 InteractivePropB::CanInteractWith
-bool InteractivePropB::CanInteractWith(Entity* other, int kind)
+bool InteractivePropB::CanInteractWith(Entity* other, int kind, float* priority)
 {
     constexpr uint32_t kVar_Usable = 0xDD61613Cu;   // NOTE: name unknown
     if (EntityGetState(this, 0) != 0 || !attached)
@@ -1099,7 +1099,7 @@ bool InteractivePropB::CanInteractWith(Entity* other, int kind)
         if (!var || var->GetType() != ape::AnimScriptVarType::Int || var->GetInt() == 0)
             return false;
     }
-    return ActorCanInteractWith(this, other, kind);
+    return ActorEntity::CanInteractWith(other, kind, priority);
 }
 
 // TODO(0x001F50E4 InteractivePropB::SpawnAttached)
@@ -1137,20 +1137,20 @@ ape::Vec3 InteractivePropC::GetAimPoint()
 }
 
 // @func 0x001E411C InteractivePropC::CanInteractWith
-bool InteractivePropC::CanInteractWith(Entity* other, int kind)
+bool InteractivePropC::CanInteractWith(Entity* other, int kind, float* priority)
 {
     if (kind == kInteract_Player && !(propFlags & 0x80) && other && (other->typeBits[0] & 0x08)) {
         EntityComponent* interaction = EntityInteraction(this);
         if (interaction && InteractionUsers(interaction) < 2 && CharacterCarried(other) != keyObject)
             return false;
     }
-    return ActorCanInteractWith(this, other, kind);
+    return ActorEntity::CanInteractWith(other, kind, priority);
 }
 
 // -- InteractivePropA --------------------------------------------------------------------
 
 // @func 0x001DC3A8 InteractivePropA::CanInteractWith
-bool InteractivePropA::CanInteractWith(Entity* other, int kind)
+bool InteractivePropA::CanInteractWith(Entity* other, int kind, float* priority)
 {
     if (kind == kInteract_Player && other && (other->classBits & 1)) {
         EntityComponent* interaction = EntityInteraction(this);
@@ -1165,7 +1165,7 @@ bool InteractivePropA::CanInteractWith(Entity* other, int kind)
                 return false;
         }
     }
-    return ActorCanInteractWith(this, other, kind);
+    return ActorEntity::CanInteractWith(other, kind, priority);
 }
 
 // @func 0x001DC504 InteractivePropA::InteractionBegin

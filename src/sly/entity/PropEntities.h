@@ -74,7 +74,8 @@ public:
     // Interaction kinds 0 and 4 of the props that can be picked up: kind 0
     // needs some damage reaction and refuses `refused`; other kinds fail.
     // NOTE: the console also multiplies the caller's score by 5 for kind 0.
-    bool CanBePickedUp(Entity* other, int kind, const PropDamageSettings& settings, const Entity* refused);
+    bool CanBePickedUp(Entity* other, int kind, const PropDamageSettings& settings, const Entity* refused,
+                       float* priority = nullptr);
     // Sets a body's linear velocity unless it is keyframed or fixed or out of the world.
     static void SetBodyVelocity(void* body, const ape::Vec3& velocity);
     // Slot 35: linear velocity of the body (zero without one).
@@ -133,7 +134,7 @@ public:
 
     ~RigidProp() override;
     bool Release(bool kill) override;                         // slot 10
-    void SetFlag80(bool on) override;                         // slot 23
+    void SetFlag80(bool on, int part = -1) override;                         // slot 23
     void HandleMessage(const EntityMessage& msg) override;    // slot 43
     // Slot 12: also turns the pivot of the world object 0x45A6A51A by `spin`.
     // NOTE: the object's name is unknown.
@@ -152,7 +153,7 @@ public:
     bool Damage(float amount, Entity* source, uint32_t type) override;   // slot 88
     float ProjectileDamageScale() const override;
     // Slot 76: only in the dynamic or destroyed states.
-    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;   // slot 76
     // Slot 99: moves the body in or out of the physics world (0x00167570).
     virtual void SetPropState(int32_t state, uint32_t arg);
 
@@ -197,7 +198,7 @@ public:
     // Sends an event to both anim scripts (0x0017A178).
     void SendScriptEvent(uint32_t event);
     bool Release(bool kill) override;                 // slot 10
-    void SetFlag80(bool on) override;                 // slot 23
+    void SetFlag80(bool on, int part = -1) override;                 // slot 23
     // Slot 99: 1 puts the body into the world, 4 takes it out (0x0017734C).
     virtual void SetAlterState(int32_t state);
     // Slots 27/28: gravity factor of the body while the physics world runs.
@@ -216,7 +217,7 @@ public:
     void OnHitCategory4(EntityHitRecord& hit) override;
     float ProjectileDamageScale() const override;     // slot 89
     // Slot 76: only in alter state 1; kind 4 needs a body with mass.
-    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;   // slot 76
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     const AlterEgoDef* Def() const { return static_cast<const AlterEgoDef*>(def); }
 
@@ -313,7 +314,7 @@ public:
     void OnSuspend() override;                        // slot 60
     void OnResume() override;                         // slot 61
     // Kind 0 is refused while the block is locked (+0x248 bit 15), kind 4 always.
-    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;   // slot 76
     // Killing drops the nav obstacle and the body.
     bool Release(bool kill) override;                 // slot 10
     // Slot 21: the body (in the world) follows, without waking its neighbours.
@@ -392,7 +393,7 @@ public:
     virtual float ProjectileDamageScale() const;
     // The flag takes the body (and its nav obstacle) out of the world;
     // clearing it puts the body of an active target back in place.
-    void SetFlag80(bool on) override;                 // slot 23
+    void SetFlag80(bool on, int part = -1) override;                 // slot 23
     // Nav obstacle for the body when slot 42 asks for one.
     void AddNavObstacle();
     // Slot 99: target state (bits 12-15 of targetFlags). 1 shows the entity
@@ -460,7 +461,7 @@ public:
     // Slot 96: called after a state change (0x001947B0, not ported).
     virtual void OnTargetStateChanged();
     // The body leaves the world with the flag and returns in state 2.
-    void SetFlag80(bool on) override;                 // slot 23
+    void SetFlag80(bool on, int part = -1) override;                 // slot 23
     // Slots 25/26: the collision group of the body (kept at +0x19C).
     uint32_t GetRenderId() override;
     void SetRenderId(uint32_t id) override;
@@ -478,7 +479,7 @@ public:
     Entity* refusedPartner = nullptr;        // 0x198 NOTE: refused for interactions of kind 0
     uint32_t collisionGroup = 0;             // 0x19C
     // Slot 76: only in state 2 or from state 8 on.
-    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;   // slot 76
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     // Empty override of the +0x17C interface's slot 5.
@@ -550,7 +551,7 @@ public:
     // Slot 96: called after a state change (not ported).
     virtual void OnTargetStateChanged();
     // The body leaves the world with the flag and returns in state 3.
-    void SetFlag80(bool on) override;                 // slot 23
+    void SetFlag80(bool on, int part = -1) override;                 // slot 23
     // Slot 25: the collision group of the body (kept at +0x19C).
     uint32_t GetRenderId() override;
     void* bodyAction = nullptr;              // 0x188
@@ -567,7 +568,7 @@ public:
     // @func 0x0018E380 TargetableA::Slot105
     virtual void Slot105() {}
     // Slot 76: only in state 3 or from state 11 on.
-    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;   // slot 76
     // Both answer with the definition's targeting flag for the kind.
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
@@ -630,7 +631,7 @@ public:
 
     ~CompoundEntity() override;
     bool Release(bool kill) override;                 // slot 10
-    void SetFlag80(bool on) override;                 // slot 23
+    void SetFlag80(bool on, int part = -1) override;                 // slot 23
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     bool CanBeDamaged() const override;               // slot 82

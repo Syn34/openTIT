@@ -27,6 +27,15 @@ HkaAnimationControl* HkNewDefaultControl(HkaAnimationBinding* binding, int32_t)
 void HkControlAddListener(HkaAnimationControl*, void*) {}
 // TODO(0x007CCD60 hkArray growth of m_defaultListeners)
 void HkControlPushListener(HkaAnimationControl*, void*) {}
+// TODO(0x00A45750 hkaAnimatedSkeleton::hkaAnimatedSkeleton)
+HkaAnimatedSkeleton* HkNewAnimatedSkeleton(const HkaSkeleton* skeleton)
+{
+    auto* animated = new HkaAnimatedSkeleton();
+    animated->skeleton = skeleton;
+    return animated;
+}
+// TODO(Havok hkaPose construction and setToReferencePose 0x00A56E68)
+HkaPose* HkNewReferencePose(const HkaSkeleton*) { return nullptr; }
 // TODO(0x007D4EA8 hkReferencedObject::removeReference)
 void HkRemoveReference(void*) {}
 // TODO(Havok hkaPose destructor and heap free)

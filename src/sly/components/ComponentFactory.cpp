@@ -1,4 +1,5 @@
 // openTIT - Component factory: builds a component from its description.
+#include "sly/components/AnimComponent.h"
 #include "sly/components/ComponentDescs.h"
 #include "sly/components/ComponentDescs2.h"
 #include "sly/components/Components.h"
@@ -28,6 +29,8 @@ EntityComponent* CreateComponent(ComponentDesc* desc)
     if (!desc)
         return nullptr;
     switch (desc->type) {
+    case kCompDesc_Anim:
+        return new AnimComponent(static_cast<AnimComponentDesc*>(desc));
     case kCompDesc_ContextualMarker:
         return new ContextualMarkerComponent(static_cast<ContextualMarkerComponentDesc*>(desc));
     case 0x05:

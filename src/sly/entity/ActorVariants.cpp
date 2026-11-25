@@ -30,10 +30,6 @@ ape::ApeAnimScriptInstance* ScriptOf(Entity* entity)
 }
 } // namespace
 
-// TODO(0x000E5E44 ActorEntity::HandleMessage)
-void ActorHandleMessageBase(ActorEntity* actor, const EntityMessage& msg) { actor->ScriptedEntity::HandleMessage(msg); }
-// TODO(0x000E5EF0 ActorEntity::SetTransform): only the entity transform.
-void ActorSetTransformBase(ActorEntity* actor, const ape::Matrix34& m) { actor->Entity::SetTransform(m); }
 
 // -- ActorGroup --------------------------------------------------------------------------
 
@@ -57,7 +53,7 @@ void ActorGroup::HandleMessage(const EntityMessage& msg)
             break;
         }
     }
-    ActorHandleMessageBase(this, msg);
+    ActorEntity::HandleMessage(msg);
 }
 
 // @func 0x001AABD8 ActorGroup::ResetState
@@ -78,7 +74,7 @@ void HitCounterActor::HandleMessage(const EntityMessage& msg)
 {
     if (msg.id == kMsg_CountHit && key != 0 && msg.argument == key)
         ++hits;
-    ActorHandleMessageBase(this, msg);
+    ActorEntity::HandleMessage(msg);
 }
 
 // @func 0x001AC0D4 HitCounterActor::OnHitCategory4
@@ -114,7 +110,7 @@ void WatchActor::HandleMessage(const EntityMessage& msg)
         EntitySetState(this, 0, 1);
         EntitySetState(this, 1, 0);
     }
-    ActorHandleMessageBase(this, msg);
+    ActorEntity::HandleMessage(msg);
 }
 
 // -- SignalActor -------------------------------------------------------------------------
@@ -128,7 +124,7 @@ void SignalActor::HandleMessage(const EntityMessage& msg)
         field_1D0 = 0;
         EntitySetState(this, 0, 2);
     }
-    ActorHandleMessageBase(this, msg);
+    ActorEntity::HandleMessage(msg);
 }
 
 // -- ScriptObjectActor -------------------------------------------------------------------
@@ -148,14 +144,14 @@ void ScriptObjectActor::HandleMessage(const EntityMessage& msg)
         }
         animScript->SetState(kMsg_Release);
     }
-    ActorHandleMessageBase(this, msg);
+    ActorEntity::HandleMessage(msg);
 }
 
 // @func 0x001BE858 ScriptObjectActor::CanInteractWith
-bool ScriptObjectActor::CanInteractWith(Entity* other, int kind)
+bool ScriptObjectActor::CanInteractWith(Entity* other, int kind, float* priority)
 {
     if ((mode >> 1) == 1 && kind == kInteract_Player)
-        return ActorCanInteractWith(this, other, kind);
+        return ActorEntity::CanInteractWith(other, kind, priority);
     return false;
 }
 

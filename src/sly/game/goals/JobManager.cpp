@@ -938,7 +938,7 @@ void JobManager::UpdatePendingStart()
             hud::HudObject* loading = hud::Find(kHud_Loading);
             if (!loading) {
                 pendingKind = 2;
-            } else if (!loading->gui || !hud::GuiIsPlaying(loading->gui)) {
+            } else if (!loading->object || !hud::ObjectVisible(loading->object)) {
                 hud::ShowTextByName(-1.0f, kHud_Loading, nullptr, true);
             } else {
                 const uint32_t state = loading->animState >> 1;

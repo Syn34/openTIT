@@ -194,7 +194,7 @@ public:
     ape::Vec3 GetUpVector() override;
     ape::Vec3 GetSideVector() override;
     uint32_t InteractionOffer(int kind, Entity* other) override;   // slot 74
-    bool CanInteractWith(Entity* other, int kind) override;        // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;        // slot 76
 
     // Starts the director script `scriptName` of the default library as the
     // character's script (+0x198), ending the current one first when a new

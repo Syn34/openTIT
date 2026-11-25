@@ -36,10 +36,8 @@ void ObjectApplyAlphaBuffer(ape::world::ApeObj* object, const void* buffer, uint
 void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value) { (void)object; (void)value; }
 void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity) { (void)list; (void)fn; (void)owner; (void)entity; }
 void GameWorldDequeueCallbacks(int list, void* owner) { (void)list; (void)owner; }
-void EntityApplyFade(Entity* entity, const uint8_t* fade, bool flag) { (void)entity; (void)fade; (void)flag; }
 // TODO(0x003F2990): minigame code outside the entity module.
 void MinigameTrackRewound() {}
-void ActorPartTransform(Entity* actor, ape::Matrix34& out, int part, const ape::Matrix34& local) { (void)actor; (void)part; out = local; }
 Entity* HitSourceOwner(Entity* source, HitOwnerKind kind) { (void)source; (void)kind; return nullptr; }
 bool ThrownBySelf(Entity* thrown, Entity* entity) { (void)thrown; (void)entity; return false; }
 void* HitOtherBody(const EntityHitRecord& hit) { (void)hit; return nullptr; }
@@ -80,7 +78,8 @@ Entity* InteractionUser(EntityComponent* interaction) { (void)interaction; retur
 int32_t InteractionUsers(EntityComponent* interaction) { (void)interaction; return 0; }
 Entity* CharacterCarried(Entity* character) { (void)character; return nullptr; }
 uint32_t PlayerBlockValue10D8(uint32_t player) { (void)player; return 0; }
-bool ActorCanInteractWith(Entity* actor, Entity* other, int kind) { (void)actor; (void)other; (void)kind; return true; }
+// TODO(0x002B92A0 CarryComponent::FreeSlot)
+int CarryCompFreeSlot(EntityComponent* carry) { (void)carry; return -1; }
 void GroupRecordSetCounter(void* record, uint32_t counter) { (void)record; (void)counter; }
 float PlayerBlockBusyTime(uint32_t player) { (void)player; return 0.0f; }
 void GameWorldDequeueSafeCallback(Entity* safe) { (void)safe; }

@@ -75,6 +75,38 @@ AnimLayer::~AnimLayer()
         HkRemoveReference(skeleton);
 }
 
+// @func 0x00350178 AnimLayer::Bind
+void AnimLayer::Bind(const HkaSkeleton* bones, bool force)
+{
+    if ((skeleton && !force) || !bones)
+        return;
+    if (pose) {
+        HkPoseDelete(pose);
+        pose = nullptr;
+    }
+    if (skeleton) {
+        control = nullptr;
+        HkRemoveReference(skeleton);
+    }
+    skeleton = HkNewAnimatedSkeleton(bones);
+    skeleton->referencePoseWeightThreshold = 0.01f;
+    pose = HkNewReferencePose(bones);
+    if (owner)
+        owner->BindSkeleton(bones, false);
+}
+
+// TODO(0x00350958 AnimLayer::Play): the tail of the function (after the new
+// control's time and speed are set) uses instructions the tools cannot
+// decode; nothing is played until it is ported.
+void AnimLayer::Play(HkaAnimationBinding* binding, float speed, float blendTime, float startTime, bool loop)
+{
+    (void)binding;
+    (void)speed;
+    (void)blendTime;
+    (void)startTime;
+    (void)loop;
+}
+
 // @func 0x003535C4 AnimLayer::AddSecondaryControl
 void AnimLayer::AddSecondaryControl(HkaAnimationBinding* binding, bool loop, float speed, float time,
                                     uint32_t weightList)
@@ -374,6 +406,12 @@ void AnimLayer::SetBoneWeights(const BoneWeightList* list)
 }
 
 // -- blend layer ------------------------------------------------------------------
+
+// @func 0x003516C4 AnimBlendLayer::AnimBlendLayer
+AnimBlendLayer::AnimBlendLayer() : AnimLayer(nullptr, 0), weightsA(0x40), weightsB(0x40)
+{
+    flags |= kFlag_Blend;
+}
 
 // @func 0x003544AC AnimBlendLayer::~AnimBlendLayer
 // @func 0x00354598 AnimBlendLayer::~AnimBlendLayer (deleting)
