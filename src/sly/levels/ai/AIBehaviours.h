@@ -260,8 +260,26 @@ public:
     uint32_t idleClip = 0;            // +0x140
     uint32_t field_144 = 0;           // +0x144
 };
+// The variant is Grizz's ice cave sentry ("Entity.BismarqueIceCave.*"
+// tuning): between actions it either plays an impatient animation facing its
+// digging machine or looks around (away from the machine or at the player),
+// and hits are only counted on its butt (a capsule along a bone).
 class SentryAIVariant : public SentryAI {
 public:
+    static constexpr int kDartCount = 3;
+
+    void Attach(Entity* entity) override;
+    void Detach() override;
+    void Update(float dt) override;
+    void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
+    bool IsStateInterruptible(int state) override;
+
+    float actionTimer = 0.0f;          // +0x148 time to the next idle action
+    Entity* diggingMachine = nullptr;  // +0x154 ("DiggingMachineInst"; referenced)
+    int32_t buttHits = 0;              // +0x158
+    // +0x15C attached children released on detach. NOTE: assumed to be the
+    // darts stuck in it ("DartDef").
+    Entity* darts[kDartCount] = {};
 };
 
 // Bosses (vtables 0x00B0E888, 0x00B0E9C0, 0x00B0EAF8, 0x00B0EC30).

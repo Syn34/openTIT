@@ -138,6 +138,7 @@ SoundZone* FindSoundZone(uint32_t nameHash);          // 0x0044C404
 MixState* FindMixState(uint32_t nameHash);            // 0x0044C43C
 float SoundZoneFadeDistance(const SoundZone* zone);   // zone +0x10
 float SoundZoneRadius(const SoundZone* zone);         // zone +0x00
+float SoundZoneFadeCurve(const SoundZone* zone);      // zone +0x04
 // Head of the zone's list of active triggers (+0x70), as an opaque node pointer.
 void* SoundZoneActiveTrigger(const SoundZone* zone);
 void SetSoundZoneActiveTrigger(SoundZone* zone, void* trigger);

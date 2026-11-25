@@ -1,6 +1,8 @@
 // openTIT - Component hooks (stubs).
 #include "sly/components/ComponentHooks.h"
 
+#include "sly/levels/ai/AIBossGrizz.h"
+
 namespace sly {
 namespace components {
 
@@ -14,10 +16,11 @@ void AIBrainFillInput(void* brain, uint8_t* input) { (void)brain; (void)input; }
 void* FindAnimTree(uint32_t nameHash) { (void)nameHash; return nullptr; }
 void* FindAnimBlendMap(uint32_t nameHash) { (void)nameHash; return nullptr; }
 
-// TODO(0x00063D54 ParseBossGrizzComponentDesc): not ported yet.
-entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t)
+// The parser lives with the AI component (sly/levels/ai/AIBossGrizz.cpp).
+entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                       uint8_t scope)
 {
-    return nullptr;
+    return levels::ai::ParseBossGrizzComponentDesc(root, elem, scope);
 }
 
 } // namespace components

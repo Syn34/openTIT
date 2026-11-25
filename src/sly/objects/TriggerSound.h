@@ -74,10 +74,21 @@ public:
 
 private:
     AmbientSoundTriggerDef* SoundDef() const { return static_cast<AmbientSoundTriggerDef*>(def); }
-    // Position and volume of the emitter for the listener (0x00210D80).
-    void ComputeSoundParams(ape::Vec3& position, float& volume) const;
+    // Emitter position, volume and spread angle (degrees, 360 = all around)
+    // for the listener at `position` (overwritten with the emitter position)
+    // (0x00210D80). Records the falloff fraction in m_falloff.
+    void ComputeSoundParams(ape::Vec3& position, float& volume, float& spread);
 
     uint32_t m_voice = 0;                 // 0x1E4
+    // Volume shape of the sound. NOTE: filled by the shape set-up
+    // (0x002108A8 / 0x00211780, not ported); zero until then.
+    float m_innerRadius = 0.0f;           // 0x1E8 sphere: full volume inside
+    float m_outerRadius = 0.0f;           // 0x1EC sphere: silent beyond
+    ape::Vec3 m_innerMin{};               // 0x1F0 box: full volume inside (local space)
+    ape::Vec3 m_innerMax{};               // 0x200
+    ape::Vec3 m_falloffMax{};             // 0x230 box: falloff distance past m_innerMax (positive)
+    ape::Vec3 m_falloffMin{};             // 0x240 box: falloff distance past m_innerMin (negative)
+    float m_falloff = 0.0f;               // 0x260 0 inside, 1 at the edge of the falloff
     uint32_t m_bus = 0;                   // 0x264
 };
 
@@ -113,6 +124,7 @@ class SoundZoneTrigger : public PolledTrigger {
 public:
     explicit SoundZoneTrigger(const TriggerInstanceDesc& desc);
     void OnCreated() override;
+    void Update(float dt) override;
     void OnEnter(ObjEntity* entity) override;
     void OnExit(ObjEntity* entity) override;
     bool IsDebugDisplayed() const override;
@@ -123,10 +135,18 @@ private:
     // Puts this trigger at the head of the zone's active list / takes it out.
     void LinkActive();
     void UnlinkActive();
-    // Zone weight for the listener inside a fading volume (0x00213870).
-    float ComputeFadeWeight() const;
+    // Zone weight for the listener at `listener` inside a fading volume
+    // (0x00213870).
+    float ComputeFadeWeight(const ape::Vec3& listener) const;
 
     float m_weight = 0.0f;                // 0x1E4
+    // Fade shape. NOTE: filled by the shape set-up (0x00213398, not ported).
+    float m_innerRadius = 0.0f;           // 0x1E8 sphere: full weight inside
+    float m_outerRadius = 0.0f;           // 0x1EC sphere: zero weight beyond
+    ape::Vec3 m_innerMin{};               // 0x1F0 box: full weight inside (local space)
+    ape::Vec3 m_innerMax{};               // 0x200
+    ape::Vec3 m_falloffMax{};             // 0x230 box: fade distance past m_innerMax (positive)
+    ape::Vec3 m_falloffMin{};             // 0x240 box: fade distance past m_innerMin (negative)
     bool m_fades = false;                 // 0x264: the zone fades in over a distance
     bool m_linked = false;                // 0x265
     SoundZoneTrigger* m_next = nullptr;   // 0x268

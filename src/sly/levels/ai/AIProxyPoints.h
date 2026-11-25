@@ -52,6 +52,12 @@ public:
     AIProxyPoint* At(uint16_t index) { return index < m_points.size() ? &m_points[index] : nullptr; }
     // Index form used by the chain links (negative or out of range: null).
     AIProxyPoint* AtIndex(int index) { return index >= 0 && index < (int)m_points.size() ? &m_points[index] : nullptr; }
+    // Record registered for an object key (instance name hash), or null.
+    const AIProxyPoint* Find(uint32_t key) const
+    {
+        auto found = m_byKey.find(key);
+        return found != m_byKey.end() ? &m_points[found->second] : nullptr;
+    }
     // Links every point's child points into its patrol chain (0x000190B4).
     void BuildChains();
     // Forgets every point (level shutdown).
