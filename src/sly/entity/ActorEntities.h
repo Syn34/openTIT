@@ -191,11 +191,15 @@ public:
     // Showing spawns the attached entity (state 0); hiding detaches and
     // kills it (state 3).
     void ApplyVisibility(bool visible) override;      // slot 55
+    // Slot 76: in state 0 with the attached entity, while the time (+0x1FC)
+    // runs or the script's int 0xDD61613C is set.
+    bool CanInteractWith(Entity* other, int kind) override;
     // Spawns the entity of definition `attachedDef` and attaches it (0x001F50E4).
     void SpawnAttached();
 
     ape::Matrix34 userTransform{};            // 0x1B0
     Entity* attached = nullptr;               // 0x1F0
+    float useTime = 0.0f;                     // 0x1FC NOTE: name guessed
     uint32_t attachedDef = 0;                 // 0x230 definition name of the attached entity
 };
 

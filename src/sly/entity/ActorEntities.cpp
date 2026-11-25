@@ -963,6 +963,20 @@ void InteractivePropB::ApplyVisibility(bool visible)
     }
 }
 
+// @func 0x001F6808 InteractivePropB::CanInteractWith
+bool InteractivePropB::CanInteractWith(Entity* other, int kind)
+{
+    constexpr uint32_t kVar_Usable = 0xDD61613Cu;   // NOTE: name unknown
+    if (EntityGetState(this, 0) != 0 || !attached)
+        return false;
+    if (useTime <= 0.0f) {
+        ape::ApeAnimScriptVar* var = animScript ? animScript->FindVar(kVar_Usable) : nullptr;
+        if (!var || var->GetType() != ape::AnimScriptVarType::Int || var->GetInt() == 0)
+            return false;
+    }
+    return ActorCanInteractWith(this, other, kind);
+}
+
 // TODO(0x001F50E4 InteractivePropB::SpawnAttached)
 void InteractivePropB::SpawnAttached() {}
 
