@@ -516,6 +516,7 @@ class SeqEnablePartCommand : public ApeAnimScriptCommand {
 public:
     SeqEnablePartCommand();
     ~SeqEnablePartCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     ApeAnimScriptCommand* Create(XmlElement* element) const override;
 
 private:
@@ -543,8 +544,16 @@ ApeAnimScriptCommand* SeqEnablePartCommand::Create(XmlElement* element) const
     return command;
 }
 
-// TODO(0x000A41E0 SeqEnablePartCommand::Execute) resolves the object and builds the
-// sequence part command (0x00438348).
+// @func 0x000A41E0 SeqEnablePartCommand::Execute
+// Queues a sequence command that switches a part of the object (its
+// variable, else the world object of that name) on or off.
+void SeqEnablePartCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (m_object == 0)
+        return;
+    if (ape::ApeRefCounted* object = ResolveWorldObject(instance, m_object))
+        SequenceAddEnablePart(object, m_part, m_enable, m_recursive);
+}
 
 // ---------------------------------------------------------------------------
 // Hash 0x2C6A515D (name unknown): shows a part of an entity in the sequence.
