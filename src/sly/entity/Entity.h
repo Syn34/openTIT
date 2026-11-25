@@ -307,7 +307,6 @@ public:
     virtual bool Release(bool kill);
 
     // Slot 19 (+0x4C): name for messages: the world object's name.
-    // @func 0x007372FC Entity::GetDebugName
     virtual const char* GetDebugName();
     // Slot 21 (+0x54): replaces the world transform.
     // @func 0x007435D0 Entity::SetTransform
@@ -336,7 +335,6 @@ public:
     }
     // Slot 57 (+0xE4): adds an object interested in this entity (see
     // RemoveWatcher); always accepted.
-    // @func 0x007373D4 Entity::AddWatcher
     virtual bool AddWatcher(void* watcher);
 
     // Slots whose callers are not ported; named by their slot number.
