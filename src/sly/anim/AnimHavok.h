@@ -14,6 +14,8 @@ namespace sly {
 namespace anim {
 
 // hkaAnimation (the clip data).
+class HkStreamReader;
+
 struct HkaAnimation {
     enum Type : int32_t {
         // NOTE: the game treats type 4 controls specially when it prunes
@@ -131,8 +133,31 @@ HkaAnimatedSkeleton* HkNewAnimatedSkeleton(const HkaSkeleton* skeleton);
 // new hkaPose for `skeleton` (arrays sized to its bones and float slots),
 // set to the reference pose (0x00A56E68).
 HkaPose* HkNewReferencePose(const HkaSkeleton* skeleton);
-// hkReferencedObject::removeReference (0x007D4EA8).
+// hkReferencedObject::removeReference (0x007D4EA8) / addReference (0x007D48C4).
 void HkRemoveReference(void* object);
+void HkAddReference(void* object);
+
+// hkaAnimationContainer: the skeletons and animations of a loaded file.
+struct HkaAnimationContainer {
+    uint8_t field_00[8];
+    HkaSkeleton** skeletons = nullptr;   // +0x08
+    int32_t numSkeletons = 0;            // +0x0C
+    uint32_t field_10 = 0;
+    void** animations = nullptr;         // +0x14 hkaAnimation*
+    int32_t numAnimations = 0;           // +0x18
+};
+// Loads a Havok resource (packfile or tagfile) from a stream
+// (hkSerializeUtil::load 0x00802E08 with its error details 0x007CE648 /
+// 0x007CEA58); null on failure. The caller owns a reference.
+void* HkLoadResource(HkStreamReader* stream);
+// Contents of a resource (its slot 7) as a root level container (class
+// from 0x007FECB8) or directly as an animation container (class from
+// 0x00A39858); null when it holds no such object.
+void* HkResourceRootContainer(void* resource);
+HkaAnimationContainer* HkResourceAnimationContainer(void* resource);
+// hkRootLevelContainer::findObjectByType (0x00802B08) for the animation
+// container class (0x011F7EA4).
+HkaAnimationContainer* HkRootFindAnimationContainer(void* root);
 // Destroys a pose (its four hkArrays) and returns the 0x38 bytes to the
 // Havok heap of the thread's memory router.
 void HkPoseDelete(HkaPose* pose);

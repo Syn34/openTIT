@@ -4,6 +4,8 @@
 // chunk handlers of the animation files that use them.
 #pragma once
 
+#include "ape/memory/ApeTArray.h"
+
 #include <cstdint>
 
 namespace ape { namespace iff { struct IffReader; } }
@@ -64,21 +66,50 @@ public:
     HkStreamReader* inner = nullptr;   // +0x08
 };
 
-// State of the animation file being parsed (0x0106BFA4..).
-struct AnimFileState {
-    const char* name = nullptr;   // 0x0106BFA4 name of the next resource
-    uint32_t nameHash = 0;        // 0x0106BFA8 HashNameNoCase of the first name
-    char nameA[0x41] = {};        // 0x0106C0F0 (read from +1)
-    char nameB[0x40] = {};        // 0x0106C131
+// Resource kinds of the animation files; each has its own name chunk.
+enum AnimResourceKind {
+    kAnimRes_Skeletons = 0,     // registered by RegisterAnimSkeletons
+    kAnimRes_Animations = 1,    // registered by 0x00348F04
+    kAnimRes_SkeletonMaps = 2,  // registered by 0x0034AB90
+    kAnimRes_Count
 };
-AnimFileState& AnimFile();
+// Name of the next resource of one kind (0x0106BFA4 + 8 * kind, with the
+// name buffers at 0x0106C0F0 / 0x0106C060 / 0x0106C180).
+struct AnimResourceName {
+    const char* name = nullptr;   // the second name read (null: none)
+    uint32_t nameHash = 0;        // HashNameNoCase of the first name
+    char first[0x41] = {};        // read from +1
+    char second[0x40] = {};
+};
+AnimResourceName& AnimResourceNames(int kind);
 
-// 0x0034B844: chunk handler of a resource group (forgets the name, parses
-// the sub-chunks).
-bool AnimGroupChunk(ape::iff::IffReader* reader);
-// 0x0034B884: chunk handler of a resource name: one byte, then two 64 byte
-// names; the second becomes the name, the first is hashed.
-bool AnimNameChunk(ape::iff::IffReader* reader);
+// Group chunk handlers (0x0034B844 skeletons, 0x0034BB18 skeleton maps):
+// forget the name and parse the sub-chunks.
+bool AnimSkeletonGroupChunk(ape::iff::IffReader* reader);
+bool AnimSkeletonMapGroupChunk(ape::iff::IffReader* reader);
+// Name chunk handlers (0x0034B884 skeletons, 0x0034B594 animations,
+// 0x0034BB58 skeleton maps): one byte, then two 64 byte names; the second
+// becomes the name, the first is hashed.
+bool AnimSkeletonNameChunk(ape::iff::IffReader* reader);
+bool AnimAnimationNameChunk(ape::iff::IffReader* reader);
+bool AnimSkeletonMapNameChunk(ape::iff::IffReader* reader);
+// Data chunk handlers (0x0034B9A8 skeletons, 0x0034B6C4 animations,
+// 0x0034BC7C skeleton maps): the chunk is a Havok file, loaded through a
+// buffered stream and registered under the pending name.
+bool AnimSkeletonDataChunk(ape::iff::IffReader* reader);
+bool AnimAnimationDataChunk(ape::iff::IffReader* reader);
+bool AnimSkeletonMapDataChunk(ape::iff::IffReader* reader);
+
+// 0x0034A5E4: keeps the resource and registers its first skeleton under
+// `nameHash`. False when the resource holds no animation container.
+bool RegisterAnimSkeletons(const char* name, uint32_t nameHash, void* resource, uint32_t size);
+// 0x00348F04 (TODO): registers the animations of a resource.
+bool RegisterAnimAnimations(const char* name, uint32_t nameHash, void* resource, uint32_t size, bool flag);
+// 0x0034AB90 (TODO): registers the skeleton mapper of a resource.
+bool RegisterAnimSkeletonMaps(const char* name, uint32_t nameHash, void* resource, uint32_t size);
+// Resources kept by the registrations (0x0106BC2C skeletons, 0x0106BC58
+// skeleton maps).
+ape::ApeTArray<void*>& AnimSkeletonResources();
 
 // Havok's buffered stream reader (0x007DFEF8, 0x24 bytes) over `inner`.
 HkStreamReader* HkNewBufferedReader(HkStreamReader* inner, int bufferSize);

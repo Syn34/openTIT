@@ -1,6 +1,7 @@
 // openTIT - Animation file streams and chunk handlers (0x003463B0-0x0034B884).
 #include "sly/anim/AnimStream.h"
 
+#include "sly/anim/AnimController.h"
 #include "sly/anim/AnimHavok.h"
 
 #include "ape/core/ApeString.h"
@@ -98,35 +99,153 @@ int AnimStreamReader::Tell() const
     return inner ? inner->Tell() : -1;
 }
 
-AnimFileState& AnimFile()
+AnimResourceName& AnimResourceNames(int kind)
 {
-    static AnimFileState state;
-    return state;
+    static AnimResourceName names[kAnimRes_Count];
+    return names[kind];
 }
 
-// @func 0x0034B844 AnimGroupChunk
-bool AnimGroupChunk(ape::iff::IffReader* reader)
+ape::ApeTArray<void*>& AnimSkeletonResources()
 {
-    AnimFile().name = nullptr;
-    AnimFile().nameHash = 0;
+    static ape::ApeTArray<void*> resources;
+    return resources;
+}
+
+namespace {
+
+bool ParseGroup(ape::iff::IffReader* reader, int kind)
+{
+    AnimResourceNames(kind).name = nullptr;
+    AnimResourceNames(kind).nameHash = 0;
     reader->ParseChunks(nullptr);
     return true;
 }
 
-// @func 0x0034B884 AnimNameChunk
-bool AnimNameChunk(ape::iff::IffReader* reader)
+bool ReadName(ape::iff::IffReader* reader, int kind)
 {
-    AnimFileState& state = AnimFile();
+    AnimResourceName& state = AnimResourceNames(kind);
     uint8_t version = 0;   // NOTE: read and ignored
     reader->ReadU8(&version);
     for (int i = 0; i < 0x40; ++i)
-        reader->ReadU8(reinterpret_cast<uint8_t*>(&state.nameA[1 + i]));
+        reader->ReadU8(reinterpret_cast<uint8_t*>(&state.first[1 + i]));
     for (int i = 0; i < 0x40; ++i)
-        reader->ReadU8(reinterpret_cast<uint8_t*>(&state.nameB[i]));
-    state.name = state.nameB;
-    state.nameHash = ape::HashNameNoCase(&state.nameA[1]);
+        reader->ReadU8(reinterpret_cast<uint8_t*>(&state.second[i]));
+    state.name = state.second;
+    state.nameHash = ape::HashNameNoCase(&state.first[1]);
     return true;
 }
+
+using RegisterFn = bool (*)(const char* name, uint32_t nameHash, void* resource, uint32_t size);
+
+bool LoadData(ape::iff::IffReader* reader, int kind, RegisterFn registerFn)
+{
+    AnimResourceName& state = AnimResourceNames(kind);
+    const char* name = state.name;
+    const uint32_t nameHash = state.nameHash;
+    const uint32_t size = reader->GetChunkSize();
+    void* resource = nullptr;
+    {
+        AnimStreamReader stream(reader, 0x1000);
+        resource = HkLoadResource(&stream);
+    }
+    if (resource) {
+        registerFn(name, nameHash, resource, size);
+        HkRemoveReference(resource);
+    }
+    state.name = nullptr;
+    return true;
+}
+
+bool RegisterAnimationsNoFlag(const char* name, uint32_t nameHash, void* resource, uint32_t size)
+{
+    return RegisterAnimAnimations(name, nameHash, resource, size, false);
+}
+
+} // namespace
+
+// @func 0x0034B844 AnimSkeletonGroupChunk
+bool AnimSkeletonGroupChunk(ape::iff::IffReader* reader)
+{
+    return ParseGroup(reader, kAnimRes_Skeletons);
+}
+
+// @func 0x0034BB18 AnimSkeletonMapGroupChunk
+bool AnimSkeletonMapGroupChunk(ape::iff::IffReader* reader)
+{
+    return ParseGroup(reader, kAnimRes_SkeletonMaps);
+}
+
+// @func 0x0034B884 AnimSkeletonNameChunk
+bool AnimSkeletonNameChunk(ape::iff::IffReader* reader)
+{
+    return ReadName(reader, kAnimRes_Skeletons);
+}
+
+// @func 0x0034B594 AnimAnimationNameChunk
+bool AnimAnimationNameChunk(ape::iff::IffReader* reader)
+{
+    return ReadName(reader, kAnimRes_Animations);
+}
+
+// @func 0x0034BB58 AnimSkeletonMapNameChunk
+bool AnimSkeletonMapNameChunk(ape::iff::IffReader* reader)
+{
+    return ReadName(reader, kAnimRes_SkeletonMaps);
+}
+
+// @func 0x0034B9A8 AnimSkeletonDataChunk
+bool AnimSkeletonDataChunk(ape::iff::IffReader* reader)
+{
+    return LoadData(reader, kAnimRes_Skeletons, &RegisterAnimSkeletons);
+}
+
+// @func 0x0034B6C4 AnimAnimationDataChunk
+bool AnimAnimationDataChunk(ape::iff::IffReader* reader)
+{
+    return LoadData(reader, kAnimRes_Animations, &RegisterAnimationsNoFlag);
+}
+
+// @func 0x0034BC7C AnimSkeletonMapDataChunk
+bool AnimSkeletonMapDataChunk(ape::iff::IffReader* reader)
+{
+    return LoadData(reader, kAnimRes_SkeletonMaps, &RegisterAnimSkeletonMaps);
+}
+
+// @func 0x0034A5E4 RegisterAnimSkeletons
+bool RegisterAnimSkeletons(const char*, uint32_t nameHash, void* resource, uint32_t)
+{
+    HkaAnimationContainer* container = nullptr;
+    if (void* root = HkResourceRootContainer(resource)) {
+        container = HkRootFindAnimationContainer(root);
+    } else {
+        container = HkResourceAnimationContainer(resource);
+        if (!container)
+            return false;
+    }
+    if (!container)
+        return true;
+    HkaSkeleton* skeleton = container->numSkeletons ? container->skeletons[0] : nullptr;
+    if (!skeleton)
+        return false;
+    HkAddReference(resource);
+    AnimSkeletonResources().PushBack(resource);
+    // NOTE: the console drops a reference of the file's first animation.
+    if (container->numAnimations > 0)
+        HkRemoveReference(container->animations[0]);
+    if (nameHash == 0 || *AnimSkeletons().Find(nameHash)) {
+        // NOTE: the console warns "Duplicate Havok skeletons in table".
+        return true;
+    }
+    AnimSkeletons().Add(nameHash, skeleton);
+    return true;
+}
+
+// TODO(0x00348F04 RegisterAnimAnimations): bindings and annotations of a
+// file's animations.
+bool RegisterAnimAnimations(const char*, uint32_t, void*, uint32_t, bool) { return false; }
+// TODO(0x0034AB90 RegisterAnimSkeletonMaps): mapper registration and its
+// bone name fix-up (vector code).
+bool RegisterAnimSkeletonMaps(const char*, uint32_t, void*, uint32_t) { return false; }
 
 } // namespace anim
 } // namespace sly
