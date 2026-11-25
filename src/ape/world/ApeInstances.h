@@ -236,6 +236,12 @@ public:
     ApeObj* Clone(uint32_t flags) override;
     // @func 0x007A9EE0 ApeCameraInstance::OnWorldTransformUpdated
     void OnWorldTransformUpdated(bool /*moved*/) override {}
+    // Takes the definition's field of view and transform.
+    void SetDef(ApeDef* def) override;
+    // NOTE: slot 15 is a debug walk; cameras also dump their skeleton.
+    void VirtualSlot15(int count, int arg) override;
+
+    float m_fov = 0.0f;                   // 0x154 (from the definition)
 };
 
 class ApePointInstance : public ApeObj {

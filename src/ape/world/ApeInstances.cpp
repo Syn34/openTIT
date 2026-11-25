@@ -589,6 +589,28 @@ void ApeLightInstance::VirtualSlot15(int count, int arg)
         DumpSkeleton(GetSkeleton(), count - 2);
 }
 
+// @func 0x005A5C28 ApeCameraInstance::SetDef
+void ApeCameraInstance::SetDef(ApeDef* def)
+{
+    if (def == m_def)
+        return;
+    ApeObj::SetDef(def);
+    if (!m_def)
+        return;
+    const ApeCameraDef* camera = static_cast<const ApeCameraDef*>(m_def);
+    m_fov = camera->m_fov;
+    m_local = camera->m_transform;
+    MarkDirty();
+}
+
+// @func 0x005A5DC0 ApeCameraInstance::VirtualSlot15
+void ApeCameraInstance::VirtualSlot15(int count, int arg)
+{
+    ApeObj::VirtualSlot15(count, arg | 1);
+    if (count > 0 && GetSkeleton())
+        DumpSkeleton(GetSkeleton(), count - 1);
+}
+
 // @func 0x005A6808 ApePointInstance::Release
 void ApePointInstance::Release()
 {

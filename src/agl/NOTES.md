@@ -226,3 +226,11 @@ The full link was failing because of files outside `src/agl`: missing
   transposed to vertex constants 0..3, sets constant 4 and calls the submesh's virtual Draw
   (platform submesh vtable 0x00B23EC0 slot 4 = 0x00538B44: bone upload to register 0x40,
   vertex attributes, fragment program commit, draw arrays/indexed). None are ported yet.
+* Done since: `AglSubMesh::Draw` (0x00538B44; the platform path 0x005382C0 is a stub),
+  technique Draws of Debug, PrimTxr, SimpleColorTxr, GeoParticle, SprParticle,
+  ProjTxrDeferred, ZPass and Outline (outline params at item +0x40: RGBA + width), the draw
+  fog helpers 0x0050CF50/0x0050D0E0 (vertex constant 0x20, fog colour fragment constant).
+  `AglRenderState` cache fields renamed: 0x010F10A8 boundVertexBuffer, 0x010F10B0
+  boundVertexDecl, 0x010F10B4 vertexProgram (the bound technique's AglVertexProgram),
+  0x010F10C0 meshAttributes, 0x010F1178 fogLayer, 0x010F117C fogEnabled[2]. The material
+  pointer at +0x7C is the constants block (GeoParticle reads constants[3]).
