@@ -34,6 +34,8 @@ public:
     enum PartFlags : uint32_t {
         // The part's body is held at its bone by a constraint (0x000E2AB0).
         kPartFlag_BoneConstraint = 0x10000000,
+        // The body is keyframed to follow its part while the actor is active.
+        kPartFlag_Keyframed      = 0x80000000,
     };
     // Parts and definitions with this nav mode block navigation.
     static constexpr uint32_t kNavMode_Obstacle = 0xA970EC1Fu;
@@ -114,9 +116,11 @@ public:
     // @func 0x007479D0 ActorEntity::~ActorEntity (thunk, +0x180)
     // @func 0x00747830 ActorEntity::~ActorEntity (deleting thunk, +0x180)
     ~ActorEntity() override { delete parts; }
-    // Minimal versions of 0x000E4720 / 0x000E5000 (entity module).
-    bool Update(float dt) override { return ScriptedEntity::Update(dt); }
-    bool PostUpdate(float dt) override { return ScriptedEntity::PostUpdate(dt); }
+    // Slot 5: simulated part bodies pose the bones and locators they stand
+    // for; then the physics state timers.
+    bool PostUpdate(float dt) override;
+    // Slot 4: while active, keyframed part bodies are driven to their parts.
+    bool Update(float dt) override;
     bool Release(bool kill) override;                                  // slot 10
     void SetActive(bool active) override;
     ape::Vec3 GetCenter() override;                                    // slot 20
@@ -148,6 +152,7 @@ public:
         kActorPhys_Remove  = 3,   // stored as kActorPhys_Removed
         kActorPhys_Dead    = 4,   // set when the actor is released
         kActorPhys_Removed = 5,
+        kActorPhys_Gone    = 6,   // PostUpdate stops here
         kActorPhys_Active  = 7,   // like kActorPhys_Enter; 7 and up are interactive
     };
     int PhysState() const { return static_cast<int>(physWord >> 1); }
@@ -202,9 +207,15 @@ public:
     using HitFilter = bool (*)(ActorEntity* actor, EntityHitRecord& hit);
 
     ape::ApeTArray<Part>* parts = nullptr;        // 0x184 allocated on demand
-    uint32_t physWord = 0;                        // 0x188 bits 1-31 physics state, bit 0 NOTE: unknown
+    // 0x188 bits 1-31 physics state; bit 0: the actor follows its world
+    // object (the transform is taken from it while active).
+    uint32_t physWord = 0;
+    int32_t field_18C = 0;                        // 0x18C negative: keyframed bodies are left alone
     Entity* field_190 = nullptr;                  // 0x190 NOTE: refused as an interaction partner
-    void* field_198 = nullptr;                    // 0x198 NOTE: cleared on entering the world
+    // Seconds the actor may stay in the world once it entered (negative:
+    // forever) and the time spent there (reset on entering).
+    float lifetime = -1.0f;                       // 0x194
+    float stateTime = 0.0f;                       // 0x198
     uint32_t collisionGroup = 0;                  // 0x19C
     HitFilter projectileFilter = nullptr;         // 0x1A0
     uint32_t actorFlags = 0;                      // 0x1A4 bit 30: no interactions, bit 31: health ran out

@@ -2,13 +2,18 @@
 // slot overrides that work on them (vtable 0x00B12898, 0x000E2FF0-0x000E8000).
 #include "sly/entity/ActorEntities.h"
 
+#include "sly/anim/AnimLayer.h"
 #include "sly/entity/CharacterHooks.h"
+#include "sly/entity/EntityHooks.h"
 #include "sly/entity/PhysicsHooks.h"
 #include "sly/levels/nav/NavGraph.h"
 
+#include "ape/math/ApeMatrixOps.h"
 #include "ape/world/ApeBase.h"
 #include "ape/world/ApeObj.h"
 #include "ape/world/ApeSkeleton.h"
+
+#include <cmath>
 
 namespace sly {
 namespace entity {
@@ -210,6 +215,176 @@ void ActorEntity::ApplyVisibility(bool visible)
     }
 }
 
+// @func 0x000E4720 ActorEntity::Update
+// While active an actor that follows its world object takes over the
+// object's transform, and every keyframed body is driven to where its part
+// is now (velocities chosen so it arrives within the frame).
+bool ActorEntity::Update(float dt)
+{
+    const bool followsObject = (physWord & 1u) != 0;
+    if (PhysState() == kActorPhys_Active && object) {
+        if (followsObject && !SameTransform(transform, object->GetWorld()))
+            Entity::SetTransform(object->GetWorld());
+        const ActorDef* d = Def();
+        if (dt >= 1.0e-5f && parts && d->parts) {
+            const float invDt = 1.0f / dt;
+            const ape::Matrix34& frame = followsObject ? transform : object->GetWorld();
+            for (size_t i = 0; i < parts->Count(); ++i) {
+                Part& part = (*parts)[i];
+                if (!((*d->parts)[i].partFlags & ActorDef::kPartFlag_Keyframed))
+                    continue;
+                if (!part.body || !RigidBodyInWorld(part.body))
+                    continue;
+                ape::Matrix34 target;
+                PlacePart(target, part, frame);
+                if (SameTransform(target, RigidBodyTransform(part.body)))
+                    continue;
+                ape::Quat rotation;
+                ape::QuatFromMatrix34(rotation, target);
+                const float len = std::sqrt(rotation.x * rotation.x + rotation.y * rotation.y +
+                                            rotation.z * rotation.z + rotation.w * rotation.w);
+                const float inv = 1.0f / len;
+                rotation = { rotation.x * inv, rotation.y * inv, rotation.z * inv, rotation.w * inv };
+                if (field_18C >= 0)
+                    RigidBodyApplyHardKeyFrame(part.body, target.translation, rotation, invDt);
+            }
+        }
+    }
+    return ScriptedEntity::Update(dt);
+}
+
+// @func 0x000E4E80 CopyBodyTransform
+// The rows of a body's transform as a matrix (the padding lanes are left
+// alone).
+static void CopyBodyTransform(ape::Matrix34& out, const ape::Matrix34& body)
+{
+    out.xAxis = { body.xAxis.x, body.xAxis.y, body.xAxis.z, out.xAxis.pad };
+    out.yAxis = { body.yAxis.x, body.yAxis.y, body.yAxis.z, out.yAxis.pad };
+    out.zAxis = { body.zAxis.x, body.zAxis.y, body.zAxis.z, out.zAxis.pad };
+    out.translation = { body.translation.x, body.translation.y, body.translation.z, out.translation.pad };
+}
+
+// Inverse of a rigid transform (orthonormal axes).
+static ape::Matrix34 InverseRigid(const ape::Matrix34& m)
+{
+    ape::Matrix34 inv;
+    inv.xAxis = { m.xAxis.x, m.yAxis.x, m.zAxis.x, 0.0f };
+    inv.yAxis = { m.xAxis.y, m.yAxis.y, m.zAxis.y, 0.0f };
+    inv.zAxis = { m.xAxis.z, m.yAxis.z, m.zAxis.z, 0.0f };
+    const ape::Vec3& t = m.translation;
+    inv.translation = { -(t.x * m.xAxis.x + t.y * m.xAxis.y + t.z * m.xAxis.z),
+                        -(t.x * m.yAxis.x + t.y * m.yAxis.y + t.z * m.yAxis.z),
+                        -(t.x * m.zAxis.x + t.y * m.zAxis.y + t.z * m.zAxis.z), 0.0f };
+    return inv;
+}
+
+// @func 0x000E5000 ActorEntity::PostUpdate
+// Keyframed parts rebuild their nav obstacle when the actor's animation has
+// just finished. Simulated (non-fixed) bodies in the world drive what their
+// part follows: a locator takes the body's transform; a bone takes it
+// relative to the body of its parent bone's part (root bones stay). Then
+// the hierarchy is refreshed. Afterwards the lifetime runs out (state 3),
+// state 5 moves on to 6 and a dead actor leaves the world.
+bool ActorEntity::PostUpdate(float dt)
+{
+    if (!ScriptedEntity::PostUpdate(dt))
+        return false;
+    const ActorDef* d = Def();
+    if (object && parts && parts->Count() != 0 && d->parts) {
+        bool posed = false;
+        for (size_t i = 0; i < parts->Count(); ++i) {
+            Part& part = (*parts)[i];
+            void* body = part.body;
+            if ((*d->parts)[i].partFlags & ActorDef::kPartFlag_Keyframed) {
+                if (!body || !PartBlocksNavigation(i))
+                    continue;
+                auto* layer = static_cast<anim::AnimLayer*>(animController ? AnimFindPlaying(animController, 0) : nullptr);
+                if (!layer || !(layer->flags & anim::AnimLayer::kFlag_JustFinished))
+                    continue;
+                if (levels::NavManager* nav = levels::GetNavManager())
+                    levels::RemoveNavObstacle(*nav, part.navObstacle);
+                part.navObstacle = nullptr;
+                AddPartNavObstacle(i);
+                continue;
+            }
+            if (!body || RigidBodyMotionType(body) == kMotionType_Fixed || !RigidBodyInWorld(body))
+                continue;
+            if (part.bone < 0 && !part.locator)
+                continue;
+            posed = true;
+            ape::Matrix34 bodyTransform;
+            CopyBodyTransform(bodyTransform, RigidBodyTransform(body));
+            if (part.bone < 0) {
+                ape::world::ApeObj* locator = part.locator;
+                locator->m_world = bodyTransform;
+                locator->m_flags &= ~uint16_t(ape::world::kObjFlag_Dirty);
+                continue;
+            }
+            ape::world::ApeSkeletonBone* bone = GetBone(part.bone);
+            if (!bone)
+                continue;
+            const int parent = bone->def->parent;
+            if (parent == -1)
+                continue;
+            ape::Matrix34 parentTransform;
+            CopyBodyTransform(parentTransform, RigidBodyTransform((*parts)[parent].body));
+            ape::world::Matrix34Mul(*bone->local, bodyTransform, InverseRigid(parentTransform));
+        }
+        if (posed) {
+            // Locators keep their new world placement: their local transform
+            // is worked out from their parent.
+            for (Part& part : *parts) {
+                void* body = part.body;
+                if (!body || RigidBodyMotionType(body) == kMotionType_Fixed || !RigidBodyInWorld(body))
+                    continue;
+                if (part.bone >= 0 || !part.locator)
+                    continue;
+                ape::world::ApeObj* locator = part.locator;
+                if (ape::world::ApeObj* parent = locator->GetParent()) {
+                    ape::Matrix34 local;
+                    ape::world::Matrix34Mul(local, locator->GetWorld(), InverseRigid(parent->GetWorld()));
+                    locator->SetLocal(local);
+                } else {
+                    locator->SetLocal(locator->GetWorld());
+                }
+                locator->MarkDirty();
+            }
+            object->UpdateWorld(false, false);
+            if ((physWord & 1u) && !SameTransform(transform, object->GetWorld())) {
+                Entity::SetTransform(object->GetWorld());
+                flags |= kEnt_TransformChanged;
+            }
+            object->MarkDirty();
+            if (ape::world::ApeSkeleton* skeleton = object->GetSkeleton()) {
+                skeleton->flags |= ape::world::kSkelFlag_Dirty;
+                skeleton->UpdateModel();
+            }
+        }
+    }
+
+    const float elapsed = stateTime + dt;
+    stateTime = elapsed;
+    switch (PhysState()) {
+    case kActorPhys_Gone:
+        return false;
+    case kActorPhys_Removed:
+        SetPhysState(kActorPhys_Gone);
+        break;
+    case kActorPhys_Enter:
+    case kActorPhys_Active:
+        if (lifetime >= 0.0f && lifetime <= elapsed)
+            SetPhysState(kActorPhys_Remove);
+        break;
+    default:
+        break;
+    }
+    if (actorFlags & kActorFlag_Dead) {
+        actorFlags &= ~uint32_t(kActorFlag_Dead);
+        SetPhysState(kActorPhys_Remove);
+    }
+    return true;
+}
+
 // -- physics states ------------------------------------------------------------------------
 
 // TODO(0x000E2AB0 ActorEntity::ConstrainPartToBone): builds the Havok
@@ -247,7 +422,7 @@ void ActorEntity::SetPhysState(int state, uint32_t arg)
         }
         SetVisible(true, false, true, true);
         if (PhysState() != kActorPhys_InWorld)
-            field_198 = nullptr;
+            stateTime = 0.0f;
     } else if (state == kActorPhys_Remove || state == kActorPhys_Dead) {
         if (state == kActorPhys_Remove)
             state = kActorPhys_Removed;
