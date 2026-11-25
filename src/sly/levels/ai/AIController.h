@@ -84,7 +84,8 @@ public:
     virtual void Update(float dt);
     // Slot 6: pushes the controller transform to the entity.
     virtual void ApplyTransform(float dt);
-    // Slot 7: ticks the entity (unless an ally is in charge of it).
+    // Slot 7: ticks the entity (unless an ally is in charge of it). Most
+    // behaviours replace it with nothing.
     virtual void TickEntity(float dt);
     // Slot 10: first step of Update. NOTE: some behaviours look up bones here.
     virtual void PreUpdate(float dt);
@@ -234,8 +235,10 @@ public:
     virtual void Slot8() {}
     // @func 0x007383FC AIController::Slot9
     virtual void Slot9() {}
-    // @func 0x00738410 AIController::Slot15
-    virtual float Slot15() { return 1.0f; }
+    // NOTE: radius of the nav agent (critters answer their avoidance radius,
+    // heavy enemies a larger value).
+    // @func 0x00738410 AIController::AgentRadius
+    virtual float AgentRadius() { return 1.0f; }
     // @func 0x00738428 AIController::Slot16
     virtual float Slot16() { return 1.0f; }
     // @func 0x00738438 AIController::Slot17
@@ -250,14 +253,18 @@ public:
     virtual bool Slot28() { return false; }
     // @func 0x007384D4 AIController::Slot29
     virtual void Slot29() {}
-    // @func 0x007384F8 AIController::Slot34
-    virtual bool Slot34() { return false; }
-    // @func 0x00738500 AIController::Slot35
-    virtual bool Slot35() { return false; }
+    // NOTE: true for the boss behaviours (Bismarque, El Jefe, Ms Decibel,
+    // Paradox).
+    // @func 0x007384F8 AIController::IsBoss
+    virtual bool IsBoss() { return false; }
+    // NOTE: true when the settings give no spawn animation clip.
+    // @func 0x00738500 AIController::HasNoSpawnClip
+    virtual bool HasNoSpawnClip() { return false; }
     // @func 0x00738508 AIController::Slot36
     virtual bool Slot36() { return false; }
-    // @func 0x00738510 AIController::Slot37
-    virtual bool Slot37() { return false; }
+    // NOTE: the "Heavy" enemy setting.
+    // @func 0x00738510 AIController::IsHeavy
+    virtual bool IsHeavy() { return false; }
     // @func 0x007386C0 AIController::Slot45
     virtual int Slot45() { return 0x0B; }
     // @func 0x007386C8 AIController::Slot46
