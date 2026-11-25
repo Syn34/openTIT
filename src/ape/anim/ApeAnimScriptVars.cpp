@@ -331,7 +331,7 @@ ApeAnimScriptVar* ApeAnimScriptControllerVar::Clone() const
 {
     auto* copy = new ApeAnimScriptControllerVar();
     copy->m_controller = m_controller;
-    copy->m_field14 = m_field14;
+    copy->m_device = m_device;
     copy->m_nameHash = m_nameHash;
     return copy;
 }
