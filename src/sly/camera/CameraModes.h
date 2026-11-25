@@ -310,6 +310,8 @@ public:
     Entity* GetTarget() const override { return target; }
     // Starts at the spline point closest to the target (0x0010B0E4).
     void Activate() override;
+    // Lets the player look around with the right stick (0x0010AD50).
+    void UpdateStage2(float dt, CameraViewState& view) override;
     // Draws the splines (flag bit 0) (0x0010B348).
     void DebugDraw(uint32_t flags) override;
     // A blend-in starts the same way as a cut.
@@ -327,9 +329,13 @@ public:
     float targetBlend = 0.0f;                          // 0x40 between the target spline and the target
     ape::Vec3 trackPoint{};                            // 0x50
     float t = 0.0f;                                    // 0x60
-    uint32_t splineFlags = 0;                          // 0xB0 bit 29: placed
     float panH = 0.0f;                                 // 0x90
     float panV = 0.0f;                                 // 0x94
+    float stickPitch = 0.0f;                           // 0xA0 degrees, from the right stick
+    float stickYaw = 0.0f;                             // 0xA4 degrees
+    // 0xB0: bit 31 stick panning locked, bit 30/28 stick panning allowed,
+    // bit 29 placed.
+    uint32_t splineFlags = 0;
 };
 
 // "Binocucom" (type 6, vtable 0x00B13DA0, 0x2B0 bytes): Bentley's binocucom

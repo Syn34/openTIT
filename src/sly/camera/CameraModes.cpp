@@ -849,6 +849,47 @@ void SplineCameraMode::Activate()
     splineFlags |= 1u << 29;
 }
 
+// @func 0x0010AD50 SplineCameraMode::UpdateStage2
+void SplineCameraMode::UpdateStage2(float dt, CameraViewState& view)
+{
+    if (!(splineFlags & (1u << 30)) || !(splineFlags & (1u << 28)))
+        return;
+    if (!target || !target->IsAlive()) {
+        // The target went away: let go of it and of the look-at entity.
+        if (target)
+            target->Release(false);
+        target = nullptr;
+        if (lookAt) {
+            lookAt->Release(false);
+            lookAt = nullptr;
+        }
+        return;
+    }
+    if (!(target->classBits & 1))
+        return;
+    void* pad = PlayerPad(target);
+    if (PadButtonPressed(pad, 0x2000))
+        splineFlags ^= 1u << 31;
+    if (!(splineFlags & (1u << 31))) {
+        // Narrow views pan less.
+        const float range = std::min(view.fov / 65.0f, 1.0f);
+        stickYaw = ApproachExp(stickYaw, range * 30.0f * PadAxis(pad, 2), 0.15f, dt);
+        stickPitch = ApproachExp(stickPitch, range * 20.0f * -PadAxis(pad, 3), 0.15f, dt);
+    }
+    // Turn the view by the stick angles, keeping its position. NOTE: the
+    // console multiplies the yaw in with AltiVec code and the pitch with an
+    // in-place helper; both are taken as applied after the view rotation.
+    const ape::Vec3 position = view.transform.translation;
+    ape::Matrix34 yaw;
+    ape::Matrix34RotationY(-stickYaw * 0.017453292f, yaw);
+    ape::Matrix34 turned;
+    ape::world::Matrix34Mul(turned, view.transform, yaw);
+    ape::Matrix34 pitch;
+    ape::Matrix34RotationX(-stickPitch * 0.017453292f, pitch);
+    ape::world::Matrix34Mul(view.transform, turned, pitch);
+    view.transform.translation = { position.x, position.y, position.z, view.transform.translation.pad };
+}
+
 // @func 0x0010B348 SplineCameraMode::DebugDraw
 void SplineCameraMode::DebugDraw(uint32_t flags)
 {
