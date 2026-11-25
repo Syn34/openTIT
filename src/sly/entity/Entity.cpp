@@ -1078,7 +1078,7 @@ namespace entity {
 // Kind-3 interactions need an enabled interaction component with at most one
 // user. When the other side is a player (class bit 0), what this entity
 // needs from it must all be offered by it.
-bool Entity::CanInteractWith(Entity* other, int kind)
+bool Entity::CanInteractWith(Entity* other, int kind, float* priority)
 {
     if (kind == kInteract_Player) {
         auto* comp = static_cast<InteractionComponent*>(GetComponent(kComp_Interaction));

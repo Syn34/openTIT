@@ -1112,7 +1112,7 @@ uint32_t Character::InteractionOffer(int kind, Entity* other)
 }
 
 // @func 0x00127BC8 Character::CanInteractWith
-bool Character::CanInteractWith(Entity* other, int kind)
+bool Character::CanInteractWith(Entity* other, int kind, float* priority)
 {
     const bool isPlayer = (classBits & 1) != 0;
     if (kind == 5)
@@ -1142,7 +1142,7 @@ bool Character::CanInteractWith(Entity* other, int kind)
     }
     if (kind == 4 && listener && ListenerIsAlly(listener))
         return false;
-    return Entity::CanInteractWith(other, kind);
+    return Entity::CanInteractWith(other, kind, priority);
 }
 
 // -- scripts and character swaps -----------------------------------------------------------------

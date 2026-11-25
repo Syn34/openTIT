@@ -170,9 +170,6 @@ void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* ent
 void GameWorldDequeueCallbacks(int list, void* owner);
 // Minigame reaction when the Bentley rewinds to its track (0x003F2990).
 void MinigameTrackRewound();
-// World transform of actor part `part` (0x000E7CE8): `local` placed by the
-// part, or `local` itself when the actor has no parts.
-void ActorPartTransform(Entity* actor, ape::Matrix34& out, int part, const ape::Matrix34& local);
 
 // Who is behind an indirect hit source: the thrower of a thrown object
 // (+0x1AC), the owner of an owned one (+0x188) or the spawner (+0x190).
@@ -252,8 +249,8 @@ int32_t InteractionUsers(EntityComponent* interaction);
 Entity* CharacterCarried(Entity* character);
 // Player block value +0x10D8 (game world +0x1070 + player * 0x20C80). NOTE: meaning unknown.
 uint32_t PlayerBlockValue10D8(uint32_t player);
-// Actor base version of CanInteractWith (0x000E7FF0, entity module).
-bool ActorCanInteractWith(Entity* actor, Entity* other, int kind);
+// First free slot of a carry component, -1 when all are taken (0x002B92A0).
+int CarryCompFreeSlot(EntityComponent* carry);
 // Interaction component: the interaction kinds it offers (0x00266E6C).
 void InteractionSetOffer(EntityComponent* interaction, uint32_t kinds);
 

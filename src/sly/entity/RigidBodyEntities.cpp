@@ -160,7 +160,7 @@ ape::Vec3 RigidBodyEntity::BodyVelocity() const
 }
 
 bool RigidBodyEntity::CanBePickedUp(Entity* other, int kind, const PropDamageSettings& settings,
-                                    const Entity* refused)
+                                    const Entity* refused, float* priority)
 {
     if (kind == 0) {
         if (!settings.CanHurt() || (other && other == refused))
@@ -168,7 +168,7 @@ bool RigidBodyEntity::CanBePickedUp(Entity* other, int kind, const PropDamageSet
     } else if (kind != 4) {
         return false;
     }
-    return Entity::CanInteractWith(other, kind);
+    return Entity::CanInteractWith(other, kind, priority);
 }
 
 void RigidBodyEntity::MoveBody(void* body, const ape::Matrix34& transform)
@@ -340,7 +340,7 @@ void AlterEgoEntity::UpdateFade()
 }
 
 // @func 0x0017A008 AlterEgoEntity::CanInteractWith
-bool AlterEgoEntity::CanInteractWith(Entity* other, int kind)
+bool AlterEgoEntity::CanInteractWith(Entity* other, int kind, float* priority)
 {
     if (alterState != 1)
         return false;
@@ -361,7 +361,7 @@ bool AlterEgoEntity::CanInteractWith(Entity* other, int kind)
     default:
         return false;
     }
-    return Entity::CanInteractWith(other, kind);
+    return Entity::CanInteractWith(other, kind, priority);
 }
 
 // @func 0x00178650 AlterEgoEntity::SetVelocity
@@ -674,11 +674,11 @@ void TargetableB::SetTransform(const ape::Matrix34& m)
 }
 
 // @func 0x00193270 TargetableB::CanInteractWith
-bool TargetableB::CanInteractWith(Entity* other, int kind)
+bool TargetableB::CanInteractWith(Entity* other, int kind, float* priority)
 {
     if (GetTargetState() != 2 && GetTargetState() < 8)
         return false;
-    return CanBePickedUp(other, kind, Def()->damage, refusedPartner);
+    return CanBePickedUp(other, kind, Def()->damage, refusedPartner, priority);
 }
 
 // @func 0x00192370 TargetableB::SetVelocity
@@ -779,11 +779,11 @@ void TargetableA::SetTransform(const ape::Matrix34& m)
 }
 
 // @func 0x00185B28 TargetableA::CanInteractWith
-bool TargetableA::CanInteractWith(Entity* other, int kind)
+bool TargetableA::CanInteractWith(Entity* other, int kind, float* priority)
 {
     if (GetTargetState() != 3 && GetTargetState() < 11)
         return false;
-    return CanBePickedUp(other, kind, Def()->damage, refusedPartner);
+    return CanBePickedUp(other, kind, Def()->damage, refusedPartner, priority);
 }
 
 // @func 0x00184A80 TargetableA::SetVelocity
@@ -1323,11 +1323,11 @@ void PushBlock::OnResume()
 }
 
 // @func 0x001B900C PushBlock::CanInteractWith
-bool PushBlock::CanInteractWith(Entity* other, int kind)
+bool PushBlock::CanInteractWith(Entity* other, int kind, float* priority)
 {
     if ((kind == 0 && blockFlags < 0) || kind == 4)
         return false;
-    return Entity::CanInteractWith(other, kind);
+    return Entity::CanInteractWith(other, kind, priority);
 }
 
 // -- TargetableCBase (vtable 0x00B18B48; damage block at definition +0xE8) -----------

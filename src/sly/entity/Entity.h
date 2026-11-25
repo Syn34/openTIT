@@ -320,7 +320,7 @@ public:
     virtual uint32_t InteractionOffer(int kind, Entity* other) { (void)kind; (void)other; return 0; }   // slot 74
     // @func 0x007437C8 Entity::InteractionNeeds
     virtual uint32_t InteractionNeeds(int kind, Entity* other) { (void)kind; (void)other; return 0; }   // slot 75
-    virtual bool CanInteractWith(Entity* other, int kind);         // slot 76
+    virtual bool CanInteractWith(Entity* other, int kind, float* priority = nullptr);         // slot 76
     virtual void OnInteractStart(Entity* other, int kind);         // slot 77
     virtual void OnInteractEnd(Entity* other, int kind);           // slot 78
     // Slot 10: drops one reference; with `kill` the entity leaves the world.

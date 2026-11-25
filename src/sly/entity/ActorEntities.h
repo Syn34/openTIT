@@ -24,13 +24,32 @@ public:
     struct Part {
         uint8_t field_00[0x20];
         void* havokObject;          // +0x20
-        uint8_t field_24[0x7C];
+        uint8_t field_24[0x58];
+        uint32_t partFlags;         // +0x7C PartFlags
+        uint8_t field_80[0x10];
+        // Nav obstacle mode of the part (0 = the definition's mode).
+        uint32_t navMode;           // +0x90
+        uint8_t field_94[0xC];
+    };
+    enum PartFlags : uint32_t {
+        // The part's body is held at its bone by a constraint (0x000E2AB0).
+        kPartFlag_BoneConstraint = 0x10000000,
+    };
+    // Parts and definitions with this nav mode block navigation.
+    static constexpr uint32_t kNavMode_Obstacle = 0xA970EC1Fu;
+    // Definition flags (+0x12C).
+    enum Flags : uint32_t {
+        kDefFlag_CarryOnly      = 1u << 23,  // kind 2 only while a carry slot is free
+        kDefFlag_FullNavMask    = 1u << 24,  // obstacles block every agent (mask 0xFFFF)
     };
     ~ActorDef() override;
     ape::ApeTArray<Part>* parts = nullptr;   // 0xC0 allocated on demand
     // Answers to InteractionNeeds by interaction kind. NOTE: the number of
-    // kinds is not known (the table may run up to 0xF0).
-    uint8_t interactionNeeds[16] = {};       // 0xC4
+    // kinds is not known (at most 12: the nav mode follows at 0xD0).
+    uint8_t interactionNeeds[12] = {};       // 0xC4
+    uint32_t navMode = 0;                    // 0xD0
+    // Size of the nav obstacle box (zero: shaped like each part's body).
+    ape::Vec3 navObstacleSize{};             // 0xE0
     // Damage taken per hit category (0 = immune). NOTE: filled by the
     // definition parser (not ported).
     float impactScale = 0.0f;                // 0xF0 category 1
@@ -41,6 +60,8 @@ public:
     float meleeScale = 0.0f;                 // 0x10C category 3
     float projectileScale = 0.0f;            // 0x114 category 4
     float attackerScale[4] = {};             // 0x118 by the attacker's flag bits 22-23
+    float interactionPriority = 0.0f;        // 0x128 scales the priority of kinds 0 and 2
+    uint32_t defFlags = 0;                   // 0x12C Flags
 };
 
 // Definition of SoundActor and base of its subclasses' definitions
@@ -92,12 +113,57 @@ public:
     // @func 0x00747900 ActorEntity::~ActorEntity (deleting thunk, +0x17C)
     // @func 0x007479D0 ActorEntity::~ActorEntity (thunk, +0x180)
     // @func 0x00747830 ActorEntity::~ActorEntity (deleting thunk, +0x180)
-    ~ActorEntity() override { delete field_184; }
-    // Minimal versions of 0x000E4720 / 0x000E4544 / 0x000E7730 (entity module).
+    ~ActorEntity() override { delete parts; }
+    // Minimal versions of 0x000E4720 / 0x000E5000 (entity module).
     bool Update(float dt) override { return ScriptedEntity::Update(dt); }
     bool PostUpdate(float dt) override { return ScriptedEntity::PostUpdate(dt); }
-    bool Release(bool kill) override { return ScriptedEntity::Release(kill); }
+    bool Release(bool kill) override;                                  // slot 10
     void SetActive(bool active) override;
+    ape::Vec3 GetCenter() override;                                    // slot 20
+    void SetTransform(const ape::Matrix34& m) override;                // slot 21
+    uint32_t GetRenderId() override;                                   // slot 25
+    void SetRenderId(uint32_t id) override;                            // slot 26
+    float GetGravityFactor() override;                                 // slot 27
+    void Detached(float gravityFactor) override;                       // slot 28
+    void HandleMessage(const EntityMessage& msg) override;             // slot 43
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;   // slot 76
+    // Slots 94-96: nav obstacles of the parts with bodies (definition nav
+    // mode kNavMode_Obstacle): rebuilt, removed, added.
+    virtual void RefreshNavObstacles();
+    virtual void RemoveNavObstacles();
+    virtual void AddNavObstacles();
+    // Physics states (+0x188 bits 1-31). NOTE: names from what SetPhysState
+    // does with them; 2 is only compared against.
+    enum ActorPhysState : int {
+        kActorPhys_Enter   = 1,   // bodies into the world, interactive
+        kActorPhys_InWorld = 2,
+        kActorPhys_Remove  = 3,   // stored as kActorPhys_Removed
+        kActorPhys_Dead    = 4,   // set when the actor is released
+        kActorPhys_Removed = 5,
+        kActorPhys_Active  = 7,   // like kActorPhys_Enter; 7 and up are interactive
+    };
+    int PhysState() const { return static_cast<int>(physWord >> 1); }
+    // Slot 104.
+    virtual void SetPhysState(int state, uint32_t arg = 0);
+    enum ActorFlags : uint32_t {
+        kActorFlag_NoInteraction = 0x40000000,
+        kActorFlag_Dead          = 0x80000000,
+    };
+
+    // One physical part of the actor (0x30-byte records at +0x184).
+    struct Part {
+        ape::Vec3 offset{};                  // +0x00 in the part's frame
+        ape::world::ApeObj* locator = nullptr; // +0x10 object the part follows, or null
+        int32_t bone = -1;                   // +0x14 bone of the actor's object, -1 for none
+        uint32_t field_18 = 0;
+        void* body = nullptr;                // +0x1C Havok rigid body, or null
+        void* navObstacle = nullptr;         // +0x20 nav obstacle handle
+        uint8_t field_24[0xC] = {};
+    };
+    // World transform of part `index` placed from `frame` (the actor's
+    // transform unless the part follows a bone or locator), or `frame`
+    // itself when the actor has no parts.
+    void PartTransform(ape::Matrix34& out, int index, const ape::Matrix34& frame) const;
 
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     bool Damage(float amount, Entity* source, uint32_t type) override;
@@ -126,12 +192,22 @@ public:
     // Filter consulted before projectile damage (+0x1A0); false ignores the hit.
     using HitFilter = bool (*)(ActorEntity* actor, EntityHitRecord& hit);
 
-    ape::ApeTArray<void*>* field_184 = nullptr;   // 0x184 allocated on demand
+    ape::ApeTArray<Part>* parts = nullptr;        // 0x184 allocated on demand
+    uint32_t physWord = 0;                        // 0x188 bits 1-31 physics state, bit 0 NOTE: unknown
+    Entity* field_190 = nullptr;                  // 0x190 NOTE: refused as an interaction partner
+    void* field_198 = nullptr;                    // 0x198 NOTE: cleared on entering the world
+    uint32_t collisionGroup = 0;                  // 0x19C
     HitFilter projectileFilter = nullptr;         // 0x1A0
-    uint32_t actorFlags = 0;                      // 0x1A4 bit 31: health ran out
+    uint32_t actorFlags = 0;                      // 0x1A4 bit 30: no interactions, bit 31: health ran out
 
 private:
     const ActorDef* Def() const { return static_cast<const ActorDef*>(def); }
+    // World transform of `part` from `frame`.
+    void PlacePart(ape::Matrix34& out, const Part& part, const ape::Matrix34& frame) const;
+    // Obstacle of one part; whether a part blocks navigation at all.
+    void AddPartNavObstacle(size_t index);
+    bool PartBlocksNavigation(size_t index) const;
+    void ConstrainPartToBone(int index, const ape::Vec3& velocity);
     // Applies `amount` through slot 88 and marks the hit fatal if it killed.
     void ApplyHitDamage(EntityHitRecord& hit, float amount, uint32_t type);
 };
@@ -144,7 +220,7 @@ public:
     bool Update(float dt) override;
     // A player may not use the prop while one user holds it and the player
     // is busy (player block +0x10DC positive, unless the driver is idle).
-    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;   // slot 76
     // Stops a playing scripted animation of the user.
     bool InteractionBegin(Entity* user) override;              // slot 62
 };
@@ -201,7 +277,7 @@ public:
     void ApplyVisibility(bool visible) override;      // slot 55
     // Slot 76: in state 0 with the attached entity, while the time (+0x1FC)
     // runs or the script's int 0xDD61613C is set.
-    bool CanInteractWith(Entity* other, int kind) override;
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;
     // Spawns the entity of definition `attachedDef` and attaches it (0x001F50E4).
     void SpawnAttached();
 
@@ -230,7 +306,7 @@ public:
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     // Player interaction is refused while a single user holds the prop and
     // the asking character does not carry its key object.
-    bool CanInteractWith(Entity* other, int kind) override;
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;
     // Slot 71: the definition's aim offset in the frame of `frameObject`
     // (or of the prop).
     ape::Vec3 GetAimPoint() override;
@@ -513,7 +589,7 @@ public:
     // Also lets go of the linked entity.
     bool Release(bool kill) override;                          // slot 10
     // Only interaction kind 0. NOTE: the console also scales the caller's score by 0.3.
-    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;   // slot 76
     // Projectiles from others strike the engaged actor (definition impact scale > 0).
     void OnHitCategory4(EntityHitRecord& hit) override;       // slot 87
     // Layer 1 in state 2 plays the struck state 0x803E1667 (unless

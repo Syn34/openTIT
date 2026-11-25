@@ -202,7 +202,7 @@ void PhysicalEntity::SetCarriedTransform(const ape::Matrix34& m)
 // @func 0x000EDBA4 PhysicalEntity::CanInteractWith
 // Only interaction kinds 0-2, and only for an owned object or with a
 // partner; the definition can rule out kind 2 or everything.
-bool PhysicalEntity::CanInteractWith(Entity* other, int kind)
+bool PhysicalEntity::CanInteractWith(Entity* other, int kind, float* priority)
 {
     const uint32_t flags = Def()->defFlags;
     if (kind == 2 && (flags & PhysicalEntityDef::kDefFlag_NoKind2Interaction))
@@ -213,7 +213,7 @@ bool PhysicalEntity::CanInteractWith(Entity* other, int kind)
         return false;
     if (flags & PhysicalEntityDef::kDefFlag_NoInteraction)
         return false;
-    return Entity::CanInteractWith(other, kind);
+    return Entity::CanInteractWith(other, kind, priority);
 }
 
 // @func 0x000ED898 PhysicalEntity::OnHitCategory1

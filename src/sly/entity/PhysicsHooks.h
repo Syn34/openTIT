@@ -39,6 +39,8 @@ uint32_t RigidBodyCollisionGroup(void* body);
 void PhysicsAddAction(void* action);
 // Motion type byte (+0xE8): 4 = keyframed, 5 = fixed.
 uint8_t RigidBodyMotionType(void* body);
+// Wakes the body (hkpEntity::activate 0x0091A4C8).
+void RigidBodyActivate(void* body);
 // Wakes the body (0x0091A4C8) and applies a linear impulse (motion slot 21).
 void RigidBodyApplyImpulse(void* body, const ape::Vec3& impulse);
 // Wakes the body and sets its linear velocity (motion slot 17).

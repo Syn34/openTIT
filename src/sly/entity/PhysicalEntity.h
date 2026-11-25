@@ -70,7 +70,7 @@ public:
     void SetVelocity(const ape::Vec3& velocity) override;              // slot 34
     ape::Vec3 GetVelocity() override;                                   // slot 35
     void HandleMessage(const EntityMessage& msg) override;              // slot 43
-    bool CanInteractWith(Entity* other, int kind) override;            // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;            // slot 76
     void OnHitCategory1(EntityHitRecord& hit) override;                 // slot 84
     void OnHitCategory2(EntityHitRecord& hit) override;                 // slot 85
     void OnHitCategory3(EntityHitRecord& hit) override;                 // slot 86

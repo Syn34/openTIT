@@ -74,7 +74,8 @@ public:
     // Interaction kinds 0 and 4 of the props that can be picked up: kind 0
     // needs some damage reaction and refuses `refused`; other kinds fail.
     // NOTE: the console also multiplies the caller's score by 5 for kind 0.
-    bool CanBePickedUp(Entity* other, int kind, const PropDamageSettings& settings, const Entity* refused);
+    bool CanBePickedUp(Entity* other, int kind, const PropDamageSettings& settings, const Entity* refused,
+                       float* priority = nullptr);
     // Sets a body's linear velocity unless it is keyframed or fixed or out of the world.
     static void SetBodyVelocity(void* body, const ape::Vec3& velocity);
     // Slot 35: linear velocity of the body (zero without one).
@@ -152,7 +153,7 @@ public:
     bool Damage(float amount, Entity* source, uint32_t type) override;   // slot 88
     float ProjectileDamageScale() const override;
     // Slot 76: only in the dynamic or destroyed states.
-    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;   // slot 76
     // Slot 99: moves the body in or out of the physics world (0x00167570).
     virtual void SetPropState(int32_t state, uint32_t arg);
 
@@ -216,7 +217,7 @@ public:
     void OnHitCategory4(EntityHitRecord& hit) override;
     float ProjectileDamageScale() const override;     // slot 89
     // Slot 76: only in alter state 1; kind 4 needs a body with mass.
-    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;   // slot 76
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     const AlterEgoDef* Def() const { return static_cast<const AlterEgoDef*>(def); }
 
@@ -313,7 +314,7 @@ public:
     void OnSuspend() override;                        // slot 60
     void OnResume() override;                         // slot 61
     // Kind 0 is refused while the block is locked (+0x248 bit 15), kind 4 always.
-    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;   // slot 76
     // Killing drops the nav obstacle and the body.
     bool Release(bool kill) override;                 // slot 10
     // Slot 21: the body (in the world) follows, without waking its neighbours.
@@ -478,7 +479,7 @@ public:
     Entity* refusedPartner = nullptr;        // 0x198 NOTE: refused for interactions of kind 0
     uint32_t collisionGroup = 0;             // 0x19C
     // Slot 76: only in state 2 or from state 8 on.
-    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;   // slot 76
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     // Empty override of the +0x17C interface's slot 5.
@@ -567,7 +568,7 @@ public:
     // @func 0x0018E380 TargetableA::Slot105
     virtual void Slot105() {}
     // Slot 76: only in state 3 or from state 11 on.
-    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;   // slot 76
     // Both answer with the definition's targeting flag for the kind.
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
