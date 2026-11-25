@@ -231,3 +231,9 @@ destructors, Link, debug elements and most Execute functions), priority targets
 * `ARServer.*`: the AR debug server (ARState at 0x00F558C4, derived from
   `gameplay::DebugNetServer`). Discovery (0x000A88C0), Update (0x000A9768) and 0x000AB7B0
   remain TODO.
+
+## Level AI, second pass (agent2)
+* CritterAI: ChooseState, Think, UpdateState, flight clips, script commands, physics tick.
+  EnterState (0x000215D8), FleePoint (0x0001E420), SnapToGround (0x0001D548), the perch
+  search (0x00020100) and the NavPower helpers (0x000147B8, 0x00015AAC) are still TODO.
+* `AIController::claimSlot` points at an attack slot record (owner + position at +0x10).

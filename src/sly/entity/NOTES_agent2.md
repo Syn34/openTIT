@@ -63,3 +63,32 @@
   0x00B14390...) need the description structs of the object parsers.
 * Definition loaders/spawns (slot 3/7 of the definitions) and placements (slot 2 of the
   secondary vtables): they need the entity constructor family from the entity module.
+
+## Third pass (agent2)
+* `PhysicalEntity.*` is a real port now (minus constructor 0x000E9DD8, definition spawn
+  0x000EAC88 and the per-frame update 0x000EC5B8 / contact handling 0x000F0E48, which
+  need the constructor family and Havok contact events): physics states, release, hits,
+  velocity, target/owner references, carried entity. Field layout from the constructor:
+  body +0x184, actions +0x188/+0x18C, state +0x190, owner +0x1B0, target +0x1B4, carried
+  +0x1B8/+0x1C0, trigger-layer body +0x224, impact sound +0x230, marker component +0x26C.
+* `ActorBase.cpp`: the actor base's parts (0x30-byte records at +0x184: offset, locator,
+  bone, body, nav obstacle, motion type), physics states (slot 104), nav obstacles
+  (slots 94-96), per-frame update/post-update (keyframed and simulated bodies, lifetime),
+  root motion, visibility, collidable lookup. Constraint creation 0x000E2AB0 is TODO.
+* `EntityUpdate.cpp`: the per-entity frame steps (0x000CF0C0 / 0x000CF534), velocity
+  estimate and attached sounds, root motion slot 13. The job that sorts the entities
+  into the update lists (0x00456BA8 & co.) and the list drivers are not ported.
+* `PropObjectEntity.*`: a plain-entity class with optional rigid body, lifetime, scripts
+  and contact callback (type bit 70; characters fade them with themselves).
+* `Entity::UpdateChildTransforms` (0x000D7A00), bone transforms (0x000CE688/0x000DAABC),
+  OnAnimEvent (slot 59, "hkAttach<part>"), ObjectForCollidable (slot 37), fade tree
+  (0x000D8F08; the render part 0x000D8C18 is a hook).
+* Signatures changed to match the console: slot 23 `SetFlag80(on, part = -1)`, slot 76
+  `CanInteractWith(other, kind, float* priority = nullptr)`, slot 59 (GameCamera's override
+  took the source entity for a "fired" flag), interface 17C slot 5 takes the event.
+* Findings: the 64-bit word at +0xB8 has per-frame bits 1/3/6/7 (cleared every update),
+  so `kClass_Character` (0x08) is probably misnamed; type bit 22 (+0xC0) marks entities
+  placed without a world object (the port's `kClass_400000` is likely that bit). Entity
+  +0xD4 ("cullDistance") scales the frame time. The listener at +0x17C/+0x158 has the
+  slot layout of hkpContactListener. 0x005541F0 is `m = b * m` (in place).
+* `levels/nav`: obstacle from a body's shape (0x00011410).
