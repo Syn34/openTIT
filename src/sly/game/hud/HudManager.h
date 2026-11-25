@@ -52,9 +52,21 @@ enum HudAnchor : int32_t {
 struct HudObjectDef {
     uint32_t name = 0;               // +0x44
     int32_t anchor = kAnchor_None;   // +0x54 HudAnchor
+    int32_t priority = 0;            // +0x70 order in the anchor stack (ascending)
     float offset[3] = {};            // +0x60 space the element takes in its stack
+    struct TextFieldDef {            // 0x20 bytes
+        uint8_t field_00[0x14] = {};
+        uint32_t introScript = 0;    // +0x14 GUI script played on the field with the intro
+        uint32_t outroScript = 0;    // +0x18 ... with the outro
+        uint32_t field_1C = 0;
+    };
+    TextFieldDef* textFieldDefs = nullptr;   // +0x94
     uint32_t textFieldCount = 0;     // +0x98 text fields of the element
 };
+
+// Anim script states of the element states (0x00F64F88): "NONE", "Intro",
+// "OnUpdate", "Idle", "Outro".
+extern const uint32_t kHudStateNames[5];
 
 // A text field of an element (16 bytes, array at HudObject +0x148).
 struct HudTextField {
@@ -94,8 +106,22 @@ public:
     // Name the element is registered under (its own or its definition's).
     uint32_t RegisteredName() const { return name ? name : (def ? def->name : 0); }
 
-    // 0x00363A3C: shows the element with a text (fade time, -1 = default).
-    void ShowText(float fade, const char* text, bool flag);
+    // 0x00363A3C: shows the element with a text. Timed: (re)starts its
+    // update animation for `fade` seconds (< 0: the default), else the text
+    // is kept for the next intro. `linked`: show only once that element's
+    // object is hidden. `color` (4 bytes) tints the text.
+    void ShowText(float fade, const char* text, bool timed, bool flag = false, HudObject* linked = nullptr,
+                  const uint8_t* color = nullptr);
+    // 0x00363890: the timed part of ShowText.
+    void ShowTimed(float fade, const char* text, bool flag, HudObject* linked, const uint8_t* color);
+    // 0x003636EC: starts the intro (object, text fields and their scripts).
+    void BeginShow();
+    // 0x00362D28: plays the animation and script state of `state` (1 intro,
+    // 2 update, 3 idle, 4 outro; see kHudStateNames).
+    void PlayState(int state, bool loop);
+    // 0x0036341C: joins its anchor stack in priority order and moves the
+    // elements after it.
+    void EnterStack();
     // 0x00362F1C / 0x00362B40: plays the element's intro / outro.
     void PlayIntro(bool a, bool b);
     void PlayOutro(bool a, bool b);
@@ -114,6 +140,8 @@ public:
     enum StateFlags : uint32_t {
         kState_Suppressed = 0x02000000,   // bit 25: show/hide requests are ignored
         kState_Leaving    = 0x04000000,   // bit 26: outro requested
+        kState_ScriptOk   = 0x00800000,   // bit 23: the anim script took the last state
+        kState_AnimOk     = 0x01000000,   // bit 24: the last state animation started
         kState_Bit27      = 0x08000000,
         kState_OutroB     = 0x10000000,   // bit 28
         kState_OutroA     = 0x20000000,   // bit 29
@@ -131,7 +159,16 @@ public:
     Vec3Tween offsetTween;         // +0x30 slides `offset` to a new stack position
     ape::Vec3 baseOffset{};        // +0x90 screen position of the element (definition +0x80)
     uint32_t animState = 0;        // +0xA0 bit 0 hidden; state = value >> 1 (0 idle, 4 NOTE: looping)
-    bool field_A4 = false;         // +0xA4
+    char text[0x80] = {};          // +0xA4 text kept for the next intro
+    uint32_t stateAnims[5] = {};   // +0x128 animation clip per state
+    uint32_t altIdleAnim = 0;      // +0x13C replaces the idle clip when set
+    uint32_t altOutroAnim = 0;     // +0x140 replaces the outro clip when set
+    uint8_t textColor[4] = {};     // +0x144
+    float defaultFade = 0.0f;      // +0x14C
+    float fadeTime = 0.0f;         // +0x150
+    float holdTime = 0.0f;         // +0x154
+    HudObject* linked = nullptr;   // +0x158 shown once this element's object is hidden
+    float animSpeed = 1.0f;        // +0x188
     uint32_t updateFlags = 0;      // +0xD0 bit 31 cleared by ResetUpdateFlags()
     float targetValue = 0.0f;      // +0xD8
     float shownValue = 0.0f;       // +0xDC
@@ -195,7 +232,8 @@ void SetFieldTextByName(uint32_t name, const char* text, uint32_t index);     //
 // in seconds (< 0: 3 s).
 void SetFieldAnimMode(HudObject* object, uint32_t modeName);                  // 0x003676DC
 void SetFieldAnimPeriod(HudObject* object, float seconds);                    // 0x00367758              // 0x00367518
-void ShowTextByName(float fade, uint32_t name, const char* text, bool flag);   // 0x0036735C
+void ShowTextByName(float fade, uint32_t name, const char* text, bool timed, bool flag = false,
+                    HudObject* linked = nullptr, const uint8_t* color = nullptr);   // 0x0036735C
 void ShowByName(uint32_t name, bool a, bool intro, bool b);          // 0x0036742C
 void ShowType4000ByName(uint32_t name, bool a, bool intro, bool b);  // 0x00367B28
 int CountElementsAtAnchor(int32_t anchor);                           // 0x00367134

@@ -69,6 +69,11 @@ public:
     // `force`): a fresh animated skeleton and reference pose, then the owner
     // binds its own skeleton.
     void Bind(const HkaSkeleton* bones, bool force);
+    // 0x00350958 (TODO, partly undecodable): plays `binding` as the main
+    // control: binds a skeleton named after the clip when unbound, eases the
+    // other controls out over `blendTime` (unless the clip is additive) and
+    // eases the new control in, starting at `startTime` with `speed`.
+    void Play(HkaAnimationBinding* binding, float speed, float blendTime, float startTime, bool loop);
     // 0x003535C4: adds a secondary control for `binding` playing at `speed`
     // from `time` (looping endlessly when `loop`), then applies the bone
     // weight list named `weightList` (0 = none).

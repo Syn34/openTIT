@@ -4,6 +4,7 @@
 #include "sly/anim/AnimLayer.h"
 #include "sly/entity/EntityHooks.h"
 
+#include "ape/core/ApeString.h"
 #include "ape/world/ApeBase.h"
 #include "ape/world/ApeInstances.h"
 #include "ape/world/ApeObj.h"
@@ -199,6 +200,24 @@ void AnimController::BuildLayers(const AnimTree* tree)
         else if (entry.kind == AnimTreeLayer::kKind_Blend)
             AddBlendLayer(entry.anim, entry.weightList, entry.holdLastFrame);
     }
+}
+
+// @func 0x003514AC AnimController::Play
+AnimLayer* AnimController::Play(HkaAnimationBinding* binding, float speed, float blendTime, float startTime,
+                                bool loop, uint32_t listener)
+{
+    if (!rig) {
+        // The clip names the skeleton it was made for.
+        const char* skeletonName = reinterpret_cast<const char*>(
+            reinterpret_cast<uintptr_t>(binding->skeletonName) & ~uintptr_t(1));
+        auto* bones = static_cast<const HkaSkeleton*>(FindAnimSkeleton(ape::HashNameNoCase(skeletonName)));
+        // NOTE: a missing skeleton only fed a compiled-out warning.
+        BindSkeleton(bones, false);
+    }
+    AnimLayer* layer = (layers && layers->Count() != 0) ? (*layers)[0] : AddLayer(0);
+    layer->Play(binding, speed, blendTime, startTime, loop);
+    layer->AttachListener(listener);
+    return layer;
 }
 
 // @func 0x0034CDB0 AnimController::IsAnimatedThisFrame

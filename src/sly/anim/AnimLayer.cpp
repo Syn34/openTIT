@@ -95,6 +95,18 @@ void AnimLayer::Bind(const HkaSkeleton* bones, bool force)
         owner->BindSkeleton(bones, false);
 }
 
+// TODO(0x00350958 AnimLayer::Play): the tail of the function (after the new
+// control's time and speed are set) uses instructions the tools cannot
+// decode; nothing is played until it is ported.
+void AnimLayer::Play(HkaAnimationBinding* binding, float speed, float blendTime, float startTime, bool loop)
+{
+    (void)binding;
+    (void)speed;
+    (void)blendTime;
+    (void)startTime;
+    (void)loop;
+}
+
 // @func 0x003535C4 AnimLayer::AddSecondaryControl
 void AnimLayer::AddSecondaryControl(HkaAnimationBinding* binding, bool loop, float speed, float time,
                                     uint32_t weightList)

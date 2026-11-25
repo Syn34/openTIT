@@ -76,6 +76,11 @@ public:
     AnimLayer* AddBlendLayer(uint32_t anim, uint32_t weightList, bool holdLastFrame);
     // 0x00351A40: creates the layers listed by an anim tree.
     void BuildLayers(const struct AnimTree* tree);
+    // 0x003514AC: plays `binding` on the first layer (created when there is
+    // none; the controller binds the clip's skeleton first if it has no
+    // rig) and attaches the control listener named `listener`.
+    AnimLayer* Play(HkaAnimationBinding* binding, float speed, float blendTime, float startTime, bool loop,
+                    uint32_t listener);
     // 0x0034CDB0: the controller animates this frame (running, and drawn,
     // forced, within its cull distance or not a geometry instance).
     bool IsAnimatedThisFrame() const;
