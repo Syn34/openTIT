@@ -12,7 +12,7 @@
 #include "sly/entity/EntityHits.h"
 #include "sly/entity/EntityInterfaces.h"
 
-namespace ape { class ApeAnimScriptInstance; class ApeAnimScriptState; }
+namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; class ApeAnimScriptState; }
 
 namespace sly {
 namespace entity {
@@ -70,7 +70,12 @@ public:
     float maxHealth = 0.0f;                             // 0x158
     float health = 0.0f;                                // 0x15C
     float invulnerableTime = 0.0f;                      // 0x160
+    // Selects the script the entity runs (any library); 0 clears it
+    // (0x000E13D0).
+    void SetScript(uint32_t scriptHash);
+
     ape::ApeAnimScriptInstance* animScript = nullptr;   // 0x164 (returned by slot 68)
+    ape::ApeAnimScript* script = nullptr;               // 0x168
     void* field_16C = nullptr;                          // 0x16C NOTE: cleared on release
     Entity* lastAttacker = nullptr;                     // 0x170
     Entity* killer = nullptr;                           // 0x174

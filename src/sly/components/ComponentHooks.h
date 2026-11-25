@@ -5,7 +5,9 @@
 #include <cstdint>
 
 namespace ape { namespace xml { class XmlElement; } }
-namespace sly { namespace entity { struct ComponentDesc; } }
+namespace sly { namespace entity { struct ComponentDesc; class Entity; class EntityComponent; } }
+namespace ape::world { class ApeObj; }
+namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; class ApeRefCounted; }
 
 namespace sly {
 namespace components {
@@ -19,6 +21,65 @@ void AIBrainFillInput(void* brain, uint8_t* input);
 void* FindAnimTree(uint32_t nameHash);
 void* FindAnimBlendMap(uint32_t nameHash);
 // IK component update (0x002934E0) and vortex pull (0x002B0B10) are not ported.
+
+// -- HUD markers ---------------------------------------------------------------------
+// 0x00367900: instance of the HUD template `templateName` registered as
+// `name`; null when the template is missing.
+void* HudCloneObject(uint32_t templateName, uint32_t name);
+// HudObject state (+0xA0 >> 1): 0 while idle.
+uint32_t HudObjectAnimState(void* hudObject);
+// 0x00362BEC: hides the element at once; 0x0036325C: hide/show request;
+// slot 5: (de)activates it.
+void HudObjectHideNow(void* hudObject);
+void HudObjectShow(void* hudObject, bool a, bool intro, bool b);
+void HudObjectSetActive(void* hudObject, bool active);
+// Colour override of a marker (0x00257910): with `enable` the element's
+// highlight material is copied into the record (made on first use) and the
+// record is linked to the element; without, the original is restored.
+struct MarkerColorOverride {
+    void* hudObject = nullptr;   // +0x00 element whose material is overridden (null: none)
+    void* material = nullptr;    // +0x04 private copy of the material
+};
+void MarkerSetColorOverride(void* hudObject, MarkerColorOverride& record, bool enable);
+// 0x0046B7A4 on the game world (list 6, callback 0x00F357E0): forgets a
+// colour override record; the copied material is released by slot 2.
+void GameWorldForgetColorOverride(MarkerColorOverride& record);
+void MaterialRelease(void* material);
+
+// -- entities ------------------------------------------------------------------------
+// 0x000DCA20: runs `script` as a child of the entity's own anim script.
+ape::ApeAnimScriptInstance* EntityStartScript(entity::Entity* entity, ape::ApeAnimScript* script);
+// The entity's world object (+0xA0) as an anim script object reference.
+ape::ApeRefCounted* EntityScriptObject(entity::Entity* entity);
+// Entity virtual slot 24 (+0x60): NOTE: busy / engaged flag (base 0x007377D8).
+void EntitySetBusy(entity::Entity* entity, bool busy);
+// Gadget component (type 0x1A) word +0xF4 bits 20-27: the gadget mode.
+uint32_t GadgetMode(entity::EntityComponent* gadget);
+
+// -- event listener groups -------------------------------------------------------------
+// Game-side listener object embedded in components (base 0x0048F27C,
+// destructor 0x0048F6B0): members of a listener group receive the messages
+// posted to it (0x00470660). 0x0048FA54 joins a group, 0x0048F298 leaves all.
+void ListenerJoinGroup(void* listener, uint32_t group);
+// What a listener receives (sender entity, group key, message, argument).
+struct ListenerMessage {
+    entity::Entity* sender = nullptr;   // +0x00
+    uint32_t key = 0;                   // +0x04
+    uint32_t message = 0;               // +0x08
+    uint32_t argument = 0;              // +0x0C
+};
+void ListenerLeaveGroups(void* listener);
+// Entity world object (slot 36) word +0x2C: render layer.
+void EntitySetRenderLayer(entity::Entity* entity, uint32_t layer);
+
+// -- marker geometry ---------------------------------------------------------------
+// The geometry a contextual marker shows: the placed instance of that name
+// (made visible and asked for its type-7 object, virtual slot 14), else a new
+// instance of the geometry definition (0x005A05E8); null when neither exists.
+ape::world::ApeObj* MarkerGeometry(uint32_t geomName);
+// Locator of the owner's world object definition (+0xD0 +0x6C) by name
+// (ApeLocatorSet::Find), or null.
+void* EntityFindLocator(entity::Entity* entity, uint32_t name);
 
 // <BossGrizz> component parser (forwards to levels::ai::ParseBossGrizzComponentDesc).
 entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
