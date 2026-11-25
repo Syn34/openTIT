@@ -196,6 +196,11 @@ public:
     static constexpr uint32_t kInstanceType = kObjType_LightInstance;
     ApeLightInstance() : ApeRenderObj(kInstanceType) {}
     void Release() override;
+
+    // NOTE: written by the light construction (0x005A2528, not ported);
+    // the scene set-up treats 0 as ambient, 1 as directional and 2 as the
+    // lights that span the light grid (local lights).
+    int32_t m_lightType = 0;              // 0x170
 };
 
 class ApeEmitterInstance : public ApeRenderObj {

@@ -167,6 +167,23 @@ void AdvanceFrame()
     ++g_frames.frame;
 }
 
+// TODO(0x0053BF70 WaitForDisplayFlip) frame pacing: waits on the time base
+// until the queued flips have been displayed.
+static void WaitForDisplayFlip()
+{
+}
+
+// @func 0x005126E4 FlushRendering
+void FlushRendering()
+{
+    RenderThreadWait();
+    WaitForDisplayFlip();
+    // Each call advances the destruction frame, so this ends once every
+    // queued object's delay has passed.
+    while (!ProcessDeferredDestruction()) {
+    }
+}
+
 // @func 0x005124F4 EndFrame
 void EndFrame(int phase)
 {

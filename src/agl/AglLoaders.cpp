@@ -22,6 +22,8 @@ constexpr uint8_t kReaderResolveOnly = 0x04;
 
 void (*g_textureCreateHook)(AglTexture*, void*, int) = nullptr;   // 0x00F8F118 + 8
 void* g_textureCreateUserdata = nullptr;                           // 0x00F8F118 + 0xC
+void (*g_materialCreateHook)(AglMaterial*, void*, int) = nullptr; // 0x00F8F114 + 8
+void* g_materialCreateUserdata = nullptr;                          // 0x00F8F114 + 0xC
 bool g_defaultForLooseTextures = false;                            // 0x010C5AC0 bit 7
 
 } // namespace
@@ -30,6 +32,18 @@ void SetTextureCreateHook(void (*hook)(AglTexture*, void*, int), void* userdata)
 {
     g_textureCreateHook = hook;
     g_textureCreateUserdata = userdata;
+}
+
+void SetMaterialCreateHook(void (*hook)(AglMaterial*, void*, int), void* userdata)
+{
+    g_materialCreateHook = hook;
+    g_materialCreateUserdata = userdata;
+}
+
+void RunMaterialCreateHook(AglMaterial* material, int phase)
+{
+    if (g_materialCreateHook)
+        g_materialCreateHook(material, g_materialCreateUserdata, phase);
 }
 
 void SetUseDefaultForLooseTextures(bool enable)

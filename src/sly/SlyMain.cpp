@@ -9,6 +9,7 @@
 #include "ape/core/ApeString.h"
 #include "ape/core/ApeSysUtil.h"
 #include "ape/core/ApeSystem.h"
+#include "ape/world/ApeSceneSetup.h"
 #include "platform/Platform.h"
 
 #include <cstdint>
@@ -49,11 +50,6 @@ void AdvanceFrameRing(SlyGame* game)
     ring->previous = ring->current;
     ring->index = (uint8_t)((ring->index + 1) % 3);
     ring->current = ring->buffers[ring->index];
-}
-
-// TODO(0x00596A8C) per-frame update of an engine subsystem (phase argument).
-void EngineSubsystemEndFrame(int phase)
-{
 }
 
 // TODO(0x0051096C) wraps 0x0053C4A0 with a "running" flag at 0x010C5A71.
@@ -352,7 +348,7 @@ int SlyMain(int argc, char** argv)
         ReleasePendingObject();
         AppEndFrame(g_app.game, 2);
         AdvanceFrameRing(g_app.game);
-        EngineSubsystemEndFrame(2);
+        ape::world::UpdateProcAnims(2);
         agl::EndFrame(2);
         if (overlapped)
             PostFrameUpdate();

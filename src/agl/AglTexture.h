@@ -138,6 +138,10 @@ int TextureFileChunkHandler(ape::iff::IffReader* reader, void* arg);
 int TextureDefaultChunkHandler(ape::iff::IffReader* reader, void* arg);
 // Called for every texture a level creates (0x00F8F118).
 void SetTextureCreateHook(void (*hook)(AglTexture* texture, void* userdata, int), void* userdata);
+// Called for every material a level creates (0x00F8F114 + 8 / + 0xC).
+// NOTE: the material chunk handlers that run it are not ported yet.
+void SetMaterialCreateHook(void (*hook)(class AglMaterial* material, void* userdata, int), void* userdata);
+void RunMaterialCreateHook(class AglMaterial* material, int phase);
 // Debug switch (0x010C5AC0 bit 7): use the default image for loose textures.
 void SetUseDefaultForLooseTextures(bool enable);
 
