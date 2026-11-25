@@ -354,6 +354,34 @@ bool CompoundEntity::CanBeDamaged() const { return DamageSettings().CanHurt(); }
 // @func 0x00170630 CompoundEntity::ProjectileDamageScale
 float CompoundEntity::ProjectileDamageScale() const { return DamageSettings().projectileScale; }
 
+// -- PushBlock (vtable 0x00B160A8) ----------------------------------------------------
+
+// @func 0x001B8D84 PushBlock::GetVelocity
+ape::Vec3 PushBlock::GetVelocity()
+{
+    return rigidBody ? RigidBodyLinearVelocity(rigidBody) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
+}
+
+// @func 0x001B8DF8 PushBlock::OnSuspend
+void PushBlock::OnSuspend()
+{
+    ScriptedEntity::OnSuspend();
+    savedVelocity = { 0.0f, 0.0f, 0.0f, savedVelocity.pad };
+    if (rigidBody && RigidBodyInWorld(rigidBody)) {
+        const ape::Vec3 velocity = RigidBodyLinearVelocity(rigidBody);
+        savedVelocity = { velocity.x, velocity.y, velocity.z, savedVelocity.pad };
+        RigidBodySetLinearVelocity(rigidBody, { 0.0f, 0.0f, 0.0f, 0.0f });
+    }
+}
+
+// @func 0x001B900C PushBlock::CanInteractWith
+bool PushBlock::CanInteractWith(Entity* other, int kind)
+{
+    if ((kind == 0 && blockFlags < 0) || kind == 4)
+        return false;
+    return Entity::CanInteractWith(other, kind);
+}
+
 // -- TargetableCBase (vtable 0x00B18B48; damage block at definition +0xE8) -----------
 
 namespace {

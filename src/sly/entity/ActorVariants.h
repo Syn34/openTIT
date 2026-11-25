@@ -74,5 +74,30 @@ public:
     bool Release(bool kill) override { return ActorEntity::Release(kill); }
 };
 
+// Actor holding an object in an anim script variable (vtable 0x00B16438;
+// destructor 0x00753C08).
+class ScriptObjectActor : public ActorEntity {
+public:
+    // Drops the script's held object and plays the release state.
+    void HandleMessage(const EntityMessage& msg) override;   // slot 43
+    // Only player interaction, and only in mode 1 (+0x188 >> 1).
+    bool CanInteractWith(Entity* other, int kind) override;  // slot 76
+
+    uint32_t mode = 0;                   // 0x188
+};
+
+// vtable 0x00B17990 (destructor 0x00756154).
+class ActorB17990 : public ActorEntity {
+public:
+    bool Release(bool kill) override;                 // slot 10
+    // Slot 11: back to state 1, offering nothing.
+    virtual void ResetState();
+    // 0x001D81F0 (not ported).
+    void SetField1D81F0(bool on);
+
+    uint32_t field_248 = 0;              // 0x248
+    uint32_t field_260 = 0;              // 0x260
+};
+
 } // namespace entity
 } // namespace sly

@@ -2,6 +2,7 @@
 #include "sly/entity/ActorVariants.h"
 
 #include "ape/anim/ApeAnimScript.h"
+#include "ape/anim/ApeAnimScriptVars.h"
 #include "sly/entity/CharacterHooks.h"
 #include "sly/entity/EntityHooks.h"
 #include "sly/entity/GameEntityHooks.h"
@@ -126,6 +127,56 @@ void SignalActor::HandleMessage(const EntityMessage& msg)
         EntitySetState(this, 0, 2);
     }
     ActorHandleMessageBase(this, msg);
+}
+
+// -- ScriptObjectActor -------------------------------------------------------------------
+
+namespace {
+constexpr uint32_t kMsg_Release = 0xCBF1C4F3u;     // also the state it plays. NOTE: name unknown
+constexpr uint32_t kVar_HeldObject = 0x7A30D7E3u;  // NOTE: name unknown
+} // namespace
+
+// @func 0x001BE750 ScriptObjectActor::HandleMessage
+void ScriptObjectActor::HandleMessage(const EntityMessage& msg)
+{
+    if (msg.id == kMsg_Release && animScript) {
+        if (ape::ApeAnimScriptVar* var = animScript->FindVar(kVar_HeldObject)) {
+            if (var->GetType() == ape::AnimScriptVarType::Object)
+                static_cast<ape::ApeAnimScriptObjectVar*>(var)->SetObject(nullptr);
+        }
+        animScript->SetState(kMsg_Release);
+    }
+    ActorHandleMessageBase(this, msg);
+}
+
+// @func 0x001BE858 ScriptObjectActor::CanInteractWith
+bool ScriptObjectActor::CanInteractWith(Entity* other, int kind)
+{
+    if ((mode >> 1) == 1 && kind == kInteract_Player)
+        return ActorCanInteractWith(this, other, kind);
+    return false;
+}
+
+// -- ActorB17990 ---------------------------------------------------------------------------
+
+// @func 0x001D8560 ActorB17990::Release
+bool ActorB17990::Release(bool kill)
+{
+    if (kill)
+        SetField1D81F0(false);
+    return ActorEntity::Release(kill);
+}
+
+// TODO(0x001D81F0 ActorB17990::SetField1D81F0)
+void ActorB17990::SetField1D81F0(bool on) { (void)on; }
+
+// @func 0x001DB9C8 ActorB17990::ResetState
+void ActorB17990::ResetState()
+{
+    field_248 = 0;
+    EntitySetState(this, 0, 1);
+    InteractionSetOffer(EntityInteraction(this), 0);
+    field_260 = 0;
 }
 
 } // namespace entity

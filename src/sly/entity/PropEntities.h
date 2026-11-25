@@ -231,6 +231,22 @@ public:
     void* collisionShape = nullptr;    // 0xE4
 };
 
+// Push block (vtable 0x00B160A8; spawned by PushBlockDef, destructor
+// 0x00753258 outside this range): a rigid body the player pushes around.
+class PushBlock : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
+public:
+    // Slot 35: linear velocity of the body.
+    virtual ape::Vec3 GetVelocity();
+    // Suspending freezes the body and keeps its velocity for the resume.
+    void OnSuspend() override;                        // slot 60
+    // Kind 0 is refused while the block is locked (+0x248 bit 15), kind 4 always.
+    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+
+    ape::Vec3 savedVelocity{};          // 0x230
+    void* rigidBody = nullptr;          // 0x240
+    int16_t blockFlags = 0;             // 0x248 bit 15: locked
+};
+
 // Chain definition (vtable 0x00B15150, 0xC0 bytes; derives from the plain
 // definition base; spawns 0x001A7180, which builds "Spline_Chain_%s").
 class ChainDef : public EntityDef {
