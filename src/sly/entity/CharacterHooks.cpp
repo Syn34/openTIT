@@ -101,6 +101,10 @@ void PhysicsCompSetTarget(EntityComponent* component, const ape::Vec3& point) { 
 void* GadgetAbilityList() { return nullptr; }
 int GadgetAbilityCount(void* list) { (void)list; return 0; }
 uint32_t GadgetAbility(void* list, int index) { (void)list; (void)index; return 0; }
+void* FindHudElement(uint32_t name) { (void)name; return nullptr; }
+void HudElementHide(void* element) { (void)element; }
+void HudElementShow(void* element, float time, const char* text) { (void)element; (void)time; (void)text; }
+bool IsGameTimeFrozen() { return false; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }

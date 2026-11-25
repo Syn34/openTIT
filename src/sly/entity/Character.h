@@ -235,6 +235,14 @@ public:
     // @func 0x0015E2B8 Character::HandleState46
     bool HandleState46(const StateMessage& msg) { (void)msg; return true; }
 
+    // Shows (or hides) the definition's HUD prompts of a player character
+    // (0x001231B8).
+    void ShowHudPrompts(bool show);
+    // @func 0x0012D354 Character::HideHudPrompts
+    void HideHudPrompts() { ShowHudPrompts(false); }
+    // Flags (flags3C8 bit 1) that some prompt stays up for good (0x0012E5E8).
+    void CheckPermanentPrompts();
+
     // Watchers told when the character leaves (+0x530) (0x0012E824 / 0x0012E8B0).
     void AddWatcher(CharacterWatcher* watcher);
     void RemoveCharacterWatcher(CharacterWatcher* watcher);
@@ -321,6 +329,9 @@ public:
     void* fadeBuffer = nullptr;                     // 0x3D0 owned per-part alpha buffer
     int32_t lodField = 0;                           // 0x3E0 handed to the render object
     uint8_t opacity = 0xFF;                         // 0x3E4
+    float promptTime = -1.0f;                       // 0x490 overrides the prompts' time when not negative
+    bool promptsForced = false;                     // 0x494 shows the prompts not shown from the start
+    bool promptsHidden = false;                     // 0x495
     camera::DefaultCameraMode* cameraMode = nullptr; // 0x4A0 holds cameraSettings as an override
     camera::CameraSettings cameraSettings;          // 0x4B0
     // 0x530 objects watching the character; each removes itself when told
@@ -359,6 +370,16 @@ public:
     uint8_t dropSettings[0x10] = {};   // 0x1C0 NOTE: contents unknown
     TunableBlock block_2D0;         // 0x2D0
     TunableBlock block_304;         // 0x304
+    // HUD prompts shown for a player character (0x2C-byte records at
+    // +0x318, count at +0x3C8).
+    struct HudPrompt {
+        uint32_t hudName;           // +0x00 HUD element
+        float time;                 // +0x04 how long it shows (0: stays)
+        bool fromStart;             // +0x08 shown even without the override flag
+        char text[0x23];            // +0x09 optional text
+    };
+    HudPrompt hudPrompts[4] = {};   // 0x318
+    uint32_t hudPromptCount = 0;    // 0x3C8
     CameraSettingsBlock cameraBlock;   // 0x3E0 (settings at +0x3F0)
     TunableBlock block_470;         // 0x470
     TunableBlock block_510;         // 0x510

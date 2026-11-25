@@ -116,6 +116,13 @@ uint32_t PurchasedAbilities(uint32_t character, uint32_t* out, uint32_t max);
 void* GadgetAbilityList();
 int GadgetAbilityCount(void* list);
 uint32_t GadgetAbility(void* list, int index);
+// HUD elements by name (0x003568E0), hidden (0x0036325C) or shown for a time
+// with an optional text (0x00363A3C).
+void* FindHudElement(uint32_t name);
+void HudElementHide(void* element);
+void HudElementShow(void* element, float time, const char* text);
+// Frame time is frozen (game world short +0x128214).
+bool IsGameTimeFrozen();
 // World flag lookup by name (0x0048FC68).
 bool WorldFlag(uint32_t name);
 // The game physics world exists (game world +0x1281D4, +0x04).
