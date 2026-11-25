@@ -4,6 +4,7 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "sly/entity/CharacterHooks.h"
+#include "sly/entity/PropEntities.h"
 #include "sly/entity/GameEntityHooks.h"
 
 namespace sly {
@@ -21,7 +22,6 @@ void AlterEgoBentleyState::Exit(void* /*owner*/) {}
 
 namespace {
 
-constexpr uint32_t kFx_Death = 0x03DE9A54u;        // the "killed" event's effect
 constexpr uint32_t kFx_PowerUp = 0xD467C476u;      // NOTE: names unknown
 constexpr uint32_t kFx_Speed = 0xB94AF9E7u;
 constexpr uint32_t kFx_Script = 0x663F99F0u;
@@ -33,10 +33,10 @@ constexpr uint32_t kState_Destroy = 0x879F2BDAu;   // "Destroy"
 constexpr uint32_t kState_Refresh = 0x00011773u;   // NOTE: name unknown
 constexpr float kScriptStep = 1.0f / 60.0f;
 
-AlterEgoBentleyEntity* OwnerOf(void* owner) { return static_cast<AlterEgoBentleyEntity*>(owner); }
+CompoundEntity* OwnerOf(void* owner) { return static_cast<CompoundEntity*>(owner); }
 
 // Integer variable of the owner's anim script, or null.
-ape::ApeAnimScriptIntVar* SpeedLevelVar(AlterEgoBentleyEntity* owner)
+ape::ApeAnimScriptIntVar* SpeedLevelVar(CompoundEntity* owner)
 {
     auto* script = static_cast<ape::ApeAnimScriptInstance*>(owner->GetAnimScript());
     if (!script)
@@ -47,7 +47,7 @@ ape::ApeAnimScriptIntVar* SpeedLevelVar(AlterEgoBentleyEntity* owner)
 }
 
 // Starts a power-up script with the owner's world object as "this".
-ape::ApeAnimScriptInstance* StartPowerUpScript(uint32_t name, AlterEgoBentleyEntity* owner)
+ape::ApeAnimScriptInstance* StartPowerUpScript(uint32_t name, CompoundEntity* owner)
 {
     ape::ApeAnimScriptInstance* script = ape::ApeAnimScriptInstance::Create(name);
     if (!script)
@@ -61,18 +61,10 @@ ape::ApeAnimScriptInstance* StartPowerUpScript(uint32_t name, AlterEgoBentleyEnt
 
 } // namespace
 
-void AlterEgoBentleyEntity::PlayPowerUpFx(uint32_t fx)
-{
-    if (health > 0.0f || lastFx != kFx_Death) {
-        PlayCharacterFx(GetCharacterComponent(), fx, 1.0f, 0.25f);
-        lastFx = fx;
-    }
-}
-
 // @func 0x0016CED8 AlterEgoBentleyStateA::Enter
 void AlterEgoBentleyStateA::Enter(void* owner)
 {
-    AlterEgoBentleyEntity* bentley = OwnerOf(owner);
+    CompoundEntity* bentley = OwnerOf(owner);
     if (EntityComponent* skin = EntitySkin(bentley)) {
         savedRate = SkinRate(skin);
         savedCount = bentley->skinCount;
@@ -87,7 +79,7 @@ void AlterEgoBentleyStateA::Enter(void* owner)
 // @func 0x0016D068 AlterEgoBentleyStateA::Exit
 void AlterEgoBentleyStateA::Exit(void* owner)
 {
-    AlterEgoBentleyEntity* bentley = OwnerOf(owner);
+    CompoundEntity* bentley = OwnerOf(owner);
     if (EntityComponent* skin = EntitySkin(bentley)) {
         SkinSetScale(skin, savedRate);
         SkinSetRate(skin, SkinComputeRate(skin));
@@ -99,7 +91,7 @@ void AlterEgoBentleyStateA::Exit(void* owner)
 // @func 0x0016D160 AlterEgoBentleyStateB::Enter
 void AlterEgoBentleyStateB::Enter(void* owner)
 {
-    AlterEgoBentleyEntity* bentley = OwnerOf(owner);
+    CompoundEntity* bentley = OwnerOf(owner);
     savedSpeed = bentley->speedScale;
     bentley->speedScale = savedSpeed * 1.25f;
     bentley->PlayPowerUpFx(kFx_Speed);
@@ -112,7 +104,7 @@ void AlterEgoBentleyStateB::Enter(void* owner)
 // @func 0x0016D314 AlterEgoBentleyStateB::Exit
 void AlterEgoBentleyStateB::Exit(void* owner)
 {
-    AlterEgoBentleyEntity* bentley = OwnerOf(owner);
+    CompoundEntity* bentley = OwnerOf(owner);
     bentley->speedScale = savedSpeed;
     // NOTE: the console reads the current value back before writing it.
     if (ape::ApeAnimScriptIntVar* level = SpeedLevelVar(bentley)) {
@@ -124,7 +116,7 @@ void AlterEgoBentleyStateB::Exit(void* owner)
 // @func 0x0016D460 AlterEgoBentleyStateC::Enter
 void AlterEgoBentleyStateC::Enter(void* owner)
 {
-    AlterEgoBentleyEntity* bentley = OwnerOf(owner);
+    CompoundEntity* bentley = OwnerOf(owner);
     bentley->PlayPowerUpFx(kFx_PowerUp);
     EntityComponent* skin = EntitySkin(bentley);
     if (skin)
@@ -140,7 +132,7 @@ void AlterEgoBentleyStateC::Enter(void* owner)
 // @func 0x0016D5F0 AlterEgoBentleyStateC::Exit
 void AlterEgoBentleyStateC::Exit(void* owner)
 {
-    AlterEgoBentleyEntity* bentley = OwnerOf(owner);
+    CompoundEntity* bentley = OwnerOf(owner);
     EntityComponent* skin = EntitySkin(bentley);
     if (skin)
         skin = bentley->GetComponent(kComp_Skin, skin);
@@ -154,7 +146,7 @@ void AlterEgoBentleyStateC::Exit(void* owner)
 // @func 0x0016D720 AlterEgoBentleyStateD::Enter
 void AlterEgoBentleyStateD::Enter(void* owner)
 {
-    AlterEgoBentleyEntity* bentley = OwnerOf(owner);
+    CompoundEntity* bentley = OwnerOf(owner);
     savedLevel = SkinVariant(EntitySkin(bentley));
     SkinSetVariant(EntitySkin(bentley), savedLevel + 3);
     bentley->PlayPowerUpFx(kFx_PowerUp);
@@ -169,7 +161,7 @@ void AlterEgoBentleyStateD::Exit(void* owner)
 // @func 0x0016D9E8 AlterEgoBentleyScriptStateA::Enter
 void AlterEgoBentleyScriptStateA::Enter(void* owner)
 {
-    AlterEgoBentleyEntity* bentley = OwnerOf(owner);
+    CompoundEntity* bentley = OwnerOf(owner);
     const uint32_t level = bentley->scriptLevel;
     if (level & 1)
         field_18 = -1.0f;
@@ -204,7 +196,7 @@ void AlterEgoBentleyScriptStateA::Exit(void* owner)
 // @func 0x0016E908 AlterEgoBentleyScriptStateB::Enter
 void AlterEgoBentleyScriptStateB::Enter(void* owner)
 {
-    AlterEgoBentleyEntity* bentley = OwnerOf(owner);
+    CompoundEntity* bentley = OwnerOf(owner);
     bentley->PlayPowerUpFx(kFx_Script);
     count = 1;
     bentley->buffFlags |= 0x2000000;
@@ -223,7 +215,7 @@ void AlterEgoBentleyScriptStateB::Enter(void* owner)
 // Each exit uses up one charge; the last one ends the buff and its script.
 void AlterEgoBentleyScriptStateB::Exit(void* owner)
 {
-    AlterEgoBentleyEntity* bentley = OwnerOf(owner);
+    CompoundEntity* bentley = OwnerOf(owner);
     const uint32_t left = count - 1;
     auto* instance = static_cast<ape::ApeAnimScriptInstance*>(script);
     if (left == 0) {
@@ -238,7 +230,7 @@ void AlterEgoBentleyScriptStateB::Exit(void* owner)
         return;
     }
     count = left;
-    ++bentley->buffTicks;
+    ++bentley->partLevel;
     bentley->buffFlags |= 0x2000000;
     bentley->buffRate = 1.0f / float(left);
     if (instance) {

@@ -38,8 +38,8 @@ void* PhysicsCompRigidBody(EntityComponent* component);
 // Collision filter word of a rigid body (+0x2C): the group goes into bits
 // 16-31 and the world re-filters the body (0x00930B70) when it is in one.
 void RigidBodySetCollisionGroup(void* body, uint32_t group);
-// Position the character aims from (+0x250) and its turn rate (+0x280).
-ape::Vec3 CharacterCompAimPosition(EntityComponent* component);
+// Velocity (+0x250) and turn rate (+0x280) of the character component.
+ape::Vec3 CharacterCompVelocity(EntityComponent* component);
 float CharacterCompTurnRate(EntityComponent* component);
 // Gravity factor of a rigid body's motion (an hkHalf at +0x1FE).
 float RigidBodyGravityFactor(void* body);
@@ -116,6 +116,13 @@ uint32_t PurchasedAbilities(uint32_t character, uint32_t* out, uint32_t max);
 void* GadgetAbilityList();
 int GadgetAbilityCount(void* list);
 uint32_t GadgetAbility(void* list, int index);
+// HUD elements by name (0x003568E0), hidden (0x0036325C) or shown for a time
+// with an optional text (0x00363A3C).
+void* FindHudElement(uint32_t name);
+void HudElementHide(void* element);
+void HudElementShow(void* element, float time, const char* text);
+// Frame time is frozen (game world short +0x128214).
+bool IsGameTimeFrozen();
 // World flag lookup by name (0x0048FC68).
 bool WorldFlag(uint32_t name);
 // The game physics world exists (game world +0x1281D4, +0x04).
@@ -171,6 +178,9 @@ bool ThrownBySelf(Entity* thrown, Entity* entity);
 // whose owner is a rigid body), its motion type (+0xE8 == 4: keyframed) and mass.
 void* HitOtherBody(const struct EntityHitRecord& hit);
 bool RigidBodyIsKeyframed(void* body);
+// Collision layer of the other collidable of a physics impact hit (its
+// filter info +0x1C, bits 0-4).
+uint32_t HitOtherCollisionLayer(const struct EntityHitRecord& hit);
 float RigidBodyMass(void* body);
 // Statistics of a melee hit taken (0x000B2AE0).
 void RecordMeleeHit(Entity* victim, const struct EntityHitRecord& hit);
