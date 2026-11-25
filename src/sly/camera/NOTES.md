@@ -3,7 +3,7 @@
 ## Contents
 * `CameraSprings.*`: the three spring types the game camera eases with (vector, quaternion,
   scalar; 0x000F8C70-0x000F9380). Their own vtables (0x00B13988/98/A8) and destructors live
-  in the helper range 0x00749xxx (not tagged).
+  in the helper range 0x00749xxx (tagged in the header).
 * `CameraSettings.*`: the per-frame view (`CameraViewState`, GameCamera +0x1E0) and the
   follow-camera settings block (`CameraSettings`, 0x80 bytes; character def +0x3F0,
   vehicle def +0x1B0, character +0x4B0) with defaults/blend (0x000FD5F0-0x000FDB88).

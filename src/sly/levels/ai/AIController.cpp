@@ -103,10 +103,11 @@ void BindEntityScript(ape::ApeAnimScriptInstance* instance, Entity* entity)
 AIManager* GetAIManager() { return g_aiManager; }
 void SetAIManager(AIManager* manager) { g_aiManager = manager; }
 
+// Releases the NavPower point handle.
+// @func 0x00738364 AIController::~AIController
+// @func 0x0073839C AIController::~AIController (deleting)
 AIController::~AIController()
 {
-    // The console destructor (0x00738364, outside this range) releases the
-    // NavPower point handle.
     if (navPoint)
         NavPointRelease(navPoint);
 }
@@ -637,15 +638,15 @@ void AIController::FaceDirection(const ape::Vec3& direction)
     transform.xAxis = {xInv * xx, xInv * xy, xInv * xz, 0.0f};
 }
 
+// @func 0x00738528 AIController::IsCharacterDead
 bool AIController::IsCharacterDead()
 {
-    // The base version (0x00738528) lies outside this range.
     return character && CharacterHealth(character) <= 0.0f;
 }
 
+// @func 0x00738574 AIController::StateName
 const char* AIController::StateName(int s)
 {
-    // The base version (0x00738574) lies outside this range.
     return ape::TempFormat("%d", s);
 }
 

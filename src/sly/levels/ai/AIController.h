@@ -15,8 +15,8 @@
 // list.
 //
 // NOTE: neither class name is known. Virtual slots are given with their
-// number on the console vtable; slots whose default does nothing or returns
-// a constant (0x007383F8..0x007387A0, outside this range) are written inline.
+// number on the console vtable; the one-line defaults (0x007383F8..
+// 0x007387A0) are written inline.
 #pragma once
 
 #include "ape/math/ApeMath.h"
@@ -84,7 +84,8 @@ public:
     virtual void Update(float dt);
     // Slot 6: pushes the controller transform to the entity.
     virtual void ApplyTransform(float dt);
-    // Slot 7: ticks the entity (unless an ally is in charge of it).
+    // Slot 7: ticks the entity (unless an ally is in charge of it). Most
+    // behaviours replace it with nothing.
     virtual void TickEntity(float dt);
     // Slot 10: first step of Update. NOTE: some behaviours look up bones here.
     virtual void PreUpdate(float dt);
@@ -96,45 +97,61 @@ public:
     virtual ape::Vec3 GetTargetPosition();
     // Slot 20 (+0x50): NOTE: maximum yaw error (degrees) before the controller
     // turns on the spot; 0 disables it.
+    // @func 0x00738470 AIController::TurnInPlaceAngle
     virtual float TurnInPlaceAngle() { return 0.0f; }
     // Slot 19 (+0x4C): NOTE: within this distance of the goal the controller
     // keeps its facing instead of turning around.
+    // @func 0x00738458 AIController::FacingLockRadius
     virtual float FacingLockRadius() { return 0.0f; }
     // Slot 21 (EntityListener).
+    // @func 0x00738480 AIController::AllowsInteraction
     bool AllowsInteraction() override { return true; }
     // Slot 30 (+0x78): kept in the manager's "active" list.
+    // @func 0x007384D8 AIController::IsListedActive
     virtual bool IsListedActive() { return false; }
     // Slot 31 (+0x7C): ally of the player; allies do not own their target and
     // their character is listed separately.
+    // @func 0x007384E0 AIController::IsAlly
     virtual bool IsAlly() { return false; }
     // Slot 32 (+0x80): the transform is written straight into the entity
     // instead of through EntitySetTransform.
+    // @func 0x007384E8 AIController::WritesEntityTransform
     virtual bool WritesEntityTransform() { return false; }
     // Slot 33 (+0x84): facing may tilt (flyers).
+    // @func 0x007384F0 AIController::CanPitch
     virtual bool CanPitch() { return false; }
     // Slot 44 (+0xB0): gravity applies to the body velocity being built
     // (only its y is filled in at that point). The base version
     // (0x00738690) applies it while not moving up.
+    // @func 0x00738690 AIController::ShouldApplyGravity
     virtual bool ShouldApplyGravity(const ape::Vec3& velocity) { return velocity.y < 1e-05f; }
     // Slot 11 (+0x2C): NOTE: event from outside (0 and 1 are handled by the
     // standard enemy).
+    // @func 0x00738400 AIController::OnEvent
     virtual void OnEvent(int kind) { (void)kind; }
     // Slot 21 is AllowsInteraction (EntityListener). Slots 22/23/25 (+0x58,
     // +0x5C, +0x64): NOTE: state queries asked by other modules; the base
     // answers from flags0.
+    // @func 0x00738488 AIController::IsEngaged
     virtual bool IsEngaged() { return (flags0 & kF0_Bit0) != 0; }
+    // @func 0x00738494 AIController::IsCalm
     virtual bool IsCalm() { return !(flags0 & kF0_Bit6); }
+    // @func 0x007384B4 AIController::CanBeTakenDown
     virtual bool CanBeTakenDown() { return false; }
     // Slot 26 (+0x68): NOTE: the player may sneak up on this one.
+    // @func 0x007384BC AIController::CanBeSneakedUpOn
     virtual bool CanBeSneakedUpOn() { return false; }
     // Slot 38 (+0x98): NOTE: true in the states where the enemy is helpless.
+    // @func 0x00738518 AIController::IsHelpless
     virtual bool IsHelpless() { return false; }
     // Slot 39 (+0x9C): the controlled character has no health left.
     virtual bool IsCharacterDead();
     // Slot 40 (+0xA0): NOTE: false while the behaviour is still on its way
     // somewhere (meaning inferred from the buddy override).
+    // @func 0x00738568 AIController::IsSettled
     virtual bool IsSettled() { return true; }
     // Slot 41 (+0xA4): command from a script (hash, two arguments and a value).
+    // @func 0x00738570 AIController::OnScriptCommand
     virtual void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value)
     {
         (void)command; (void)arg1; (void)arg2; (void)value;
@@ -143,13 +160,17 @@ public:
     virtual const char* StateName(int s);
     // Slot 43 (+0xAC): NOTE: the alarm went off; the base version (0x007385A0)
     // drops the target.
+    // @func 0x007385A0 AIController::OnAlarm
     virtual void OnAlarm() { DropTarget(); }
     // Slot 47 (+0xBC): attacked by `attacker` (standard enemies may dodge).
+    // @func 0x007386D0 AIController::OnAttacked
     virtual void OnAttacked(Entity* attacker) { (void)attacker; }
     // Slot 48 (+0xC0): chance to taunt.
+    // @func 0x007386D4 AIController::OnTauntChance
     virtual void OnTauntChance() {}
     // Slot 49 (+0xC4): damage taken. The base version (0x007386E0) sets
     // kF1_Hit unless hits are locked out.
+    // @func 0x007386E0 AIController::OnDamaged
     virtual void OnDamaged(float amount, uint32_t kind, const struct AIDamageInfo* info)
     {
         (void)kind; (void)info;
@@ -170,22 +191,30 @@ public:
     virtual void UpdateNavigation();
     // Slots 60/61 (+0xF0/+0xF4): settings of the nav agent: search radius and
     // the proxy point / nav filter (1 heavy, 2 light; see "Filter").
+    // @func 0x00738730 AIController::NavSearchRadius
     virtual float NavSearchRadius() { return 0.0f; }
+    // @func 0x00738740 AIController::NavFilter
     virtual int NavFilter() { return 0; }
     // Slot 62 (+0xF8): a nav request produced a new goal.
+    // @func 0x00738748 AIController::OnNavGoalChanged
     virtual void OnNavGoalChanged() {}
     // Slot 64 (+0x100): the facing error got larger than TurnInPlaceAngle().
+    // @func 0x00738750 AIController::OnTurnInPlace
     virtual void OnTurnInPlace() {}
     // Slot 65 (+0x104): a nav path step was taken.
+    // @func 0x00738754 AIController::OnNavStep
     virtual void OnNavStep() {}
     // Slot 66 (+0x108): arrived at the current proxy point.
     virtual void OnProxyPointReached();
     // Slot 67 (+0x10C): uses the nav mesh.
+    // @func 0x00738758 AIController::UsesNavigation
     virtual bool UsesNavigation() { return true; }
     // Slot 68 (+0x110): NOTE: scale of the root motion step.
+    // @func 0x00738768 AIController::RootMotionScale
     virtual float RootMotionScale() { return 1.0f; }
     // Slot 69 (+0x114): lets a behaviour change the root motion step (local
     // translation) before it is applied.
+    // @func 0x00738778 AIController::FilterRootMotion
     virtual ape::Vec3 FilterRootMotion(const ape::Vec3& step) { return step; }
     // Slot 70 (+0x118): refreshes the direction/distance to the target.
     virtual void UpdateTargetInfo(float dt);
@@ -196,7 +225,58 @@ public:
     // Slot 73 (+0x124): turning, root motion and body velocity.
     virtual void UpdateMovement(float dt);
     // Slot 74 (+0x128): vertical speed added when gravity applies.
+    // @func 0x007387A0 AIController::GravitySpeed
     virtual float GravitySpeed() { return 0.0f; }
+
+    // Slots whose callers are not ported; named by their slot number.
+    // NOTE: meanings unknown. Behaviours override some of them (see
+    // AIBehaviours.h).
+    // @func 0x007383F8 AIController::Slot8
+    virtual void Slot8() {}
+    // @func 0x007383FC AIController::Slot9
+    virtual void Slot9() {}
+    // NOTE: radius of the nav agent (critters answer their avoidance radius,
+    // heavy enemies a larger value).
+    // @func 0x00738410 AIController::AgentRadius
+    virtual float AgentRadius() { return 1.0f; }
+    // @func 0x00738428 AIController::Slot16
+    virtual float Slot16() { return 1.0f; }
+    // @func 0x00738438 AIController::Slot17
+    virtual int Slot17() { return 0; }
+    // @func 0x00738440 AIController::Slot18
+    virtual uint32_t Slot18() { return 0xFFFFFFFFu; }
+    // @func 0x007384AC AIController::Slot24
+    virtual bool Slot24() { return false; }
+    // @func 0x007384C4 AIController::Slot27
+    virtual bool Slot27() { return false; }
+    // @func 0x007384CC AIController::Slot28
+    virtual bool Slot28() { return false; }
+    // @func 0x007384D4 AIController::Slot29
+    virtual void Slot29() {}
+    // NOTE: true for the boss behaviours (Bismarque, El Jefe, Ms Decibel,
+    // Paradox).
+    // @func 0x007384F8 AIController::IsBoss
+    virtual bool IsBoss() { return false; }
+    // NOTE: true when the settings give no spawn animation clip.
+    // @func 0x00738500 AIController::HasNoSpawnClip
+    virtual bool HasNoSpawnClip() { return false; }
+    // @func 0x00738508 AIController::Slot36
+    virtual bool Slot36() { return false; }
+    // NOTE: the "Heavy" enemy setting.
+    // @func 0x00738510 AIController::IsHeavy
+    virtual bool IsHeavy() { return false; }
+    // @func 0x007386C0 AIController::Slot45
+    virtual int Slot45() { return 0x0B; }
+    // @func 0x007386C8 AIController::Slot46
+    virtual int Slot46() { return 0; }
+    // @func 0x00738718 AIController::Slot50
+    virtual void Slot50() {}
+    // @func 0x0073871C AIController::Slot51
+    virtual void Slot51() {}
+    // @func 0x00738720 AIController::Slot52
+    virtual void Slot52() {}
+    // @func 0x0073874C AIController::Slot63
+    virtual void Slot63() {}
 
     // -- helpers ----------------------------------------------------------------------
     // Turns the transform to face `direction` (horizontal part only, up axis

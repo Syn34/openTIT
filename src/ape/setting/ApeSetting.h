@@ -63,12 +63,26 @@ enum SettingParamUsage : int32_t {
 // which share one ApplyDefault (0x007366CC).
 class SettingParam {
 public:
+    // One instantiation per value type on the console (each module keeps its
+    // own copies); the AI module's are tagged here.
+    // @func 0x007366F4 SettingParam::SettingParam (copy, bool)
+    // @func 0x00736770 SettingParam::SettingParam (copy, float)
+    // @func 0x007367E8 SettingParam::SettingParam (copy, hash)
+    // @func 0x00736860 SettingParam::SettingParam (copy, string)
     SettingParam(const char* name, int32_t type, int32_t usage, DTDValue defaultValue = {})
         : name(name), type(type), usage(usage), defaultValue(defaultValue)
     {
     }
-    // One instantiation per value type on the console; the SAI module's integer
-    // ones are tagged here.
+    // @func 0x00735F18 SettingParam::~SettingParam (copy, AI base)
+    // @func 0x00736688 SettingParam::~SettingParam (deleting, copy, AI base)
+    // @func 0x00732DE8 SettingParam::~SettingParam (copy, bool)
+    // @func 0x0073672C SettingParam::~SettingParam (deleting, copy, bool)
+    // @func 0x00732DF8 SettingParam::~SettingParam (copy, float)
+    // @func 0x007367A4 SettingParam::~SettingParam (deleting, copy, float)
+    // @func 0x00732DC8 SettingParam::~SettingParam (copy, hash)
+    // @func 0x0073681C SettingParam::~SettingParam (deleting, copy, hash)
+    // @func 0x00732F28 SettingParam::~SettingParam (copy, string)
+    // @func 0x007368B4 SettingParam::~SettingParam (deleting, copy, string)
     // @func 0x00781AD0 SettingParam::~SettingParam (copy, int)
     // @func 0x00782080 SettingParam::~SettingParam (deleting, copy, int)
     // @func 0x00781AB0 SettingParam::~SettingParam (copy, int1)
@@ -78,6 +92,8 @@ public:
     SettingParam& operator=(const SettingParam&) = delete;
 
     // Writes the default into a setting's value array.
+    // @func 0x007366CC SettingParam::ApplyDefault (copy, AI scalar)
+    // @func 0x00736894 SettingParam::ApplyDefault (copy, AI string)
     virtual void ApplyDefault(DTDValue* values) const { values[attribute->column] = defaultValue; }
 
     // Value column of the parameter in the definition that registered it last.
@@ -100,11 +116,15 @@ inline DTDValue SettingString(const char* v) { DTDValue d{}; d.str = v; return d
 // Three-float parameter (0x40 bytes, vtable 0x00B0DC5C; default at +0x30).
 class SettingVec3Param : public SettingParam {
 public:
+    // @func 0x007368F8 SettingVec3Param::SettingVec3Param
     SettingVec3Param(const char* name, int32_t usage, float x, float y, float z)
         : SettingParam(name, kDTD_Vector3, usage), value{ x, y, z }
     {
     }
-    // 0x00736944
+    // @func 0x00732DD8 SettingVec3Param::~SettingVec3Param
+    // @func 0x007369A4 SettingVec3Param::~SettingVec3Param (deleting)
+    ~SettingVec3Param() override = default;
+    // @func 0x00736944 SettingVec3Param::ApplyDefault
     void ApplyDefault(DTDValue* values) const override
     {
         for (int i = 0; i < 3; ++i)
@@ -150,16 +170,19 @@ public:
     virtual uint32_t GetTypeHash() const = 0;
     // NOTE: returns 0 by default and the constant 0xC9D7446A in the character
     // and hot spot definitions; no caller is known, so the meaning is open.
+    // @func 0x007369E8 SettingDef::GetGroupHash
     virtual uint32_t GetGroupHash() const { return 0; }
     // Registers the parameters (AddParam) once the DTD exists.
     virtual void InitParams() = 0;
     // Reads a kDTD_Custom attribute; true when a value was stored.
+    // @func 0x007369F0 SettingDef::ReadCustomAttribute
     virtual bool ReadCustomAttribute(xml::XmlElement* element, DTDAttribute* attribute, Setting* setting,
                                      DTDValue* values)
     {
         return false;
     }
     // Called after reading an attribute whose DTD entry has field_58 set.
+    // @func 0x007369F8 SettingDef::OnAttributeRead
     virtual void OnAttributeRead(DTDAttribute* attribute, Setting* setting, DTDValue* values, bool reload) {}
     // Allocates an empty setting of this definition.
     virtual Setting* CreateSetting(const char* name);

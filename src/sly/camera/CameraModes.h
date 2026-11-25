@@ -22,9 +22,17 @@ ape::Vec3 ClosestPointOnSegment(const ape::Vec3& a, const ape::Vec3& b, const ap
 class AnimCameraMode : public CameraMode {
 public:
     explicit AnimCameraMode(GameCamera* owner) : CameraMode(owner) {}
+    // @func 0x00748A88 AnimCameraMode::~AnimCameraMode
+    // @func 0x007494C8 AnimCameraMode::~AnimCameraMode (deleting)
+    ~AnimCameraMode() override = default;
+    // @func 0x00749478 AnimCameraMode::GetType
     int32_t GetType() const override { return 5; }
+    // @func 0x00749480 AnimCameraMode::GetName
     const char* GetName() const override { return "Anim"; }
     void Update(float dt, CameraViewState& view) override;
+    // The view is taken again once the animation has moved this frame.
+    // @func 0x0074948C AnimCameraMode::PostUpdate
+    void PostUpdate(float dt, CameraViewState& view) override { Update(dt, view); }
 
     bool useAnimFov = true;   // 0x09
 };
@@ -35,9 +43,12 @@ class FixedCameraMode : public CameraMode {
 public:
     explicit FixedCameraMode(GameCamera* owner) : CameraMode(owner) {}
     ~FixedCameraMode() override;
+    // @func 0x0074961C FixedCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Fixed; }
+    // @func 0x00749624 FixedCameraMode::GetName
     const char* GetName() const override { return "Fixed"; }
     void Update(float dt, CameraViewState& view) override;
+    // @func 0x00749630 FixedCameraMode::GetTarget
     Entity* GetTarget() const override { return target; }
 
     ape::Matrix34 transform{};       // 0x10
@@ -57,9 +68,13 @@ public:
     // 0x00113608
     OrthoCameraMode(float fov, GameCamera* owner, Entity* target);
     ~OrthoCameraMode() override;
+    // @func 0x0074986C OrthoCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Ortho; }
+    // @func 0x00749874 OrthoCameraMode::GetName
     const char* GetName() const override { return "Ortho"; }
     void Update(float dt, CameraViewState& view) override;
+    // @func 0x00749880 OrthoCameraMode::GetTarget
+    Entity* GetTarget() const override { return target; }
     // Replaces the followed entity (0x001138D8 is the Track mode's copy).
     void SetTarget(Entity* entity);
     // Reads offset, up vector and field of view from the target (0x001134D8).
@@ -79,7 +94,9 @@ class ShooterCameraMode : public CameraMode {
 public:
     explicit ShooterCameraMode(GameCamera* owner);   // 0x00112BC8
     ~ShooterCameraMode() override = default;
+    // @func 0x00749858 ShooterCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Shooter; }
+    // @func 0x00749860 ShooterCameraMode::GetName
     const char* GetName() const override { return "Shooter"; }
     void Update(float dt, CameraViewState& view) override;
     void Finish() override;
@@ -108,7 +125,12 @@ public:
 class CrawlCameraMode : public CameraMode {
 public:
     explicit CrawlCameraMode(GameCamera* owner) : CameraMode(owner) {}
+    // @func 0x00748C1C CrawlCameraMode::~CrawlCameraMode
+    // @func 0x00749780 CrawlCameraMode::~CrawlCameraMode (deleting)
+    ~CrawlCameraMode() override = default;
+    // @func 0x0074976C CrawlCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Crawl; }
+    // @func 0x00749774 CrawlCameraMode::GetName
     const char* GetName() const override { return "Crawl"; }
     void Update(float dt, CameraViewState& view) override;
     void UpdateStage2(float dt, CameraViewState& view) override;
@@ -143,11 +165,15 @@ public:
     explicit SpotlightCameraMode(GameCamera* owner) : CameraMode(owner) {}
     // Puts the searchlight back where it was.
     ~SpotlightCameraMode() override;
+    // @func 0x0074983C SpotlightCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Spotlight; }
+    // @func 0x00749844 SpotlightCameraMode::GetName
     const char* GetName() const override { return "Spotlight"; }
     void Update(float dt, CameraViewState& view) override;
     // Stick steering (slot 5).
     void UpdateStage2(float dt, CameraViewState& view) override;
+    // @func 0x00749850 SpotlightCameraMode::GetTarget
+    Entity* GetTarget() const override { return field_C0; }
 
     Entity* player = nullptr;          // 0x0C
     Entity* spotlight = nullptr;       // 0x10
@@ -156,6 +182,7 @@ public:
     ape::Matrix34 transform = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 0 } };        // 0x70
     float pitchSpeed = 0.0f;           // 0xB0
     float yawSpeed = 0.0f;             // 0xB4
+    Entity* field_C0 = nullptr;        // 0xC0 reported as the target. NOTE: role unknown
 };
 
 // "Default" (type 11, vtable 0x00B13B90 + 0x00B13BE4 at +0x0C, 0x410 bytes;
@@ -171,12 +198,16 @@ public:
 
     explicit DefaultCameraMode(GameCamera* owner) : CameraMode(owner) {}
     ~DefaultCameraMode() override;
+    // @func 0x00749638 DefaultCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Default; }
+    // @func 0x00749640 DefaultCameraMode::GetName
     const char* GetName() const override { return "Default"; }
     void Deactivate() override;
     void ResetSettings() override;
     bool Tick(float dt, CameraViewState& view) override;
     const char* GetDebugText() override;
+    // @func 0x0074964C DefaultCameraMode::GetTarget
+    Entity* GetTarget() const override { return target; }
     // Slot 17: empty.
     // @func 0x001066FC DefaultCameraMode::Slot17
     virtual void Slot17() {}
@@ -235,7 +266,9 @@ class ShoulderCameraMode : public CameraMode {
 public:
     ShoulderCameraMode(GameCamera* owner, Entity* target);   // 0x00107320
     ~ShoulderCameraMode() override;
+    // @func 0x00749654 ShoulderCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Shoulder; }
+    // @func 0x0074965C ShoulderCameraMode::GetName
     const char* GetName() const override { return "Shoulder"; }
     void Update(float dt, CameraViewState& view) override;
     void Activate() override;
@@ -257,10 +290,18 @@ class SplineCameraMode : public CameraMode {
 public:
     explicit SplineCameraMode(GameCamera* owner) : CameraMode(owner) {}
     ~SplineCameraMode() override;
+    // @func 0x00749714 SplineCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Spline; }
+    // @func 0x0074971C SplineCameraMode::GetName
     const char* GetName() const override { return "Spline"; }
     void Finish() override;
     const char* GetDebugText() override;
+    // @func 0x00749764 SplineCameraMode::GetTarget
+    Entity* GetTarget() const override { return target; }
+    void Activate() override;
+    // A blend-in starts the same way as a cut.
+    // @func 0x00749728 SplineCameraMode::ActivateFrom
+    void ActivateFrom(const CameraViewState& previous) override { (void)previous; Activate(); }
     // A null target also drops the look-at entity (0x00108A34).
     void SetTarget(Entity* entity);
     // 0x001089A8
@@ -280,13 +321,25 @@ public:
 class BinocucomCameraMode : public CameraMode {
 public:
     explicit BinocucomCameraMode(GameCamera* owner) : CameraMode(owner) {}
+    // @func 0x007497C4 BinocucomCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Binocucom; }
+    // @func 0x007497CC BinocucomCameraMode::GetName
     const char* GetName() const override { return "Binocucom"; }
     void Deactivate() override;
+    // @func 0x007497D8 BinocucomCameraMode::GetTarget
+    Entity* GetTarget() const override { return target; }
+    // Becoming the top mode, by cut or blend, flags a restart of the view.
+    // NOTE: meaning of zoomFlags bit 13 assumed.
+    // @func 0x007497F0 BinocucomCameraMode::Activate
+    void Activate() override { zoomFlags |= kZoom_Restart; }
+    // @func 0x007497E0 BinocucomCameraMode::ActivateFrom
+    void ActivateFrom(const CameraViewState& previous) override { (void)previous; zoomFlags |= kZoom_Restart; }
     // Counts requests to hold the zoom; returns true while any is held (0x0010D9B0).
     bool HoldZoom(bool hold);
 
+    static constexpr uint16_t kZoom_Restart = 0x2000;
     Entity* player = nullptr;            // 0x0C
+    Entity* target = nullptr;            // 0x90 entity being looked at
     int16_t zoomHolds = 0;               // 0xB4
     uint16_t zoomFlags = 0;              // 0xB6 bits 14-15 cleared by a new hold
     float savedFov = 0.0f;               // 0xB8
@@ -349,8 +402,12 @@ class VehicleCameraMode : public CameraMode {
 public:
     explicit VehicleCameraMode(GameCamera* owner) : CameraMode(owner) {}
     ~VehicleCameraMode() override;
+    // @func 0x00749800 VehicleCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Vehicle; }
+    // @func 0x00749808 VehicleCameraMode::GetName
     const char* GetName() const override { return "Vehicle"; }
+    // @func 0x00749814 VehicleCameraMode::GetTarget
+    Entity* GetTarget() const override { return target; }
     // Follows `entity` and takes its camera settings (0x0010DD60).
     void SetTarget(Entity* entity);
     // Target settings from the vehicle definition, or the tuning defaults (0x0010DA30).
@@ -376,8 +433,15 @@ class HavokVehicleCameraMode : public CameraMode {
 public:
     explicit HavokVehicleCameraMode(GameCamera* owner);
     ~HavokVehicleCameraMode() override;
+    // @func 0x0074981C HavokVehicleCameraMode::GetType
     int32_t GetType() const override { return kCamMode_HavokVehicle; }
+    // @func 0x00749824 HavokVehicleCameraMode::GetName
     const char* GetName() const override { return "Havok vehicle"; }
+    // @func 0x00749834 HavokVehicleCameraMode::GetTarget
+    Entity* GetTarget() const override { return target; }
+    // Nothing to do in the second stage.
+    // @func 0x00749830 HavokVehicleCameraMode::UpdateStage2
+    void UpdateStage2(float dt, CameraViewState& view) override { (void)dt; (void)view; }
     // 0x0011135C
     void SetTarget(Entity* entity);
 
@@ -392,10 +456,14 @@ class TrackCameraMode : public CameraMode {
 public:
     explicit TrackCameraMode(GameCamera* owner) : CameraMode(owner) {}
     ~TrackCameraMode() override;
+    // @func 0x00749998 TrackCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Track; }
+    // @func 0x007499A0 TrackCameraMode::GetName
     const char* GetName() const override { return "Track"; }
     void Update(float dt, CameraViewState& view) override;
     const char* GetDebugText() override;
+    // @func 0x007499AC TrackCameraMode::GetTarget
+    Entity* GetTarget() const override { return target; }
     // 0x001138D8
     void SetTarget(Entity* entity);
 
@@ -415,9 +483,13 @@ class OrbitCameraMode : public CameraMode {
 public:
     OrbitCameraMode(GameCamera* owner, Entity* target, OrbitStyle style);   // 0x00114298
     ~OrbitCameraMode() override;
+    // @func 0x007499B4 OrbitCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Orbit; }
+    // @func 0x007499BC OrbitCameraMode::GetName
     const char* GetName() const override { return "Orbit"; }
     void Update(float dt, CameraViewState& view) override;
+    // @func 0x007499C8 OrbitCameraMode::GetTarget
+    Entity* GetTarget() const override { return target; }
     // Snaps to the target on the next update (0x001158E4).
     void Activate() override { snap = true; }
     // 0x00114208
@@ -466,7 +538,9 @@ class StrafeCameraMode : public CameraMode {
 public:
     StrafeCameraMode(float height, GameCamera* owner, Entity* subject, Entity* opponent);   // 0x00115B90
     ~StrafeCameraMode() override;
+    // @func 0x007499D0 StrafeCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Strafe; }
+    // @func 0x007499D8 StrafeCameraMode::GetName
     const char* GetName() const override { return "Strafe"; }
     void Update(float dt, CameraViewState& view) override;
     bool Tick(float dt, CameraViewState& view) override;

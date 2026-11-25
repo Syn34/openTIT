@@ -180,17 +180,24 @@ void ScriptedEntity::HandleMessage(const EntityMessage& msg)
     Entity::HandleMessage(msg);
 }
 
+// @func 0x00737790 ScriptedEntity::IsInvulnerable
 bool ScriptedEntity::IsInvulnerable() const
 {
     return (classBits & kClass_Invulnerable) != 0 || invulnerableTime > 0.0f;
 }
 
+// @func 0x007377D8 ScriptedEntity::SetBusyFlag
 void ScriptedEntity::SetBusyFlag(bool on)
 {
-    flags = on ? (flags | kEnt_08) : (flags & ~uint32_t(kEnt_08));
-    if (on)
-        SetSuspended(false);
+    Entity::SetBusyFlag(on);
     stateFlags = on ? (stateFlags | kState_Busy) : (stateFlags & ~uint32_t(kState_Busy));
+}
+
+// @func 0x007376F0 ScriptedEntity::AddHealth
+void ScriptedEntity::AddHealth(float amount)
+{
+    const float raised = health + amount;
+    health = std::min(raised, maxHealth) > 0.0f ? std::min(raised, maxHealth) : 0.0f;
 }
 
 // @func 0x000E1738 ScriptedEntity::Damage

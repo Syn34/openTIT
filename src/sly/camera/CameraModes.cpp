@@ -112,6 +112,8 @@ void AnimCameraMode::Update(float /*dt*/, CameraViewState& view)
 // Fixed
 // ===========================================================================
 
+// @func 0x0074950C FixedCameraMode::~FixedCameraMode
+// @func 0x00749588 FixedCameraMode::~FixedCameraMode (deleting)
 FixedCameraMode::~FixedCameraMode()
 {
     AssignEntity(target, nullptr);
@@ -738,6 +740,9 @@ bool ShoulderCameraMode::Tick(float dt, CameraViewState& view)
 // Spline
 // ===========================================================================
 
+// TODO(0x0010B0E4 SplineCameraMode::Activate)
+void SplineCameraMode::Activate() {}
+
 // @func 0x001096C0 SplineCameraMode::~SplineCameraMode
 // @func 0x00109774 SplineCameraMode::~SplineCameraMode (deleting)
 SplineCameraMode::~SplineCameraMode()
@@ -943,6 +948,8 @@ void HavokVehicleCameraMode::SetTarget(Entity* entity)
 // Track
 // ===========================================================================
 
+// @func 0x00749888 TrackCameraMode::~TrackCameraMode
+// @func 0x00749904 TrackCameraMode::~TrackCameraMode (deleting)
 TrackCameraMode::~TrackCameraMode()
 {
     AssignEntity(target, nullptr);

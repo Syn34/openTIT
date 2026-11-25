@@ -10,7 +10,7 @@
 //
 // so that a blend started with an ease time T has (nearly) settled after T
 // seconds. The console classes have a virtual destructor only (vtables
-// 0x00B13988 / 0x00B13998 / 0x00B139A8, code outside this range).
+// 0x00B13988 vector / 0x00B13998 quaternion / 0x00B139A8 scalar).
 #pragma once
 
 #include "ape/math/ApeMath.h"
@@ -31,6 +31,8 @@ struct SpringStep {
 // damping +0x58).
 class SpringVec3 {
 public:
+    // @func 0x0074937C SpringVec3::~SpringVec3
+    // @func 0x0074938C SpringVec3::~SpringVec3 (deleting)
     virtual ~SpringVec3() = default;
     // One step toward `target` (0x000F8C70).
     void Step(float frequency, float damping, float dt);
@@ -47,6 +49,8 @@ public:
 // Orientation spring; velocity is an angular velocity (axis * radians/s).
 class SpringQuat {
 public:
+    // @func 0x007493D0 SpringQuat::~SpringQuat
+    // @func 0x007493E0 SpringQuat::~SpringQuat (deleting)
     virtual ~SpringQuat() = default;
     // One step toward `target` (0x000F90F8).
     void Step(float frequency, float damping, float dt);
@@ -64,6 +68,8 @@ public:
 // velocity from its last two values (console layout +0x04..+0x1C).
 class SpringFloat {
 public:
+    // @func 0x00749424 SpringFloat::~SpringFloat
+    // @func 0x00749434 SpringFloat::~SpringFloat (deleting)
     virtual ~SpringFloat() = default;
     // Feeds the newest target and returns the eased value (0x000F9380).
     float Update(float newTarget, float dt);
