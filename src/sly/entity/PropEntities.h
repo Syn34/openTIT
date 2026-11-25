@@ -64,6 +64,8 @@ void SetFatal(EntityHitRecord& hit, bool alive);
 // virtual overrides on the console; the shared parts are the helpers here.
 class RigidBodyEntity : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
+    // Sets a body's linear velocity unless it is keyframed or fixed or out of the world.
+    static void SetBodyVelocity(void* body, const ape::Vec3& velocity);
     // Slot 35: linear velocity of the body (zero without one).
     ape::Vec3 GetVelocity() override { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
     // Slot 71: centre of mass of the body.
@@ -79,6 +81,7 @@ protected:
     // Takes the body out of the world and drops it (and `action`, if any).
     void ReleaseBody(void* action);
     ape::Vec3 BodyVelocity() const;
+
     ape::Vec3 BodyMassCenter() const;
     // The hit reactions with this entity's body (see propdamage).
     void HitCollision(const PropDamageSettings& settings, EntityHitRecord& hit)
@@ -121,6 +124,7 @@ public:
     bool Release(bool kill) override;                         // slot 10
     void SetFlag80(bool on) override;                         // slot 23
     void HandleMessage(const EntityMessage& msg) override;    // slot 43
+    void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;
     ape::Vec3 GetAimPoint() override;
     bool CanBeDamaged() const override;
@@ -174,6 +178,7 @@ public:
     void SetFlag80(bool on) override;                 // slot 23
     // Slot 99: 1 puts the body into the world, 4 takes it out (0x0017734C).
     virtual void SetAlterState(int32_t state);
+    void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     ape::Vec3 GetAimPoint() override;                 // slot 71
     void OnHitCategory1(EntityHitRecord& hit) override;
@@ -308,6 +313,7 @@ public:
     float GetGravityFactor() override;
     void Detached(float gravityFactor) override;
     // Slot 35: linear velocity of the body.
+    void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;
     // Slot 82: some hit category can hurt the entity.
     virtual bool CanBeDamaged() const;
@@ -337,6 +343,7 @@ class TargetableB : public RigidBodyEntity {
 public:
     ~TargetableB() override;
     bool Release(bool kill) override;                 // slot 10
+    void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     ape::Vec3 GetAimPoint() override;                 // slot 71
     bool CanBeDamaged() const override;               // slot 82
@@ -399,6 +406,7 @@ public:
 
     ~TargetableA() override;
     bool Release(bool kill) override;                 // slot 10
+    void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     ape::Vec3 GetAimPoint() override;                 // slot 71
     bool CanBeDamaged() const override;               // slot 82
@@ -477,6 +485,7 @@ public:
 
     ~CompoundEntity() override;
     bool Release(bool kill) override;                 // slot 10
+    void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     bool CanBeDamaged() const override;               // slot 82
     // Collisions and projectiles also record the direction they came from.

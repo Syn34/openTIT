@@ -69,6 +69,12 @@ void RigidProp::HandleMessage(const EntityMessage& msg)
     }
 }
 
+// @func 0x00168620 RigidProp::SetVelocity
+void RigidProp::SetVelocity(const ape::Vec3& velocity)
+{
+    SetBodyVelocity(rigidBody, velocity);
+}
+
 // @func 0x00168714 RigidProp::GetVelocity
 ape::Vec3 RigidProp::GetVelocity()
 {

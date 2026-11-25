@@ -139,6 +139,16 @@ ape::Vec3 RigidBodyEntity::BodyVelocity() const
     return rigidBody ? RigidBodyLinearVelocity(rigidBody) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
 }
 
+void RigidBodyEntity::SetBodyVelocity(void* body, const ape::Vec3& velocity)
+{
+    if (!body || !RigidBodyInWorld(body))
+        return;
+    uint8_t motion = RigidBodyMotionType(body);
+    if (motion == 5 || motion == 4)
+        return;
+    RigidBodySetLinearVelocity(body, { velocity.x, velocity.y, velocity.z, 0.0f });
+}
+
 ape::Vec3 RigidBodyEntity::BodyMassCenter() const
 {
     return rigidBody ? RigidBodyCenterOfMass(rigidBody) : Position();
@@ -248,6 +258,9 @@ void AlterEgoEntity::SendScriptEvent(uint32_t event)
     if (animScript1A4)
         static_cast<ape::ApeAnimScriptInstance*>(animScript1A4)->SendEvent(event);
 }
+
+// @func 0x00178650 AlterEgoEntity::SetVelocity
+void AlterEgoEntity::SetVelocity(const ape::Vec3& velocity) { SetBodyVelocity(rigidBody, velocity); }
 
 // @func 0x00178744 AlterEgoEntity::GetVelocity
 ape::Vec3 AlterEgoEntity::GetVelocity() { return BodyVelocity(); }
@@ -378,6 +391,9 @@ void TargetableB::HandleMessage(const EntityMessage& msg)
         Damage(maxHealth, nullptr, 0);
 }
 
+// @func 0x00192370 TargetableB::SetVelocity
+void TargetableB::SetVelocity(const ape::Vec3& velocity) { SetBodyVelocity(rigidBody, velocity); }
+
 // @func 0x00192464 TargetableB::GetVelocity
 ape::Vec3 TargetableB::GetVelocity() { return BodyVelocity(); }
 
@@ -464,6 +480,9 @@ ape::world::ApeObj* TargetableA::FindModelPart() const
     return nullptr;
 }
 
+// @func 0x00184A80 TargetableA::SetVelocity
+void TargetableA::SetVelocity(const ape::Vec3& velocity) { SetBodyVelocity(rigidBody, velocity); }
+
 // @func 0x00184B74 TargetableA::GetVelocity
 ape::Vec3 TargetableA::GetVelocity() { return BodyVelocity(); }
 
@@ -512,6 +531,9 @@ bool CompoundEntity::Release(bool kill)
 
 // TODO(0x0016BC0C CompoundEntity::SetPropState)
 void CompoundEntity::SetPropState(int32_t state, uint32_t arg) { (void)arg; propState = state; }
+
+// @func 0x0016F1C0 CompoundEntity::SetVelocity
+void CompoundEntity::SetVelocity(const ape::Vec3& velocity) { SetBodyVelocity(rigidBody, velocity); }
 
 // @func 0x0016F2B4 CompoundEntity::GetVelocity
 ape::Vec3 CompoundEntity::GetVelocity() { return BodyVelocity(); }
@@ -686,6 +708,9 @@ void TargetableCBase::Detached(float gravityFactor)
         RigidBodySetGravityFactor(body, gravityFactor);
     Entity::Detached(gravityFactor);
 }
+
+// @func 0x001FB370 TargetableCBase::SetVelocity
+void TargetableCBase::SetVelocity(const ape::Vec3& velocity) { RigidBodyEntity::SetBodyVelocity(rigidBody, velocity); }
 
 // @func 0x001FB464 TargetableCBase::GetVelocity
 ape::Vec3 TargetableCBase::GetVelocity()

@@ -360,8 +360,10 @@ public:
     // Slot 27: gravity factor of the physics body (slot 28 sets it).
     // @func 0x00743640 Entity::GetGravityFactor
     virtual float GetGravityFactor() { return 0.0f; }
-    // @func 0x00737390 Entity::Slot34
-    virtual void Slot34() {}
+    // Slot 34 (+0x88): sets the linear velocity of the physics body (rigid
+    // body entities); nothing by default.
+    // @func 0x00737390 Entity::SetVelocity
+    virtual void SetVelocity(const ape::Vec3& velocity) { (void)velocity; }
     // Slot 35 (+0x8C): linear velocity (none by default).
     // @func 0x007436E0 Entity::GetVelocity
     virtual ape::Vec3 GetVelocity() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
