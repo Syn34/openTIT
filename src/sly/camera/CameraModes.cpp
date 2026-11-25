@@ -71,6 +71,23 @@ void LookAlong(const ape::Vec3& forward, ape::Matrix34& out)
     SetXYZ(out.zAxis, z);
 }
 
+// @func 0x00101958 ClampDirectionPitch
+void ClampDirectionPitch(float pitchA, float pitchB, ape::Vec3& out, const ape::Vec3& dir)
+{
+    constexpr float kLimit = 1.5533431f;    // 89 degrees
+    constexpr float kHalfPi = 1.5707964f;
+    const float low = ape::Clamp(std::min(pitchA, pitchB), -kLimit, kLimit);
+    const float high = ape::Clamp(std::max(pitchA, pitchB), -kLimit, kLimit);
+    const ape::Vec3 up = { 0.0f, 1.0f, 0.0f, 0.0f };
+    const ape::Vec3 down = { 0.0f, -1.0f, 0.0f, 0.0f };
+    // At most (90 - low) degrees from straight up, then at most (90 + high)
+    // degrees from straight down. NOTE: the second axis is the console's
+    // global 0x01164B90, read as the negative y axis.
+    ape::Vec3 limited;
+    RotateTowards(kHalfPi - low, limited, up, dir);
+    RotateTowards(high + kHalfPi, out, down, limited);
+}
+
 // @func 0x001007D0 RotateTowards
 // NOTE: past the opposite-direction case the console's code is AltiVec the
 // reference cannot decode; the general case is written as a rotation about

@@ -18,6 +18,10 @@ void LookAlong(const ape::Vec3& forward, ape::Matrix34& out);
 // (clamped to 0..pi); the result is a unit vector (0x001007D0). Used by the
 // cameras, the characters and the vehicles.
 void RotateTowards(float maxAngle, ape::Vec3& out, const ape::Vec3& from, const ape::Vec3& to);
+// Keeps the direction `dir` between two pitch angles (radians, either order,
+// limited to +-89 degrees) by turning it away from straight up and straight
+// down (0x00101958).
+void ClampDirectionPitch(float pitchA, float pitchB, ape::Vec3& out, const ape::Vec3& dir);
 // Point of the segment [a, b] closest to `point` (0x000FD1A0).
 ape::Vec3 ClosestPointOnSegment(const ape::Vec3& a, const ape::Vec3& b, const ape::Vec3& point);
 
