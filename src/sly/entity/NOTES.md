@@ -62,3 +62,15 @@
 * Character AI control (0x00120A58), character loader (0x0011BD90), climbing/attach/land
   state handlers (0x00130000-0x00166000), alter egos (0x0016BF00, 0x00173390, 0x00179460),
   mine laser field tutorial (0x000B6208, 0x000B6C50), camera modes (0x00100000-0x00119C00).
+
+## Fifth pass (agent3)
+* `ScriptedEntity`: health (+0x158/+0x15C), invulnerability, anim script and state flags
+  (`StateFlags`); ReceiveHit/Damage/Update/OnDefeated/suspend-resume. Hits go through
+  `EntityHitRecord` (EntityHits.h, 0x80-byte records, category in bits 13-15 of +0x0E): a
+  deferrable hit is queued and FlushDeferredHits (0x000CF214) dispatches it to
+  OnHitCategory0..4 (scripted entity slots 83-87).
+* `ActorDamage.cpp`: actor damage scaling by hit category (impact, blast, collision, melee,
+  projectile, per-attacker scale) from the ActorDef fields 0xC4..0x124.
+* `Entity::Release` (0x000D74C0), `SetScriptState`, script start helpers (EntityScripts.cpp)
+  and the instance render list (`AddToInstanceRenderList`, 0x000D6614; the console list
+  holds components, the port reuses the kList_C pointer vector).

@@ -12,6 +12,12 @@ namespace ai {
 // NOTE: class name unknown.
 class AICharacter : public entity::Character {
 public:
+    // @func 0x00733EFC AICharacter::~AICharacter
+    // @func 0x00738864 AICharacter::~AICharacter (deleting)
+    ~AICharacter() override = default;
+    // AI characters always take part in interactions.
+    // @func 0x0073885C AICharacter::InteractionNeeds
+    uint32_t InteractionNeeds(int kind, Entity* other) override { (void)kind; (void)other; return 1; }
     entity::EntityComponent* GetComponent0D() override;
     // Switching the character off turns its AI option on and vice versa.
     void SetActive(bool active) override;

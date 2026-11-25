@@ -95,8 +95,9 @@ public:
     virtual void Update(float dt) { (void)dt; }                    // slot 6 (+0x18)
     // @func 0x00762AB4 EntityComponent::PostUpdate
     virtual void PostUpdate(float dt) { (void)dt; }                // slot 7 (+0x1C)
-    // Slot 8 (+0x20, 0x00264D6C): NOTE: empty by default, meaning unknown.
-    virtual void Slot8() {}
+    // Places the component's geometry before the instance render pass, for
+    // components in the instance render list (slot 8, +0x20).
+    virtual void RenderInstance();
     // Slot 9 (+0x24). NOTE: empty by default, meaning unknown.
     // @func 0x00737598 EntityComponent::Slot9
     virtual void Slot9() {}
@@ -288,6 +289,9 @@ public:
     // Slot 53 (+0xD4): the base version only records the state (flags bit 6).
     // @func 0x007373AC Entity::SetActiveVisual
     virtual void SetActiveVisual(bool on) { flags = on ? (flags | 0x40u) : (flags & ~0x40u); }
+    // Slot 54 (+0xD8): records flags bit 5. NOTE: meaning unknown.
+    // @func 0x007373BC Entity::SetFlag20
+    virtual void SetFlag20(bool on) { flags = on ? (flags | 0x20u) : (flags & ~0x20u); }
     virtual void ApplyVisibility(bool visible);                    // slot 55 (+0xDC)
     virtual void OnSuspend();                                      // slot 60 (+0xF0)
     virtual void OnResume();                                       // slot 61 (+0xF4)
@@ -308,6 +312,81 @@ public:
     virtual void OnInteractEnd(Entity* other, int kind);           // slot 78
     // Slot 10: drops one reference; with `kill` the entity leaves the world.
     virtual bool Release(bool kill);
+
+    // Slot 19 (+0x4C): name for messages: the world object's name.
+    virtual const char* GetDebugName();
+    // Slot 21 (+0x54): replaces the world transform.
+    // @func 0x007435D0 Entity::SetTransform
+    virtual void SetTransform(const ape::Matrix34& m)
+    {
+        transform.xAxis = {m.xAxis.x, m.xAxis.y, m.xAxis.z, transform.xAxis.pad};
+        transform.yAxis = {m.yAxis.x, m.yAxis.y, m.yAxis.z, transform.yAxis.pad};
+        transform.zAxis = {m.zAxis.x, m.zAxis.y, m.zAxis.z, transform.zAxis.pad};
+        transform.translation = {m.translation.x, m.translation.y, m.translation.z, transform.translation.pad};
+    }
+    // Slot 24 (+0x60): flags bit 3; turning it on also wakes a suspended
+    // entity (scripted entities mirror it in their state flags).
+    // @func 0x00737350 Entity::SetBusyFlag
+    virtual void SetBusyFlag(bool on)
+    {
+        flags = on ? (flags | kEnt_08) : (flags & ~uint32_t(kEnt_08));
+        if (on)
+            SetSuspended(false);
+    }
+    // Slot 39 (+0x9C): position of a locator (its translation), or of the
+    // entity without one.
+    // @func 0x00743720 Entity::GetLocatorPosition
+    virtual ape::Vec3 GetLocatorPosition(const ape::Matrix34* locator)
+    {
+        return locator ? locator->translation : transform.translation;
+    }
+    // Slot 57 (+0xE4): adds an object interested in this entity (see
+    // RemoveWatcher); always accepted.
+    virtual bool AddWatcher(void* watcher);
+
+    // Slots whose callers are not ported; named by their slot number.
+    // NOTE: meanings unknown. Trigger classes reuse slots 71-73 for their
+    // occupant callbacks.
+    // @func 0x007435B8 Entity::Slot9
+    virtual bool Slot9() { return true; }
+    // @func 0x007435CC Entity::Slot11
+    virtual void Slot11() {}
+    // @func 0x00743640 Entity::Slot27
+    virtual bool Slot27() { return false; }
+    // @func 0x00737390 Entity::Slot34
+    virtual void Slot34() {}
+    // @func 0x007436E0 Entity::Slot35
+    virtual ape::Vec3 Slot35() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
+    // @func 0x00743710 Entity::Slot38
+    virtual int Slot38() { return 0; }
+    // @func 0x00737394 Entity::Slot41
+    virtual int Slot41() { return 0; }
+    // @func 0x0073739C Entity::Slot42
+    virtual int Slot42() { return 0; }
+    // @func 0x007373CC Entity::Slot56
+    virtual int Slot56() { return 0; }
+    // @func 0x007374A8 Entity::Slot62
+    virtual bool Slot62() { return true; }
+    // @func 0x007374B0 Entity::Slot63
+    virtual void Slot63() {}
+    // @func 0x007374B4 Entity::Slot64
+    virtual void Slot64() {}
+    // @func 0x007374B8 Entity::Slot65
+    virtual bool Slot65() { return true; }
+    // @func 0x007374C0 Entity::Slot66
+    virtual void Slot66() {}
+    // @func 0x007374C4 Entity::Slot67
+    virtual void Slot67() {}
+    // @func 0x007374C8 Entity::Slot69
+    virtual int Slot69() { return 0; }
+    // @func 0x007374D0 Entity::Slot70
+    virtual int Slot70() { return 0; }
+    // @func 0x00743754 Entity::Slot71
+    virtual ape::Vec3 Slot71() { return transform.translation; }
+    // @func 0x00743778 Entity::Slot72
+    virtual ape::Vec3 Slot72() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
+    // @func 0x0074379C Entity::Slot73
+    virtual ape::Vec3 Slot73() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
 
     // -- components -------------------------------------------------------------
     // First component of `type` after `after` (or from the start).

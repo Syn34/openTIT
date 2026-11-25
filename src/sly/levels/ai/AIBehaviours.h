@@ -20,6 +20,15 @@ namespace ai {
 // Ambient critters (vtable 0x00B0E028, 0x1A0 bytes; settings 0x00F94784..).
 class CritterAI : public AIController {
 public:
+    ~CritterAI() override;
+    float AgentRadius() override;
+    float Slot16() override;
+    int Slot17() override;
+    uint32_t Slot18() override;
+    bool IsEngaged() override;
+    bool WritesEntityTransform() override;
+    bool HasNoSpawnClip() override;
+    float RootMotionScale() override;
     // States (AIController::state). NOTE: names from use.
     enum State {
         kState_Spawn = 0,
@@ -67,6 +76,12 @@ public:
 // FollowDist / AttackDist / Murray / Bentley).
 class PlayerAI : public AIController {
 public:
+    ~PlayerAI() override;
+    void TickEntity(float dt) override;
+    bool Slot24() override;
+    bool IsAlly() override;
+    bool Slot36() override;
+    int NavFilter() override;
     // Byte +0x1A0.
     enum BuddyFlags : uint8_t {
         kBuddy_Flag20 = 0x20,   // set by message 0x50A63D95
@@ -110,6 +125,10 @@ public:
 // 0x00B0E2F0, 0x180 bytes).
 class PatternBossAI : public AIController {
 public:
+    ~PatternBossAI() override;
+    void TickEntity(float dt) override;
+    bool IsCharacterDead() override;
+    int NavFilter() override;
     void Update(float dt) override;
     void PreUpdate(float dt) override;
     void OnMessage(const entity::EntityMessage& msg) override;
@@ -128,6 +147,9 @@ public:
 // a race track; the spawner ranks its racers by their progress along it.
 class RacerAI : public AIController {
 public:
+    void TickEntity(float dt) override;
+    int NavFilter() override;
+    void UpdateMovement(float dt) override;
     // racerFlags (+0x164).
     enum RacerFlags : uint32_t {
         kRacer_Bit29 = 1u << 29,
@@ -146,12 +168,12 @@ public:
     void ChooseState() override;
     bool Think(float dt) override;
     void ExitState() override;
-    // Slot 75: place in the race (0 = first). Implemented outside this range
-    // (0x00738E00).
-    virtual void SetRacePosition(float position) { (void)position; }
+    // Slot 75: place in the race (0 = first).
+    virtual void SetRacePosition(float position);
 
     float progress = 0.0f;            // +0x14C position along the race track
     uint32_t field_138 = 0;           // +0x138
+    float racePosition = 0.0f;        // +0x13C place in the race
     ape::Vec3 field_150{};            // +0x150
     hud::HudObject* hud = nullptr;    // +0x160 HUD element 0x2508CAD1
     uint32_t racerFlags = 0;          // +0x164
@@ -172,6 +194,20 @@ public:
 // combat settings.
 class EnemyAI : public AIController {
 public:
+    void TickEntity(float dt) override;
+    float AgentRadius() override;
+    float Slot16() override;
+    int Slot17() override;
+    uint32_t Slot18() override;
+    float TurnInPlaceAngle() override;
+    bool CanBeSneakedUpOn() override;
+    bool Slot27() override;
+    bool Slot28() override;
+    void Slot29() override;
+    bool IsListedActive() override;
+    bool HasNoSpawnClip() override;
+    bool IsHeavy() override;
+    int Slot46() override;
     // Byte +0x1D0.
     enum EnemyFlagsA : uint8_t {
         kEA_Bit1  = 0x02,   // movement held (no root motion)
@@ -183,6 +219,10 @@ public:
     enum EnemyFlagsB : uint8_t {
         kEB_Bit1      = 0x02,   // in combat range checks
         kEB_FarSearch = 0x40,   // nav search radius 500 instead of 50
+    };
+    // Byte +0x1D2.
+    enum EnemyFlagsC : uint8_t {
+        kEC_Bit5 = 0x20,        // set by slot 29. NOTE: meaning unknown
     };
 
     ~EnemyAI() override;
@@ -231,6 +271,7 @@ public:
     uint32_t field_1B4 = 0;           // +0x1B4
     uint32_t field_1B8 = 0;           // +0x1B8
     ape::Vec3 field_1BC{};            // +0x1BC
+    float field_1A8 = 0.0f;           // +0x1A8 NOTE: slot 46 reports it being positive
     uint32_t field_1C8 = 0;           // +0x1C8
     uint8_t enemyFlagsA = 0;          // +0x1D0
     uint8_t enemyFlagsB = 0;          // +0x1D1
@@ -242,6 +283,11 @@ public:
 // bytes; its code lies outside this range).
 class SentryAI : public AIController {
 public:
+    ~SentryAI() override;
+    float Slot16() override;
+    int Slot17() override;
+    uint32_t Slot18() override;
+    bool CanPitch() override;
     void Attach(Entity* entity) override;
     void Update(float dt) override;
     void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
@@ -266,6 +312,7 @@ public:
 // and hits are only counted on its butt (a capsule along a bone).
 class SentryAIVariant : public SentryAI {
 public:
+    ~SentryAIVariant() override;
     static constexpr int kDartCount = 3;
 
     void Attach(Entity* entity) override;
@@ -285,6 +332,10 @@ public:
 // Bosses (vtables 0x00B0E888, 0x00B0E9C0, 0x00B0EAF8, 0x00B0EC30).
 class BismarqueAI : public AIController {
 public:
+    bool AllowsInteraction() override;
+    bool IsBoss() override;
+    void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
+    int NavFilter() override;
     ape::Vec3 GetTargetPosition() override;
     bool Think(float dt) override;
     float GravitySpeed() override;
@@ -305,6 +356,10 @@ public:
 };
 class ElJefeAI : public AIController {
 public:
+    ~ElJefeAI() override;
+    void SetActive(bool active) override;
+    void TickEntity(float dt) override;
+    bool IsBoss() override;
     // One fight stage (0x14 bytes from +0x19C).
     struct Stage {
         uint32_t field_00 = 0;
@@ -328,6 +383,10 @@ public:
 };
 class MsDecibelAI : public AIController {
 public:
+    ~MsDecibelAI() override;
+    void TickEntity(float dt) override;
+    bool IsEngaged() override;
+    bool IsBoss() override;
     ape::Vec3 GetTargetPosition() override;
     float GravitySpeed() override;
     void OnTauntChance() override;
@@ -343,6 +402,10 @@ public:
 };
 class ParadoxAI : public AIController {
 public:
+    ~ParadoxAI() override;
+    void TickEntity(float dt) override;
+    bool IsEngaged() override;
+    bool IsBoss() override;
     bool Think(float dt) override;
     bool IsSettled() override;
     void OnTauntChance() override;

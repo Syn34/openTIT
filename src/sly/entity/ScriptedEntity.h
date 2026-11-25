@@ -22,7 +22,23 @@ namespace entity {
 // script; adds three virtual slots. Its destructor has no body of its own.
 class ScriptedEntity : public Entity {
 public:
+    // @func 0x00747504 ScriptedEntity::~ScriptedEntity
+    // @func 0x00747530 ScriptedEntity::~ScriptedEntity (deleting)
     ~ScriptedEntity() override = default;
+    // Slot 68: the entity's anim script instance.
+    // @func 0x00737848 ScriptedEntity::GetAnimScript
+    void* GetAnimScript() override { return animScript; }
+    // Slot 24: also mirrored in the state flags (kState_Busy).
+    void SetBusyFlag(bool on) override;
+    // Slot 79 (+0x13C): adds `amount` (may be negative) to the health, kept
+    // within 0..maxHealth.
+    virtual void AddHealth(float amount);
+    // Slot 80 (+0x140): no health left.
+    // @func 0x00737758 ScriptedEntity::IsDead
+    virtual bool IsDead() const { return health <= 0.0f; }
+    // Slot 82 (+0x148). NOTE: true by default; meaning unknown.
+    // @func 0x00737840 ScriptedEntity::Slot82
+    virtual bool Slot82() { return true; }
 
     bool Update(float dt) override;
     bool PostUpdate(float dt) override;
@@ -85,10 +101,6 @@ public:
     // and a script message (0x000E0620).
     void OnDefeated();
 
-private:
-    // Slot 24 (base 0x007377D8): flags bit 3 (and the state mirror); turning
-    // it on also wakes a suspended entity.
-    void SetBusyFlag(bool on);
 };
 
 // Scripted entity definition (vtable 0x00B11D98, slot 7 Spawn is pure).

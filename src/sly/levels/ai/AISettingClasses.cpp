@@ -5,6 +5,12 @@ namespace sly {
 namespace levels {
 namespace ai {
 
+namespace {
+// Group hash of the character setting classes (also used by the hot spot
+// definitions; see ape::setting::SettingDef::GetGroupHash).
+constexpr uint32_t kAISettingGroup = 0xC9D7446Au;
+} // namespace
+
 // @func 0x0001CE40 CritterSettingClass::RegisterProperties
 void CritterSettingClass::RegisterProperties()
 {
@@ -184,7 +190,7 @@ AISettingInstance* CritterSettingClass::CreateInstance(const void* source, const
 {
     (void)owner;
     // NOTE: the console instance is 0x28 bytes; its own fields are not used here.
-    return new AISettingInstance(source, this);
+    return new CritterSettingInstance(source, this);
 }
 
 // @func 0x00023FB0 BuddySettingClass::CreateInstance
@@ -192,7 +198,7 @@ AISettingInstance* BuddySettingClass::CreateInstance(const void* source, const v
 {
     (void)owner;
     // NOTE: the console instance is 0x24 bytes; its own fields are not used here.
-    return new AISettingInstance(source, this);
+    return new BuddySettingInstance(source, this);
 }
 
 // @func 0x0002EB74 EnemySettingClass::CreateInstance
@@ -200,7 +206,7 @@ AISettingInstance* EnemySettingClass::CreateInstance(const void* source, const v
 {
     (void)owner;
     // NOTE: the console instance is 0x28 bytes; its own fields are not used here.
-    return new AISettingInstance(source, this);
+    return new EnemySettingInstance(source, this);
 }
 
 // @func 0x0003C000 SentrySettingClass::CreateInstance
@@ -208,8 +214,63 @@ AISettingInstance* SentrySettingClass::CreateInstance(const void* source, const 
 {
     (void)owner;
     // NOTE: the console instance is 0x24 bytes; its own fields are not used here.
-    return new AISettingInstance(source, this);
+    return new SentrySettingInstance(source, this);
 }
+
+// ---------------------------------------------------------------------------
+// Identification of the setting classes, destructors of the classes and of
+// their instances.
+
+// @func 0x00733F2C CritterSettingClass::~CritterSettingClass
+// @func 0x007388E8 CritterSettingClass::~CritterSettingClass (deleting)
+CritterSettingClass::~CritterSettingClass() = default;
+// @func 0x007388BC CritterSettingClass::GetName
+const char* CritterSettingClass::GetName() const { return "CritterSetting"; }
+// @func 0x007388C8 CritterSettingClass::GetTypeHash
+uint32_t CritterSettingClass::GetTypeHash() const { return 0x958CAC69u; }   // name hash
+// @func 0x007388D8 CritterSettingClass::GetGroupHash
+uint32_t CritterSettingClass::GetGroupHash() const { return kAISettingGroup; }
+
+// @func 0x00734340 BuddySettingClass::~BuddySettingClass
+// @func 0x00738B5C BuddySettingClass::~BuddySettingClass (deleting)
+BuddySettingClass::~BuddySettingClass() = default;
+// @func 0x00738B44 BuddySettingClass::GetName
+const char* BuddySettingClass::GetName() const { return "PlayerSetting"; }
+// @func 0x00738B50 BuddySettingClass::GetTypeHash
+uint32_t BuddySettingClass::GetTypeHash() const { return 0x6B05BC2Fu; }   // name hash
+
+// @func 0x007346F0 EnemySettingClass::~EnemySettingClass
+// @func 0x00738E40 EnemySettingClass::~EnemySettingClass (deleting)
+EnemySettingClass::~EnemySettingClass() = default;
+// @func 0x00738E14 EnemySettingClass::GetName
+const char* EnemySettingClass::GetName() const { return "EnemySetting"; }
+// @func 0x00738E20 EnemySettingClass::GetTypeHash
+uint32_t EnemySettingClass::GetTypeHash() const { return 0x9F641DC8u; }   // name hash
+// @func 0x00738E30 EnemySettingClass::GetGroupHash
+uint32_t EnemySettingClass::GetGroupHash() const { return kAISettingGroup; }
+
+// @func 0x00735360 SentrySettingClass::~SentrySettingClass
+// @func 0x00739164 SentrySettingClass::~SentrySettingClass (deleting)
+SentrySettingClass::~SentrySettingClass() = default;
+// @func 0x00739138 SentrySettingClass::GetName
+const char* SentrySettingClass::GetName() const { return "ScriptedPathSetting"; }
+// @func 0x00739144 SentrySettingClass::GetTypeHash
+uint32_t SentrySettingClass::GetTypeHash() const { return 0xDC568581u; }   // name hash
+// @func 0x00739154 SentrySettingClass::GetGroupHash
+uint32_t SentrySettingClass::GetGroupHash() const { return kAISettingGroup; }
+
+// @func 0x00733F5C CritterSettingInstance::~CritterSettingInstance
+// @func 0x00738940 CritterSettingInstance::~CritterSettingInstance (deleting)
+CritterSettingInstance::~CritterSettingInstance() = default;
+// @func 0x00734370 BuddySettingInstance::~BuddySettingInstance
+// @func 0x00738BB4 BuddySettingInstance::~BuddySettingInstance (deleting)
+BuddySettingInstance::~BuddySettingInstance() = default;
+// @func 0x00734720 EnemySettingInstance::~EnemySettingInstance
+// @func 0x00738E98 EnemySettingInstance::~EnemySettingInstance (deleting)
+EnemySettingInstance::~EnemySettingInstance() = default;
+// @func 0x00735390 SentrySettingInstance::~SentrySettingInstance
+// @func 0x007391BC SentrySettingInstance::~SentrySettingInstance (deleting)
+SentrySettingInstance::~SentrySettingInstance() = default;
 
 } // namespace ai
 } // namespace levels

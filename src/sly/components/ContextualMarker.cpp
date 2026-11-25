@@ -60,6 +60,10 @@ void ContextualMarkerComponent::Update(float dt)
         entity::AddToInstanceRenderList(this);
 }
 
+// TODO(0x0027BE38 ContextualMarkerComponent::RenderInstance): needs the
+// attach transform (0x0049FFE0) and the camera of the game world.
+void ContextualMarkerComponent::RenderInstance() {}
+
 // @func 0x0025FA1C ContextualMarkerComponent::SetOption
 void ContextualMarkerComponent::SetOption(bool on)
 {

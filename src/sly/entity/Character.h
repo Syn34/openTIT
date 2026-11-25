@@ -26,14 +26,25 @@ namespace entity {
 // 0x0073799C-0x007379F4).
 class TunableBlock {
 public:
+    // @func 0x0073799C TunableBlock::~TunableBlock
+    // @func 0x007379AC TunableBlock::~TunableBlock (deleting)
     virtual ~TunableBlock() = default;
-    virtual void Load(const void* xml) { (void)xml; }    // NOTE: slot 2, name assumed
-    virtual void Slot3() {}
+    // Slot 2: takes the values from the tuning variables.
+    // @func 0x007379F0 TunableBlock::LoadDefaults
+    virtual void LoadDefaults() {}
+    // Slot 3: refreshes the block after the tuning changed; the blocks that
+    // read tuning variables reload them. True when handled.
+    // @func 0x007379F4 TunableBlock::Reload
+    virtual bool Reload() { return true; }
 };
 
 // Damage settings of a character (vtable 0x00B0DB6C, Entity.Character.Damage.*).
 class DamageSettings : public TunableBlock {
 public:
+    ~DamageSettings() override;
+    void LoadDefaults() override;
+    bool Reload() override;
+
     float impactScalarDyn = 0.0f;      // +0x04 (character +0x1F0)
     float impactScalarKey = 0.0f;
     float melee = 0.0f;
@@ -211,6 +222,23 @@ public:
     virtual ape::Vec3 GetAimPosition();
     // Slot 38: turn rate of the character component (0x001290F0).
     virtual float GetTurnRate();
+    // Slots 89-93: how projectiles hitting the character are treated
+    // (Entity.Character.Damage.* settings).
+    // @func 0x007382E0 Character::ProjectileDamageScale
+    virtual float ProjectileDamageScale() { return damage.projectile; }
+    // @func 0x007382E8 Character::ReflectsProjectiles
+    virtual bool ReflectsProjectiles() { return damage.projectileReflect; }
+    // @func 0x007382F0 Character::ReflectsProjectilesRandomly
+    virtual bool ReflectsProjectilesRandomly() { return damage.projectileRandomReflect; }
+    // @func 0x007382F8 Character::ProjectileReflectAngle
+    virtual float ProjectileReflectAngle() { return damage.projectileAngle; }
+    // @func 0x00738300 Character::ProjectileReflectVelScalar
+    virtual float ProjectileReflectVelScalar() { return damage.projectileVelScalar; }
+    // Slots 95/96. NOTE: empty in every character class; meaning unknown.
+    // @func 0x0073835C Character::Slot95
+    virtual void Slot95() {}
+    // @func 0x00738360 Character::Slot96
+    virtual void Slot96() {}
 
     // NOTE: takes the value of `controller` when a player character is
     // activated; role otherwise unknown.
