@@ -144,6 +144,36 @@ ape::Vec3 RigidBodyEntity::BodyMassCenter() const
     return rigidBody ? RigidBodyCenterOfMass(rigidBody) : Position();
 }
 
+// -- definition bounds ------------------------------------------------------------------
+
+namespace {
+// Bounds of a collision shape at the identity transform (hkpShape::getAabb,
+// converted to an engine box), or the entity default without a shape.
+void ShapeBounds(const EntityDef* def, void* shape, ape::Aabb& out)
+{
+    if (shape)
+        HavokShapeLocalAabb(shape, out);
+    else
+        EntityDefBaseBounds(def, out);
+}
+} // namespace
+
+// @func 0x00167370 RigidPropDef::GetBounds
+void RigidPropDef::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
+// @func 0x0016B050 AlterEgoBentleyDef::GetBounds
+void AlterEgoBentleyDef::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
+// @func 0x00176E80 AlterEgoDef::GetBounds
+void AlterEgoDef::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
+// @func 0x0017D940 TargetableDefA::GetBounds
+void TargetableDefA::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
+// @func 0x0018FE60 TargetableDefB::GetBounds
+void TargetableDefB::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
+// @func 0x001B4650 PushBlockDef::GetBounds
+void PushBlockDef::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
+// @func 0x001F9D70 TargetableDefC::GetBounds
+// NOTE: also the slot of the definition class at 0x00B18F18 (inherited).
+void TargetableDefC::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
+
 // -- AlterEgoEntity (vtable 0x00B14968; damage block at definition +0xC8) -------------
 
 // @func 0x001783E0 AlterEgoEntity::Release

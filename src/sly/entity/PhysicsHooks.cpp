@@ -18,6 +18,12 @@ void RigidBodySetLinearVelocity(void* body, const ape::Vec3& velocity) { (void)b
 ape::Vec3 RigidBodyLinearVelocity(void* body) { (void)body; return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 ape::Vec3 RigidBodyCenterOfMass(void* body) { (void)body; return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 void RigidBodyClearUserProperties(void* body) { (void)body; }
+void HavokShapeLocalAabb(void* shape, ape::Aabb& out)
+{
+    (void)shape;
+    out.min = { 0.0f, 0.0f, 0.0f, 0.0f };
+    out.max = { 0.0f, 0.0f, 0.0f, 0.0f };
+}
 void HavokRelease(void* object) { (void)object; }
 
 } // namespace entity

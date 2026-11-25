@@ -96,6 +96,9 @@ protected:
 // Definition of RigidProp (vtable 0x00B14360, 0x120 bytes).
 class RigidPropDef : public ScriptedEntityDef {
 public:
+    // Slot 3: local bounds of the collision shape, the entity default
+    // without one. NOTE: the slot is not declared on EntityDef yet.
+    void GetBounds(ape::Aabb& out) const;
     ~RigidPropDef() override;
     PropDamageSettings damage;         // 0xC4
     uint8_t targetingFlags[6] = {};    // 0x104 ("targetingFlags", one per interaction kind)
@@ -149,6 +152,9 @@ public:
 // Definition of AlterEgoEntity (vtable 0x00B14918).
 class AlterEgoDef : public ScriptedEntityDef {
 public:
+    // Slot 3: local bounds of the collision shape, the entity default
+    // without one. NOTE: the slot is not declared on EntityDef yet.
+    void GetBounds(ape::Aabb& out) const;
     ~AlterEgoDef() override;
     uint32_t field_C4 = 0;             // 0xC4
     PropDamageSettings damage;         // 0xC8
@@ -189,6 +195,9 @@ public:
 // bytes; spawns 0x0016BF00, whose code uses "AlterEgo_Bentley").
 class AlterEgoBentleyDef : public ScriptedEntityDef {
 public:
+    // Slot 3: local bounds of the collision shape, the entity default
+    // without one. NOTE: the slot is not declared on EntityDef yet.
+    void GetBounds(ape::Aabb& out) const;
     ~AlterEgoBentleyDef() override;
     void* collisionShape = nullptr;    // 0xF4
 };
@@ -197,6 +206,9 @@ public:
 // not identified yet (vtables 0x00B14B50 / 0x00B14D98 / 0x00B18B00).
 class TargetableDefA : public ScriptedEntityDef {
 public:
+    // Slot 3: local bounds of the collision shape, the entity default
+    // without one. NOTE: the slot is not declared on EntityDef yet.
+    void GetBounds(ape::Aabb& out) const;
     ~TargetableDefA() override;
     PropDamageSettings damage;         // 0xC4
     uint8_t targetingFlags[6] = {};    // 0x119
@@ -205,6 +217,9 @@ public:
 
 class TargetableDefB : public ScriptedEntityDef {
 public:
+    // Slot 3: local bounds of the collision shape, the entity default
+    // without one. NOTE: the slot is not declared on EntityDef yet.
+    void GetBounds(ape::Aabb& out) const;
     PropDamageSettings damage;         // 0xC4
     uint8_t targetingFlags[6] = {};    // 0x11D
     // Entries of 0x3C bytes owned by the definition. NOTE: contents not decoded.
@@ -218,6 +233,9 @@ public:
 
 class TargetableDefC : public ScriptedEntityDef {
 public:
+    // Slot 3: local bounds of the collision shape, the entity default
+    // without one. NOTE: the slot is not declared on EntityDef yet.
+    void GetBounds(ape::Aabb& out) const;
     ~TargetableDefC() override;
     uint8_t field_C4[0x24] = {};       // 0xC4
     PropDamageSettings damage;         // 0xE8
@@ -228,6 +246,9 @@ public:
 // Push block definition (vtable 0x00B16058, 0x100 bytes; spawns 0x001B4A10).
 class PushBlockDef : public ScriptedEntityDef {
 public:
+    // Slot 3: local bounds of the collision shape, the entity default
+    // without one. NOTE: the slot is not declared on EntityDef yet.
+    void GetBounds(ape::Aabb& out) const;
     ~PushBlockDef() override;
     ape::ApeTArray<void*> field_C0;    // 0xC0
     void* collisionShape = nullptr;    // 0xE4
