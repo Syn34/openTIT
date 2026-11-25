@@ -6,6 +6,7 @@
 
 namespace ape { namespace xml { class XmlElement; } }
 namespace sly { namespace entity { struct ComponentDesc; class Entity; class EntityComponent; } }
+namespace ape::world { class ApeObj; }
 namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; class ApeRefCounted; }
 
 namespace sly {
@@ -70,6 +71,15 @@ struct ListenerMessage {
 void ListenerLeaveGroups(void* listener);
 // Entity world object (slot 36) word +0x2C: render layer.
 void EntitySetRenderLayer(entity::Entity* entity, uint32_t layer);
+
+// -- marker geometry ---------------------------------------------------------------
+// The geometry a contextual marker shows: the placed instance of that name
+// (made visible and asked for its type-7 object, virtual slot 14), else a new
+// instance of the geometry definition (0x005A05E8); null when neither exists.
+ape::world::ApeObj* MarkerGeometry(uint32_t geomName);
+// Locator of the owner's world object definition (+0xD0 +0x6C) by name
+// (ApeLocatorSet::Find), or null.
+void* EntityFindLocator(entity::Entity* entity, uint32_t name);
 
 // <BossGrizz> component parser (forwards to levels::ai::ParseBossGrizzComponentDesc).
 entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,

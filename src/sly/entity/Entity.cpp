@@ -86,6 +86,25 @@ void UnregisterEntity(EntityList list, Entity* entity)
     }
 }
 
+// @func 0x000D6614 AddToInstanceRenderList
+// NOTE: the console list holds objects of several classes; the port keeps
+// them in the shared entity pointer list.
+void AddToInstanceRenderList(EntityComponent* component)
+{
+    std::vector<Entity*>& entries = List(kList_C);
+    Entity* entry = reinterpret_cast<Entity*>(component);
+    for (Entity* existing : entries) {
+        if (existing == entry) {
+            ape::TempFormat("entity '%s' component '%s' added to s_instRenderList twice.  this may cause a "
+                            "crash.",
+                            component && component->owner && component->owner->object ? component->owner->object->GetName() : "NULL",
+                            component ? ape::TempHexString(component->id) : "NULL");
+            return;
+        }
+    }
+    entries.push_back(entry);
+}
+
 void UnregisterObject(EntityList list, const void* object)
 {
     std::vector<Entity*>& entries = List(list);

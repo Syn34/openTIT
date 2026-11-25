@@ -47,6 +47,10 @@ void ListenerJoinGroup(void*, uint32_t) {}
 void ListenerLeaveGroups(void*) {}
 void EntitySetRenderLayer(entity::Entity*, uint32_t) {}
 
+// TODO(0x005801A0 / 0x005A05E8 / ApeLocatorSet::Find): geometry instancing.
+ape::world::ApeObj* MarkerGeometry(uint32_t) { return nullptr; }
+void* EntityFindLocator(entity::Entity*, uint32_t) { return nullptr; }
+
 // The parser lives with the AI component (sly/levels/ai/AIBossGrizz.cpp).
 entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                        uint8_t scope)

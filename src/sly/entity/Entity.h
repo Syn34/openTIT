@@ -400,6 +400,9 @@ void RegisterEntity(EntityList list, Entity* entity);
 // Removes any object from a list (the lists also hold components).
 void UnregisterObject(EntityList list, const void* object);
 void UnregisterEntity(EntityList list, Entity* entity);
+// Adds a component to the instance render list (list C, "s_instRenderList");
+// a second add is refused with a warning (0x000D6614).
+void AddToInstanceRenderList(EntityComponent* component);
 uint32_t EntityCount(EntityList list);
 Entity* EntityAt(EntityList list, uint32_t index);
 
