@@ -57,9 +57,14 @@ class ApeTArray : public ApeArrayBase {
 
 public:
     ApeTArray() : ApeArrayBase(uint16_t(sizeof(T))) {}
-    ApeTArray(uint32_t capacity, ApeAllocator* allocator = nullptr) : ApeArrayBase(uint16_t(sizeof(T)))
+    // Out-of-line instantiations:
+    // @func 0x00762CC0 ApeTArray<T>::ApeTArray (copy 1, 4-byte elements)
+    // @func 0x00786658 ApeTArray<T>::ApeTArray (copy 2, 4-byte elements)
+    // @func 0x00742DD8 ApeTArray<T>::ApeTArray (copy 3, 0x4C-byte elements)
+    ApeTArray(uint32_t capacity, ApeAllocator* allocator = nullptr, bool flag = false)
+        : ApeArrayBase(uint16_t(sizeof(T)))
     {
-        Init(capacity, allocator, false);
+        Init(capacity, allocator, flag);
     }
     ~ApeTArray() { Release(); }
 
