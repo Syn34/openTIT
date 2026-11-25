@@ -128,6 +128,8 @@ void AttachAnimScript(ape::ApeAnimScriptInstance* instance);
 // Player block (game world +0x1070 + player * 0x20C80): the disguise ended
 // (+0x10DC cleared, flag 0x40 of +0x1070 set).
 void PlayerBlockDisguiseEnded(uint32_t player);
+// Time spent in the current state of a layer (the state machine's time array).
+void EntitySetStateTime(Entity* entity, uint32_t layer, float time);
 // Entity virtual slot 52 (+0xD0): motion of the root animation this frame.
 void EntityRootMotionDelta(Entity* entity, ape::Matrix34& out, bool consume);
 // Entity virtual slot 21 (+0x54): takes a new world transform.

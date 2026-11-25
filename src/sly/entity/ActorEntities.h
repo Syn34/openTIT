@@ -47,6 +47,7 @@ public:
 class SoundActorDef : public ActorDef {
 public:
     ~SoundActorDef() override;
+    float durationScale = 1.0f;     // 0x188 applied with SoundActor::kSeq_Scaled
 };
 
 // Definition of InteractivePropA (vtable 0x00B17DB0, 0x280 bytes).
@@ -151,17 +152,55 @@ public:
     // The anim script is paused while the actor is inactive.
     void SetActive(bool active) override;
 
+    bool Release(bool kill) override;                 // slot 10 (0x001AE6AC)
+    void OnSuspend() override;                        // slot 60 (0x001AE768)
+
+    // Slot 105: plays sound slot `index` and switches to its state
+    // (0x001AED20, not ported).
+    virtual void PlaySlot(int index, bool force);
+    // Slots 106-112: timers of the slot sequence. Unless the sequence is held
+    // (flag bit 29) each moves on to its next slot once `elapsed` reaches
+    // `duration` (a negative duration: at once) and returns false; true
+    // keeps waiting. Slot 110 never moves on with a negative duration.
+    virtual bool AdvanceTo1(float elapsed, float duration);    // slot 106
+    virtual bool AdvanceTo2(float elapsed, float duration);    // slot 107
+    virtual bool AdvanceTo3(float elapsed, float duration);    // slot 108
+    virtual bool AdvanceTo4(float elapsed, float duration);    // slot 109 (forced)
+    virtual bool AdvanceTo5(float elapsed, float duration);    // slot 110
+    virtual bool AdvanceTo6(float elapsed, float duration);    // slot 111
+    virtual bool AdvanceWrap(float elapsed, float duration);   // slot 112 (back to 1)
     // Switches the anim script to the state of slot `index`, running it at
     // once when `immediate` (slot 113, 0x001AF40C).
     virtual void SetSlotState(int index, bool immediate);
+    // Slot 114: resumes the sequence at the saved slot and time (0x001AF56C).
+    virtual void ResumeSequence();
+
+    // Plays the slot whose name is `name` (0x001AE9C8).
+    void PlaySlotByName(uint32_t name);
+    // Starts the sequence at `slot`, skipping whole slots `time` covers;
+    // the rest becomes the state time (0x001AF470).
+    void PlayFrom(float time, int slot, bool force);
+    // Duration of a slot, scaled by the definition when flag bit 30 is set.
+    float SlotDuration(int index) const;
+
+    // Sequence flags (+0x228).
+    enum SequenceFlags : uint32_t {
+        kSeq_Held = 1u << 29,          // the timers do not advance
+        kSeq_Scaled = 1u << 30,        // durations scaled by the definition (+0x188)
+    };
 
     struct SoundSlot {
         audio::SoundName* sound = nullptr;
-        uint32_t field_04 = 0;
+        audio::VoiceId voice = 0;                   // +0x04
         ape::ApeAnimScriptState* state = nullptr;   // +0x08
-        uint32_t field_0C = 0;
+        float duration = 0.0f;                      // +0x0C
     };
     SoundSlot sounds[7];                      // 0x1A8
+    void* field_218 = nullptr;                // 0x218 NOTE: its float +0x14 takes the slot duration
+    int32_t currentSlot = -1;                 // 0x21C
+    float savedTime = 0.0f;                   // 0x220
+    int32_t savedSlot = 0;                    // 0x224
+    uint32_t sequenceFlags = 0;               // 0x228 SequenceFlags
 };
 
 // vtable 0x00B16B48 (0x260 bytes).
@@ -186,6 +225,8 @@ public:
 class SoundActorB174C0 : public SoundActor {
 public:
     ~SoundActorB174C0() override;
+    // The class carries its own copy of SoundActor::Release (0x001D20D0).
+    bool Release(bool kill) override;
     ape::ApeTArray<void*> field_22C;          // 0x22C
 };
 

@@ -1,6 +1,8 @@
 // openTIT - Scripted actors (see ActorEntities.h).
 #include "sly/entity/ActorEntities.h"
 
+#include "sly/entity/CharacterHooks.h"
+
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/memory/ApeMem.h"
 #include "ape/world/ApeObj.h"
@@ -122,6 +124,138 @@ void SoundActor::SetActive(bool active)
     if (animScript)
         SetAnimScriptPaused(animScript, !active);
     ActorEntity::SetActive(active);
+}
+
+namespace {
+// Slot names (0x00AD139C). NOTE: the strings are not known.
+constexpr uint32_t kSlotNames[7] = { 0xB9B6CE5Du, 0xCE7C29A3u, 0x8FA5922Du, 0xDCDF15C3u,
+                                     0x8B3C3A33u, 0x047DC27Cu, 0x3C8207B4u };
+} // namespace
+
+// @func 0x001AE6AC SoundActor::Release
+bool SoundActor::Release(bool kill)
+{
+    if (kill) {
+        field_218 = nullptr;
+        for (SoundSlot& slot : sounds) {
+            audio::StopVoice(slot.voice, true);
+            slot.voice = 0;
+            slot.state = nullptr;
+        }
+    }
+    return ActorEntity::Release(kill);
+}
+
+// @func 0x001AE768 SoundActor::OnSuspend
+void SoundActor::OnSuspend()
+{
+    ScriptedEntity::OnSuspend();
+    for (SoundSlot& slot : sounds) {
+        audio::StopVoice(slot.voice, true);
+        slot.voice = 0;
+    }
+}
+
+// TODO(0x001AED20 SoundActor::PlaySlot)
+void SoundActor::PlaySlot(int index, bool force)
+{
+    (void)force;
+    currentSlot = index;
+}
+
+// @func 0x001AE9C8 SoundActor::PlaySlotByName
+void SoundActor::PlaySlotByName(uint32_t name)
+{
+    for (int i = 0; i < 7; ++i) {
+        if (kSlotNames[i] == name) {
+            PlaySlot(i, false);
+            return;
+        }
+    }
+}
+
+float SoundActor::SlotDuration(int index) const
+{
+    const float scale = (sequenceFlags & kSeq_Scaled) ? static_cast<const SoundActorDef*>(def)->durationScale : 1.0f;
+    return sounds[index].duration * scale;
+}
+
+// @func 0x001AF470 SoundActor::PlayFrom
+void SoundActor::PlayFrom(float time, int slot, bool force)
+{
+    if (!def)
+        return;
+    float remaining = time;
+    if (time > 0.0f) {
+        for (;;) {
+            const float duration = SlotDuration(slot);
+            remaining = time;
+            if (time < duration)
+                break;
+            if (duration > 0.0f) {
+                time -= duration;
+            } else {
+                // Slot 4 has no length of its own: the sequence rests there.
+                remaining = 0.0f;
+                if (slot == 4)
+                    break;
+            }
+            if (++slot == 7)
+                slot = 1;
+        }
+    }
+    PlaySlot(slot, force);
+    EntitySetStateTime(this, 0, remaining);
+}
+
+// @func 0x001AF56C SoundActor::ResumeSequence
+void SoundActor::ResumeSequence()
+{
+    PlayFrom(savedTime, savedSlot, true);
+}
+
+namespace {
+// Shared body of the slot timers.
+bool AdvanceAfter(SoundActor* actor, float elapsed, float duration, int next, bool force)
+{
+    if (actor->sequenceFlags & SoundActor::kSeq_Held)
+        return true;
+    if (duration < 0.0f || duration <= elapsed) {
+        actor->PlaySlot(next, force);
+        return false;
+    }
+    return true;
+}
+} // namespace
+
+// @func 0x001AF018 SoundActor::AdvanceTo1
+bool SoundActor::AdvanceTo1(float elapsed, float duration) { return AdvanceAfter(this, elapsed, duration, 1, false); }
+// @func 0x001AF0A8 SoundActor::AdvanceTo2
+bool SoundActor::AdvanceTo2(float elapsed, float duration) { return AdvanceAfter(this, elapsed, duration, 2, false); }
+// @func 0x001AF138 SoundActor::AdvanceTo3
+bool SoundActor::AdvanceTo3(float elapsed, float duration) { return AdvanceAfter(this, elapsed, duration, 3, false); }
+// @func 0x001AF1C8 SoundActor::AdvanceTo4
+bool SoundActor::AdvanceTo4(float elapsed, float duration) { return AdvanceAfter(this, elapsed, duration, 4, true); }
+// @func 0x001AF2F0 SoundActor::AdvanceTo6
+bool SoundActor::AdvanceTo6(float elapsed, float duration) { return AdvanceAfter(this, elapsed, duration, 6, false); }
+// @func 0x001AF380 SoundActor::AdvanceWrap
+bool SoundActor::AdvanceWrap(float elapsed, float duration) { return AdvanceAfter(this, elapsed, duration, 1, false); }
+
+// @func 0x001AF258 SoundActor::AdvanceTo5
+bool SoundActor::AdvanceTo5(float elapsed, float duration)
+{
+    if (sequenceFlags & kSeq_Held)
+        return true;
+    if (duration < 0.0f || elapsed < duration)
+        return true;
+    PlaySlot(5, false);
+    return false;
+}
+
+// @func 0x001D20D0 SoundActorB174C0::Release
+bool SoundActorB174C0::Release(bool kill)
+{
+    return SoundActor::Release(kill);
 }
 
 // @func 0x001AF40C SoundActor::SetSlotState
