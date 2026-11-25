@@ -14,7 +14,7 @@ void CharacterCompSetAnimController(EntityComponent* component, void* controller
 uint32_t PhysicsCompCollisionGroup(EntityComponent* component) { (void)component; return 0; }
 void* PhysicsCompRigidBody(EntityComponent* component) { (void)component; return nullptr; }
 void RigidBodySetCollisionGroup(void* body, uint32_t group) { (void)body; (void)group; }
-ape::Vec3 CharacterCompAimPosition(EntityComponent* component) { (void)component; return { 0.0f, 0.0f, 0.0f, 0.0f }; }
+ape::Vec3 CharacterCompVelocity(EntityComponent* component) { (void)component; return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 float CharacterCompTurnRate(EntityComponent* component) { (void)component; return 0.0f; }
 float RigidBodyGravityFactor(void* body) { (void)body; return 0.0f; }
 void RigidBodySetGravityFactor(void* body, float factor) { (void)body; (void)factor; }
@@ -35,10 +35,12 @@ void ListenerOnDropped(EntityListener* listener, const uint8_t* dropSettings) { 
 void ObjectApplyAlphaBuffer(ape::world::ApeObj* object, const void* buffer, uint8_t alpha) { (void)object; (void)buffer; (void)alpha; }
 void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value) { (void)object; (void)value; }
 void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity) { (void)list; (void)fn; (void)owner; (void)entity; }
+void GameWorldDequeueCallbacks(int list, void* owner) { (void)list; (void)owner; }
 Entity* HitSourceOwner(Entity* source, HitOwnerKind kind) { (void)source; (void)kind; return nullptr; }
 bool ThrownBySelf(Entity* thrown, Entity* entity) { (void)thrown; (void)entity; return false; }
 void* HitOtherBody(const EntityHitRecord& hit) { (void)hit; return nullptr; }
 bool RigidBodyIsKeyframed(void* body) { (void)body; return false; }
+uint32_t HitOtherCollisionLayer(const EntityHitRecord& hit) { (void)hit; return 0; }
 float RigidBodyMass(void* body) { (void)body; return 0.0f; }
 void RecordMeleeHit(Entity* victim, const EntityHitRecord& hit) { (void)victim; (void)hit; }
 bool ListenerIgnoresDamage(EntityListener* listener) { (void)listener; return false; }
@@ -62,7 +64,9 @@ void AttachAnimScript(ape::ApeAnimScriptInstance* instance) { (void)instance; }
 void PlayerBlockDisguiseEnded(uint32_t player) { (void)player; }
 Entity* AttackTargetOf(Entity* attacker) { (void)attacker; return nullptr; }
 float ScoringValue(EntityComponent* scoring) { (void)scoring; return 0.0f; }
-void ScoringAward(EntityComponent* scoring, int points, bool flag) { (void)scoring; (void)points; (void)flag; }
+void ScoringAward(EntityComponent* scoring, int points, int multiplier) { (void)scoring; (void)points; (void)multiplier; }
+bool ScoringPaid(EntityComponent* scoring) { (void)scoring; return false; }
+void ScoringSetPaid(EntityComponent* scoring) { (void)scoring; }
 void AddPlayerScore(uint32_t player, int points) { (void)player; (void)points; }
 void MinigameFigureRemoved(uint32_t model) { (void)model; }
 float EntityStateTime(Entity* entity, uint32_t layer) { (void)entity; (void)layer; return 0.0f; }
@@ -88,6 +92,7 @@ void PlayCharacterFx(EntityComponent* component, uint32_t fx, float length, floa
 float SkinRate(EntityComponent* skin) { (void)skin; return 0.0f; }
 void SkinSetRate(EntityComponent* skin, float rate) { (void)skin; (void)rate; }
 void SkinSetScale(EntityComponent* skin, float scale) { (void)skin; (void)scale; }
+float SkinShotInterval(EntityComponent* skin) { (void)skin; return 0.0f; }
 float SkinComputeRate(EntityComponent* skin) { (void)skin; return 0.0f; }
 void SkinSetLevel(EntityComponent* skin, uint32_t level) { (void)skin; (void)level; }
 int32_t SkinVariant(EntityComponent* skin) { (void)skin; return 0; }
@@ -101,6 +106,10 @@ void PhysicsCompSetTarget(EntityComponent* component, const ape::Vec3& point) { 
 void* GadgetAbilityList() { return nullptr; }
 int GadgetAbilityCount(void* list) { (void)list; return 0; }
 uint32_t GadgetAbility(void* list, int index) { (void)list; (void)index; return 0; }
+void* FindHudElement(uint32_t name) { (void)name; return nullptr; }
+void HudElementHide(void* element) { (void)element; }
+void HudElementShow(void* element, float time, const char* text) { (void)element; (void)time; (void)text; }
+bool IsGameTimeFrozen() { return false; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }

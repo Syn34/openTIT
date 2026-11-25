@@ -2,6 +2,9 @@
 // (0x002DB968-0x002DDD24).
 #include "sly/game/goals/JobManager.h"
 
+#include "ape/file/ApeFile.h"
+#include "sly/game/FileStreaming.h"
+
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
 #include "ape/xml/ApeXml.h"
@@ -156,6 +159,13 @@ JobManager* GetJobManager() { return g_jobManager; }
 void SetJobManager(JobManager* manager) { g_jobManager = manager; }
 
 ape::ApeTSortedMap<MovieEntry*>& MovieEntries() { return g_movieEntries; }
+
+// @func 0x002E2D44 FindMovieEntry
+MovieEntry* FindMovieEntry(uint32_t key)
+{
+    MovieEntry** entry = g_movieEntries.Find(key);
+    return entry ? *entry : nullptr;
+}
 ape::ApeTSortedMap<uint8_t*>& EpisodeEntityIndices() { return g_entityIndices; }
 uint32_t UnlockableCount() { return static_cast<uint32_t>(g_unlockables.size()); }
 Unlockable* UnlockableAt(uint32_t index) { return index < g_unlockables.size() ? g_unlockables[index] : nullptr; }
@@ -362,11 +372,25 @@ void JobManager::LoadJobScripts()
     ape::ApeAnimScriptLibrary* library = ape::ApeAnimScriptLibrary::Get(kSharedScriptLibrary);
     if (!library || library->Scripts().Count() > 0)
         return;
-    // TODO(0x002DA5E0): a job whose packages are streamed (load state 1)
-    // reads its scripts from the stream buffers; the port loads them from
-    // their files.
-    for (const Episode::ScriptPath& script : instance->scriptPaths)
-        library->LoadFile(script.path);
+    // A streamed job reads its scripts from the loaded copies (a file that
+    // failed to load is skipped); otherwise from the files on disk.
+    if (instance->loadState == Episode::kLoad_Loading)
+        instance->FinishLoading();
+    for (uint32_t i = 0; i < instance->scriptPaths.Count(); ++i) {
+        const char* path = instance->scriptPaths[i].path;
+        if (instance->loadState == Episode::kLoad_None) {
+            library->LoadFile(path);
+            continue;
+        }
+        const Episode::FileLoad* load =
+            instance->packages && i < instance->packages->Count() ? (*instance->packages)[i] : nullptr;
+        if (!load || (load->file && load->file->state == StreamDiskFile::kFailed))
+            continue;
+        if (ape::file::File* file = ape::file::CreateMemoryFile(load->data, load->size, path)) {
+            library->LoadFromStream(*file);
+            file->Close();
+        }
+    }
 }
 
 // @func 0x002DDA54 JobManager::ReloadJobScripts
@@ -410,13 +434,13 @@ void JobManager::OnLevelStart()
         }
     }
     trackedGoal = goal;
-    field_4C = 0;
+    failingGoal = nullptr;
     field_50 = 0;
     field_40 = 0;
-    field_44 = 0;
-    pendingRequest[0] = 0;
-    pendingRequest[1] = 0;
-    field_54 = 0;
+    field_44 = nullptr;
+    failMessage = nullptr;
+    failPlayer = 0;
+    lastEventEntity = nullptr;
     flags &= ~0x30000000u;
 
     if (streamFlags & (1u << 29)) {

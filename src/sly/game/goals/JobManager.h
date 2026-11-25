@@ -10,12 +10,17 @@
 
 #include <cstdint>
 
+namespace ape { class ApeAllocator; struct Matrix34; }
+
 namespace sly {
 class Spawner;
+struct GameEvent;
 namespace goals { class Goal; }
+namespace entity { class Entity; class EntityComponent; }
 
 namespace game {
 using goals::Goal;
+class StreamDiskFile;
 
 // Progress record of the current profile (game world +0x50, one 0xFD8-byte
 // record per profile, indexed by the profile byte at +0x1070). NOTE: only the
@@ -35,17 +40,70 @@ enum JobState : uint8_t {
 };
 struct PlayerProgress {
     static constexpr int kEpisodeSlots = 12;
+    static constexpr int kCostumeSlots = 6;
+    static constexpr int kArcadeTables = 64;
+    static constexpr int kUnlockEntries = 64;
+
+    // Fresh record of a new profile: everything cleared, the costume slots
+    // named, the unlock entries keyed and the arcade tables filled with the
+    // default scores (0x000ADE04).
+    void Reset();
+    // Adds a pending count to the counter at +0x144 and clears the pending
+    // value (0x000AE3FC).
+    void AddPendingCount(uint8_t& pending);
+    // Notification flags 15 and 16 as a pair of booleans (0x000AE418 reads
+    // them, 0x000AE454 writes them; a byte of 1 sets a flag).
+    void GetNotifyPair(uint8_t out[2]) const;
+    void SetNotifyPair(const uint8_t in[2]);
+
+    uint8_t field_000 = 0;           // +0x000 NOTE: from 0x010B1804 at reset
+    uint8_t field_001 = 0;           // +0x001 NOTE: from 0x00F65BF4 (1) at reset
+    uint16_t field_002 = 0;          // +0x002 NOTE: from 0x00F65BF5 (1) at reset
+    uint32_t field_020 = 0;          // +0x020
     uint32_t bottleBits[kEpisodeSlots] = {};  // +0x034 one bit per clue bottle (Job::bottleSlot)
     uint16_t maskBits[kEpisodeSlots] = {};    // +0x064 one bit per mask (Job::maskSlot)
     uint32_t field_70 = 0;           // +0x070 NOTE: read by 0x00465D5C, meaning unknown
+    uint8_t entityBits[kEpisodeSlots] = {};   // +0x094 per episode: entities of the index table found
     uint16_t jobBits[kEpisodeSlots] = {};     // +0x07C one bit per treasure (Job::bitGroup)
     uint32_t field_A0 = 0;           // +0x0A0 value of the running job (job +0x32C)
+    uint32_t field_134 = 0;          // +0x134
+    uint64_t field_138 = 0;          // +0x138
+    uint16_t field_140 = 0;          // +0x140
+    uint16_t field_142 = 0;          // +0x142
+    uint8_t field_144 = 0;           // +0x144 NOTE: a counter fed by AddPendingCount
+    uint8_t field_145 = 0;           // +0x145
+    uint8_t field_146 = 0;           // +0x146
+    uint8_t penguinsShot = 0;        // +0x147 penguins Carmelita shot (stops at 0xFF)
     uint8_t field_149 = 0;           // +0x149 NOTE: a yes/no option
     uint32_t field_14C = 0;          // +0x14C
     uint8_t inJob = 0;               // +0x150 1 while a job runs
     uint32_t currentJobValue = 0;    // +0x154 job record +0x2D4 of the running job
+    uint8_t field_158 = 0;           // +0x158
+    uint32_t notifyBits = 0;         // +0x15C named notification flags (sly/levels PlayerNotifyFlags)
+    // Costume choice per slot ("Head", "Body", "hands", ...): slot name and
+    // the chosen option (read by the CustomModel component).
+    struct CostumeChoice {
+        uint32_t slot = 0;
+        uint32_t option = 0;
+    };
+    CostumeChoice costume[kCostumeSlots];   // +0x160
     EpisodeProgress episodes[kEpisodeSlots];  // +0x1A0
-    uint8_t jobStates[0x100] = {};   // +0x1D0 JobState by Episode::index. NOTE: count assumed
+    uint8_t jobStates[0x90] = {};    // +0x1D0 JobState by Episode::index (144 jobs)
+    // Arcade high score tables (0x2C bytes each): five scores with the
+    // initials of who made them, and whether a top score was reached.
+    struct ArcadeScores {
+        int32_t scores[5] = {};
+        char initials[5][4] = {};
+        uint8_t beaten = 0;          // +0x28
+        uint8_t pad[3] = {};
+    };
+    ArcadeScores arcade[kArcadeTables];   // +0x260
+    // Unlockable entries keyed by name (table 0x00F64494).
+    struct UnlockEntry {
+        uint32_t name = 0;
+        uint32_t state = 0;
+    };
+    UnlockEntry unlocks[kUnlockEntries];  // +0xD60
     uint32_t unlockBits[2] = {};     // +0xF64 40 unlock flags
     uint32_t abilityBits[1] = {};    // +0xFB0 two bits per ability (see PlayerAbilities.h)
 };
@@ -192,14 +250,35 @@ struct Episode {
     uint8_t field_1F8 = 0;           // +0x1F8 NOTE: bool attribute 0xE587C810
     uint8_t field_1F9 = 1;           // +0x1F9 NOTE: bool attribute 0x6AAB7C29
     uint8_t field_1FA = 0;           // +0x1FA NOTE: int attribute 0xBE8B7B06
-    // Streaming of the job's script packages (0x002D9A14-0x002DA5E0, not
-    // ported): load state, request, buffer and the per-package requests.
-    int32_t loadState = 0;           // +0x1FC
-    void* request = nullptr;         // +0x200
-    void* buffer = nullptr;          // +0x208
-    uint32_t bufferSize = 0;         // +0x20C
-    void* packageRequests = nullptr; // +0x210
-    void* goals = nullptr;           // +0x214
+    // Streaming of the job's goal file and script files (0x002D9A14-
+    // 0x002DA718).
+    enum LoadState : int32_t { kLoad_None = 0, kLoad_Loading = 1, kLoad_Loaded = 2 };
+    // One file being streamed (0x10 bytes): the request and, once loaded,
+    // the data it handed over (freed through `allocator`).
+    struct FileLoad {
+        StreamDiskFile* file = nullptr;          // +0x00
+        ape::ApeAllocator* allocator = nullptr;  // +0x04
+        void* data = nullptr;                    // +0x08
+        uint32_t size = 0;                       // +0x0C
+    };
+    // Drops every request, loaded file and parsed goal (0x002D9A14).
+    void ReleaseStreams();
+    // Starts streaming the goal file and every script file (0x002DA2A4).
+    void StartLoading();
+    // Advances the streams; all files read: loaded (0x002DA438). FinishLoading
+    // blocks on the first file still busy (0x002DA5E0).
+    void UpdateLoading();
+    void FinishLoading();
+    // Builds the job's goals from its goal file (the streamed copy, else the
+    // file on disk); false when there are none (0x002D9CC0).
+    bool ParseGoals();
+    // Hands the parsed goals over to `owner`'s goal list (0x002DA04C).
+    void MoveGoalsTo(ape::ApeTArray<Goal*>& goalList);
+
+    int32_t loadState = kLoad_None;  // +0x1FC LoadState
+    FileLoad script;                 // +0x200 the goal file (jobScript)
+    ape::ApeTArray<FileLoad*>* packages = nullptr;   // +0x210 one per script path
+    ape::ApeTArray<Goal*>* goals = nullptr;          // +0x214 parsed, not yet handed over
 };
 using JobInstance = Episode;
 
@@ -323,6 +402,143 @@ public:
     void SelectJobByValue(uint32_t value);
     // Appends every job named `nameHash` to `out` (0x002E2D7C).
     void CollectJobs(uint32_t nameHash, ape::ApeTArray<Job*>& out) const;
+    // The current episode's stage has an unfinished job whose character
+    // (+0x1EC) is `character` (a character also matches its variant, e.g.
+    // Sly / Sly in disguise) (0x002E16E8); 0x002E1900 returns that job.
+    bool CurrentStageUsesCharacter(uint32_t character) const;
+    Episode* CurrentStageJobForCharacter(uint32_t character) const;
+    // A hideout character of the current stage's jobs can be selected
+    // (0x002E1B1C; true without an episode) / has flag +0x09 (0x002E1C88).
+    bool HideoutCharacterSelectable(uint32_t name) const;
+    bool HideoutCharacterFlag09(uint32_t name) const;
+    // The hideout characters offered by the last started episode: those of
+    // its latest unlocked job, the +0x0A ones only once that job is
+    // complete (0x002E2438).
+    void CollectHideoutCharacters(ape::ApeTArray<Episode::HideoutCharacter>& out) const;
+    // Records that entity `entity` of the index table was found in the
+    // current episode; the first one found anywhere awards a trophy
+    // (0x002E2B34).
+    void MarkEpisodeEntityFound(uint32_t entity) const;
+    // Completion of the whole game in percent: every episode's completion
+    // weighted by its episode weight (0x002E3188).
+    float GameCompletion(const PlayerProgress* progress) const;
+    // Collected share in percent over all episodes: clue bottles
+    // (0x002E32D8), masks of the active episodes (0x002E34A8), treasures
+    // (0x002E3698) and opened safes of the episodes with treasures
+    // (0x002E3898). A null record means the current profile.
+    float BottlePercent(const PlayerProgress* progress) const;
+    float MaskPercent(const PlayerProgress* progress) const;
+    float TreasurePercent(const PlayerProgress* progress) const;
+    float SafePercent(const PlayerProgress* progress) const;
+    // Masks of every active episode (0x002E57A8).
+    int TotalMaskCount() const;
+    // `entity` (alive) is the character `job` is played with (Sly also
+    // matches entities with class bit 5) (0x002E4ED0).
+    bool IsJobCharacter(const entity::Entity* entity, const Episode* job) const;
+    // Passes a game event to the active goals of the running job (unless the
+    // goals are being cleared) and counts the penguins Carmelita shoots for
+    // the trophy (0x002E5180).
+    void OnGameEvent(int player, const GameEvent& e);
+    // Records a score of `rank` on arcade table `table`: a top score (rank
+    // below the award index) marks the table; the first and the sixth tables
+    // marked award trophies (0x002E6A88).
+    void RecordArcadeScore(int table, int rank) const;
+    // After a treasure was collected: marks the episode (flag 0x40) once all
+    // its treasures are found, awards the treasure trophy, marks every
+    // episode once all treasures of the game are found, then checks the
+    // episode trophies (0x002E6320).
+    void OnTreasureCollected(Job* job) const;
+    // The mask placed by `spawner` is still to be found by profile
+    // `profile`; false (with a warning) for spawners missing from the mask
+    // table (0x002E6B8C).
+    bool MaskSpawnerAvailable(const Spawner* spawner, uint8_t profile) const;
+    // Flag bit 27 of +0x64; switching it off hands the progress counter of
+    // every active goal to the HUD (0x002E6E54). NOTE: name from use by the
+    // minigame goals.
+    void SetGoalCountersSuppressed(bool suppressed);
+    // A player picked up `treasure`: its bit is set in the collector's
+    // profile (notification flag 5 too), the treasure bookkeeping runs and
+    // the treasure's spawner is deactivated (0x002E66F4).
+    void CollectTreasure(entity::Entity* treasure, entity::Entity* collector) const;
+    // Ends the running job and starts episode `job`: stage 0, flag 0x80
+    // cleared and (unless `stayInLevel`) a request for its hideout level
+    // (0x002E12D0); 0x002E142C finds the episode by its id first.
+    bool StartEpisode(Job* job, bool stayInLevel);
+    bool StartEpisodeById(uint32_t id);
+    // Ends the running job, makes the episode with id `id` current and
+    // restarts the game world state (0x002E15BC).
+    bool RestartEpisodeById(uint32_t id);
+    // Ends the running job and runs job `index`: its goals are built from
+    // its goal file and handed to the players (0x002E1F44).
+    bool StartJob(uint32_t index);
+    // The player's goal with the id to track after loading (0x002E20CC).
+    Goal* FindGoalToTrack() const;
+    // Queues the start of `job` (its files are streamed meanwhile) for
+    // `entity` (0x002E1E98).
+    void RequestJobStart(entity::Entity* entity, Episode* job, uint32_t value, bool optionA, bool optionB);
+    // Without a pending start, lets every goal reset its hints; with one,
+    // drops it and ends the running job and episode (0x002E4D64).
+    void CancelPendingStart();
+    // Places the local player at the checkpoint of `goal` that belongs to
+    // the player's character (default spawn point without one, or a
+    // pending respawn override without a goal) and resets the camera
+    // (0x002DE41C).
+    void PlacePlayerForGoal(Goal* goal);
+    // Places the other playable characters at their checkpoints of `goal`
+    // (0x002DE794).
+    void PlaceCompanionsForGoal(Goal* goal);
+    // Makes `goal` the tracked goal: the goals before it are completed, the
+    // players are placed (unless `keepPlayers`), the player switches to the
+    // goal's character and, with `requestLevel`, the goal's level is asked
+    // for (0x002DEA50).
+    void SelectGoal(Goal* goal, bool keepPlayers, bool requestLevel);
+    // Resets every goal of the running job (from the save words with
+    // `fromSave`, restoring the initial flags with `restoreFlags`) and
+    // tracks the goal after the last completed one; a pending goal id is
+    // selected instead (0x002DEDB4).
+    void RestoreGoals(bool fromSave, bool restoreFlags);
+    // Records in the profile that `job` starts: earlier episodes (when the
+    // job's episode is active) and their jobs count as finished, the job's
+    // episode is started at the job's stage and its job states updated
+    // (0x002E0008).
+    void ApplyJobStart(Episode* job);
+    // Makes `goal` the one to play: in its level (now, unless `forceReload`
+    // asks to load it again) it is selected at once; otherwise the goals are
+    // reset and the level is (re)loaded with the goal selected afterwards
+    // (0x002E0498).
+    void PlayGoal(Goal* goal, bool forceReload, bool levelRequestFlag);
+    // Builds the running job's goals and, with `track`, plays the goal named
+    // by the pending id (else the first goal) (0x002E06D8).
+    bool BuildRunningJobGoals(bool forceReload, bool levelRequestFlag, bool track);
+    // Selects the goal whose name hash is `nameHash` (null for 0)
+    // (0x002E56F4).
+    void SelectGoalByName(uint32_t nameHash, bool keepPlayers, bool requestLevel);
+    // Starts `job` from the hub: the profile's pending counters are taken
+    // over, the running job ends, the start is recorded (unless
+    // `skipBookkeeping`) and either the episode's hub / hideout level is
+    // asked for or the job's goals are built right away (tracking
+    // `goalName`); the "INITJOB" script runs afterwards (0x002E0930).
+    // Completes the running job: its state and rewards, the episode's next
+    // stage (or the episode itself) unless it is a replay, then ends it.
+    // Returns the level to go to next (0x002E5414).
+    uint32_t CompleteRunningJob();
+    // Advances a pending job start: streams the job's files (showing the
+    // loading element), starts the job and prepares the scripts of the goal
+    // to play, then plays it once its sequences are streamed (0x002E0C38).
+    void UpdatePendingStart();
+    // Respawns the player for `goal`: in the goal's level the player takes
+    // the goal's character (or associated player), otherwise the level is
+    // asked for; a checkpoint with "teleportToCheckPoint" moves the player
+    // there (0x002E3AEC). NOTE: only the local player's block is modelled.
+    void RespawnForGoal(Goal* goal, int player);
+    // A goal failed: when it has a fail message and no fail screen is up,
+    // either the entity of the last event 3 is told and the message waits
+    // for FlushPendingRequest (the player loses control meanwhile), or the
+    // fail screen state starts right away. The goal's fail scripts then run
+    // every update (0x002E5DD8).
+    void OnGoalFailed(Goal* goal, uint8_t player);
+    bool StartJobFromHub(Episode* job, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
+                         bool levelRequestFlag, bool skipBookkeeping, bool track);
     // Ends the running job instance, first updating its episode's flag 0x20
     // (0x002E5060).
     void FinishJobInstance();
@@ -330,23 +546,29 @@ public:
     // flag 0x20; the running level's own job counts as flagged (0x002E2740).
     bool IsJobValueFlagged(uint32_t value) const;
 
+    int32_t pendingKind = 0;         // +0x00 1: a job start is pending
+    entity::Entity* pendingEntity = nullptr;   // +0x04 the entity that asked (class bit 17 set)
+    Episode* pendingJob = nullptr;   // +0x08 job whose files are streamed for the start
+    uint32_t pendingValue = 0;       // +0x0C
     Job* jobs = nullptr;             // +0x14
     uint32_t jobCount = 0;           // +0x18
     Episode* episodes = nullptr;     // +0x1C
     uint32_t episodeCount = 0;       // +0x20
     Job* currentJob = nullptr;       // +0x24
     Episode* instance = nullptr;     // +0x28 the running job
-    uint32_t streamFlags = 0;        // +0x10 bit 29: a package stream is pending
+    uint32_t streamFlags = 0;        // +0x10 bit 29: a start is pending; bits 31/30 its two options
+    Episode* lastFinished = nullptr; // +0x2C the job that ended last
     uint32_t field_30 = 0;           // +0x30
     uint32_t collectedBottles = 0;   // +0x38 of the current episode, counted at level start
     uint32_t collectedMasks = 0;     // +0x3C over every active episode
     uint32_t field_40 = 0;           // +0x40
-    uint32_t field_44 = 0;           // +0x44
+    entity::Entity* field_44 = nullptr;   // +0x44 NOTE: an entity whose script is told when a job ends
     Goal* trackedGoal = nullptr;     // +0x48
-    uint32_t field_4C = 0;           // +0x4C
+    Goal* failingGoal = nullptr;     // +0x4C goal whose fail scripts run every update
     uint32_t field_50 = 0;           // +0x50
-    uint32_t field_54 = 0;           // +0x54
-    uint32_t pendingRequest[2] = {}; // +0x58
+    entity::Entity* lastEventEntity = nullptr;   // +0x54 source of the event 3 being dispatched
+    const char* failMessage = nullptr;   // +0x58 message of a failed goal waiting for the fail screen
+    uint32_t failPlayer = 0;         // +0x5C player that failed it
     uint32_t trackedGoalId = 0;      // +0x60 goal to track after loading, 0 = first open goal
     uint32_t flags = 0;              // +0x64 bit 29: a request is pending, bit 30: goals being cleared
 
@@ -382,6 +604,54 @@ uint32_t CurrentJobValue();
 Goal* PlayerFindGoal(uint32_t id);
 // Asks the game world for level `levelName` (0x004674C4).
 void GameWorldRequestLevel(uint32_t levelName);
+// Puts the game world's state machine into state 3 (0x00488D68).
+void GameWorldRestartState();
+// The local player's block (game world +0x1070): character slot (+0x02),
+// controlled entity (+0x08) and its spawn transform (+0x10).
+int PlayerCharacterSlot();
+entity::Entity* PlayerEntity();
+ape::Matrix34& PlayerSpawnTransform();
+// The playable character entities by slot (game world +0x1280F0, nine).
+entity::Entity* PlayableCharacter(int slot);
+// Default spawn transform of character slot `slot` (0x00486460).
+void DefaultSpawnTransform(int slot, ape::Matrix34* out);
+// World transform of a placed point instance; false if there is none.
+bool PointInstanceWorldTransform(uint32_t name, ape::Matrix34* out);
+// A one-shot respawn point set by scripts (game world +0x128160); taking it
+// clears it. False if none is set or the point is missing.
+bool TakeRespawnOverride(ape::Matrix34* out, bool* wasSet);
+// Character entity is put on its path after a teleport (0x0012BF70).
+// NOTE: used for the checkpoints' "attachToSpline" option.
+void CharacterSnapToGround(entity::Entity* character);
+// The active game camera resets behind the player (game world +0x1281E0,
+// camera of slot +0x159, virtual slot 7).
+void GameCameraReset();
+// Game world helpers of the goal selection: the player switches to the
+// goal's associated player (0x00487670), to the character of definition
+// `def` (0x00484BE0), or respawns as it is (0x00488178).
+void GameWorldUseAssociatedPlayer(Goal* goal);
+void GameWorldSwitchPlayerCharacter(uint32_t def);
+void GameWorldRespawnPlayer(const ape::Matrix34& transform);
+// Profile byte of player `player`'s block (game world +0x1070 + player *
+// 0x20C80).
+uint8_t PlayerBlockProfile(int player);
+// The entity of local player `player` (game world +0x1078 + player * 0x20C80).
+entity::Entity* PlayerEntityOf(int player);
+// The gadget component lets the player be stopped (0x0029A40C).
+bool GadgetAllowsStop(entity::EntityComponent* gadget);
+// Drops every target of a targeting component (0x0029F26C).
+void TargetingClearTargets(entity::EntityComponent* targeting);
+// Stops the script a type-0x17 component is playing (0x00276558).
+void AnimDriverStopScript(entity::EntityComponent* driver);
+// Per-profile values the game world keeps for the profile record: a
+// pending count (+0x1028 + profile) and a pair of flags (+0x1029 +
+// profile * 2).
+uint8_t& ProfilePendingCount(uint8_t profile);
+uint8_t* ProfileNotifyPair(uint8_t profile);
+// Running level (game world +0x128114).
+uint32_t RunningLevel();
+// Reloads the running level (0x004896F8 with 0).
+void GameWorldReloadLevel();
 // Goal `index` of the player's goal list (game world +0x10C0, count
 // +0x10C8), null for -1 or out of range (0x002E6A3C).
 Goal* PlayerGoalAt(uint32_t index);
@@ -405,6 +675,19 @@ struct MovieEntry {
     char text[0x20] = {};            // +0x08
 };
 ape::ApeTSortedMap<MovieEntry*>& MovieEntries();     // 0x010681E4
+// Treasure / safe record of the spawner that placed `entity` (its spawn
+// point's key), or null (0x002E696C / 0x002E69D4).
+CollectibleRecord* TreasureRecordOf(const entity::Entity* entity);
+CollectibleRecord* SafeRecordOf(const entity::Entity* entity);
+// Movie entry of a movie file name hash, or null (0x002E2D44).
+MovieEntry* FindMovieEntry(uint32_t key);
+// Job value of the running level: the level's own, else (while the
+// current episode runs a job) the episode's +0x32C; with no level, the
+// profile's running job value or the default (0x002E29B0).
+uint32_t RunningLevelJobValue();
+// 0x010683D4: job value used when nothing else names one. NOTE: written
+// outside this module.
+extern uint32_t g_defaultJobValue;
 // Index of each entity named by the element 0x9A5AAD6E (load order).
 ape::ApeTSortedMap<uint8_t*>& EpisodeEntityIndices(); // 0x010681CC
 // Unlockables (array 0x010681FC, count 0x01068204; key at record +0x60).
@@ -430,7 +713,8 @@ Goal* PlayerGoalListAt(uint32_t index);
 // data word pair of its current state (+0x14 buffer, +0x06 offset).
 int GameWorldState(int layer);
 void GameWorldSetState(int layer, int state);
-void GameWorldSetStateData(uint32_t first, uint32_t second);
+// The state data of the fail screen state: the message and the player.
+void GameWorldSetStateData(const char* message, uint32_t player);
 // Game world +0x128114: id of the job that is running (0 = none).
 uint32_t LiveJobId();
 // 0x0029D838 on a targeting component.

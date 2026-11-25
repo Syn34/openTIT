@@ -3,6 +3,7 @@
 
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
+#include "sly/game/FileStreaming.h"
 #include "sly/game/SpawnManager.h"
 #include "sly/game/goals/GoalHooks.h"
 #include "sly/gameplay/Sequencer.h"
@@ -405,6 +406,23 @@ void Goal::PrepareScriptSlot(int slot)
             script->flags |= kScript_Prepared;
         }
     }
+}
+
+// @func 0x003265A4 Goal::ScriptSlotStreamed
+bool Goal::ScriptSlotStreamed(int slot) const
+{
+    if (slot == -1)
+        return true;
+    const GoalScriptCursor& cursor = scripts[slot];
+    for (uint32_t i = 0; i < ScriptCount(cursor); ++i) {
+        const GoalScript* script = ScriptAt(cursor, i);
+        if (script->name == 0 || !(script->flags & kScript_Prepared))
+            continue;
+        const game::StreamGroup* group = game::FindStreamGroup(script->name);
+        if (group && (group->flags & game::StreamGroup::kGroup_Running) && !group->Complete())
+            return false;
+    }
+    return true;
 }
 
 // @func 0x00325FCC Goal::ReleaseScriptSlot

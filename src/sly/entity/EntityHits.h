@@ -50,8 +50,11 @@ struct EntityHitRecord {
         uint32_t field_4C;
     };
     struct Collision {                   // category 0
-        uint32_t field_20[4];
+        uint32_t field_20;
+        float normalUp;                  // +0x24 up component of the contact normal
+        uint32_t field_28[2];
         float speed;                     // +0x30 compared with the actor's threshold
+        const void* otherCollidable;     // +0x34 Havok collidable of the other body
     };
     struct Blast {                       // category 2
         uint32_t field_20[4];

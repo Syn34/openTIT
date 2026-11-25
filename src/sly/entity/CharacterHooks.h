@@ -38,8 +38,8 @@ void* PhysicsCompRigidBody(EntityComponent* component);
 // Collision filter word of a rigid body (+0x2C): the group goes into bits
 // 16-31 and the world re-filters the body (0x00930B70) when it is in one.
 void RigidBodySetCollisionGroup(void* body, uint32_t group);
-// Position the character aims from (+0x250) and its turn rate (+0x280).
-ape::Vec3 CharacterCompAimPosition(EntityComponent* component);
+// Velocity (+0x250) and turn rate (+0x280) of the character component.
+ape::Vec3 CharacterCompVelocity(EntityComponent* component);
 float CharacterCompTurnRate(EntityComponent* component);
 // Gravity factor of a rigid body's motion (an hkHalf at +0x1FE).
 float RigidBodyGravityFactor(void* body);
@@ -116,6 +116,13 @@ uint32_t PurchasedAbilities(uint32_t character, uint32_t* out, uint32_t max);
 void* GadgetAbilityList();
 int GadgetAbilityCount(void* list);
 uint32_t GadgetAbility(void* list, int index);
+// HUD elements by name (0x003568E0), hidden (0x0036325C) or shown for a time
+// with an optional text (0x00363A3C).
+void* FindHudElement(uint32_t name);
+void HudElementHide(void* element);
+void HudElementShow(void* element, float time, const char* text);
+// Frame time is frozen (game world short +0x128214).
+bool IsGameTimeFrozen();
 // World flag lookup by name (0x0048FC68).
 bool WorldFlag(uint32_t name);
 // The game physics world exists (game world +0x1281D4, +0x04).
@@ -159,6 +166,8 @@ void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value);
 // Game world callback lists (0x0046B5F8): `fn(owner, entity)` runs later.
 using WorldCallback = void (*)(void* owner, Entity* entity);
 void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity);
+// Takes the callbacks of `owner` off a game world list (0x0046B7A4).
+void GameWorldDequeueCallbacks(int list, void* owner);
 
 // Who is behind an indirect hit source: the thrower of a thrown object
 // (+0x1AC), the owner of an owned one (+0x188) or the spawner (+0x190).
@@ -171,6 +180,9 @@ bool ThrownBySelf(Entity* thrown, Entity* entity);
 // whose owner is a rigid body), its motion type (+0xE8 == 4: keyframed) and mass.
 void* HitOtherBody(const struct EntityHitRecord& hit);
 bool RigidBodyIsKeyframed(void* body);
+// Collision layer of the other collidable of a physics impact hit (its
+// filter info +0x1C, bits 0-4).
+uint32_t HitOtherCollisionLayer(const struct EntityHitRecord& hit);
 float RigidBodyMass(void* body);
 // Statistics of a melee hit taken (0x000B2AE0).
 void RecordMeleeHit(Entity* victim, const struct EntityHitRecord& hit);
@@ -184,7 +196,10 @@ void GameWorldNpcDamaged(Entity* entity);
 Entity* AttackTargetOf(Entity* attacker);
 // Scoring component (type 0x28): its value (+0x18) and paying it out (0x002B21D8).
 float ScoringValue(EntityComponent* scoring);
-void ScoringAward(EntityComponent* scoring, int points, bool flag);
+void ScoringAward(EntityComponent* scoring, int points, int multiplier);
+// Whether the component has paid out already (+0x3C), and marking it paid.
+bool ScoringPaid(EntityComponent* scoring);
+void ScoringSetPaid(EntityComponent* scoring);
 // Score counter of a player's entity (+0x1D0 of the player 0 entity at game world +0x1078).
 void AddPlayerScore(uint32_t player, int points);
 
@@ -211,6 +226,8 @@ float SkinRate(EntityComponent* skin);
 void SkinSetRate(EntityComponent* skin, float rate);
 void SkinSetScale(EntityComponent* skin, float scale);
 float SkinComputeRate(EntityComponent* skin);
+// Shot interval of a weapon skin component (+0x4D0).
+float SkinShotInterval(EntityComponent* skin);
 void SkinSetLevel(EntityComponent* skin, uint32_t level);
 int32_t SkinVariant(EntityComponent* skin);
 void SkinSetVariant(EntityComponent* skin, int32_t variant);

@@ -40,6 +40,8 @@ public:
     uint32_t flags1C = 0;              // +0x1C
     void* introGui = nullptr;          // +0xF4
     WorldObject* player = nullptr;     // +0xF8
+    // NOTE: cleared when the Bentley alter ego dies while flags1C bit 5 is set.
+    uint8_t field_105 = 0;             // +0x105
     uint32_t resetRequests = 0;        // +0x1A8 MinigameRequest bits
 };
 

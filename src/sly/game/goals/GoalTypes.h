@@ -255,17 +255,71 @@ public:
     float field_A1C = 4.0f;      // +0xA1C (XML 0x39FB22A9)
 };
 
+// Configuration of the fishing minigame (0x140 bytes), one block per child
+// element of the goal. Names come from the attribute hashes where they were
+// recovered; the rest keep their hash.
+struct FishingConfig {
+    // <General>
+    uint32_t general_9D597CD8 = 0;   // +0x00
+    uint32_t lifetimeScript = 0;     // +0x04 "LifetimeScript"
+    bool general_60FC5D53 = false;   // +0x08
+    int32_t general_E2AB5482 = 0;    // +0x0C
+    // element 0x0001151B
+    char captureStr[0x44] = {};      // +0x10 "captureStr"
+    uint32_t capture_B908B96B = 0;   // +0x54
+    uint32_t capture_521131D6 = 0;   // +0x58
+    // <Input>
+    float inputRangeMin[2] = {};     // +0x5C NOTE: name inferred from "InputRangeMax"
+    float inputRangeMax[2] = {};     // +0x64 "InputRangeMax"
+    float input_2443DEE4[2] = {};    // +0x6C
+    float input_4343FBEC = 2.0f;     // +0x74
+    bool input_D671941C = false;     // +0x78
+    // <Camera>
+    float cameraOffset[3] = {};      // +0x80 "Offset"
+    float camera_84427283[3] = {};   // +0x90
+    uint32_t cameraStartDef = 0;     // +0xA0 NOTE: "STARTdef"?
+    float easeInTime = 1.0f;         // +0xA4 "EaseInTime"
+    float easeOutTime = 0.25f;       // +0xA8 "EaseOutTime"
+    float panInterp = 0.15f;         // +0xAC "PanInterp"
+    float fov = 50.0f;               // +0xB0 "Fov"
+    float fovInterp = 0.4f;          // +0xB4 "FovInterp"
+    float camera_0460BCBD = 25.0f;   // +0xB8
+    // element 0x75181ABA
+    uint32_t entityDef = 0;          // +0xC0 "Entitydef"
+    float speedThreshold = 10.0f;    // +0xC4 "Speedthreshold"
+    uint32_t detectPart = 0;         // +0xC8 "DetectPart"
+    float visualYOffset = 0.0f;      // +0xCC "VisualYOffset"
+    uint32_t fish_BC0FA89F = 0;      // +0xD0
+    uint32_t fish_708ACE28 = 0;      // +0xD4
+    // element 0x0020EE58
+    float move_9B49D0E5[3] = {};     // +0xE0
+    float move_C629C924[3] = {};     // +0xF0
+    float trackDistSq = 3.4028235e38f;   // +0x100 "TrackDist" (stored squared)
+    float moveYOffset = 0.0f;        // +0x104 "MOVEYOffset"
+    float trackSpeedScale = 1.0f;    // +0x108 "TrackSpeedScale"
+    float move_810AA162 = 0.1f;      // +0x10C
+    float move_AE23BF2F = 0.0f;      // +0x110
+    float maxStunTime = 0.0f;        // +0x114 "MaxStunTime"
+    float move_A4C44A18 = 0.0f;      // +0x118
+    uint32_t idleAnim = 0;           // +0x11C "IdleAnim"
+    uint32_t move_72BEA0EF = 0;      // +0x120
+    // <Track>: "thresholdpercent" of the low / mid / high bands (0..1)
+    float trackThresholds[3] = {};   // +0x130
+    float track_E965B9B4 = 0.0f;     // +0x13C
+};
+
 // "GoalFishingGame" (vtable 0x00B1E990).
 class GoalFishingGame : public MinigameGoal {
 public:
     int TypeId() const override;
-    using MinigameGoal::MinigameGoal;
+    // 0x00330958: the minigame goal with the parsed configuration.
+    GoalFishingGame(const GoalDesc* desc, const FishingConfig& config);
     ~GoalFishingGame() override;
+    // 0x00330C88: reads the configuration blocks of the child elements.
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
     void InstallMinigame() override;
 
-    // NOTE: the 0x150-byte configuration built by 0x00330C88/0x00330958
-    // (not ported); kept opaque.
-    uint8_t config[0x150] = {};   // +0xA20
+    FishingConfig config;   // +0xA20
 };
 
 // "GoalQteGame" (vtable 0x00B1EF58).
@@ -594,8 +648,13 @@ public:
     static constexpr uint32_t kMsg_TargetSetA = 0xF41445FE;
     static constexpr uint32_t kMsg_TargetSetB = 0x3281C093;
 
-    using GoalGroup::GoalGroup;
+    // 0x00333918: a group with the given options and the two name sets.
+    GoalOperationMousetrap(const GoalDesc* desc, const struct GoalGroupSetup& setup,
+                           const ape::ApeTArray<uint32_t>& setA, const ape::ApeTArray<uint32_t>& setB);
     ~GoalOperationMousetrap() override;
+    // 0x003344B8: reads the group options, the names "...1".."...3" (set A)
+    // and "Gear1".."Gear3" (set B) and the child goals.
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
     void HandleMessage(const GoalMessage& msg) override;
     uint8_t Update(int player, const GameEvent& e) override;
     void ResetHints(bool stopHintScript) override;
@@ -628,9 +687,8 @@ public:
 namespace sly {
 namespace goals {
 
-// "GoalScore" (vtable 0x00B1F048; factory 0x0033E7D8 and destructor not
-// ported): counts events of one type ("scoreType") and compares the score
-// with a target.
+// "GoalScore" (vtable 0x00B1F048): counts events of one type ("scoreType")
+// and compares the score with a target.
 class GoalScore : public Goal {
 public:
     int TypeId() const override;
@@ -650,19 +708,19 @@ public:
         void* entity = nullptr;   // +0x10
         uint8_t pad2[0x0C];
     };
-    // A scoring object (0x30 bytes).
+    // A scoring object (0x30 bytes; <Target> children of the goal).
     struct Source {
-        uint8_t pad[0x10];
+        ape::Vec3 offset{};      // +0x00 (XML 0x4A4D4D4D)
         uint32_t name = 0;       // +0x10 object (or child) name
         uint32_t parent = 0;     // +0x14 parent entity, 0 for none
         uint32_t group = 0;      // +0x18 compared with event arguments
-        uint32_t field_1C = 0;
-        int32_t points = 1;      // +0x20
+        uint32_t markerDef = 0;  // +0x1C NOTE: "markerDef"
+        int32_t points = 1;      // +0x20 "Count", -32..32
         uint32_t flags = 0;      // +0x24 SourceFlags
         uint8_t pad3[0x08];
     };
     enum SourceFlags : uint32_t {
-        kSource_CountMissing = 0x00800000,   // a missing entity counts as scored
+        kSource_CountMissing = 0x00800000,   // a missing entity counts as scored (XML 0x5D1967C0)
         kSource_Unmark       = 0x40000000,   // drop its marker when it scores
         kSource_Marked       = 0x80000000,   // shown with a marker
     };
@@ -674,6 +732,7 @@ public:
 
     using Goal::Goal;
     ~GoalScore() override;
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
     uint8_t Update(int player, const GameEvent& e) override;
     void Reset(bool fromSave, int status) override;
     void ResetHints(bool stopHintScript) override;

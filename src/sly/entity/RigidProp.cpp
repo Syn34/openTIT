@@ -9,6 +9,10 @@
 #include "sly/entity/EntityHooks.h"
 #include "sly/entity/PhysicsHooks.h"
 
+#include "ape/math/ApeMatrixOps.h"
+#include "ape/world/ApeBase.h"
+#include "ape/world/ApeDef.h"
+#include "ape/world/ApeObj.h"
 #include <algorithm>
 
 namespace sly {
@@ -64,9 +68,49 @@ void RigidProp::HandleMessage(const EntityMessage& msg)
         return;
     if (EntityComponent* scoring = sender->GetComponent(kComp_Scoring)) {
         const int points = int(ScoringValue(scoring));
-        ScoringAward(scoring, points, true);
+        ScoringAward(scoring, points, 1);
         AddPlayerScore(0, points);
     }
+}
+
+// @func 0x00169D50 RigidProp::UpdateTransform
+void RigidProp::UpdateTransform(float dt)
+{
+    Entity::UpdateTransform(dt);
+    constexpr uint32_t kSpinObject = 0x45A6A51Au;
+    ape::world::ApeObj* spinner = ape::world::FindInstance(kSpinObject, 0);
+    if (!spinner || spinner->m_pivot == &ape::world::kWorldIdentity)
+        return;
+    ape::Matrix34 rotation;
+    ape::Matrix34FromQuat(rotation, spin, ape::world::kWorldZero);
+    // The animated pivot is the object's own matrix (only the shared default is constant).
+    auto& pivot = const_cast<ape::Matrix34&>(*spinner->m_pivot);
+    ape::world::Matrix34Mul(pivot, rotation, pivot);
+    spinner->MarkDirty();
+    for (ape::world::ApeObj* o = spinner; o; o = o->GetParent())
+        o->MarkDirty();
+}
+
+// @func 0x00169AB0 RigidProp::SetTransform
+void RigidProp::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    if (rigidBody)
+        MoveBody(rigidBody, m);
+}
+
+// @func 0x00169280 RigidProp::CanInteractWith
+bool RigidProp::CanInteractWith(Entity* other, int kind)
+{
+    if (propState != kProp_Dynamic && propState < kProp_Destroyed)
+        return false;
+    return CanBePickedUp(other, kind, Def()->damage, interactor);
+}
+
+// @func 0x00168620 RigidProp::SetVelocity
+void RigidProp::SetVelocity(const ape::Vec3& velocity)
+{
+    SetBodyVelocity(rigidBody, velocity);
 }
 
 // @func 0x00168714 RigidProp::GetVelocity
@@ -75,8 +119,8 @@ ape::Vec3 RigidProp::GetVelocity()
     return BodyVelocity();
 }
 
-// @func 0x001691D4 RigidProp::GetMassCenter
-ape::Vec3 RigidProp::GetMassCenter()
+// @func 0x001691D4 RigidProp::GetAimPoint
+ape::Vec3 RigidProp::GetAimPoint()
 {
     return BodyMassCenter();
 }

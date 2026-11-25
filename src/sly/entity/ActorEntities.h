@@ -188,9 +188,19 @@ public:
     // NOTE: both only look the interaction component up.
     void InteractionCancel() override;                // slot 63
     void InteractionEnd(bool completed) override;     // slot 64
+    // Showing spawns the attached entity (state 0); hiding detaches and
+    // kills it (state 3).
+    void ApplyVisibility(bool visible) override;      // slot 55
+    // Slot 76: in state 0 with the attached entity, while the time (+0x1FC)
+    // runs or the script's int 0xDD61613C is set.
+    bool CanInteractWith(Entity* other, int kind) override;
+    // Spawns the entity of definition `attachedDef` and attaches it (0x001F50E4).
+    void SpawnAttached();
 
     ape::Matrix34 userTransform{};            // 0x1B0
     Entity* attached = nullptr;               // 0x1F0
+    float useTime = 0.0f;                     // 0x1FC NOTE: name guessed
+    uint32_t attachedDef = 0;                 // 0x230 definition name of the attached entity
 };
 
 // Interactive prop with two phantoms (vtable 0x00B17DF8; destructor
@@ -328,13 +338,28 @@ public:
     void SetSlotState(int index, bool immediate) override;
     // Also runs a pending refresh and counts the delay down.
     bool Update(float dt) override;                   // slot 4
-    // 0x001BF8E8 (not ported).
+    // Flips the switch (or, with a non-negative reset time, turns it on and
+    // starts the time) and reports it for the player that flipped it.
     void Refresh();
+    // Messages 0x4DA1B5C3 / 0x59676D2A unlock / lock the switch.
+    void HandleMessage(const EntityMessage& msg) override;    // slot 43
+    // Collisions above the threshold, and melee and projectile hits from
+    // players, flip the switch (on the next update).
+    void OnHitCategory0(EntityHitRecord& hit) override;       // slot 83
+    void OnHitCategory1(EntityHitRecord& hit) override;       // slot 84
+    void OnHitCategory4(EntityHitRecord& hit) override;       // slot 87
+    // A hit is taken and the switch may flip now.
+    bool AcceptsFlip(EntityHitRecord& hit);
+    // Queues a flip credited to `player`.
+    void QueueFlip(int player) { switchFlags |= 0x40; flipPlayer = player; }
 
     int32_t position = 0;          // 0x22C 0 or 1 (indexes the state tables)
-    float field_234 = 0.0f;        // 0x234 NOTE: non-negative resets the position
+    int32_t flipPlayer = 0;        // 0x230 player slot credited with the flip
+    float resetTime = 0.0f;        // 0x234 non-negative: flips only turn on, for this long
     float delay = 0.0f;            // 0x238 slot 5 waits while positive
-    uint8_t switchFlags = 0;       // 0x23C bit 3 armed, bit 6 refresh pending
+    // Bit 3 used, bit 4 NOTE: unknown (skips the checks), bit 5 locked,
+    // bit 6 flip pending, bit 7 locks after one flip.
+    uint8_t switchFlags = 0;       // 0x23C
 };
 
 // vtable 0x00B168E0 (destructor 0x0075458C).
@@ -443,7 +468,8 @@ public:
     bool holdWrap = false;         // 0x239
 };
 
-// vtable 0x00B17270 (0x360 bytes).
+// Gadget turret (vtable 0x00B17270, 0x360 bytes; entity type bit 57).
+// NOTE: identified from the turret hooks of the level scripts.
 class SoundActorB17270 : public SoundActor {
 public:
     ~SoundActorB17270() override;
@@ -463,10 +489,37 @@ public:
     void SetSlotState(int index, bool immediate) override;
     // Also disengages.
     void ResumeSequence() override;
+    // Also lets go of the linked entity.
+    bool Release(bool kill) override;                          // slot 10
+    // Only interaction kind 0. NOTE: the console also scales the caller's score by 0.3.
+    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    // Projectiles from others strike the engaged actor (definition impact scale > 0).
+    void OnHitCategory4(EntityHitRecord& hit) override;       // slot 87
+    // Layer 1 in state 2 plays the struck state 0x803E1667 (unless
+    // invulnerable); otherwise layer 1 goes to state 2 and layer 2 to 0.
+    void OnStruck();
+    // Wanted aim direction towards `point` from the aim origin.
+    void AimAt(const ape::Vec3& point);
+    // The current aim has reached the wanted direction.
+    bool IsAimed() const;
+    // Shots past the first wait the weapon's interval each (+0x1F4).
+    void ResetAim();
+    // Adds a target (counted reference).
+    void AddTarget(Entity* target);
+    // Lets go of every target and keeps only `target` (if any).
+    void SetOnlyTarget(Entity* target);
 
+    float shotDelay = 0.0f;                   // 0x1F4 NOTE: set by ResetAim
+    ape::Vec3 aimOrigin{};                    // 0x260
+    ape::Vec3 wantedAim{};                    // 0x2C0 unit direction
+    ape::Vec3 currentAim{};                   // 0x2D0 unit direction
+    EntityComponent* weapon = nullptr;        // 0x2E0 skin component; its +0x4D0 is the shot interval
+    Entity* linked = nullptr;                 // 0x2F0 released on kill
     float field_2FC = 0.0f;                   // 0x2FC copied into the cool-down by slot 4
     float coolDown = 0.0f;                    // 0x314 slots 3 and 6 wait while positive
-    ape::ApeTArray<void*> field_32C;          // 0x32C emptied before it is freed
+    int32_t shotCount = 0;                    // 0x30C
+    uint32_t field_328 = 0;                   // 0x328 cleared by SetOnlyTarget
+    ape::ApeTArray<Entity*> targets;          // 0x32C counted references
     bool field_355 = false;                   // 0x355 NOTE: selects the alternative states
     bool engaged = false;                     // 0x356
     uint8_t flags357 = 0;                     // 0x357 bit 7 set by slot 4, cleared by slot 5

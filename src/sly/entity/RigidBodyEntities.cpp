@@ -5,9 +5,18 @@
 // state their Release enters and a few details noted per function.
 #include "sly/entity/PropEntities.h"
 
+#include "sly/entity/AlterEgoBentley.h"
+
 #include "sly/entity/EntityHits.h"
 #include "sly/entity/GameEntityHooks.h"
+#include "sly/entity/EntityHooks.h"
+#include "sly/entity/PhysicalEntity.h"
+#include "sly/levels/ai/AIController.h"
+#include "sly/levels/nav/NavGraph.h"
+#include "sly/gameplay/GameplayWorld.h"
+#include "sly/gameplay/Minigame.h"
 #include "ape/anim/ApeAnimScript.h"
+#include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
 #include "sly/entity/CharacterHooks.h"
@@ -70,10 +79,8 @@ void Collision(ScriptedEntity& self, const PropDamageSettings& settings, EntityH
 // NOTE: the console's push code of this reaction has undecodable instruction
 // data in the reference; it is written like the blast and environment pushes
 // (against the hit direction).
-void Impact(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit)
+void ApplyImpact(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit)
 {
-    if (!self.ReceiveHit(hit))
-        return;
     const float strength = hit.data.impact.push;
     if (IsPushable(body) && strength != 0.0f && settings.impactPush != 0.0f)
         RigidBodyApplyImpulse(body, Scaled(hit.data.impact.direction, -strength * settings.impactPush));
@@ -81,12 +88,16 @@ void Impact(ScriptedEntity& self, void* body, const PropDamageSettings& settings
         SetFatal(hit, self.Damage(hit.data.impact.damage * settings.impactScale, hit.source, kType_Melee));
 }
 
-// Blasts: full effect inside the inner radius, falling off to the outer one.
-void Blast(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit,
-           bool positiveOnly)
+void Impact(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit)
 {
-    if (!self.ReceiveHit(hit))
-        return;
+    if (self.ReceiveHit(hit))
+        ApplyImpact(self, body, settings, hit);
+}
+
+// Blasts: full effect inside the inner radius, falling off to the outer one.
+void ApplyBlast(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit,
+                bool positiveOnly)
+{
     const auto& blast = hit.data.blast;
     float falloff = 1.0f;
     if (blast.innerRadius < blast.distance && blast.innerRadius < blast.outerRadius)
@@ -97,6 +108,13 @@ void Blast(ScriptedEntity& self, void* body, const PropDamageSettings& settings,
     if (positiveOnly ? amount > 0.0f : settings.blastScale > 0.0f)
         self.Damage(amount, hit.source, kType_Blast);
     hit.flags |= EntityHitRecord::kHit_Fatal;
+}
+
+void Blast(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit,
+           bool positiveOnly)
+{
+    if (self.ReceiveHit(hit))
+        ApplyBlast(self, body, settings, hit, positiveOnly);
 }
 
 void Environment(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit)
@@ -137,10 +155,71 @@ ape::Vec3 RigidBodyEntity::BodyVelocity() const
     return rigidBody ? RigidBodyLinearVelocity(rigidBody) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
 }
 
+bool RigidBodyEntity::CanBePickedUp(Entity* other, int kind, const PropDamageSettings& settings,
+                                    const Entity* refused)
+{
+    if (kind == 0) {
+        if (!settings.CanHurt() || (other && other == refused))
+            return false;
+    } else if (kind != 4) {
+        return false;
+    }
+    return Entity::CanInteractWith(other, kind);
+}
+
+void RigidBodyEntity::MoveBody(void* body, const ape::Matrix34& transform)
+{
+    const ape::Vec3 from = RigidBodyPosition(body);
+    RigidBodySetTransform(body, transform);
+    if (transform.translation.x - from.x != 0.0f || transform.translation.y - from.y != 0.0f ||
+        transform.translation.z - from.z != 0.0f)
+        RigidBodyWakeConnected(body);
+}
+
+void RigidBodyEntity::SetBodyVelocity(void* body, const ape::Vec3& velocity)
+{
+    if (!body || !RigidBodyInWorld(body))
+        return;
+    uint8_t motion = RigidBodyMotionType(body);
+    if (motion == 5 || motion == 4)
+        return;
+    RigidBodySetLinearVelocity(body, { velocity.x, velocity.y, velocity.z, 0.0f });
+}
+
 ape::Vec3 RigidBodyEntity::BodyMassCenter() const
 {
     return rigidBody ? RigidBodyCenterOfMass(rigidBody) : Position();
 }
+
+// -- definition bounds ------------------------------------------------------------------
+
+namespace {
+// Bounds of a collision shape at the identity transform (hkpShape::getAabb,
+// converted to an engine box), or the entity default without a shape.
+void ShapeBounds(const EntityDef* def, void* shape, ape::Aabb& out)
+{
+    if (shape)
+        HavokShapeLocalAabb(shape, out);
+    else
+        EntityDefBaseBounds(def, out);
+}
+} // namespace
+
+// @func 0x00167370 RigidPropDef::GetBounds
+void RigidPropDef::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
+// @func 0x0016B050 AlterEgoBentleyDef::GetBounds
+void AlterEgoBentleyDef::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
+// @func 0x00176E80 AlterEgoDef::GetBounds
+void AlterEgoDef::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
+// @func 0x0017D940 TargetableDefA::GetBounds
+void TargetableDefA::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
+// @func 0x0018FE60 TargetableDefB::GetBounds
+void TargetableDefB::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
+// @func 0x001B4650 PushBlockDef::GetBounds
+void PushBlockDef::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
+// @func 0x001F9D70 TargetableDefC::GetBounds
+// NOTE: also the slot of the definition class at 0x00B18F18 (inherited).
+void TargetableDefC::GetBounds(ape::Aabb& out) const { ShapeBounds(this, collisionShape, out); }
 
 // -- AlterEgoEntity (vtable 0x00B14968; damage block at definition +0xC8) -------------
 
@@ -217,11 +296,125 @@ void AlterEgoEntity::SendScriptEvent(uint32_t event)
         static_cast<ape::ApeAnimScriptInstance*>(animScript1A4)->SendEvent(event);
 }
 
+// @func 0x001787E0 AlterEgoEntity::GetGravityFactor
+float AlterEgoEntity::GetGravityFactor()
+{
+    if (!PhysicsWorldPresent())
+        return 0.0f;
+    void* body = GetRenderObject();
+    return body ? RigidBodyGravityFactor(body) : 0.0f;
+}
+
+// @func 0x001788A0 AlterEgoEntity::Detached
+void AlterEgoEntity::Detached(float gravityFactor)
+{
+    if (PhysicsWorldPresent()) {
+        if (void* body = GetRenderObject())
+            RigidBodySetGravityFactor(body, gravityFactor);
+    }
+    Entity::Detached(gravityFactor);
+}
+
+// @func 0x0017BD28 AlterEgoEntity::SetTransform
+void AlterEgoEntity::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    if (rigidBody && RigidBodyInWorld(rigidBody))
+        MoveBody(rigidBody, m);
+}
+
+// @func 0x0017A008 AlterEgoEntity::CanInteractWith
+bool AlterEgoEntity::CanInteractWith(Entity* other, int kind)
+{
+    if (alterState != 1)
+        return false;
+    switch (kind) {
+    case 0:
+        if (Def()->deathFlags & 0x80000000u)
+            return false;
+        if (other && other == refusedPartner)
+            return false;
+        break;
+    case 3:
+        break;
+    case 4:
+        if (!rigidBody || RigidBodyMass(rigidBody) <= 0.0f || Def()->field_C4 > 0.0f ||
+            (classBits & 0x10000))
+            return false;
+        break;
+    default:
+        return false;
+    }
+    return Entity::CanInteractWith(other, kind);
+}
+
+// @func 0x00178650 AlterEgoEntity::SetVelocity
+void AlterEgoEntity::SetVelocity(const ape::Vec3& velocity) { SetBodyVelocity(rigidBody, velocity); }
+
 // @func 0x00178744 AlterEgoEntity::GetVelocity
 ape::Vec3 AlterEgoEntity::GetVelocity() { return BodyVelocity(); }
 
-// @func 0x00179F74 AlterEgoEntity::GetMassCenter
-ape::Vec3 AlterEgoEntity::GetMassCenter() { return BodyMassCenter(); }
+// @func 0x00179F74 AlterEgoEntity::GetAimPoint
+ape::Vec3 AlterEgoEntity::GetAimPoint() { return BodyMassCenter(); }
+
+namespace {
+// NOTE: layer meaning unknown; impacts from it are ignored.
+constexpr uint32_t kLayer_IgnoredImpacts = 16;
+constexpr float kMaxLandingAngle = 1.0471976f;   // 60 degrees
+
+// The impact came from a keyframed or fixed body.
+bool HitByStaticBody(const EntityHitRecord& hit)
+{
+    void* body = HitOtherBody(hit);
+    if (!body)
+        return false;
+    const uint8_t motion = RigidBodyMotionType(body);
+    return motion == 5 || motion == 4;
+}
+
+// Angle between the contact normal and up.
+float ContactAngle(const EntityHitRecord& hit)
+{
+    return std::acos(std::clamp(hit.data.collision.normalUp, -1.0f, 1.0f));
+}
+
+// NOTE: type bits 3 and 74 look like the player characters' (unconfirmed).
+bool IsPlayerSide(const Entity* entity)
+{
+    return entity && (entity->HasTypeBit(3) || entity->HasTypeBit(74));
+}
+
+// Collision damage of the settings for the hit's speed (0 below the threshold).
+float CollisionAmount(const PropDamageSettings& settings, const EntityHitRecord& hit)
+{
+    const float speed = hit.data.collision.speed;
+    if (speed <= settings.collisionThreshold)
+        return 0.0f;
+    return std::min((speed - settings.collisionThreshold) * settings.collisionScale, settings.collisionMax);
+}
+} // namespace
+
+// @func 0x00178990 AlterEgoEntity::OnHitCategory0
+void AlterEgoEntity::OnHitCategory0(EntityHitRecord& hit)
+{
+    if (HitOtherCollisionLayer(hit) == kLayer_IgnoredImpacts || !ReceiveHit(hit))
+        return;
+    const AlterEgoDef* d = Def();
+    const bool hardLanding = (d->deathFlags & (1u << 29)) && HitByStaticBody(hit) &&
+                             ContactAngle(hit) < kMaxLandingAngle &&
+                             d->damage.collisionThreshold <= hit.data.collision.speed;
+    const bool touched = (d->deathFlags & (1u << 30)) && IsPlayerSide(hit.source);
+    if (hardLanding || touched) {
+        Damage(maxHealth, hit.source, kType_PhysicsImpact);
+        hit.flags |= EntityHitRecord::kHit_Fatal;
+        return;
+    }
+    const PropDamageSettings& settings = d->damage;
+    if (settings.collisionScale <= 0.0f || settings.collisionMax <= 0.0f)
+        return;
+    if (hit.data.collision.speed > settings.collisionThreshold)
+        propdamage::SetFatal(hit, Damage(CollisionAmount(settings, hit), hit.source, kType_PhysicsImpact));
+}
 
 // @func 0x00178CA0 AlterEgoEntity::OnHitCategory1
 void AlterEgoEntity::OnHitCategory1(EntityHitRecord& hit) { HitImpact(Def()->damage, hit); }
@@ -339,6 +532,90 @@ void TargetableB::SetRenderId(uint32_t id)
     Entity::SetRenderId(id);
 }
 
+namespace {
+// State `stateHash` of the anim script a watcher runs, or null.
+ape::ApeAnimScriptState* WatcherScriptState(ape::ApeAnimScriptInstance* instance, uint32_t stateHash)
+{
+    ape::ApeAnimScript* script = instance ? instance->GetScript() : nullptr;
+    return script ? script->FindState(stateHash) : nullptr;
+}
+
+// NOTE: state names unknown.
+constexpr uint32_t kState_WatcherStacked = 0xDC175839u;
+constexpr uint32_t kState_WatcherFigure = 0x2DA34781u;
+constexpr uint32_t kState_WatcherModel = 0x047034DEu;
+constexpr uint32_t kMsgKey_TargetDropped = 0x0C8B8AB8u;
+constexpr uint32_t kMsg_TargetDropped = 0x00531BA0u;
+constexpr uint64_t kClass_Carried = 1ull << 17;
+} // namespace
+
+// @func 0x001943F0 TargetableB::AddWatcher
+bool TargetableB::AddWatcher(void* watcher)
+{
+    Entity::AddWatcher(watcher);
+    if (!stacking)
+        return false;
+    auto* instance = static_cast<ape::ApeAnimScriptInstance*>(static_cast<Entity*>(watcher)->GetAnimScript());
+    if (!instance)
+        return false;
+    ape::ApeAnimScriptState* state = WatcherScriptState(instance, kState_WatcherStacked);
+    if (!state || !object || !state->HasEvent(instance, object->GetNameHash()))
+        return false;
+    EntityPostScriptMessage(this, kMsgKey_TargetDropped, kMsg_TargetDropped, 0);
+    if (holder)
+        holder->held = nullptr;
+    field_270 = 0;
+    holder = nullptr;
+    parent = nullptr;
+    classBits &= ~kClass_Carried;
+    Damage(maxHealth, nullptr, 0);
+    return true;
+}
+
+// @func 0x0018E384 TargetableA::AddWatcher
+bool TargetableA::AddWatcher(void* watcher)
+{
+    Entity::AddWatcher(watcher);
+    auto* instance = static_cast<ape::ApeAnimScriptInstance*>(static_cast<Entity*>(watcher)->GetAnimScript());
+    if (!instance)
+        return true;
+    ape::ApeAnimScriptState* state = nullptr;
+    if (modelName == 0)
+        state = WatcherScriptState(instance, kState_WatcherFigure);
+    if (!state)
+        state = WatcherScriptState(instance, kState_WatcherModel);
+    if (!state)
+        return true;
+    if (!held)
+        instance->SetStateAndUpdate(state);
+    return false;
+}
+
+// @func 0x00192F00 TargetableB::Damage
+bool TargetableB::Damage(float amount, Entity* source, uint32_t type)
+{
+    if (amount <= 0.0f)
+        return true;
+    for (size_t i = 0; i < children.Count(); ++i) {
+        const TargetStackInfo* info = children[i]->stackInfo;
+        if (info && info->shieldsParent)
+            return health > 0.0f;
+    }
+    if (health <= 0.0f)
+        return false;
+    ScriptedEntity::Damage(amount, source, type);
+    if (health <= 0.0f) {
+        const ape::Matrix34 placed = object->GetLocal();
+        ReleaseBody(nullptr);
+        rigidBody = nullptr;
+        flags |= 0x1000;   // NOTE: meaning of flag bit 12 unknown
+        SetTransform(placed);
+        objectRestoreTransform = placed;
+        SetTargetState(8);
+    }
+    return health > 0.0f;
+}
+
 // @func 0x00197150 TargetableB::HandleMessage
 void TargetableB::HandleMessage(const EntityMessage& msg)
 {
@@ -346,11 +623,32 @@ void TargetableB::HandleMessage(const EntityMessage& msg)
         Damage(maxHealth, nullptr, 0);
 }
 
+// @func 0x00194160 TargetableB::SetTransform
+void TargetableB::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    if (rigidBody)
+        MoveBody(rigidBody, m);
+    else if (listener)
+        static_cast<levels::ai::AIController*>(listener)->SetTransform(m);
+}
+
+// @func 0x00193270 TargetableB::CanInteractWith
+bool TargetableB::CanInteractWith(Entity* other, int kind)
+{
+    if (GetTargetState() != 2 && GetTargetState() < 8)
+        return false;
+    return CanBePickedUp(other, kind, Def()->damage, refusedPartner);
+}
+
+// @func 0x00192370 TargetableB::SetVelocity
+void TargetableB::SetVelocity(const ape::Vec3& velocity) { SetBodyVelocity(rigidBody, velocity); }
+
 // @func 0x00192464 TargetableB::GetVelocity
 ape::Vec3 TargetableB::GetVelocity() { return BodyVelocity(); }
 
-// @func 0x001931C0 TargetableB::GetMassCenter
-ape::Vec3 TargetableB::GetMassCenter() { return BodyMassCenter(); }
+// @func 0x001931C0 TargetableB::GetAimPoint
+ape::Vec3 TargetableB::GetAimPoint() { return BodyMassCenter(); }
 
 // @func 0x001925B0 TargetableB::CanBeDamaged
 bool TargetableB::CanBeDamaged() const { return Def()->damage.CanHurt(); }
@@ -432,12 +730,31 @@ ape::world::ApeObj* TargetableA::FindModelPart() const
     return nullptr;
 }
 
+// @func 0x00188040 TargetableA::SetTransform
+void TargetableA::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    if (rigidBody)
+        MoveBody(rigidBody, m);
+}
+
+// @func 0x00185B28 TargetableA::CanInteractWith
+bool TargetableA::CanInteractWith(Entity* other, int kind)
+{
+    if (GetTargetState() != 3 && GetTargetState() < 11)
+        return false;
+    return CanBePickedUp(other, kind, Def()->damage, refusedPartner);
+}
+
+// @func 0x00184A80 TargetableA::SetVelocity
+void TargetableA::SetVelocity(const ape::Vec3& velocity) { SetBodyVelocity(rigidBody, velocity); }
+
 // @func 0x00184B74 TargetableA::GetVelocity
 ape::Vec3 TargetableA::GetVelocity() { return BodyVelocity(); }
 
-// @func 0x00185AC8 TargetableA::GetMassCenter
+// @func 0x00185AC8 TargetableA::GetAimPoint
 // The figure reports its own position, not the body's.
-ape::Vec3 TargetableA::GetMassCenter() { return Position(); }
+ape::Vec3 TargetableA::GetAimPoint() { return Position(); }
 
 // @func 0x00184CC0 TargetableA::CanBeDamaged
 bool TargetableA::CanBeDamaged() const { return Def()->damage.CanHurt(); }
@@ -447,6 +764,35 @@ void TargetableA::OnHitCategory0(EntityHitRecord& hit) { HitCollision(Def()->dam
 
 // @func 0x001850F0 TargetableA::OnHitCategory2
 void TargetableA::OnHitCategory2(EntityHitRecord& hit) { HitBlast(Def()->damage, hit, false); }
+
+// @func 0x00184E60 TargetableA::OnHitCategory1
+void TargetableA::OnHitCategory1(EntityHitRecord& hit)
+{
+    if (impactCooldown > 0.0f)
+        return;
+    impactCooldown = 0.25f;
+    propdamage::Impact(*this, rigidBody, Def()->damage, hit);
+}
+
+// @func 0x00185370 TargetableA::OnHitCategory3
+// Hits with damage bits push with a fixed strength and use their own damage type.
+void TargetableA::OnHitCategory3(EntityHitRecord& hit)
+{
+    constexpr uint32_t kType_EnvironmentBits = 0x044DC6ABu;   // NOTE: name unknown
+    if (environmentCooldown > 0.0f)
+        return;
+    environmentCooldown = 0.25f;
+    if (!ReceiveHit(hit))
+        return;
+    if (hit.damageBits != 0)
+        hit.data.knock.knockback = 20.0f;
+    const PropDamageSettings& settings = Def()->damage;
+    if (IsPushable(rigidBody) && hit.data.knock.knockback != 0.0f && settings.environmentPush != 0.0f)
+        RigidBodyApplyImpulse(rigidBody, Scaled(hit.vec10, hit.data.knock.knockback * settings.environmentPush));
+    if (settings.environmentScale > 0.0f)
+        propdamage::SetFatal(hit, Damage(hit.data.knock.amount * settings.environmentScale, hit.source,
+                                         hit.damageBits != 0 ? kType_EnvironmentBits : kType_Environment));
+}
 
 // @func 0x001856B0 TargetableA::OnHitCategory4
 // The figure ignores its own projectiles and those of type-8 sources.
@@ -481,6 +827,220 @@ bool CompoundEntity::Release(bool kill)
 // TODO(0x0016BC0C CompoundEntity::SetPropState)
 void CompoundEntity::SetPropState(int32_t state, uint32_t arg) { (void)arg; propState = state; }
 
+namespace {
+// Health within 0..maxHealth (as ScriptedEntity::AddHealth keeps it).
+float ClampHealth(float value, float maxHealth)
+{
+    const float capped = std::min(value, maxHealth);
+    return capped > 0.0f ? capped : 0.0f;
+}
+} // namespace
+
+// @func 0x0016F350 CompoundEntity::AddHealth
+void CompoundEntity::AddHealth(float amount)
+{
+    if (playerIndex != 1) {
+        health = ClampHealth(health + amount, maxHealth);
+        return;
+    }
+    if (IsSinglePlayerMode())
+        return;
+    auto* lead = static_cast<ScriptedEntity*>(PlayerEntity(1 - playerIndex));
+    if (!lead)
+        return;
+    lead->AddHealth(amount);
+    health = ClampHealth(lead->health, maxHealth);
+}
+
+// @func 0x001857A0 TargetableA::Damage
+bool TargetableA::Damage(float amount, Entity* source, uint32_t type)
+{
+    constexpr int kState_Destroyed = 11;
+    constexpr uint32_t kVar_LastAttackerDef = 0xC493B59Du;   // NOTE: name unknown
+    if (GetTargetState() == kState_Destroyed)
+        return false;
+    if (amount <= 0.0f || GetTargetState() == 2)
+        return true;
+    if (source && (source->typeBits[0] & kType_IgnoredByFigures))
+        return true;
+    if (source && (source->typeBits[0] & 0x2000)) {
+        Entity* owner = static_cast<PhysicalEntity*>(source)->owner;
+        if (owner && (owner->typeBits[0] & kType_IgnoredByFigures))
+            return true;
+    }
+    // The script learns which definition the attacker was built from.
+    ape::ApeAnimScriptVar* var = animScript ? animScript->FindVar(kVar_LastAttackerDef) : nullptr;
+    if (var && var->GetType() == ape::AnimScriptVarType::Int && source && (source->flags & kEnt_Alive))
+        static_cast<ape::ApeAnimScriptIntVar*>(var)->SetInt(int32_t(source->def ? source->def->nameHash : 0));
+
+    auto* lead = static_cast<ScriptedEntity*>(PlayerEntity(0));
+    if (lead && lead != this)
+        health = ClampHealth(lead->health, maxHealth);
+    if (health > 0.0f) {
+        ScriptedEntity::Damage(amount, source, type);
+        combo = 0;
+        if (health == 0.0f)
+            SetTargetState(kState_Destroyed);
+    }
+    if (lead && lead != this)
+        lead->health = ClampHealth(health, lead->maxHealth);
+    return health > 0.0f;
+}
+
+// @func 0x0018E0C0 TargetableA::HandleMessage
+void TargetableA::HandleMessage(const EntityMessage& msg)
+{
+    constexpr uint32_t kMsg_Teleport = 0xDD92E72Bu;      // "teleport"
+    constexpr uint32_t kMsg_DE25AD64 = 0xDE25AD64u;      // NOTE: names unknown
+    constexpr uint32_t kMsg_Killed = 0xCCF83851u;
+    constexpr uint32_t kMsg_D88EEAE2 = 0xD88EEAE2u;
+    constexpr uint32_t kMsg_394E70AC = 0x394E70ACu;
+    constexpr uint32_t kComp_Scoring = 0x28;
+    Entity* sender = MessageSenderEntity(msg);
+    switch (msg.id) {
+    case kMsg_Teleport:
+        if (sender) {
+            teleportTarget = sender->Position();
+            SetTargetState(2);
+        }
+        break;
+    case kMsg_DE25AD64:
+        SetTargetState(3);
+        break;
+    case kMsg_KillOrder:
+        if (msg.argument == kKillOrder_All)
+            SetTargetState(7);
+        break;
+    case kMsg_Killed: {
+        if (!sender || !(sender->typeBits[0] & 0x2))
+            break;
+        // Something this figure fired counts as the figure.
+        Entity* killer = AttackTargetOf(sender);
+        if (killer && killer != this && (killer->typeBits[0] & 0x2000) &&
+            static_cast<PhysicalEntity*>(killer)->owner == this)
+            killer = this;
+        if (killer != this && (sender->typeBits[0] & 0x2000) && static_cast<PhysicalEntity*>(sender)->owner == this)
+            lastThrown = sender;
+        if (killer != this && !(killer && killer == lastThrown))
+            break;
+        ++combo;
+        EntityComponent* scoring = sender->GetComponent(kComp_Scoring);
+        if (!scoring || ScoringPaid(scoring))
+            break;
+        const int points = int(ScoringValue(scoring));
+        if (auto* lead = static_cast<TargetableA*>(PlayerEntity(0)))
+            lead->comboScore += points * int(combo / 10) + points;
+        ScoringAward(scoring, points, int(combo / 10) + 1);
+        ScoringSetPaid(scoring);
+        break;
+    }
+    case kMsg_D88EEAE2:
+        field_6A4 = true;
+        break;
+    case kMsg_394E70AC:
+        field_6A4 = false;
+        break;
+    default:
+        break;
+    }
+}
+
+// @func 0x0018E8E8 TargetableA::AddHealth
+void TargetableA::AddHealth(float amount)
+{
+    if (healthMode != 1) {
+        health = ClampHealth(health + amount, maxHealth);
+        return;
+    }
+    if (!healthSource)
+        return;
+    healthSource->AddHealth(amount);
+    health = ClampHealth(healthSource->health, maxHealth);
+}
+
+// @func 0x00170418 CompoundEntity::Damage
+bool CompoundEntity::Damage(float amount, Entity* source, uint32_t type)
+{
+    if (amount <= 0.0f)
+        return true;
+    const uint32_t oldFlags = buffFlags;
+    killCount = 0;
+    buffFlags |= 0x4000000;
+    if (source && (source->typeBits[0] & 0x400))
+        return true;
+    if (oldFlags & 0x2000000)
+        return health > 0.0f;
+
+    auto* lead = static_cast<ScriptedEntity*>(PlayerEntity(0));
+    if (lead && lead != this)
+        health = ClampHealth(lead->health, maxHealth);
+    if (health >= 0.0f) {
+        ScriptedEntity::Damage(amount, source, type);
+        if (health == 0.0f) {
+            SetPropState(12, 0);
+            gameplay::Minigame* minigame = gameplay::ActiveMinigame();
+            if (minigame && (minigame->flags1C & 0x20))
+                minigame->field_105 = 0;
+        }
+    }
+    if (lead && lead != this)
+        lead->health = ClampHealth(health, lead->maxHealth);
+    return health > 0.0f;
+}
+
+Entity* CompoundEntity::s_target = nullptr;
+
+// @func 0x00175758 CompoundEntity::HandleMessage
+void CompoundEntity::HandleMessage(const EntityMessage& msg)
+{
+    constexpr uint32_t kMsg_Killed = 0xCCF83851u;
+    constexpr uint32_t kMsg_Removed = 0xB94AE51Bu;   // NOTE: name unknown; does not count as a kill
+    constexpr uint32_t kComp_Scoring = 0x28;
+    if (msg.id != kMsg_Killed && msg.id != kMsg_Removed)
+        return;
+    Entity* sender = MessageSenderEntity(msg);
+    if (!sender)
+        return;
+    if (void* body = sender->GetRenderObject()) {
+        if (!IsSinglePlayerMode()) {
+            if (auto* other = static_cast<CompoundEntity*>(PlayerEntity(1 - playerIndex)))
+                other->ForgetHavokObject(body);
+        }
+        ForgetHavokObject(body);
+    }
+    if (!(sender->typeBits[0] & 0x2) || AttackTargetOf(sender) != this)
+        return;
+    const int multiplier = partLevel ? int(partLevel) : 1;
+    if (msg.id != kMsg_Removed)
+        ++killCount;
+    if (EntityComponent* scoring = sender->GetComponent(kComp_Scoring)) {
+        const int points = int(ScoringValue(scoring));
+        ScoringAward(scoring, points, multiplier);
+        if (auto* lead = static_cast<CompoundEntity*>(PlayerEntity(0)))
+            lead->score += multiplier * points;
+    }
+}
+
+// @func 0x0016F04C CompoundEntity::SetFlag80
+void CompoundEntity::SetFlag80(bool on)
+{
+    Entity::SetFlag80(on);
+    ToggleBodyInWorld(rigidBody, bodyAction, on, propState == 6);
+}
+
+// @func 0x00175C00 CompoundEntity::DriveTowards
+void CompoundEntity::DriveTowards(const ape::Vec3& target, float dt)
+{
+    if (!rigidBody || dt <= 0.0f)
+        return;
+    const ape::Vec3 from = RigidBodyPosition(rigidBody);
+    const float rate = 1.0f / dt;
+    SetVelocity({ (target.x - from.x) * rate, (target.y - from.y) * rate, (target.z - from.z) * rate, 0.0f });
+}
+
+// @func 0x0016F1C0 CompoundEntity::SetVelocity
+void CompoundEntity::SetVelocity(const ape::Vec3& velocity) { SetBodyVelocity(rigidBody, velocity); }
+
 // @func 0x0016F2B4 CompoundEntity::GetVelocity
 ape::Vec3 CompoundEntity::GetVelocity() { return BodyVelocity(); }
 
@@ -512,6 +1072,27 @@ void CompoundEntity::OnHitCategory0(EntityHitRecord& hit)
     hitHeading = int(HeadingTo(hit.vec10));
 }
 
+// @func 0x0016F730 CompoundEntity::OnHitCategory1
+void CompoundEntity::OnHitCategory1(EntityHitRecord& hit)
+{
+    constexpr uint32_t kDef_MarksBuff = 0x659234F5u;   // NOTE: definition name unknown
+    if (hit.source && hit.source->def && hit.source->def->nameHash == kDef_MarksBuff)
+        buffFlags |= 0x800000;
+    const PropDamageSettings& settings = DamageSettings();
+    propdamage::ApplyImpact(*this, rigidBody, settings, hit);
+    if (settings.impactScale > 0.0f)
+        hitHeading = int(HeadingTo(hit.vec10));
+}
+
+// @func 0x0016FA70 CompoundEntity::OnHitCategory2
+void CompoundEntity::OnHitCategory2(EntityHitRecord& hit)
+{
+    const PropDamageSettings& settings = DamageSettings();
+    propdamage::ApplyBlast(*this, rigidBody, settings, hit, false);
+    if (settings.blastScale > 0.0f)
+        hitHeading = int(HeadingTo(hit.vec10));
+}
+
 // @func 0x001702C8 CompoundEntity::OnHitCategory4
 // Projectiles from type-10 sources pass through.
 void CompoundEntity::OnHitCategory4(EntityHitRecord& hit)
@@ -530,8 +1111,48 @@ void CompoundEntity::OnHitCategory4(EntityHitRecord& hit)
 void CompoundEntity::SetPartLevel(uint32_t level)
 {
     for (uint32_t i = 0; i <= level; ++i)
-        parts[i]->Apply(this);
+        parts[i]->Enter(this);
     partLevel = level;
+}
+
+// @func 0x0016DCF0 CompoundEntity::ForgetHavokObject
+void CompoundEntity::ForgetHavokObject(void* object)
+{
+    if (!object)
+        return;
+    for (int32_t i = 0; i < touchingBodies.size; ++i) {
+        if (touchingBodies.data[i] == object) {
+            touchingBodies.data[i] = nullptr;
+            return;
+        }
+    }
+}
+
+// @func 0x00173208 CompoundEntity::UpdateScalePulse
+void CompoundEntity::UpdateScalePulse(float dt)
+{
+    if (pulseTimer == 0.0f)
+        return;
+    pulseTimer = std::max(pulseTimer - dt, 0.0f);
+    const float progress = 1.0f - pulseTimer / pulseTime;
+    const float remaining = 1.0f - progress;
+    const float base = pulseBase * remaining + progress;
+    // NOTE: the console uses 3.1415 for pi here.
+    const float wave = ape::FastSin(progress * 3.1415f * 2.0f * pulseFrequency);
+    pulseScale = remaining * remaining * wave * wave * pulseAmplitude + base;
+    pulseBase = pulseBase * 0.05f + 0.95f;
+    const ape::Vec3 scale = { pulseScale, pulseScale, pulseScale, 0.0f };
+    SetScale(scale, false);
+}
+
+// @func 0x0016CDE8 CompoundEntity::PlayPowerUpFx
+void CompoundEntity::PlayPowerUpFx(uint32_t fx)
+{
+    constexpr uint32_t kFx_Death = 0x03DE9A54u;   // the "killed" event's effect
+    if (health > 0.0f || lastFx != kFx_Death) {
+        PlayCharacterFx(GetCharacterComponent(), fx, 1.0f, 0.25f);
+        lastFx = fx;
+    }
 }
 
 // @func 0x0016F4F8 CompoundEntity::CanBeDamaged
@@ -558,6 +1179,35 @@ void PushBlock::OnSuspend()
         savedVelocity = { velocity.x, velocity.y, velocity.z, savedVelocity.pad };
         RigidBodySetLinearVelocity(rigidBody, { 0.0f, 0.0f, 0.0f, 0.0f });
     }
+}
+
+// @func 0x001B58BC PushBlock::Release
+bool PushBlock::Release(bool kill)
+{
+    if (kill) {
+        if (hasNavObstacle) {
+            if (levels::NavManager* nav = levels::GetNavManager())
+                levels::RemoveNavObstacle(*nav, navObstacle);
+            hasNavObstacle = false;
+        }
+        if (rigidBody) {
+            if (RigidBodyInWorld(rigidBody)) {
+                RigidBodyClearUserProperties(rigidBody);
+                RigidBodyRemoveFromWorld(rigidBody);
+            }
+            HavokRelease(rigidBody);
+            rigidBody = nullptr;
+        }
+    }
+    return ScriptedEntity::Release(kill);
+}
+
+// @func 0x001B8F20 PushBlock::OnResume
+void PushBlock::OnResume()
+{
+    ScriptedEntity::OnResume();
+    if (rigidBody && RigidBodyInWorld(rigidBody))
+        RigidBodySetLinearVelocity(rigidBody, { savedVelocity.x, savedVelocity.y, savedVelocity.z, 0.0f });
 }
 
 // @func 0x001B900C PushBlock::CanInteractWith
@@ -587,13 +1237,26 @@ bool TargetableCBase::Release(bool kill)
             HavokRelease(rigidBody);
             rigidBody = nullptr;
         }
-        field_1AC = 0;
+        thrower = nullptr;
     }
     return ScriptedEntity::Release(kill);
 }
 
 // TODO(0x001F9F70 TargetableCBase::SetTargetState)
 void TargetableCBase::SetTargetState(int32_t state, uint32_t arg) { (void)state; (void)arg; }
+
+// @func 0x001FF4B0 TargetableCLinked::Release
+bool TargetableCLinked::Release(bool kill)
+{
+    if (kill) {
+        GameWorldDequeueCallbacks(3, this);
+        if (linked) {
+            linked->Release(false);
+            linked = nullptr;
+        }
+    }
+    return TargetableCBase::Release(kill);
+}
 
 // @func 0x001FB770 TargetableCBase::GetGravityFactor
 // NOTE: Entity slot 36 ("GetRenderObject") hands out the physics body here.
@@ -615,14 +1278,102 @@ void TargetableCBase::Detached(float gravityFactor)
     Entity::Detached(gravityFactor);
 }
 
+// @func 0x001FD2C8 TargetableCBase::SetTransform
+void TargetableCBase::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    if (rigidBody && RigidBodyInWorld(rigidBody))
+        RigidBodyEntity::MoveBody(rigidBody, m);
+}
+
+// @func 0x001FB370 TargetableCBase::SetVelocity
+void TargetableCBase::SetVelocity(const ape::Vec3& velocity) { RigidBodyEntity::SetBodyVelocity(rigidBody, velocity); }
+
 // @func 0x001FB464 TargetableCBase::GetVelocity
 ape::Vec3 TargetableCBase::GetVelocity()
 {
     return rigidBody ? RigidBodyLinearVelocity(rigidBody) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
 }
 
+// @func 0x001FD620 TargetableCBase::GetCenter
+ape::Vec3 TargetableCBase::GetCenter()
+{
+    const ape::Vec3& o = Def()->aimOffset;
+    if (o.x == 0.0f && o.y == 0.0f && o.z == 0.0f)
+        return Entity::GetCenter();
+    const ape::Matrix34& m = transform;
+    return { m.translation.x + m.xAxis.x * o.x + m.yAxis.x * o.y + m.zAxis.x * o.z,
+             m.translation.y + m.xAxis.y * o.x + m.yAxis.y * o.y + m.zAxis.y * o.z,
+             m.translation.z + m.xAxis.z * o.x + m.yAxis.z * o.y + m.zAxis.z * o.z, 0.0f };
+}
+
+// @func 0x001FC570 TargetableCBase::GetAimPoint
+ape::Vec3 TargetableCBase::GetAimPoint()
+{
+    if (EntityComponent1F(this))
+        return GetCenter();
+    if (!rigidBody)
+        return Position();
+    const ape::Vec3& offset = Def()->aimOffset;
+    if (offset.x == 0.0f && offset.y == 0.0f && offset.z == 0.0f)
+        return RigidBodyCenterOfMass(rigidBody);
+    return GetCenter();
+}
+
 // @func 0x001FB888 TargetableCBase::CanBeDamaged
 bool TargetableCBase::CanBeDamaged() const { return Def()->damage.CanHurt(); }
+
+// @func 0x001FB910 TargetableCBase::OnHitCategory0
+// Hits queued during the physics step only predict whether they will kill.
+void TargetableCBase::OnHitCategory0(EntityHitRecord& hit)
+{
+    if (HitOtherCollisionLayer(hit) == kLayer_IgnoredImpacts)
+        return;
+    const TargetableDefC* d = Def();
+    Entity* source = hit.source;
+    const bool playerSide = IsPlayerSide(source);
+    bool kill;
+    if ((targetFlags >> 8 & 3) != 0 ||
+        (playerSide && (d->hitFlags & (1u << 29)) && (source->classBits & 1) && source != thrower) ||
+        (playerSide && (d->hitFlags & (1u << 30)) && source != thrower)) {
+        kill = true;
+    } else {
+        kill = (d->hitFlags & (1u << 28)) && HitByStaticBody(hit) && ContactAngle(hit) < kMaxLandingAngle &&
+               d->damage.collisionThreshold <= hit.data.collision.speed;
+    }
+    if (kill)
+        hit.flags |= EntityHitRecord::kHit_Fatal;
+
+    const float amount = CollisionAmount(d->damage, hit);
+    if (!ReceiveHit(hit)) {
+        if (hit.flags & EntityHitRecord::kHit_Deferrable)
+            propdamage::SetFatal(hit, amount < health);
+    } else if (kill) {
+        Damage(maxHealth, source, kType_PhysicsImpact);
+    } else if (amount > 0.0f) {
+        propdamage::SetFatal(hit, Damage(amount, source, kType_PhysicsImpact));
+    }
+}
+
+// @func 0x001FBC80 TargetableCBase::OnHitCategory1
+void TargetableCBase::OnHitCategory1(EntityHitRecord& hit)
+{
+    const TargetableDefC* d = Def();
+    if ((d->hitFlags & (1u << 29)) && (hit.damageBits & 0x1000))
+        return;
+    const float amount = hit.data.impact.damage * d->damage.impactScale;
+    if (!ReceiveHit(hit)) {
+        if (hit.flags & EntityHitRecord::kHit_Deferrable)
+            propdamage::SetFatal(hit, amount < health);
+        return;
+    }
+    const float strength = hit.data.impact.push;
+    if (IsPushable(rigidBody) && strength != 0.0f && d->damage.impactPush != 0.0f)
+        RigidBodyApplyImpulse(rigidBody, Scaled(hit.data.impact.direction, -strength * d->damage.impactPush));
+    if (amount > 0.0f)
+        propdamage::SetFatal(hit, Damage(amount, hit.source, kType_Melee));
+    RecordMeleeHit(this, hit);
+}
 
 // @func 0x001FBF80 TargetableCBase::OnHitCategory2
 void TargetableCBase::OnHitCategory2(EntityHitRecord& hit)

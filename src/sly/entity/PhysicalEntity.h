@@ -29,6 +29,9 @@ public:
     bool PostUpdate(float dt) override;
     bool Release(bool kill) override;
 
+    // NOTE: entities with type bit 13 keep the one that threw or fired them
+    // here (the figures and targets compare it with themselves).
+    Entity* owner = nullptr;                 // 0x1B0
     void* rigidBody = nullptr;               // 0x224
     audio::SoundName* impactSound = nullptr; // 0x230 NOTE: name from use
 };

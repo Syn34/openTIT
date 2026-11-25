@@ -18,6 +18,10 @@ void LookAlong(const ape::Vec3& forward, ape::Matrix34& out);
 // (clamped to 0..pi); the result is a unit vector (0x001007D0). Used by the
 // cameras, the characters and the vehicles.
 void RotateTowards(float maxAngle, ape::Vec3& out, const ape::Vec3& from, const ape::Vec3& to);
+// Keeps the direction `dir` between two pitch angles (radians, either order,
+// limited to +-89 degrees) by turning it away from straight up and straight
+// down (0x00101958).
+void ClampDirectionPitch(float pitchA, float pitchB, ape::Vec3& out, const ape::Vec3& dir);
 // Point of the segment [a, b] closest to `point` (0x000FD1A0).
 ape::Vec3 ClosestPointOnSegment(const ape::Vec3& a, const ape::Vec3& b, const ape::Vec3& point);
 
@@ -234,7 +238,7 @@ public:
     CameraSettings* RemoveOverride(CameraSettings* settings);
     // The target settings with every override applied in stack order (0x000FE3E8).
     void ResolveSettings(CameraSettings& out) const;
-    // 0x001071C4
+    // @func 0x001071C4 DefaultCameraMode::SetField214
     void SetField214(bool value) { field_214 = value; }
 
     Entity* target = nullptr;            // 0x10 counted
@@ -306,6 +310,8 @@ public:
     Entity* GetTarget() const override { return target; }
     // Starts at the spline point closest to the target (0x0010B0E4).
     void Activate() override;
+    // Lets the player look around with the right stick (0x0010AD50).
+    void UpdateStage2(float dt, CameraViewState& view) override;
     // Draws the splines (flag bit 0) (0x0010B348).
     void DebugDraw(uint32_t flags) override;
     // A blend-in starts the same way as a cut.
@@ -323,9 +329,13 @@ public:
     float targetBlend = 0.0f;                          // 0x40 between the target spline and the target
     ape::Vec3 trackPoint{};                            // 0x50
     float t = 0.0f;                                    // 0x60
-    uint32_t splineFlags = 0;                          // 0xB0 bit 29: placed
     float panH = 0.0f;                                 // 0x90
     float panV = 0.0f;                                 // 0x94
+    float stickPitch = 0.0f;                           // 0xA0 degrees, from the right stick
+    float stickYaw = 0.0f;                             // 0xA4 degrees
+    // 0xB0: bit 31 stick panning locked, bit 30/28 stick panning allowed,
+    // bit 29 placed.
+    uint32_t splineFlags = 0;
 };
 
 // "Binocucom" (type 6, vtable 0x00B13DA0, 0x2B0 bytes): Bentley's binocucom
@@ -507,7 +517,8 @@ public:
     void Update(float dt, CameraViewState& view) override;
     // @func 0x007499C8 OrbitCameraMode::GetTarget
     Entity* GetTarget() const override { return target; }
-    // Snaps to the target on the next update (0x001158E4).
+    // Snaps to the target on the next update.
+    // @func 0x001158E4 OrbitCameraMode::Activate
     void Activate() override { snap = true; }
     // 0x00114208
     void SetTarget(Entity* entity);

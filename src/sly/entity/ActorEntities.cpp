@@ -1,5 +1,6 @@
 // openTIT - Scripted actors (see ActorEntities.h).
 #include "sly/entity/ActorEntities.h"
+#include <cmath>
 
 #include "sly/entity/CharacterHooks.h"
 #include "sly/entity/EntityHooks.h"
@@ -11,6 +12,8 @@
 #include "sly/entity/GameCamera.h"
 #include "sly/camera/CameraModes.h"
 #include "sly/entity/GameEntityHooks.h"
+#include "sly/entity/ActorVariants.h"
+#include "sly/entity/EntityHits.h"
 
 namespace sly {
 namespace entity {
@@ -388,7 +391,7 @@ bool SoundActorB16678::AdvanceTo5(float elapsed, float duration)
     if (delay > 0.0f || (sequenceFlags & kSeq_Held) || duration < 0.0f || elapsed < duration)
         return true;
     PlaySlot(5, false);
-    if (field_234 >= 0.0f)
+    if (resetTime >= 0.0f)
         position = 0;
     if (EntityComponent* interaction = EntityInteraction(this))
         InteractionSetOffer(interaction, kSwitchInteraction[position == 1 ? 1 : 0]);
@@ -424,8 +427,84 @@ bool SoundActorB16678::Update(float dt)
     return true;
 }
 
-// TODO(0x001BF8E8 SoundActorB16678::Refresh)
-void SoundActorB16678::Refresh() {}
+// @func 0x001BF8E8 SoundActorB16678::Refresh
+void SoundActorB16678::Refresh()
+{
+    constexpr uint32_t kEvent_SwitchOn = 0x0B;    // NOTE: kinds of 0x0046528C / 0x00465308
+    constexpr uint32_t kEvent_SwitchOff = 0x0C;
+    if (switchFlags & 0x20)
+        return;
+    if (resetTime >= 0.0f) {
+        position = 1;
+        delay = resetTime;
+        PlaySlot(1, false);
+    } else if (position == 0 || position == 1) {
+        position = 1 - position;
+    } else {
+        return;
+    }
+    if (switchFlags & 0x80)
+        switchFlags |= 0x20;
+    GameWorldPostEntityEvent(uint8_t(flipPlayer), position == 1 ? kEvent_SwitchOn : kEvent_SwitchOff, this);
+    switchFlags |= 0x08;
+}
+
+// @func 0x001BF850 SoundActorB16678::HandleMessage
+void SoundActorB16678::HandleMessage(const EntityMessage& msg)
+{
+    constexpr uint32_t kMsg_Unlock = 0x4DA1B5C3u;   // NOTE: names unknown
+    constexpr uint32_t kMsg_Lock = 0x59676D2Au;
+    if (msg.id == kMsg_Unlock)
+        switchFlags &= ~0x20;
+    else if (msg.id == kMsg_Lock)
+        switchFlags |= 0x20;
+    ActorHandleMessageBase(this, msg);
+}
+
+namespace {
+// Player slot of a player entity: the top byte of its flags.
+int EntityPlayerSlot(const Entity* entity) { return int8_t(entity->flags >> 24); }
+} // namespace
+
+bool SoundActorB16678::AcceptsFlip(EntityHitRecord& hit)
+{
+    if (!ReceiveHit(hit) || (switchFlags & 0x20))
+        return false;
+    if (switchFlags & 0x10)
+        return true;
+    if (switchFlags & 0x08)
+        return false;
+    return resetTime <= 0.0f || EntityGetState(this, 0) == 1;
+}
+
+// @func 0x001BFC10 SoundActorB16678::OnHitCategory0
+void SoundActorB16678::OnHitCategory0(EntityHitRecord& hit)
+{
+    if (!AcceptsFlip(hit))
+        return;
+    const auto* d = static_cast<const ActorDef*>(def);
+    if (d->collisionScale > 0.0f && d->collisionThreshold > 0.0f &&
+        d->collisionThreshold < hit.data.collision.speed)
+        QueueFlip(0);
+}
+
+// @func 0x001BFB00 SoundActorB16678::OnHitCategory1
+void SoundActorB16678::OnHitCategory1(EntityHitRecord& hit)
+{
+    if (!AcceptsFlip(hit))
+        return;
+    if (static_cast<const ActorDef*>(def)->impactScale > 0.0f && (hit.source->classBits & 1))
+        QueueFlip(EntityPlayerSlot(hit.source));
+}
+
+// @func 0x001BFD28 SoundActorB16678::OnHitCategory4
+void SoundActorB16678::OnHitCategory4(EntityHitRecord& hit)
+{
+    if (!AcceptsFlip(hit))
+        return;
+    if ((hit.source->classBits & 1) && static_cast<const ActorDef*>(def)->projectileScale > 0.0f)
+        QueueFlip(EntityPlayerSlot(hit.source));
+}
 
 // @func 0x001C1B50 SoundActorB168E0::AdvanceTo2
 bool SoundActorB168E0::AdvanceTo2(float elapsed, float duration)
@@ -646,6 +725,90 @@ void SoundActorB17270::SetSlotState(int index, bool immediate)
     SoundActor::SetSlotState(index, immediate);
 }
 
+// @func 0x001CC338 SoundActorB17270::Release
+bool SoundActorB17270::Release(bool kill)
+{
+    if (kill && linked) {
+        linked->Release(false);
+        linked = nullptr;
+    }
+    return SoundActor::Release(kill);
+}
+
+// @func 0x001CE8B0 SoundActorB17270::CanInteractWith
+bool SoundActorB17270::CanInteractWith(Entity* other, int kind)
+{
+    return kind == 0 && Entity::CanInteractWith(other, kind);
+}
+
+// @func 0x001CEC8C SoundActorB17270::OnStruck
+void SoundActorB17270::OnStruck()
+{
+    constexpr uint32_t kState_Struck = 0x803E1667u;   // NOTE: name unknown
+    if (EntityGetState(this, 1) == 2) {
+        if (!IsInvulnerable() && animScript)
+            animScript->SetStateAndUpdate(kState_Struck);
+    } else {
+        EntitySetState(this, 1, 2);
+        EntitySetState(this, 2, 0);
+    }
+}
+
+// @func 0x001CED90 SoundActorB17270::OnHitCategory4
+void SoundActorB17270::OnHitCategory4(EntityHitRecord& hit)
+{
+    const auto* d = static_cast<const ActorDef*>(def);
+    if (!d || !ReceiveHit(hit) || hit.source == this)
+        return;
+    if (d->impactScale > 0.0f && engaged)
+        OnStruck();
+}
+
+// @func 0x001CF620 SoundActorB17270::AimAt
+void SoundActorB17270::AimAt(const ape::Vec3& point)
+{
+    const float dx = point.x - aimOrigin.x;
+    const float dy = point.y - aimOrigin.y;
+    const float dz = point.z - aimOrigin.z;
+    const float inv = 1.0f / std::sqrt(dz * dz + dx * dx + dy * dy);
+    wantedAim = { dx * inv, dy * inv, dz * inv, wantedAim.pad };
+}
+
+// @func 0x001CF690 SoundActorB17270::IsAimed
+bool SoundActorB17270::IsAimed() const
+{
+    return std::fabs(currentAim.x - wantedAim.x) < 1e-05f && std::fabs(currentAim.y - wantedAim.y) < 1e-05f &&
+           std::fabs(currentAim.z - wantedAim.z) < 1e-05f;
+}
+
+// @func 0x001CAA88 SoundActorB17270::ResetAim
+void SoundActorB17270::ResetAim()
+{
+    const float interval = weapon ? SkinShotInterval(weapon) : 0.0f;
+    if (shotCount > 1 && interval > 0.0f)
+        shotDelay = float(shotCount - 1) * interval;
+}
+
+// @func 0x001CC174 SoundActorB17270::AddTarget
+void SoundActorB17270::AddTarget(Entity* target)
+{
+    target->AddRef();
+    targets.PushBack(target);
+}
+
+// @func 0x001CC214 SoundActorB17270::SetOnlyTarget
+void SoundActorB17270::SetOnlyTarget(Entity* target)
+{
+    for (size_t i = 0; i < targets.Count(); ++i)
+        targets[i]->Release(false);
+    targets.Clear();
+    if (target) {
+        target->AddRef();
+        targets.PushBack(target);
+        field_328 = 0;
+    }
+}
+
 // @func 0x001CFDB0 SoundActorB17270::ResumeSequence
 void SoundActorB17270::ResumeSequence()
 {
@@ -681,7 +844,7 @@ SoundActorB16B48::~SoundActorB16B48() = default;
 // @func 0x001CC0F0 SoundActorB17270::~SoundActorB17270 (thunk, +0x17C)
 SoundActorB17270::~SoundActorB17270()
 {
-    field_32C.Clear();
+    targets.Clear();
 }
 
 // @func 0x001D1D94 SoundActorB174C0::~SoundActorB174C0
@@ -830,6 +993,38 @@ bool InteractivePropC::Release(bool kill)
     }
     return ActorEntity::Release(kill);
 }
+
+// @func 0x001F7168 InteractivePropB::ApplyVisibility
+void InteractivePropB::ApplyVisibility(bool visible)
+{
+    if (visible && !attached) {
+        SpawnAttached();
+        EntitySetState(this, 0, 0);
+    } else if (!visible && attached) {
+        DetachChild(attached);
+        attached->Release(false);
+        attached->Release(true);
+        attached = nullptr;
+        EntitySetState(this, 0, 3);
+    }
+}
+
+// @func 0x001F6808 InteractivePropB::CanInteractWith
+bool InteractivePropB::CanInteractWith(Entity* other, int kind)
+{
+    constexpr uint32_t kVar_Usable = 0xDD61613Cu;   // NOTE: name unknown
+    if (EntityGetState(this, 0) != 0 || !attached)
+        return false;
+    if (useTime <= 0.0f) {
+        ape::ApeAnimScriptVar* var = animScript ? animScript->FindVar(kVar_Usable) : nullptr;
+        if (!var || var->GetType() != ape::AnimScriptVarType::Int || var->GetInt() == 0)
+            return false;
+    }
+    return ActorCanInteractWith(this, other, kind);
+}
+
+// TODO(0x001F50E4 InteractivePropB::SpawnAttached)
+void InteractivePropB::SpawnAttached() {}
 
 // @func 0x001E40E0 InteractivePropC::InteractionEnd
 void InteractivePropC::InteractionEnd(bool completed)
