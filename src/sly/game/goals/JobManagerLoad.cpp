@@ -5,6 +5,8 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
 #include "ape/xml/ApeXml.h"
+#include "sly/game/SpawnManager.h"
+#include "sly/game/WorldInterface.h"
 #include "sly/game/goals/Goal.h"
 #include "sly/levels/GameServices.h"
 
@@ -437,6 +439,52 @@ void JobManager::OnLevelLoaded()
             library->LinkAll();
     }
     OnLevelStart();
+}
+
+// @func 0x002DF010 JobManager::ActivateMaskSpawner
+void JobManager::ActivateMaskSpawner(Spawner* spawner, const uint16_t* maskBits) const
+{
+    if (!spawner || !maskBits)
+        return;
+    const uint32_t name = WorldObjectKey(spawner->spawnPoint);
+    if (name != 0) {
+        const CollectibleRecord* mask = *MaskTable().Find(name);
+        if (mask && (mask->field_08 == 0 || mask->foundIn == 0)) {
+            const uint8_t slot = jobs[mask->episode].maskSlot;
+            if (slot == 0xFF)
+                return;
+            if (slot >= PlayerProgress::kEpisodeSlots) {
+                ape::TempFormat("Episode Index is out of bounds '%i'! Range is [0 - %i]! Have an engineer "
+                                "increase the size of the array.",
+                                slot, PlayerProgress::kEpisodeSlots);
+                return;
+            }
+            if ((maskBits[slot] & (1u << (mask->bit & 0x3F))) == 0)
+                spawner->Activate();
+            return;
+        }
+    }
+    ape::TempFormat("Couldn't find mask spawner '%s' in the mask info map! Please have an engineer check.",
+                    WorldObjectName(spawner->spawnPoint));
+}
+
+// @func 0x002DFEFC JobManager::PrepareGoalScripts
+void JobManager::PrepareGoalScripts() const
+{
+    if (!instance)
+        return;
+    for (uint32_t i = 0; i < PlayerGoalCount(); ++i) {
+        if (Goal* goal = PlayerGoalListAt(i)) {
+            goal->PrepareScripts();
+            goal->ReapplyHints(nullptr);
+        }
+    }
+}
+
+// @func 0x002DFFDC JobManager::SetRunningJobValue
+void JobManager::SetRunningJobValue(uint32_t value) const
+{
+    CurrentProgress().field_A0 = value;
 }
 
 // @func 0x002DDC5C JobManager::CountCollectedMasks

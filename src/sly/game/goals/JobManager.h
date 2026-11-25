@@ -11,6 +11,7 @@
 #include <cstdint>
 
 namespace sly {
+class Spawner;
 namespace goals { class Goal; }
 
 namespace game {
@@ -251,6 +252,15 @@ public:
     void OnLevelStart();
     // Links the job library's scripts, then OnLevelStart (0x002DE198).
     void OnLevelLoaded();
+    // Activates a mask spawner unless its mask is collected in `maskBits`
+    // (one word per episode slot); warns about spawners missing from the
+    // mask table (0x002DF010).
+    void ActivateMaskSpawner(class Spawner* spawner, const uint16_t* maskBits) const;
+    // Lets every goal of the player prepare its scripts and reapply its
+    // hints while a job runs (0x002DFEFC).
+    void PrepareGoalScripts() const;
+    // Stores the running job's value in the profile record (0x002DFFDC).
+    void SetRunningJobValue(uint32_t value) const;
     // Masks collected over every active record (0x002DDC5C).
     int CountCollectedMasks() const;
     // The current record, else the first non-debug record that lists the
