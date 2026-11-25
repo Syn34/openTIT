@@ -79,6 +79,16 @@ public:
     float ProjectileDamageScale() const override;                       // slot 89
 
     void SetPhysState(int state, uint32_t arg = 0);
+    // The definition rules out every interaction (0x000EFFC8).
+    bool InteractionDisabled() const;
+    // Slot 96 / contact listener slot 0: a contact point of the main body or
+    // the trigger body, while in the world; otherwise contacts are disabled.
+    void OnStep(const void* event) override;
+    // Main body contact (0x000F0E48, not ported) and trigger body contact:
+    // two physical entities touching with their trigger bodies destroy each
+    // other. False when the event is not about `ownBody`.
+    bool HandleBodyContact(const void* event, void* ownBody);
+    bool HandleTriggerContact(const void* event, void* ownBody);
     // Entity the object is aimed at (counted reference, shared with the
     // offscreen marker when there is one).
     void SetTarget(Entity* target);
