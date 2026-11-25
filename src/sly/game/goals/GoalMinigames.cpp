@@ -378,6 +378,124 @@ void GoalFencing::InstallMinigame()
 // ===========================================================================
 // Fishing, QTE, bartender (configuration parsers not ported)
 
+// @func 0x00330958 GoalFishingGame::GoalFishingGame
+GoalFishingGame::GoalFishingGame(const GoalDesc* desc, const FishingConfig& parsed)
+    : MinigameGoal(desc), config(parsed)
+{
+    minigame = nullptr;
+    result = 0;
+}
+
+namespace {
+constexpr uint32_t kFish_Camera = 0x760CB725u;     // "Camera"
+constexpr uint32_t kFish_Fish = 0x75181ABAu;       // NOTE: element name unknown
+constexpr uint32_t kFish_General = 0x260494C8u;    // "General"
+constexpr uint32_t kFish_Track = 0x04C5F92Bu;      // "Track"
+constexpr uint32_t kFish_Input = 0x04295FAAu;      // "Input"
+constexpr uint32_t kFish_Move = 0x0020EE58u;       // NOTE: element name unknown
+constexpr uint32_t kFish_Capture = 0x0001151Bu;    // NOTE: element name unknown
+
+void ReadVec3(ape::xml::XmlElement* xml, uint32_t attribute, float out[3])
+{
+    const float current[3] = {out[0], out[1], out[2]};
+    xml->GetVec3(attribute, out, current);
+}
+
+void ReadVec2(ape::xml::XmlElement* xml, uint32_t attribute, float out[2])
+{
+    const float current[2] = {out[0], out[1]};
+    xml->GetVec2(attribute, out, current);
+}
+} // namespace
+
+// @func 0x00330C88 GoalFishingGame::Create
+Goal* GoalFishingGame::Create(ape::xml::XmlElement* xml, const GoalDesc* desc)
+{
+    FishingConfig config;
+    for (ape::xml::XmlElement* child = xml->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        const uint32_t element = child->IsValid() ? child->GetNameHash() : 0;
+        switch (element) {
+        case kFish_Camera:
+            ReadVec3(child, 0x8ACA5893u, config.cameraOffset);
+            ReadVec3(child, 0x84427283u, config.camera_84427283);
+            child->GetHash(0x7D22BC63u, &config.cameraStartDef, 0);
+            child->GetFloat(0xEE3F6AE0u, &config.easeInTime, 1.0f);
+            child->GetFloat(0x230A334Du, &config.easeOutTime, 0.25f);
+            child->GetFloat(0x54B94DD1u, &config.panInterp, 0.15f);
+            child->GetFloat(0x000110ADu, &config.fov, 50.0f);
+            child->GetFloat(0xDF8F4601u, &config.fovInterp, 0.4f);
+            child->GetFloat(0x0460BCBDu, &config.camera_0460BCBD, 25.0f);
+            break;
+        case kFish_Fish:
+            child->GetHash(0x79F40122u, &config.entityDef, 0);
+            child->GetFloat(0x25DC2804u, &config.speedThreshold, 10.0f);
+            child->GetHash(0xA8FE6D16u, &config.detectPart, 0);
+            child->GetFloat(0x1F434EECu, &config.visualYOffset, 0.0f);
+            child->GetHash(0xBC0FA89Fu, &config.fish_BC0FA89F, 0);
+            child->GetHash(0x708ACE28u, &config.fish_708ACE28, 0);
+            break;
+        case kFish_General:
+            child->GetHash(0x9D597CD8u, &config.general_9D597CD8, 0);
+            child->GetHash(0xCF4A1DD4u, &config.lifetimeScript, 0);
+            child->GetBool(0x60FC5D53u, &config.general_60FC5D53, false);
+            child->GetInt(0xE2AB5482u, &config.general_E2AB5482, 0);
+            break;
+        case kFish_Track:
+            child->GetFloat(0xE965B9B4u, &config.track_E965B9B4, 0.0f);
+            for (ape::xml::XmlElement* band = child->FirstChildElement(); band; band = band->NextSiblingElement()) {
+                const uint32_t name = band->IsValid() ? band->GetNameHash() : 0;
+                int index = -1;
+                if (name == 0x00012734u)        // "low"
+                    index = 0;
+                else if (name == 0x000129ACu)   // NOTE: "med"?
+                    index = 1;
+                else if (name == 0x0021D5A2u)   // "high"
+                    index = 2;
+                if (index < 0)
+                    continue;
+                float& value = config.trackThresholds[index];
+                band->GetFloat(0x4BF7A17Au, &value, value);
+                value = value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value);
+            }
+            break;
+        case kFish_Input:
+            ReadVec2(child, 0xE3848D9Fu, config.inputRangeMin);
+            ReadVec2(child, 0xE3848CB1u, config.inputRangeMax);
+            ReadVec2(child, 0x2443DEE4u, config.input_2443DEE4);
+            child->GetFloat(0x4343FBECu, &config.input_4343FBEC, 2.0f);
+            child->GetBool(0xD671941Cu, &config.input_D671941C, false);
+            break;
+        case kFish_Move:
+            ReadVec3(child, 0x9B49D0E5u, config.move_9B49D0E5);
+            ReadVec3(child, 0xC629C924u, config.move_C629C924);
+            if (child->GetFloat(0xD19F7151u, &config.trackDistSq, config.trackDistSq) == 0)
+                config.trackDistSq *= config.trackDistSq;
+            child->GetFloat(0xE8F7013Bu, &config.moveYOffset, 0.0f);
+            child->GetFloat(0x4A78C8CEu, &config.trackSpeedScale, 1.0f);
+            child->GetFloat(0x810AA162u, &config.move_810AA162, 0.1f);
+            child->GetFloat(0xAE23BF2Fu, &config.move_AE23BF2F, 0.0f);
+            child->GetFloat(0x660103CBu, &config.maxStunTime, 0.0f);
+            child->GetFloat(0xA4C44A18u, &config.move_A4C44A18, 0.0f);
+            child->GetHash(0x31F8E7E5u, &config.idleAnim, 0);
+            child->GetHash(0x72BEA0EFu, &config.move_72BEA0EF, 0);
+            break;
+        case kFish_Capture:
+            child->GetHash(0xB908B96Bu, &config.capture_B908B96B, 0);
+            child->GetHash(0x521131D6u, &config.capture_521131D6, 0);
+            if (const char* capture = child->GetString("captureStr")) {
+                if (*capture) {
+                    std::strncpy(config.captureStr, capture, 0x40);
+                    config.captureStr[0x40] = '\0';
+                }
+            }
+            break;
+        default:
+            break;
+        }
+    }
+    return new GoalFishingGame(desc, config);
+}
+
 // @func 0x00330BF4 GoalFishingGame::~GoalFishingGame
 // @func 0x00330C20 GoalFishingGame::~GoalFishingGame (deleting)
 GoalFishingGame::~GoalFishingGame() = default;
@@ -385,7 +503,7 @@ GoalFishingGame::~GoalFishingGame() = default;
 // @func 0x00331590 GoalFishingGame::InstallMinigame
 void GoalFishingGame::InstallMinigame()
 {
-    GameInstallMinigame(game, CreateMinigame(MinigameKind::Fishing, game, config, this));
+    GameInstallMinigame(game, CreateMinigame(MinigameKind::Fishing, game, &config, this));
 }
 
 // @func 0x0033A308 GoalQteGame::~GoalQteGame
