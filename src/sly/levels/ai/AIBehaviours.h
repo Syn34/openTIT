@@ -77,9 +77,10 @@ public:
     void UpdateFlightClip();
     // Clip played while moving (0x0001F330).
     void SetMoveClip(uint32_t clipHash);
-    // Keeps the critter on the ground. TODO(0x0001D548): the ground probe
-    // (0x0001D1E0) has bad instruction data.
+    // Keeps the critter on the ground (0x0001D548) with a probe between two
+    // points (0x0001D1E0, TODO).
     void SnapToGround(bool fromSpawnHeight);
+    bool GroundProbe(const ape::Vec3& top, const ape::Vec3& bottom, ape::Vec3& hit);
     // Point to run to, away from `away`. TODO(0x0001E420): bad instruction data.
     ape::Vec3 FleePoint(const ape::Vec3& away);
     // Quick turn while fleeing (part of Think) and a perch point on a rail

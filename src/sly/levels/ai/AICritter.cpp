@@ -131,10 +131,36 @@ void CritterAI::Update(float dt)
     AIController::Update(dt);
 }
 
-// TODO(0x0001D548 CritterAI::SnapToGround)
+// @func 0x0001D548 CritterAI::SnapToGround
+// Probes the ground a little above and below the critter (from the spawn
+// height the first time) and stands on what it hits; without a hit it
+// stays at the spawn height, or goes back to its last position.
 void CritterAI::SnapToGround(bool fromSpawnHeight)
 {
-    (void)fromSpawnHeight;
+    ape::Vec3 top = transform.translation;
+    ape::Vec3 bottom = transform.translation;
+    if (fromSpawnHeight) {
+        // NOTE: the console uses the same height for both ends here.
+        const float height = boundsMax.y + entity->objectRestoreTransform.translation.y;
+        top.y = height;
+        bottom.y = height;
+    } else {
+        top.y = transform.translation.y + 0.2f;
+        bottom.y = transform.translation.y - 0.2f;
+    }
+    ape::Vec3 hit;
+    if (GroundProbe(top, bottom, hit))
+        transform.translation = hit;
+    else
+        transform.translation = fromSpawnHeight ? bottom : lastPosition;
+}
+
+// TODO(0x0001D1E0 CritterAI::GroundProbe): ray cast against the level
+// collision (bad instruction data in the reference).
+bool CritterAI::GroundProbe(const ape::Vec3& top, const ape::Vec3& bottom, ape::Vec3& hit)
+{
+    (void)top; (void)bottom; (void)hit;
+    return false;
 }
 
 // TODO(0x0001E420 CritterAI::FleePoint)
