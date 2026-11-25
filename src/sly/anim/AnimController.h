@@ -12,6 +12,7 @@
 #include "sly/anim/AnimHavok.h"
 
 #include "ape/container/ApeTSortedMap.h"
+#include "ape/math/ApeMath.h"
 #include "ape/memory/ApeTArray.h"
 
 #include <cstdint>
@@ -41,6 +42,13 @@ struct alignas(16) AnimRecord140 {
     uint8_t data_00[0x90];
     AnimRecordObject* object = nullptr;   // +0x90
     uint8_t data_94[0xAC];
+};
+
+// Pivot the controller places on a bone object (0x50 bytes): the animated
+// bone transform and its scale.
+struct alignas(16) BonePivot {
+    ape::Matrix34 transform;   // +0x00 (the object's m_pivot points here)
+    ape::Vec3 scale;           // +0x40
 };
 
 class AnimController {
