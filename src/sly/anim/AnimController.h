@@ -131,6 +131,17 @@ ape::ApeTSortedMap<void*>& AnimClips();
 // 0x0034A398: the clip registered under `name`, or null.
 void* FindAnimClip(uint32_t name);
 
+// Anim trees (0x0106BB9C), blend maps (0x0106BBB4) and skeleton bindings
+// (0x0106BC14) by name hash; the lookups return null for unknown names.
+ape::ApeTSortedMap<void*>& AnimTrees();
+ape::ApeTSortedMap<void*>& AnimBlendMaps();
+ape::ApeTSortedMap<void*>& AnimSkeletons();
+void* FindAnimTree(uint32_t name);        // 0x003482B0
+void* FindAnimBlendMap(uint32_t name);    // 0x00348650
+void* FindAnimSkeleton(uint32_t name);    // 0x00348ECC
+struct BoneWeightList;
+BoneWeightList* FindBoneWeightList(uint32_t name);   // 0x003489B0
+
 // 0x0034F600: depth first search below `root` for the object named `name`.
 ape::world::ApeObj* FindDescendant(ape::world::ApeObj* root, uint32_t name);
 

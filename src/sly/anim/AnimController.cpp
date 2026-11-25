@@ -37,6 +37,48 @@ void* FindAnimClip(uint32_t name)
     return *AnimClips().Find(name);
 }
 
+ape::ApeTSortedMap<void*>& AnimTrees()
+{
+    static ape::ApeTSortedMap<void*> trees;
+    return trees;
+}
+
+ape::ApeTSortedMap<void*>& AnimBlendMaps()
+{
+    static ape::ApeTSortedMap<void*> maps;
+    return maps;
+}
+
+ape::ApeTSortedMap<void*>& AnimSkeletons()
+{
+    static ape::ApeTSortedMap<void*> skeletons;
+    return skeletons;
+}
+
+// @func 0x003482B0 FindAnimTree
+void* FindAnimTree(uint32_t name)
+{
+    return *AnimTrees().Find(name);
+}
+
+// @func 0x00348650 FindAnimBlendMap
+void* FindAnimBlendMap(uint32_t name)
+{
+    return *AnimBlendMaps().Find(name);
+}
+
+// @func 0x00348ECC FindAnimSkeleton
+void* FindAnimSkeleton(uint32_t name)
+{
+    return *AnimSkeletons().Find(name);
+}
+
+// @func 0x003489B0 FindBoneWeightList
+BoneWeightList* FindBoneWeightList(uint32_t name)
+{
+    return *BoneWeightLists().Find(name);
+}
+
 namespace {
 
 float DistanceToCamera(const ape::world::ApeObj* object)

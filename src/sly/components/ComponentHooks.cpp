@@ -2,6 +2,7 @@
 #include "sly/components/ComponentHooks.h"
 
 #include "ape/anim/ApeAnimClip.h"
+#include "sly/anim/AnimController.h"
 
 #include "sly/entity/Entity.h"
 
@@ -16,12 +17,11 @@ void* LevelPhysicsWorld() { return nullptr; }
 
 // TODO(0x000250A0): the AI brain lives in sly/levels/ai.
 void AIBrainFillInput(void* brain, void* input) { (void)brain; (void)input; }
-// TODO(0x003482B0 / 0x00348650): anim tree and blend map registries.
-void* FindAnimTree(uint32_t nameHash) { (void)nameHash; return nullptr; }
+void* FindAnimTree(uint32_t nameHash) { return anim::FindAnimTree(nameHash); }
 ape::anim::AnimClipManager* GameAnimClipManager() { return ape::anim::g_animClipManager; }
 // TODO(0x00351A40 AnimController::BuildLayersFromTree)
 void AnimControllerBuildLayers(anim::AnimController*, void*) {}
-void* FindAnimBlendMap(uint32_t nameHash) { (void)nameHash; return nullptr; }
+void* FindAnimBlendMap(uint32_t nameHash) { return anim::FindAnimBlendMap(nameHash); }
 
 // TODO(0x00367900 / 0x00362BEC / 0x00257910 / 0x0046B7A4): HUD element
 // instancing and the marker material override need the HUD and GUI ports.
