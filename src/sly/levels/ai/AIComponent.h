@@ -38,6 +38,9 @@ enum AIType : uint32_t {
 // Description of an AI component (vtable 0x00B0DDAC, 0x1C bytes).
 struct AIComponentDesc : entity::ComponentDesc {
     explicit AIComponentDesc(uint32_t nameHash) : entity::ComponentDesc(nameHash, entity::kComp_0D) {}
+    // @func 0x007387B0 AIComponentDesc::~AIComponentDesc
+    // @func 0x007387F4 AIComponentDesc::~AIComponentDesc (deleting)
+    ~AIComponentDesc() override = default;
     uint32_t settingsName = 0;   // +0x14 AI settings object (attribute 0x3A034393)
     uint32_t aiType = 0;         // +0x18 AIType ("type")
 };
