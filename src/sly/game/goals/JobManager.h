@@ -10,6 +10,8 @@
 
 #include <cstdint>
 
+namespace ape { class ApeAllocator; }
+
 namespace sly {
 class Spawner;
 struct GameEvent;
@@ -18,6 +20,7 @@ namespace entity { class Entity; }
 
 namespace game {
 using goals::Goal;
+class StreamDiskFile;
 
 // Progress record of the current profile (game world +0x50, one 0xFD8-byte
 // record per profile, indexed by the profile byte at +0x1070). NOTE: only the
@@ -203,14 +206,35 @@ struct Episode {
     uint8_t field_1F8 = 0;           // +0x1F8 NOTE: bool attribute 0xE587C810
     uint8_t field_1F9 = 1;           // +0x1F9 NOTE: bool attribute 0x6AAB7C29
     uint8_t field_1FA = 0;           // +0x1FA NOTE: int attribute 0xBE8B7B06
-    // Streaming of the job's script packages (0x002D9A14-0x002DA5E0, not
-    // ported): load state, request, buffer and the per-package requests.
-    int32_t loadState = 0;           // +0x1FC
-    void* request = nullptr;         // +0x200
-    void* buffer = nullptr;          // +0x208
-    uint32_t bufferSize = 0;         // +0x20C
-    void* packageRequests = nullptr; // +0x210
-    void* goals = nullptr;           // +0x214
+    // Streaming of the job's goal file and script files (0x002D9A14-
+    // 0x002DA718).
+    enum LoadState : int32_t { kLoad_None = 0, kLoad_Loading = 1, kLoad_Loaded = 2 };
+    // One file being streamed (0x10 bytes): the request and, once loaded,
+    // the data it handed over (freed through `allocator`).
+    struct FileLoad {
+        StreamDiskFile* file = nullptr;          // +0x00
+        ape::ApeAllocator* allocator = nullptr;  // +0x04
+        void* data = nullptr;                    // +0x08
+        uint32_t size = 0;                       // +0x0C
+    };
+    // Drops every request, loaded file and parsed goal (0x002D9A14).
+    void ReleaseStreams();
+    // Starts streaming the goal file and every script file (0x002DA2A4).
+    void StartLoading();
+    // Advances the streams; all files read: loaded (0x002DA438). FinishLoading
+    // blocks on the first file still busy (0x002DA5E0).
+    void UpdateLoading();
+    void FinishLoading();
+    // Builds the job's goals from its goal file (the streamed copy, else the
+    // file on disk); false when there are none (0x002D9CC0).
+    bool ParseGoals();
+    // Hands the parsed goals over to `owner`'s goal list (0x002DA04C).
+    void MoveGoalsTo(ape::ApeTArray<Goal*>& goalList);
+
+    int32_t loadState = kLoad_None;  // +0x1FC LoadState
+    FileLoad script;                 // +0x200 the goal file (jobScript)
+    ape::ApeTArray<FileLoad*>* packages = nullptr;   // +0x210 one per script path
+    ape::ApeTArray<Goal*>* goals = nullptr;          // +0x214 parsed, not yet handed over
 };
 using JobInstance = Episode;
 
