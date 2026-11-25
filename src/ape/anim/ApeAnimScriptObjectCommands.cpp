@@ -45,6 +45,16 @@ constexpr uint32_t kAttrFlag54FEB607 = 0x54FEB607u;   // NOTE: name unknown
 constexpr uint32_t kAttrEnable = AnimHash("enable");
 constexpr uint32_t kAttrResetTime = AnimHash("ResetTime");
 constexpr uint32_t kAttrScale = AnimHash("Scale");
+constexpr uint32_t kAttrMatrix = AnimHash("matrix");
+constexpr uint32_t kAttrAttachField1C = 0xFB888634u;  // NOTE: name unknown
+constexpr uint32_t kAttrAttachFlag7 = 0x72C27306u;    // NOTE: name unknown
+constexpr uint32_t kAttrAttachFlag6 = 0xE48AEDBDu;    // NOTE: name unknown
+constexpr uint32_t kAttrAttachFlag5 = 0xFF40848Eu;    // NOTE: name unknown
+constexpr uint32_t kAttrAttachFlag4 = 0x96423570u;    // NOTE: name unknown
+constexpr uint32_t kAttrAttachFlag3D = 0x7631EAF5u;   // NOTE: name unknown
+constexpr uint32_t kAttrPos[3] = {AnimHash("posX"), AnimHash("posY"), AnimHash("posZ")};
+constexpr uint32_t kAttrRot[3] = {AnimHash("rotX"), AnimHash("rotY"), AnimHash("rotZ")};
+constexpr uint32_t kAttrWorld[3] = {AnimHash("worldX"), AnimHash("worldY"), AnimHash("worldZ")};
 constexpr uint32_t kAttrVariable = AnimHash("variable");
 constexpr uint32_t kAttrFrom = AnimHash("From");
 constexpr uint32_t kAttrFromVar = AnimHash("FromVar");
@@ -624,5 +634,66 @@ ApeAnimScriptCommand* ApeAnimScriptPlayGuiScriptCommand::Create(xml::XmlElement*
 }
 
 // TODO(0x004CC3F4 ApeAnimScriptPlayGuiScriptCommand::Execute) plays a GUI animation.
+
+// ---------------------------------------------------------------------------
+// AttachObject
+
+// @func 0x004B9ED8 ApeAnimScriptAttachObjectCommand::ApeAnimScriptAttachObjectCommand
+ApeAnimScriptAttachObjectCommand::ApeAnimScriptAttachObjectCommand() = default;
+
+// @func 0x004C30C8 ApeAnimScriptAttachObjectCommand::ApeAnimScriptAttachObjectCommand(xml)
+ApeAnimScriptAttachObjectCommand::ApeAnimScriptAttachObjectCommand(xml::XmlElement* element)
+{
+    m_hasMatrixVar = element->GetHash(kAttrMatrix, &m_matrixVar, 0) == xml::kQuery_Ok;
+    // Each operand is a name hash, or else a raw hash as an int.
+    if (element->GetHash(kAttrObject, &m_object, 0) != xml::kQuery_Ok)
+        element->GetInt(kAttrObjectHash, reinterpret_cast<int32_t*>(&m_object), 0);
+    if (element->GetHash(AnimHash("target"), &m_target, 0) != xml::kQuery_Ok)
+        element->GetInt(kAttrTargetHash, reinterpret_cast<int32_t*>(&m_target), 0);
+    if (element->GetHash(AnimHash("locator"), &m_locator, 0) != xml::kQuery_Ok)
+        element->GetInt(kAttrLocatorHash, reinterpret_cast<int32_t*>(&m_locator), 0);
+    element->GetHash(kAttrPart, &m_part, 0);
+    element->GetHash(kAttrAttachField1C, &m_field_1C, 0);
+
+    bool value = false;
+    element->GetBool(kAttrAttachFlag6, &value, m_flagE48AEDBD);
+    m_flagE48AEDBD = value;
+    element->GetBool(kAttrAttachFlag5, &value, m_flagFF40848E);
+    m_flagFF40848E = value;
+    element->GetBool(kAttrAttachFlag4, &value, m_flag96423570);
+    m_flag96423570 = value;
+    element->GetBool(AnimHash("inheritscale"), &value, m_inheritScale);
+    m_inheritScale = value;
+    element->GetBool(kAttrAttachFlag7, &value, m_flag72C27306);
+    m_flag72C27306 = value;
+
+    float pos[3] = {};
+    float rot[3] = {};
+    for (int i = 0; i < 3; ++i)
+        element->GetFloat(kAttrPos[i], &pos[i], 0.0f);
+    for (int i = 0; i < 3; ++i)
+        element->GetFloat(kAttrRot[i], &rot[i], 0.0f);
+    m_hasWorldX = element->GetFloat(kAttrWorld[0], &m_world[0], 0.0f) == xml::kQuery_Ok;
+    m_hasWorldY = element->GetFloat(kAttrWorld[1], &m_world[1], 0.0f) == xml::kQuery_Ok;
+    m_hasWorldZ = element->GetFloat(kAttrWorld[2], &m_world[2], 0.0f) == xml::kQuery_Ok;
+    element->GetBool(kAttrAttachFlag3D, &value, false);
+    m_flag7631EAF5 = value;
+
+    // The offset only applies without a matrix variable.
+    // NOTE: the console's vector code converting the rotation was not
+    // decoded; the angles are kept as read.
+    if (!m_hasMatrixVar) {
+        for (int i = 0; i < 3; ++i) {
+            m_offset[i] = pos[i];
+            m_rotation[i] = rot[i];
+        }
+    }
+}
+
+// @func 0x004C3658 ApeAnimScriptAttachObjectCommand::Create
+ApeAnimScriptCommand* ApeAnimScriptAttachObjectCommand::Create(xml::XmlElement* element) const
+{
+    return new ApeAnimScriptAttachObjectCommand(element);
+}
 
 } // namespace ape
