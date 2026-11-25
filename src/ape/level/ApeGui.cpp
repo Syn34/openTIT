@@ -29,8 +29,10 @@ constexpr uint32_t kGlyphMapHash = 0x0001293C;      // "map"
 constexpr uint32_t kScaleHash = 0x04B1112A;         // "scale"
 // NOTE: font set child element; "page" is the only short name matching.
 constexpr uint32_t kFontSetPageHash = 0x00255A8F;
-// NOTE: per-font vertical offset in a font set (name unknown).
-constexpr uint32_t kFontOffsetHash = 0x7A600EB7;
+// Per-font extra letter spacing in a font set (the label attribute of the
+// same hash is "tracking").
+constexpr uint32_t kFontTrackingHash = 0x7A600EB7;   // "tracking"
+
 
 const char* s_languagePath = "";                    // 0x00F668A4
 ApeGuiObject* s_rootObjects = nullptr;              // 0x00F66868
@@ -56,8 +58,12 @@ bool IsIdentifierChar(char c)
 // @func 0x004D573C RefreshGuiText
 void RefreshGuiText(ApeGuiObject* object)
 {
-    if (object->GetType() == kGuiObject_Text && object->textId)
-        object->SetText(TempFormat("%s", object->textId), true);
+    if (object->GetType() == kGuiObject_Text) {
+        // The id is copied first: SetText replaces the label's copy.
+        auto* label = static_cast<ApeGuiLabel*>(object);
+        if (!label->textId.empty())
+            label->SetText(TempFormat("%s", label->textId.c_str()), true);
+    }
     for (ApeGuiObject* child = object->firstChild; child; child = child->nextSibling)
         RefreshGuiText(child);
 }
@@ -456,13 +462,39 @@ void ApeGuiFontSet::Unload()
         fonts[i]->ReleaseLoadRef();
 }
 
-void ApeGuiFontSet::AddFont(ApeGuiBitmapFont* font, float fontScale, float offset)
+bool ApeGuiFontSet::FindGlyph(uint32_t codePoint, uint32_t& fontIndex, uint32_t& glyphIndex) const
+{
+    for (uint32_t i = 0; i < fontCount; ++i) {
+        const ApeGuiBitmapFont* font = fonts[i];
+        if (!font->glyphs)
+            continue;
+        if (!font->charMap) {
+            if (codePoint >= font->firstChar && codePoint < font->firstChar + font->glyphCount) {
+                fontIndex = i;
+                glyphIndex = codePoint - font->firstChar;
+                return true;
+            }
+        } else if (codePoint < 0x10000 && font->charMap[codePoint] != 0xFF) {
+            fontIndex = i;
+            glyphIndex = font->charMap[codePoint];
+            return true;
+        }
+    }
+    return false;
+}
+
+float ApeGuiFontSet::GetLineHeight() const
+{
+    return (fontCount && fonts[0]) ? (float)fonts[0]->GetHeight() * scale[1] : 0.0f;
+}
+
+void ApeGuiFontSet::AddFont(ApeGuiBitmapFont* font, float fontScale, float tracking)
 {
     const uint32_t index = fontCount;
     fonts[index] = font;
     font->AddRef();
     fontScales[index] = fontScale;
-    fontOffsets[index] = offset;
+    fontTracking[index] = tracking;
     if (GetLoadState() != kGuiLoad_None) {
         font->AddLoadRef();
         if (fontCount != 0)
@@ -507,10 +539,10 @@ ApeGuiFontSet* CreateGuiFontSet(xml::XmlDocument* doc, xml::XmlElement* element,
         if (set->fontCount >= ApeGuiFontSet::kMaxFonts)
             break;   // NOTE: the original does not check the limit
         float fontScale = 1.0f;
-        float offset = 0.0f;
+        float tracking = 0.0f;
         page->GetFloat(kScaleHash, &fontScale, 1.0f);
-        page->GetFloat(kFontOffsetHash, &offset, 0.0f);
-        set->AddFont(font, fontScale, offset);
+        page->GetFloat(kFontTrackingHash, &tracking, 0.0f);
+        set->AddFont(font, fontScale, tracking);
     }
     return set;
 }

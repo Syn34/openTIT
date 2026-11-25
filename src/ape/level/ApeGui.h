@@ -146,7 +146,7 @@ public:
 ApeGuiBitmapFont* CreateGuiBitmapFont(xml::XmlDocument* doc, xml::XmlElement* element, void* owner);
 
 // Up to 16 bitmap fonts used together (one per script / glyph range), each
-// with its own scale and vertical offset.
+// with its own scale and extra letter spacing.
 class ApeGuiFontSet : public ApeGuiResource {
 public:
     static constexpr uint32_t kMaxFonts = 16;
@@ -158,17 +158,23 @@ public:
 
     // Adds 'font' (referenced). Scales after the first are relative to the
     // first font's height once the fonts are loaded.
-    void AddFont(ApeGuiBitmapFont* font, float fontScale, float offset);
+    void AddFont(ApeGuiBitmapFont* font, float fontScale, float tracking);
+    // The first loaded font that has a glyph for 'codePoint' (inlined at
+    // every use on the console).
+    bool FindGlyph(uint32_t codePoint, uint32_t& fontIndex, uint32_t& glyphIndex) const;
+    // Height of a text line: the first font's height times the vertical
+    // scale (0 without fonts).
+    float GetLineHeight() const;
 
     float scale[2] = {};                     // +0x5C
     uint32_t fontCount = 0;                  // +0x64
     ApeGuiBitmapFont* fonts[kMaxFonts] = {}; // +0x68
     float fontScales[kMaxFonts] = {};        // +0xA8
-    float fontOffsets[kMaxFonts] = {};       // +0xE8
+    float fontTracking[kMaxFonts] = {};      // +0xE8 added to the label's tracking
 };
 
 // Creates a font set from a <fontset name scale preload> element with
-// <page name scale ...> children naming existing fonts.
+// <page name scale tracking> children naming existing fonts.
 ApeGuiFontSet* CreateGuiFontSet(xml::XmlDocument* doc, xml::XmlElement* element, void* owner);
 
 // Value substituted for "$<language variable>" in resource paths.
@@ -318,7 +324,7 @@ public:
     virtual const GuiProperty* FindProperty(const char* name, const void* type) const;
 
     // Text objects only (console slot 47 of the label classes).
-    virtual void SetText(const char* text, bool translate) {}
+    virtual void SetText(const char* text, bool layoutNow) {}
 
     // Moves the object to the end of its sibling list so it draws last (on
     // top); with 'recursive' its ancestors are moved as well.
@@ -344,7 +350,6 @@ public:
     ApeGuiObject* nextSibling = nullptr; // +0x9C
     void* owner = nullptr;           // +0xA0 GUI file that created the object
     uint32_t field_A4 = 0;           // +0xA4
-    const char* textId = nullptr;    // text objects (+0xC8): string table id
 };
 
 // Head of the root object list (0x00F66868).
