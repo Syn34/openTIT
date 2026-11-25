@@ -535,6 +535,31 @@ bool TargetableA::AddWatcher(void* watcher)
     return false;
 }
 
+// @func 0x00192F00 TargetableB::Damage
+bool TargetableB::Damage(float amount, Entity* source, uint32_t type)
+{
+    if (amount <= 0.0f)
+        return true;
+    for (size_t i = 0; i < children.Count(); ++i) {
+        const TargetStackInfo* info = children[i]->stackInfo;
+        if (info && info->shieldsParent)
+            return health > 0.0f;
+    }
+    if (health <= 0.0f)
+        return false;
+    ScriptedEntity::Damage(amount, source, type);
+    if (health <= 0.0f) {
+        const ape::Matrix34 placed = object->GetLocal();
+        ReleaseBody(nullptr);
+        rigidBody = nullptr;
+        flags |= 0x1000;   // NOTE: meaning of flag bit 12 unknown
+        SetTransform(placed);
+        objectRestoreTransform = placed;
+        SetTargetState(8);
+    }
+    return health > 0.0f;
+}
+
 // @func 0x00197150 TargetableB::HandleMessage
 void TargetableB::HandleMessage(const EntityMessage& msg)
 {

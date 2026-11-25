@@ -364,6 +364,14 @@ class TargetableA;
 // bytes; constructor 0x00190158). Instances link into parent/child stacks and
 // can be held by a TargetableA; the links only matter while the active
 // minigame has its bit 30 set.
+// Record stacked targets point at (+0x26C). NOTE: contents mostly unknown.
+struct TargetStackInfo {
+    uint8_t field_00[0x2C];
+    float spinRate;          // +0x2C NOTE: advances TargetableB +0x290 per second
+    uint8_t field_30[5];
+    bool shieldsParent;      // +0x35 a child pointing here keeps its parent from harm
+};
+
 class TargetableB : public RigidBodyEntity {
 public:
     ~TargetableB() override;
@@ -377,6 +385,9 @@ public:
     void OnHitCategory2(EntityHitRecord& hit) override;
     void OnHitCategory3(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
+    // Slot 88: shielded while a stacked child says so; on death the body is
+    // dropped, the entity takes its object's local transform and enters state 8.
+    bool Damage(float amount, Entity* source, uint32_t type) override;
     float ProjectileDamageScale() const override;     // slot 89
     // Slot 94: enters a state of layer 0 and records it.
     virtual void SetTargetState(int state);
@@ -418,6 +429,7 @@ public:
 
     ape::ApeTArray<TargetableB*> children;   // 0x254
     TargetableB* parent = nullptr;           // 0x268
+    const TargetStackInfo* stackInfo = nullptr;   // 0x26C
     uint32_t field_270 = 0;                  // 0x270
     TargetableA* holder = nullptr;           // 0x298
     bool stacking = false;                   // 0x29C
