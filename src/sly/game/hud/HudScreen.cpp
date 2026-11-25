@@ -1,0 +1,144 @@
+// openTIT - Screen HUD element (vtable 0x00B1F720).
+#include "sly/game/hud/HudScreen.h"
+
+#include "sly/anim/AnimController.h"
+#include "sly/game/hud/HudHooks.h"
+
+#include "ape/anim/ApeAnimScript.h"
+#include "ape/core/ApeString.h"
+#include "ape/world/ApeBase.h"
+#include "ape/world/ApeObj.h"
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
+namespace sly {
+namespace hud {
+
+namespace {
+
+uint32_t ClipName(const char* prefix, const char* suffix)
+{
+    char clip[0x60];
+    std::snprintf(clip, sizeof clip, "%s_%s", prefix, suffix);
+    return ape::HashNameNoCase(clip);
+}
+
+ape::world::ApeObj* FindSceneChild(ape::world::ApeObj* root, uint32_t name)
+{
+    if (!root || name == 0)
+        return nullptr;
+    if (root->GetNameHash() == name)
+        return root;
+    return anim::FindDescendant(root, name);
+}
+
+} // namespace
+
+// @func 0x0035A5B0 HudScreen::HudScreen
+HudScreen::HudScreen(HudObjectDef* def_) : HudObject(0, def_)
+{
+    typeFlags |= kHud_Type2;
+    const char* prefix = def->animPrefix[0] ? def->animPrefix : def->defName;
+    if (prefix[0]) {
+        introAnim = ClipName(prefix, "Intro");
+        idleAnim = ClipName(prefix, "Idle");
+        outroAnim = ClipName(prefix, "Outro");
+    }
+    if (def->textFieldCount) {
+        fields = static_cast<HudTextField*>(std::calloc(def->textFieldCount, sizeof(HudTextField)));
+        for (uint32_t i = 0; i < def->textFieldCount; ++i) {
+            const HudObjectDef::TextFieldDef& info = def->textFieldDefs[i];
+            fields[i].sceneObject = FindSceneChild(object, info.objectName);
+            fields[i].object = info.templateObject;
+            fields[i].field_08 = info.framePath;
+            fields[i].label = info.labelPath;
+        }
+    }
+    for (int i = 0; i < 6; ++i)
+        subObjects[i] = FindSceneChild(object, kSubObjects[i]);
+}
+
+// @func 0x0036C400 HudScreen::~HudScreen
+// @func 0x0036C574 HudScreen::~HudScreen (deleting)
+HudScreen::~HudScreen()
+{
+    std::free(fields);
+    fields = nullptr;
+    GameWorldRemoveHudCallback(this);
+}
+
+// @func 0x0036C5BC HudScreen::Update
+void HudScreen::Update(float dt)
+{
+    const uint32_t state = animState >> 1;
+    if (state == 0)
+        return;
+    GameWorldAddHudCallback(this, 9);
+    if (state == 4) {
+        if (HudClipDone(animController)) {
+            // A locked screen resets anyway once its outro ended.
+            const bool wasLocked = locked;
+            locked = false;
+            Refresh();
+            locked = wasLocked;
+        }
+    } else if (state == 2) {
+        animState = (animState & 1u) | (3u << 1);
+        if (animScript)
+            static_cast<ape::ApeAnimScriptInstance*>(animScript)->SetStateAndUpdate(kHudStateNames[3]);
+    } else if (state == 1) {
+        if (HudClipDone(animController))
+            animState = (animState & 1u) | (2u << 1);
+    }
+    if (animController)
+        animController->UpdateLayers(dt);
+    if (!object || !object->IsVisible())
+        return;
+    const ape::Vec3& zero = ape::world::kWorldZero;
+    if ((baseOffset.x == zero.x && baseOffset.y == zero.y && baseOffset.z == zero.z) || !HudPlacementEnabled())
+        return;
+    ape::Matrix34 local = object->GetLocal();
+    local.translation.x = zero.x + baseOffset.x + offset.x;
+    local.translation.y = zero.y + baseOffset.y + offset.y;
+    local.translation.z = zero.z + baseOffset.z + offset.z;
+    object->SetLocal(local);
+    object->MarkDirty();
+}
+
+// @func 0x0036C818 HudScreen::Refresh
+void HudScreen::Refresh()
+{
+    if (locked)
+        return;
+    SetActive(false);
+    const float origin[3] = {ape::world::kWorldZero.x, ape::world::kWorldZero.y, ape::world::kWorldZero.z};
+    SetStackOffset(origin, true);
+    animState = 1;
+}
+
+// @func 0x0036CA0C HudScreen::SetActive
+void HudScreen::SetActive(bool active)
+{
+    if (object)
+        object->SetVisible(active, true);
+    HideSubObjects();
+}
+
+// @func 0x0036CA70 HudScreen::SetEnabled
+void HudScreen::SetEnabled(bool, bool) {}
+
+// @func 0x0036C898 HudScreen::HideSubObjects
+void HudScreen::HideSubObjects()
+{
+    if (!def->hideSubObjects)
+        return;
+    for (ape::world::ApeObj* sub : subObjects) {
+        if (sub)
+            sub->SetVisible(false, true);
+    }
+}
+
+} // namespace hud
+} // namespace sly

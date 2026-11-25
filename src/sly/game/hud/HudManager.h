@@ -83,6 +83,9 @@ struct HudObjectDef {
     TextFieldDef* textFieldDefs = nullptr;   // +0x94
     uint32_t textFieldCount = 0;     // +0x98 text fields of the element
     float defaultFade = 0.0f;        // +0x9C hold time of timed texts
+    // Byte +0x9C of screen element definitions, which keep a flag where the
+    // other kinds keep defaultFade: hide the screen's sub-objects.
+    bool hideSubObjects = false;
     uint8_t elementFlags = 0;        // +0xA0 bit 0: the element starts shown and stays (persistent)
 };
 
