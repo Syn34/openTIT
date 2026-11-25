@@ -25,6 +25,7 @@ public:
     ~ScriptedEntity() override = default;
 
     bool Release(bool kill) override;
+    void HandleMessage(const EntityMessage& msg) override;
     // Slot 32: also switches the entity's anim script to the state.
     void SetTimeScale(uint32_t value, bool children) override;
     void OnSuspend() override;

@@ -102,6 +102,9 @@ bool ComponentHidesRender(EntityComponent* component);
 // Animation controller flag word +0x28 bit 14. NOTE: cleared while the
 // entity is suspended.
 void AnimControllerSetRunning(void* controller, bool running);
+// Sender of a message (EntityMessage +0x00, a 32-bit entity pointer on the
+// console that the port's message record cannot hold).
+Entity* MessageSenderEntity(const struct EntityMessage& msg);
 // Global 0x01032148: the physics step is running (hits are deferred).
 bool PhysicsStepInProgress();
 // Animation controllers are deleted through their virtual slot 1.

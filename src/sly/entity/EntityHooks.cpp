@@ -22,6 +22,8 @@ ape::Vec3 CenterComponentOffset(EntityComponent*) { return { 0.0f, 0.0f, 0.0f, 0
 
 // TODO(anim controller +0x28 bit 14)
 void AnimControllerSetRunning(void*, bool) {}
+// TODO(EntityMessage +0x00): messages carry no sender pointer in the port yet.
+Entity* MessageSenderEntity(const EntityMessage&) { return nullptr; }
 // TODO(0x01032148 physics step flag)
 bool PhysicsStepInProgress() { return false; }
 // TODO(0x0046B6CC GameWorld::ForgetEntity)

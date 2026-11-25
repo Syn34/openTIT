@@ -4,6 +4,9 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "sly/entity/EntityHooks.h"
+#include "sly/levels/ai/AITuning.h"
+
+#include <cmath>
 
 #include <vector>
 
@@ -20,6 +23,11 @@ constexpr uint32_t kState_Resume = 0xD5E4206Fu;
 constexpr uint32_t kVar_This = 0x0027469Eu;        // "this"
 
 constexpr size_t kMaxDeferredHits = 0x200;
+
+// Impact message (thrown objects and the like). NOTE: name unknown.
+constexpr uint32_t kMsg_Impact = 0xB939F916u;
+constexpr uint32_t kReaction_Impact = 0x80F43146u;   // NOTE: name unknown
+constexpr uint16_t kDamageBit_Impact = 0x1000;
 
 struct DeferredHit {
     EntityHitRecord hit;               // +0x00
@@ -111,6 +119,38 @@ bool ScriptedEntity::Release(bool kill)
         field_16C = nullptr;
     }
     return Entity::Release(kill);
+}
+
+// @func 0x000E1060 ScriptedEntity::HandleMessage
+// An impact message becomes a category 1 hit of "AI.ImpactDamage" pointing
+// away from the sender (backwards along the facing without one); the hit
+// keeps its damage bits only when the entity accepts them.
+void ScriptedEntity::HandleMessage(const EntityMessage& msg)
+{
+    if (msg.id == kMsg_Impact) {
+        Entity* sender = MessageSenderEntity(msg);
+        const ape::Vec3& position = Position();
+        ape::Vec3 direction = { -transform.zAxis.x, -transform.zAxis.y, -transform.zAxis.z, 0.0f };
+        if (sender && sender != this) {
+            const ape::Vec3& from = sender->Position();
+            const float dx = position.x - from.x, dy = position.y - from.y, dz = position.z - from.z;
+            const float inv = 1.0f / std::sqrt(dx * dx + dy * dy + dz * dz);
+            direction = { dx * inv, dy * inv, dz * inv, 0.0f };
+        }
+        EntityHitRecord hit;
+        hit.source = sender;
+        hit.reaction = kReaction_Impact;
+        hit.damageBits = kDamageBit_Impact;
+        hit.flags = uint16_t((1u << 13) | EntityHitRecord::kHit_FromPlayer);
+        hit.vec10 = position;
+        hit.data.impact.direction = direction;
+        hit.data.impact.direction2 = direction;
+        hit.data.impact.damage = levels::ai::g_aiImpactDamage;
+        if (!ReceiveHit(hit))
+            hit.damageBits = 0;
+        OnHitCategory1(hit);
+    }
+    Entity::HandleMessage(msg);
 }
 
 // @func 0x000E0B64 ScriptedEntity::SetTimeScale

@@ -33,20 +33,27 @@ struct EntityHitRecord {
     uint32_t reaction = 0;               // +0x08
     uint16_t damageBits = 0;             // +0x0C matched against the receiver's mask
     uint16_t flags = 3u << 13;           // +0x0E
-    ape::Vec3 direction{};               // +0x10
-    float amount = 0.0f;                 // +0x20
-    float knockback = 0.0f;              // +0x24
-    // Category specific values (+0x28..+0x67). NOTE: not decoded.
-    uint32_t field_28 = 0;
-    ape::Vec3 field_30{};
-    uint32_t field_3C = 0;
-    uint32_t field_40 = 0;
-    uint32_t field_44 = 0;
-    uint32_t field_48 = 0;               // categories 1: bits 30/31 only
-    uint32_t field_4C = 0;
-    ape::Vec3 field_50{};
-    uint32_t field_60 = 0;
-    uint32_t field_64 = 0;
+    ape::Vec3 vec10{};                   // +0x10 category 3: direction; category 1: hit position
+
+    // Category payload from +0x20. NOTE: only categories 1 and 3 are
+    // decoded; the queue copies the whole block.
+    struct Knockback {                   // category 3
+        float amount;                    // +0x20
+        float knockback;                 // +0x24
+    };
+    struct Impact {                      // category 1
+        ape::Vec3 direction;             // +0x20 away from the source
+        ape::Vec3 direction2;            // +0x30 (same value from impacts)
+        float damage;                    // +0x40
+        uint32_t field_44;
+        uint32_t flags_48;               // bits 30/31 only
+        uint32_t field_4C;
+    };
+    union {
+        Knockback knock;
+        Impact impact;
+        uint32_t raw[18];                // +0x20..+0x67
+    } data = {};
 };
 
 // Queues a copy of `hit` for `target` (dropped when the queue is full).
