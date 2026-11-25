@@ -107,6 +107,7 @@ ApeGuiResource::ApeGuiResource(const char* name, const char* path, void* owner)
 // @func 0x00794FD0 ApeGuiResource::~ApeGuiResource (copy 2, texture)
 // @func 0x00795724 ApeGuiResource::~ApeGuiResource (copy 3, GUI file)
 // @func 0x004D58E4 ApeGuiResource::~ApeGuiResource (deleting)
+// @func 0x00795790 ApeGuiResource::~ApeGuiResource (deleting, copy 3, GUI file)
 ApeGuiResource::~ApeGuiResource()
 {
     for (ApeGuiResource** link = &s_first; *link; link = &(*link)->m_next) {
