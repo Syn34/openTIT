@@ -11,6 +11,9 @@ namespace hud {
 
 class HudElement : public HudObject {
 public:
+    // 0x0035A868: text fields (cloning their GUI objects where the
+    // definition asks) and the "<prefix>_Intro/_OnUpdate/_Idle/_Outro" clips.
+    explicit HudElement(HudObjectDef* def);
     // 0x0036ABF8 / 0x0036AF54.
     ~HudElement() override;
     // Slot 3 (0x0036BCAC): back to the hidden state, keeping a persistent

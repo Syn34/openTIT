@@ -6,11 +6,13 @@
 #include "sly/game/hud/HudHooks.h"
 
 #include "ape/anim/ApeAnimScript.h"
+#include "ape/core/ApeString.h"
 #include "ape/level/ApeGuiScript.h"
 #include "ape/level/ApeGuiTypes.h"
 #include "ape/world/ApeBase.h"
 #include "ape/world/ApeObj.h"
 
+#include <cstdio>
 #include <cstdlib>
 
 namespace sly {
@@ -27,7 +29,87 @@ void SetScriptState(HudObject* element, uint32_t state)
         static_cast<ape::ApeAnimScriptInstance*>(element->animScript)->SetStateAndUpdate(state);
 }
 
+// The object named `name` in the hierarchy of `root` (the engine's 0x004A5AE8).
+ape::world::ApeObj* FindSceneChild(ape::world::ApeObj* root, uint32_t name)
+{
+    if (!root || name == 0)
+        return nullptr;
+    if (root->GetNameHash() == name)
+        return root;
+    return anim::FindDescendant(root, name);
+}
+
+uint32_t ClipName(const char* prefix, const char* suffix)
+{
+    char clip[0x60];
+    std::snprintf(clip, sizeof clip, "%s_%s", prefix, suffix);
+    return ape::HashNameNoCase(clip);
+}
+
+// Running number appended to cloned field objects (0x00F64F84).
+int s_cloneCounter = 0;
+
 } // namespace
+
+// @func 0x0035A868 HudElement::HudElement
+HudElement::HudElement(HudObjectDef* def_) : HudObject(0, def_)
+{
+    altIdleAnim = 0;
+    altOutroAnim = 0;
+    for (uint8_t& c : textColor)
+        c = 0;   // transparent
+    const bool persistent = (def->elementFlags & 1) != 0;
+    stateFlags = (stateFlags & 0x0013FFFFu) | (persistent ? (kState_Persistent | kState_Shown) : 0u);
+    defaultFade = def->defaultFade;
+    linked = nullptr;
+    animSpeed = 1.0f;
+    fadeTime = -1.0f;
+    text[0] = '\0';
+    if (def->textFieldCount) {
+        textFields = static_cast<HudTextField*>(std::calloc(def->textFieldCount, sizeof(HudTextField)));
+        for (uint32_t i = 0; i < def->textFieldCount; ++i) {
+            const HudObjectDef::TextFieldDef& info = def->textFieldDefs[i];
+            HudTextField& field = textFields[i];
+            field.sceneObject = FindSceneChild(object, info.objectName);
+            if (!(info.field_1C & HudObjectDef::TextFieldDef::kField_Clone)) {
+                field.object = info.templateObject;
+                field.field_08 = info.framePath;
+                field.label = info.labelPath;
+                continue;
+            }
+            ape::ApeGuiObject* source = info.templateObject;
+            if (!source)
+                continue;
+            char name[0x40];
+            std::snprintf(name, sizeof name, "%s_%i", source->name, ++s_cloneCounter);
+            ape::ApeGuiObject* clone = source->Clone(name, source->parent, source->owner, true);
+            field.object = clone;
+            if (!clone)
+                continue;
+            ape::ApeGuiObject* frame = field.field_08;
+            if (info.framePath) {
+                frame = ape::FindGuiObject(info.framePath->name, clone);
+                field.field_08 = frame;
+            }
+            if (!frame)
+                frame = clone;
+            if (info.labelPath) {
+                ape::ApeGuiObject* label = ape::FindGuiObject(info.labelPath->name, frame);
+                if (label && (label->GetType() == ape::kGuiObject_Text || label->GetType() == ape::kGuiObject_Type5))
+                    field.label = label;
+            }
+        }
+    }
+    for (uint32_t& clip : stateAnims)
+        clip = 0;
+    const char* prefix = def->animPrefix[0] ? def->animPrefix : def->defName;
+    if (prefix[0]) {
+        stateAnims[1] = ClipName(prefix, "Intro");
+        stateAnims[2] = ClipName(prefix, "OnUpdate");
+        stateAnims[3] = ClipName(prefix, "Idle");
+        stateAnims[4] = ClipName(prefix, "Outro");
+    }
+}
 
 // @func 0x0036ABF8 HudElement::~HudElement
 // @func 0x0036AF54 HudElement::~HudElement (deleting)
@@ -47,7 +129,7 @@ HudElement::~HudElement()
     }
     // Field objects the element made itself (definition flag bit 31) go with it.
     for (uint32_t i = 0; i < def->textFieldCount; ++i) {
-        if ((def->textFieldDefs[i].field_1C & 0x80000000u) && textFields[i].object)
+        if ((def->textFieldDefs[i].field_1C & HudObjectDef::TextFieldDef::kField_Clone) && textFields[i].object)
             delete textFields[i].object;
     }
     std::free(textFields);

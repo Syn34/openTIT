@@ -67,13 +67,20 @@ struct HudObjectDef {
     uint8_t startShown = 0;          // +0x91 (popup elements)
     float offset[3] = {};            // +0x60 space the element takes in its stack
     struct TextFieldDef {            // 0x20 bytes
-        uint8_t field_00[0x14] = {};
+        enum Flags : uint32_t { kField_Clone = 0x80000000u };   // the element clones the template
+        uint32_t field_00 = 0;
+        uint32_t objectName = 0;     // +0x04 scene object of the field (in the element's hierarchy)
+        ape::ApeGuiObject* templateObject = nullptr;   // +0x08 GUI object of the field
+        ape::ApeGuiObject* framePath = nullptr;        // +0x0C names the frame inside a clone
+        ape::ApeGuiObject* labelPath = nullptr;        // +0x10 names the label inside the frame
         uint32_t introScript = 0;    // +0x14 GUI script played on the field with the intro
         uint32_t outroScript = 0;    // +0x18 ... with the outro
         uint32_t field_1C = 0;
     };
     TextFieldDef* textFieldDefs = nullptr;   // +0x94
     uint32_t textFieldCount = 0;     // +0x98 text fields of the element
+    float defaultFade = 0.0f;        // +0x9C hold time of timed texts
+    uint8_t elementFlags = 0;        // +0xA0 bit 0: the element starts shown and stays (persistent)
 };
 
 // Anim script states of the element states (0x00F64F88): "NONE", "Intro",
@@ -82,9 +89,9 @@ extern const uint32_t kHudStateNames[5];
 
 // A text field of an element (16 bytes, array at HudObject +0x148).
 struct HudTextField {
-    uint32_t field_00 = 0;
+    ape::world::ApeObj* sceneObject = nullptr;   // +0x00 TextFieldDef::objectName
     ape::ApeGuiObject* object = nullptr;   // +0x04 shown with the element
-    uint32_t field_08 = 0;                 // +0x08 non-zero: show `object`
+    ape::ApeGuiObject* field_08 = nullptr; // +0x08 frame; `object` is only shown when set
     ape::ApeGuiObject* label = nullptr;    // +0x0C the label holding the text
 };
 
