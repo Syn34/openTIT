@@ -107,8 +107,9 @@ float ByteToUnit(uint8_t value) { return float(value) * (1.0f / 255.0f); }
 
 // -- entity base ------------------------------------------------------------------
 
-// Base version of slot 30 (0x00743658, entity helper range; not tagged here):
-// tints the world object unless the entity is never tinted.
+// Base version of slot 30: tints the world object unless the entity is never
+// tinted (class bit 33).
+// @func 0x00743658 Entity::SetTint
 void Entity::SetTint(float amount, const uint8_t color[4], bool immediate)
 {
     (void)immediate;

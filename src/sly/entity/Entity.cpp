@@ -760,9 +760,26 @@ void* Entity::GetHudScript()
     return nullptr;
 }
 
+// Only characters have a separate render object.
+// @func 0x00747054 Entity::GetRenderObject
 ape::world::ApeObj* Entity::GetRenderObject()
 {
-    return object;
+    return nullptr;
+}
+
+// @func 0x007372FC Entity::GetDebugName
+const char* Entity::GetDebugName()
+{
+    return object ? object->GetName() : "<unknown>";
+}
+
+// @func 0x007373D4 Entity::AddWatcher
+bool Entity::AddWatcher(void* watcher)
+{
+    if (!watchers)
+        watchers = new ape::ApeTArray<void*>();
+    watchers->PushBack(watcher);
+    return true;
 }
 
 // @func 0x000D9E48 Entity::GetCenter
