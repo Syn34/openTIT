@@ -134,7 +134,7 @@ public:
 
     ~RigidProp() override;
     bool Release(bool kill) override;                         // slot 10
-    void SetFlag80(bool on) override;                         // slot 23
+    void SetFlag80(bool on, int part = -1) override;                         // slot 23
     void HandleMessage(const EntityMessage& msg) override;    // slot 43
     // Slot 12: also turns the pivot of the world object 0x45A6A51A by `spin`.
     // NOTE: the object's name is unknown.
@@ -198,7 +198,7 @@ public:
     // Sends an event to both anim scripts (0x0017A178).
     void SendScriptEvent(uint32_t event);
     bool Release(bool kill) override;                 // slot 10
-    void SetFlag80(bool on) override;                 // slot 23
+    void SetFlag80(bool on, int part = -1) override;                 // slot 23
     // Slot 99: 1 puts the body into the world, 4 takes it out (0x0017734C).
     virtual void SetAlterState(int32_t state);
     // Slots 27/28: gravity factor of the body while the physics world runs.
@@ -393,7 +393,7 @@ public:
     virtual float ProjectileDamageScale() const;
     // The flag takes the body (and its nav obstacle) out of the world;
     // clearing it puts the body of an active target back in place.
-    void SetFlag80(bool on) override;                 // slot 23
+    void SetFlag80(bool on, int part = -1) override;                 // slot 23
     // Nav obstacle for the body when slot 42 asks for one.
     void AddNavObstacle();
     // Slot 99: target state (bits 12-15 of targetFlags). 1 shows the entity
@@ -461,7 +461,7 @@ public:
     // Slot 96: called after a state change (0x001947B0, not ported).
     virtual void OnTargetStateChanged();
     // The body leaves the world with the flag and returns in state 2.
-    void SetFlag80(bool on) override;                 // slot 23
+    void SetFlag80(bool on, int part = -1) override;                 // slot 23
     // Slots 25/26: the collision group of the body (kept at +0x19C).
     uint32_t GetRenderId() override;
     void SetRenderId(uint32_t id) override;
@@ -551,7 +551,7 @@ public:
     // Slot 96: called after a state change (not ported).
     virtual void OnTargetStateChanged();
     // The body leaves the world with the flag and returns in state 3.
-    void SetFlag80(bool on) override;                 // slot 23
+    void SetFlag80(bool on, int part = -1) override;                 // slot 23
     // Slot 25: the collision group of the body (kept at +0x19C).
     uint32_t GetRenderId() override;
     void* bodyAction = nullptr;              // 0x188
@@ -631,7 +631,7 @@ public:
 
     ~CompoundEntity() override;
     bool Release(bool kill) override;                 // slot 10
-    void SetFlag80(bool on) override;                 // slot 23
+    void SetFlag80(bool on, int part = -1) override;                 // slot 23
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     bool CanBeDamaged() const override;               // slot 82

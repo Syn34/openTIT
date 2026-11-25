@@ -6,6 +6,7 @@
 #include "sly/entity/PhysicsHooks.h"
 #include "sly/levels/nav/NavGraph.h"
 
+#include "ape/world/ApeBase.h"
 #include "ape/world/ApeObj.h"
 #include "ape/world/ApeSkeleton.h"
 
@@ -85,6 +86,26 @@ void ActorEntity::SetTransform(const ape::Matrix34& m)
     }
 }
 
+// @func 0x000E764C ActorEntity::ObjectForCollidable
+ape::world::ApeObj* ActorEntity::ObjectForCollidable(const void* collidable, int32_t* bone)
+{
+    if (void* body = CollidableOwnerBody(collidable)) {
+        if (parts) {
+            for (Part& part : *parts) {
+                if (part.body != body)
+                    continue;
+                if (part.locator) {
+                    *bone = -1;
+                    return part.locator;
+                }
+                *bone = part.bone;
+                return object;
+            }
+        }
+    }
+    return Entity::ObjectForCollidable(collidable, bone);
+}
+
 // @func 0x000E74B8 ActorEntity::GetCenter
 // A single-bodied actor is centred on its body.
 ape::Vec3 ActorEntity::GetCenter()
@@ -144,6 +165,49 @@ void ActorEntity::Detached(float gravityFactor)
         }
     }
     Entity::Detached(gravityFactor);
+}
+
+// @func 0x000E6760 ActorEntity::SetFlag80
+void ActorEntity::SetFlag80(bool on, int part)
+{
+    RemoveNavObstacles();
+    flags = on ? (flags | kEnt_80) : (flags & ~uint32_t(kEnt_80));
+    const bool onePart = part >= 0 && parts && part < static_cast<int>(parts->Count());
+    if (parts) {
+        for (size_t i = 0; i < parts->Count(); ++i) {
+            if (onePart && static_cast<int>(i) != part)
+                continue;
+            Part& p = (*parts)[i];
+            if (!p.body || RigidBodyInWorld(p.body) != on)
+                continue;
+            if (on) {
+                RigidBodyRemoveFromWorld(p.body);
+                continue;
+            }
+            // Coming back: put the body where its part is now.
+            ape::Matrix34 placed;
+            PlacePart(placed, p, object ? object->GetWorld() : ape::world::kWorldIdentity);
+            if (!SameTransform(placed, RigidBodyTransform(p.body))) {
+                RigidBodySetTransform(p.body, placed);
+                RigidBodyActivate(p.body);
+            }
+            if (PhysState() != 0)
+                RigidBodyAddToWorld(p.body, ~0u);
+        }
+    }
+    AddNavObstacles();
+}
+
+// @func 0x000E7B0C ActorEntity::ApplyVisibility
+void ActorEntity::ApplyVisibility(bool visible)
+{
+    Entity::ApplyVisibility(visible);
+    if (!object || !parts)
+        return;
+    for (Part& part : *parts) {
+        if (part.body && RigidBodyInWorld(part.body))
+            RigidBodySetMotionType(part.body, visible ? part.motionType : kMotionType_Fixed);
+    }
 }
 
 // -- physics states ------------------------------------------------------------------------

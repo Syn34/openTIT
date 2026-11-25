@@ -120,7 +120,15 @@ public:
     bool Release(bool kill) override;                                  // slot 10
     void SetActive(bool active) override;
     ape::Vec3 GetCenter() override;                                    // slot 20
+    // Slot 23: hides (on) or shows the actor's bodies, all of them or only
+    // part `part`; nav obstacles are rebuilt around it.
+    void SetFlag80(bool on, int part = -1) override;
+    // Slot 55: hidden bodies become fixed, shown ones get their motion back.
+    void ApplyVisibility(bool visible) override;
     void SetTransform(const ape::Matrix34& m) override;                // slot 21
+    // Slot 37: a part body stands for its locator object, or for the
+    // actor's object at the part's bone.
+    ape::world::ApeObj* ObjectForCollidable(const void* collidable, int32_t* bone) override;
     uint32_t GetRenderId() override;                                   // slot 25
     void SetRenderId(uint32_t id) override;                            // slot 26
     float GetGravityFactor() override;                                 // slot 27
@@ -158,7 +166,8 @@ public:
         uint32_t field_18 = 0;
         void* body = nullptr;                // +0x1C Havok rigid body, or null
         void* navObstacle = nullptr;         // +0x20 nav obstacle handle
-        uint8_t field_24[0xC] = {};
+        uint32_t motionType = 0;             // +0x24 Havok motion type while visible
+        uint8_t field_28[0x8] = {};
     };
     // World transform of part `index` placed from `frame` (the actor's
     // transform unless the part follows a bone or locator), or `frame`

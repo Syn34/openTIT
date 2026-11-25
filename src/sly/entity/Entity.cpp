@@ -2,6 +2,8 @@
 #include "sly/entity/Entity.h"
 
 #include "sly/entity/EntityHooks.h"
+#include "sly/entity/CharacterHooks.h"
+#include "sly/entity/PhysicsHooks.h"
 
 #include "ape/container/ApeTSortedMap.h"
 #include "ape/core/ApeString.h"
@@ -593,6 +595,23 @@ void EntityApplyFade(Entity* entity, const uint8_t* color, bool additive)
     });
 }
 
+// @func 0x000DA85C Entity::ObjectForCollidable
+// Base version: the bodies of the entity's physics components (type 0)
+// stand for its whole world object.
+ape::world::ApeObj* Entity::ObjectForCollidable(const void* collidable, int32_t* bone)
+{
+    void* body = CollidableOwnerBody(collidable);
+    if (!body || !components)
+        return nullptr;
+    for (EntityComponent* component : *components) {
+        if (component && component->type == kComp_00 && PhysicsCompRigidBody(component) == body) {
+            *bone = -1;
+            return object;
+        }
+    }
+    return nullptr;
+}
+
 // @func 0x000DA25C Entity::Detached
 // Base version: just tells the children.
 void Entity::Detached(float blend)
@@ -684,7 +703,7 @@ void Entity::SetVisible(bool visible, bool immediate, bool recurseChildren, bool
 }
 
 // @func 0x000DA0CC Entity::SetFlag80
-void Entity::SetFlag80(bool on)
+void Entity::SetFlag80(bool on, int part)
 {
     flags = on ? (flags | kEnt_80) : (flags & ~uint32_t(kEnt_80));
 }

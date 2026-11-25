@@ -38,6 +38,10 @@ uint32_t RigidBodyCollisionGroup(void* body);
 // Adds an action to the game physics world (hkpWorld::addAction 0x0092E9D8).
 void PhysicsAddAction(void* action);
 // Motion type byte (+0xE8): 4 = keyframed, 5 = fixed.
+constexpr uint32_t kMotionType_Keyframed = 4;
+constexpr uint32_t kMotionType_Fixed = 5;
+// hkpRigidBody::setMotionType (0x0091D470, activation on, queued).
+void RigidBodySetMotionType(void* body, uint32_t type);
 uint8_t RigidBodyMotionType(void* body);
 // Wakes the body (hkpEntity::activate 0x0091A4C8).
 void RigidBodyActivate(void* body);
@@ -87,6 +91,9 @@ ape::Vec3 HavokShapeTranslation(const void* shape);
 ape::Matrix34 HavokShapeTransform(const void* shape);
 // Bounds of a shape placed at `transform` (shape virtual getAabb, tolerance 0).
 void HavokShapeAabb(const void* shape, const ape::Matrix34& transform, ape::Aabb& out);
+// Body that owns a collidable: for collidables of type 1 (byte +0x18) the
+// owner sits at the signed offset in byte +0x10; null otherwise.
+void* CollidableOwnerBody(const void* collidable);
 // hkReferencedObject::removeReference (0x007D4EA8).
 void HavokRelease(void* object);
 

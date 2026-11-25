@@ -42,9 +42,9 @@ bool RigidProp::Release(bool kill)
 // @func 0x001684EC RigidProp::SetFlag80
 // The flag takes the body out of the physics world; clearing it puts a
 // dynamic prop's body back.
-void RigidProp::SetFlag80(bool on)
+void RigidProp::SetFlag80(bool on, int part)
 {
-    Entity::SetFlag80(on);
+    Entity::SetFlag80(on, part);
     if (!rigidBody || RigidBodyInWorld(rigidBody) != on)
         return;
     if (on) {

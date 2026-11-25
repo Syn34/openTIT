@@ -253,9 +253,9 @@ bool AlterEgoEntity::Release(bool kill)
 }
 
 // @func 0x00178548 AlterEgoEntity::SetFlag80
-void AlterEgoEntity::SetFlag80(bool on)
+void AlterEgoEntity::SetFlag80(bool on, int part)
 {
-    Entity::SetFlag80(on);
+    Entity::SetFlag80(on, part);
     if (!rigidBody || RigidBodyInWorld(rigidBody) != on)
         return;
     if (on)
@@ -530,9 +530,9 @@ int TargetableB::GetTargetState97() { return GetTargetState(); }
 void TargetableB::OnTargetStateChanged() {}
 
 // @func 0x00192220 TargetableB::SetFlag80
-void TargetableB::SetFlag80(bool on)
+void TargetableB::SetFlag80(bool on, int part)
 {
-    Entity::SetFlag80(on);
+    Entity::SetFlag80(on, part);
     ToggleBodyInWorld(rigidBody, bodyAction, on, !on && GetTargetState() == 2);
 }
 
@@ -737,9 +737,9 @@ void TargetableA::SetTargetState(int state)
 void TargetableA::OnTargetStateChanged() {}
 
 // @func 0x00184934 TargetableA::SetFlag80
-void TargetableA::SetFlag80(bool on)
+void TargetableA::SetFlag80(bool on, int part)
 {
-    Entity::SetFlag80(on);
+    Entity::SetFlag80(on, part);
     ToggleBodyInWorld(rigidBody, bodyAction, on, !on && GetTargetState() == 3);
 }
 
@@ -1112,9 +1112,9 @@ void CompoundEntity::HandleMessage(const EntityMessage& msg)
 }
 
 // @func 0x0016F04C CompoundEntity::SetFlag80
-void CompoundEntity::SetFlag80(bool on)
+void CompoundEntity::SetFlag80(bool on, int part)
 {
-    Entity::SetFlag80(on);
+    Entity::SetFlag80(on, part);
     ToggleBodyInWorld(rigidBody, bodyAction, on, propState == 6);
 }
 
@@ -1365,9 +1365,9 @@ void TargetableCBase::AddNavObstacle()
 }
 
 // @func 0x001FAF44 TargetableCBase::SetFlag80
-void TargetableCBase::SetFlag80(bool on)
+void TargetableCBase::SetFlag80(bool on, int part)
 {
-    Entity::SetFlag80(on);
+    Entity::SetFlag80(on, part);
     if (!rigidBody || RigidBodyInWorld(rigidBody) != on)
         return;
     if (on) {

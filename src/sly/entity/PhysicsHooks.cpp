@@ -19,6 +19,7 @@ float PhysicsWorldGravity() { return 0.0f; }
 void PhysicsAddAction(void* action) { (void)action; }
 uint8_t RigidBodyMotionType(void* body) { (void)body; return 0; }
 void RigidBodyActivate(void* body) { (void)body; }
+void RigidBodySetMotionType(void* body, uint32_t type) { (void)body; (void)type; }
 void RigidBodyApplyImpulse(void* body, const ape::Vec3& impulse) { (void)body; (void)impulse; }
 void RigidBodySetLinearVelocity(void* body, const ape::Vec3& velocity) { (void)body; (void)velocity; }
 ape::Vec3 RigidBodyLinearVelocity(void* body) { (void)body; return { 0.0f, 0.0f, 0.0f, 0.0f }; }
@@ -62,6 +63,7 @@ void HavokShapeLocalAabb(const void* shape, ape::Aabb& out)
     out.min = { 0.0f, 0.0f, 0.0f, 0.0f };
     out.max = { 0.0f, 0.0f, 0.0f, 0.0f };
 }
+void* CollidableOwnerBody(const void* collidable) { (void)collidable; return nullptr; }
 void HavokRelease(void* object) { (void)object; }
 
 } // namespace entity
