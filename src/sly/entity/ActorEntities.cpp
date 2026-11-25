@@ -646,6 +646,45 @@ void SoundActorB17270::SetSlotState(int index, bool immediate)
     SoundActor::SetSlotState(index, immediate);
 }
 
+// @func 0x001CC338 SoundActorB17270::Release
+bool SoundActorB17270::Release(bool kill)
+{
+    if (kill && linked) {
+        linked->Release(false);
+        linked = nullptr;
+    }
+    return SoundActor::Release(kill);
+}
+
+// @func 0x001CE8B0 SoundActorB17270::CanInteractWith
+bool SoundActorB17270::CanInteractWith(Entity* other, int kind)
+{
+    return kind == 0 && Entity::CanInteractWith(other, kind);
+}
+
+// @func 0x001CEC8C SoundActorB17270::OnStruck
+void SoundActorB17270::OnStruck()
+{
+    constexpr uint32_t kState_Struck = 0x803E1667u;   // NOTE: name unknown
+    if (EntityGetState(this, 1) == 2) {
+        if (!IsInvulnerable() && animScript)
+            animScript->SetStateAndUpdate(kState_Struck);
+    } else {
+        EntitySetState(this, 1, 2);
+        EntitySetState(this, 2, 0);
+    }
+}
+
+// @func 0x001CED90 SoundActorB17270::OnHitCategory4
+void SoundActorB17270::OnHitCategory4(EntityHitRecord& hit)
+{
+    const auto* d = static_cast<const ActorDef*>(def);
+    if (!d || !ReceiveHit(hit) || hit.source == this)
+        return;
+    if (d->impactScale > 0.0f && engaged)
+        OnStruck();
+}
+
 // @func 0x001CFDB0 SoundActorB17270::ResumeSequence
 void SoundActorB17270::ResumeSequence()
 {

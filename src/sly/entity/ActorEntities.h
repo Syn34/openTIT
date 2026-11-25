@@ -463,7 +463,17 @@ public:
     void SetSlotState(int index, bool immediate) override;
     // Also disengages.
     void ResumeSequence() override;
+    // Also lets go of the linked entity.
+    bool Release(bool kill) override;                          // slot 10
+    // Only interaction kind 0. NOTE: the console also scales the caller's score by 0.3.
+    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    // Projectiles from others strike the engaged actor (definition impact scale > 0).
+    void OnHitCategory4(EntityHitRecord& hit) override;       // slot 87
+    // Layer 1 in state 2 plays the struck state 0x803E1667 (unless
+    // invulnerable); otherwise layer 1 goes to state 2 and layer 2 to 0.
+    void OnStruck();
 
+    Entity* linked = nullptr;                 // 0x2F0 released on kill
     float field_2FC = 0.0f;                   // 0x2FC copied into the cool-down by slot 4
     float coolDown = 0.0f;                    // 0x314 slots 3 and 6 wait while positive
     ape::ApeTArray<void*> field_32C;          // 0x32C emptied before it is freed
