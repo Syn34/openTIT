@@ -13,6 +13,7 @@
 #include <cstdint>
 
 namespace ape::world { class ApeObj; }
+namespace ape { class ApeAnimScriptInstance; }
 
 namespace sly {
 namespace entity {
@@ -107,8 +108,16 @@ void AnimControllerSetRunning(void* controller, bool running);
 void EntitySendGameEvent(Entity* sender, Entity* receiver, uint32_t event, uint32_t data, bool immediate);
 // 0x00470660: script message to the listeners of `key`.
 void EntityPostScriptMessage(Entity* sender, uint32_t key, uint32_t message, uint32_t argument);
-// 0x00465534 + 0x00482D14 on the game world: statistics event 0x1B for player 0.
-void GameWorldPostEvent1B(Entity* source);
+// GameEvent init (0x00464ED4 kind 0x01, 0x0046582C kind 0x16, 0x00465534
+// kind 0x1B) with the entity as source, posted through 0x00482D14 on the game
+// world for `player` (0xFF = none).
+void GameWorldPostEntityEvent(uint8_t player, uint32_t kind, Entity* source);
+// Spawner (entity +0xDC) virtual slot 9 (+0x24): its spawn was killed.
+void SpawnerEntityKilled(void* spawner, Entity* entity);
+// Placement record of the world object (map 0x01013B1C keyed by object
+// +0xCC): when its flag bit 1 is set, 0x0049FCC0 hands its values (+0xB4) to
+// the anim script.
+void ApplyPlacementToScript(ape::ApeAnimScriptInstance* script, ape::world::ApeObj* object);
 // Listener (+0xF4) slot 31 (+0x7C): the listener is an ally of the player.
 bool ListenerIsAlly(class EntityListener* listener);
 // Object at scripted entity +0x16C: its word +0x14 records the last damage

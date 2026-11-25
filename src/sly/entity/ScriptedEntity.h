@@ -24,6 +24,8 @@ class ScriptedEntity : public Entity {
 public:
     ~ScriptedEntity() override = default;
 
+    bool Update(float dt) override;
+    bool PostUpdate(float dt) override;
     bool Release(bool kill) override;
     void HandleMessage(const EntityMessage& msg) override;
     // Slot 32: also switches the entity's anim script to the state.
@@ -53,7 +55,10 @@ public:
 
     // State flags (+0x178).
     enum StateFlags : uint32_t {
+        kState_Defeated    = 0x00004000,  // bit 14: OnDefeated ran
         kState_Busy        = 0x00008000,  // bit 15 mirror of flags bit 3 (slot 24)
+        kState_SpawnPending = 0x00020000, // bit 17: start "Spawn" on the next update
+        kState_UsePlacement = 0x00080000, // bit 19: hand the placement values to the script
         kState_StageShift  = 20,          // bits 20-23: damage stage / hits taken
         kState_StageMask   = 0x00F00000,
         kState_DeathStageShift = 24,      // bits 24-27: stage at which the entity dies
@@ -70,6 +75,10 @@ public:
     Entity* lastAttacker = nullptr;                     // 0x170
     Entity* killer = nullptr;                           // 0x174
     uint32_t stateFlags = 0;                            // 0x178 StateFlags
+
+    // Defeat reaction (once): "defeated" script state, statistics event 0x16
+    // and a script message (0x000E0620).
+    void OnDefeated();
 
 private:
     // Slot 24 (base 0x007377D8): flags bit 3 (and the state mirror); turning

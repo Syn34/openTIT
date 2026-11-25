@@ -3,6 +3,7 @@
 
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
+#include "ape/world/ApeObj.h"
 #include "sly/entity/EntityHooks.h"
 #include "sly/levels/ai/AITuning.h"
 
@@ -34,6 +35,24 @@ constexpr uint32_t kEvent_Damaged = 0x61F07A50u;     // NOTE: names unknown
 constexpr uint32_t kMsgKey_Damage = 0xBD27942Du;
 constexpr uint32_t kMsg_Damaged = 0x69988172u;
 constexpr uint32_t kDamage_Sleep = 0x04B536B7u;      // "Sleep"
+
+constexpr uint32_t kState_Spawn = 0x04B6FB5Bu;     // "Spawn"
+constexpr uint32_t kState_Damaged = 0x77C17F6Fu;   // NOTE: names unknown
+constexpr uint32_t kState_StageBase = 0x806E6EA1u; // + stage number
+constexpr uint32_t kState_Defeated = 0xB1BC9747u;
+constexpr uint32_t kEvent_Killed = 0x03DE9A54u;
+constexpr uint32_t kMsgKey_Killed = 0xABB250AEu;
+constexpr uint32_t kMsg_Killed = 0xCCF83851u;
+constexpr uint32_t kMsgKey_Defeated = 0x6A817B9Du;
+constexpr uint32_t kMsg_Defeated = 0x35A7B402u;
+
+// Player slot of a living player character for statistics events, else 0xFF.
+uint8_t StatPlayerOf(const Entity* entity)
+{
+    if (entity && entity->IsAlive() && (entity->classBits & 1))
+        return uint8_t(entity->flags >> 24);
+    return 0xFF;
+}
 
 constexpr uint64_t kClass_Invulnerable = 0x20000u | 0x40000u;   // class bits 17 / 18
 
@@ -194,7 +213,7 @@ bool ScriptedEntity::Damage(float amount, Entity* source, uint32_t type)
         if (defFlags & 0x0800)
             EntityPostScriptMessage(this, kMsgKey_Damage, kMsg_Damaged, nameHash);
         if (type == kDamage_Sleep)
-            GameWorldPostEvent1B(this);
+            GameWorldPostEntityEvent(0, 0x1B, this);
         invulnerableTime = scriptDef ? scriptDef->invulnerableTime : 0.0f;
 
         if (defFlags & 0x4000) {
@@ -248,6 +267,90 @@ bool ScriptedEntity::Damage(float amount, Entity* source, uint32_t type)
         }
     }
     return health > 0.0f;
+}
+
+// @func 0x000E0520 ScriptedEntity::Update
+// The first update after spawning starts the script's "Spawn" state (with the
+// placement's script values when asked for).
+bool ScriptedEntity::Update(float dt)
+{
+    if (stateFlags & kState_SpawnPending) {
+        if (animScript) {
+            if ((stateFlags & kState_UsePlacement) && object)
+                ApplyPlacementToScript(animScript, object);
+            animScript->SetStateAndUpdate(kState_Spawn);
+        }
+        stateFlags &= ~uint32_t(kState_SpawnPending);
+    }
+    return Entity::Update(dt);
+}
+
+// @func 0x000E0620 ScriptedEntity::OnDefeated
+void ScriptedEntity::OnDefeated()
+{
+    if (stateFlags & kState_Defeated)
+        return;
+    stateFlags |= kState_Defeated;
+    if (animScript)
+        animScript->SetStateAndUpdate(::sly::entity::kState_Defeated);
+    GameWorldPostEntityEvent(StatPlayerOf(lastAttacker), 0x16, this);
+    EntityPostScriptMessage(this, kMsgKey_Defeated, kMsg_Defeated, nameHash);
+}
+
+// @func 0x000E0734 ScriptedEntity::PostUpdate
+// Runs the reactions queued by Damage(): the damage / stage script states,
+// the end of the busy state once the script is done and, for a killed
+// entity, the "Destroy" state with its events and messages.
+bool ScriptedEntity::PostUpdate(float dt)
+{
+    const ScriptedEntityDef* scriptDef = static_cast<const ScriptedEntityDef*>(def);
+    const uint16_t defFlags = scriptDef ? scriptDef->damageFlags : 0;
+    invulnerableTime -= dt;
+
+    if (stateFlags & kState_Damaged) {
+        if (animScript) {
+            animScript->SetStateAndUpdate(::sly::entity::kState_Damaged);
+            if (animScript) {
+                const uint32_t stage = (stateFlags & kState_StageMask) >> kState_StageShift;
+                const uint32_t shown = (stateFlags >> kState_DeathStageShift) & 0xF;
+                if (stage == shown) {
+                    if (shown == ((defFlags >> 4) & 0xF))
+                        OnDefeated();
+                } else {
+                    stateFlags = (stateFlags & ~(0xFu << kState_DeathStageShift)) | (stage << kState_DeathStageShift);
+                    animScript->SetStateAndUpdate(kState_StageBase + stage);
+                }
+            }
+        }
+        stateFlags &= ~uint32_t(kState_Damaged);
+    }
+
+    if ((defFlags & 0x1000) && !(stateFlags & kState_Busy) && (flags & kEnt_08) && animScript &&
+        animScript->IsFinished(false))
+        SetBusyFlag(false);
+
+    if (stateFlags & kState_Killed) {
+        stateFlags &= ~uint32_t(kState_SpawnPending);
+        if (animScript)
+            animScript->SetStateAndUpdate(kState_Destroy);
+        Entity* killerEntity = lastAttacker && lastAttacker->IsAlive() ? lastAttacker : nullptr;
+        if (field_DC)
+            SpawnerEntityKilled(field_DC, this);
+        EntitySendGameEvent(killerEntity, this, kEvent_Killed, 0, true);
+        EntityPostScriptMessage(this, kMsgKey_Killed, kMsg_Killed, nameHash);
+        ape::world::ApeObj* render = GetRenderObject();
+        // NOTE: object type 5 is not named in the world module.
+        const bool skipStat = (render && static_cast<uint32_t>(render->GetType()) == 5) || (typeBits[0] & 0x10);
+        if (!skipStat)
+            GameWorldPostEntityEvent(StatPlayerOf(killerEntity), 0x01, this);
+        stateFlags &= ~uint32_t(kState_Killed);
+        const bool alive = IsAlive();
+        lastAttacker = nullptr;
+        if (!alive)
+            return false;
+        OnDefeated();
+    }
+    return Entity::PostUpdate(dt);
 }
 
 // @func 0x000E0B64 ScriptedEntity::SetTimeScale

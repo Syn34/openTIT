@@ -25,7 +25,11 @@ void AnimControllerSetRunning(void*, bool) {}
 // TODO(0x004705F8 / 0x00470660 / 0x00482D14): game events live in sly/game.
 void EntitySendGameEvent(Entity*, Entity*, uint32_t, uint32_t, bool) {}
 void EntityPostScriptMessage(Entity*, uint32_t, uint32_t, uint32_t) {}
-void GameWorldPostEvent1B(Entity*) {}
+void GameWorldPostEntityEvent(uint8_t, uint32_t, Entity*) {}
+// TODO(spawner slot 9 0x00456258)
+void SpawnerEntityKilled(void*, Entity*) {}
+// TODO(0x01013B1C placement map / 0x0049FCC0)
+void ApplyPlacementToScript(ape::ApeAnimScriptInstance*, ape::world::ApeObj*) {}
 // TODO(listener slot 31)
 bool ListenerIsAlly(EntityListener*) { return false; }
 // TODO(scripted entity +0x16C record)
