@@ -44,6 +44,15 @@ void RecordMeleeHit(Entity* victim, const EntityHitRecord& hit) { (void)victim; 
 bool ListenerIgnoresDamage(EntityListener* listener) { (void)listener; return false; }
 void GameWorldPlayerDamaged(uint32_t player) { (void)player; }
 void GameWorldNpcDamaged(Entity* entity) { (void)entity; }
+ape::Vec3 PhysicsCompUpVector(EntityComponent* component) { (void)component; return { 0.0f, 1.0f, 0.0f, 0.0f }; }
+ape::Vec3 PhysicsCompSideVector(EntityComponent* component) { (void)component; return { 0.0f, 0.0f, 0.0f, 0.0f }; }
+void* AnimMapFindClip(EntityComponent* animMap, uint32_t name) { (void)animMap; (void)name; return nullptr; }
+void EntityRootMotionDelta(Entity* entity, ape::Matrix34& out, bool consume)
+{
+    (void)entity; (void)consume;
+    out = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 0 } };
+}
+void EntitySetWorldTransform(Entity* entity, const ape::Matrix34& transform) { (void)entity; (void)transform; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }

@@ -8,6 +8,7 @@
 
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
+#include "ape/math/ApeMatrixOps.h"
 #include "ape/memory/ApeMem.h"
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeDefTypes.h"
@@ -103,6 +104,10 @@ void SetCountedReference(Entity*& slot, Entity* entity)
     if (entity)
         entity->AddRef();
 }
+
+const ape::Matrix34 kIdentity = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 0 } };
+// Entity flag 13: the entity follows its root animation.
+constexpr uint32_t kEnt_RootMotion = 0x2000;
 
 float ByteToUnit(uint8_t value) { return float(value) * (1.0f / 255.0f); }
 
@@ -1008,6 +1013,121 @@ bool Character::Damage(float amount, Entity* source, uint32_t type)
 void Character::ApplyDamage(float amount, Entity* attacker, EntityHitRecord& hit, uint32_t type)
 {
     (void)amount; (void)attacker; (void)hit; (void)type;
+}
+
+// -- animation ----------------------------------------------------------------------------------
+
+// @func 0x0012852C Character::ApplyRootMotion
+void Character::ApplyRootMotion()
+{
+    if (animController) {
+        ape::Matrix34 delta;
+        EntityRootMotionDelta(this, delta, false);
+        const bool moved = !ape::Matrix34Equal(0.0f, delta, kIdentity);
+        if (moved && (flags & kEnt_RootMotion)) {
+            // NOTE: the console multiplies in place with an AltiVec helper;
+            // the delta is taken as local to the current transform.
+            ape::Matrix34 world;
+            ape::world::Matrix34Mul(world, delta, transform);
+            EntitySetWorldTransform(this, world);
+            SetLocalTransform(world);
+        }
+    }
+    // The root animation ended: stop following it.
+    if (StopAnim(0, false) && !IsAnimFinished(0))
+        flags &= ~kEnt_RootMotion;
+}
+
+// @func 0x001287F8 Character::FindAnimClip
+void* Character::FindAnimClip(uint32_t nameHash)
+{
+    EntityComponent* animMap = EntityComponent0E(this);
+    void* clip = animMap ? AnimMapFindClip(animMap, nameHash) : nullptr;
+    if (!clip)
+        clip = Entity::FindAnimClip(nameHash);
+    if (!clip && animMap)
+        ape::TempFormat("%s: no animation clip %s", object ? object->GetName() : "<unknown>",
+                        ape::TempHexString(nameHash));
+    return clip;
+}
+
+// @func 0x001288C8 Character::FindAnimClipByName
+// Without an animation map clips are named "<prefix>_<name>".
+void* Character::FindAnimClipByName(const char* name)
+{
+    EntityComponent* animMap = EntityComponent0E(this);
+    if (!animMap)
+        return Entity::FindAnimClipByName(ape::TempFormat("%s_%s", DefOf(this)->animPrefix, name));
+    void* clip = AnimMapFindClip(animMap, ape::HashNameNoCase(name));
+    if (!clip)
+        ape::TempFormat("%s: no animation clip %s", object ? object->GetName() : "<unknown>", name);
+    return clip;
+}
+
+// @func 0x00127AB4 Character::GetUpVector
+ape::Vec3 Character::GetUpVector()
+{
+    EntityComponent* physics = GetComponent00();
+    return physics ? PhysicsCompUpVector(physics) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
+}
+
+// @func 0x00127B3C Character::GetSideVector
+ape::Vec3 Character::GetSideVector()
+{
+    EntityComponent* physics = GetComponent00();
+    return physics ? PhysicsCompSideVector(physics) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
+}
+
+// -- interaction ----------------------------------------------------------------------------------
+
+// @func 0x00127E20 Character::InteractionOffer
+// Players offer kind 0; anyone offers kind 3 to things they threw, own or spawned.
+uint32_t Character::InteractionOffer(int kind, Entity* other)
+{
+    (void)kind;
+    uint32_t offer = (classBits & 1) ? 1u : 0u;
+    if (other) {
+        const uint32_t type = other->typeBits[0];
+        if (((type & kType_ThrownBit) && HitSourceOwner(other, kHitOwner_Thrower) == this) ||
+            ((type & kType_OwnedBit) && HitSourceOwner(other, kHitOwner_Owner) == this) ||
+            ((type & kType_SpawnedBit) && HitSourceOwner(other, kHitOwner_Spawner) == this))
+            offer |= 8;
+    }
+    return offer;
+}
+
+// @func 0x00127BC8 Character::CanInteractWith
+bool Character::CanInteractWith(Entity* other, int kind)
+{
+    const bool isPlayer = (classBits & 1) != 0;
+    if (kind == 5)
+        return false;
+    if (kind == kInteract_Player && !DefOf(this)->allowPlayerInteraction)
+        return false;
+    if (health <= 0.0f)
+        return false;
+    // Characters of one team do not interact (except kind 4 and friendly-fire characters).
+    if (kind != 4 && IsCharacterEntity(other) && TeamOf(this) == TeamOf(other) && !(classBits & kClass_FriendlyFire))
+        return false;
+    if (isPlayer) {
+        if (kind == 0) {
+            EntityComponent* driver = GetComponent(kComp_17);
+            if (driver && AnimDriverState(driver) == 1)
+                return false;
+        }
+        if (classBits & (0x10 | 0x1000000))
+            return false;
+    }
+    if (kind == 1) {
+        // Only from the idle states, and only without ability 12.
+        if (EntityGetState(this, 0) != 0 || EntityGetState(this, 1) != 0 || EntityGetState(this, 2) != 3)
+            return false;
+        if (abilities.IsUsable(12))
+            return false;
+    }
+    if (kind == 4 && listener && ListenerIsAlly(listener))
+        return false;
+    return Entity::CanInteractWith(other, kind);
 }
 
 // -- entity slot overrides ----------------------------------------------------------------

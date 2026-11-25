@@ -52,6 +52,14 @@ void PhysicsCompSetDisabled(EntityComponent* component, bool disabled);
 // Sends an animation event to the character component's controller (+0x24, 0x0035327C).
 void CharacterCompSendAnimEvent(EntityComponent* component, uint32_t event);
 
+// Surface axes of the physics component by its movement mode (+0x1A0 bits
+// 28-30: ground, water, wall climbing through component 0x2C) (0x0026A42C /
+// 0x0026D8F4).
+ape::Vec3 PhysicsCompUpVector(EntityComponent* component);
+ape::Vec3 PhysicsCompSideVector(EntityComponent* component);
+// Animation map component (0x0E): clip registered under a name (0x00288974).
+void* AnimMapFindClip(EntityComponent* animMap, uint32_t name);
+
 // -- other components -----------------------------------------------------------
 // Component 0x11: re-reads its setup after the animation controller changed (0x00293264).
 void Component11Refresh(EntityComponent* component);
@@ -112,6 +120,10 @@ struct EntityChildLink;
 class EntityListener;
 // Entity::AttachChild (0x000D15C0) with a filled link record.
 void EntityAttachChild(Entity* parent, const EntityChildLink& link);
+// Entity virtual slot 52 (+0xD0): motion of the root animation this frame.
+void EntityRootMotionDelta(Entity* entity, ape::Matrix34& out, bool consume);
+// Entity virtual slot 21 (+0x54): takes a new world transform.
+void EntitySetWorldTransform(Entity* entity, const ape::Matrix34& transform);
 // Entity virtual slot 7 (+0x1C): state of a layer.
 void EntitySetState(Entity* entity, int layer, int state);
 // Opacity of a child entity (0x000DF3CC) and pushing its fade buffer (0x000DF4CC).

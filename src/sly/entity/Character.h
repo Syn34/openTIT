@@ -161,6 +161,18 @@ public:
     void SetActive(bool active) override;            // slot 44 (0x00124598)
     void SetRenderId(uint32_t id) override;          // slot 26 (0x00124A04)
 
+    // Slot 13: follows the root animation's motion (0x0012852C).
+    // NOTE: the entity base slot (0x000D8954) is not declared on Entity.
+    virtual void ApplyRootMotion();
+    void* FindAnimClip(uint32_t nameHash) override;          // slot 47
+    void* FindAnimClipByName(const char* name) override;     // slot 48
+    // Slots 72/73: axes of the surface the physics component moves on
+    // (ground, water, wall). NOTE: names from the values returned.
+    virtual ape::Vec3 GetUpVector();
+    virtual ape::Vec3 GetSideVector();
+    uint32_t InteractionOffer(int kind, Entity* other) override;   // slot 74
+    bool CanInteractWith(Entity* other, int kind) override;        // slot 76
+
     // Hit reactions (slots 83-87) and damage (slot 88).
     void OnHitCategory0(EntityHitRecord& hit) override;   // physics impact
     void OnHitCategory1(EntityHitRecord& hit) override;   // melee
@@ -253,6 +265,7 @@ public:
     uint32_t SkinModel(int mode) const;
 
     uint32_t characterName = 0;     // 0x0C0 "Sly", "Bentley", "Murray", ...
+    char animPrefix[0x20] = {};     // 0x0C4 prefix of clip names without an animation map
     // 0x0F0 carry block: part (+0x174), offset (+0x180) and Euler angles in
     // degrees (+0x190) of a carried entity, and the drop settings (+0x1C0)
     // handed to the carried entity's listener.
@@ -271,6 +284,7 @@ public:
     // 0x560..0x570: models of skin variants 3, 2, 1, 4, 5 (in that order).
     uint32_t skinModels[5] = {};
     bool forwardRootMotion = false; // 0x580 bit 0 (animation controller flag 0x200). NOTE: name guessed
+    bool allowPlayerInteraction = false;   // 0x59C interaction kind 3 allowed
     uint32_t aimArcName = 0;        // 0x5B0 aim UI object names
     uint32_t aimEndName = 0;        // 0x5B4
     char* playerName = nullptr;     // 0x588 owned ("playerName")
