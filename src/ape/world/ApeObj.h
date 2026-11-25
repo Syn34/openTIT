@@ -48,6 +48,15 @@ enum ApeInstanceDataFlags : uint32_t {
 
 // Object flags (low half of the console word at 0x0A4; the high half holds
 // the render node index).
+// Options of ApeObj::Clone.
+enum ApeCloneFlags : uint32_t {
+    kClone_Children     = 0x01,   // clone the children too
+    kClone_Def          = 0x02,   // give the copy its own copy of the definition
+    kClone_04           = 0x04,   // NOTE: emitters only, meaning unknown
+    kClone_NoProcAnim   = 0x08,   // do not register procedural animations of a root copy
+    kClone_NoLightSetup = 0x10,   // lights only: skip the light construction
+};
+
 enum ApeObjFlags : uint32_t {
     kObjFlag_C0          = 0x00C0,  // NOTE: copied from the instance data
     kObjFlag_0100        = 0x0100,  // NOTE: selects the skinned bounds path of UpdateWorld
@@ -99,6 +108,10 @@ public:
     // the value they pass down is interpreted by subclasses.
     virtual void VirtualSlot12(uint32_t value, bool recurse);
     virtual void VirtualSlot13(uint8_t value, bool recurse);
+    // Slot 14: a new instance like this one (a new reference), see
+    // ApeCloneFlags. NOTE: pure on the console; the light, emitter and
+    // spline versions are not ported and return null.
+    virtual ApeObj* Clone(uint32_t flags) { (void)flags; return nullptr; }
     // NOTE: slot 15: asks the definition (slot 6) when count > 0 and recurses.
     virtual void VirtualSlot15(int count, int arg);
     // Rebuilds the definition's bounds as a cube/sphere of radius `radius`

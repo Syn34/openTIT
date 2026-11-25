@@ -411,6 +411,118 @@ void ApeCameraInstance::Release()
     ReleaseInstance(this);
 }
 
+// --- creation and cloning ---------------------------------------------------------------------
+
+namespace {
+
+// Names an instance after its definition.
+void NameAfterDef(ApeObj& obj, ApeDef* def)
+{
+    obj.SetName(def->GetName(), true);
+}
+
+// Clones the children of `source` and attaches the copies to `copy`.
+void CloneChildren(ApeObj& copy, const ApeObj& source, uint32_t flags)
+{
+    if (!(flags & kClone_Children))
+        return;
+    for (ApeObj* child = source.GetFirstChild(); child; child = child->GetNextSibling()) {
+        ApeObj* childCopy = child->Clone(flags);
+        if (!childCopy)
+            continue;
+        copy.AttachChild(childCopy, -1);
+        childCopy->Release();
+    }
+}
+
+void FinishRootClone(ApeObj& copy, const ApeObj& source, uint32_t flags)
+{
+    if (!source.GetParent() && !(flags & kClone_NoProcAnim))
+        RegisterProcAnims(&copy);
+}
+
+} // namespace
+
+// @func 0x005A05E8 CreateGeomInstance
+ApeGeomInstance* CreateGeomInstance(ApeDef* def, bool cloneDef)
+{
+    ApeGeomInstance* obj = ApeTInstanceList<ApeGeomInstance>::Create();
+    bool ownsDef = false;
+    if (def && cloneDef) {
+        def = static_cast<ApeGeomDef*>(def)->Clone();
+        ownsDef = true;
+    }
+    obj->SetDef(def);
+    NameAfterDef(*obj, def);
+    obj->m_lightGroupMask = def->field_68;
+    if (obj->m_lightLink)
+        InvalidateLightLink(obj->m_lightLink);
+    EnsureLightLink(*obj);
+    // The instance holds its own reference to the copied definition.
+    if (ownsDef)
+        def->Release();
+    return obj;
+}
+
+// @func 0x005A59AC CreateCameraInstance
+ApeCameraInstance* CreateCameraInstance(ApeDef* def)
+{
+    ApeCameraInstance* obj = ApeTInstanceList<ApeCameraInstance>::Create();
+    obj->SetDef(def);
+    return obj;
+}
+
+// @func 0x005A68EC CreatePointInstance
+ApePointInstance* CreatePointInstance(ApeDef* def)
+{
+    ApePointInstance* obj = ApeTInstanceList<ApePointInstance>::Create();
+    obj->SetDef(def);
+    NameAfterDef(*obj, def);
+    return obj;
+}
+
+// TODO(0x005A0394 RegisterProcAnims) walks the hierarchy with the ProcAnim
+// candidate callback (0x005A9914).
+void RegisterProcAnims(ApeObj* /*root*/)
+{
+}
+
+// @func 0x005A089C ApeGeomInstance::Clone
+ApeObj* ApeGeomInstance::Clone(uint32_t flags)
+{
+    ApeGeomInstance* copy;
+    if (flags & kClone_Def) {
+        ApeGeomDef* defCopy = static_cast<ApeGeomDef*>(m_def)->Clone();
+        copy = CreateGeomInstance(defCopy, false);
+        defCopy->Release();
+        copy->CopyRenderFrom(*this, kCopy_SkipDef);
+    } else {
+        copy = CreateGeomInstance(m_def, false);
+        copy->CopyRenderFrom(*this, 0);
+    }
+    CloneChildren(*copy, *this, flags);
+    FinishRootClone(*copy, *this, flags);
+    return copy;
+}
+
+// @func 0x005A5B28 ApeCameraInstance::Clone
+ApeObj* ApeCameraInstance::Clone(uint32_t flags)
+{
+    ApeCameraInstance* copy = CreateCameraInstance(m_def);
+    copy->CopyRenderFrom(*this, 0);
+    CloneChildren(*copy, *this, flags);
+    return copy;
+}
+
+// @func 0x005A6B28 ApePointInstance::Clone
+ApeObj* ApePointInstance::Clone(uint32_t flags)
+{
+    ApePointInstance* copy = CreatePointInstance(m_def);
+    copy->CopyFrom(*this, 0);
+    CloneChildren(*copy, *this, flags);
+    return copy;
+}
+
 // @func 0x005A6808 ApePointInstance::Release
 void ApePointInstance::Release()
 {

@@ -65,6 +65,7 @@ static_assert(kAttrExpand == 0x7ABBD29Au, "expand attribute hash");
 
 // Class attributes.
 constexpr uint32_t kAttrSize = Hash("size");
+constexpr uint32_t kAttrNoClone = Hash("noclone");
 constexpr uint32_t kAttrUv = Hash("uv");
 constexpr uint32_t kAttrSt = Hash("st");
 constexpr uint32_t kAttrColorTL = Hash("colortl");
@@ -422,10 +423,17 @@ ApeGuiObject* CreateGuiTile(xml::XmlDocument*, xml::XmlElement*, const GuiObject
     return nullptr;
 }
 
-// TODO(0x004D8200 CreateGuiType8)
-ApeGuiObject* CreateGuiType8(xml::XmlDocument*, xml::XmlElement*, const GuiObjectDesc&, ApeGuiObject*)
+// @func 0x004D8200 CreateGuiType8
+ApeGuiObject* CreateGuiType8(xml::XmlDocument* doc, xml::XmlElement* element, const GuiObjectDesc& base,
+                             ApeGuiObject* source)
 {
-    return nullptr;
+    GuiType8Desc desc = MakeDesc<GuiType8Desc>(base);
+    // NOTE: a clone source is only checked; its instance is not used.
+    CheckSourceType(doc, source, kGuiObject_Type8);
+    if (const char* objName = element->GetString("objName"))
+        desc.objName = objName;
+    element->GetBool(kAttrNoClone, &desc.noClone, false);
+    return new ApeGuiType8(desc);
 }
 
 } // namespace ape

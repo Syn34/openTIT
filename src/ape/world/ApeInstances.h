@@ -189,6 +189,7 @@ public:
     ApeGeomInstance() : ApeRenderObj(kInstanceType) {}
     void Release() override;
     void SetDef(ApeDef* def) override;
+    ApeObj* Clone(uint32_t flags) override;
 };
 
 class ApeLightInstance : public ApeRenderObj {
@@ -218,6 +219,7 @@ public:
     // @func 0x007A9EE4 ApeCameraInstance::~ApeCameraInstance (deleting)
     ~ApeCameraInstance() override = default;
     void Release() override;
+    ApeObj* Clone(uint32_t flags) override;
     // @func 0x007A9EE0 ApeCameraInstance::OnWorldTransformUpdated
     void OnWorldTransformUpdated(bool /*moved*/) override {}
 };
@@ -230,6 +232,7 @@ public:
     // @func 0x007AA024 ApePointInstance::~ApePointInstance (deleting)
     ~ApePointInstance() override = default;
     void Release() override;
+    ApeObj* Clone(uint32_t flags) override;
     // @func 0x007AA128 ApePointInstance::OnWorldTransformUpdated
     void OnWorldTransformUpdated(bool /*moved*/) override {}
     // @func 0x005A6C28 ApePointInstance::VirtualSlot15
@@ -258,6 +261,15 @@ public:
 
     ApeSplineDef* GetSplineDef() const;
 };
+
+// New instances of a definition (one reference each), named after it. A
+// geometry instance created with `cloneDef` gets its own copy of the
+// definition.
+ApeGeomInstance* CreateGeomInstance(ApeDef* def, bool cloneDef);
+ApeCameraInstance* CreateCameraInstance(ApeDef* def);
+ApePointInstance* CreatePointInstance(ApeDef* def);
+// Registers the procedural animations of a root object's hierarchy.
+void RegisterProcAnims(ApeObj* root);
 
 // First direct child of `object` that is a spline instance, or null.
 ApeSplineInstance* FindChildSpline(const ApeObj& object);

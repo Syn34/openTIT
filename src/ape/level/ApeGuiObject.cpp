@@ -5,6 +5,10 @@
 #include "ape/sys/ApeGeometry.h"
 #include "agl/AglResources.h"
 #include "agl/AglTexture.h"
+#include "ape/world/ApeDef.h"
+#include "ape/world/ApeDefTypes.h"
+#include "ape/world/ApeInstances.h"
+#include "ape/world/ApeObj.h"
 
 namespace ape {
 
@@ -777,12 +781,89 @@ void ApeGuiGroup::SetSize(const float value[2])
 // Type 8 and the clip region
 // ---------------------------------------------------------------------------
 
+// @func 0x004D7F24 ApeGuiType8::ApeGuiType8
+ApeGuiType8::ApeGuiType8(const GuiType8Desc& desc) : ApeGuiObject(desc)
+{
+    world::ApeObj* instance = desc.instance;
+    world::ApeDef* def = desc.def;
+    if (!instance && !def) {
+        const uint32_t nameHash = HashNameNoCase(desc.objName);
+        instance = world::FindInstance(nameHash, 0);
+        if (!instance)
+            def = world::ApeTDefList<world::ApeGeomDef>::Find(nameHash);
+    }
+
+    if (instance) {
+        if (desc.noClone) {
+            target = instance;
+            target->AddRef();
+        } else {
+            target = instance->Clone(world::kClone_Children | world::kClone_04);
+        }
+    } else if (def) {
+        target = world::CreateGeomInstance(def, false);
+    }
+    if (!target)
+        return;
+
+    if (!desc.noClone)
+        target->SetName(TempFormat("%s_GUIInst", target->GetDef()->GetName()), true);
+    // NOTE: LOD field value 12 marks objects drawn outside the level
+    // culling (also used for dynamic objects).
+    static_cast<world::ApeRenderObj*>(target)->SetLodField(12);
+
+    Vec3 targetScale = scale;
+    if (HasFlag(kFlag_InheritScale) && parent) {
+        const Vec3 parentScale = parent->GetWorldScale();
+        targetScale.x *= parentScale.x;
+        targetScale.y *= parentScale.y;
+        targetScale.z *= parentScale.z;
+    }
+    target->SetScale(targetScale, false);
+    target->SetVisible(false, false);
+    ApplyScaleToChildren(target, true);
+}
+
+// @func 0x004D7CF8 ApeGuiType8::ApplyScaleToChildren
+void ApeGuiType8::ApplyScaleToChildren(world::ApeObj* object, bool recursive)
+{
+    const Vec3& targetScale = target->GetScale();
+    for (world::ApeObj* child = object->GetFirstChild(); child; child = child->GetNextSibling()) {
+        child->SetScale(targetScale, false);
+        child->SetVisible(false, false);
+        static_cast<world::ApeRenderObj*>(child)->SetLodField(12);
+        // The GUI's z axis points the other way.
+        Matrix34 local = child->GetLocal();
+        local.translation.x *= targetScale.x;
+        local.translation.y *= targetScale.y;
+        local.translation.z = -(local.translation.z * targetScale.z);
+        child->SetLocal(local);
+        child->MarkDirty();
+        if (recursive)
+            ApplyScaleToChildren(child, recursive);
+    }
+}
+
 // @func 0x004E8F54 ApeGuiType8::~ApeGuiType8
 // @func 0x004E90FC ApeGuiType8::~ApeGuiType8 (deleting)
 ApeGuiType8::~ApeGuiType8()
 {
     if (target)
         target->Release();
+}
+
+// @func 0x004E9144 ApeGuiType8::Clone
+// The copy shows a copy of this object's instance.
+ApeGuiObject* ApeGuiType8::Clone(const char* newName, ApeGuiObject* newParent, void* newOwner,
+                                 bool recursive) const
+{
+    GuiType8Desc desc;
+    FillCloneDesc(desc, newName, newParent, newOwner);
+    desc.instance = target;
+    auto* copy = new ApeGuiType8(desc);
+    if (recursive)
+        CloneChildren(copy, newOwner);
+    return copy;
 }
 
 // @func 0x00796884 ApeGuiType8::GetType
