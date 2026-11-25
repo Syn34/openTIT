@@ -305,11 +305,15 @@ public:
     bool AdvanceTo5(float elapsed, float duration) override;
     // Slots 1 and 4 use the states of the switch position.
     void SetSlotState(int index, bool immediate) override;
+    // Also runs a pending refresh and counts the delay down.
+    bool Update(float dt) override;                   // slot 4
+    // 0x001BF8E8 (not ported).
+    void Refresh();
 
     int32_t position = 0;          // 0x22C 0 or 1 (indexes the state tables)
     float field_234 = 0.0f;        // 0x234 NOTE: non-negative resets the position
     float delay = 0.0f;            // 0x238 slot 5 waits while positive
-    uint8_t switchFlags = 0;       // 0x23C bit 3 armed
+    uint8_t switchFlags = 0;       // 0x23C bit 3 armed, bit 6 refresh pending
 };
 
 // vtable 0x00B168E0 (destructor 0x0075458C outside this range).
@@ -372,6 +376,8 @@ public:
 class SoundActorB17728 : public SoundActor {
 public:
     bool Release(bool kill) override;
+    // The first update looks the attached entity up by name.
+    bool Update(float dt) override;                   // slot 4
     // @func 0x001D4B6C SoundActorB17728::AdvanceTo2
     bool AdvanceTo2(float, float) override { return true; }
     // @func 0x001D4B74 SoundActorB17728::AdvanceTo4
@@ -382,7 +388,9 @@ public:
     bool AdvanceTo6(float, float) override { return true; }
     bool AdvanceWrap(float elapsed, float duration) override;
 
-    Entity* attached = nullptr;    // 0x22C
+    Entity* attached = nullptr;    // 0x22C counted
+    uint32_t attachedName = 0;     // 0x230
+    uint8_t lookupFlags = 0;       // 0x238 bit 7: looked up
     bool holdWrap = false;         // 0x239
 };
 

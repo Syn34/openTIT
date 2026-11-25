@@ -410,6 +410,23 @@ void SoundActorB16678::SetSlotState(int index, bool immediate)
     SoundActor::SetSlotState(index, immediate);
 }
 
+// @func 0x001BFA50 SoundActorB16678::Update
+bool SoundActorB16678::Update(float dt)
+{
+    if (!SoundActor::Update(dt))
+        return false;
+    if (switchFlags & 0x40) {
+        switchFlags &= ~0x40;
+        Refresh();
+    }
+    if (delay > 0.0f)
+        delay -= dt;
+    return true;
+}
+
+// TODO(0x001BF8E8 SoundActorB16678::Refresh)
+void SoundActorB16678::Refresh() {}
+
 // @func 0x001C1B50 SoundActorB168E0::AdvanceTo2
 bool SoundActorB168E0::AdvanceTo2(float elapsed, float duration)
 {
@@ -512,6 +529,24 @@ bool SoundActorB17728::Release(bool kill)
         attached = nullptr;
     }
     return SoundActor::Release(kill);
+}
+
+// @func 0x001D47E4 SoundActorB17728::Update
+bool SoundActorB17728::Update(float dt)
+{
+    if (!SoundActor::Update(dt))
+        return false;
+    if (!def)
+        return true;
+    if (!(lookupFlags & 0x80)) {
+        // Only entities of type bit 22 can be attached.
+        Entity* found = FindEntity(attachedName);
+        attached = (found && (found->typeBits[0] & 0x400000)) ? found : nullptr;
+        if (attached)
+            attached->AddRef();
+        lookupFlags |= 0x80;
+    }
+    return true;
 }
 
 // @func 0x001D4B90 SoundActorB17728::AdvanceWrap
