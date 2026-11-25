@@ -97,7 +97,18 @@ public:
         return slot;
     }
 
+    // Appends `value` and returns its index.
+    // @func 0x0076A800 ApeTArray<T>::Add (copy 1)
+    // @func 0x0076A914 ApeTArray<T>::Add (copy 2)
+    // @func 0x0076AF44 ApeTArray<T>::Add (copy 3)
+    uint32_t Add(const T& value)
+    {
+        PushBack(value);
+        return uint32_t(m_count) - 1;
+    }
+
     // Removes element i by moving the last element into its place.
+    // @func 0x0076AE8C ApeTArray<T>::RemoveAtSwap (copy 1, 0x20-byte elements)
     void RemoveAtSwap(size_t i)
     {
         --m_count;
