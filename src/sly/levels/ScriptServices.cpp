@@ -1,6 +1,7 @@
 // openTIT - TODO stubs for the game services used by the script commands #83-#269.
 // Each returns what the original returns for a missing object.
 #include "sly/levels/ScriptServices.h"
+#include "sly/game/goals/JobManager.h"
 
 #include "ape/xml/ApeXml.h"
 #include "sly/game/PlayerAbilities.h"
@@ -69,7 +70,11 @@ const char* EntityDefNameString(WorldObject* entity) { (void)entity; return null
 const char* EntityNameString(WorldObject* entity) { (void)entity; return nullptr; }
 void ControllerRumble(int controllerIndex, float strength, float duration) { (void)controllerIndex; (void)strength; (void)duration; }
 void TextFieldApplyVar(TextField* text, ape::ApeAnimScriptVar* var) { (void)text; (void)var; }
-void TextDisplayShowMessage(const TextField& text) { (void)text; }
+void TextDisplayShowMessage(const TextField& text)
+{
+    if (game::JobManager* manager = game::GetJobManager(); manager && manager->instance)
+        manager->instance->StoreText(text);
+}
 void GameStateSetLimit(float limit) { (void)limit; }
 WorldObject* PlayerCharacterSlot(int index) { (void)index; return nullptr; }
 void CharacterSetTimer(WorldObject* character, float time, bool forceDisplay, bool flag) { (void)character; (void)time; (void)forceDisplay; (void)flag; }

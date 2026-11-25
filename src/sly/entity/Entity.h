@@ -95,8 +95,9 @@ public:
     virtual void Update(float dt) { (void)dt; }                    // slot 6 (+0x18)
     // @func 0x00762AB4 EntityComponent::PostUpdate
     virtual void PostUpdate(float dt) { (void)dt; }                // slot 7 (+0x1C)
-    // Slot 8 (+0x20, 0x00264D6C): NOTE: empty by default, meaning unknown.
-    virtual void Slot8() {}
+    // Places the component's geometry before the instance render pass, for
+    // components in the instance render list (slot 8, +0x20).
+    virtual void RenderInstance();
     // Slot 9 (+0x24). NOTE: empty by default, meaning unknown.
     // @func 0x00737598 EntityComponent::Slot9
     virtual void Slot9() {}
@@ -471,7 +472,7 @@ public:
     uint16_t flags2 = 0;                           // 0xB0 EntityFlags2
     int16_t interactionCount = 0;                  // 0xB2
     uint64_t classBits = 0;                        // 0xB8 EntityClassBits
-    uint32_t typeBits[2] = {};                     // 0xC0 bitset of entity types. NOTE: length unknown
+    uint32_t typeBits[3] = {};                     // 0xC0 bitset of entity types (words +0xC0..+0xC8)
     uint32_t renderId = 0;                         // 0xCC
     float cullDistance = 0.0f;                     // 0xD4
     EntityDef* def = nullptr;                      // 0xD8

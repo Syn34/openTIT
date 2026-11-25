@@ -16,8 +16,7 @@ bool GameObjectUpdate(Entity*, float) { return true; }
 // TODO(0x00464CBC GameObject::PostUpdate)
 bool GameObjectPostUpdate(Entity*, float) { return true; }
 
-// TODO(0x002635E8 CreateComponent): component factory (switch over the description's kind).
-EntityComponent* CreateComponent(ComponentDesc*) { return nullptr; }
+// CreateComponent (0x002635E8) lives in sly/components/ComponentFactory.cpp.
 // TODO(0x002BC1E0 CenterComponent::GetOffset)
 ape::Vec3 CenterComponentOffset(EntityComponent*) { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 

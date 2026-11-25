@@ -34,9 +34,9 @@ Character::~Character()
             script = nullptr;
         }
     }
-    if (field_3D0) {
-        ape::MemFree(field_3D0);
-        field_3D0 = nullptr;
+    if (fadeBuffer) {
+        ape::MemFree(fadeBuffer);
+        fadeBuffer = nullptr;
     }
     audio::SoundNameRelease(sounds[2]);
     audio::SoundNameRelease(sounds[0]);
@@ -73,12 +73,6 @@ void Character::SetForceOpaque(bool on)
     if (on)
         SetOpacity(0xFF);
     flags3C8 = on ? (flags3C8 | 0x08) : (flags3C8 & ~0x08);
-}
-
-// TODO(0x001241A0 Character::SetOpacity)
-void Character::SetOpacity(uint8_t alpha)
-{
-    (void)alpha;
 }
 
 // @func 0x0012999C Character::IsVariant04318BE6

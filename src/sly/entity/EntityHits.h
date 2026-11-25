@@ -45,7 +45,7 @@ struct EntityHitRecord {
         ape::Vec3 direction;             // +0x20 away from the source
         ape::Vec3 direction2;            // +0x30 (same value from impacts)
         float damage;                    // +0x40
-        uint32_t field_44;
+        float push;                      // +0x44 push strength
         uint32_t flags_48;               // bits 30/31 only
         uint32_t field_4C;
     };
@@ -59,7 +59,9 @@ struct EntityHitRecord {
         float innerRadius;               // +0x34 full damage inside
         uint32_t field_38;
         float damage;                    // +0x3C
-        uint32_t field_40[8];
+        float force;                     // +0x40 push strength
+        uint32_t field_44[3];
+        ape::Vec3 pushDirection;         // +0x50
         float distance;                  // +0x60 of the receiver from the centre
     };
     struct Projectile {                  // category 4

@@ -67,6 +67,14 @@ public:
     virtual ~CharacterController() = default;
 };
 
+// Something that watches a character (Character +0x530); slot 75 (+0x12C)
+// takes the character off its list.
+class CharacterWatcher {
+public:
+    virtual ~CharacterWatcher() = default;
+    virtual void ForgetCharacter(class Character* character) = 0;
+};
+
 class Character : public ScriptedEntity {
 public:
     ~Character() override;
@@ -76,6 +84,20 @@ public:
     uint32_t InteractionNeeds(int kind, Entity* other) override { (void)kind; (void)other; return 0; }
     // Render object of the character component.
     ape::world::ApeObj* GetRenderObject() override;
+
+    // Bits of flags3C8.
+    enum Flags3C8 : uint8_t {
+        kFlag3C8_NoCostume  = 0x01,   // profile outfits are not applied
+        kFlag3C8_Bit1       = 0x02,
+        kFlag3C8_Visible    = 0x04,   // copy of the visibility while fading
+        kFlag3C8_Opaque     = 0x08,   // forced opaque
+        kFlag3C8_FadeBuffer = 0x10,   // the fade buffer must be pushed
+        kFlag3C8_FadeB      = 0x20,
+        kFlag3C8_FadeA      = 0x40,
+    };
+    // Queues the world callback that puts a fading character back on the
+    // fade list once it is gone from the update lists.
+    void QueueFadeRequeue();
 
     // Bit 3 of +0x3C8; turning it on also restores full opacity.
     // NOTE: name from use (0x00124370).
@@ -130,16 +152,72 @@ public:
     // Rebuilds the ability states from the definition, the level's unlocks,
     // the purchases and the costume (0x001205FC).
     void RefreshAbilities();
+    // Character slots 10/11.
+    bool Release(bool kill) override;                // 0x00122518
+    // Slot 11: back to the idle state with the physics and props reset
+    // (0x00122830). NOTE: the entity base slot (empty) is not declared on Entity.
+    virtual void ResetState();
+    // Takes `entity` into the hands (null drops the current one): attached at
+    // `part` (definition default when null) with `offset`/`rotation` (the
+    // definition's carry offset and Euler angles when null) (0x00121FA8).
+    void SetCarried(Entity* entity, const uint32_t* part, const ape::Vec3* offset,
+                    const ape::Vec4* rotation, bool parentRotation);
+    // Drops the carried entity; its listener is told first, without one the
+    // entity is released when `release` (0x001244A4).
+    void DropCarried(bool release);
+    // Pushes the fade buffer to the model and the fading children (0x00123F70).
+    void ApplyFadeBuffer();
+    // Back to full opacity after a scripted fade (0x001243D0).
+    void ResetFade();
+    void SetActive(bool active) override;            // slot 44 (0x00124598)
+    void SetRenderId(uint32_t id) override;          // slot 26 (0x00124A04)
+
+    // Slot 13: follows the root animation's motion (0x0012852C).
+    // NOTE: the entity base slot (0x000D8954) is not declared on Entity.
+    virtual void ApplyRootMotion();
+    void* FindAnimClip(uint32_t nameHash) override;          // slot 47
+    void* FindAnimClipByName(const char* name) override;     // slot 48
+    // Slots 72/73: axes of the surface the physics component moves on
+    // (ground, water, wall). NOTE: names from the values returned.
+    virtual ape::Vec3 GetUpVector();
+    virtual ape::Vec3 GetSideVector();
+    uint32_t InteractionOffer(int kind, Entity* other) override;   // slot 74
+    bool CanInteractWith(Entity* other, int kind) override;        // slot 76
+
+    // Starts the director script `scriptName` of the default library as the
+    // character's script (+0x198), ending the current one first when a new
+    // one starts or `stopCurrent` (0x00128C74).
+    ape::ApeAnimScriptInstance* PlayCharacterScript(uint32_t scriptName, bool stopCurrent);
+    // Swaps the character to another definition (0x00124D58, not ported).
+    void SwapCharacter(EntityDef* newDef, bool keepState);
+    // 0x00125950 / 0x00125998.
+    void BecomeSly();
+    void EndDisguise();
+    void SetVisible(bool visible, bool immediate, bool children, bool components) override;   // slot 22
+
+    // Hit reactions (slots 83-87) and damage (slot 88).
+    void OnHitCategory0(EntityHitRecord& hit) override;   // physics impact
+    void OnHitCategory1(EntityHitRecord& hit) override;   // melee
+    void OnHitCategory2(EntityHitRecord& hit) override;   // blast
+    void OnHitCategory3(EntityHitRecord& hit) override;   // environment
+    void OnHitCategory4(EntityHitRecord& hit) override;   // projectile
+    bool Damage(float amount, Entity* source, uint32_t type) override;
+    // Friendly-fire test of the hit reactions.
+    bool IsFriendlyHit(const Entity* attacker) const;
+    // Applies a hit's damage, knockback and reaction (0x00125A80, not ported).
+    void ApplyDamage(float amount, Entity* attacker, EntityHitRecord& hit, uint32_t type);
+
     // Counted references at +0x1A4 / +0x1AC (0x00121E8C / 0x00121F10).
     // NOTE: roles unknown; +0x1AC is set by the level AI.
     void SetReference1A4(Entity* entity);
     void SetReference1AC(Entity* entity);
 
     uint32_t GetRenderId() override;                 // slot 25 (0x00124954)
-    // Slot 27: the fade value restored on detach; read from the parent's
-    // child link while attached (0x00124BC0).
-    virtual float GetAttachBlend();
-    void Detached(float blend) override;             // slot 28 (0x00124C94)
+    // Slot 27: gravity factor of the physics body; while attached, the one
+    // the parent's link restores on detach. NOTE: Entity calls slot 28
+    // "Detached(blend)"; the value is the gravity factor it hands down.
+    virtual float GetGravityFactor();
+    void Detached(float gravityFactor) override;     // slot 28 (0x00124C94)
     // Slot 35: the position the character aims from (0x0012905C).
     virtual ape::Vec3 GetAimPosition();
     // Slot 38: turn rate of the character component (0x001290F0).
@@ -162,14 +240,21 @@ public:
     // @func 0x00738360 Character::Slot96
     virtual void Slot96() {}
 
-    Entity* field_17C = nullptr;                    // 0x17C
+    // NOTE: takes the value of `controller` when a player character is
+    // activated; role otherwise unknown.
+    CharacterController* field_17C = nullptr;       // 0x17C
     CharacterController* controller = nullptr;      // 0x180 the one in charge (may alias the others)
     CharacterController* aiController = nullptr;    // 0x184 "ControlAI"
     CharacterController* extController = nullptr;   // 0x188 "TmpExtControl"
+    uint32_t field_18C[3] = {};                     // 0x18C cleared on release
+    void* animScript198 = nullptr;                  // 0x198 orphaned on release
+    void* animScript19C = nullptr;                  // 0x19C
     Entity* reference1A4 = nullptr;                 // 0x1A4 counted
-    uint32_t field_1A8 = 0;                         // 0x1A8 NOTE: non-zero blocks costume swaps
+    Entity* carried = nullptr;                      // 0x1A8 entity held in the hands (counted)
     Entity* reference1AC = nullptr;                 // 0x1AC counted
     int32_t skinMode = kSkin_Default;               // 0x1B0 SkinMode
+    uint32_t field_1B4 = 0;                         // 0x1B4 cleared by ResetState
+    uint32_t field_1B8 = 0;                         // 0x1B8 cleared by ResetState / ResetFade
     ape::world::ApeObj* aimArcObject = nullptr;     // 0x1E4 aim UI arc
     ape::world::ApeObj* aimEndObject = nullptr;     // 0x1E8 aim UI end point
     DamageSettings damage;                          // 0x1EC
@@ -177,6 +262,7 @@ public:
     uint8_t tintTargetColor[4] = {};                // 0x224
     float tintAmount = 0.0f;                        // 0x228 current
     float tintTargetAmount = 0.0f;                  // 0x22C
+    uint8_t opacityColor[4] = {};                   // 0x230 tint applied with the opacity (alpha in [3])
     AbilitySet abilities;                           // 0x290
     int16_t field_300 = -1;                         // 0x300 NOTE: reset with the abilities
     int16_t field_308 = -1;                         // 0x308
@@ -185,11 +271,16 @@ public:
     // 0x394 NOTE: built with capacity 2 and its own comparator (0x00F32D90).
     ape::ApeTSortedMap<uint32_t> field_394;
     audio::SoundName* sounds[7] = {};               // 0x3AC
-    uint8_t flags3C8 = 0;                           // 0x3C8
-    void* field_3D0 = nullptr;                      // 0x3D0 owned buffer
+    uint8_t flags3C8 = 0;                           // 0x3C8 Flags3C8
+    uint8_t field_3C9 = 0;                          // 0x3C9
+    void* fadeBuffer = nullptr;                     // 0x3D0 owned per-part alpha buffer
+    int32_t lodField = 0;                           // 0x3E0 handed to the render object
+    uint8_t opacity = 0xFF;                         // 0x3E4
     camera::DefaultCameraMode* cameraMode = nullptr; // 0x4A0 holds cameraSettings as an override
     camera::CameraSettings cameraSettings;          // 0x4B0
-    ape::ApeTArray<void*> field_530;                // 0x530
+    // 0x530 objects watching the character; each removes itself when told
+    // the character left (their slot 75).
+    ape::ApeTArray<class CharacterWatcher*> watchers530;
 };
 
 // Character definition (0x5A0 bytes on the console). The tunable blocks are
@@ -213,7 +304,15 @@ public:
     uint32_t SkinModel(int mode) const;
 
     uint32_t characterName = 0;     // 0x0C0 "Sly", "Bentley", "Murray", ...
+    char animPrefix[0x20] = {};     // 0x0C4 prefix of clip names without an animation map
+    // 0x0F0 carry block: part (+0x174), offset (+0x180) and Euler angles in
+    // degrees (+0x190) of a carried entity, and the drop settings (+0x1C0)
+    // handed to the carried entity's listener.
     TunableBlock block_F0;          // 0x0F0
+    uint32_t carryPart = 0;         // 0x174
+    ape::Vec3 carryOffset{};        // 0x180
+    ape::Vec3 carryAngles{};        // 0x190
+    uint8_t dropSettings[0x10] = {};   // 0x1C0 NOTE: contents unknown
     TunableBlock block_2D0;         // 0x2D0
     TunableBlock block_304;         // 0x304
     TunableBlock cameraBlock;       // 0x3E0 (settings at +0x10)
@@ -224,6 +323,7 @@ public:
     // 0x560..0x570: models of skin variants 3, 2, 1, 4, 5 (in that order).
     uint32_t skinModels[5] = {};
     bool forwardRootMotion = false; // 0x580 bit 0 (animation controller flag 0x200). NOTE: name guessed
+    bool allowPlayerInteraction = false;   // 0x59C interaction kind 3 allowed
     uint32_t aimArcName = 0;        // 0x5B0 aim UI object names
     uint32_t aimEndName = 0;        // 0x5B4
     char* playerName = nullptr;     // 0x588 owned ("playerName")
