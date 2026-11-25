@@ -25,6 +25,8 @@ void RigidBodySetFilterGroup(void* body, uint32_t collisionGroup);
 // getConstraint 0x0091A7D8).
 int RigidBodyConstraintCount(void* body);
 void* RigidBodyConstraint(void* body, int index);
+// Collision group of a body (filter word +0x2C bits 16-31).
+uint32_t RigidBodyCollisionGroup(void* body);
 // Adds an action to the game physics world (hkpWorld::addAction 0x0092E9D8).
 void PhysicsAddAction(void* action);
 // Motion type byte (+0xE8): 4 = keyframed, 5 = fixed.

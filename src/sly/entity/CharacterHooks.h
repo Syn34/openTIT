@@ -212,6 +212,8 @@ void SkinSetVariant(EntityComponent* skin, int32_t variant);
 ape::ApeRefCounted* WorldObjectRef(ape::world::ApeObj* object);
 // Flag 0x400 of an anim script instance (+0x88). NOTE: read as "keep alive".
 void SetAnimScriptKeepAlive(void* script, bool keep);
+// Scripted entity virtual slot 80 (base 0x00737758): the entity ignores kill orders.
+bool IgnoresKillOrder(Entity* entity);
 // Word +0x14 of an actor group member's record takes the group counter.
 void GroupRecordSetCounter(void* record, uint32_t counter);
 // Interaction component: the entity interacting (+0x40) and the number of

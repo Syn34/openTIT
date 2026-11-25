@@ -238,8 +238,80 @@ bool TargetableB::Release(bool kill)
     return ScriptedEntity::Release(kill);
 }
 
-// TODO(0x00190054 TargetableB::SetTargetState)
-void TargetableB::SetTargetState(int state) { (void)state; }
+namespace {
+
+// Shared body of the flag-80 overrides: the body leaves the world with the
+// flag, and returns (with its action) when the entity is in `activeState`.
+void ToggleBodyInWorld(void* body, void* action, bool on, bool active)
+{
+    if (!body || RigidBodyInWorld(body) != on)
+        return;
+    if (on) {
+        RigidBodyRemoveFromWorld(body);
+    } else if (active) {
+        RigidBodyAddToWorld(body, ~0u);
+        if (action)
+            PhysicsAddAction(action);
+    }
+}
+
+// Collision group of the entity's body (slot 36 hands it out), else `fallback`.
+uint32_t BodyCollisionGroup(Entity* entity, uint32_t fallback)
+{
+    if (!PhysicsWorldPresent())
+        return fallback;
+    void* body = entity->GetRenderObject();
+    return body ? RigidBodyCollisionGroup(body) : fallback;
+}
+
+constexpr uint32_t kMsg_KillOrder = 0xD77F98D6u;   // NOTE: names unknown
+constexpr uint32_t kKillOrder_All = 0x00014FBCu;
+
+} // namespace
+
+// @func 0x00190054 TargetableB::SetTargetState
+void TargetableB::SetTargetState(int state)
+{
+    GetTargetState97();
+    EntitySetState(this, 0, state);
+    stateHistory[historyIndex] = uint8_t(state);
+    OnTargetStateChanged();
+}
+
+// @func 0x00194714 TargetableB::GetTargetState
+int TargetableB::GetTargetState() { return EntityGetState(this, 0); }
+
+// @func 0x001962A8 TargetableB::GetTargetState97
+int TargetableB::GetTargetState97() { return GetTargetState(); }
+
+// TODO(0x001947B0 TargetableB::OnTargetStateChanged)
+void TargetableB::OnTargetStateChanged() {}
+
+// @func 0x00192220 TargetableB::SetFlag80
+void TargetableB::SetFlag80(bool on)
+{
+    Entity::SetFlag80(on);
+    ToggleBodyInWorld(rigidBody, bodyAction, on, !on && GetTargetState() == 2);
+}
+
+// @func 0x001924F8 TargetableB::GetRenderId
+uint32_t TargetableB::GetRenderId() { return BodyCollisionGroup(this, collisionGroup); }
+
+// @func 0x001975DC TargetableB::SetRenderId
+void TargetableB::SetRenderId(uint32_t id)
+{
+    if (PhysicsWorldPresent() && rigidBody)
+        RigidBodySetCollisionGroup(rigidBody, id);
+    collisionGroup = id;
+    Entity::SetRenderId(id);
+}
+
+// @func 0x00197150 TargetableB::HandleMessage
+void TargetableB::HandleMessage(const EntityMessage& msg)
+{
+    if (msg.id == kMsg_KillOrder && msg.argument == kKillOrder_All && !IgnoresKillOrder(this))
+        Damage(maxHealth, nullptr, 0);
+}
 
 // @func 0x00192464 TargetableB::GetVelocity
 ape::Vec3 TargetableB::GetVelocity() { return BodyVelocity(); }
@@ -281,8 +353,27 @@ bool TargetableA::Release(bool kill)
     return ScriptedEntity::Release(kill);
 }
 
-// TODO(0x0017DB34 TargetableA::SetTargetState)
-void TargetableA::SetTargetState(int state) { (void)state; }
+// @func 0x0017DB34 TargetableA::SetTargetState
+void TargetableA::SetTargetState(int state)
+{
+    GetTargetState97();
+    EntitySetState(this, 0, state);
+    stateHistory[historyIndex] = uint8_t(state);
+    OnTargetStateChanged();
+}
+
+// TODO(0x00188388 TargetableA::OnTargetStateChanged)
+void TargetableA::OnTargetStateChanged() {}
+
+// @func 0x00184934 TargetableA::SetFlag80
+void TargetableA::SetFlag80(bool on)
+{
+    Entity::SetFlag80(on);
+    ToggleBodyInWorld(rigidBody, bodyAction, on, !on && GetTargetState() == 3);
+}
+
+// @func 0x00184C08 TargetableA::GetRenderId
+uint32_t TargetableA::GetRenderId() { return BodyCollisionGroup(this, collisionGroup); }
 
 // @func 0x001882B8 TargetableA::GetTargetState
 int TargetableA::GetTargetState() { return EntityGetState(this, 0); }

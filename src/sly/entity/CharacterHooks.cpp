@@ -93,6 +93,7 @@ int32_t SkinVariant(EntityComponent* skin) { (void)skin; return 0; }
 void SkinSetVariant(EntityComponent* skin, int32_t variant) { (void)skin; (void)variant; }
 ape::ApeRefCounted* WorldObjectRef(ape::world::ApeObj* object) { (void)object; return nullptr; }
 void SetAnimScriptKeepAlive(void* script, bool keep) { (void)script; (void)keep; }
+bool IgnoresKillOrder(Entity* entity) { (void)entity; return false; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }

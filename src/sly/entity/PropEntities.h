@@ -323,9 +323,24 @@ public:
     void OnHitCategory3(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
     float ProjectileDamageScale() const override;     // slot 89
-    // Slot 94: the entity's own state (0x00190054, not ported).
+    // Slot 94: enters a state of layer 0 and records it.
     virtual void SetTargetState(int state);
+    // Slot 95: the state of layer 0; slot 97 asks slot 95.
+    virtual int GetTargetState();
+    virtual int GetTargetState97();
+    // Slot 96: called after a state change (0x001947B0, not ported).
+    virtual void OnTargetStateChanged();
+    // The body leaves the world with the flag and returns in state 2.
+    void SetFlag80(bool on) override;                 // slot 23
+    // Slots 25/26: the collision group of the body (kept at +0x19C).
+    uint32_t GetRenderId() override;
+    void SetRenderId(uint32_t id) override;
+    // A kill order (message 0xD77F98D6 with argument 0x14FBC) destroys the entity.
+    void HandleMessage(const EntityMessage& msg) override;   // slot 43
     void* bodyAction = nullptr;              // 0x188
+    uint8_t stateHistory[4] = {};            // 0x1B8 indexed by historyIndex
+    uint32_t historyIndex = 0;               // 0x1BC
+    uint32_t collisionGroup = 0;             // 0x19C
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     // Empty override of the +0x17C interface's slot 5.
@@ -361,9 +376,18 @@ public:
     void OnHitCategory2(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
     float ProjectileDamageScale() const override;     // slot 89
-    // Slot 94: the figure's own state (0x0017DB34, not ported).
+    // Slot 94: enters a state of layer 0 and records it.
     virtual void SetTargetState(int state);
+    // Slot 96: called after a state change (not ported).
+    virtual void OnTargetStateChanged();
+    // The body leaves the world with the flag and returns in state 3.
+    void SetFlag80(bool on) override;                 // slot 23
+    // Slot 25: the collision group of the body (kept at +0x19C).
+    uint32_t GetRenderId() override;
     void* bodyAction = nullptr;              // 0x188
+    uint8_t stateHistory[7] = {};            // 0x1B1 indexed by historyIndex
+    uint32_t historyIndex = 0;               // 0x1B8
+    uint32_t collisionGroup = 0;             // 0x19C
     // Slot 95: the state of layer 0; slot 97 asks slot 95.
     virtual int GetTargetState();
     virtual int GetTargetState97();
