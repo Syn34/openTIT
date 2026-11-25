@@ -9,6 +9,8 @@
 namespace ape { namespace xml { class XmlElement; } }
 namespace sly { namespace entity { struct ComponentDesc; class Entity; class EntityComponent; class EntityDef; } }
 namespace ape::world { class ApeObj; }
+namespace ape::anim { class AnimClipManager; }
+namespace sly { namespace anim { class AnimController; } }
 namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; class ApeRefCounted; }
 
 namespace sly {
@@ -22,6 +24,11 @@ void AIBrainFillInput(void* brain, void* input);
 // Anim trees and blend maps by name (0x003482B0 / 0x00348650).
 void* FindAnimTree(uint32_t nameHash);
 void* FindAnimBlendMap(uint32_t nameHash);
+// Anim set slots of the game (the AnimClipManager reached through
+// 0x00F557F8). NOTE: the port hands out ape::anim::g_animClipManager.
+ape::anim::AnimClipManager* GameAnimClipManager();
+// 0x00351A40: creates a controller's layers from an anim tree.
+void AnimControllerBuildLayers(anim::AnimController* controller, void* tree);
 // IK component update (0x002934E0) and vortex pull (0x002B0B10) are not ported.
 
 // -- HUD markers ---------------------------------------------------------------------

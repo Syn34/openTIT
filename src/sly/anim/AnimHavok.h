@@ -92,7 +92,7 @@ struct HkaAnimatedSkeleton {
     int32_t controlCount = 0;           // +0x14 m_animationControls (size)
     uint32_t field_18 = 0;
     const HkaSkeleton* skeleton = nullptr;     // +0x1C m_skeleton
-    uint32_t field_20 = 0;
+    float referencePoseWeightThreshold = 0.0f;  // +0x20 m_referencePoseWeightThreshold
     // +0x24: written with the control count when a special (type 4) control
     // is pruned and cleared otherwise. NOTE: read as the reference pose
     // weight threshold bookkeeping; meaning not confirmed.
@@ -123,6 +123,11 @@ HkaAnimationControl* HkNewDefaultControl(HkaAnimationBinding* binding, int32_t m
 void HkControlAddListener(HkaAnimationControl* control, void* listener);
 // Appends to m_defaultListeners (hkArray growth through 0x007CCD60).
 void HkControlPushListener(HkaAnimationControl* control, void* listener);
+// new hkaAnimatedSkeleton (0x00A45750) for `skeleton`.
+HkaAnimatedSkeleton* HkNewAnimatedSkeleton(const HkaSkeleton* skeleton);
+// new hkaPose for `skeleton` (arrays sized to its bones and float slots),
+// set to the reference pose (0x00A56E68).
+HkaPose* HkNewReferencePose(const HkaSkeleton* skeleton);
 // hkReferencedObject::removeReference (0x007D4EA8).
 void HkRemoveReference(void* object);
 // Destroys a pose (its four hkArrays) and returns the 0x38 bytes to the

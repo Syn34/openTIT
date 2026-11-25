@@ -11,6 +11,10 @@
 #include "sly/game/goals/Goal.h"
 #include "sly/game/goals/GoalHooks.h"
 #include "sly/game/hud/HudManager.h"
+
+#include "ape/anim/ApeAnimScript.h"
+
+#include <cstdio>
 #include "sly/tuning/GoalTuning.h"
 
 #include <cstring>
@@ -915,6 +919,33 @@ void PlayerProgress::SetNotifyPair(const uint8_t in[2])
 {
     notifyBits = in[0] == 1 ? (notifyBits | 0x8000u) : (notifyBits & ~0x8000u);
     notifyBits = in[1] == 1 ? (notifyBits | 0x10000u) : (notifyBits & ~0x10000u);
+}
+
+// @func 0x002DE258 JobManager::UpdateBottleHud
+void JobManager::UpdateBottleHud(bool pickup)
+{
+    hud::HudObject* counter = hud::Find(hud::g_bottleCounterName);
+    if (!counter)
+        return;
+    // NOTE: compared with the default bottle count, not the episode's own.
+    const uint32_t total = uint32_t(g_defaultBottleCount);
+    auto* script = static_cast<ape::ApeAnimScriptInstance*>(counter->animScript);
+    if (script && total != 0 && total <= collectedBottles)
+        script->SetStateAndUpdate(pickup ? 0x90A128CFu : 0x3143F570u);   // NOTE: state names unknown
+    if (currentJob && currentJob->numBottles == 0)
+        return;
+    char text[32];
+    const uint32_t fields = counter->def ? counter->def->textFieldCount : 0;
+    if (fields < 2) {
+        std::snprintf(text, sizeof text, "%d/%d", int(collectedBottles), int(total));
+        counter->ShowText(-1.0f, text, true);
+    } else {
+        // Separate fields for the count and the total.
+        std::snprintf(text, sizeof text, "%d", int(collectedBottles));
+        counter->ShowText(-1.0f, text, true);
+        std::snprintf(text, sizeof text, "%d", int(total));
+        counter->SetFieldText(text, 1);
+    }
 }
 
 } // namespace game
