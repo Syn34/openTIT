@@ -73,6 +73,10 @@ public:
     // Queries and controls by layer (0 = default layer); a missing layer reads as
     // done / time 0.
     void StopSecondary(uint32_t anim);                       // 0x00298748
+    void SetLayerTime(float time, bool normalized, uint32_t anim);   // 0x00276A20
+    float LayerSpeed(uint32_t anim) const;                   // 0x00276AD8
+    float LayerDuration(uint32_t anim) const;                // 0x00276B40
+    void SetLayerSpeed(float speed, uint32_t anim);          // 0x00276E4C
     bool IsDone(uint32_t anim, bool countLoops) const;       // 0x0029879C
     bool IsSecondaryDone(uint32_t anim, bool countLoops) const; // 0x00298808
     void ResetLoops(uint32_t anim);                          // 0x002988EC

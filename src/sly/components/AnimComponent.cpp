@@ -202,6 +202,40 @@ bool AnimComponent::PlayAdditive(uint32_t clip, uint32_t anim, bool loop, uint32
     return true;
 }
 
+// @func 0x00276A20 AnimComponent::SetLayerTime
+void AnimComponent::SetLayerTime(float time, bool normalized, uint32_t anim)
+{
+    anim::AnimLayer* layer = Layer(anim);
+    if (!layer)
+        return;
+    if (normalized) {
+        const float length = layer->Duration();
+        time = length > 1e-5f ? length * time : 1.0f;
+    }
+    layer->SetLocalTime(time);
+}
+
+// @func 0x00276AD8 AnimComponent::LayerSpeed
+float AnimComponent::LayerSpeed(uint32_t anim) const
+{
+    anim::AnimLayer* layer = Layer(anim);
+    return layer ? layer->PlaybackSpeed() : 0.0f;
+}
+
+// @func 0x00276B40 AnimComponent::LayerDuration
+float AnimComponent::LayerDuration(uint32_t anim) const
+{
+    anim::AnimLayer* layer = Layer(anim);
+    return layer ? layer->Duration() : 0.0f;
+}
+
+// @func 0x00276E4C AnimComponent::SetLayerSpeed
+void AnimComponent::SetLayerSpeed(float speed, uint32_t anim)
+{
+    if (anim::AnimLayer* layer = Layer(anim))
+        layer->SetPlaybackSpeed(speed);
+}
+
 // @func 0x00298748 AnimComponent::StopSecondary
 void AnimComponent::StopSecondary(uint32_t anim)
 {
