@@ -202,8 +202,6 @@ enum class AIProp : uint16_t {
 };
 
 const char* PropString(const PropertyBlock* block, AIProp prop);
-// 0x004F7128: adds a property to a setting class (see AISettingClasses.h).
-void SettingClassAddProperty(class AISettingClass* settingClass, AIProp prop);
 uint32_t PropHash(const PropertyBlock* block, AIProp prop);   // enum properties store the hash
 bool PropBool(const PropertyBlock* block, AIProp prop);
 float PropFloat(const PropertyBlock* block, AIProp prop);

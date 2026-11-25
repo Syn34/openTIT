@@ -10,7 +10,6 @@ namespace levels {
 namespace ai {
 
 const char* PropString(const PropertyBlock*, AIProp) { return nullptr; }
-void SettingClassAddProperty(AISettingClass*, AIProp) {}
 uint32_t PropHash(const PropertyBlock*, AIProp) { return 0; }
 bool PropBool(const PropertyBlock*, AIProp) { return false; }
 float PropFloat(const PropertyBlock*, AIProp) { return 0.0f; }
