@@ -1267,6 +1267,16 @@ void Character::SetGadget(uint32_t templateName)
     }
 }
 
+// @func 0x00140B9C Character::HandleState16
+bool Character::HandleState16(const StateMessage& msg)
+{
+    if (msg.type == gameplay::StateMachine::kMsg_Exit)
+        classBits &= ~uint64_t(0x80);
+    else if (msg.type == gameplay::StateMachine::kMsg_Update)
+        classBits |= 0x80;
+    return true;
+}
+
 // @func 0x0012E824 Character::AddWatcher
 void Character::AddWatcher(CharacterWatcher* watcher)
 {

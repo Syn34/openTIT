@@ -15,6 +15,7 @@
 #include "sly/entity/Abilities.h"
 #include "sly/entity/ScriptedEntity.h"
 #include "sly/game/AudioSystem.h"
+#include "sly/gameplay/StateMachine.h"
 
 namespace sly::camera { class DefaultCameraMode; }
 
@@ -220,6 +221,19 @@ public:
     // Replaces the gadget component (type 0x1A) by one built from the named
     // component template; null removes it (0x0012E534).
     void SetGadget(uint32_t templateName);
+
+    // State handlers: the character's state machine calls one member per
+    // state through the table at 0x00F64780 (59 entries, most of them the
+    // large movement states of 0x00131798-0x00165198). Each gets the state
+    // machine's message and returns true when handled.
+    using StateMessage = gameplay::StateMachine::Message;
+    // Entry 16: class bit 7 is set while the state updates, cleared on exit.
+    bool HandleState16(const StateMessage& msg);
+    // Entries 39 and 46: states without behaviour of their own.
+    // @func 0x00157940 Character::HandleState39
+    bool HandleState39(const StateMessage& msg) { (void)msg; return true; }
+    // @func 0x0015E2B8 Character::HandleState46
+    bool HandleState46(const StateMessage& msg) { (void)msg; return true; }
 
     // Watchers told when the character leaves (+0x530) (0x0012E824 / 0x0012E8B0).
     void AddWatcher(CharacterWatcher* watcher);
