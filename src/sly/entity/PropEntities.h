@@ -68,6 +68,9 @@ void SetFatal(EntityHitRecord& hit, bool alive);
 // virtual overrides on the console; the shared parts are the helpers here.
 class RigidBodyEntity : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
+    // Moves a body to `transform`; when its position changed the bodies
+    // linked to it wake up.
+    static void MoveBody(void* body, const ape::Matrix34& transform);
     // Sets a body's linear velocity unless it is keyframed or fixed or out of the world.
     static void SetBodyVelocity(void* body, const ape::Vec3& velocity);
     // Slot 35: linear velocity of the body (zero without one).
@@ -128,6 +131,8 @@ public:
     bool Release(bool kill) override;                         // slot 10
     void SetFlag80(bool on) override;                         // slot 23
     void HandleMessage(const EntityMessage& msg) override;    // slot 43
+    // Slot 21: the body follows the new transform.
+    void SetTransform(const ape::Matrix34& m) override;
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;
     ape::Vec3 GetAimPoint() override;
@@ -188,6 +193,8 @@ public:
     // Slots 27/28: gravity factor of the body while the physics world runs.
     float GetGravityFactor() override;
     void Detached(float gravityFactor) override;
+    // Slot 21: the body follows the new transform while in the world.
+    void SetTransform(const ape::Matrix34& m) override;
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     ape::Vec3 GetAimPoint() override;                 // slot 71
@@ -331,6 +338,8 @@ public:
     float GetGravityFactor() override;
     void Detached(float gravityFactor) override;
     // Slot 35: linear velocity of the body.
+    // Slot 21: the body follows the new transform while in the world.
+    void SetTransform(const ape::Matrix34& m) override;
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;
     // Slot 71: centre of mass of the body unless the definition moves the
@@ -376,6 +385,8 @@ class TargetableB : public RigidBodyEntity {
 public:
     ~TargetableB() override;
     bool Release(bool kill) override;                 // slot 10
+    // Slot 21: the body (or, without one, the AI controller) follows the new transform.
+    void SetTransform(const ape::Matrix34& m) override;
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     ape::Vec3 GetAimPoint() override;                 // slot 71
@@ -453,6 +464,8 @@ public:
 
     ~TargetableA() override;
     bool Release(bool kill) override;                 // slot 10
+    // Slot 21: the body follows the new transform.
+    void SetTransform(const ape::Matrix34& m) override;
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     ape::Vec3 GetAimPoint() override;                 // slot 71

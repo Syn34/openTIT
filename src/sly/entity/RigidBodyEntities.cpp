@@ -11,6 +11,7 @@
 #include "sly/entity/GameEntityHooks.h"
 #include "sly/entity/EntityHooks.h"
 #include "sly/entity/PhysicalEntity.h"
+#include "sly/levels/ai/AIController.h"
 #include "sly/gameplay/GameplayWorld.h"
 #include "sly/gameplay/Minigame.h"
 #include "ape/anim/ApeAnimScript.h"
@@ -153,6 +154,15 @@ ape::Vec3 RigidBodyEntity::BodyVelocity() const
     return rigidBody ? RigidBodyLinearVelocity(rigidBody) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
 }
 
+void RigidBodyEntity::MoveBody(void* body, const ape::Matrix34& transform)
+{
+    const ape::Vec3 from = RigidBodyPosition(body);
+    RigidBodySetTransform(body, transform);
+    if (transform.translation.x - from.x != 0.0f || transform.translation.y - from.y != 0.0f ||
+        transform.translation.z - from.z != 0.0f)
+        RigidBodyWakeConnected(body);
+}
+
 void RigidBodyEntity::SetBodyVelocity(void* body, const ape::Vec3& velocity)
 {
     if (!body || !RigidBodyInWorld(body))
@@ -290,6 +300,14 @@ void AlterEgoEntity::Detached(float gravityFactor)
             RigidBodySetGravityFactor(body, gravityFactor);
     }
     Entity::Detached(gravityFactor);
+}
+
+// @func 0x0017BD28 AlterEgoEntity::SetTransform
+void AlterEgoEntity::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    if (rigidBody && RigidBodyInWorld(rigidBody))
+        MoveBody(rigidBody, m);
 }
 
 // @func 0x00178650 AlterEgoEntity::SetVelocity
@@ -567,6 +585,16 @@ void TargetableB::HandleMessage(const EntityMessage& msg)
         Damage(maxHealth, nullptr, 0);
 }
 
+// @func 0x00194160 TargetableB::SetTransform
+void TargetableB::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    if (rigidBody)
+        MoveBody(rigidBody, m);
+    else if (listener)
+        static_cast<levels::ai::AIController*>(listener)->SetTransform(m);
+}
+
 // @func 0x00192370 TargetableB::SetVelocity
 void TargetableB::SetVelocity(const ape::Vec3& velocity) { SetBodyVelocity(rigidBody, velocity); }
 
@@ -654,6 +682,14 @@ ape::world::ApeObj* TargetableA::FindModelPart() const
             return child;
     }
     return nullptr;
+}
+
+// @func 0x00188040 TargetableA::SetTransform
+void TargetableA::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    if (rigidBody)
+        MoveBody(rigidBody, m);
 }
 
 // @func 0x00184A80 TargetableA::SetVelocity
@@ -1053,6 +1089,14 @@ void TargetableCBase::Detached(float gravityFactor)
     if (void* body = GetRenderObject())
         RigidBodySetGravityFactor(body, gravityFactor);
     Entity::Detached(gravityFactor);
+}
+
+// @func 0x001FD2C8 TargetableCBase::SetTransform
+void TargetableCBase::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    if (rigidBody && RigidBodyInWorld(rigidBody))
+        RigidBodyEntity::MoveBody(rigidBody, m);
 }
 
 // @func 0x001FB370 TargetableCBase::SetVelocity

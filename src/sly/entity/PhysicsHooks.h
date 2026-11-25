@@ -39,6 +39,11 @@ void RigidBodySetLinearVelocity(void* body, const ape::Vec3& velocity);
 // Linear velocity (+0x1B0) and centre of mass (+0x140) of the body's motion.
 ape::Vec3 RigidBodyLinearVelocity(void* body);
 ape::Vec3 RigidBodyCenterOfMass(void* body);
+// Moves a body (hkpRigidBody::setTransform 0x0091EAB8; the rotation rows
+// are converted with their w cleared).
+void RigidBodySetTransform(void* body, const ape::Matrix34& transform);
+// Wakes the body and, through its constraints, every body linked to it (0x003556AC).
+void RigidBodyWakeConnected(void* body);
 // Position of the body (its motion state's transform, +0x120).
 ape::Vec3 RigidBodyPosition(void* body);
 // Drops the game's two user properties of a body (0x0093FED8, keys

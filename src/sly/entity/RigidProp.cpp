@@ -69,6 +69,14 @@ void RigidProp::HandleMessage(const EntityMessage& msg)
     }
 }
 
+// @func 0x00169AB0 RigidProp::SetTransform
+void RigidProp::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    if (rigidBody)
+        MoveBody(rigidBody, m);
+}
+
 // @func 0x00168620 RigidProp::SetVelocity
 void RigidProp::SetVelocity(const ape::Vec3& velocity)
 {
