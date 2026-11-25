@@ -2,6 +2,7 @@
 #include "sly/entity/ActorEntities.h"
 
 #include "sly/entity/CharacterHooks.h"
+#include "sly/entity/EntityHooks.h"
 
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/memory/ApeMem.h"
@@ -666,6 +667,135 @@ void TweenActor::ApplyVisibility(bool visible)
 {
     if (!visible && field_358)
         Reset(true);
+}
+
+namespace {
+// Script message posted when an interaction with the tween actor begins.
+// NOTE: names unknown.
+constexpr uint32_t kMsgKey_TweenBegin = 0x55B67D7Cu;
+constexpr uint32_t kMsg_TweenBegin = 0x57C66C13u;
+constexpr uint32_t kMsg_Damaged = 0x69988172u;
+} // namespace
+
+// @func 0x001EE3E4 TweenActor::InteractionBegin
+bool TweenActor::InteractionBegin()
+{
+    EntitySetState(this, 0, 1);
+    EntityPostScriptMessage(this, kMsgKey_TweenBegin, kMsg_TweenBegin, 0);
+    EntityComponent* interaction = EntityInteraction(this);
+    Entity* user = InteractionUser(interaction);
+    if (user)
+        TakeUser(user);
+    field_1FC = 0;
+    tweenFlags &= ~(1u << 21);
+    if (user)
+        field_3C8 = PlayerBlockValue10D8(user->PlayerSlot() & 0xFF);
+    return true;
+}
+
+// TODO(0x001EDD84 TweenActor::TakeUser)
+void TweenActor::TakeUser(Entity* user) { field_358 = user; }
+
+// @func 0x001EE940 TweenActor::InteractionCancel
+void TweenActor::InteractionCancel() { Reset(false); }
+
+// @func 0x001EE964 TweenActor::InteractionEnd
+void TweenActor::InteractionEnd(bool completed) { Reset(completed); }
+
+// @func 0x001EEEB0 TweenActor::HandleMessage
+// Remembers that the entity using the actor was hurt.
+void TweenActor::HandleMessage(const EntityMessage& msg)
+{
+    if (msg.id == kMsg_Damaged && field_358 && MessageSenderEntity(msg) == field_358)
+        tweenFlags |= 0x20000;
+}
+
+// @func 0x001F3FEC TweenActor::SetVisible
+void TweenActor::SetVisible(bool visible, bool immediate, bool includeChildren, bool components)
+{
+    Entity::SetVisible(visible, immediate, includeChildren, components);
+    if (visible)
+        return;
+    tweenFlags &= ~(1u << 29);
+    if (field_368)
+        field_368->Release(false);
+    field_368 = nullptr;
+}
+
+// @func 0x001F6634 InteractivePropB::Release
+bool InteractivePropB::Release(bool kill)
+{
+    if (kill && attached) {
+        attached->Release(false);
+        if (attached->IsAlive())
+            attached->Release(true);
+    }
+    return ActorEntity::Release(kill);
+}
+
+// @func 0x001F66E8 InteractivePropB::InteractionBegin
+bool InteractivePropB::InteractionBegin()
+{
+    Entity* user = InteractionUser(EntityInteraction(this));
+    // NOTE: the console does not check for a missing user.
+    if (!user) {
+        EntitySetState(this, 0, 1);
+        return true;
+    }
+    userTransform.xAxis = { user->transform.xAxis.x, user->transform.xAxis.y, user->transform.xAxis.z, userTransform.xAxis.pad };
+    userTransform.yAxis = { user->transform.yAxis.x, user->transform.yAxis.y, user->transform.yAxis.z, userTransform.yAxis.pad };
+    userTransform.zAxis = { user->transform.zAxis.x, user->transform.zAxis.y, user->transform.zAxis.z, userTransform.zAxis.pad };
+    userTransform.translation = { user->Position().x, user->Position().y, user->Position().z, userTransform.translation.pad };
+    EntitySetState(this, 0, 1);
+    return true;
+}
+
+// @func 0x001F67B4 InteractivePropB::InteractionCancel
+void InteractivePropB::InteractionCancel() { EntityInteraction(this); }
+
+// @func 0x001F67D8 InteractivePropB::InteractionEnd
+void InteractivePropB::InteractionEnd(bool completed) { (void)completed; EntityInteraction(this); }
+
+// @func 0x001DEBA4 InteractivePropC::Release
+bool InteractivePropC::Release(bool kill)
+{
+    if (kill) {
+        camera::DestroyPhantom(phantomA);
+        camera::DestroyPhantom(phantomB);
+    }
+    return ActorEntity::Release(kill);
+}
+
+// @func 0x001E40E0 InteractivePropC::InteractionEnd
+void InteractivePropC::InteractionEnd(bool completed)
+{
+    (void)completed;
+    InteractionCancel();
+}
+
+// @func 0x001E4388 InteractivePropC::InteractionOffer
+uint32_t InteractivePropC::InteractionOffer(int kind, Entity* other)
+{
+    (void)kind; (void)other;
+    return 1;
+}
+
+// @func 0x001E4370 InteractivePropC::InteractionNeeds
+uint32_t InteractivePropC::InteractionNeeds(int kind, Entity* other)
+{
+    (void)other;
+    return static_cast<const InteractivePropADef*>(def)->interactionFlags[kind];
+}
+
+// @func 0x001E411C InteractivePropC::CanInteractWith
+bool InteractivePropC::CanInteractWith(Entity* other, int kind)
+{
+    if (kind == kInteract_Player && !(propFlags & 0x80) && other && (other->typeBits[0] & 0x08)) {
+        EntityComponent* interaction = EntityInteraction(this);
+        if (interaction && InteractionUsers(interaction) < 2 && CharacterCarried(other) != keyObject)
+            return false;
+    }
+    return ActorCanInteractWith(this, other, kind);
 }
 
 // TODO(0x001EE680 TweenActor::Reset)

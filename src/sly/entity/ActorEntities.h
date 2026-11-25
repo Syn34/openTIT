@@ -54,6 +54,7 @@ public:
 class InteractivePropADef : public ActorDef {
 public:
     ~InteractivePropADef() override;
+    uint8_t interactionFlags[6] = {};   // 0x170 per interaction kind (InteractivePropC)
     uint32_t bufferSize = 0;        // 0x254
     void* buffer = nullptr;         // 0x258 owned
 };
@@ -142,6 +143,35 @@ class InteractivePropB : public ActorEntity {
 public:
     ~InteractivePropB() override;
     void SetVisible(bool visible, bool immediate, bool children, bool components) override;
+    bool Release(bool kill) override;                 // slot 10
+    // Takes over the interacting entity's transform and starts state 1.
+    bool InteractionBegin() override;                 // slot 62
+    // NOTE: both only look the interaction component up.
+    void InteractionCancel() override;                // slot 63
+    void InteractionEnd(bool completed) override;     // slot 64
+
+    ape::Matrix34 userTransform{};            // 0x1B0
+    Entity* attached = nullptr;               // 0x1F0
+};
+
+// Interactive prop with two phantoms (vtable 0x00B17DF8; destructor
+// 0x00756758 outside this range). NOTE: its definition is the class at
+// 0x00B17DB0, which ActorEntities.h calls InteractivePropADef.
+class InteractivePropC : public ActorEntity {
+public:
+    bool Release(bool kill) override;                 // slot 10
+    void InteractionEnd(bool completed) override;     // slot 64: cancels
+    // Offers interaction kind 0 to everyone.
+    uint32_t InteractionOffer(int kind, Entity* other) override;
+    uint32_t InteractionNeeds(int kind, Entity* other) override;
+    // Player interaction is refused while a single user holds the prop and
+    // the asking character does not carry its key object.
+    bool CanInteractWith(Entity* other, int kind) override;
+
+    Entity* keyObject = nullptr;              // 0x1B0
+    uint8_t propFlags = 0;                    // 0x1B4 bit 7: anyone may interact
+    void* phantomA = nullptr;                 // 0x270
+    void* phantomB = nullptr;                 // 0x274
 };
 
 // Actor with seven per-instance sounds (vtable 0x00B159B8); base of the
@@ -377,8 +407,19 @@ public:
     void ApplyVisibility(bool visible) override;
     // 0x001EE680
     void Reset(bool flag);
+    void HandleMessage(const EntityMessage& msg) override;   // slot 43
+    void SetVisible(bool visible, bool immediate, bool children, bool components) override;   // slot 22
+    bool InteractionBegin() override;                 // slot 62
+    void InteractionCancel() override;                // slot 63: Reset(false)
+    void InteractionEnd(bool completed) override;     // slot 64: Reset(completed)
+    // 0x001EDD84 (not ported): takes the interacting entity.
+    void TakeUser(Entity* user);
 
-    uint32_t field_358 = 0;                   // 0x358 NOTE: non-zero while a reset is pending
+    Entity* field_358 = nullptr;              // 0x358 entity using the actor (non-null while a reset is pending)
+    uint32_t field_1FC = 0;                   // 0x1FC cleared when an interaction begins
+    Entity* field_368 = nullptr;              // 0x368 counted, dropped when hidden
+    uint32_t field_3C8 = 0;                   // 0x3C8 player block value (+0x10D8) of the user
+    uint32_t tweenFlags = 0;                  // 0x3D4 bit 17 user damaged, bit 21, bit 29
     FloatTween tween_220;                     // 0x220
     ape::ApeTArray<void*> field_280;          // 0x280
     IntTween tween_36C;                       // 0x36C
