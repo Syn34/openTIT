@@ -74,5 +74,12 @@ public:
 ApeScene* CreateScene(uint32_t createFlags);
 // Registered scene in slot `index` (0..7), or null.
 ApeScene* GetScene(int index);
+// Loads the scene file at `path` into `scene` (the texture folder is the
+// file's "levels/" prefix).
+bool LoadSceneFile(ApeScene* scene, const char* path, bool flag);
+// Sets up the objects loaded into `scene` and ends its load state.
+void FinishSceneLoad(ApeScene* scene);
+// Destroys `scene` and the objects it owns.
+void DestroyScene(ApeScene* scene);
 
 } // namespace ape::world
