@@ -23,6 +23,7 @@
 #include "sly/entity/PhysicsHooks.h"
 
 #include <algorithm>
+#include <cstring>
 #include <cmath>
 
 namespace sly {
@@ -1200,6 +1201,20 @@ bool PushBlock::Release(bool kill)
         }
     }
     return ScriptedEntity::Release(kill);
+}
+
+// @func 0x001B7974 PushBlock::SetLocked
+void PushBlock::SetLocked(bool flag, bool locked)
+{
+    if (EntityGetState(this, 0) == 4)
+        return;
+    EntitySetState(this, 0, 0);
+    if (uint8_t* data = EntityStateData(this, 0)) {
+        uint32_t word;
+        std::memcpy(&word, data, sizeof(word));
+        word = (word & 0x3FFFFFFFu) | (flag ? 0x40000000u : 0u) | (locked ? 0x80000000u : 0u);
+        std::memcpy(data, &word, sizeof(word));
+    }
 }
 
 // @func 0x001B8F20 PushBlock::OnResume

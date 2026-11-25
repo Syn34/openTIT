@@ -525,13 +525,24 @@ public:
     uint8_t flags357 = 0;                     // 0x357 bit 7 set by slot 4, cleared by slot 5
 };
 
-// vtable 0x00B174C0 (0x3D0 bytes).
+// Sentry light (vtable 0x00B174C0, 0x3D0 bytes; entity type bit 27 of
+// +0xC4). NOTE: identified from the sentry light hooks of the level scripts.
 class SoundActorB174C0 : public SoundActor {
 public:
     ~SoundActorB174C0() override;
     // The class carries its own copy of SoundActor::Release (0x001D20D0).
     bool Release(bool kill) override;
+    // Turns the patrol around: bits 30 and 31 both become the inverse of bit 31.
+    // @func 0x001D3A00 SoundActorB174C0::ReversePatrol
+    void ReversePatrol()
+    {
+        const bool wasReversed = (lightFlags & 0x80000000u) != 0;
+        lightFlags = (lightFlags & 0x3FFFFFFFu) | (wasReversed ? 0u : 0xC0000000u);
+    }
+
     ape::ApeTArray<void*> field_22C;          // 0x22C
+    // Bit 26 locked, bit 27 on, bit 29 NOTE: unknown, bits 30-31 patrol direction.
+    uint32_t lightFlags = 0;                  // 0x3CC
 };
 
 // Actor holding a world object reference (vtable 0x00B18488, 0x200 bytes).
