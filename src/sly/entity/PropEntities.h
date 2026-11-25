@@ -58,12 +58,10 @@ public:
     virtual float ProjectileDamageScale() const { return 0.0f; }
 
     void* rigidBody = nullptr;           // 0x184 Havok rigid body
-    void* bodyAction = nullptr;          // 0x188 NOTE: added to the world with the body
-    int32_t propState = 0;               // 0x18C
 
 protected:
-    // Takes the body out of the world and drops it and the action.
-    void ReleaseBody();
+    // Takes the body out of the world and drops it (and `action`, if any).
+    void ReleaseBody(void* action);
     ape::Vec3 BodyVelocity() const;
     ape::Vec3 BodyMassCenter() const;
     // The hit reactions: the hit is taken (ScriptedEntity::ReceiveHit), the
@@ -117,6 +115,8 @@ public:
     // Slot 99: moves the body in or out of the physics world (0x00167570).
     virtual void SetPropState(int32_t state, uint32_t arg);
 
+    void* bodyAction = nullptr;          // 0x188 NOTE: added to the world with the body
+    int32_t propState = kProp_None;      // 0x18C PropState
     uint32_t field_190 = 0;              // 0x190 cleared when the body enters the world
     uint32_t field_194 = 0;              // 0x194
     Entity* interactor = nullptr;        // 0x198 NOTE: refused as interaction partner of kind 0
@@ -146,6 +146,10 @@ public:
 class AlterEgoEntity : public RigidBodyEntity {
 public:
     ~AlterEgoEntity() override;
+    bool Release(bool kill) override;                 // slot 10
+    void SetFlag80(bool on) override;                 // slot 23
+    // Slot 99: 1 puts the body into the world, 4 takes it out (0x0017734C).
+    virtual void SetAlterState(int32_t state);
     ape::Vec3 GetVelocity() override;                 // slot 35
     ape::Vec3 GetMassCenter() override;               // slot 71
     void OnHitCategory1(EntityHitRecord& hit) override;
@@ -155,6 +159,12 @@ public:
     float ProjectileDamageScale() const override;     // slot 89
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     const AlterEgoDef* Def() const { return static_cast<const AlterEgoDef*>(def); }
+
+    int32_t alterState = 0;              // 0x188
+    uint32_t field_18C = 0;              // 0x18C cleared by states 1 and 3
+    uint32_t collisionGroup = 0;         // 0x198
+    void* animScript1A0 = nullptr;       // 0x1A0
+    void* animScript1A4 = nullptr;       // 0x1A4
 };
 
 // Definition of the Bentley alter ego entity (vtable 0x00B14590, 0x110
@@ -261,6 +271,7 @@ public:
     float ProjectileDamageScale() const override;     // slot 89
     // Slot 94: the entity's own state (0x00190054, not ported).
     virtual void SetTargetState(int state);
+    void* bodyAction = nullptr;              // 0x188
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     // Empty override of the +0x17C interface's slot 5.
@@ -298,6 +309,7 @@ public:
     float ProjectileDamageScale() const override;     // slot 89
     // Slot 94: the figure's own state (0x0017DB34, not ported).
     virtual void SetTargetState(int state);
+    void* bodyAction = nullptr;              // 0x188
     // Slot 95: the state of layer 0; slot 97 asks slot 95.
     virtual int GetTargetState();
     virtual int GetTargetState97();
@@ -344,6 +356,8 @@ public:
     float ProjectileDamageScale() const override;     // slot 89
     // Slot 99: physics state (0x0016BC0C, not ported).
     virtual void SetPropState(int32_t state, uint32_t arg);
+    void* bodyAction = nullptr;              // 0x188
+    int32_t propState = 0;                   // 0x18C
     const PropDamageSettings& DamageSettings() const;
     // Empty overrides of the +0x17C interface's slots 5 and 6.
     void Interface17CSlot5() override;

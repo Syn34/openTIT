@@ -48,10 +48,10 @@ void RigidBodyEntity::SetFatal(EntityHitRecord& hit, bool alive)
                       : uint16_t(hit.flags | EntityHitRecord::kHit_Fatal);
 }
 
-void RigidBodyEntity::ReleaseBody()
+void RigidBodyEntity::ReleaseBody(void* action)
 {
-    if (bodyAction)
-        HavokRelease(bodyAction);
+    if (action)
+        HavokRelease(action);
     if (rigidBody) {
         if (RigidBodyInWorld(rigidBody))
             RigidBodyRemoveFromWorld(rigidBody);
@@ -134,6 +134,70 @@ void RigidBodyEntity::HitProjectile(const PropDamageSettings& settings, EntityHi
 
 // -- AlterEgoEntity (vtable 0x00B14968; damage block at definition +0xC8) -------------
 
+// @func 0x001783E0 AlterEgoEntity::Release
+bool AlterEgoEntity::Release(bool kill)
+{
+    if (kill) {
+        SetAlterState(4);
+        if (rigidBody) {
+            // The constraints the body holds go first.
+            for (int i = 0; i < RigidBodyConstraintCount(rigidBody); ++i)
+                HavokRelease(RigidBodyConstraint(rigidBody, i));
+            RigidBodyClearUserProperties(rigidBody);
+            HavokRelease(rigidBody);
+        }
+        if (animScript1A4) {
+            OrphanAndReleaseAnimScript(animScript1A4);
+            animScript1A4 = nullptr;
+        }
+        if (animScript1A0) {
+            OrphanAndReleaseAnimScript(animScript1A0);
+            // NOTE: the console clears +0x1A4 here again, leaving +0x1A0 set.
+            animScript1A4 = nullptr;
+        }
+    }
+    return ScriptedEntity::Release(kill);
+}
+
+// @func 0x00178548 AlterEgoEntity::SetFlag80
+void AlterEgoEntity::SetFlag80(bool on)
+{
+    Entity::SetFlag80(on);
+    if (!rigidBody || RigidBodyInWorld(rigidBody) != on)
+        return;
+    if (on)
+        RigidBodyRemoveFromWorld(rigidBody);
+    else if (alterState != 0)
+        RigidBodyAddToWorld(rigidBody, ~0u);
+}
+
+// @func 0x0017734C AlterEgoEntity::SetAlterState
+void AlterEgoEntity::SetAlterState(int32_t state)
+{
+    if (state == alterState)
+        return;
+    switch (state) {
+    case 1:
+        SetVisible(true, true, true, true);
+        if (rigidBody && !RigidBodyInWorld(rigidBody))
+            RigidBodyAddToWorld(rigidBody, collisionGroup);
+        else if (rigidBody)
+            RigidBodySetFilterGroup(rigidBody, collisionGroup);
+        field_18C = 0;
+        break;
+    case 3:
+        field_18C = 0;
+        break;
+    case 4:
+        if (rigidBody && RigidBodyInWorld(rigidBody))
+            RigidBodyRemoveFromWorld(rigidBody);
+        break;
+    default:
+        break;
+    }
+    alterState = state;
+}
+
 // @func 0x00178744 AlterEgoEntity::GetVelocity
 ape::Vec3 AlterEgoEntity::GetVelocity() { return BodyVelocity(); }
 
@@ -162,7 +226,7 @@ bool TargetableB::Release(bool kill)
 {
     if (kill) {
         SetTargetState(5);
-        ReleaseBody();
+        ReleaseBody(bodyAction);
     }
     return ScriptedEntity::Release(kill);
 }
@@ -205,7 +269,7 @@ bool TargetableA::Release(bool kill)
 {
     if (kill) {
         SetTargetState(6);
-        ReleaseBody();
+        ReleaseBody(bodyAction);
     }
     return ScriptedEntity::Release(kill);
 }
@@ -266,7 +330,7 @@ bool CompoundEntity::Release(bool kill)
 {
     if (kill) {
         SetPropState(9, 0);
-        ReleaseBody();
+        ReleaseBody(bodyAction);
     }
     return ScriptedEntity::Release(kill);
 }

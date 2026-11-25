@@ -19,6 +19,12 @@ void RigidBodyRemoveFromWorld(void* body);
 // with the collision group in the top half of its filter word (+0x2C);
 // ~0u leaves the filter word alone.
 void RigidBodyAddToWorld(void* body, uint32_t collisionGroup);
+// Collision group of a body that stays where it is (filter word +0x2C bits 16-31).
+void RigidBodySetFilterGroup(void* body, uint32_t collisionGroup);
+// Constraints attached to a body (hkpEntity::getNumConstraints 0x0091A2CC /
+// getConstraint 0x0091A7D8).
+int RigidBodyConstraintCount(void* body);
+void* RigidBodyConstraint(void* body, int index);
 // Adds an action to the game physics world (hkpWorld::addAction 0x0092E9D8).
 void PhysicsAddAction(void* action);
 // Motion type byte (+0xE8): 4 = keyframed, 5 = fixed.

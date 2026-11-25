@@ -30,7 +30,7 @@ bool RigidProp::Release(bool kill)
 {
     if (kill) {
         SetPropState(kProp_Removed, 0);
-        ReleaseBody();
+        ReleaseBody(bodyAction);
     }
     return ScriptedEntity::Release(kill);
 }
