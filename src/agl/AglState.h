@@ -73,12 +73,12 @@ struct AglRenderState {
 
     // Draw state caches of the renderer loop (0x010F10A4..0x010F10C0, 0x010F10F8).
     uint32_t field_10A4 = 0;
-    int32_t field_10A8 = -1;
-    uint32_t field_10B0 = 0;
-    const void* technique = nullptr;                 // 0x010F10B4: technique of the last draw
-    const void* techniqueBlock = nullptr;            // 0x010F10B8: its pre-recorded program block
+    const void* boundVertexBuffer = nullptr;         // 0x010F10A8: vertex memory of the last mesh draw
+    const struct AglVertexDecl* boundVertexDecl = nullptr; // 0x010F10B0
+    const struct AglVertexProgram* vertexProgram = nullptr; // 0x010F10B4: program of the bound technique
+    const void* vertexProgramBlock = nullptr;        // 0x010F10B8: its pre-recorded program block
     const void* material = nullptr;                  // 0x010F10BC
-    uint16_t field_10C0 = 0xFFFF;
+    uint16_t meshAttributes = 0xFFFF;                // 0x010F10C0: attributes enabled by mesh draws
     uint32_t field_10F8 = 0;
     bool materialDirty = false;                      // 0x010F10FC bit 31
 };
@@ -115,6 +115,9 @@ void BindTexture(const AglTextureImage* texture, uint32_t unit, int sampler);
 void ClearTargets(float depth, uint32_t mask, uint32_t color, uint32_t stencil, uint32_t stencilMask);
 // Commits deferred program and vertex stream state before a draw.
 void CommitDrawState();
+// The fragment program part of it: binds the current fragment program when
+// it changed and uploads its changed constants (also run by mesh draws).
+void CommitFragmentProgram();
 // Finds the stream feeding 'attribute' (+ 'attributeOffset') in a layout
 // table terminated by an entry with size 0.
 const AglVertexStream* FindVertexStream(const AglVertexStream* streams, uint32_t attribute,
