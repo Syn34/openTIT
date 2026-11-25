@@ -51,6 +51,7 @@ struct PlayerProgress {
     uint32_t field_14C = 0;          // +0x14C
     uint8_t inJob = 0;               // +0x150 1 while a job runs
     uint32_t currentJobValue = 0;    // +0x154 job record +0x2D4 of the running job
+    uint32_t notifyBits = 0;         // +0x15C named notification flags (sly/levels PlayerNotifyFlags)
     EpisodeProgress episodes[kEpisodeSlots];  // +0x1A0
     uint8_t jobStates[0x100] = {};   // +0x1D0 JobState by Episode::index. NOTE: count assumed
     // Arcade high score tables (0x2C bytes each from +0x288); only the first
@@ -412,6 +413,10 @@ public:
     // every active goal to the HUD (0x002E6E54). NOTE: name from use by the
     // minigame goals.
     void SetGoalCountersSuppressed(bool suppressed);
+    // A player picked up `treasure`: its bit is set in the collector's
+    // profile (notification flag 5 too), the treasure bookkeeping runs and
+    // the treasure's spawner is deactivated (0x002E66F4).
+    void CollectTreasure(entity::Entity* treasure, entity::Entity* collector) const;
     // Ends the running job and starts episode `job`: stage 0, flag 0x80
     // cleared and (unless `stayInLevel`) a request for its hideout level
     // (0x002E12D0); 0x002E142C finds the episode by its id first.
@@ -555,6 +560,9 @@ void GameCameraReset();
 void GameWorldUseAssociatedPlayer(Goal* goal);
 void GameWorldSwitchPlayerCharacter(uint32_t def);
 void GameWorldRespawnPlayer();
+// Profile byte of player `player`'s block (game world +0x1070 + player *
+// 0x20C80).
+uint8_t PlayerBlockProfile(int player);
 // Running level (game world +0x128114).
 uint32_t RunningLevel();
 // Reloads the running level (0x004896F8 with 0).

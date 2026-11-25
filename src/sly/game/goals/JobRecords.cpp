@@ -787,5 +787,41 @@ void JobManager::SetGoalCountersSuppressed(bool suppressed)
     flags = suppressed ? (flags | kFlag_CountersSuppressed) : (flags & ~kFlag_CountersSuppressed);
 }
 
+// @func 0x002E66F4 JobManager::CollectTreasure
+void JobManager::CollectTreasure(entity::Entity* treasure, entity::Entity* collector) const
+{
+    constexpr uint64_t kClass_Player = 0x1;
+    constexpr uint32_t kNotify_TreasureFound = 1u << 5;
+    if (!treasure || !collector || !(collector->classBits & kClass_Player))
+        return;
+    auto* spawner = static_cast<Spawner*>(treasure->field_DC);
+    if (!spawner)
+        return;
+    // NOTE: the top byte of the entity flags holds the player index.
+    const int player = static_cast<int8_t>(collector->flags >> 24);
+    PlayerProgress& progress = ProfileProgress(PlayerBlockProfile(player));
+    Job* job = CurrentEpisode();
+    if (job && job->bitGroup != 0xFF) {
+        if (job->bitGroup >= PlayerProgress::kEpisodeSlots) {
+            ape::TempFormat("Episode Index is out of bounds '%i'! Range is [0 - %i]! Have an engineer increase "
+                            "the size of the array.",
+                            job->bitGroup, PlayerProgress::kEpisodeSlots);
+        } else {
+            const uint32_t key = spawner->spawnPoint ? WorldObjectKey(spawner->spawnPoint) : 0;
+            CollectibleRecord** found = key ? g_treasures.Find(key) : nullptr;
+            if (found && *found) {
+                progress.jobBits[job->bitGroup] |= static_cast<uint16_t>(1u << ((*found)->bit & 0x3F));
+                progress.notifyBits |= kNotify_TreasureFound;
+            } else {
+                ape::TempFormat("Couldn't find treasure '%s' with associated spawner '%s' in the treasure info map!",
+                                ape::TempHexString(treasure->nameHash),
+                                spawner->spawnPoint ? WorldObjectName(spawner->spawnPoint) : "");
+            }
+            OnTreasureCollected(currentJob);
+        }
+    }
+    spawner->Deactivate(false);
+}
+
 } // namespace game
 } // namespace sly

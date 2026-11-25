@@ -52,6 +52,7 @@ void GameWorldUseAssociatedPlayer(Goal*) {}
 void GameWorldSwitchPlayerCharacter(uint32_t) {}
 void GameWorldRespawnPlayer() {}
 uint32_t RunningLevel() { return 0; }
+uint8_t PlayerBlockProfile(int) { return 0; }
 void GameWorldReloadLevel() {}
 void GameWorldSetState(int, int) {}
 void GameWorldSetStateData(uint32_t, uint32_t) {}
