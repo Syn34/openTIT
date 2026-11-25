@@ -144,6 +144,23 @@ public:
     virtual ape::Vec3 GetAimPosition();
     // Slot 38: turn rate of the character component (0x001290F0).
     virtual float GetTurnRate();
+    // Slots 89-93: how projectiles hitting the character are treated
+    // (Entity.Character.Damage.* settings).
+    // @func 0x007382E0 Character::ProjectileDamageScale
+    virtual float ProjectileDamageScale() { return damage.projectile; }
+    // @func 0x007382E8 Character::ReflectsProjectiles
+    virtual bool ReflectsProjectiles() { return damage.projectileReflect; }
+    // @func 0x007382F0 Character::ReflectsProjectilesRandomly
+    virtual bool ReflectsProjectilesRandomly() { return damage.projectileRandomReflect; }
+    // @func 0x007382F8 Character::ProjectileReflectAngle
+    virtual float ProjectileReflectAngle() { return damage.projectileAngle; }
+    // @func 0x00738300 Character::ProjectileReflectVelScalar
+    virtual float ProjectileReflectVelScalar() { return damage.projectileVelScalar; }
+    // Slots 95/96. NOTE: empty in every character class; meaning unknown.
+    // @func 0x0073835C Character::Slot95
+    virtual void Slot95() {}
+    // @func 0x00738360 Character::Slot96
+    virtual void Slot96() {}
 
     Entity* field_17C = nullptr;                    // 0x17C
     CharacterController* controller = nullptr;      // 0x180 the one in charge (may alias the others)
