@@ -170,6 +170,37 @@ void AnimController::SetSkeleton(uint32_t name, bool layersToo, bool force)
     }
 }
 
+// @func 0x00351898 AnimController::AddBlendLayer
+AnimLayer* AnimController::AddBlendLayer(uint32_t anim, uint32_t weightList, bool holdLastFrame)
+{
+    auto* layer = new AnimBlendLayer();
+    layer->anim = anim;
+    layer->owner = this;
+    layer->Bind(rig ? rig->skeleton : nullptr, false);
+    layer->holdLastFrame = holdLastFrame;
+    layer->SetBoneWeights(FindBoneWeightList(weightList));
+    if (layer->weightList)
+        layer->defaultWeightList = layer->weightList;
+    if (!layers)
+        layers = new ape::ApeTArray<AnimLayer*>();
+    layers->PushBack(layer);
+    return layer;
+}
+
+// @func 0x00351A40 AnimController::BuildLayers
+void AnimController::BuildLayers(const AnimTree* tree)
+{
+    if (!tree)
+        return;
+    for (uint32_t i = 0; i < tree->count; ++i) {
+        const AnimTreeLayer& entry = tree->layers[i];
+        if (entry.kind == AnimTreeLayer::kKind_Plain)
+            AddLayer(entry.anim);
+        else if (entry.kind == AnimTreeLayer::kKind_Blend)
+            AddBlendLayer(entry.anim, entry.weightList, entry.holdLastFrame);
+    }
+}
+
 // @func 0x0034CDB0 AnimController::IsAnimatedThisFrame
 bool AnimController::IsAnimatedThisFrame() const
 {

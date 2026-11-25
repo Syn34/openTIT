@@ -71,6 +71,11 @@ public:
     // 0x00350764: binds the controller (and with `layersToo` every layer)
     // to the skeleton registered as `name`.
     void SetSkeleton(uint32_t name, bool layersToo, bool force);
+    // 0x00351898: creates a blend layer for `anim` with the bone weight list
+    // named `weightList` (holding its last frame when `holdLastFrame`).
+    AnimLayer* AddBlendLayer(uint32_t anim, uint32_t weightList, bool holdLastFrame);
+    // 0x00351A40: creates the layers listed by an anim tree.
+    void BuildLayers(const struct AnimTree* tree);
     // 0x0034CDB0: the controller animates this frame (running, and drawn,
     // forced, within its cull distance or not a geometry instance).
     bool IsAnimatedThisFrame() const;
@@ -112,6 +117,24 @@ public:
     void* field_6C = nullptr;
     void* field_70 = nullptr;
     void* field_74 = nullptr;                 // +0x74 0xB0-byte block
+};
+
+// An anim tree (registry 0x0106BB9C): the layers an Anim component's
+// controller starts with.
+struct AnimTreeLayer {
+    enum Kind : uint32_t {
+        kKind_Plain = 0xFF45EF93,   // NOTE: name unknown
+        kKind_Blend = 0x19A18BC2,   // NOTE: name unknown
+    };
+    uint32_t anim = 0;            // +0x00
+    uint32_t kind = 0;            // +0x04 Kind
+    uint32_t field_08 = 0;
+    uint32_t weightList = 0;      // +0x0C bone weight list name (blend layers)
+    bool holdLastFrame = false;   // +0x10
+};
+struct AnimTree {
+    uint32_t count = 0;
+    AnimTreeLayer* layers = nullptr;
 };
 
 // -- module state ---------------------------------------------------------------

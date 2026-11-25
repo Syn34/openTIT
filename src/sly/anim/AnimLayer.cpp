@@ -395,6 +395,12 @@ void AnimLayer::SetBoneWeights(const BoneWeightList* list)
 
 // -- blend layer ------------------------------------------------------------------
 
+// @func 0x003516C4 AnimBlendLayer::AnimBlendLayer
+AnimBlendLayer::AnimBlendLayer() : AnimLayer(nullptr, 0), weightsA(0x40), weightsB(0x40)
+{
+    flags |= kFlag_Blend;
+}
+
 // @func 0x003544AC AnimBlendLayer::~AnimBlendLayer
 // @func 0x00354598 AnimBlendLayer::~AnimBlendLayer (deleting)
 AnimBlendLayer::~AnimBlendLayer() = default;

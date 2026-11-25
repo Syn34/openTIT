@@ -50,6 +50,7 @@ public:
         kFlag_JustFinished = 1u << 25,   // finished during the last update
         kFlag_Finished     = 1u << 26,   // finished (latched until replayed)
         kFlag_Looping      = 1u << 27,   // never finishes at the clip end
+        kFlag_Blend        = 1u << 30,   // set by the blend layer constructor. NOTE: meaning assumed
     };
 
     AnimLayer(AnimController* owner, uint32_t anim);
@@ -128,7 +129,8 @@ protected:
 // frame (vtable 0x00B1F570, 0x6C bytes).
 class AnimBlendLayer : public AnimLayer {
 public:
-    using AnimLayer::AnimLayer;
+    // 0x003516C4 (owner and clip are filled in by AnimController::AddBlendLayer).
+    AnimBlendLayer();
     ~AnimBlendLayer() override;               // 0x003544AC / 0x00354598
     // 0x003546D0: after the base update, fades the effective weight from 1
     // to 0 over a quarter second once the clip holds its last frame at
@@ -142,7 +144,7 @@ public:
     float BoneWeightA(uint32_t bone) const;
     float BoneWeightB(uint32_t bone) const;
 
-    uint32_t field_2C = 0;                    // +0x2C
+    const BoneWeightList* defaultWeightList = nullptr;   // +0x2C list given at creation
     const BoneWeightList* weightList = nullptr;   // +0x30 list the maps were built from
     ape::ApeTSortedMap<float> weightsA;       // +0x34 bone index -> weight
     ape::ApeTSortedMap<float> weightsB;       // +0x4C bone index -> min weight

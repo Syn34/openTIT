@@ -19,8 +19,10 @@ void* LevelPhysicsWorld() { return nullptr; }
 void AIBrainFillInput(void* brain, void* input) { (void)brain; (void)input; }
 void* FindAnimTree(uint32_t nameHash) { return anim::FindAnimTree(nameHash); }
 ape::anim::AnimClipManager* GameAnimClipManager() { return ape::anim::g_animClipManager; }
-// TODO(0x00351A40 AnimController::BuildLayersFromTree)
-void AnimControllerBuildLayers(anim::AnimController*, void*) {}
+void AnimControllerBuildLayers(anim::AnimController* controller, void* tree)
+{
+    controller->BuildLayers(static_cast<const anim::AnimTree*>(tree));
+}
 void* FindAnimBlendMap(uint32_t nameHash) { return anim::FindAnimBlendMap(nameHash); }
 
 // TODO(0x00367900 / 0x00362BEC / 0x00257910 / 0x0046B7A4): HUD element
