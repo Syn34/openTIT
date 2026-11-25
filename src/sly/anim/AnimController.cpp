@@ -5,6 +5,7 @@
 #include "sly/entity/EntityHooks.h"
 
 #include "ape/core/ApeString.h"
+#include "ape/memory/ApeBucketAlloc.h"
 #include "ape/world/ApeBase.h"
 #include "ape/world/ApeInstances.h"
 #include "ape/world/ApeObj.h"
@@ -112,11 +113,28 @@ AnimController::AnimController(ape::world::ApeObj* object_) : object(object_)
     AnimControllers().PushBack(this);
 }
 
-// TODO(0x0034BF9C AnimController::~AnimController): the rig, poses, layers,
-// per-bone objects and the five helper arrays are not released yet; only
-// the global list entry is dropped.
+// @func 0x0034BF9C AnimController::~AnimController
 AnimController::~AnimController()
 {
+    // Bone objects go back to the default pivot.
+    if (boneObjects && rig) {
+        if (object->GetType() == ape::world::kObjType_CameraInstance) {
+            object->m_pivot = &ape::world::kWorldIdentity;
+        } else {
+            for (int32_t i = 0; i < rig->skeleton->boneCount; ++i) {
+                if (boneObjects[i])
+                    boneObjects[i]->m_pivot = &ape::world::kWorldIdentity;
+            }
+        }
+    }
+    if (boneBuffer) {
+        ape::BucketFree(boneBuffer, boneBufferSize);
+        boneBuffer = nullptr;
+    }
+    if (boneObjects) {
+        ape::BucketFree(boneObjects, boneObjectsSize);
+        boneObjects = nullptr;
+    }
     ape::ApeTArray<AnimController*>& all = AnimControllers();
     for (uint32_t i = 0; i < all.Count(); ++i) {
         if (all[i] == this) {
@@ -124,6 +142,48 @@ AnimController::~AnimController()
             break;
         }
     }
+    if (pose) {
+        HkPoseDelete(pose);
+        pose = nullptr;
+    }
+    if (rig) {
+        HkRemoveReference(rig);
+        rig = nullptr;
+    }
+    if (pose2) {
+        HkPoseDelete(pose2);
+        pose2 = nullptr;
+    }
+    if (rig2) {
+        HkRemoveReference(rig2);
+        rig2 = nullptr;
+    }
+    if (block74) {
+        ape::BucketFree(block74, 0xB0);
+        block74 = nullptr;
+    }
+    if (records6C) {
+        for (AnimRecord140& record : *records6C)
+            delete record.object;
+    }
+    if (layers) {
+        for (AnimLayer* layer : *layers)
+            delete layer;
+    }
+    delete field_70;
+    delete records6C;
+    delete field_68;
+    delete records64;
+    delete records60;
+    delete layers;
+    field_70 = nullptr;
+    records6C = nullptr;
+    field_68 = nullptr;
+    records64 = nullptr;
+    records60 = nullptr;
+    layers = nullptr;
+    // NOTE: the console's listener pool (+0x44) goes back to its allocator;
+    // the port keeps the listeners in place.
 }
 
 // @func 0x0034CC34 AnimController::FindLayer

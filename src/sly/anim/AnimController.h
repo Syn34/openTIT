@@ -27,6 +27,22 @@ class AnimLayer;
 // text pointer with bit 0 cleared.
 using AnimEventCallback = void (*)(uint32_t event, bool fromAnnotation, void* userData);
 
+// Records of the controller's helper arrays (see AnimController::records60..).
+// NOTE: layouts unknown beyond their sizes and the owned object.
+struct alignas(16) AnimRecordE0 { uint8_t data[0xE0]; };
+struct alignas(16) AnimRecord20 { uint8_t data[0x20]; };
+// Object owned by a 0x140-byte record (deleted through its virtual
+// destructor, slot 1).
+class AnimRecordObject {
+public:
+    virtual ~AnimRecordObject() = default;
+};
+struct alignas(16) AnimRecord140 {
+    uint8_t data_00[0x90];
+    AnimRecordObject* object = nullptr;   // +0x90
+    uint8_t data_94[0xAC];
+};
+
 class AnimController {
 public:
     // Flag word (+0x28).
@@ -116,12 +132,14 @@ public:
     HkaPose* pose2 = nullptr;                 // +0x54 NOTE: second pose, use unknown
     HkaAnimatedSkeleton* rig2 = nullptr;      // +0x58 (holds a reference)
     ape::ApeTArray<AnimLayer*>* layers = nullptr;   // +0x5C created on demand
-    void* field_60 = nullptr;                 // +0x60 arrays released by the destructor
-    void* field_64 = nullptr;
-    void* field_68 = nullptr;
-    void* field_6C = nullptr;
-    void* field_70 = nullptr;
-    void* field_74 = nullptr;                 // +0x74 0xB0-byte block
+    // Helper arrays released by the destructor. NOTE: element roles unknown;
+    // nothing in the port fills them yet.
+    ape::ApeTArray<AnimRecordE0>* records60 = nullptr;     // +0x60 0xE0-byte records
+    ape::ApeTArray<AnimRecord20>* records64 = nullptr;     // +0x64 0x20-byte records
+    ape::ApeTArray<uint32_t>* field_68 = nullptr;          // +0x68 NOTE: element type unknown
+    ape::ApeTArray<AnimRecord140>* records6C = nullptr;    // +0x6C 0x140-byte records owning an object
+    ape::ApeTArray<uint32_t>* field_70 = nullptr;          // +0x70 NOTE: element type unknown
+    void* block74 = nullptr;                  // +0x74 0xB0-byte block (bucket allocated)
 };
 
 // An anim tree (registry 0x0106BB9C): the layers an Anim component's
