@@ -633,7 +633,8 @@ SeqSpeakerDialogScriptCommand::SeqSpeakerDialogScriptCommand(XmlElement* element
     }
 }
 
-// NOTE: the destructors live at 0x0074xxxx (outside this range).
+// @func 0x00741688 SeqSpeakerDialogScriptCommand::~SeqSpeakerDialogScriptCommand
+// @func 0x007416F0 SeqSpeakerDialogScriptCommand::~SeqSpeakerDialogScriptCommand (deleting)
 SeqSpeakerDialogScriptCommand::~SeqSpeakerDialogScriptCommand() = default;
 
 // @func 0x000A1650 SeqSpeakerDialogScriptCommand::Create

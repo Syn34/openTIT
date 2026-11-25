@@ -217,7 +217,8 @@ SeqSpawnEntityCommand::SeqSpawnEntityCommand(XmlElement* element)
         ape::StrCopyBounded(m_entityName, name, 0x40);
 }
 
-// NOTE: the destructors live at 0x0074xxxx (outside this range).
+// @func 0x00742668 SeqSpawnEntityCommand::~SeqSpawnEntityCommand
+// @func 0x00742698 SeqSpawnEntityCommand::~SeqSpawnEntityCommand (deleting)
 SeqSpawnEntityCommand::~SeqSpawnEntityCommand() = default;
 
 // @func 0x000A6774 SeqSpawnEntityCommand::Create
@@ -447,7 +448,8 @@ SyncSequenceCommand::SyncSequenceCommand(XmlElement* element) : SyncSequenceComm
     }
 }
 
-// NOTE: the destructors are at 0x007428E0 / 0x00742948 (outside this range).
+// @func 0x007428E0 SyncSequenceCommand::~SyncSequenceCommand
+// @func 0x00742948 SyncSequenceCommand::~SyncSequenceCommand (deleting)
 SyncSequenceCommand::~SyncSequenceCommand() = default;
 
 // @func 0x000A7394 SyncSequenceCommand::Create
