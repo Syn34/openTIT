@@ -6,6 +6,11 @@
 #include "sly/levels/ai/AIComponent.h"
 #include "sly/levels/ai/AIHooks.h"
 #include "sly/levels/ai/AIProxyPoints.h"
+#include "sly/entity/CharacterHooks.h"
+#include "sly/entity/PhysicsHooks.h"
+#include "sly/entity/ScriptedEntity.h"
+#include "ape/world/ApeBase.h"
+#include "ape/world/ApeObj.h"
 
 namespace sly {
 namespace levels {
@@ -27,8 +32,24 @@ constexpr uint32_t kMsg_Scare2 = 0x04861257u;
 constexpr uint32_t kMsg_PointOfInterest = 0xC248AB03u;
 constexpr uint32_t kMsg_Distract = 0x5E74BA3Fu;
 
+// Script commands (OnScriptCommand). NOTE: names from what they do.
+constexpr uint32_t kCmd_GoToPointIdle = 0xDD152036u;
+constexpr uint32_t kCmd_TeleportToPoint = 0xAFAA98B7u;
+constexpr uint32_t kCmd_PlayClip = 0x9EA78345u;
+constexpr uint32_t kCmd_Resume = 0x8FE13130u;
+constexpr uint32_t kCmd_Attack = 0x73B1E248u;
+constexpr uint32_t kCmd_GoToPointMove = 0x376E1DF1u;
+constexpr uint32_t kCmd_Idle = 0x002237D4u;          // "Idle"
+constexpr uint32_t kCmd_SetSpawner = 0xF309EAC6u;
+
 const ape::Vec3 kUp = {0.0f, 1.0f, 0.0f, 0.0f};          // 0x01164B60
 const ape::Vec3 kForward = {0.0f, 0.0f, 1.0f, 0.0f};     // 0x01164B70 (assumed)
+
+float DistanceSq(const ape::Vec3& a, const ape::Vec3& b)
+{
+    const float dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+    return dx * dx + dy * dy + dz * dz;
+}
 
 float RandomBetween(const PropertyBlock* settings, AIProp minProp, AIProp maxProp)
 {
@@ -114,6 +135,213 @@ void CritterAI::SnapToGround(bool fromSpawnHeight)
 ape::Vec3 CritterAI::FleePoint(const ape::Vec3& away)
 {
     return {transform.translation.x - away.x, transform.translation.y, transform.translation.z - away.z, 0.0f};
+}
+
+// @func 0x0001DE74 CritterAI::TickEntity
+// Physical critters follow their body.
+void CritterAI::TickEntity(float dt)
+{
+    (void)dt;
+    if (!PropBool(settings, AIProp::Critter_UsePhysics))
+        return;
+    void* body = EntityRigidBody(entity);
+    if (body && entity::RigidBodyInWorld(body))
+        transform = entity::RigidBodyTransform(body);
+}
+
+// @func 0x0001ED28 CritterAI::OnScriptCommand
+void CritterAI::OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value)
+{
+    (void)value;
+    entity->SetActive(false);
+    // Walk to a named point (snapped to the nav mesh when the critter uses
+    // navigation).
+    auto goToPoint = [this](uint32_t pointName) {
+        ape::world::ApeObj* point = ape::world::FindObject(pointName, ape::world::kObjType_PointInstance);
+        if (!point)
+            return;
+        ape::Vec3 goal = point->GetLocal().translation;
+        if (PropBool(settings, AIProp::Critter_UseNavigation))
+            goal = NavSnapPoint(goal);
+        SetHomePosition(goal);
+    };
+    switch (command) {
+    case kCmd_GoToPointIdle:
+        if (!arg2)
+            return;
+        goToPoint(arg2);
+        if (arg1) {
+            idleClip = arg1;
+            field_1C = kState_ScriptAnim;
+        }
+        SetState(kState_GoTo);
+        return;
+    case kCmd_GoToPointMove:
+        if (!arg2)
+            return;
+        goToPoint(arg2);
+        if (arg1)
+            moveClip = arg1;
+        SetState(kState_GoTo);
+        return;
+    case kCmd_TeleportToPoint:
+        if (ape::world::ApeObj* point = ape::world::FindObject(arg2, ape::world::kObjType_PointInstance))
+            Teleport(point->GetLocal(), false);
+        return;
+    case kCmd_PlayClip:
+        if (arg1)
+            idleClip = arg1;
+        entity::CharacterCompResetPose(characterComp);
+        SetState(kState_ScriptAnim);
+        return;
+    case kCmd_Resume:
+        entity::CharacterCompResetPose(characterComp);
+        SetState(field_1C);
+        return;
+    case kCmd_Attack:
+        if (Entity* victim = entity::FindEntity(arg2)) {
+            SetTarget(victim);
+            SetState(kState_Charge);
+            flags1 |= kF1_Bit1;
+        }
+        return;
+    case kMsg_Kill:
+        if (state != kState_Dead)
+            SetState(kState_Dead);
+        return;
+    case kCmd_Idle:
+        if (arg1)
+            idleClip = arg1;
+        entity::CharacterCompResetPose(characterComp);
+        SetState(kState_Idle);
+        return;
+    case kCmd_SetSpawner:
+        if (void* spawner = FindSpawnerByName(arg2))
+            entity->field_DC = spawner;
+        return;
+    default:
+        return;
+    }
+}
+
+// @func 0x0001F408 CritterAI::ChooseState
+void CritterAI::ChooseState()
+{
+    const ape::Vec3& position = transform.translation;
+    // Target that can still be fought: a living player character.
+    auto fightableTarget = [this]() -> Entity* {
+        if (!target || !(target->typeBits[0] & 2))
+            return nullptr;
+        if (static_cast<entity::ScriptedEntity*>(target)->IsDead())
+            return nullptr;
+        return target;
+    };
+    auto idleOrMove = [this]() { SetState(CharacterHasClip(characterComp, idleClip) ? kState_Idle : kState_Move); };
+    const float attackDist = PropFloat(settings, AIProp::Critter_AttackPlayerDist);
+
+    switch (state) {
+    case kState_Idle:
+        idleDelay = RandomBetween(settings, AIProp::Critter_IdleDelayMin, AIProp::Critter_IdleDelayMax);
+        if (idleDelay > 0.0f)
+            SetState(kState_Move);
+        return;
+    case kState_Move:
+        if (IsWithinLeash() || stateTime > 6.0f)
+            SetState(kState_Move);
+        return;
+    case kState_GoTo:
+        if (IsWithinLeash())
+            SetState(field_1C);
+        return;
+    case kState_Approach:
+        if (IsWithinLeash())
+            SetState(kState_Wait);
+        return;
+    case kState_Wait:
+    case kState_Perched:
+        return;
+    case kState_Return:
+        if (IsWithinLeash())
+            SetState(kState_Move);
+        return;
+    case kState_Flee: {
+        if (!IsWithinLeash() && stateTime <= 4.0f)
+            return;
+        Entity* player = PlayerCharacter();
+        if (!player)
+            return;
+        const float stopDist = PropFloat(settings, AIProp::Critter_StopFleeingPlayerDist);
+        if (DistanceSq(player->Position(), position) > stopDist * stopDist) {
+            idleOrMove();
+            return;
+        }
+        const ape::Vec3 away = {player->Position().x - position.x, player->Position().y - position.y,
+                                player->Position().z - position.z, 0.0f};
+        SetHomePosition(FleePoint(away));
+        return;
+    }
+    case kState_FleeTurn:
+        if (IsWithinLeash() || stateTime > 4.0f)
+            SetState(kState_Flee);
+        return;
+    case kState_Charge: {
+        Entity* victim = fightableTarget();
+        const AIManager* manager = GetAIManager();
+        if (!victim || (manager && manager->targetingPause > 0.0f)) {
+            idleOrMove();
+            return;
+        }
+        const float d2 = DistanceSq(victim->Position(), position);
+        if (d2 < attackDist * attackDist) {
+            SetState(kState_Attack);
+            return;
+        }
+        if (!(victim->classBits & 1))
+            return;
+        const float chargeDist = PropFloat(settings, AIProp::Critter_ChargePlayerDist);
+        if (d2 <= chargeDist * chargeDist && TargetReachable())
+            return;
+        SetState(kState_Move);
+        return;
+    }
+    case kState_Attack: {
+        Entity* victim = fightableTarget();
+        if (!victim) {
+            idleOrMove();
+            return;
+        }
+        const float d2 = DistanceSq(victim->Position(), position);
+        SetState(d2 >= attackDist * attackDist ? kState_Charge : kState_Attack);
+        return;
+    }
+    case kState_Notice: {
+        Entity* player = PlayerCharacter();
+        if (!player)
+            return;
+        const float noticeDist = PropFloat(settings, AIProp::Critter_NoticePlayerDist);
+        if (DistanceSq(player->Position(), position) > noticeDist * noticeDist)
+            SetState(kState_Idle);
+        return;
+    }
+    case kState_Dead:
+    case kState_Gone:
+        // The body stays where it fell and stops updating.
+        entity->SetBusyFlag(true);
+        entity->flags2 |= entity::kEnt2_NoUpdate;
+        return;
+    case kState_Perch:
+        if (IsWithinLeash())
+            SetState(kState_Land);
+        else if (stateTime > 8.0f)
+            SetState(kState_Move);
+        return;
+    case kState_Land:
+        SetState(kState_Perched);
+        return;
+    default:
+        SetState(kState_Move);
+        return;
+    }
 }
 
 // @func 0x0001E7F0 CritterAI::OnMessage

@@ -604,6 +604,18 @@ void AIController::StartStateScript(uint32_t scriptHash)
     ape::ApeAnimScriptInstance::Register(stateScript);
 }
 
+// TODO(0x000147B8 AIController::NavSnapPoint): NavPower nearest point query.
+ape::Vec3 AIController::NavSnapPoint(const ape::Vec3& point)
+{
+    return point;
+}
+
+// TODO(0x00015AAC AIController::TargetReachable): NavPower path query.
+bool AIController::TargetReachable()
+{
+    return true;
+}
+
 // @func 0x00015944 AIController::SetHomePosition
 void AIController::SetHomePosition(const ape::Vec3& position)
 {

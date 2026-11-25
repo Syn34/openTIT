@@ -310,6 +310,11 @@ public:
     bool IsBodyKeyframed() const;
     // Steps along the patrol path of the current proxy point.
     void AdvancePatrol();
+    // Nearest point the nav agent can stand on (0x000147B8, NavPower).
+    ape::Vec3 NavSnapPoint(const ape::Vec3& point);
+    // The target can be reached over the nav mesh (always for targets that
+    // are not players) (0x00015AAC, NavPower).
+    bool TargetReachable();
     // Re-tests the line of sight to the target if needed.
     bool IsTargetVisible();
     // Line of sight test between two points. TODO(0x000138B0): Ghidra reports
