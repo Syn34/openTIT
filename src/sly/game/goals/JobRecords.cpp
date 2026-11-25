@@ -651,13 +651,13 @@ void JobManager::OnGameEvent(int player, const GameEvent& e)
 
     if (!(flags & kFlag_ClearingGoals)) {
         if (e.type == kEvent_03)
-            field_54 = static_cast<uint32_t>(e.arg0);
+            lastEventEntity = reinterpret_cast<entity::Entity*>(e.arg0);
         for (uint32_t i = 0; i < PlayerGoalCount(); ++i) {
             Goal* goal = PlayerGoalListAt(i);
             if ((goals::JobGoalSaveWord(goal->job, goal->saveSlot) >> 28) == goals::kGoal_Active && IsGoalLive(goal))
                 goal->Update(0, e);
         }
-        field_54 = 0;
+        lastEventEntity = nullptr;
     }
 
     if (e.type != kEvent_01 || e.groupId != kGroup_Penguin || e.arg0 == 0)

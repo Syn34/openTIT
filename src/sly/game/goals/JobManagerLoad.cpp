@@ -438,9 +438,9 @@ void JobManager::OnLevelStart()
     field_50 = 0;
     field_40 = 0;
     field_44 = nullptr;
-    pendingRequest[0] = 0;
-    pendingRequest[1] = 0;
-    field_54 = 0;
+    failMessage = nullptr;
+    failPlayer = 0;
+    lastEventEntity = nullptr;
     flags &= ~0x30000000u;
 
     if (streamFlags & (1u << 29)) {

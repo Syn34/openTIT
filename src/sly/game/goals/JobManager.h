@@ -16,7 +16,7 @@ namespace sly {
 class Spawner;
 struct GameEvent;
 namespace goals { class Goal; }
-namespace entity { class Entity; }
+namespace entity { class Entity; class EntityComponent; }
 
 namespace game {
 using goals::Goal;
@@ -531,6 +531,12 @@ public:
     // asked for; a checkpoint with "teleportToCheckPoint" moves the player
     // there (0x002E3AEC). NOTE: only the local player's block is modelled.
     void RespawnForGoal(Goal* goal, int player);
+    // A goal failed: when it has a fail message and no fail screen is up,
+    // either the entity of the last event 3 is told and the message waits
+    // for FlushPendingRequest (the player loses control meanwhile), or the
+    // fail screen state starts right away. The goal's fail scripts then run
+    // every update (0x002E5DD8).
+    void OnGoalFailed(Goal* goal, uint8_t player);
     bool StartJobFromHub(Episode* job, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
                          bool levelRequestFlag, bool skipBookkeeping, bool track);
     // Ends the running job instance, first updating its episode's flag 0x20
@@ -560,8 +566,9 @@ public:
     Goal* trackedGoal = nullptr;     // +0x48
     Goal* failingGoal = nullptr;     // +0x4C goal whose fail scripts run every update
     uint32_t field_50 = 0;           // +0x50
-    uint32_t field_54 = 0;           // +0x54
-    uint32_t pendingRequest[2] = {}; // +0x58
+    entity::Entity* lastEventEntity = nullptr;   // +0x54 source of the event 3 being dispatched
+    const char* failMessage = nullptr;   // +0x58 message of a failed goal waiting for the fail screen
+    uint32_t failPlayer = 0;         // +0x5C player that failed it
     uint32_t trackedGoalId = 0;      // +0x60 goal to track after loading, 0 = first open goal
     uint32_t flags = 0;              // +0x64 bit 29: a request is pending, bit 30: goals being cleared
 
@@ -628,6 +635,14 @@ void GameWorldRespawnPlayer(const ape::Matrix34& transform);
 // Profile byte of player `player`'s block (game world +0x1070 + player *
 // 0x20C80).
 uint8_t PlayerBlockProfile(int player);
+// The entity of local player `player` (game world +0x1078 + player * 0x20C80).
+entity::Entity* PlayerEntityOf(int player);
+// The gadget component lets the player be stopped (0x0029A40C).
+bool GadgetAllowsStop(entity::EntityComponent* gadget);
+// Drops every target of a targeting component (0x0029F26C).
+void TargetingClearTargets(entity::EntityComponent* targeting);
+// Stops the script a type-0x17 component is playing (0x00276558).
+void AnimDriverStopScript(entity::EntityComponent* driver);
 // Per-profile values the game world keeps for the profile record: a
 // pending count (+0x1028 + profile) and a pair of flags (+0x1029 +
 // profile * 2).
@@ -698,7 +713,8 @@ Goal* PlayerGoalListAt(uint32_t index);
 // data word pair of its current state (+0x14 buffer, +0x06 offset).
 int GameWorldState(int layer);
 void GameWorldSetState(int layer, int state);
-void GameWorldSetStateData(uint32_t first, uint32_t second);
+// The state data of the fail screen state: the message and the player.
+void GameWorldSetStateData(const char* message, uint32_t player);
 // Game world +0x128114: id of the job that is running (0 = none).
 uint32_t LiveJobId();
 // 0x0029D838 on a targeting component.

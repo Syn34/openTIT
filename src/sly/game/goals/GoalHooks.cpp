@@ -18,7 +18,11 @@ bool IsGoalInLiveJob(const Goal* goal)
     game::JobManager* manager = game::GetJobManager();
     return manager && manager->IsGoalLive(goal);
 }
-void JobManagerGoalFailed(Goal*, uint8_t) {}
+void JobManagerGoalFailed(Goal* goal, uint8_t ownerFlag)
+{
+    if (game::JobManager* manager = game::GetJobManager())
+        manager->OnGoalFailed(goal, ownerFlag);
+}
 void JobManagerBeforeFailSequence()
 {
     if (game::JobManager* manager = game::GetJobManager())
