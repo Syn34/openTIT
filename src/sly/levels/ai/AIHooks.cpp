@@ -45,6 +45,7 @@ ape::Matrix34 EntityBoneTransform(Entity* entity, uint32_t boneHash)
 void EntityRootMotion(Entity*, float, ape::Matrix34&) {}
 void* EntityRigidBody(Entity*) { return nullptr; }
 void* FindSpawnerByName(uint32_t) { return nullptr; }
+bool CrittersMayNotCharge() { return false; }
 ape::Vec3 EntityObjectScale(const Entity*) { return {1.0f, 1.0f, 1.0f, 0.0f}; }
 void AnimControllerSetEngaged(Entity*, bool) {}
 void CharacterClearAIHold(Entity* character)

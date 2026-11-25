@@ -270,6 +270,9 @@ void CharacterClearAIHold(Entity* character);
 // Entity virtual slot 36 (+0x90): the Havok rigid body of the entity's
 // physics component, or null.
 void* EntityRigidBody(Entity* entity);
+// Game world halfword +0x128214. NOTE: non-zero keeps critters from
+// charging (a game mode flag; meaning unknown).
+bool CrittersMayNotCharge();
 // Spawner registered under a name (spawner map 0x00F65BE8 +0x04), or null.
 void* FindSpawnerByName(uint32_t nameHash);
 // -- physics body (entity virtual slot 16) ------------------------------------------

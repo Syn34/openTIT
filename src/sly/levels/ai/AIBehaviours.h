@@ -69,6 +69,7 @@ public:
     void TickEntity(float dt) override;
     void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value) override;
     void ChooseState() override;
+    bool Think(float dt) override;
 
     // Clip played while moving (0x0001F330).
     void SetMoveClip(uint32_t clipHash);
@@ -77,6 +78,10 @@ public:
     void SnapToGround(bool fromSpawnHeight);
     // Point to run to, away from `away`. TODO(0x0001E420): bad instruction data.
     ape::Vec3 FleePoint(const ape::Vec3& away);
+    // Quick turn while fleeing (part of Think) and a perch point on a rail
+    // (TODO 0x00020100).
+    void QuickTurn(const Entity& player);
+    bool FindPerch();
 
     float idleDelay = 0.0f;           // +0x138
     uint32_t field_13C = 0;           // +0x13C

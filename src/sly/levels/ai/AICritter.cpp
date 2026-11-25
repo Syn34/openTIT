@@ -11,6 +11,11 @@
 #include "sly/entity/ScriptedEntity.h"
 #include "ape/world/ApeBase.h"
 #include "ape/world/ApeObj.h"
+#include "ape/world/ApeSkeleton.h"
+#include "ape/math/ApeMatrixOps.h"
+#include "sly/entity/EntityHits.h"
+
+#include <cmath>
 
 namespace sly {
 namespace levels {
@@ -41,6 +46,7 @@ constexpr uint32_t kCmd_Attack = 0x73B1E248u;
 constexpr uint32_t kCmd_GoToPointMove = 0x376E1DF1u;
 constexpr uint32_t kCmd_Idle = 0x002237D4u;          // "Idle"
 constexpr uint32_t kCmd_SetSpawner = 0xF309EAC6u;
+constexpr uint32_t kReaction_CritterBite = 0x2DA0A51Du;   // NOTE: name unknown
 
 const ape::Vec3 kUp = {0.0f, 1.0f, 0.0f, 0.0f};          // 0x01164B60
 const ape::Vec3 kForward = {0.0f, 0.0f, 1.0f, 0.0f};     // 0x01164B70 (assumed)
@@ -342,6 +348,173 @@ void CritterAI::ChooseState()
         SetState(kState_Move);
         return;
     }
+}
+
+// @func 0x00020310 CritterAI::Think
+// Reacts to the nearest enemy (the target while it is held): flee or hide
+// when it comes too close (perchers take off), notice it further out,
+// charge it from the move state and hit it when in reach of the attack
+// bone. Then the state timers: perches end, fleeing critters make quick
+// turns, waits end, idles start and points of interest are visited.
+bool CritterAI::Think(float dt)
+{
+    if (state == kState_Dead || state == kState_ScriptAnim || state == kState_GoTo || state == kState_Gone ||
+        state == kState_Hit)
+        return false;
+
+    Entity* victim = (target && (target->typeBits[0] & 2)) ? target : nullptr;
+    if (!victim || !(flags1 & kF1_Bit1) || !victim->IsAlive()) {
+        const AIManager* manager = GetAIManager();
+        victim = manager ? manager->PickTarget(this) : nullptr;
+    }
+    const ape::Vec3& position = transform.translation;
+    const bool percher = PropBool(settings, AIProp::Critter_PerchOnRails);
+    if (victim) {
+        const ape::Vec3 away = {victim->Position().x - position.x, victim->Position().y - position.y,
+                                victim->Position().z - position.z, 0.0f};
+        float d2 = away.x * away.x + away.y * away.y + away.z * away.z;
+        const float fleeDist = PropFloat(settings, AIProp::Critter_FleePlayerDist);
+        if (d2 < fleeDist * fleeDist) {
+            if (!percher) {
+                if (PropHash(settings, AIProp::Critter_FleeAnimClip) != 0) {
+                    SetState(kState_Gone);
+                } else if (state != kState_FleeTurn && state != kState_Flee) {
+                    SetState(kState_Flee);
+                    SetHomePosition(FleePoint(away));
+                    return true;
+                }
+            } else if (state != kState_TakeOff && state != kState_Move) {
+                SetState(state == kState_Land ? kState_TakeOff : kState_Move);
+            }
+        } else {
+            const float noticeDist = PropFloat(settings, AIProp::Critter_NoticePlayerDist);
+            if (d2 < noticeDist * noticeDist && !percher && state != kState_Notice && state != kState_FleeTurn &&
+                state != kState_Flee) {
+                SetState(kState_Notice);
+                SetHomePosition(position);
+                return true;
+            }
+        }
+        const float chargeDist = PropFloat(settings, AIProp::Critter_ChargePlayerDist);
+        if (state == kState_Move && !CrittersMayNotCharge() && d2 < chargeDist * chargeDist && TargetReachable()) {
+            SetTarget(victim);
+            SetState(kState_Charge);
+            return true;
+        }
+        // In reach of the attack bone: a knock back hit.
+        if (const uint32_t attackBone = PropHash(settings, AIProp::Critter_AttackBone)) {
+            if (const ape::world::ApeSkeletonBone* bone = entity->GetBoneByName(attackBone)) {
+                const ape::Vec3& offset = bone->local->translation;
+                const float dx = victim->Position().x - (position.x + offset.x);
+                const float dy = victim->Position().y - (position.y + offset.y);
+                const float dz = victim->Position().z - (position.z + offset.z);
+                d2 = dx * dx + dy * dy + dz * dz;
+            }
+            const float attackDist = PropFloat(settings, AIProp::Critter_AttackPlayerDist);
+            if (d2 < attackDist * attackDist) {
+                entity::EntityHitRecord hit;
+                hit.source = entity;
+                hit.reaction = kReaction_CritterBite;
+                hit.damageBits = 0;
+                hit.flags = static_cast<uint16_t>((3u << 13) | ((entity->classBits & 1) ? entity::EntityHitRecord::kHit_FromPlayer : 0));
+                hit.vec10 = kUp;
+                hit.data.knock.amount = 10.0f;
+                hit.data.knock.knockback = 0.0f;
+                static_cast<entity::ScriptedEntity*>(victim)->OnHitCategory3(hit);
+                entity->SetTimeScale(kCmd_Attack, true);
+            }
+        }
+    }
+
+    switch (state) {
+    case kState_Perched:
+        if (poiDelay > 0.0f) {
+            poiDelay -= dt;
+            if (poiDelay <= 0.0f)
+                SetState(kState_TakeOff);
+        }
+        break;
+    case kState_Flee:
+        if (quickTurnDelay > 0.0f) {
+            quickTurnDelay -= dt;
+            Entity* player = PlayerCharacter();
+            if (quickTurnDelay < 0.0f && player) {
+                QuickTurn(*player);
+                quickTurnDelay = RandomBetween(settings, AIProp::Critter_QuickTurnDelayMin,
+                                               AIProp::Critter_QuickTurnDelayMax);
+            }
+        }
+        break;
+    case kState_Wait:
+        if (poiDelay > 0.0f) {
+            poiDelay -= dt;
+            if (poiDelay <= 0.0f)
+                SetState(kState_Return);
+        }
+        break;
+    case kState_Move:
+        if (idleDelay > 0.0f) {
+            idleDelay -= dt;
+            if (idleDelay <= 0.0f)
+                SetState(kState_Idle);
+        }
+        if (poiDelay > 0.0f) {
+            poiDelay -= dt;
+            if (poiDelay <= 0.0f) {
+                if (!percher)
+                    SetState(kState_Approach);
+                else if (FindPerch())
+                    SetState(kState_Perch);
+            }
+        }
+        break;
+    default:
+        break;
+    }
+    return false;
+}
+
+// Part of Think (0x00020310): a fleeing critter turns aside by a random
+// angle (either way, whichever ends up further from the player) when that
+// still keeps half the safe distance.
+void CritterAI::QuickTurn(const Entity& player)
+{
+    const float angle = RandomBetween(settings, AIProp::Critter_QuickTurnAngleMin, AIProp::Critter_QuickTurnAngleMax);
+    if (std::fabs(angle) < 1.0e-5f)
+        return;
+    const ape::Vec3& position = transform.translation;
+    const ape::Vec3& p = player.Position();
+    const ape::Vec3 away = {p.x - position.x, p.y - position.y, p.z - position.z, 0.0f};
+    auto candidate = [&](float radians) {
+        ape::Matrix34 rotation;
+        ape::Matrix34RotationY(radians, rotation);
+        const ape::Vec3 turned = {away.x * rotation.xAxis.x + away.y * rotation.yAxis.x + away.z * rotation.zAxis.x,
+                                  away.x * rotation.xAxis.y + away.y * rotation.yAxis.y + away.z * rotation.zAxis.y,
+                                  away.x * rotation.xAxis.z + away.y * rotation.yAxis.z + away.z * rotation.zAxis.z,
+                                  0.0f};
+        return FleePoint(turned);
+    };
+    const float radians = angle * 0.017453292f;
+    ape::Vec3 best = candidate(radians);
+    float bestD2 = DistanceSq(p, best);
+    const ape::Vec3 other = candidate(-radians);
+    const float otherD2 = DistanceSq(p, other);
+    if (bestD2 <= otherD2) {
+        best = other;
+        bestD2 = otherD2;
+    }
+    const float halfSafe = PropFloat(settings, AIProp::Critter_StopFleeingPlayerDist) * 0.5f;
+    if (halfSafe * halfSafe <= bestD2) {
+        SetHomePosition(best);
+        SetState(kState_FleeTurn);
+    }
+}
+
+// TODO(0x00020100 CritterAI::FindPerch): picks a point on a rail spline
+// near the critter and the side to perch on.
+bool CritterAI::FindPerch()
+{
+    return false;
 }
 
 // @func 0x0001E7F0 CritterAI::OnMessage
