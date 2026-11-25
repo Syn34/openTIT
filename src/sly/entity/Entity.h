@@ -20,6 +20,7 @@
 #include <cstdint>
 
 namespace ape::world { class ApeObj; struct ApeSkeletonBone; }
+namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; }
 
 namespace sly {
 namespace entity {
@@ -345,6 +346,16 @@ public:
     void RemoveWatcher(void* watcher);
     bool HasTypeBit(uint32_t bit) const { return (typeBits[bit >> 5] & (1u << (bit & 31))) != 0; }
     void SetName(const char* name);
+    // Switches the entity's anim script (slot 68) to a state.
+    void SetScriptState(uint32_t stateHash);
+    // Runs `script` for this entity: "this" refers to the entity, "thisName"
+    // holds its name and the matrix variable the transform of `bone` (or of
+    // the entity). With `autoRun` the instance is registered and removed
+    // once finished. Null without a script.
+    ape::ApeAnimScriptInstance* StartScript(ape::ApeAnimScript* script, uint32_t bone, bool autoRun);
+    // Same with a script of the default library by hash / by name.
+    ape::ApeAnimScriptInstance* StartScript(uint32_t scriptHash, uint32_t bone, bool autoRun);
+    ape::ApeAnimScriptInstance* StartScriptByName(const char* scriptName, uint32_t bone, bool autoRun);
     float GetAnimDuration(uint32_t anim) const;
     float GetAnimElapsed(bool normalized, uint32_t anim) const;
     float GetAnimProgress(uint32_t anim) const;
@@ -421,6 +432,9 @@ void RegisterEntity(EntityList list, Entity* entity);
 // Removes any object from a list (the lists also hold components).
 void UnregisterObject(EntityList list, const void* object);
 void UnregisterEntity(EntityList list, Entity* entity);
+// Adds a component to the instance render list (list C, "s_instRenderList");
+// a second add is refused with a warning (0x000D6614).
+void AddToInstanceRenderList(EntityComponent* component);
 uint32_t EntityCount(EntityList list);
 Entity* EntityAt(EntityList list, uint32_t index);
 

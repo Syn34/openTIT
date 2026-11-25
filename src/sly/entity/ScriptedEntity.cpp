@@ -353,6 +353,12 @@ bool ScriptedEntity::PostUpdate(float dt)
     return Entity::PostUpdate(dt);
 }
 
+// @func 0x000E13D0 ScriptedEntity::SetScript
+void ScriptedEntity::SetScript(uint32_t scriptHash)
+{
+    script = scriptHash ? ape::ApeAnimScriptLibrary::FindScriptAnywhere(scriptHash, 0, true) : nullptr;
+}
+
 // @func 0x000E0B64 ScriptedEntity::SetTimeScale
 void ScriptedEntity::SetTimeScale(uint32_t value, bool children)
 {
