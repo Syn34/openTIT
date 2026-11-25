@@ -407,9 +407,10 @@ bool SoundActorB168E0::AdvanceTo5(float elapsed, float duration)
 
 namespace {
 // Drops the tracked entities and their phantoms.
-void ReleaseTracked(SoundActorB16DB0::Tracked (&tracked)[6])
+template <class Record>
+void ReleaseTracked(Record (&tracked)[6])
 {
-    for (SoundActorB16DB0::Tracked& record : tracked) {
+    for (Record& record : tracked) {
         if (!record.entity)
             continue;
         if (record.entity->IsAlive())

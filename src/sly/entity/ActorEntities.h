@@ -293,7 +293,12 @@ public:
     bool AdvanceTo2(float elapsed, float duration) override;
     bool AdvanceTo5(float elapsed, float duration) override;
 
-    SoundActorB16DB0::Tracked tracked[6];   // 0x22C
+    struct Tracked {               // 0x10-byte records
+        void* phantom = nullptr;   // +0x00 Havok phantom
+        Entity* entity = nullptr;  // +0x04
+        uint8_t pad[0x08];
+    };
+    Tracked tracked[6];            // 0x22C
 };
 
 // vtable 0x00B17728 (destructor 0x00755374 outside this range): the
