@@ -1310,8 +1310,8 @@ void Character::CheckPermanentPrompts()
     }
 }
 
-// @func 0x0012E824 Character::AddWatcher
-void Character::AddWatcher(CharacterWatcher* watcher)
+// @func 0x0012E824 Character::AddCharacterWatcher
+void Character::AddCharacterWatcher(CharacterWatcher* watcher)
 {
     watchers530.PushBack(watcher);
 }
@@ -1376,11 +1376,11 @@ void Character::Detached(float gravityFactor)
     Entity::Detached(gravityFactor);
 }
 
-// @func 0x0012905C Character::GetAimPosition
-ape::Vec3 Character::GetAimPosition()
+// @func 0x0012905C Character::GetVelocity
+ape::Vec3 Character::GetVelocity()
 {
     EntityComponent* component = GetComponent00();
-    return component ? CharacterCompAimPosition(component) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
+    return component ? CharacterCompVelocity(component) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
 }
 
 // @func 0x001290F0 Character::GetTurnRate

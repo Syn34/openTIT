@@ -306,12 +306,6 @@ public:
     virtual void ApplyVisibility(bool visible);                    // slot 55 (+0xDC)
     virtual void OnSuspend();                                      // slot 60 (+0xF0)
     virtual void OnResume();                                       // slot 61 (+0xF4)
-    // Slots 62-64 (bases 0x007374A8/B0/B4: true, empty, empty): an
-    // interaction with the entity begins, is cancelled or ends. NOTE: names
-    // from the actors that override them.
-    virtual bool InteractionBegin(Entity* user) { (void)user; return true; }
-    virtual void InteractionCancel() {}
-    virtual void InteractionEnd(bool completed) { (void)completed; }
     // @func 0x0074705C Entity::GetAnimScript
     virtual void* GetAnimScript() { return nullptr; }              // slot 68 (+0x110)
     // @func 0x007437C0 Entity::InteractionOffer
@@ -360,29 +354,35 @@ public:
     // occupant callbacks.
     // @func 0x007435B8 Entity::Slot9
     virtual bool Slot9() { return true; }
-    // @func 0x007435CC Entity::Slot11
-    virtual void Slot11() {}
-    // @func 0x00743640 Entity::Slot27
-    virtual bool Slot27() { return false; }
+    // Slot 11: back to the idle state (characters reset physics and props).
+    // @func 0x007435CC Entity::ResetState
+    virtual void ResetState() {}
+    // Slot 27: gravity factor of the physics body (slot 28 sets it).
+    // @func 0x00743640 Entity::GetGravityFactor
+    virtual float GetGravityFactor() { return 0.0f; }
     // @func 0x00737390 Entity::Slot34
     virtual void Slot34() {}
     // Slot 35 (+0x8C): linear velocity (none by default).
     // @func 0x007436E0 Entity::GetVelocity
     virtual ape::Vec3 GetVelocity() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
-    // @func 0x00743710 Entity::Slot38
-    virtual int Slot38() { return 0; }
+    // Slot 38: turn rate of the physics body (characters). NOTE: name from
+    // the character component field it returns.
+    // @func 0x00743710 Entity::GetTurnRate
+    virtual float GetTurnRate() { return 0.0f; }
     // @func 0x00737394 Entity::Slot41
     virtual int Slot41() { return 0; }
     // @func 0x0073739C Entity::Slot42
     virtual int Slot42() { return 0; }
     // @func 0x007373CC Entity::Slot56
     virtual int Slot56() { return 0; }
-    // @func 0x007374A8 Entity::Slot62
-    virtual bool Slot62() { return true; }
-    // @func 0x007374B0 Entity::Slot63
-    virtual void Slot63() {}
-    // @func 0x007374B4 Entity::Slot64
-    virtual void Slot64() {}
+    // Slots 62-64: an interaction with the entity begins, is cancelled or
+    // ends. NOTE: names from the actors that override them.
+    // @func 0x007374A8 Entity::InteractionBegin
+    virtual bool InteractionBegin(Entity* user) { (void)user; return true; }
+    // @func 0x007374B0 Entity::InteractionCancel
+    virtual void InteractionCancel() {}
+    // @func 0x007374B4 Entity::InteractionEnd
+    virtual void InteractionEnd(bool completed) { (void)completed; }
     // @func 0x007374B8 Entity::Slot65
     virtual bool Slot65() { return true; }
     // @func 0x007374C0 Entity::Slot66
@@ -394,12 +394,13 @@ public:
     // @func 0x007374D0 Entity::Slot70
     virtual int Slot70() { return 0; }
     // Slot 71 (+0x11C): centre of mass (the position by default).
-    // @func 0x00743754 Entity::GetMassCenter
-    virtual ape::Vec3 GetMassCenter() { return transform.translation; }
-    // @func 0x00743778 Entity::Slot72
-    virtual ape::Vec3 Slot72() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
-    // @func 0x0074379C Entity::Slot73
-    virtual ape::Vec3 Slot73() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
+    // @func 0x00743754 Entity::GetAimPoint
+    virtual ape::Vec3 GetAimPoint() { return transform.translation; }
+    // Slots 72/73: axes of the surface the entity moves on (characters).
+    // @func 0x00743778 Entity::GetUpVector
+    virtual ape::Vec3 GetUpVector() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
+    // @func 0x0074379C Entity::GetSideVector
+    virtual ape::Vec3 GetSideVector() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
 
     // -- components -------------------------------------------------------------
     // First component of `type` after `after` (or from the start).

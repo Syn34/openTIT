@@ -38,8 +38,8 @@ void* PhysicsCompRigidBody(EntityComponent* component);
 // Collision filter word of a rigid body (+0x2C): the group goes into bits
 // 16-31 and the world re-filters the body (0x00930B70) when it is in one.
 void RigidBodySetCollisionGroup(void* body, uint32_t group);
-// Position the character aims from (+0x250) and its turn rate (+0x280).
-ape::Vec3 CharacterCompAimPosition(EntityComponent* component);
+// Velocity (+0x250) and turn rate (+0x280) of the character component.
+ape::Vec3 CharacterCompVelocity(EntityComponent* component);
 float CharacterCompTurnRate(EntityComponent* component);
 // Gravity factor of a rigid body's motion (an hkHalf at +0x1FE).
 float RigidBodyGravityFactor(void* body);

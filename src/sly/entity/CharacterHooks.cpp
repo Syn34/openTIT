@@ -14,7 +14,7 @@ void CharacterCompSetAnimController(EntityComponent* component, void* controller
 uint32_t PhysicsCompCollisionGroup(EntityComponent* component) { (void)component; return 0; }
 void* PhysicsCompRigidBody(EntityComponent* component) { (void)component; return nullptr; }
 void RigidBodySetCollisionGroup(void* body, uint32_t group) { (void)body; (void)group; }
-ape::Vec3 CharacterCompAimPosition(EntityComponent* component) { (void)component; return { 0.0f, 0.0f, 0.0f, 0.0f }; }
+ape::Vec3 CharacterCompVelocity(EntityComponent* component) { (void)component; return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 float CharacterCompTurnRate(EntityComponent* component) { (void)component; return 0.0f; }
 float RigidBodyGravityFactor(void* body) { (void)body; return 0.0f; }
 void RigidBodySetGravityFactor(void* body, float factor) { (void)body; (void)factor; }

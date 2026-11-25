@@ -166,9 +166,8 @@ public:
     void RefreshAbilities();
     // Character slots 10/11.
     bool Release(bool kill) override;                // 0x00122518
-    // Slot 11: back to the idle state with the physics and props reset
-    // (0x00122830). NOTE: the entity base slot (empty) is not declared on Entity.
-    virtual void ResetState();
+    // Slot 11: back to the idle state with the physics and props reset (0x00122830).
+    void ResetState() override;
     // Takes `entity` into the hands (null drops the current one): attached at
     // `part` (definition default when null) with `offset`/`rotation` (the
     // definition's carry offset and Euler angles when null) (0x00121FA8).
@@ -191,8 +190,8 @@ public:
     void* FindAnimClipByName(const char* name) override;     // slot 48
     // Slots 72/73: axes of the surface the physics component moves on
     // (ground, water, wall). NOTE: names from the values returned.
-    virtual ape::Vec3 GetUpVector();
-    virtual ape::Vec3 GetSideVector();
+    ape::Vec3 GetUpVector() override;
+    ape::Vec3 GetSideVector() override;
     uint32_t InteractionOffer(int kind, Entity* other) override;   // slot 74
     bool CanInteractWith(Entity* other, int kind) override;        // slot 76
 
@@ -244,7 +243,7 @@ public:
     void CheckPermanentPrompts();
 
     // Watchers told when the character leaves (+0x530) (0x0012E824 / 0x0012E8B0).
-    void AddWatcher(CharacterWatcher* watcher);
+    void AddCharacterWatcher(CharacterWatcher* watcher);
     void RemoveCharacterWatcher(CharacterWatcher* watcher);
 
     // Hit reactions (slots 83-87) and damage (slot 88).
@@ -268,12 +267,12 @@ public:
     // Slot 27: gravity factor of the physics body; while attached, the one
     // the parent's link restores on detach. NOTE: Entity calls slot 28
     // "Detached(blend)"; the value is the gravity factor it hands down.
-    virtual float GetGravityFactor();
+    float GetGravityFactor() override;
     void Detached(float gravityFactor) override;     // slot 28 (0x00124C94)
-    // Slot 35: the position the character aims from (0x0012905C).
-    virtual ape::Vec3 GetAimPosition();
+    // Slot 35: velocity of the character component (0x0012905C).
+    ape::Vec3 GetVelocity() override;
     // Slot 38: turn rate of the character component (0x001290F0).
-    virtual float GetTurnRate();
+    float GetTurnRate() override;
     // Slots 89-93: the character's Entity.Character.Damage.* settings.
     // @func 0x007382E0 Character::ProjectileDamageScale
     float ProjectileDamageScale() const override { return damage.projectile; }

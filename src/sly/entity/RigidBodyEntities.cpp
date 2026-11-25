@@ -252,8 +252,8 @@ void AlterEgoEntity::SendScriptEvent(uint32_t event)
 // @func 0x00178744 AlterEgoEntity::GetVelocity
 ape::Vec3 AlterEgoEntity::GetVelocity() { return BodyVelocity(); }
 
-// @func 0x00179F74 AlterEgoEntity::GetMassCenter
-ape::Vec3 AlterEgoEntity::GetMassCenter() { return BodyMassCenter(); }
+// @func 0x00179F74 AlterEgoEntity::GetAimPoint
+ape::Vec3 AlterEgoEntity::GetAimPoint() { return BodyMassCenter(); }
 
 // @func 0x00178CA0 AlterEgoEntity::OnHitCategory1
 void AlterEgoEntity::OnHitCategory1(EntityHitRecord& hit) { HitImpact(Def()->damage, hit); }
@@ -381,8 +381,8 @@ void TargetableB::HandleMessage(const EntityMessage& msg)
 // @func 0x00192464 TargetableB::GetVelocity
 ape::Vec3 TargetableB::GetVelocity() { return BodyVelocity(); }
 
-// @func 0x001931C0 TargetableB::GetMassCenter
-ape::Vec3 TargetableB::GetMassCenter() { return BodyMassCenter(); }
+// @func 0x001931C0 TargetableB::GetAimPoint
+ape::Vec3 TargetableB::GetAimPoint() { return BodyMassCenter(); }
 
 // @func 0x001925B0 TargetableB::CanBeDamaged
 bool TargetableB::CanBeDamaged() const { return Def()->damage.CanHurt(); }
@@ -467,9 +467,9 @@ ape::world::ApeObj* TargetableA::FindModelPart() const
 // @func 0x00184B74 TargetableA::GetVelocity
 ape::Vec3 TargetableA::GetVelocity() { return BodyVelocity(); }
 
-// @func 0x00185AC8 TargetableA::GetMassCenter
+// @func 0x00185AC8 TargetableA::GetAimPoint
 // The figure reports its own position, not the body's.
-ape::Vec3 TargetableA::GetMassCenter() { return Position(); }
+ape::Vec3 TargetableA::GetAimPoint() { return Position(); }
 
 // @func 0x00184CC0 TargetableA::CanBeDamaged
 bool TargetableA::CanBeDamaged() const { return Def()->damage.CanHurt(); }

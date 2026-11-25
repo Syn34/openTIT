@@ -75,8 +75,8 @@ ape::Vec3 RigidProp::GetVelocity()
     return BodyVelocity();
 }
 
-// @func 0x001691D4 RigidProp::GetMassCenter
-ape::Vec3 RigidProp::GetMassCenter()
+// @func 0x001691D4 RigidProp::GetAimPoint
+ape::Vec3 RigidProp::GetAimPoint()
 {
     return BodyMassCenter();
 }

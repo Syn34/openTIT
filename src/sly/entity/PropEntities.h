@@ -67,7 +67,7 @@ public:
     // Slot 35: linear velocity of the body (zero without one).
     ape::Vec3 GetVelocity() override { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
     // Slot 71: centre of mass of the body.
-    ape::Vec3 GetMassCenter() override { return Position(); }
+    ape::Vec3 GetAimPoint() override { return Position(); }
     // Slot 82: some hit category can hurt the entity.
     bool CanBeDamaged() const override { return false; }
     // Slot 89: damage scale of projectiles.
@@ -122,7 +122,7 @@ public:
     void SetFlag80(bool on) override;                         // slot 23
     void HandleMessage(const EntityMessage& msg) override;    // slot 43
     ape::Vec3 GetVelocity() override;
-    ape::Vec3 GetMassCenter() override;
+    ape::Vec3 GetAimPoint() override;
     bool CanBeDamaged() const override;
     void OnHitCategory0(EntityHitRecord& hit) override;
     void OnHitCategory1(EntityHitRecord& hit) override;
@@ -175,7 +175,7 @@ public:
     // Slot 99: 1 puts the body into the world, 4 takes it out (0x0017734C).
     virtual void SetAlterState(int32_t state);
     ape::Vec3 GetVelocity() override;                 // slot 35
-    ape::Vec3 GetMassCenter() override;               // slot 71
+    ape::Vec3 GetAimPoint() override;                 // slot 71
     void OnHitCategory1(EntityHitRecord& hit) override;
     void OnHitCategory2(EntityHitRecord& hit) override;
     void OnHitCategory3(EntityHitRecord& hit) override;
@@ -259,7 +259,7 @@ public:
 class PushBlock : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
     // Slot 35: linear velocity of the body.
-    virtual ape::Vec3 GetVelocity();
+    ape::Vec3 GetVelocity() override;
     // Suspending freezes the body and keeps its velocity for the resume.
     void OnSuspend() override;                        // slot 60
     // Kind 0 is refused while the block is locked (+0x248 bit 15), kind 4 always.
@@ -305,10 +305,10 @@ class TargetableCBase : public ScriptedEntity, public EntityInterface17C, public
 public:
     bool Release(bool kill) override;                 // slot 10
     // Slot 27/28: gravity factor of the body (the parent's link's while attached).
-    virtual float GetGravityFactor();
+    float GetGravityFactor() override;
     void Detached(float gravityFactor) override;
     // Slot 35: linear velocity of the body.
-    virtual ape::Vec3 GetVelocity();
+    ape::Vec3 GetVelocity() override;
     // Slot 82: some hit category can hurt the entity.
     virtual bool CanBeDamaged() const;
     void OnHitCategory2(EntityHitRecord& hit) override;
@@ -338,7 +338,7 @@ public:
     ~TargetableB() override;
     bool Release(bool kill) override;                 // slot 10
     ape::Vec3 GetVelocity() override;                 // slot 35
-    ape::Vec3 GetMassCenter() override;               // slot 71
+    ape::Vec3 GetAimPoint() override;                 // slot 71
     bool CanBeDamaged() const override;               // slot 82
     void OnHitCategory0(EntityHitRecord& hit) override;
     void OnHitCategory1(EntityHitRecord& hit) override;
@@ -400,7 +400,7 @@ public:
     ~TargetableA() override;
     bool Release(bool kill) override;                 // slot 10
     ape::Vec3 GetVelocity() override;                 // slot 35
-    ape::Vec3 GetMassCenter() override;               // slot 71
+    ape::Vec3 GetAimPoint() override;                 // slot 71
     bool CanBeDamaged() const override;               // slot 82
     void OnHitCategory0(EntityHitRecord& hit) override;
     void OnHitCategory2(EntityHitRecord& hit) override;
