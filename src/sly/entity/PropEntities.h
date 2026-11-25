@@ -381,6 +381,16 @@ public:
     uint16_t targetFlags = 0;            // 0x1B0 bits 8-9: NOTE unknown, any kills on impact; bit 10: destroyed
 };
 
+// Entity of TargetableDefC with a linked entity and a game world update
+// callback (vtable 0x00B18F60; most of its own methods are at 0x00200000+).
+class TargetableCLinked : public TargetableCBase {
+public:
+    // Also drops the update callback (list 3) and lets go of the linked entity.
+    bool Release(bool kill) override;                 // slot 10
+
+    Entity* linked = nullptr;            // 0x234
+};
+
 class TargetableA;
 
 // Entity of TargetableDefB (vtable 0x00B14DE0 + 0x00B14F88/0x00B14FB0, 0x2C0

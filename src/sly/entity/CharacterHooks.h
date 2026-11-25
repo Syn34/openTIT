@@ -166,6 +166,8 @@ void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value);
 // Game world callback lists (0x0046B5F8): `fn(owner, entity)` runs later.
 using WorldCallback = void (*)(void* owner, Entity* entity);
 void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity);
+// Takes the callbacks of `owner` off a game world list (0x0046B7A4).
+void GameWorldDequeueCallbacks(int list, void* owner);
 
 // Who is behind an indirect hit source: the thrower of a thrown object
 // (+0x1AC), the owner of an owned one (+0x188) or the spawner (+0x190).

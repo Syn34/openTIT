@@ -1223,6 +1223,19 @@ bool TargetableCBase::Release(bool kill)
 // TODO(0x001F9F70 TargetableCBase::SetTargetState)
 void TargetableCBase::SetTargetState(int32_t state, uint32_t arg) { (void)state; (void)arg; }
 
+// @func 0x001FF4B0 TargetableCLinked::Release
+bool TargetableCLinked::Release(bool kill)
+{
+    if (kill) {
+        GameWorldDequeueCallbacks(3, this);
+        if (linked) {
+            linked->Release(false);
+            linked = nullptr;
+        }
+    }
+    return TargetableCBase::Release(kill);
+}
+
 // @func 0x001FB770 TargetableCBase::GetGravityFactor
 // NOTE: Entity slot 36 ("GetRenderObject") hands out the physics body here.
 float TargetableCBase::GetGravityFactor()
