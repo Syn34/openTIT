@@ -59,10 +59,31 @@ PropObjectDef::~PropObjectDef()
         HavokRelease(bodyTemplate);
 }
 
+// @func 0x00747180 PropObjectEntity::~PropObjectEntity
+// @func 0x007471F8 PropObjectEntity::~PropObjectEntity (deleting)
+// @func 0x0074731C PropObjectEntity::~PropObjectEntity (thunk, +0x158)
+// @func 0x00747288 PropObjectEntity::~PropObjectEntity (deleting thunk, +0x158)
 PropObjectEntity::~PropObjectEntity()
 {
     if (alphaBuffer)
         ape::MemFree(alphaBuffer);
+}
+
+// @func 0x007473A0 PropObjectEntity::GetRenderObject
+ape::world::ApeObj* PropObjectEntity::GetRenderObject() { return static_cast<ape::world::ApeObj*>(body); }
+
+// @func 0x00747064 PropObjectDef::DefSlot6
+uint32_t PropObjectDef::DefSlot6() const
+{
+    switch (navMode) {
+    case 0x9260C26Eu:   // "Static"
+    case 0x41EB0AA3u:
+    case 0x29846DDAu:
+    case 0x4438A28Fu:   // "Obstacle"
+        return 1;
+    default:
+        return 0;
+    }
 }
 
 // @func 0x000DE56C PropObjectEntity::OnSpawn

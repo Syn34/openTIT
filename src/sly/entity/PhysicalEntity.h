@@ -78,6 +78,18 @@ public:
     bool Damage(float amount, Entity* source, uint32_t type) override;  // slot 88
     float ProjectileDamageScale() const override;                       // slot 89
 
+    // Slot 36: the rigid body (see NOTES on slot 36).
+    ape::world::ApeObj* GetRenderObject() override;
+    // Physics impacts are handled by the contact callbacks instead.
+    void OnHitCategory0(EntityHitRecord& hit) override;                 // slot 83
+    // Empty overrides of the +0x17C interface's slots 7/6 (primary slots 97/98).
+    void Interface17CSlot7() override;
+    void Interface17CSlot6() override;
+    // Slot 99: empty. NOTE: no caller known.
+    virtual void Slot99();
+    // Primary slot 100 / +0x180 slot 6: stops listening to the body's contacts.
+    void Interface180Slot6(void* body) override;
+
     void SetPhysState(int state, uint32_t arg = 0);
     // Entity the object is aimed at (counted reference, shared with the
     // offscreen marker when there is one).
@@ -100,6 +112,14 @@ public:
     void* triggerBody = nullptr;             // 0x224 second body, on collision layer 7
     audio::SoundName* impactSound = nullptr; // 0x230 NOTE: name from use
     components::OffscreenMarkerComponent* marker = nullptr;  // 0x26C first component of type 0x1E
+};
+
+// The physical entity PhysicalEntityDef itself spawns (vtable 0x00B12EC8 +
+// 0x00B13068/0x00B13090; built by the definition's Spawn 0x000EAC88): adds
+// nothing to the base.
+class PlainPhysicalEntity : public PhysicalEntity {
+public:
+    ~PlainPhysicalEntity() override;
 };
 
 } // namespace entity
