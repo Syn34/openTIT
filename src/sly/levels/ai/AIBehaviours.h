@@ -48,6 +48,9 @@ public:
     void ExitState() override;
     void OnProxyPointReached() override;
     bool UsesNavigation() override;
+    // Slot 52: empty for critters.
+    // @func 0x0001ECC4 CritterAI::Slot52
+    void Slot52() override {}
 
     // Clip played while moving (0x0001F330).
     void SetMoveClip(uint32_t clipHash);

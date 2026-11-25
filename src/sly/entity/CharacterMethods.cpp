@@ -129,6 +129,20 @@ void Entity::SetTint(float amount, const uint8_t color[4], bool immediate)
     }
 }
 
+// -- camera settings block --------------------------------------------------------
+
+// @func 0x00119C00 CameraSettingsBlock::LoadDefaults
+void CameraSettingsBlock::LoadDefaults()
+{
+    const float fovInterp = settings.fovInterp;
+    const int32_t lookAheadVelMode = settings.lookAheadVelMode;
+    const float headingMaxRate = settings.headingMaxRate;
+    settings.LoadDefaults();
+    settings.fovInterp = fovInterp;
+    settings.lookAheadVelMode = lookAheadVelMode;
+    settings.headingMaxRate = headingMaxRate;
+}
+
 // -- definition -------------------------------------------------------------------
 
 // @func 0x0011F010 CharacterDef::GetBounds
@@ -1175,6 +1189,109 @@ void Character::EndDisguise()
         return;
     SwapCharacter(FindEntityDef(kChar_Sly), false);
     PlayerBlockDisguiseEnded(PlayerSlot() & 0xFF);
+}
+
+// @func 0x00129C18 Character::EndScript19C
+void Character::EndScript19C()
+{
+    auto* script = static_cast<ape::ApeAnimScriptInstance*>(animScript19C);
+    if (!script)
+        return;
+    ape::ApeAnimScriptState* state = script->GetState();
+    if (state && state->GetNameHash() != kState_End) {
+        script->SetState(kState_End);
+        script->Update(1.0f / 60.0f);
+    }
+    DetachAnimScript(script);
+    animScript19C = nullptr;
+}
+
+// @func 0x00129CB8 Character::PlayScript19C
+void Character::PlayScript19C(uint32_t scriptName)
+{
+    EndScript19C();
+    void* script = EntityPlayDirectorScriptInstance(this, scriptName);
+    animScript19C = script;
+    if (script)
+        AttachAnimScript(static_cast<ape::ApeAnimScriptInstance*>(script));
+}
+
+// @func 0x00129B58 Character::ReleaseCullHandle
+void Character::ReleaseCullHandle()
+{
+    if (cullHandleUsed != 0) {
+        CullManagerRelease(cullHandle);
+        cullHandleUsed = 0;
+    }
+}
+
+// @func 0x0012BC20 Character::SetPhysicsTarget
+void Character::SetPhysicsTarget(const ape::Vec3& point)
+{
+    if (EntityComponent* physics = GetComponent00())
+        PhysicsCompSetTarget(physics, point);
+}
+
+// @func 0x0012E41C Character::ClearGadgetAbilities
+void Character::ClearGadgetAbilities()
+{
+    if (!def || DefOf(this)->characterName != kChar_Bentley)
+        return;
+    void* list = GadgetAbilityList();
+    if (!list)
+        return;
+    for (int i = 0; i < GadgetAbilityCount(list); ++i) {
+        const uint32_t name = GadgetAbility(list, i);
+        if (name == 0)
+            continue;
+        const int index = AbilityIndex(name);
+        if (index >= 0)
+            abilities.state[index] &= ~kAbility_Available;
+    }
+}
+
+// @func 0x0012E534 Character::SetGadget
+void Character::SetGadget(uint32_t templateName)
+{
+    if (EntityComponent* gadget = EntityGadget(this)) {
+        if (gadget->id == templateName)
+            return;
+        RemoveComponent(gadget);
+    }
+    if (templateName == 0)
+        return;
+    ClearGadgetAbilities();
+    if (ComponentDesc* desc = FindComponentTemplate(templateName)) {
+        AddComponent(desc, true);
+        desc->owner = nullptr;
+    }
+}
+
+// @func 0x00140B9C Character::HandleState16
+bool Character::HandleState16(const StateMessage& msg)
+{
+    if (msg.type == gameplay::StateMachine::kMsg_Exit)
+        classBits &= ~uint64_t(0x80);
+    else if (msg.type == gameplay::StateMachine::kMsg_Update)
+        classBits |= 0x80;
+    return true;
+}
+
+// @func 0x0012E824 Character::AddWatcher
+void Character::AddWatcher(CharacterWatcher* watcher)
+{
+    watchers530.PushBack(watcher);
+}
+
+// @func 0x0012E8B0 Character::RemoveCharacterWatcher
+void Character::RemoveCharacterWatcher(CharacterWatcher* watcher)
+{
+    for (size_t i = 0; i < watchers530.Count(); ++i) {
+        if (watchers530[i] == watcher) {
+            watchers530.RemoveAtSwap(i);
+            return;
+        }
+    }
 }
 
 // TODO(0x00124D58 Character::SwapCharacter)

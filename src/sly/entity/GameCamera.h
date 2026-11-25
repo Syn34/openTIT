@@ -92,6 +92,13 @@ public:
     // -- animation -------------------------------------------------------------------
     // Pauses or resumes the camera's own animation (layer 0).
     void SetAnimPaused(bool paused);
+    // Slots 49-51: plays a clip on the camera rig (directly, by name hash or
+    // by name). A started clip releases the anim hold; the hash form also
+    // remembers the clip as lastAnim. NOTE: the entity base (0x000DBE78) is
+    // reached through a hook; `blend`, `speed` and `fade` follow its use.
+    virtual bool PlayClip(float blend, float speed, float fade, void* clip, uint32_t layer, bool loop);
+    virtual bool PlayClipByHash(float blend, float speed, float fade, uint32_t clip, uint32_t layer, bool loop);
+    virtual bool PlayClipByName(float blend, float speed, float fade, const char* clip, uint32_t layer, bool loop);
     // Starts an additive camera animation by name hash (0x000FCE18).
     bool PlayAdditiveAnim(float blend, uint32_t clip, bool loop, bool additive);
 

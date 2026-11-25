@@ -65,6 +65,7 @@ float ScoringValue(EntityComponent* scoring) { (void)scoring; return 0.0f; }
 void ScoringAward(EntityComponent* scoring, int points, bool flag) { (void)scoring; (void)points; (void)flag; }
 void AddPlayerScore(uint32_t player, int points) { (void)player; (void)points; }
 void MinigameFigureRemoved(uint32_t model) { (void)model; }
+float EntityStateTime(Entity* entity, uint32_t layer) { (void)entity; (void)layer; return 0.0f; }
 void EntitySetStateTime(Entity* entity, uint32_t layer, float time) { (void)entity; (void)layer; (void)time; }
 void InteractionSetOffer(EntityComponent* interaction, uint32_t kinds) { (void)interaction; (void)kinds; }
 Entity* InteractionUser(EntityComponent* interaction) { (void)interaction; return nullptr; }
@@ -73,6 +74,33 @@ Entity* CharacterCarried(Entity* character) { (void)character; return nullptr; }
 uint32_t PlayerBlockValue10D8(uint32_t player) { (void)player; return 0; }
 bool ActorCanInteractWith(Entity* actor, Entity* other, int kind) { (void)actor; (void)other; (void)kind; return true; }
 void GroupRecordSetCounter(void* record, uint32_t counter) { (void)record; (void)counter; }
+float PlayerBlockBusyTime(uint32_t player) { (void)player; return 0.0f; }
+void GameWorldDequeueSafeCallback(Entity* safe) { (void)safe; }
+void GameWorldSetHudHidden(bool hidden) { (void)hidden; }
+void GameWorldSetPlayerControl(bool enabled) { (void)enabled; }
+void InteractionClearFlag20(EntityComponent* interaction) { (void)interaction; }
+bool EntityPlayClip(Entity* entity, float blend, float speed, float fade, void* clip, uint32_t layer, bool loop)
+{
+    (void)entity; (void)blend; (void)speed; (void)fade; (void)layer; (void)loop;
+    return clip != nullptr;
+}
+void PlayCharacterFx(EntityComponent* component, uint32_t fx, float length, float fade) { (void)component; (void)fx; (void)length; (void)fade; }
+float SkinRate(EntityComponent* skin) { (void)skin; return 0.0f; }
+void SkinSetRate(EntityComponent* skin, float rate) { (void)skin; (void)rate; }
+void SkinSetScale(EntityComponent* skin, float scale) { (void)skin; (void)scale; }
+float SkinComputeRate(EntityComponent* skin) { (void)skin; return 0.0f; }
+void SkinSetLevel(EntityComponent* skin, uint32_t level) { (void)skin; (void)level; }
+int32_t SkinVariant(EntityComponent* skin) { (void)skin; return 0; }
+void SkinSetVariant(EntityComponent* skin, int32_t variant) { (void)skin; (void)variant; }
+ape::ApeRefCounted* WorldObjectRef(ape::world::ApeObj* object) { (void)object; return nullptr; }
+void SetAnimScriptKeepAlive(void* script, bool keep) { (void)script; (void)keep; }
+bool IgnoresKillOrder(Entity* entity) { (void)entity; return false; }
+void* EntityPlayDirectorScriptInstance(Entity* entity, uint32_t script) { (void)entity; (void)script; return nullptr; }
+void CullManagerRelease(uint32_t handle) { (void)handle; }
+void PhysicsCompSetTarget(EntityComponent* component, const ape::Vec3& point) { (void)component; (void)point; }
+void* GadgetAbilityList() { return nullptr; }
+int GadgetAbilityCount(void* list) { (void)list; return 0; }
+uint32_t GadgetAbility(void* list, int index) { (void)list; (void)index; return 0; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }

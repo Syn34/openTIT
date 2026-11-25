@@ -15,6 +15,7 @@
 #include "sly/entity/Abilities.h"
 #include "sly/entity/ScriptedEntity.h"
 #include "sly/game/AudioSystem.h"
+#include "sly/gameplay/StateMachine.h"
 
 namespace sly::camera { class DefaultCameraMode; }
 
@@ -36,6 +37,17 @@ public:
     // read tuning variables reload them. True when handled.
     // @func 0x007379F4 TunableBlock::Reload
     virtual bool Reload() { return true; }
+};
+
+// Follow-camera settings of a character definition (vtable 0x00B14108;
+// the settings sit at +0x10).
+class CameraSettingsBlock : public TunableBlock {
+public:
+    // The Camera.Default.* values except the field-of-view rate, the
+    // heading rate and the look-ahead mode, which keep their own (0x00119C00).
+    void LoadDefaults() override;
+
+    camera::CameraSettings settings;   // +0x10
 };
 
 // Damage settings of a character (vtable 0x00B0DB6C, Entity.Character.Damage.*).
@@ -195,6 +207,38 @@ public:
     void EndDisguise();
     void SetVisible(bool visible, bool immediate, bool children, bool components) override;   // slot 22
 
+    // The secondary script (+0x19C): ended ("End", one step, orphaned)
+    // (0x00129C18), or replaced by a new director script (0x00129CB8).
+    void EndScript19C();
+    void PlayScript19C(uint32_t scriptName);
+    // Gives the cull manager handle (+0x1E0, in use while +0x1E2 is set) back (0x00129B58).
+    void ReleaseCullHandle();
+    // Point the physics component steers to (component +0x2A0, flag bit 23) (0x0012BC20).
+    void SetPhysicsTarget(const ape::Vec3& point);
+
+    // Bentley loses the abilities the gadget list grants (0x0012E41C).
+    void ClearGadgetAbilities();
+    // Replaces the gadget component (type 0x1A) by one built from the named
+    // component template; null removes it (0x0012E534).
+    void SetGadget(uint32_t templateName);
+
+    // State handlers: the character's state machine calls one member per
+    // state through the table at 0x00F64780 (59 entries, most of them the
+    // large movement states of 0x00131798-0x00165198). Each gets the state
+    // machine's message and returns true when handled.
+    using StateMessage = gameplay::StateMachine::Message;
+    // Entry 16: class bit 7 is set while the state updates, cleared on exit.
+    bool HandleState16(const StateMessage& msg);
+    // Entries 39 and 46: states without behaviour of their own.
+    // @func 0x00157940 Character::HandleState39
+    bool HandleState39(const StateMessage& msg) { (void)msg; return true; }
+    // @func 0x0015E2B8 Character::HandleState46
+    bool HandleState46(const StateMessage& msg) { (void)msg; return true; }
+
+    // Watchers told when the character leaves (+0x530) (0x0012E824 / 0x0012E8B0).
+    void AddWatcher(CharacterWatcher* watcher);
+    void RemoveCharacterWatcher(CharacterWatcher* watcher);
+
     // Hit reactions (slots 83-87) and damage (slot 88).
     void OnHitCategory0(EntityHitRecord& hit) override;   // physics impact
     void OnHitCategory1(EntityHitRecord& hit) override;   // melee
@@ -254,6 +298,8 @@ public:
     int32_t skinMode = kSkin_Default;               // 0x1B0 SkinMode
     uint32_t field_1B4 = 0;                         // 0x1B4 cleared by ResetState
     uint32_t field_1B8 = 0;                         // 0x1B8 cleared by ResetState / ResetFade
+    uint32_t cullHandle = 0;                        // 0x1E0
+    int16_t cullHandleUsed = 0;                     // 0x1E2
     ape::world::ApeObj* aimArcObject = nullptr;     // 0x1E4 aim UI arc
     ape::world::ApeObj* aimEndObject = nullptr;     // 0x1E8 aim UI end point
     DamageSettings damage;                          // 0x1EC
@@ -313,8 +359,7 @@ public:
     uint8_t dropSettings[0x10] = {};   // 0x1C0 NOTE: contents unknown
     TunableBlock block_2D0;         // 0x2D0
     TunableBlock block_304;         // 0x304
-    TunableBlock cameraBlock;       // 0x3E0 (settings at +0x10)
-    camera::CameraSettings cameraSettings;   // 0x3F0
+    CameraSettingsBlock cameraBlock;   // 0x3E0 (settings at +0x3F0)
     TunableBlock block_470;         // 0x470
     TunableBlock block_510;         // 0x510
     uint32_t abilityBits[4] = {};   // 0x550 abilities the character starts with

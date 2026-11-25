@@ -309,7 +309,7 @@ public:
     // Slots 62-64 (bases 0x007374A8/B0/B4: true, empty, empty): an
     // interaction with the entity begins, is cancelled or ends. NOTE: names
     // from the actors that override them.
-    virtual bool InteractionBegin() { return true; }
+    virtual bool InteractionBegin(Entity* user) { (void)user; return true; }
     virtual void InteractionCancel() {}
     virtual void InteractionEnd(bool completed) { (void)completed; }
     // @func 0x0074705C Entity::GetAnimScript

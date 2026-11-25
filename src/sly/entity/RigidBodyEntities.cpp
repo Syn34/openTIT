@@ -7,11 +7,14 @@
 
 #include "sly/entity/EntityHits.h"
 #include "sly/entity/GameEntityHooks.h"
+#include "ape/anim/ApeAnimScript.h"
+#include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
 #include "sly/entity/CharacterHooks.h"
 #include "sly/entity/PhysicsHooks.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace sly {
 namespace entity {
@@ -205,6 +208,15 @@ void AlterEgoEntity::SetAlterState(int32_t state)
     alterState = state;
 }
 
+// @func 0x0017A178 AlterEgoEntity::SendScriptEvent
+void AlterEgoEntity::SendScriptEvent(uint32_t event)
+{
+    if (animScript1A0)
+        static_cast<ape::ApeAnimScriptInstance*>(animScript1A0)->SendEvent(event);
+    if (animScript1A4)
+        static_cast<ape::ApeAnimScriptInstance*>(animScript1A4)->SendEvent(event);
+}
+
 // @func 0x00178744 AlterEgoEntity::GetVelocity
 ape::Vec3 AlterEgoEntity::GetVelocity() { return BodyVelocity(); }
 
@@ -238,8 +250,101 @@ bool TargetableB::Release(bool kill)
     return ScriptedEntity::Release(kill);
 }
 
-// TODO(0x00190054 TargetableB::SetTargetState)
-void TargetableB::SetTargetState(int state) { (void)state; }
+namespace {
+
+// Shared body of the flag-80 overrides: the body leaves the world with the
+// flag, and returns (with its action) when the entity is in `activeState`.
+void ToggleBodyInWorld(void* body, void* action, bool on, bool active)
+{
+    if (!body || RigidBodyInWorld(body) != on)
+        return;
+    if (on) {
+        RigidBodyRemoveFromWorld(body);
+    } else if (active) {
+        RigidBodyAddToWorld(body, ~0u);
+        if (action)
+            PhysicsAddAction(action);
+    }
+}
+
+// Collision group of the entity's body (slot 36 hands it out), else `fallback`.
+uint32_t BodyCollisionGroup(Entity* entity, uint32_t fallback)
+{
+    if (!PhysicsWorldPresent())
+        return fallback;
+    void* body = entity->GetRenderObject();
+    return body ? RigidBodyCollisionGroup(body) : fallback;
+}
+
+constexpr uint32_t kMsg_KillOrder = 0xD77F98D6u;   // NOTE: names unknown
+constexpr uint32_t kKillOrder_All = 0x00014FBCu;
+
+} // namespace
+
+// @func 0x00190054 TargetableB::SetTargetState
+void TargetableB::SetTargetState(int state)
+{
+    GetTargetState97();
+    EntitySetState(this, 0, state);
+    stateHistory[historyIndex] = uint8_t(state);
+    OnTargetStateChanged();
+}
+
+// @func 0x0018E9FC TargetableB::IsFreeTarget
+bool TargetableB::IsFreeTarget(Entity* entity)
+{
+    if (!(entity->typeBits[0] & 0x200))
+        return true;
+    auto* target = static_cast<TargetableB*>(entity);
+    return !target->holder && (!target->stacking || !target->parent);
+}
+
+// @func 0x001918B0 TargetableB::FindObjectByModel
+ape::world::ApeObj* TargetableB::FindObjectByModel(ape::world::ApeObj* object, uint32_t model)
+{
+    if (object->GetDef()->GetAnimHash() == model)
+        return object;
+    for (ape::world::ApeObj* child = object->GetFirstChild(); child; child = child->GetNextSibling()) {
+        if (ape::world::ApeObj* found = FindObjectByModel(child, model))
+            return found;
+    }
+    return nullptr;
+}
+
+// @func 0x00194714 TargetableB::GetTargetState
+int TargetableB::GetTargetState() { return EntityGetState(this, 0); }
+
+// @func 0x001962A8 TargetableB::GetTargetState97
+int TargetableB::GetTargetState97() { return GetTargetState(); }
+
+// TODO(0x001947B0 TargetableB::OnTargetStateChanged)
+void TargetableB::OnTargetStateChanged() {}
+
+// @func 0x00192220 TargetableB::SetFlag80
+void TargetableB::SetFlag80(bool on)
+{
+    Entity::SetFlag80(on);
+    ToggleBodyInWorld(rigidBody, bodyAction, on, !on && GetTargetState() == 2);
+}
+
+// @func 0x001924F8 TargetableB::GetRenderId
+uint32_t TargetableB::GetRenderId() { return BodyCollisionGroup(this, collisionGroup); }
+
+// @func 0x001975DC TargetableB::SetRenderId
+void TargetableB::SetRenderId(uint32_t id)
+{
+    if (PhysicsWorldPresent() && rigidBody)
+        RigidBodySetCollisionGroup(rigidBody, id);
+    collisionGroup = id;
+    Entity::SetRenderId(id);
+}
+
+// @func 0x00197150 TargetableB::HandleMessage
+void TargetableB::HandleMessage(const EntityMessage& msg)
+{
+    if (msg.id == kMsg_KillOrder && msg.argument == kKillOrder_All && !IgnoresKillOrder(this))
+        Damage(maxHealth, nullptr, 0);
+}
 
 // @func 0x00192464 TargetableB::GetVelocity
 ape::Vec3 TargetableB::GetVelocity() { return BodyVelocity(); }
@@ -281,8 +386,27 @@ bool TargetableA::Release(bool kill)
     return ScriptedEntity::Release(kill);
 }
 
-// TODO(0x0017DB34 TargetableA::SetTargetState)
-void TargetableA::SetTargetState(int state) { (void)state; }
+// @func 0x0017DB34 TargetableA::SetTargetState
+void TargetableA::SetTargetState(int state)
+{
+    GetTargetState97();
+    EntitySetState(this, 0, state);
+    stateHistory[historyIndex] = uint8_t(state);
+    OnTargetStateChanged();
+}
+
+// TODO(0x00188388 TargetableA::OnTargetStateChanged)
+void TargetableA::OnTargetStateChanged() {}
+
+// @func 0x00184934 TargetableA::SetFlag80
+void TargetableA::SetFlag80(bool on)
+{
+    Entity::SetFlag80(on);
+    ToggleBodyInWorld(rigidBody, bodyAction, on, !on && GetTargetState() == 3);
+}
+
+// @func 0x00184C08 TargetableA::GetRenderId
+uint32_t TargetableA::GetRenderId() { return BodyCollisionGroup(this, collisionGroup); }
 
 // @func 0x001882B8 TargetableA::GetTargetState
 int TargetableA::GetTargetState() { return EntityGetState(this, 0); }
@@ -295,6 +419,18 @@ uint32_t TargetableA::InteractionOffer(int kind, Entity* /*other*/) { return Def
 
 // @func 0x00185AEC TargetableA::InteractionNeeds
 uint32_t TargetableA::InteractionNeeds(int kind, Entity* /*other*/) { return Def()->targetingFlags[kind]; }
+
+// @func 0x00185C9C TargetableA::FindModelPart
+ape::world::ApeObj* TargetableA::FindModelPart() const
+{
+    if (!modelName)
+        return nullptr;
+    for (ape::world::ApeObj* child = model->GetFirstChild(); child; child = child->GetNextSibling()) {
+        if (child->GetDef()->GetAnimHash() == modelName)
+            return child;
+    }
+    return nullptr;
+}
 
 // @func 0x00184B74 TargetableA::GetVelocity
 ape::Vec3 TargetableA::GetVelocity() { return BodyVelocity(); }
@@ -347,6 +483,56 @@ void CompoundEntity::SetPropState(int32_t state, uint32_t arg) { (void)arg; prop
 
 // @func 0x0016F2B4 CompoundEntity::GetVelocity
 ape::Vec3 CompoundEntity::GetVelocity() { return BodyVelocity(); }
+
+float CompoundEntity::HeadingTo(const ape::Vec3& point) const
+{
+    // NOTE: the console converts with 3.1415 rather than pi.
+    float degrees = std::atan2(point.y - Position().y, point.x - Position().x) * 180.0f / 3.1415f;
+    if (degrees < 0.0f)
+        degrees += 360.0f;
+    if (degrees > 360.0f)
+        degrees -= 360.0f;
+    return degrees;
+}
+
+// @func 0x0016F570 CompoundEntity::OnHitCategory0
+// Collisions hurt above a speed threshold (without the deferred-hit check
+// of the other entities) and record their direction.
+void CompoundEntity::OnHitCategory0(EntityHitRecord& hit)
+{
+    const PropDamageSettings& settings = DamageSettings();
+    if (settings.collisionScale <= 0.0f || settings.collisionMax <= 0.0f)
+        return;
+    const float speed = hit.data.collision.speed;
+    if (speed <= settings.collisionThreshold)
+        return;
+    const float amount = std::min((speed - settings.collisionThreshold) * settings.collisionScale,
+                                  settings.collisionMax);
+    propdamage::SetFatal(hit, Damage(amount, hit.source, kType_PhysicsImpact));
+    hitHeading = int(HeadingTo(hit.vec10));
+}
+
+// @func 0x001702C8 CompoundEntity::OnHitCategory4
+// Projectiles from type-10 sources pass through.
+void CompoundEntity::OnHitCategory4(EntityHitRecord& hit)
+{
+    Entity* source = hit.source;
+    if (source && (source->typeBits[0] & 0x400))
+        return;
+    const float scale = DamageSettings().projectileScale;
+    if (scale <= 0.0f)
+        return;
+    propdamage::SetFatal(hit, Damage(hit.data.projectile.damage * scale, source, hit.reaction));
+    hitHeading = int(HeadingTo(hit.vec10));
+}
+
+// @func 0x00175B60 CompoundEntity::SetPartLevel
+void CompoundEntity::SetPartLevel(uint32_t level)
+{
+    for (uint32_t i = 0; i <= level; ++i)
+        parts[i]->Apply(this);
+    partLevel = level;
+}
 
 // @func 0x0016F4F8 CompoundEntity::CanBeDamaged
 bool CompoundEntity::CanBeDamaged() const { return DamageSettings().CanHurt(); }

@@ -10,6 +10,7 @@ void RigidBodyAddToWorld(void* body, uint32_t collisionGroup) { (void)body; (voi
 void RigidBodySetFilterGroup(void* body, uint32_t collisionGroup) { (void)body; (void)collisionGroup; }
 int RigidBodyConstraintCount(void* body) { (void)body; return 0; }
 void* RigidBodyConstraint(void* body, int index) { (void)body; (void)index; return nullptr; }
+uint32_t RigidBodyCollisionGroup(void* body) { (void)body; return 0; }
 void PhysicsAddAction(void* action) { (void)action; }
 uint8_t RigidBodyMotionType(void* body) { (void)body; return 0; }
 void RigidBodyApplyImpulse(void* body, const ape::Vec3& impulse) { (void)body; (void)impulse; }

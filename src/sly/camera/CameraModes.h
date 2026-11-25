@@ -14,6 +14,10 @@ namespace camera {
 // world Y axis up unless the direction is (nearly) vertical, where Z is used.
 // The translation of `out` is left alone (0x000FD040).
 void LookAlong(const ape::Vec3& forward, ape::Matrix34& out);
+// Turns the direction `from` toward `to` by at most `maxAngle` radians
+// (clamped to 0..pi); the result is a unit vector (0x001007D0). Used by the
+// cameras, the characters and the vehicles.
+void RotateTowards(float maxAngle, ape::Vec3& out, const ape::Vec3& from, const ape::Vec3& to);
 // Point of the segment [a, b] closest to `point` (0x000FD1A0).
 ape::Vec3 ClosestPointOnSegment(const ape::Vec3& a, const ape::Vec3& b, const ape::Vec3& point);
 
@@ -228,6 +232,8 @@ public:
     // never removed.
     void PushOverride(CameraSettings* settings, bool keepOnTop);
     CameraSettings* RemoveOverride(CameraSettings* settings);
+    // The target settings with every override applied in stack order (0x000FE3E8).
+    void ResolveSettings(CameraSettings& out) const;
     // 0x001071C4
     void SetField214(bool value) { field_214 = value; }
 
@@ -298,7 +304,10 @@ public:
     const char* GetDebugText() override;
     // @func 0x00749764 SplineCameraMode::GetTarget
     Entity* GetTarget() const override { return target; }
+    // Starts at the spline point closest to the target (0x0010B0E4).
     void Activate() override;
+    // Draws the splines (flag bit 0) (0x0010B348).
+    void DebugDraw(uint32_t flags) override;
     // A blend-in starts the same way as a cut.
     // @func 0x00749728 SplineCameraMode::ActivateFrom
     void ActivateFrom(const CameraViewState& previous) override { (void)previous; Activate(); }
@@ -311,7 +320,10 @@ public:
     Entity* lookAt = nullptr;                          // 0x10
     ape::world::ApeObj* positionSpline = nullptr;      // 0x14
     ape::world::ApeObj* targetSpline = nullptr;        // 0x18
+    float targetBlend = 0.0f;                          // 0x40 between the target spline and the target
+    ape::Vec3 trackPoint{};                            // 0x50
     float t = 0.0f;                                    // 0x60
+    uint32_t splineFlags = 0;                          // 0xB0 bit 29: placed
     float panH = 0.0f;                                 // 0x90
     float panV = 0.0f;                                 // 0x94
 };
@@ -321,6 +333,9 @@ public:
 class BinocucomCameraMode : public CameraMode {
 public:
     explicit BinocucomCameraMode(GameCamera* owner) : CameraMode(owner) {}
+    // Drops the photo component, hides the photo GUI and turns the player
+    // to where the binocucom looked (0x0010C3C8).
+    ~BinocucomCameraMode() override;
     // @func 0x007497C4 BinocucomCameraMode::GetType
     int32_t GetType() const override { return kCamMode_Binocucom; }
     // @func 0x007497CC BinocucomCameraMode::GetName
@@ -339,10 +354,12 @@ public:
 
     static constexpr uint16_t kZoom_Restart = 0x2000;
     Entity* player = nullptr;            // 0x0C
+    ape::Vec3 lookDirection{};           // 0x50 horizontal look direction
     Entity* target = nullptr;            // 0x90 entity being looked at
     int16_t zoomHolds = 0;               // 0xB4
     uint16_t zoomFlags = 0;              // 0xB6 bits 14-15 cleared by a new hold
     float savedFov = 0.0f;               // 0xB8
+    entity::EntityComponent* photoComponent = nullptr;   // 0xC0 added to the player
 };
 
 // Settings of the vehicle chase camera (Camera.Vehicle.*; vehicle definitions

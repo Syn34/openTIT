@@ -1,5 +1,10 @@
 // openTIT - The simpler camera modes (see CameraModes.h).
 #include "sly/camera/CameraModes.h"
+#include "ape/sys/ApeGeometry.h"
+#include "ape/math/ApeMatrixOps.h"
+#include "sly/entity/Entity.h"
+#include "sly/entity/GameEntityHooks.h"
+#include "ape/level/ApeGui.h"
 
 #include "ape/world/ApeDefTypes.h"
 #include "ape/world/ApeInstances.h"
@@ -64,6 +69,52 @@ void LookAlong(const ape::Vec3& forward, ape::Matrix34& out)
     SetXYZ(out.xAxis, x);
     SetXYZ(out.yAxis, Cross(z, x));
     SetXYZ(out.zAxis, z);
+}
+
+// @func 0x001007D0 RotateTowards
+// NOTE: past the opposite-direction case the console's code is AltiVec the
+// reference cannot decode; the general case is written as a rotation about
+// the axis both directions span, which is what the visible parts set up.
+void RotateTowards(float maxAngle, ape::Vec3& out, const ape::Vec3& from, const ape::Vec3& to)
+{
+    ape::Vec3 start = { from.x, from.y, from.z, 0.0f };
+    ape::Vec3Normalize(start);
+    const float toLengthSq = to.x * to.x + to.y * to.y + to.z * to.z;
+    if (std::fabs(toLengthSq) < 1e-05f) {
+        out = { start.x, start.y, start.z, out.pad };
+        return;
+    }
+    const float angle = std::max(std::min(maxAngle, 3.14159274f), 0.0f);
+    ape::Vec3 goal = { to.x, to.y, to.z, 0.0f };
+    ape::Vec3Normalize(goal);
+    if (std::fabs(angle) < 0.001f) {
+        out = { start.x, start.y, start.z, out.pad };
+        return;
+    }
+    const float cosine = goal.x * start.x + goal.y * start.y + goal.z * start.z;
+    // Within reach: arrive.
+    if (ape::FastCos(angle) <= cosine || angle >= 3.14159274f) {
+        out = { goal.x, goal.y, goal.z, out.pad };
+        return;
+    }
+    ape::Vec3 axis;
+    if (cosine <= -0.999f) {
+        // Opposite directions: turn about any axis perpendicular to the start.
+        const ape::Vec3 unitX = { 1.0f, 0.0f, 0.0f, 0.0f };
+        const ape::Vec3 unitY = { 0.0f, 1.0f, 0.0f, 0.0f };
+        ape::Vec3Cross(axis, start, unitX);
+        if (std::fabs(ape::Vec3LengthSq(axis)) < 1e-05f)
+            ape::Vec3Cross(axis, start, unitY);
+    } else {
+        ape::Vec3Cross(axis, start, goal);
+    }
+    ape::Vec3Normalize(axis);
+    ape::Matrix34 rotation;
+    ape::MatrixAxisAngle(angle, rotation, axis);
+    // Row vectors: the start direction through the rotation's axes.
+    out = { start.x * rotation.xAxis.x + start.y * rotation.yAxis.x + start.z * rotation.zAxis.x,
+            start.x * rotation.xAxis.y + start.y * rotation.yAxis.y + start.z * rotation.zAxis.y,
+            start.x * rotation.xAxis.z + start.y * rotation.yAxis.z + start.z * rotation.zAxis.z, out.pad };
 }
 
 // @func 0x000FD1A0 ClosestPointOnSegment
@@ -566,6 +617,16 @@ void DefaultCameraMode::SetTarget(Entity* entity)
     }
 }
 
+// @func 0x000FE3E8 DefaultCameraMode::ResolveSettings
+void DefaultCameraMode::ResolveSettings(CameraSettings& out) const
+{
+    out = targetSettings;
+    for (int i = 0; i < overrideCount; ++i) {
+        if (overrides[i])
+            out.ApplyOverride(*overrides[i]);
+    }
+}
+
 // @func 0x000FEF54 DefaultCameraMode::PushOverride
 void DefaultCameraMode::PushOverride(CameraSettings* settings, bool keepOnTop)
 {
@@ -631,10 +692,10 @@ void DefaultCameraMode::ResetSettings()
 {
     targetSettings.LoadDefaults();
     const bool flag = targetSettings.field_78;
-    const float extra = targetSettings.field_7C;
+    const uint32_t mask = targetSettings.overrideMask;
     current = targetSettings;
     current.field_78 = flag;
-    current.field_7C = extra;
+    current.overrideMask = mask;
     angleInterp = g_cameraDefaultAngleInterp;
 }
 
@@ -715,8 +776,13 @@ ShoulderCameraMode::~ShoulderCameraMode()
 // TODO(0x00107890 ShoulderCameraMode::Update)
 void ShoulderCameraMode::Update(float /*dt*/, CameraViewState& /*view*/) {}
 
-// TODO(0x001082F0 ShoulderCameraMode::Activate)
-void ShoulderCameraMode::Activate() {}
+// @func 0x001082F0 ShoulderCameraMode::Activate
+// A cut starts like a blend from a default view.
+void ShoulderCameraMode::Activate()
+{
+    CameraViewState view;
+    ActivateFrom(view);
+}
 
 // @func 0x00108468 ShoulderCameraMode::ActivateFrom
 void ShoulderCameraMode::ActivateFrom(const CameraViewState& /*previous*/)
@@ -740,8 +806,49 @@ bool ShoulderCameraMode::Tick(float dt, CameraViewState& view)
 // Spline
 // ===========================================================================
 
-// TODO(0x0010B0E4 SplineCameraMode::Activate)
-void SplineCameraMode::Activate() {}
+// @func 0x0010B0E4 SplineCameraMode::Activate
+// With a target spline the camera tracks a point between that spline and
+// the target; otherwise it starts where the position spline comes closest
+// to the target.
+void SplineCameraMode::Activate()
+{
+    if (!target)
+        return;
+    const ape::Vec3 focus = EntityFocusPoint(target);
+    ape::Vec3 point = focus;
+    float param;
+    if (!targetSpline) {
+        param = static_cast<ape::world::ApeSplineInstance*>(positionSpline)->FindClosestParam(point, nullptr, nullptr);
+    } else {
+        auto* spline = static_cast<ape::world::ApeSplineInstance*>(targetSpline);
+        ape::Vec3 onSpline{};
+        spline->EvaluatePosition(spline->FindClosestParam(focus, nullptr, nullptr), onSpline, false);
+        point = { targetBlend * (focus.x - onSpline.x) + onSpline.x, targetBlend * (focus.y - onSpline.y) + onSpline.y,
+                  targetBlend * (focus.z - onSpline.z) + onSpline.z, 0.0f };
+        param = spline->FindClosestParam(point, nullptr, nullptr);
+    }
+    t = param;
+    trackPoint = { point.x, point.y, point.z, trackPoint.pad };
+    splineFlags |= 1u << 29;
+}
+
+// @func 0x0010B348 SplineCameraMode::DebugDraw
+void SplineCameraMode::DebugDraw(uint32_t flags)
+{
+    if (!(flags & 1))
+        return;
+    // Both splines in the same half-transparent colour. NOTE: the console
+    // also evaluates the target spline at t; what it draws there is not
+    // visible in the reference.
+    static const uint8_t kTargetColor[4] = { 0xB0, 0x90, 0x40, 0xC0 };
+    static const uint8_t kPositionColor[4] = { 0xB0, 0x90, 0x40, 0xC0 };
+    if (targetSpline) {
+        DebugDrawSpline(targetSpline, kTargetColor);
+        ape::Vec3 unused{};
+        static_cast<ape::world::ApeSplineInstance*>(targetSpline)->EvaluatePosition(t, unused, false);
+    }
+    DebugDrawSpline(positionSpline, kPositionColor);
+}
 
 // @func 0x001096C0 SplineCameraMode::~SplineCameraMode
 // @func 0x00109774 SplineCameraMode::~SplineCameraMode (deleting)
@@ -789,6 +896,33 @@ const char* SplineCameraMode::GetDebugText()
 // ===========================================================================
 // Binocucom
 // ===========================================================================
+
+// @func 0x0010C3C8 BinocucomCameraMode::~BinocucomCameraMode
+// @func 0x0010C60C BinocucomCameraMode::~BinocucomCameraMode (deleting)
+BinocucomCameraMode::~BinocucomCameraMode()
+{
+    if (photoComponent) {
+        player->RemoveComponent(photoComponent);
+        photoComponent = nullptr;
+    }
+    if (ape::ApeGuiObject* photo = ape::FindGuiObject(".InGame.BinocucomPhoto", nullptr))
+        photo->SetVisible(false);
+    // Unless the player has already left the binocucom stance, it turns to
+    // face where the binocucom looked, keeping its up axis.
+    if (entity::EntityGetState(player, 0) == 3 && entity::EntityGetState(player, 1) != 1)
+        return;
+    ape::Matrix34 m = player->transform;
+    const ape::Vec3& up = m.yAxis;
+    ape::Vec3 side;
+    ape::Vec3Cross(side, up, lookDirection);
+    ape::Vec3Normalize(side);
+    ape::Vec3 forward;
+    ape::Vec3Cross(forward, side, up);
+    ape::Vec3Normalize(forward);
+    m.xAxis = { side.x, side.y, side.z, m.xAxis.pad };
+    m.zAxis = { forward.x, forward.y, forward.z, m.zAxis.pad };
+    EntitySetWorldTransform(player, m);
+}
 
 // @func 0x0010D9A0 BinocucomCameraMode::Deactivate
 void BinocucomCameraMode::Deactivate()

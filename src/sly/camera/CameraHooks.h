@@ -104,6 +104,9 @@ uint32_t CharacterCollisionGroup(entity::Entity* entity);
 void ConstructVehicleFollowCamera(void* storage);
 void DestroyVehicleFollowCamera(void* storage);
 
+// Debug drawing of a spline instance in a colour (0x005A8384 with the debug material).
+void DebugDrawSpline(ape::world::ApeObj* spline, const uint8_t color[4]);
+
 // -- render ---------------------------------------------------------------------
 // Parameters of the depth-of-field effect (+0x18 focus, +0x1C range, +0x20
 // blend, byte +0x40 iterations) and of the desaturation/colour filter effect

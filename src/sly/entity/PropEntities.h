@@ -162,6 +162,8 @@ public:
 class AlterEgoEntity : public RigidBodyEntity {
 public:
     ~AlterEgoEntity() override;
+    // Sends an event to both anim scripts (0x0017A178).
+    void SendScriptEvent(uint32_t event);
     bool Release(bool kill) override;                 // slot 10
     void SetFlag80(bool on) override;                 // slot 23
     // Slot 99: 1 puts the body into the world, 4 takes it out (0x0017734C).
@@ -323,14 +325,35 @@ public:
     void OnHitCategory3(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
     float ProjectileDamageScale() const override;     // slot 89
-    // Slot 94: the entity's own state (0x00190054, not ported).
+    // Slot 94: enters a state of layer 0 and records it.
     virtual void SetTargetState(int state);
+    // Slot 95: the state of layer 0; slot 97 asks slot 95.
+    virtual int GetTargetState();
+    virtual int GetTargetState97();
+    // Slot 96: called after a state change (0x001947B0, not ported).
+    virtual void OnTargetStateChanged();
+    // The body leaves the world with the flag and returns in state 2.
+    void SetFlag80(bool on) override;                 // slot 23
+    // Slots 25/26: the collision group of the body (kept at +0x19C).
+    uint32_t GetRenderId() override;
+    void SetRenderId(uint32_t id) override;
+    // A kill order (message 0xD77F98D6 with argument 0x14FBC) destroys the entity.
+    void HandleMessage(const EntityMessage& msg) override;   // slot 43
     void* bodyAction = nullptr;              // 0x188
+    uint8_t stateHistory[4] = {};            // 0x1B8 indexed by historyIndex
+    uint32_t historyIndex = 0;               // 0x1BC
+    uint32_t collisionGroup = 0;             // 0x19C
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     // Empty override of the +0x17C interface's slot 5.
     void Interface17CSlot5() override;
     const TargetableDefB* Def() const { return static_cast<const TargetableDefB*>(def); }
+    // Predicate the minigame uses: not a stackable target (type bit 9), or
+    // neither held nor (when stacking) on a parent (0x0018E9FC).
+    static bool IsFreeTarget(Entity* entity);
+    // Descendant of `object` (or itself) whose definition's model name is
+    // `model` (0x001918B0).
+    static ape::world::ApeObj* FindObjectByModel(ape::world::ApeObj* object, uint32_t model);
     // Takes `child` off this entity's child list and settles it (0x00191944).
     void DetachChild(TargetableB* child);
 
@@ -338,6 +361,7 @@ public:
     TargetableB* parent = nullptr;           // 0x268
     uint32_t field_270 = 0;                  // 0x270
     TargetableA* holder = nullptr;           // 0x298
+    bool stacking = false;                   // 0x29C
     bool freezeWhenOrphaned = false;         // 0x2A0 NOTE: stops updating when its parent goes away
 };
 
@@ -361,9 +385,18 @@ public:
     void OnHitCategory2(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
     float ProjectileDamageScale() const override;     // slot 89
-    // Slot 94: the figure's own state (0x0017DB34, not ported).
+    // Slot 94: enters a state of layer 0 and records it.
     virtual void SetTargetState(int state);
+    // Slot 96: called after a state change (not ported).
+    virtual void OnTargetStateChanged();
+    // The body leaves the world with the flag and returns in state 3.
+    void SetFlag80(bool on) override;                 // slot 23
+    // Slot 25: the collision group of the body (kept at +0x19C).
+    uint32_t GetRenderId() override;
     void* bodyAction = nullptr;              // 0x188
+    uint8_t stateHistory[7] = {};            // 0x1B1 indexed by historyIndex
+    uint32_t historyIndex = 0;               // 0x1B8
+    uint32_t collisionGroup = 0;             // 0x19C
     // Slot 95: the state of layer 0; slot 97 asks slot 95.
     virtual int GetTargetState();
     virtual int GetTargetState97();
@@ -377,7 +410,13 @@ public:
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     const TargetableDefA* Def() const { return static_cast<const TargetableDefA*>(def); }
 
+    // Child object of the figure's model whose model is `modelName` (+0x624),
+    // or null (0x00185C9C).
+    ape::world::ApeObj* FindModelPart() const;
+
     TargetableB* held = nullptr;             // 0x520
+    ape::world::ApeObj* model = nullptr;     // 0x52C
+    uint32_t modelName = 0;                  // 0x624
     void* animScript524 = nullptr;           // 0x524
     ape::world::ApeObj* object_530 = nullptr; // 0x530 counted
     ape::ApeTArray<void*> field_678;         // 0x678
@@ -401,17 +440,27 @@ public:
     class Part {
     public:
         virtual ~Part() = default;
+        // Slot 2: the part applies itself to the entity. NOTE: name assumed.
+        virtual void Apply(CompoundEntity* owner) { (void)owner; }
     };
+    // Applies parts 0..`level` and records the level (0x00175B60).
+    void SetPartLevel(uint32_t level);
 
     ~CompoundEntity() override;
     bool Release(bool kill) override;                 // slot 10
     ape::Vec3 GetVelocity() override;                 // slot 35
     bool CanBeDamaged() const override;               // slot 82
+    // Collisions and projectiles also record the direction they came from.
+    void OnHitCategory0(EntityHitRecord& hit) override;
+    void OnHitCategory4(EntityHitRecord& hit) override;
     float ProjectileDamageScale() const override;     // slot 89
+    // Heading (degrees, 0..360) from the entity to a hit position.
+    float HeadingTo(const ape::Vec3& point) const;
     // Slot 99: physics state (0x0016BC0C, not ported).
     virtual void SetPropState(int32_t state, uint32_t arg);
     void* bodyAction = nullptr;              // 0x188
     int32_t propState = 0;                   // 0x18C
+    int32_t hitHeading = 0;                  // 0x2E0 degrees
     const PropDamageSettings& DamageSettings() const;
     // Empty overrides of the +0x17C interface's slots 5 and 6.
     void Interface17CSlot5() override;
@@ -420,6 +469,7 @@ public:
     HkArray<void*> field_1FC;      // 0x1FC
     HkArray<void*> field_208;      // 0x208
     Part* parts[11] = {};          // 0x214
+    uint32_t partLevel = 0;        // 0x29C
 };
 
 } // namespace entity

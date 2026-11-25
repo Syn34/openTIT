@@ -8,6 +8,8 @@
 #include "ape/memory/ApeMem.h"
 #include "ape/world/ApeObj.h"
 #include "sly/camera/CameraHooks.h"
+#include "sly/entity/GameCamera.h"
+#include "sly/camera/CameraModes.h"
 #include "sly/entity/GameEntityHooks.h"
 
 namespace sly {
@@ -162,6 +164,34 @@ void SoundActor::PlaySlot(int index, bool force)
 {
     (void)force;
     currentSlot = index;
+}
+
+// @func 0x001AEA50 SoundActor::Update
+bool SoundActor::Update(float dt)
+{
+    if (!ActorEntity::Update(dt))
+        return false;
+    if (!def)
+        return true;
+    if (sequenceFlags & kSeq_ResumePending) {
+        ResumeSequence();
+        sequenceFlags &= ~kSeq_ResumePending;
+    }
+    // The timer of the state in effect decides whether to move on; a move
+    // runs the next state's timer at once (at most 10000 steps per frame).
+    using Timer = bool (SoundActor::*)(float, float);
+    static const Timer kTimers[7] = { &SoundActor::AdvanceTo1, &SoundActor::AdvanceTo2, &SoundActor::AdvanceTo3,
+                                      &SoundActor::AdvanceTo4, &SoundActor::AdvanceTo5, &SoundActor::AdvanceTo6,
+                                      &SoundActor::AdvanceWrap };
+    bool waiting = false;
+    for (int step = 0; step < 10000 && !waiting; ++step) {
+        const int state = EntityGetState(this, 0);
+        if (state < 0 || state > 6)
+            break;   // NOTE: the console spins through the remaining steps doing nothing
+        const float elapsed = EntityStateTime(this, 0);
+        waiting = (this->*kTimers[state])(elapsed, SlotDuration(state));
+    }
+    return true;
 }
 
 // @func 0x001AE9C8 SoundActor::PlaySlotByName
@@ -380,6 +410,23 @@ void SoundActorB16678::SetSlotState(int index, bool immediate)
     SoundActor::SetSlotState(index, immediate);
 }
 
+// @func 0x001BFA50 SoundActorB16678::Update
+bool SoundActorB16678::Update(float dt)
+{
+    if (!SoundActor::Update(dt))
+        return false;
+    if (switchFlags & 0x40) {
+        switchFlags &= ~0x40;
+        Refresh();
+    }
+    if (delay > 0.0f)
+        delay -= dt;
+    return true;
+}
+
+// TODO(0x001BF8E8 SoundActorB16678::Refresh)
+void SoundActorB16678::Refresh() {}
+
 // @func 0x001C1B50 SoundActorB168E0::AdvanceTo2
 bool SoundActorB168E0::AdvanceTo2(float elapsed, float duration)
 {
@@ -482,6 +529,24 @@ bool SoundActorB17728::Release(bool kill)
         attached = nullptr;
     }
     return SoundActor::Release(kill);
+}
+
+// @func 0x001D47E4 SoundActorB17728::Update
+bool SoundActorB17728::Update(float dt)
+{
+    if (!SoundActor::Update(dt))
+        return false;
+    if (!def)
+        return true;
+    if (!(lookupFlags & 0x80)) {
+        // Only entities of type bit 22 can be attached.
+        Entity* found = FindEntity(attachedName);
+        attached = (found && (found->typeBits[0] & 0x400000)) ? found : nullptr;
+        if (attached)
+            attached->AddRef();
+        lookupFlags |= 0x80;
+    }
+    return true;
 }
 
 // @func 0x001D4B90 SoundActorB17728::AdvanceWrap
@@ -678,7 +743,7 @@ constexpr uint32_t kMsg_Damaged = 0x69988172u;
 } // namespace
 
 // @func 0x001EE3E4 TweenActor::InteractionBegin
-bool TweenActor::InteractionBegin()
+bool TweenActor::InteractionBegin(Entity* /*user*/)
 {
     EntitySetState(this, 0, 1);
     EntityPostScriptMessage(this, kMsgKey_TweenBegin, kMsg_TweenBegin, 0);
@@ -734,7 +799,7 @@ bool InteractivePropB::Release(bool kill)
 }
 
 // @func 0x001F66E8 InteractivePropB::InteractionBegin
-bool InteractivePropB::InteractionBegin()
+bool InteractivePropB::InteractionBegin(Entity* /*user*/)
 {
     Entity* user = InteractionUser(EntityInteraction(this));
     // NOTE: the console does not check for a missing user.
@@ -796,6 +861,111 @@ bool InteractivePropC::CanInteractWith(Entity* other, int kind)
             return false;
     }
     return ActorCanInteractWith(this, other, kind);
+}
+
+// -- InteractivePropA --------------------------------------------------------------------
+
+// @func 0x001DC3A8 InteractivePropA::CanInteractWith
+bool InteractivePropA::CanInteractWith(Entity* other, int kind)
+{
+    if (kind == kInteract_Player && other && (other->classBits & 1)) {
+        EntityComponent* interaction = EntityInteraction(this);
+        const auto* d = static_cast<const InteractivePropAUseDef*>(def);
+        if (interaction && InteractionUsers(interaction) < 2 && d->sharedUse == 0) {
+            bool idleDriver = false;
+            if (other->typeBits[0] & 0x08) {
+                EntityComponent* driver = other->GetComponent(kComp_17);
+                idleDriver = driver && AnimDriverState(driver) == 1;
+            }
+            if (PlayerBlockBusyTime(other->PlayerSlot() & 0xFF) <= 0.0f || idleDriver)
+                return false;
+        }
+    }
+    return ActorCanInteractWith(this, other, kind);
+}
+
+// @func 0x001DC504 InteractivePropA::InteractionBegin
+bool InteractivePropA::InteractionBegin(Entity* user)
+{
+    const auto* d = static_cast<const InteractivePropAUseDef*>(def);
+    if (d->sharedUse == 0 && user && (user->typeBits[0] & 0x08)) {
+        EntityComponent* driver = user->GetComponent(kComp_17);
+        if (driver && AnimDriverState(driver) != 1)
+            AnimDriverStop(driver, true);
+    }
+    return true;
+}
+
+// -- SearchlightActor ----------------------------------------------------------------------
+
+// @func 0x001EAD18 SearchlightActor::InteractionBegin
+bool SearchlightActor::InteractionBegin(Entity* newUser)
+{
+    user = newUser;
+    if (!newUser)
+        return true;
+    GameCamera* camera = MainGameCamera();
+    // NOTE: the console builds the mode with its full constructor
+    // (0x00111FE0, not ported), which also takes the user and the light.
+    auto* mode = new camera::SpotlightCameraMode(camera);
+    mode->player = newUser;
+    mode->spotlight = this;
+    cameraMode = mode;
+    if (camera)
+        camera->PushMode(0.7f, mode, false);
+    newUser->SetVisible(false, true, true, true);
+    if (lightObject) {
+        lightObject->SetVisible(true, false);
+        if (lightObject->GetType() == ape::world::kObjType_GeomInstance)
+            lightObject->VirtualSlot13(0, false);
+    }
+    return true;
+}
+
+// -- Safe ------------------------------------------------------------------------------------
+
+// @func 0x001E6FA0 Safe::Release
+bool Safe::Release(bool kill)
+{
+    if (kill) {
+        GameWorldDequeueSafeCallback(this);
+        audio::SoundNameRelease(sound248);
+        audio::SoundNameRelease(sound24C);
+        for (int i = 0; i < 3; ++i) {
+            audio::SoundNameRelease(sounds250[i]);
+            audio::SoundNameRelease(sounds25C[i]);
+        }
+        if (script228) {
+            delete static_cast<ape::ApeAnimScriptInstance*>(script228);
+            script228 = nullptr;
+        }
+    }
+    return ActorEntity::Release(kill);
+}
+
+// @func 0x001E9050 Safe::InteractionCancel
+void Safe::InteractionCancel()
+{
+    Entity* user = InteractionUser(EntityInteraction(this));
+    GameCamera* camera = MainGameCamera();
+    if (camera && cameraMode) {
+        camera->RemoveMode(-1.0f, cameraMode);
+        delete cameraMode;
+        cameraMode = nullptr;
+    }
+    if (user)
+        user->SetVisible(true, true, true, true);
+    GameWorldSetHudHidden(false);
+    GameWorldSetPlayerControl(true);
+}
+
+// @func 0x001E9164 Safe::InteractionEnd
+void Safe::InteractionEnd(bool completed)
+{
+    (void)completed;
+    EntityComponent* interaction = EntityInteraction(this);
+    InteractionClearFlag20(interaction);
+    InteractionSetOffer(interaction, 2);
 }
 
 // TODO(0x001EE680 TweenActor::Reset)
