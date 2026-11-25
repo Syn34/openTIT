@@ -1556,8 +1556,8 @@ void OutlineTechnique::Draw(AglRenderItem* item)
 }
 
 class GeoParticleTechnique : public AglTechnique {
-    // TODO(0x005B0388 GeoParticleTechnique::BeginMaterial)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void Draw(AglRenderItem* item) override;
     // @func 0x007ABBBC GeoParticleTechnique::~GeoParticleTechnique
     // @func 0x007AD018 GeoParticleTechnique::~GeoParticleTechnique (deleting)
@@ -5429,6 +5429,16 @@ void SlyEnvMapTechnique::Draw(AglRenderItem* item)
     ApplyItemStencilRef(item);
     DrawItemGeometry(item);
     EndItemAlpha(item);
+}
+
+// @func 0x005B0388 GeoParticleTechnique::BeginMaterial
+// Fog layer 0 when the material takes fog; fragment constant 0 is
+// (0, 0, 0, 1), with w = 0 when material constant 3 is set.
+void GeoParticleTechnique::BeginMaterial(AglMaterial* material)
+{
+    ApplyFog(0, (material->flags & AglMaterial::kFlag_40) != 0, 0x20);
+    const float value[4] = { 0.0f, 0.0f, 0.0f, MaterialConstantBitsSet(material, 3) ? 0.0f : 1.0f };
+    SetShaderConstant(0, value);
 }
 
 } // namespace agl
