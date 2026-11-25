@@ -313,6 +313,8 @@ public:
     void RemoveWatcher(void* watcher);
     bool HasTypeBit(uint32_t bit) const { return (typeBits[bit >> 5] & (1u << (bit & 31))) != 0; }
     void SetName(const char* name);
+    // Switches the entity's anim script (slot 68) to a state.
+    void SetScriptState(uint32_t stateHash);
     float GetAnimDuration(uint32_t anim) const;
     float GetAnimElapsed(bool normalized, uint32_t anim) const;
     float GetAnimProgress(uint32_t anim) const;

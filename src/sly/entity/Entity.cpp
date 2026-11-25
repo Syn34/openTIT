@@ -184,6 +184,8 @@ Entity::Entity()
 // @func 0x000DF8B4 Entity::~Entity
 // @func 0x000DF8E0 Entity::~Entity (deleting)
 // @func 0x000D7024 Entity::~Entity (base part, vtable 0x00B12278)
+// @func 0x000DF934 Entity::~Entity (copy, called by derived destructors)
+// @func 0x000D729C Entity::~Entity (base part forwarding copy)
 // Hands the world object back: its original transform is restored when the
 // entity had taken it over, it is hidden, tagged with the render id and
 // released. The component, watcher and child arrays are freed (the
@@ -208,6 +210,13 @@ Entity::~Entity()
     delete children;
     delete watchers;
     delete components;
+}
+
+// @func 0x000DAEC8 Entity::SetScriptState
+void Entity::SetScriptState(uint32_t stateHash)
+{
+    if (void* script = GetAnimScript())
+        ScriptInstanceSetState(script, stateHash);
 }
 
 // @func 0x000DBCF8 Entity::FindAnimClip
