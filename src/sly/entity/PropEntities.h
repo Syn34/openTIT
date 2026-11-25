@@ -222,10 +222,16 @@ public:
 
     int32_t alterState = 0;              // 0x188
     uint32_t field_18C = 0;              // 0x18C cleared by states 1 and 3
+    float flashTime = 0.0f;              // 0x190
     Entity* refusedPartner = nullptr;    // 0x194 NOTE: refused for interactions of kind 0
     uint32_t collisionGroup = 0;         // 0x198
     void* animScript1A0 = nullptr;       // 0x1A0
     void* animScript1A4 = nullptr;       // 0x1A4
+    bool flashVisible = false;           // 0x1B0 object visibility before the flash pass
+    bool flashing = false;               // 0x1B1
+    uint8_t flashFade[4] = {};           // 0x1B2 fade record
+    // Slot 14: while alive and flashing, blinks four times a second.
+    void UpdateFade() override;
 };
 
 // Definition of the Bentley alter ego entity (vtable 0x00B14590, 0x110
@@ -492,6 +498,13 @@ public:
     TargetableA* holder = nullptr;           // 0x298
     bool stacking = false;                   // 0x29C
     bool freezeWhenOrphaned = false;         // 0x2A0 NOTE: stops updating when its parent goes away
+    bool flashVisible = false;               // 0x2B0 visibility before the flash pass
+    bool flashing = false;                   // 0x2B1
+    float flashTime = 0.0f;                  // 0x2B4
+    uint8_t flashFade[4] = {};               // 0x2B8 fade record
+    // Slot 14: blinks five times a second while flashing; dead targets are
+    // hidden and at once shown again (as on the console).
+    void UpdateFade() override;
 };
 
 // Entity of TargetableDefA (vtable 0x00B14B98 + 0x00B14D48/0x00B14D70,
@@ -633,6 +646,8 @@ public:
     // Slot 43: a dying entity is forgotten by both Bentleys; its score
     // (times the part level) goes to player 0 when this Bentley killed it.
     void HandleMessage(const EntityMessage& msg) override;
+    // Slot 14: while alive and flashing, blinks twice a second.
+    void UpdateFade() override;
     // Slot 69: the shared target (see s_target).
     // @func 0x0017574C CompoundEntity::GetTrackedTarget
     Entity* GetTrackedTarget() override { return s_target; }
@@ -675,6 +690,10 @@ public:
     uint32_t skinLevel = 0;        // 0x2D0
     uint32_t skinCount = 0;        // 0x2D8
     uint32_t killCount = 0;        // 0x2EC kills since the last damage
+    bool flashVisible = false;     // 0x2F8 visibility before the flash pass
+    bool flashing = false;         // 0x2F9
+    float flashTime = 0.0f;        // 0x2FC
+    uint8_t flashFade[4] = {};     // 0x300 fade record
     uint8_t field_30C = 0;         // 0x30C cleared by state 6
     uint32_t field_310 = 0;        // 0x310 cleared by state 6
     int32_t score = 0;             // 0x2F0 NOTE: read on the player 0 entity

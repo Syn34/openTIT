@@ -269,6 +269,10 @@ public:
     virtual bool PostUpdate(float dt);                             // slot 5
     // Slot 12. NOTE: the frame time is passed through but unused by the base.
     virtual void UpdateTransform(float dt = 0.0f);                 // slot 12
+    // Slot 14 (+0x38): fade and flash pass of the frame (characters, props);
+    // nothing by default.
+    // @func 0x000D8FC0 Entity::UpdateFade
+    virtual void UpdateFade() {}
     virtual EntityComponent* GetCharacterComponent();              // slot 15
     virtual EntityComponent* GetComponent00();                     // slot 16
     virtual EntityComponent* GetComponent0D();                     // slot 17

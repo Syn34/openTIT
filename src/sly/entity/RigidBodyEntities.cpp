@@ -327,6 +327,18 @@ void AlterEgoEntity::SetTransform(const ape::Matrix34& m)
         MoveBody(rigidBody, m);
 }
 
+// @func 0x0017C7F8 AlterEgoEntity::UpdateFade
+void AlterEgoEntity::UpdateFade()
+{
+    Entity::UpdateFade();
+    if (health > 0.0f && flashing && (flags & kEnt_Visible) &&
+        std::cos(flashTime * 4.0f * 2.0f * 3.1415f) > 0.0f) {
+        EntityApplyFade(this, flashFade, true);
+        flashVisible = object && object->IsVisible();
+        SetVisible(false, true, true, false);
+    }
+}
+
 // @func 0x0017A008 AlterEgoEntity::CanInteractWith
 bool AlterEgoEntity::CanInteractWith(Entity* other, int kind)
 {
@@ -593,6 +605,30 @@ bool TargetableA::AddWatcher(void* watcher)
     if (!held)
         instance->SetStateAndUpdate(state);
     return false;
+}
+
+// @func 0x00197210 TargetableB::UpdateFade
+void TargetableB::UpdateFade()
+{
+    Entity::UpdateFade();
+    bool on = flashing;
+    if (on && std::cos(flashTime * 3.1415f * 2.0f / 0.2f) < 0.0f)
+        on = false;
+    if (health > 0.0f) {
+        if (!on || !(flags & kEnt_Visible))
+            return;
+        EntityApplyFade(this, flashFade, true);
+        if (health <= 0.0f)
+            SetVisible(true, true, true, true);
+    } else {
+        SetVisible(false, true, true, false);
+        if (health <= 0.0f)
+            SetVisible(true, true, true, true);
+        flashVisible = (flags & kEnt_Visible) != 0;
+        return;
+    }
+    flashVisible = (flags & kEnt_Visible) != 0;
+    SetVisible(false, true, true, false);
 }
 
 // @func 0x00192F00 TargetableB::Damage
@@ -1027,6 +1063,22 @@ bool CompoundEntity::Damage(float amount, Entity* source, uint32_t type)
 }
 
 Entity* CompoundEntity::s_target = nullptr;
+
+// @func 0x00175A20 CompoundEntity::UpdateFade
+void CompoundEntity::UpdateFade()
+{
+    Entity::UpdateFade();
+    bool on = flashing;
+    if (!on)
+        flashTime = 0.0f;
+    else if (std::cos(flashTime * 3.1415f * 2.0f * 2.0f) < 0.0f)
+        on = false;
+    if (health > 0.0f && on && propState != 3 && (flags & kEnt_Visible)) {
+        EntityApplyFade(this, flashFade, false);
+        flashVisible = (flags & kEnt_Visible) != 0;
+        SetVisible(false, true, true, false);
+    }
+}
 
 // @func 0x00175758 CompoundEntity::HandleMessage
 void CompoundEntity::HandleMessage(const EntityMessage& msg)
