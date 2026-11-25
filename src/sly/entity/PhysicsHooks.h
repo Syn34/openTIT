@@ -46,6 +46,8 @@ uint8_t RigidBodyMotionType(void* body);
 // hkpKeyFrameUtility::applyHardKeyFrame (0x009DD41C): velocities that take
 // the body to `position`/`rotation` in 1/invDt seconds.
 void RigidBodyApplyHardKeyFrame(void* body, const ape::Vec3& position, const ape::Vec4& rotation, float invDt);
+// hkpEntity::addContactListener (0x0091A82C).
+void RigidBodyAddContactListener(void* body, void* listener);
 // Wakes the body (hkpEntity::activate 0x0091A4C8).
 void RigidBodyActivate(void* body);
 // Wakes the body (0x0091A4C8) and applies a linear impulse (motion slot 21).

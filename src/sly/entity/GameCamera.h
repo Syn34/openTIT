@@ -54,9 +54,8 @@ public:
     // Slot 53: on, the camera follows its own animated camera object through
     // an "Anim" mode; off, that mode is removed again.
     void SetActiveVisual(bool on) override;
-    // Slot 59 (base 0x000DD368): animation events that hold or release the
-    // animated view. NOTE: the base slot is not declared on Entity yet.
-    void OnAnimEvent(const char* name, uint32_t arg0, uint32_t arg1, bool fired);
+    // Slot 59: animation events that hold or release the animated view.
+    void OnAnimEvent(const char* name, uint32_t argument, Entity* source) override;
 
     // -- view ---------------------------------------------------------------------
     void GetView(CameraView& out) const;

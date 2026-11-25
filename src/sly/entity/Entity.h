@@ -137,6 +137,13 @@ public:
 // NOTE: only kind 3 (player interaction prompt) is special-cased in this module.
 constexpr int kInteract_Player = 3;
 
+// Attach locator: a frame relative to a bone of an entity's skeleton.
+struct EntityLocator {
+    ape::Matrix34 transform;             // 0x00 in the bone's space
+    uint32_t field_40 = 0;
+    int16_t bone = -1;                   // 0x44
+};
+
 // One attached child entity (console record of 0xF0 bytes in the array at +0x154).
 struct EntityChildLink {
     ape::Vec3 offset;                    // 0x80 attach offset
@@ -144,10 +151,10 @@ struct EntityChildLink {
     uint32_t partName = 0;               // 0xA0 attach part / slot name hash
     uint32_t flags = 0;                  // 0xB0 EntityChildFlags
     Entity* child = nullptr;             // 0xC0
-    void* parentLocator = nullptr;       // 0xC4 locator on the parent, or null
+    EntityLocator* parentLocator = nullptr;   // 0xC4 locator on the parent, or null
     int32_t parentBone = -1;             // 0xC8 bone of the parent, -1 for none
-    void* field_CC = nullptr;            // 0xCC NOTE: object whose world matrix is used when no bone
-    void* childLocator = nullptr;        // 0xD0 locator on the child, or null
+    ape::world::ApeObj* parentObject = nullptr;   // 0xCC object whose world matrix is used when no bone
+    EntityLocator* childLocator = nullptr;   // 0xD0 locator on the child, or null
     int32_t childBone = -1;              // 0xD4
     uint32_t restoreState = 0;           // 0xDC passed back to the child on detach
     float restoreBlend = 0.0f;           // 0xE0
@@ -157,6 +164,8 @@ enum EntityChildFlags : uint32_t {
     kChild_NoTransform     = 1u << 24,  // the child places itself
     kChild_RestoreState    = 1u << 25,  // re-apply restoreState when detached
     kChild_KeepOnDetach    = 1u << 26,  // do not restore the blend on detach
+    kChild_KeepScale       = 1u << 28,  // the child keeps its own scale
+    kChild_KeepRotation    = 1u << 29,  // the child keeps its own rotation
     kChild_ParentRotation  = 1u << 30,  // use the parent's rotation, ignore the bone's
     kChild_ForwardAnim     = 1u << 31,  // anim layer weights are forwarded to the child
 };
@@ -485,6 +494,9 @@ public:
     void UpdateChildTransforms();
     // Slot 58 (+0xE8): forgets a watcher added by AddWatcher.
     virtual void RemoveWatcher(void* watcher);
+    // Slot 59 (+0xEC): animation event `name` from `source`'s controller.
+    // "hkAttach<part>" moves the entity to another attach part of its parent.
+    virtual void OnAnimEvent(const char* name, uint32_t argument, Entity* source);
     bool HasTypeBit(uint32_t bit) const { return (typeBits[bit >> 5] & (1u << (bit & 31))) != 0; }
     void SetName(const char* name);
     // Switches the entity's anim script (slot 68) to a state.
@@ -588,6 +600,14 @@ void UnregisterEntity(EntityList list, Entity* entity);
 void AddToInstanceRenderList(EntityComponent* component);
 uint32_t EntityCount(EntityList list);
 Entity* EntityAt(EntityList list, uint32_t index);
+
+// Listener the entities install on their animation controller: forwards
+// an event to the entity (`user`) (0x000DD4A0).
+void EntityAnimEventListener(const char* name, uint32_t argument, void* user);
+
+// Game world callback that runs the entity's slot 12 (UpdateTransform)
+// later in the frame (lists 0 and 2) (0x000DD778).
+void QueuedUpdateTransform(void* owner, Entity* entity);
 
 // One entity's share of the frame: the update step (flags, slot 4, child
 // transforms, motion) and the post-update step (slot 5, world object sync,

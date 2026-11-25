@@ -260,7 +260,7 @@ uint32_t TargetableB::InteractionNeeds(int kind, Entity* /*other*/)
 
 // @func 0x00196768 TargetableB::Interface17CSlot5
 // @func 0x0019676C TargetableB::Interface17CSlot5 (thunk, +0x17C)
-void TargetableB::Interface17CSlot5() {}
+void TargetableB::Interface17CSlot5(const void* event) { (void)event; }
 
 // TODO(0x00191944 TargetableB::DetachChild)
 void TargetableB::DetachChild(TargetableB* child)
@@ -289,7 +289,7 @@ CompoundEntity::~CompoundEntity()
 
 // @func 0x001728E8 CompoundEntity::Interface17CSlot5
 // @func 0x001728EC CompoundEntity::Interface17CSlot5 (thunk, +0x17C)
-void CompoundEntity::Interface17CSlot5() {}
+void CompoundEntity::Interface17CSlot5(const void* event) { (void)event; }
 
 // @func 0x00172B70 CompoundEntity::Interface17CSlot6
 // @func 0x00172B74 CompoundEntity::Interface17CSlot6 (thunk, +0x17C)

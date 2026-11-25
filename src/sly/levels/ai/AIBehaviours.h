@@ -33,9 +33,23 @@ public:
     enum State {
         kState_Spawn = 0,
         kState_Idle = 1,
+        kState_ScriptAnim = 2,    // plays a clip a script asked for
         kState_Move = 3,
+        kState_GoTo = 4,          // walks to a point a script named
+        kState_Approach = 5,      // NOTE: names of 5-7 from what they lead to
+        kState_Wait = 6,
+        kState_Return = 7,
         kState_Flee = 8,
+        kState_FleeTurn = 9,
+        kState_Charge = 0x0A,
+        kState_Attack = 0x0B,
+        kState_Notice = 0x0C,
         kState_Dead = 0x0D,
+        kState_Gone = 0x0E,
+        kState_Perch = 0x0F,      // NOTE: flies to a perch point (see 0x00020100)
+        kState_Land = 0x10,
+        kState_Perched = 0x11,
+        kState_TakeOff = 0x12,
         kState_Hit = 0x13,
     };
 
@@ -51,6 +65,10 @@ public:
     // Slot 52: empty for critters.
     // @func 0x0001ECC4 CritterAI::Slot52
     void Slot52() override {}
+
+    void TickEntity(float dt) override;
+    void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value) override;
+    void ChooseState() override;
 
     // Clip played while moving (0x0001F330).
     void SetMoveClip(uint32_t clipHash);

@@ -483,7 +483,7 @@ public:
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     // Empty override of the +0x17C interface's slot 5.
-    void Interface17CSlot5() override;
+    void Interface17CSlot5(const void* event) override;
     const TargetableDefB* Def() const { return static_cast<const TargetableDefB*>(def); }
     // Predicate the minigame uses: not a stackable target (type bit 9), or
     // neither held nor (when stacking) on a parent (0x0018E9FC).
@@ -672,7 +672,7 @@ public:
     int32_t hitHeading = 0;                  // 0x2E0 degrees
     const PropDamageSettings& DamageSettings() const;
     // Empty overrides of the +0x17C interface's slots 5 and 6.
-    void Interface17CSlot5() override;
+    void Interface17CSlot5(const void* event) override;
     void Interface17CSlot6() override;
 
     HkArray<void*> touchingBodies; // 0x1FC NOTE: bodies of entities it is in contact with (guessed)

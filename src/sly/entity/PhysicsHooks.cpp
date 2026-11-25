@@ -19,6 +19,7 @@ float PhysicsWorldGravity() { return 0.0f; }
 void PhysicsAddAction(void* action) { (void)action; }
 uint8_t RigidBodyMotionType(void* body) { (void)body; return 0; }
 void RigidBodyActivate(void* body) { (void)body; }
+void RigidBodyAddContactListener(void* body, void* listener) { (void)body; (void)listener; }
 void RigidBodyApplyHardKeyFrame(void* body, const ape::Vec3& position, const ape::Vec4& rotation, float invDt)
 {
     (void)body; (void)position; (void)rotation; (void)invDt;
