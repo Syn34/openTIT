@@ -99,3 +99,10 @@
   (the original does this too); kept on purpose.
 * `FindSequenceEntity` is called with an extra flag by some commands; the
   original ignores it (it only fed a compiled-out warning).
+
+## Mega knight data (agent2)
+* `MegaKnightBehavior.*` (0x00302DA8-0x00303CEC): behaviour actions (Camera, GroundSmash,
+  Laser, Pause, two movement actions and a counter known only by hash), stamps and stamp sets
+  from XML, and the definition's destructor. The loader that calls the parsers (0x0030743C),
+  the boss entity and the action runtime (0x00305A44.., 0x003081C8..) are not ported. Two
+  start-up defaults (0x01069B38, 0x01069EF8) are assumed 0.
