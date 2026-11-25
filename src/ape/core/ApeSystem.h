@@ -8,7 +8,7 @@ namespace ape {
 // Subsystem groups accepted by SystemInit().
 enum SystemInitFlags : uint32_t {
     kInit_Core     = 0x1,  // thread ids, memory, file system
-    kInit_Graphics = 0x2,
+    kInit_Graphics = 0x2,  // NOTE: the world object module (0x00588828); Agl is flag 4
     kInit_Audio    = 0x4,  // NOTE: inferred from call order, unverified
     kInit_Input    = 0x8,  // NOTE: inferred from call order, unverified
     kInit_AllButCore = ~kInit_Core,
@@ -45,9 +45,20 @@ struct EngineConfig {
     uint32_t field_150 = 0;           // +0x150
     uint32_t field_154 = 0;           // +0x154
     uint32_t field_158 = 0;           // +0x158
-    uint16_t field_16E = 0;           // +0x16E
-    uint32_t field_178 = 0;           // +0x178
-    uint32_t field_17C = 0;           // +0x17C
+    // World object pool sizes (0 selects the module default).
+    uint16_t geomInstanceCapacity = 0;    // +0x168
+    uint16_t emitterInstanceCapacity = 0; // +0x16A
+    uint16_t lightInstanceCapacity = 0;   // +0x16C
+    uint16_t field_16E = 0;           // +0x16E point instance pool size
+    uint16_t cameraInstanceCapacity = 0;  // +0x172
+    uint16_t splineInstanceCapacity = 0;  // +0x174
+    uint16_t geomDefCapacity = 0;         // +0x176
+    uint16_t emitterDefCapacity = 0;      // +0x178
+    uint16_t lightDefCapacity = 0;        // +0x17A
+    uint16_t pointDefCapacity = 0;        // +0x17C
+    uint16_t field_17E = 0;               // +0x17E
+    uint16_t cameraDefCapacity = 0;       // +0x180
+    uint16_t splineDefCapacity = 0;       // +0x182
     uint16_t field_18E = 0;           // +0x18E
     uint32_t field_1A4 = 0;           // +0x1A4 size of the general purpose heap created by SystemInit
     uint32_t field_1A8 = 0;           // +0x1A8
