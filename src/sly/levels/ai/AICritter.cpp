@@ -10,7 +10,13 @@
 #include "sly/entity/PhysicsHooks.h"
 #include "sly/entity/ScriptedEntity.h"
 #include "ape/world/ApeBase.h"
+#include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
+#include "ape/world/ApeSkeleton.h"
+#include "ape/math/ApeMatrixOps.h"
+#include "sly/entity/EntityHits.h"
+
+#include <cmath>
 
 namespace sly {
 namespace levels {
@@ -41,6 +47,7 @@ constexpr uint32_t kCmd_Attack = 0x73B1E248u;
 constexpr uint32_t kCmd_GoToPointMove = 0x376E1DF1u;
 constexpr uint32_t kCmd_Idle = 0x002237D4u;          // "Idle"
 constexpr uint32_t kCmd_SetSpawner = 0xF309EAC6u;
+constexpr uint32_t kReaction_CritterBite = 0x2DA0A51Du;   // NOTE: name unknown
 
 const ape::Vec3 kUp = {0.0f, 1.0f, 0.0f, 0.0f};          // 0x01164B60
 const ape::Vec3 kForward = {0.0f, 0.0f, 1.0f, 0.0f};     // 0x01164B70 (assumed)
@@ -103,7 +110,7 @@ void CritterAI::Attach(Entity* newEntity)
     poiPosition = ape::Vec3{};
     poiDirection = kForward;
     field_1C = kState_Move;
-    field_144 = 0;
+    wanderMargin = 0.0f;
     if (spawnAnim)
         SetState(kState_Spawn);
     else if (idleDelay > 0.0f || !CharacterHasClip(characterComp, idleClip))
@@ -125,10 +132,36 @@ void CritterAI::Update(float dt)
     AIController::Update(dt);
 }
 
-// TODO(0x0001D548 CritterAI::SnapToGround)
+// @func 0x0001D548 CritterAI::SnapToGround
+// Probes the ground a little above and below the critter (from the spawn
+// height the first time) and stands on what it hits; without a hit it
+// stays at the spawn height, or goes back to its last position.
 void CritterAI::SnapToGround(bool fromSpawnHeight)
 {
-    (void)fromSpawnHeight;
+    ape::Vec3 top = transform.translation;
+    ape::Vec3 bottom = transform.translation;
+    if (fromSpawnHeight) {
+        // NOTE: the console uses the same height for both ends here.
+        const float height = boundsMax.y + entity->objectRestoreTransform.translation.y;
+        top.y = height;
+        bottom.y = height;
+    } else {
+        top.y = transform.translation.y + 0.2f;
+        bottom.y = transform.translation.y - 0.2f;
+    }
+    ape::Vec3 hit;
+    if (GroundProbe(top, bottom, hit))
+        transform.translation = hit;
+    else
+        transform.translation = fromSpawnHeight ? bottom : lastPosition;
+}
+
+// TODO(0x0001D1E0 CritterAI::GroundProbe): ray cast against the level
+// collision (bad instruction data in the reference).
+bool CritterAI::GroundProbe(const ape::Vec3& top, const ape::Vec3& bottom, ape::Vec3& hit)
+{
+    (void)top; (void)bottom; (void)hit;
+    return false;
 }
 
 // TODO(0x0001E420 CritterAI::FleePoint)
@@ -342,6 +375,302 @@ void CritterAI::ChooseState()
         SetState(kState_Move);
         return;
     }
+}
+
+// @func 0x00020310 CritterAI::Think
+// Reacts to the nearest enemy (the target while it is held): flee or hide
+// when it comes too close (perchers take off), notice it further out,
+// charge it from the move state and hit it when in reach of the attack
+// bone. Then the state timers: perches end, fleeing critters make quick
+// turns, waits end, idles start and points of interest are visited.
+bool CritterAI::Think(float dt)
+{
+    if (state == kState_Dead || state == kState_ScriptAnim || state == kState_GoTo || state == kState_Gone ||
+        state == kState_Hit)
+        return false;
+
+    Entity* victim = (target && (target->typeBits[0] & 2)) ? target : nullptr;
+    if (!victim || !(flags1 & kF1_Bit1) || !victim->IsAlive()) {
+        const AIManager* manager = GetAIManager();
+        victim = manager ? manager->PickTarget(this) : nullptr;
+    }
+    const ape::Vec3& position = transform.translation;
+    const bool percher = PropBool(settings, AIProp::Critter_PerchOnRails);
+    if (victim) {
+        const ape::Vec3 away = {victim->Position().x - position.x, victim->Position().y - position.y,
+                                victim->Position().z - position.z, 0.0f};
+        float d2 = away.x * away.x + away.y * away.y + away.z * away.z;
+        const float fleeDist = PropFloat(settings, AIProp::Critter_FleePlayerDist);
+        if (d2 < fleeDist * fleeDist) {
+            if (!percher) {
+                if (PropHash(settings, AIProp::Critter_FleeAnimClip) != 0) {
+                    SetState(kState_Gone);
+                } else if (state != kState_FleeTurn && state != kState_Flee) {
+                    SetState(kState_Flee);
+                    SetHomePosition(FleePoint(away));
+                    return true;
+                }
+            } else if (state != kState_TakeOff && state != kState_Move) {
+                SetState(state == kState_Land ? kState_TakeOff : kState_Move);
+            }
+        } else {
+            const float noticeDist = PropFloat(settings, AIProp::Critter_NoticePlayerDist);
+            if (d2 < noticeDist * noticeDist && !percher && state != kState_Notice && state != kState_FleeTurn &&
+                state != kState_Flee) {
+                SetState(kState_Notice);
+                SetHomePosition(position);
+                return true;
+            }
+        }
+        const float chargeDist = PropFloat(settings, AIProp::Critter_ChargePlayerDist);
+        if (state == kState_Move && !CrittersMayNotCharge() && d2 < chargeDist * chargeDist && TargetReachable()) {
+            SetTarget(victim);
+            SetState(kState_Charge);
+            return true;
+        }
+        // In reach of the attack bone: a knock back hit.
+        if (const uint32_t attackBone = PropHash(settings, AIProp::Critter_AttackBone)) {
+            if (const ape::world::ApeSkeletonBone* bone = entity->GetBoneByName(attackBone)) {
+                const ape::Vec3& offset = bone->local->translation;
+                const float dx = victim->Position().x - (position.x + offset.x);
+                const float dy = victim->Position().y - (position.y + offset.y);
+                const float dz = victim->Position().z - (position.z + offset.z);
+                d2 = dx * dx + dy * dy + dz * dz;
+            }
+            const float attackDist = PropFloat(settings, AIProp::Critter_AttackPlayerDist);
+            if (d2 < attackDist * attackDist) {
+                entity::EntityHitRecord hit;
+                hit.source = entity;
+                hit.reaction = kReaction_CritterBite;
+                hit.damageBits = 0;
+                hit.flags = static_cast<uint16_t>((3u << 13) | ((entity->classBits & 1) ? entity::EntityHitRecord::kHit_FromPlayer : 0));
+                hit.vec10 = kUp;
+                hit.data.knock.amount = 10.0f;
+                hit.data.knock.knockback = 0.0f;
+                static_cast<entity::ScriptedEntity*>(victim)->OnHitCategory3(hit);
+                entity->SetTimeScale(kCmd_Attack, true);
+            }
+        }
+    }
+
+    switch (state) {
+    case kState_Perched:
+        if (poiDelay > 0.0f) {
+            poiDelay -= dt;
+            if (poiDelay <= 0.0f)
+                SetState(kState_TakeOff);
+        }
+        break;
+    case kState_Flee:
+        if (quickTurnDelay > 0.0f) {
+            quickTurnDelay -= dt;
+            Entity* player = PlayerCharacter();
+            if (quickTurnDelay < 0.0f && player) {
+                QuickTurn(*player);
+                quickTurnDelay = RandomBetween(settings, AIProp::Critter_QuickTurnDelayMin,
+                                               AIProp::Critter_QuickTurnDelayMax);
+            }
+        }
+        break;
+    case kState_Wait:
+        if (poiDelay > 0.0f) {
+            poiDelay -= dt;
+            if (poiDelay <= 0.0f)
+                SetState(kState_Return);
+        }
+        break;
+    case kState_Move:
+        if (idleDelay > 0.0f) {
+            idleDelay -= dt;
+            if (idleDelay <= 0.0f)
+                SetState(kState_Idle);
+        }
+        if (poiDelay > 0.0f) {
+            poiDelay -= dt;
+            if (poiDelay <= 0.0f) {
+                if (!percher)
+                    SetState(kState_Approach);
+                else if (FindPerch())
+                    SetState(kState_Perch);
+            }
+        }
+        break;
+    default:
+        break;
+    }
+    return false;
+}
+
+// Part of Think (0x00020310): a fleeing critter turns aside by a random
+// angle (either way, whichever ends up further from the player) when that
+// still keeps half the safe distance.
+void CritterAI::QuickTurn(const Entity& player)
+{
+    const float angle = RandomBetween(settings, AIProp::Critter_QuickTurnAngleMin, AIProp::Critter_QuickTurnAngleMax);
+    if (std::fabs(angle) < 1.0e-5f)
+        return;
+    const ape::Vec3& position = transform.translation;
+    const ape::Vec3& p = player.Position();
+    const ape::Vec3 away = {p.x - position.x, p.y - position.y, p.z - position.z, 0.0f};
+    auto candidate = [&](float radians) {
+        ape::Matrix34 rotation;
+        ape::Matrix34RotationY(radians, rotation);
+        const ape::Vec3 turned = {away.x * rotation.xAxis.x + away.y * rotation.yAxis.x + away.z * rotation.zAxis.x,
+                                  away.x * rotation.xAxis.y + away.y * rotation.yAxis.y + away.z * rotation.zAxis.y,
+                                  away.x * rotation.xAxis.z + away.y * rotation.yAxis.z + away.z * rotation.zAxis.z,
+                                  0.0f};
+        return FleePoint(turned);
+    };
+    const float radians = angle * 0.017453292f;
+    ape::Vec3 best = candidate(radians);
+    float bestD2 = DistanceSq(p, best);
+    const ape::Vec3 other = candidate(-radians);
+    const float otherD2 = DistanceSq(p, other);
+    if (bestD2 <= otherD2) {
+        best = other;
+        bestD2 = otherD2;
+    }
+    const float halfSafe = PropFloat(settings, AIProp::Critter_StopFleeingPlayerDist) * 0.5f;
+    if (halfSafe * halfSafe <= bestD2) {
+        SetHomePosition(best);
+        SetState(kState_FleeTurn);
+    }
+}
+
+// @func 0x000210F8 CritterAI::UpdateFlightClip
+void CritterAI::UpdateFlightClip()
+{
+    constexpr uint32_t kClip_FlyUp = 0x739C20CAu;       // NOTE: names from use
+    constexpr uint32_t kClip_FlyDown = 0x8797408Au;
+    constexpr uint32_t kClip_BankRight = 0xBFE11843u;
+    constexpr uint32_t kClip_BankLeft = 0x3C985140u;
+    uint32_t clip = moveClip;
+    if (CharacterHasClip(characterComp, kClip_FlyUp))
+        clip = transform.translation.y < homePosition.y ? kClip_FlyUp : kClip_FlyDown;
+    if (CharacterHasClip(characterComp, kClip_BankRight)) {
+        const float ahead = facing.x * transform.zAxis.x + facing.z * transform.zAxis.z;
+        const float side = facing.x * transform.xAxis.x + facing.z * transform.xAxis.z;
+        if (ahead < 0.96f) {
+            if (side > 0.01f)
+                clip = kClip_BankRight;
+            else if (side < -0.01f)
+                clip = kClip_BankLeft;
+        }
+    }
+    if (clip != currentClip && CharacterPlayClip(characterComp, clip))
+        currentClip = clip;
+}
+
+// @func 0x00022A38 CritterAI::UpdateState
+// Facing per state (towards home, the target or the player), the landing
+// glide onto a perch, the charge goal and the wait at a point of interest.
+void CritterAI::UpdateState(float dt)
+{
+    const ape::Vec3& position = transform.translation;
+    auto faceTowards = [this, &position](const ape::Vec3& point) {
+        SetFacing({point.x - position.x, point.y - position.y, point.z - position.z, 0.0f});
+    };
+    switch (state) {
+    case kState_Move:
+    case kState_GoTo:
+    case kState_Approach:
+    case kState_Return:
+    case kState_Flee:
+    case kState_Charge:
+    case kState_Perch: {
+        if (flags0 & kF0_NavMoving)
+            break;
+        const ape::Vec3 toHome = {homePosition.x - position.x, homePosition.y - position.y,
+                                  homePosition.z - position.z, 0.0f};
+        SetFacing(toHome);
+        if (flags1 & kF1_FreeFacing) {
+            // Close to the goal a flyer keeps its heading rather than turning
+            // round to a point behind it.
+            const float lock = FacingLockRadius();
+            const ape::Vec3& forward = transform.zAxis;
+            const float dist2 = toHome.x * toHome.x + toHome.y * toHome.y + toHome.z * toHome.z;
+            if (dist2 < lock * lock && facing.x * forward.x + facing.y * forward.y + facing.z * forward.z < 0.0f &&
+                std::fabs(toHome.y) < lock)
+                SetFacing(forward);
+            if (PropBool(settings, AIProp::Critter_UseFlightAnims))
+                UpdateFlightClip();
+        }
+        break;
+    }
+    case kState_Attack:
+        if (target)
+            faceTowards(target->Position());
+        break;
+    case kState_Notice:
+        if (Entity* player = PlayerCharacter())
+            faceTowards(player->Position());
+        break;
+    default:
+        break;
+    }
+
+    switch (state) {
+    case kState_Land: {
+        const float t = CharacterClipProgress(characterComp) * dt * 10.0f;
+        transform.translation.x += (poiPosition.x - transform.translation.x) * t;
+        transform.translation.y += (poiPosition.y - transform.translation.y) * t;
+        transform.translation.z += (poiPosition.z - transform.translation.z) * t;
+        SetFacing(poiDirection);
+        break;
+    }
+    case kState_Charge:
+        if (target)
+            SetHomePosition(claimSlot ? claimSlot->position : target->Position());
+        break;
+    case kState_Wait:
+        faceTowards(poiPosition);
+        break;
+    default:
+        break;
+    }
+    stateTime += dt;
+}
+
+// @func 0x0001E068 CritterAI::RandomWanderPoint
+// NOTE: the console draws the three random numbers with its own inlined
+// steps of the generator; three ordinary draws are used here.
+ape::Vec3 CritterAI::RandomWanderPoint()
+{
+    ape::Vec3 point;
+    ape::world::ApeObj* area = SpawnerAltObject(entity);
+    if (!area || PropBool(settings, AIProp::Critter_AlwaysUseBoundingRadius)) {
+        const float radius = PropFloat(settings, AIProp::Critter_BoundingRadius) - wanderMargin;
+        float x = ape::RandomRange(-radius, radius, ape::g_gameRandom);
+        float y = ape::RandomRange(wanderMargin, radius, ape::g_gameRandom);
+        float z = ape::RandomRange(-radius, radius, ape::g_gameRandom);
+        if (x * x + z * z > radius * radius) {
+            x *= 0.5f;
+            y *= 0.5f;
+            z *= 0.5f;
+        }
+        const ape::Vec3& origin = entity->objectRestoreTransform.translation;
+        point = {origin.x + x, origin.y + y, origin.z + z, 0.0f};
+    } else {
+        const ape::Aabb& box = area->GetDef()->GetBounds();
+        const float m = wanderMargin;
+        const float x = ape::RandomRange(box.min.x + m, box.max.x - m, ape::g_gameRandom);
+        const float y = ape::RandomRange(box.min.y + m, box.max.y - m, ape::g_gameRandom);
+        const float z = ape::RandomRange(box.min.z + m, box.max.z - m, ape::g_gameRandom);
+        const ape::Matrix34& w = area->GetWorld();
+        point = {x * w.xAxis.x + y * w.yAxis.x + z * w.zAxis.x + w.translation.x,
+                 x * w.xAxis.y + y * w.yAxis.y + z * w.zAxis.y + w.translation.y,
+                 x * w.xAxis.z + y * w.yAxis.z + z * w.zAxis.z + w.translation.z, 0.0f};
+    }
+    if (!(flags1 & kF1_FreeFacing))
+        point.y = transform.translation.y;
+    return point;
+}
+
+// TODO(0x00020100 CritterAI::FindPerch): picks a point on a rail spline
+// near the critter and the side to perch on.
+bool CritterAI::FindPerch()
+{
+    return false;
 }
 
 // @func 0x0001E7F0 CritterAI::OnMessage

@@ -352,9 +352,15 @@ public:
     Entity* target = nullptr;                    // +0x100
     ape::Vec3 targetDir{};                       // +0x110
     float targetDist = 0.0f;                     // +0x120
-    // +0x124 slot elsewhere that points back at this controller (cleared on
-    // disengage). NOTE: what owns the slot is not known.
-    AIController** claimSlot = nullptr;
+    // +0x124 attack slot this controller claimed (its first word points back
+    // at the controller and is cleared on disengage; the place to stand is at
+    // +0x10). NOTE: what owns the slots is not known.
+    struct ClaimSlot {
+        AIController* owner;
+        uint32_t field_04[3];
+        ape::Vec3 position;      // +0x10
+    };
+    ClaimSlot* claimSlot = nullptr;
     int32_t bodyMotion = 0;                      // +0x12C motion type of the body when attached
     uint8_t flags0 = 0;                          // +0x130 Flags0
     uint8_t flags1 = 0;                          // +0x131 Flags1

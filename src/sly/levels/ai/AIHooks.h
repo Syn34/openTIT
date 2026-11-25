@@ -10,6 +10,7 @@
 #include <cstdint>
 
 namespace ape { class ApeAnimScriptInstance; class ApeRefCounted; }
+namespace ape::world { class ApeObj; }
 
 namespace sly {
 class WorldObject;
@@ -225,6 +226,8 @@ bool CharacterSpawnerSettings(const Entity* entity, uint32_t defNames[3],
 // and its "IsSpawnField" setting (0x010AB0E8).
 bool SpawnerAltObjectBounds(const Entity* entity, ape::Vec3& boxMin, ape::Vec3& boxMax);
 bool SpawnerIsSpawnField(const Entity* entity);
+// The spawner's alternative spawn object itself (0x00451E08), or null.
+ape::world::ApeObj* SpawnerAltObject(const Entity* entity);
 bool HasSpawner(const Entity* entity);
 // The spawner that created an entity (entity +0xDC), opaque here, and its
 // list of live spawned objects (spawner +0x14/+0x18).
@@ -270,6 +273,9 @@ void CharacterClearAIHold(Entity* character);
 // Entity virtual slot 36 (+0x90): the Havok rigid body of the entity's
 // physics component, or null.
 void* EntityRigidBody(Entity* entity);
+// Game world halfword +0x128214. NOTE: non-zero keeps critters from
+// charging (a game mode flag; meaning unknown).
+bool CrittersMayNotCharge();
 // Spawner registered under a name (spawner map 0x00F65BE8 +0x04), or null.
 void* FindSpawnerByName(uint32_t nameHash);
 // -- physics body (entity virtual slot 16) ------------------------------------------
@@ -327,6 +333,8 @@ bool AttackerComponentFlag(Entity* attacker, bool* hasComponent);
 bool CharacterPlayClip(EntityComponent* character, uint32_t clipHash);
 // 0x0029879C(component, 0, 1): true when the current clip is done.
 bool CharacterClipFinished(EntityComponent* character);
+// 0x00298948 (layer 0): playback position of the current clip, 0..1.
+float CharacterClipProgress(EntityComponent* character);
 // 0x00298B44: the character has a clip of that name.
 bool CharacterHasClip(EntityComponent* character, uint32_t clipHash);
 // Character entity +0x15C: health.
