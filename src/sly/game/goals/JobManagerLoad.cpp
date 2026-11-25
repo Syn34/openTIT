@@ -437,7 +437,7 @@ void JobManager::OnLevelStart()
     field_4C = 0;
     field_50 = 0;
     field_40 = 0;
-    field_44 = 0;
+    field_44 = nullptr;
     pendingRequest[0] = 0;
     pendingRequest[1] = 0;
     field_54 = 0;

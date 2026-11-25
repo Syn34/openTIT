@@ -861,5 +861,48 @@ bool JobManager::StartJobFromHub(Episode* job, uint32_t goalName, bool toHub, bo
     return true;
 }
 
+// @func 0x002E5414 JobManager::CompleteRunningJob
+uint32_t JobManager::CompleteRunningJob()
+{
+    constexpr uint32_t kState_JobEnded = 0xB15553D6u;   // NOTE: state name unknown
+    PlayerProgress& progress = CurrentProgress();
+    const bool replay = progress.field_149 == 1 || progress.inJob == 1;
+    uint32_t nextLevel = currentJob ? currentJob->field_2D8 : 0;
+    if (!instance || !currentJob)
+        return nextLevel;
+
+    if (replay && currentJob->nameHash != 0)
+        nextLevel = currentJob->nameHash;
+    else if (instance->field_1DC != 0)
+        nextLevel = instance->field_1DC;
+    progress.jobStates[instance->index] = kJobState_Complete;
+    UnlockJobRewards(instance->nameHash);
+
+    if (!replay) {
+        // Notification flags: the second job of episode 1, then finishing
+        // episode 1 and the later episodes.
+        if (currentJob->episode == 1 && instance->index == 1)
+            progress.notifyBits |= 0x4;
+        if (currentJob->IsStageComplete()) {
+            EpisodeProgress& record = progress.episodes[currentJob->episode];
+            ++record.stage;
+            if (!currentJob->UpdateJobStates()) {
+                record.flags = static_cast<uint16_t>((record.flags & ~0x18) | 0x10);
+                if (currentJob->episode == 1)
+                    progress.notifyBits |= 0x8;
+                if (currentJob->episode > 1)
+                    progress.notifyBits |= 0x10;
+            }
+        }
+    }
+    lastFinished = instance;
+    ResetRunningJob();
+    if (field_44) {
+        if (auto* script = static_cast<ape::ApeAnimScriptInstance*>(field_44->GetAnimScript()))
+            script->SetStateAndUpdate(kState_JobEnded);
+    }
+    return nextLevel;
+}
+
 } // namespace game
 } // namespace sly

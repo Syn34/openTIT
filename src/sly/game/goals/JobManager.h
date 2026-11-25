@@ -518,6 +518,10 @@ public:
     // `skipBookkeeping`) and either the episode's hub / hideout level is
     // asked for or the job's goals are built right away (tracking
     // `goalName`); the "INITJOB" script runs afterwards (0x002E0930).
+    // Completes the running job: its state and rewards, the episode's next
+    // stage (or the episode itself) unless it is a replay, then ends it.
+    // Returns the level to go to next (0x002E5414).
+    uint32_t CompleteRunningJob();
     bool StartJobFromHub(Episode* job, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
                          bool levelRequestFlag, bool skipBookkeeping, bool track);
     // Ends the running job instance, first updating its episode's flag 0x20
@@ -538,11 +542,12 @@ public:
     Job* currentJob = nullptr;       // +0x24
     Episode* instance = nullptr;     // +0x28 the running job
     uint32_t streamFlags = 0;        // +0x10 bit 29: a start is pending; bits 31/30 its two options
+    Episode* lastFinished = nullptr; // +0x2C the job that ended last
     uint32_t field_30 = 0;           // +0x30
     uint32_t collectedBottles = 0;   // +0x38 of the current episode, counted at level start
     uint32_t collectedMasks = 0;     // +0x3C over every active episode
     uint32_t field_40 = 0;           // +0x40
-    uint32_t field_44 = 0;           // +0x44
+    entity::Entity* field_44 = nullptr;   // +0x44 NOTE: an entity whose script is told when a job ends
     Goal* trackedGoal = nullptr;     // +0x48
     uint32_t field_4C = 0;           // +0x4C
     uint32_t field_50 = 0;           // +0x50
