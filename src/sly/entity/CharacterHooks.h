@@ -130,6 +130,9 @@ void AttachAnimScript(ape::ApeAnimScriptInstance* instance);
 void PlayerBlockDisguiseEnded(uint32_t player);
 // Time spent in the current state of a layer (the state machine's time array).
 void EntitySetStateTime(Entity* entity, uint32_t layer, float time);
+// Entity base version of slot 49 (0x000DBE78): starts or cross-fades a clip
+// on the animation controller; true when the entity has one and a clip.
+bool EntityPlayClip(Entity* entity, float blend, float speed, float fade, void* clip, uint32_t layer, bool loop);
 // Entity virtual slot 52 (+0xD0): motion of the root animation this frame.
 void EntityRootMotionDelta(Entity* entity, ape::Matrix34& out, bool consume);
 // Entity virtual slot 21 (+0x54): takes a new world transform.

@@ -9,6 +9,7 @@
 #include "ape/world/ApeObj.h"
 #include "sly/camera/CameraHooks.h"
 #include "sly/camera/CameraModes.h"
+#include "sly/entity/CharacterHooks.h"
 #include "sly/entity/EntityHooks.h"
 
 #include <algorithm>
@@ -600,12 +601,39 @@ void GameCamera::RefreshView()
 }
 
 // @func 0x000FCD1C GameCamera::ResetObjectTransform
+// @func 0x000FCE08 GameCamera::ResetObjectTransform (static-init fragment)
 void GameCamera::ResetObjectTransform()
 {
     if (animController)
         camera::AnimControllerStopAll(animController);
     if (object)
         camera::ResetObjectPivot(object);
+}
+
+// @func 0x000FC968 GameCamera::PlayClip
+bool GameCamera::PlayClip(float blend, float speed, float fade, void* clip, uint32_t layer, bool loop)
+{
+    const bool started = EntityPlayClip(this, blend, speed, fade, clip, layer, loop);
+    if (started)
+        cameraFlags &= ~kCamFlag_AnimHold;
+    return started;
+}
+
+// @func 0x000FC9B8 GameCamera::PlayClipByHash
+bool GameCamera::PlayClipByHash(float blend, float speed, float fade, uint32_t clip, uint32_t layer, bool loop)
+{
+    if (animController)
+        camera::AnimPrepareClip(animController, clip);
+    const bool started = PlayClip(blend, speed, fade, FindAnimClip(clip), layer, loop);
+    if (started)
+        lastAnim = clip;
+    return started;
+}
+
+// @func 0x000FCAE4 GameCamera::PlayClipByName
+bool GameCamera::PlayClipByName(float blend, float speed, float fade, const char* clip, uint32_t layer, bool loop)
+{
+    return PlayClip(blend, speed, fade, FindAnimClipByName(clip), layer, loop);
 }
 
 // @func 0x000FCE18 GameCamera::PlayAdditiveAnim

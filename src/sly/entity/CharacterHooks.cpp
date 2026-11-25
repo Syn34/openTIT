@@ -78,6 +78,11 @@ void GameWorldDequeueSafeCallback(Entity* safe) { (void)safe; }
 void GameWorldSetHudHidden(bool hidden) { (void)hidden; }
 void GameWorldSetPlayerControl(bool enabled) { (void)enabled; }
 void InteractionClearFlag20(EntityComponent* interaction) { (void)interaction; }
+bool EntityPlayClip(Entity* entity, float blend, float speed, float fade, void* clip, uint32_t layer, bool loop)
+{
+    (void)entity; (void)blend; (void)speed; (void)fade; (void)layer; (void)loop;
+    return clip != nullptr;
+}
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }
