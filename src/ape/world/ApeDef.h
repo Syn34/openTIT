@@ -144,6 +144,7 @@ public:
     }
     static void DestroyErased(void* def) { Destroy(static_cast<T*>(def)); }
 
+    // @func 0x0077CEBC ApeTDefList<ApeCameraDef>::Find
     static T* Find(uint32_t nameHash) { return static_cast<T*>(*Map().Find(nameHash)); }
 
 private:

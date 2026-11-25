@@ -141,6 +141,13 @@ public:
         GetInstanceMap(T::kInstanceType).Add(obj->GetNameHash(), obj);
         obj->SetRegistered(true);
     }
+    // Registered instance of the name, or null.
+    // @func 0x00772838 ApeTInstanceList<ApePointInstance>::Find
+    // @func 0x0074D21C ApeTInstanceList<ApeSplineInstance>::Find
+    static T* Find(uint32_t nameHash)
+    {
+        return static_cast<T*>(*GetInstanceMap(T::kInstanceType).Find(nameHash));
+    }
     // @func 0x005A1CE0 ApeTInstanceList<ApeGeomInstance>::Destroy
     // @func 0x005A1E94 ApeTInstanceList<ApeGeomInstance>::Destroy (thunk)
     // @func 0x005A3BEC ApeTInstanceList<ApeLightInstance>::Destroy
