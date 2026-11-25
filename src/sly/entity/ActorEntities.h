@@ -95,6 +95,7 @@ public:
 // NOTE: only the flag its overrides read is modelled.
 class InteractivePropAUseDef : public ActorDef {
 public:
+    ~InteractivePropAUseDef() override;
     uint32_t sharedUse = 0;         // 0x130 non-zero: several users at once
 };
 
@@ -432,7 +433,9 @@ public:
 // Definition of SoundActorB16B48. NOTE: only the options its timers read.
 class SoundActorB16B48Def : public SoundActorDef {
 public:
-    int32_t* bodyParts = nullptr;      // 0x1A4 part index of each light body
+    ~SoundActorB16B48Def() override;
+    ape::ApeTArray<void*> field_190;   // 0x190 NOTE: element type unknown
+    ape::ApeTArray<int32_t> bodyParts; // 0x1A4 part index of each light body
     bool restartWhenWaiting = false;   // 0x1BC
     bool unlightOnSlot3 = false;       // 0x1BD
     bool unlightOnSlot4 = false;       // 0x1BE
@@ -532,6 +535,7 @@ public:
 // Definition of SoundActorB16DB0. NOTE: only the flag its timer reads.
 class SoundActorB16DB0Def : public SoundActorDef {
 public:
+    ~SoundActorB16DB0Def() override;
     uint32_t options = 0;          // 0x1BC bit 28: close even when occupied
 };
 

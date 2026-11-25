@@ -203,7 +203,7 @@ void PushBlock::Interface180Slot6(void* body)
 
 namespace {
 constexpr uint32_t kNavType_None = 0x0024A738u;      // "None"
-constexpr uint32_t kNavType_A96FEC1F = 0xA96FEC1Fu;  // NOTE: name unknown
+constexpr uint32_t kNavType_A970EC1F = 0xA970EC1Fu;  // NOTE: name unknown
 } // namespace
 
 // @func 0x00758248 TargetableCBase::~TargetableCBase
@@ -240,7 +240,7 @@ ape::world::ApeObj* TargetableCBase::GetRenderObject() { return BodyAsObject(rig
 int TargetableCBase::Slot41() { return Def()->navType != kNavType_None ? 1 : 0; }
 
 // @func 0x00758604 TargetableCBase::Slot42
-int TargetableCBase::Slot42() { return Def()->navType == kNavType_A96FEC1F ? 1 : 0; }
+int TargetableCBase::Slot42() { return Def()->navType == kNavType_A970EC1F ? 1 : 0; }
 
 // @func 0x00758634 TargetableCBase::Slot95
 void TargetableCBase::Slot95() {}

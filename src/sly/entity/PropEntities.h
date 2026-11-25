@@ -313,7 +313,7 @@ public:
     PropDamageSettings damage;         // 0xE8
     uint32_t field_110[3] = {};        // 0x110
     // NOTE: navigation type hash: 0x0024A738 "None", 0x4438A28F "Obstacle",
-    // 0x29846DDA and 0xA96FEC1F (names unknown).
+    // 0x29846DDA and 0xA970EC1F (names unknown).
     uint32_t navType = 0;              // 0x11C
     uint8_t targetingFlags[6] = {};    // 0x120
     void* collisionShape = nullptr;    // 0x128
@@ -416,7 +416,7 @@ public:
     // Slot 36: the rigid body.
     ape::world::ApeObj* GetRenderObject() override;
     // Slots 41/42: the definition's navigation type is not "None" / is
-    // 0xA96FEC1F (AddNavObstacle asks slot 42).
+    // 0xA970EC1F (AddNavObstacle asks slot 42).
     int Slot41() override;
     int Slot42() override;
     // Slot 95: empty. NOTE: no caller known.
