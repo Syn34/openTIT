@@ -35,6 +35,7 @@ void ListenerOnDropped(EntityListener* listener, const uint8_t* dropSettings) { 
 void ObjectApplyAlphaBuffer(ape::world::ApeObj* object, const void* buffer, uint8_t alpha) { (void)object; (void)buffer; (void)alpha; }
 void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value) { (void)object; (void)value; }
 void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity) { (void)list; (void)fn; (void)owner; (void)entity; }
+void GameWorldDequeueCallbacks(int list, void* owner) { (void)list; (void)owner; }
 Entity* HitSourceOwner(Entity* source, HitOwnerKind kind) { (void)source; (void)kind; return nullptr; }
 bool ThrownBySelf(Entity* thrown, Entity* entity) { (void)thrown; (void)entity; return false; }
 void* HitOtherBody(const EntityHitRecord& hit) { (void)hit; return nullptr; }
@@ -63,7 +64,9 @@ void AttachAnimScript(ape::ApeAnimScriptInstance* instance) { (void)instance; }
 void PlayerBlockDisguiseEnded(uint32_t player) { (void)player; }
 Entity* AttackTargetOf(Entity* attacker) { (void)attacker; return nullptr; }
 float ScoringValue(EntityComponent* scoring) { (void)scoring; return 0.0f; }
-void ScoringAward(EntityComponent* scoring, int points, bool flag) { (void)scoring; (void)points; (void)flag; }
+void ScoringAward(EntityComponent* scoring, int points, int multiplier) { (void)scoring; (void)points; (void)multiplier; }
+bool ScoringPaid(EntityComponent* scoring) { (void)scoring; return false; }
+void ScoringSetPaid(EntityComponent* scoring) { (void)scoring; }
 void AddPlayerScore(uint32_t player, int points) { (void)player; (void)points; }
 void MinigameFigureRemoved(uint32_t model) { (void)model; }
 float EntityStateTime(Entity* entity, uint32_t layer) { (void)entity; (void)layer; return 0.0f; }

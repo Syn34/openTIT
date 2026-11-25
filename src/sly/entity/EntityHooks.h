@@ -116,8 +116,8 @@ void AnimControllerSetRunning(void* controller, bool running);
 void EntitySendGameEvent(Entity* sender, Entity* receiver, uint32_t event, uint32_t data, bool immediate);
 // 0x00470660: script message to the listeners of `key`.
 void EntityPostScriptMessage(Entity* sender, uint32_t key, uint32_t message, uint32_t argument);
-// GameEvent init (0x00464ED4 kind 0x01, 0x0046582C kind 0x16, 0x00465534
-// kind 0x1B) with the entity as source, posted through 0x00482D14 on the game
+// GameEvent init (0x00464ED4 kind 0x01, 0x0046528C kind 0x0B, 0x00465308
+// kind 0x0C, 0x0046582C kind 0x16, 0x00465534 kind 0x1B) with the entity as source, posted through 0x00482D14 on the game
 // world for `player` (0xFF = none).
 void GameWorldPostEntityEvent(uint8_t player, uint32_t kind, Entity* source);
 // Spawner (entity +0xDC) virtual slot 9 (+0x24): its spawn was killed.

@@ -114,7 +114,8 @@ public:
     // Bit 3 of +0x3C8; turning it on also restores full opacity.
     // NOTE: name from use (0x00124370).
     void SetForceOpaque(bool on);
-    // Sets bit 1 of +0x3C8 (0x0012D344).
+    // Sets bit 1 of +0x3C8.
+    // @func 0x0012D344 Character::SetFlag3C8Bit1
     void SetFlag3C8Bit1() { flags3C8 |= 0x02; }
     // Opacity of the character and its attachments (0x001241A0).
     void SetOpacity(uint8_t alpha);

@@ -391,8 +391,10 @@ public:
     virtual void Slot66() {}
     // @func 0x007374C4 Entity::Slot67
     virtual void Slot67() {}
-    // @func 0x007374C8 Entity::Slot69
-    virtual int Slot69() { return 0; }
+    // Slot 69 (+0x114): entity this one tracks (the Bentley alter ego's
+    // current target); none by default.
+    // @func 0x007374C8 Entity::GetTrackedTarget
+    virtual Entity* GetTrackedTarget() { return nullptr; }
     // @func 0x007374D0 Entity::Slot70
     virtual int Slot70() { return 0; }
     // Slot 71 (+0x11C): centre of mass (the position by default).

@@ -68,6 +68,13 @@ void SetFatal(EntityHitRecord& hit, bool alive);
 // virtual overrides on the console; the shared parts are the helpers here.
 class RigidBodyEntity : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
+    // Moves a body to `transform`; when its position changed the bodies
+    // linked to it wake up.
+    static void MoveBody(void* body, const ape::Matrix34& transform);
+    // Interaction kinds 0 and 4 of the props that can be picked up: kind 0
+    // needs some damage reaction and refuses `refused`; other kinds fail.
+    // NOTE: the console also multiplies the caller's score by 5 for kind 0.
+    bool CanBePickedUp(Entity* other, int kind, const PropDamageSettings& settings, const Entity* refused);
     // Sets a body's linear velocity unless it is keyframed or fixed or out of the world.
     static void SetBodyVelocity(void* body, const ape::Vec3& velocity);
     // Slot 35: linear velocity of the body (zero without one).
@@ -128,6 +135,11 @@ public:
     bool Release(bool kill) override;                         // slot 10
     void SetFlag80(bool on) override;                         // slot 23
     void HandleMessage(const EntityMessage& msg) override;    // slot 43
+    // Slot 12: also turns the pivot of the world object 0x45A6A51A by `spin`.
+    // NOTE: the object's name is unknown.
+    void UpdateTransform(float dt) override;
+    // Slot 21: the body follows the new transform.
+    void SetTransform(const ape::Matrix34& m) override;
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;
     ape::Vec3 GetAimPoint() override;
@@ -139,6 +151,8 @@ public:
     void OnHitCategory4(EntityHitRecord& hit) override;
     bool Damage(float amount, Entity* source, uint32_t type) override;   // slot 88
     float ProjectileDamageScale() const override;
+    // Slot 76: only in the dynamic or destroyed states.
+    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
     // Slot 99: moves the body in or out of the physics world (0x00167570).
     virtual void SetPropState(int32_t state, uint32_t arg);
 
@@ -148,6 +162,7 @@ public:
     uint32_t field_194 = 0;              // 0x194
     Entity* interactor = nullptr;        // 0x198 NOTE: refused as interaction partner of kind 0
     uint32_t collisionGroup = 0;         // 0x19C
+    ape::Vec4 spin{ 0.0f, 0.0f, 0.0f, 1.0f };   // 0x1B0 quaternion applied to the 0x45A6A51A object's pivot
     uint8_t field_1C0 = 0;               // 0x1C0 cleared when the body leaves the world
     uint8_t field_1C1 = 0;               // 0x1C1
     uint32_t field_1C4 = 0;              // 0x1C4
@@ -164,12 +179,12 @@ public:
     // without one. NOTE: the slot is not declared on EntityDef yet.
     void GetBounds(ape::Aabb& out) const;
     ~AlterEgoDef() override;
-    uint32_t field_C4 = 0;             // 0xC4
+    float field_C4 = 0.0f;             // 0xC4 NOTE: positive values refuse interactions of kind 4
     PropDamageSettings damage;         // 0xC8
     uint8_t targetingFlags[6] = {};    // 0xF4
     void* collisionShape = nullptr;    // 0xFC
     // Bit 29: dies landing hard on static geometry; bit 30: dies touching a
-    // player-side entity (type bits 3 or 74).
+    // player-side entity (type bits 3 or 74); bit 31: cannot be picked up.
     uint32_t deathFlags = 0;           // 0x100
 };
 
@@ -188,6 +203,8 @@ public:
     // Slots 27/28: gravity factor of the body while the physics world runs.
     float GetGravityFactor() override;
     void Detached(float gravityFactor) override;
+    // Slot 21: the body follows the new transform while in the world.
+    void SetTransform(const ape::Matrix34& m) override;
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     ape::Vec3 GetAimPoint() override;                 // slot 71
@@ -198,11 +215,14 @@ public:
     void OnHitCategory3(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
     float ProjectileDamageScale() const override;     // slot 89
+    // Slot 76: only in alter state 1; kind 4 needs a body with mass.
+    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     const AlterEgoDef* Def() const { return static_cast<const AlterEgoDef*>(def); }
 
     int32_t alterState = 0;              // 0x188
     uint32_t field_18C = 0;              // 0x18C cleared by states 1 and 3
+    Entity* refusedPartner = nullptr;    // 0x194 NOTE: refused for interactions of kind 0
     uint32_t collisionGroup = 0;         // 0x198
     void* animScript1A0 = nullptr;       // 0x1A0
     void* animScript1A4 = nullptr;       // 0x1A4
@@ -285,12 +305,17 @@ public:
     ape::Vec3 GetVelocity() override;
     // Suspending freezes the body and keeps its velocity for the resume.
     void OnSuspend() override;                        // slot 60
+    void OnResume() override;                         // slot 61
     // Kind 0 is refused while the block is locked (+0x248 bit 15), kind 4 always.
     bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    // Killing drops the nav obstacle and the body.
+    bool Release(bool kill) override;                 // slot 10
 
     ape::Vec3 savedVelocity{};          // 0x230
     void* rigidBody = nullptr;          // 0x240
     int16_t blockFlags = 0;             // 0x248 bit 15: locked
+    void* navObstacle = nullptr;        // 0x24C levels::NavObstacleHandle
+    bool hasNavObstacle = false;        // 0x250
 };
 
 // Chain definition (vtable 0x00B15150, 0xC0 bytes; derives from the plain
@@ -331,8 +356,13 @@ public:
     float GetGravityFactor() override;
     void Detached(float gravityFactor) override;
     // Slot 35: linear velocity of the body.
+    // Slot 21: the body follows the new transform while in the world.
+    void SetTransform(const ape::Matrix34& m) override;
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;
+    // Slot 20: the definition's aim offset placed by the entity transform
+    // (the entity default without one).
+    ape::Vec3 GetCenter() override;
     // Slot 71: centre of mass of the body unless the definition moves the
     // aim point, then the entity centre.
     ape::Vec3 GetAimPoint() override;
@@ -358,16 +388,36 @@ public:
     uint16_t targetFlags = 0;            // 0x1B0 bits 8-9: NOTE unknown, any kills on impact; bit 10: destroyed
 };
 
+// Entity of TargetableDefC with a linked entity and a game world update
+// callback (vtable 0x00B18F60; most of its own methods are at 0x00200000+).
+class TargetableCLinked : public TargetableCBase {
+public:
+    // Also drops the update callback (list 3) and lets go of the linked entity.
+    bool Release(bool kill) override;                 // slot 10
+
+    Entity* linked = nullptr;            // 0x234
+};
+
 class TargetableA;
 
 // Entity of TargetableDefB (vtable 0x00B14DE0 + 0x00B14F88/0x00B14FB0, 0x2C0
 // bytes; constructor 0x00190158). Instances link into parent/child stacks and
 // can be held by a TargetableA; the links only matter while the active
 // minigame has its bit 30 set.
+// Record stacked targets point at (+0x26C). NOTE: contents mostly unknown.
+struct TargetStackInfo {
+    uint8_t field_00[0x2C];
+    float spinRate;          // +0x2C NOTE: advances TargetableB +0x290 per second
+    uint8_t field_30[5];
+    bool shieldsParent;      // +0x35 a child pointing here keeps its parent from harm
+};
+
 class TargetableB : public RigidBodyEntity {
 public:
     ~TargetableB() override;
     bool Release(bool kill) override;                 // slot 10
+    // Slot 21: the body (or, without one, the AI controller) follows the new transform.
+    void SetTransform(const ape::Matrix34& m) override;
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     ape::Vec3 GetAimPoint() override;                 // slot 71
@@ -377,6 +427,9 @@ public:
     void OnHitCategory2(EntityHitRecord& hit) override;
     void OnHitCategory3(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
+    // Slot 88: shielded while a stacked child says so; on death the body is
+    // dropped, the entity takes its object's local transform and enters state 8.
+    bool Damage(float amount, Entity* source, uint32_t type) override;
     float ProjectileDamageScale() const override;     // slot 89
     // Slot 94: enters a state of layer 0 and records it.
     virtual void SetTargetState(int state);
@@ -401,7 +454,10 @@ public:
     void* bodyAction = nullptr;              // 0x188
     uint8_t stateHistory[4] = {};            // 0x1B8 indexed by historyIndex
     uint32_t historyIndex = 0;               // 0x1BC
+    Entity* refusedPartner = nullptr;        // 0x198 NOTE: refused for interactions of kind 0
     uint32_t collisionGroup = 0;             // 0x19C
+    // Slot 76: only in state 2 or from state 8 on.
+    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     // Empty override of the +0x17C interface's slot 5.
@@ -418,6 +474,7 @@ public:
 
     ape::ApeTArray<TargetableB*> children;   // 0x254
     TargetableB* parent = nullptr;           // 0x268
+    const TargetStackInfo* stackInfo = nullptr;   // 0x26C
     uint32_t field_270 = 0;                  // 0x270
     TargetableA* holder = nullptr;           // 0x298
     bool stacking = false;                   // 0x29C
@@ -441,10 +498,18 @@ public:
 
     ~TargetableA() override;
     bool Release(bool kill) override;                 // slot 10
+    // Slot 21: the body follows the new transform.
+    void SetTransform(const ape::Matrix34& m) override;
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     ape::Vec3 GetAimPoint() override;                 // slot 71
     bool CanBeDamaged() const override;               // slot 82
+    // Slot 88: shares the first player's health; nothing hurts in states 2
+    // and 11 (destroyed) or from type-8 sources and what they fired.
+    bool Damage(float amount, Entity* source, uint32_t type) override;
+    // Slot 43: state changes by message; kills by the figure (or by what it
+    // fired) raise the combo and pay out the victim's score.
+    void HandleMessage(const EntityMessage& msg) override;
     void OnHitCategory0(EntityHitRecord& hit) override;
     // Impacts and environment hits count at most once per 0.25 s each.
     void OnHitCategory1(EntityHitRecord& hit) override;
@@ -463,6 +528,7 @@ public:
     void* bodyAction = nullptr;              // 0x188
     uint8_t stateHistory[7] = {};            // 0x1B1 indexed by historyIndex
     uint32_t historyIndex = 0;               // 0x1B8
+    Entity* refusedPartner = nullptr;        // 0x198 NOTE: refused for interactions of kind 0
     uint32_t collisionGroup = 0;             // 0x19C
     // Slot 95: the state of layer 0; slot 97 asks slot 95.
     virtual int GetTargetState();
@@ -472,6 +538,8 @@ public:
     virtual void Slot104() {}
     // @func 0x0018E380 TargetableA::Slot105
     virtual void Slot105() {}
+    // Slot 76: only in state 3 or from state 11 on.
+    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
     // Both answer with the definition's targeting flag for the kind.
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
@@ -488,6 +556,11 @@ public:
     ape::world::ApeObj* object_530 = nullptr; // 0x530 counted
     ape::ApeTArray<void*> field_678;         // 0x678
     HkArray<void*> field_68C;                // 0x68C
+    ape::Vec3 teleportTarget{};              // 0x630 sender position of the "teleport" message
+    uint32_t combo = 0;                      // 0x670 kills in a row, cleared by damage
+    int32_t comboScore = 0;                  // 0x674 NOTE: read on the player 0 entity
+    bool field_6A4 = false;                  // 0x6A4 set and cleared by messages
+    Entity* lastThrown = nullptr;            // 0x6B0 entity of type bit 13 this figure fired
     float impactCooldown = 0.0f;             // 0x64C
     float environmentCooldown = 0.0f;        // 0x650
     ScriptedEntity* healthSource = nullptr;  // 0x6A8 NOTE: health is mirrored from it in mode 1
@@ -541,11 +614,26 @@ public:
     // Blasts, without the ReceiveHit check.
     void OnHitCategory2(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
+    // Slot 88: the Bentleys of both players share the first player's health;
+    // nothing hurts while a timed buff runs or from type-10 sources.
+    bool Damage(float amount, Entity* source, uint32_t type) override;
+    // Slot 43: a dying entity is forgotten by both Bentleys; its score
+    // (times the part level) goes to player 0 when this Bentley killed it.
+    void HandleMessage(const EntityMessage& msg) override;
+    // Slot 69: the shared target (see s_target).
+    // @func 0x0017574C CompoundEntity::GetTrackedTarget
+    Entity* GetTrackedTarget() override { return s_target; }
+    // @func 0x00175740 CompoundEntity::SetTarget
+    static void SetTarget(Entity* target) { s_target = target; }
+    // Nearest entity of definition 0x659234F5 the Bentleys go for (0x00F64988).
+    static Entity* s_target;
     float ProjectileDamageScale() const override;     // slot 89
     // Heading (degrees, 0..360) from the entity to a hit position.
     float HeadingTo(const ape::Vec3& point) const;
     // Slot 99: physics state (0x0016BC0C, not ported).
     virtual void SetPropState(int32_t state, uint32_t arg);
+    // Slot 100: sets the velocity that brings the body to `target` in `dt`.
+    virtual void DriveTowards(const ape::Vec3& target, float dt);
     void* bodyAction = nullptr;              // 0x188
     int32_t propState = 0;                   // 0x18C 6: body active
     int32_t hitHeading = 0;                  // 0x2E0 degrees
@@ -554,7 +642,7 @@ public:
     void Interface17CSlot5() override;
     void Interface17CSlot6() override;
 
-    HkArray<void*> field_1FC;      // 0x1FC
+    HkArray<void*> touchingBodies; // 0x1FC NOTE: bodies of entities it is in contact with (guessed)
     HkArray<void*> field_208;      // 0x208
     Part* parts[11] = {};          // 0x214
     uint32_t buffFlags = 0;        // 0x290 bit 25: a timed buff is running
@@ -571,6 +659,8 @@ public:
     float pulseFrequency = 0.0f;   // 0x2CC
     uint32_t skinLevel = 0;        // 0x2D0
     uint32_t skinCount = 0;        // 0x2D8
+    uint32_t killCount = 0;        // 0x2EC kills since the last damage
+    int32_t score = 0;             // 0x2F0 NOTE: read on the player 0 entity
     int32_t playerIndex = 0;       // 0x304 player this Bentley belongs to
     // Slot 79: the second player's Bentley shares the first player's health.
     void AddHealth(float amount) override;

@@ -166,6 +166,8 @@ void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value);
 // Game world callback lists (0x0046B5F8): `fn(owner, entity)` runs later.
 using WorldCallback = void (*)(void* owner, Entity* entity);
 void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity);
+// Takes the callbacks of `owner` off a game world list (0x0046B7A4).
+void GameWorldDequeueCallbacks(int list, void* owner);
 
 // Who is behind an indirect hit source: the thrower of a thrown object
 // (+0x1AC), the owner of an owned one (+0x188) or the spawner (+0x190).
@@ -194,7 +196,10 @@ void GameWorldNpcDamaged(Entity* entity);
 Entity* AttackTargetOf(Entity* attacker);
 // Scoring component (type 0x28): its value (+0x18) and paying it out (0x002B21D8).
 float ScoringValue(EntityComponent* scoring);
-void ScoringAward(EntityComponent* scoring, int points, bool flag);
+void ScoringAward(EntityComponent* scoring, int points, int multiplier);
+// Whether the component has paid out already (+0x3C), and marking it paid.
+bool ScoringPaid(EntityComponent* scoring);
+void ScoringSetPaid(EntityComponent* scoring);
 // Score counter of a player's entity (+0x1D0 of the player 0 entity at game world +0x1078).
 void AddPlayerScore(uint32_t player, int points);
 
