@@ -38,6 +38,7 @@ public:
 
 private:
     char* Allocate(int size) const;
+    static char* AllocateDefault(int size);
     void Free(char* data) const;
 
     char* m_data = nullptr;   // +0x00
