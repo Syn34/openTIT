@@ -28,11 +28,11 @@ void Component24Reset(EntityComponent* component) { (void)component; }
 void Component15Reset(EntityComponent* component) { (void)component; }
 void EntityAttachChild(Entity* parent, const EntityChildLink& link) { (void)parent; (void)link; }
 void EntitySetState(Entity* entity, int layer, int state) { (void)entity; (void)layer; (void)state; }
-void EntitySetFadeAlpha(Entity* entity, bool flag, uint8_t alpha, bool immediate) { (void)entity; (void)flag; (void)alpha; (void)immediate; }
-void EntityApplyFadeBuffer(Entity* entity) { (void)entity; }
 bool ListenerIsHeavy(EntityListener* listener) { (void)listener; return false; }
 void ListenerOnDropped(EntityListener* listener, const uint8_t* dropSettings) { (void)listener; (void)dropSettings; }
 void ObjectApplyAlphaBuffer(ape::world::ApeObj* object, const void* buffer, uint8_t alpha) { (void)object; (void)buffer; (void)alpha; }
+int32_t RenderObjectLodField(const ape::world::ApeObj* object) { (void)object; return 0; }
+void ListenerOnContact(EntityListener* listener, const void* event) { (void)listener; (void)event; }
 void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value) { (void)object; (void)value; }
 void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity) { (void)list; (void)fn; (void)owner; (void)entity; }
 void GameWorldDequeueCallbacks(int list, void* owner) { (void)list; (void)owner; }
