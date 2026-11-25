@@ -316,5 +316,39 @@ float PhysicalEntity::ProjectileDamageScale() const
     return Def()->projectileScale;
 }
 
+// -- small overrides shared by every physical entity class (0x00748238-0x00748288)
+
+// @func 0x00748238 PhysicalEntity::GetRenderObject
+ape::world::ApeObj* PhysicalEntity::GetRenderObject() { return static_cast<ape::world::ApeObj*>(body); }
+
+// @func 0x00748240 PhysicalEntity::OnHitCategory0
+void PhysicalEntity::OnHitCategory0(EntityHitRecord& hit) { (void)hit; }
+
+// @func 0x00748244 PhysicalEntity::Interface17CSlot7
+// @func 0x00748248 PhysicalEntity::Interface17CSlot7 (thunk, +0x17C)
+void PhysicalEntity::Interface17CSlot7() {}
+
+// @func 0x0074824C PhysicalEntity::Interface17CSlot6
+// @func 0x00748250 PhysicalEntity::Interface17CSlot6 (thunk, +0x17C)
+void PhysicalEntity::Interface17CSlot6() {}
+
+// @func 0x00748254 PhysicalEntity::Slot99
+void PhysicalEntity::Slot99() {}
+
+// @func 0x00748258 PhysicalEntity::Interface180Slot6
+// @func 0x00748288 PhysicalEntity::Interface180Slot6 (thunk, +0x180)
+void PhysicalEntity::Interface180Slot6(void* deleted)
+{
+    RigidBodyRemoveContactListener(deleted, static_cast<EntityInterface17C*>(this));
+}
+
+// @func 0x007482B8 PlainPhysicalEntity::~PlainPhysicalEntity
+// @func 0x007482F8 PlainPhysicalEntity::~PlainPhysicalEntity (deleting)
+// @func 0x0074848C PlainPhysicalEntity::~PlainPhysicalEntity (thunk, +0x17C)
+// @func 0x007483D4 PlainPhysicalEntity::~PlainPhysicalEntity (deleting thunk, +0x17C)
+// @func 0x00748444 PlainPhysicalEntity::~PlainPhysicalEntity (thunk, +0x180)
+// @func 0x00748364 PlainPhysicalEntity::~PlainPhysicalEntity (deleting thunk, +0x180)
+PlainPhysicalEntity::~PlainPhysicalEntity() = default;
+
 } // namespace entity
 } // namespace sly

@@ -65,8 +65,11 @@ public:
     }
     // @func 0x00746CAC EntityInterface180::Interface180Slot5
     virtual void Interface180Slot5() {}
+    // Slot 6: a body the entity listens to is being deleted. NOTE: matches
+    // hkpEntityListener::entityDeletedCallback; the rigid body entities stop
+    // listening to its contacts (their +0x17C interface) here.
     // @func 0x00746CB0 EntityInterface180::Interface180Slot6
-    virtual void Interface180Slot6() {}
+    virtual void Interface180Slot6(void* body) { (void)body; }
 };
 
 } // namespace entity

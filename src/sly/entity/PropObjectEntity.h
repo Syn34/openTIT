@@ -26,12 +26,23 @@ namespace entity {
 class PropObjectDef : public EntityDef {
 public:
     ~PropObjectDef() override;
+    // Slots 4/5: the words at +0xE0/+0xE4. NOTE: meanings unknown.
+    // @func 0x007470BC PropObjectDef::DefSlot4
+    uint32_t DefSlot4() const override { return field_E0; }
+    // @func 0x007470C4 PropObjectDef::DefSlot5
+    uint32_t DefSlot5() const override { return field_E4; }
+    // Slot 6: the nav mode makes the props static obstacles (same four
+    // modes as ActorDef::DefSlot6).
+    uint32_t DefSlot6() const override;
 
     void* bodyTemplate = nullptr;            // 0xA4 Havok rigid body the instances clone
     ape::ApeAnimScript* script = nullptr;    // 0xB0 default script
     uint32_t scriptName = 0;                 // 0xB4 its name (placements may pick another)
     ape::ApeAnimScript* contactScript = nullptr;   // 0xB8 started when the body touches something
     float lifetime = -1.0f;                  // 0xBC seconds, negative: forever
+    uint32_t navMode = 0;                    // 0xC0 nav mode hash (see ActorDef)
+    uint32_t field_E0 = 0;                   // 0xE0 (returned by slot 4)
+    uint32_t field_E4 = 0;                   // 0xE4 (returned by slot 5)
     uint32_t defFlags = 0;                   // 0xEC bits 0-1 become entity flags 22-23
 };
 
@@ -45,9 +56,10 @@ public:
         kProp_UsePlacement    = 1u << 31,    // hand the placement values to the script
     };
 
-    // Destructor 0x007471F8/0x00747180 (helper range): minimal version
-    // freeing the alpha buffer.
+    // Frees the alpha buffer.
     ~PropObjectEntity() override;
+    // Slot 36: the rigid body (see NOTES on slot 36).
+    ape::world::ApeObj* GetRenderObject() override;
     void OnSpawn() override;                                   // slot 2
     bool Update(float dt) override;                            // slot 4
     bool PostUpdate(float dt) override;                        // slot 5
@@ -59,7 +71,8 @@ public:
     ape::Vec3 GetVelocity() override;                          // slot 35
     void OnSuspend() override;                                 // slot 60
     void OnResume() override;                                  // slot 61
-    void* GetAnimScript() override { return script; }          // slot 68 (0x00747398)
+    // @func 0x00747398 PropObjectEntity::GetAnimScript
+    void* GetAnimScript() override { return script; }          // slot 68
     // Slot 71: the entity follows a simulated body.
     virtual void SyncFromBody();
     // Slot 72: the body follows the entity.

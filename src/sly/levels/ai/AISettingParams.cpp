@@ -307,6 +307,108 @@ const SettingParam* AIPropParam(AIProp prop)
     }
 }
 
+// -- per-parameter accessors (0x00734114..0x00735340) --------------------------
+
+using ape::setting::Setting;
+
+namespace critter_setting {
+
+// @func 0x00734114 CritterSetting::SpawnAnimClip
+uint32_t SpawnAnimClip(const Setting& setting) { return setting.Value(Critter_SpawnAnimClip).u; }
+// @func 0x00734198 CritterSetting::SpawnPosIsDst
+bool SpawnPosIsDst(const Setting& setting) { return setting.Value(Critter_SpawnPosIsDst).b; }
+// @func 0x00734270 CritterSetting::UseFlightAnims
+bool UseFlightAnims(const Setting& setting) { return setting.Value(Critter_UseFlightAnims).b; }
+// @func 0x00734290 CritterSetting::POIDelayMin
+float POIDelayMin(const Setting& setting) { return setting.Value(Critter_POIDelayMin).f; }
+// @func 0x007342B0 CritterSetting::POIDelayMax
+float POIDelayMax(const Setting& setting) { return setting.Value(Critter_POIDelayMax).f; }
+
+} // namespace critter_setting
+
+namespace enemy_setting {
+
+// @func 0x007349C0 EnemySetting::OptimalTargetRangeMax
+float OptimalTargetRangeMax(const Setting& setting) { return setting.Value(Enemy_OptimalTargetRangeMax).f; }
+// @func 0x007349E0 EnemySetting::Cover
+bool Cover(const Setting& setting) { return setting.Value(Enemy_Cover).b; }
+// @func 0x00734A00 EnemySetting::Heavy
+bool Heavy(const Setting& setting) { return setting.Value(Enemy_Heavy).b; }
+// @func 0x00734A20 EnemySetting::LoseTargetTime
+float LoseTargetTime(const Setting& setting) { return setting.Value(Enemy_LoseTargetTime).f; }
+// @func 0x00734A40 EnemySetting::FarAttackRange
+float FarAttackRange(const Setting& setting) { return setting.Value(Enemy_FarAttackRange).f; }
+// @func 0x00734A60 EnemySetting::RangedAttackChaseFrequency
+float RangedAttackChaseFrequency(const Setting& setting) { return setting.Value(Enemy_RangedAttackChaseFrequency).f; }
+// @func 0x00734BD8 EnemySetting::AttackRequiresLOS
+bool AttackRequiresLOS(const Setting& setting) { return setting.Value(Enemy_AttackRequiresLOS).b; }
+// @func 0x00734BF8 EnemySetting::CounterAttackRange
+float CounterAttackRange(const Setting& setting) { return setting.Value(Enemy_CounterAttackRange).f; }
+// @func 0x00734C18 EnemySetting::OptimalTargetRangeMin
+float OptimalTargetRangeMin(const Setting& setting) { return setting.Value(Enemy_OptimalTargetRangeMin).f; }
+// @func 0x00734C38 EnemySetting::CombatAttackFarAnim
+uint32_t CombatAttackFarAnim(const Setting& setting) { return setting.Value(Enemy_CombatAttackFarAnim).u; }
+// @func 0x00734C58 EnemySetting::CombatAttackRangedAnim
+uint32_t CombatAttackRangedAnim(const Setting& setting) { return setting.Value(Enemy_CombatAttackRangedAnim).u; }
+// @func 0x00734C78 EnemySetting::Patrol
+bool Patrol(const Setting& setting) { return setting.Value(Enemy_Patrol).b; }
+// @func 0x00734C98 EnemySetting::AudioAlertInvestigate
+bool AudioAlertInvestigate(const Setting& setting) { return setting.Value(Enemy_AudioAlertInvestigate).b; }
+// @func 0x00734DD8 EnemySetting::Scale
+float Scale(const Setting& setting) { return setting.Value(Enemy_Scale).f; }
+// @func 0x00734F80 EnemySetting::PatrolIdleMinTime
+float PatrolIdleMinTime(const Setting& setting) { return setting.Value(Enemy_PatrolIdleMinTime).f; }
+// @func 0x00734FA0 EnemySetting::PatrolIdleMaxTime
+float PatrolIdleMaxTime(const Setting& setting) { return setting.Value(Enemy_PatrolIdleMaxTime).f; }
+// @func 0x00734FE0 EnemySetting::CombatOtherAnim
+uint32_t CombatOtherAnim(const Setting& setting) { return setting.Value(Enemy_CombatOtherAnim).u; }
+// @func 0x00735030 EnemySetting::CombatAttackCloseAnim
+uint32_t CombatAttackCloseAnim(const Setting& setting) { return setting.Value(Enemy_CombatAttackCloseAnim).u; }
+// @func 0x00735050 EnemySetting::CombatAttackMidAnim
+uint32_t CombatAttackMidAnim(const Setting& setting) { return setting.Value(Enemy_CombatAttackMidAnim).u; }
+// @func 0x00735070 EnemySetting::CloseAttackRange
+float CloseAttackRange(const Setting& setting) { return setting.Value(Enemy_CloseAttackRange).f; }
+// @func 0x00735090 EnemySetting::CloseAttackAngle
+float CloseAttackAngle(const Setting& setting) { return setting.Value(Enemy_CloseAttackAngle).f; }
+// @func 0x007350B0 EnemySetting::CloseAttackHeightMin
+float CloseAttackHeightMin(const Setting& setting) { return setting.Value(Enemy_CloseAttackHeightMin).f; }
+// @func 0x007350D0 EnemySetting::CloseAttackHeightMax
+float CloseAttackHeightMax(const Setting& setting) { return setting.Value(Enemy_CloseAttackHeightMax).f; }
+// @func 0x007350F0 EnemySetting::MidAttackRange
+float MidAttackRange(const Setting& setting) { return setting.Value(Enemy_MidAttackRange).f; }
+// @func 0x00735110 EnemySetting::MidAttackAngle
+float MidAttackAngle(const Setting& setting) { return setting.Value(Enemy_MidAttackAngle).f; }
+// @func 0x00735130 EnemySetting::MidAttackHeightMin
+float MidAttackHeightMin(const Setting& setting) { return setting.Value(Enemy_MidAttackHeightMin).f; }
+// @func 0x00735150 EnemySetting::MidAttackHeightMax
+float MidAttackHeightMax(const Setting& setting) { return setting.Value(Enemy_MidAttackHeightMax).f; }
+// @func 0x00735170 EnemySetting::FarAttackAngle
+float FarAttackAngle(const Setting& setting) { return setting.Value(Enemy_FarAttackAngle).f; }
+// @func 0x00735190 EnemySetting::FarAttackHeightMin
+float FarAttackHeightMin(const Setting& setting) { return setting.Value(Enemy_FarAttackHeightMin).f; }
+// @func 0x007351B0 EnemySetting::FarAttackHeightMax
+float FarAttackHeightMax(const Setting& setting) { return setting.Value(Enemy_FarAttackHeightMax).f; }
+// @func 0x007351D0 EnemySetting::RangedAttackRange
+float RangedAttackRange(const Setting& setting) { return setting.Value(Enemy_RangedAttackRange).f; }
+// @func 0x007351F0 EnemySetting::RangedAttackAngle
+float RangedAttackAngle(const Setting& setting) { return setting.Value(Enemy_RangedAttackAngle).f; }
+// @func 0x00735210 EnemySetting::RangedAttackHeightMin
+float RangedAttackHeightMin(const Setting& setting) { return setting.Value(Enemy_RangedAttackHeightMin).f; }
+// @func 0x00735230 EnemySetting::RangedAttackHeightMax
+float RangedAttackHeightMax(const Setting& setting) { return setting.Value(Enemy_RangedAttackHeightMax).f; }
+// @func 0x00735250 EnemySetting::TurretAttackMaxTime
+float TurretAttackMaxTime(const Setting& setting) { return setting.Value(Enemy_TurretAttackMaxTime).f; }
+// @func 0x00735270 EnemySetting::AttackControllerUseTimer
+bool AttackControllerUseTimer(const Setting& setting) { return setting.Value(Enemy_AttackControllerUseTimer).b; }
+// @func 0x00735290 EnemySetting::CombatMovementAnim
+uint32_t CombatMovementAnim(const Setting& setting) { return setting.Value(Enemy_CombatMovementAnim).u; }
+// @func 0x007352B0 EnemySetting::TurretAttackMinTime
+float TurretAttackMinTime(const Setting& setting) { return setting.Value(Enemy_TurretAttackMinTime).f; }
+// @func 0x00735340 EnemySetting::IdleAnimClip
+uint32_t IdleAnimClip(const Setting& setting) { return setting.Value(Enemy_IdleAnimClip).u; }
+
+} // namespace enemy_setting
+
 } // namespace ai
 } // namespace levels
 } // namespace sly
