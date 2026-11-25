@@ -25,12 +25,19 @@ public:
     // Slot 6 (0x0036BF38): disabling plays the outro (`flag` as its first
     // reason); enabling shows a hidden element.
     void SetEnabled(bool enabled, bool flag) override;
-    // Slot 7 (0x0036BAA0): slides along the stack and counts the hold time
-    // down; when it runs out the element leaves.
-    virtual void TickStack(float dt);
-    // Slot 8 (0x0036BBC0): once the intro animation and script are done the
-    // element idles for its hold time.
-    virtual void OnIntroDone();
+    // Slot 2 (0x0036B240): pending text and outro requests, label colours,
+    // the spring, and the state machine (intro -> idle -> outro; update
+    // animations return to idle).
+    void Update(float dt) override;
+    // Slot 7 (0x0036BAA0, idle state): slides along the stack and counts the
+    // hold time down; when it runs out the element leaves.
+    virtual void TickIdle(float dt);
+    // Slot 8 (0x0036BBC0, update state): once the update animation and
+    // script are done the element idles for its hold time.
+    virtual void TickUpdate();
+    // 0x0036AFA8: pulls the object towards springTarget; queues the element
+    // to hide once it has settled there.
+    void TickSpring(float dt);
 };
 
 } // namespace hud

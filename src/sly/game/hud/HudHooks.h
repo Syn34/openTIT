@@ -18,6 +18,13 @@ class HudObject;
 namespace ape::world { class ApeObj; }
 namespace sly {
 namespace hud {
+// 0x0046B5F8 on the game world: queues the element's callback on world
+// callback list `list` (8: 0x00F37878, 11: 0x00F37880).
+void GameWorldAddHudCallback(HudObject* element, int list);
+// A player character exists (game world +0x1078) / its HUD colour
+// (0x004883C0 with its definition's slot 4 value).
+bool PlayerHudColorAvailable();
+void PlayerHudColor(uint8_t out[4]);
 // Own copy of an element's template object (ApeObj virtual slot 14 with 5,
 // then 0x00590FEC registering dynamic lights).
 ape::world::ApeObj* HudCloneObject(ape::world::ApeObj* object);

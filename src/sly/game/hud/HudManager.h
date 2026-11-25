@@ -67,8 +67,11 @@ struct HudObjectDef {
     uint8_t startShown = 0;          // +0x91 (popup elements)
     float offset[3] = {};            // +0x60 space the element takes in its stack
     struct TextFieldDef {            // 0x20 bytes
-        enum Flags : uint32_t { kField_Clone = 0x80000000u };   // the element clones the template
-        uint32_t field_00 = 0;
+        enum Flags : uint32_t {
+            kField_Clone       = 0x80000000u,   // the element clones the template
+            kField_PlayerColor = 0x40000000u,   // the label takes the player character's HUD colour
+        };
+        uint8_t color[4] = {};       // +0x00 label colour (used when its alpha is not zero)
         uint32_t objectName = 0;     // +0x04 scene object of the field (in the element's hierarchy)
         ape::ApeGuiObject* templateObject = nullptr;   // +0x08 GUI object of the field
         ape::ApeGuiObject* framePath = nullptr;        // +0x0C names the frame inside a clone
@@ -204,6 +207,10 @@ public:
     float fadeTime = 0.0f;         // +0x150
     float holdTime = 0.0f;         // +0x154
     HudObject* linked = nullptr;   // +0x158 shown once this element's object is hidden
+    ape::Vec3 springTarget{};      // +0x160 position the spring pulls the object to
+    ape::Vec3 springVelocity{};    // +0x170
+    float springStiffness = 0.0f;  // +0x180
+    float springDamping = 0.0f;    // +0x184
     float animSpeed = 1.0f;        // +0x188
     uint32_t updateFlags = 0;      // +0xD0 bit 31 cleared by ResetUpdateFlags()
     float targetValue = 0.0f;      // +0xD8
