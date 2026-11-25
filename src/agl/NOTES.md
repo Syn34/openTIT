@@ -234,3 +234,38 @@ The full link was failing because of files outside `src/agl`: missing
   boundVertexDecl, 0x010F10B4 vertexProgram (the bound technique's AglVertexProgram),
   0x010F10C0 meshAttributes, 0x010F1178 fogLayer, 0x010F117C fogEnabled[2]. The material
   pointer at +0x7C is the constants block (GeoParticle reads constants[3]).
+
+## agent2 pass (technique Draws)
+* Shared per-item code of the technique Draw functions (inlined on the console) is in
+  AglShaderClasses.cpp: `BeginItemAlpha`/`EndItemAlpha` (alpha byte +0x47 < 255: no depth
+  writes, forced alpha blending unless the material blends, fragment constant (forced, alpha,
+  z, 0)), `DrawItemGeometry` (item flag 0x80 = mirrored: front face CW during the draw),
+  `ApplyItemStencilRef` (stencil reference ((flag 0x20) ? 0x80 : 0) | material field_65
+  masked by `AglItemStencil` at 0x010DDA60/61, set by the renderer loop 0x00512C30),
+  `UploadLightBlock` (light set layout: +0 local light count (the former "variant"), +0x10
+  ambient, +0x20 directional colour, +0x30 direction, +0x40 0x30-byte local lights; colours
+  multiplied by material colour 0; per-pixel = fragment constants, else vertex 0x10..),
+  `UploadEnvBasis`, `ApplyItemFogCached` (uses the view constants' precomputed fog params).
+* Item light mask bits: 1 lit, 2 per-pixel lights, 4 eye position needed.
+* `0x005E4124` takes a count of vec4 registers (cellGcmSetVertexProgramParameterBlock); the
+  CommandList port merges it with 0x005E5CB0 (float count). Callers here pass float counts.
+* 0x010F10FD bit 0 (restored as depth write mask after translucent draws) is
+  `AglRenderState::depthEnabled` (written by SetRenderTargets).
+* `AglAnimationClock` (0x010DD5A8: pending step, last step, time) drives the warp/water
+  transforms (`BuildWarpMatrices` 0x005AE648 and its copies 0x005D12C8/0x005D70E0); it is
+  advanced by 0x0051008C, not ported, so the time stays 0 for now.
+* Still open: Draws of ProjTxr, Water, TextureWarp, ScreenWarp, SlyCharacter2/Eye/Fur/FurFin/
+  FakeFur/Collectible (0x005BC8F8 is their shared skinned set-up), SlyDecal4, SlyHeightFog,
+  SlyMirror, SlyPanorama, SlyProp (extra stencil op for material flag 0x08), SlyScreenWarp,
+  SlyShrub, SlyTerrain(+Snow, +SnowDecal), SlyTextureWarp, SlyWater1/2/3, ShoTextureWarp;
+  BeginMaterial of ScreenWarp, SprParticle (depth texture + polygon offset), Water (two wave
+  oscillators), SlyDecal4, SlyHeightFog (eye depth texture 0x00537BB8), SlyScreenWarp,
+  SlyTerrainSnow(+Decal), SlyWater2/3; SetupMaterial of SlyWater2/3.
+
+## agent2: debug drawing
+* `ape/memory/ApeDebugDraw.cpp`: ApeDebug pools (two ApeTListAllocator<Prim> holders that swap
+  each frame: EndFrame's main part swaps, the render part frees the new current pool), the
+  debug font (descriptor is big-endian; the PC build must supply it and the BMP through
+  `ApeDebug::SetFontData`), screen text/line/rect drawing (prim types 3/7/8, 9 = retired).
+  The callers of DrawScreenPrims/RetireWorldPrims are in EndRender 0x00522140 (not ported).
+* `CreateIndexedSphereMesh` 0x0051BC20 and `CreateBoxMesh` 0x0051C1A8 in AglPrimitives.
