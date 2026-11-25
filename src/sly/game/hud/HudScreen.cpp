@@ -6,6 +6,7 @@
 
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
+#include "ape/level/ApeGuiTypes.h"
 #include "ape/world/ApeBase.h"
 #include "ape/world/ApeObj.h"
 
@@ -137,6 +138,74 @@ void HudScreen::HideSubObjects()
     for (ape::world::ApeObj* sub : subObjects) {
         if (sub)
             sub->SetVisible(false, true);
+    }
+}
+
+namespace {
+void SetState(HudObject* element, uint32_t state)
+{
+    if (element->animScript)
+        static_cast<ape::ApeAnimScriptInstance*>(element->animScript)->SetStateAndUpdate(state);
+}
+} // namespace
+
+// @func 0x0036CA78 HudScreen::Open
+void HudScreen::Open()
+{
+    const uint32_t state = animState >> 1;
+    if (state == 1 || state == 3)
+        return;
+    if (object)
+        object->SetVisible(true, true);
+    animState = (animState & 1u) | (1u << 1);
+    PlayHudClip(animController, introAnim, 1.0f, false);
+    SetState(this, kHudStateNames[1]);
+}
+
+// @func 0x0036CB58 HudScreen::Close
+void HudScreen::Close()
+{
+    if ((animState >> 1) == 4)
+        return;
+    if (object)
+        object->SetVisible(true, true);
+    animState = (animState & 1u) | (4u << 1);
+    PlayHudClip(animController, outroAnim, 1.0f, false);
+    SetState(this, kHudStateNames[4]);
+}
+
+// @func 0x0036CC28 HudScreen::ShowIdle
+void HudScreen::ShowIdle()
+{
+    animState = (animState & 1u) | (3u << 1);
+    SetActive(true);
+    SetState(this, kHudStateNames[3]);
+}
+
+// @func 0x0036CDA8 HudScreen::ClearLabels
+void HudScreen::ClearLabels()
+{
+    for (uint32_t i = 0; i < def->textFieldCount; ++i) {
+        if (ape::ApeGuiObject* label = def->textFieldDefs[i].labelPath) {
+            label->SetText("", false);
+            label->Invalidate();
+        }
+    }
+}
+
+// @func 0x0036CCA0 HudScreen::SetLabelText
+void HudScreen::SetLabelText(const char* text, uint32_t key)
+{
+    if (!text || key == 0)
+        return;
+    for (uint32_t i = 0; i < def->textFieldCount; ++i) {
+        if (def->textFieldDefs[i].field_1C != key)
+            continue;
+        if (ape::ApeGuiObject* label = def->textFieldDefs[i].labelPath) {
+            label->SetText(text, false);
+            label->Invalidate();
+        }
+        return;
     }
 }
 

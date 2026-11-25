@@ -28,6 +28,16 @@ public:
     // Slot 6 (0x0036CA70): nothing.
     void SetEnabled(bool enabled, bool flag) override;
 
+    // 0x0036CA78: plays the intro (unless already in or idle).
+    void Open();
+    // 0x0036CB58: plays the outro (unless already leaving).
+    void Close();
+    // 0x0036CC28: shows the screen idle at once.
+    void ShowIdle();
+    // 0x0036CDA8: empties the labels of the definition's fields.
+    void ClearLabels();
+    // 0x0036CCA0: text of the label of the field whose key (field +0x1C) is `key`.
+    void SetLabelText(const char* text, uint32_t key);
     // 0x0036C898: hides the sub-objects when the definition says so
     // (definition byte +0x9C).
     void HideSubObjects();
