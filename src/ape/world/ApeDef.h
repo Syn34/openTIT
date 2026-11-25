@@ -112,6 +112,7 @@ public:
     }
 
     // Constructs a definition in pooled storage.
+    // @func 0x007A71A4 ApeTDefList<ApeGeomDef>::Create
     static T* Create()
     {
         void* storage = ApeTListAllocator<T>::GetAllocator().Alloc();
