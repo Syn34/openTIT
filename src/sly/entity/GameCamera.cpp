@@ -571,9 +571,9 @@ void GameCamera::SetActiveVisual(bool on)
 }
 
 // @func 0x000FC88C GameCamera::OnAnimEvent
-void GameCamera::OnAnimEvent(const char* name, uint32_t arg0, uint32_t arg1, bool fired)
+void GameCamera::OnAnimEvent(const char* name, uint32_t argument, Entity* source)
 {
-    if (!fired)
+    if (!source)
         return;
     const uint32_t hash = ape::HashNameNoCase(name);
     if (hash == kEvent_HoldA || hash == kEvent_HoldB)
@@ -581,7 +581,7 @@ void GameCamera::OnAnimEvent(const char* name, uint32_t arg0, uint32_t arg1, boo
     else if (hash == kEvent_ReleaseA || hash == kEvent_ReleaseB)
         cameraFlags &= ~kCamFlag_AnimHold;
     else
-        camera::EntityAnimEventBase(this, name, arg0, arg1, fired);
+        Entity::OnAnimEvent(name, argument, source);
 }
 
 // @func 0x000FCBC8 GameCamera::SetAttachParent

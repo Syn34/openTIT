@@ -99,7 +99,7 @@ void ResetRenderState()
     g_state.fragmentProgramDirty = false;
     for (auto& texture : g_state.textures)
         texture = nullptr;
-    g_state.field_1178 = -1;
+    g_state.fogLayer = -1;
     g_state.samplerMinFilter[0] = g_state.samplerMinFilter[1] = 0;
 
     g_state.stencilFront = AglStencilState();
@@ -259,20 +259,25 @@ void ClearTargets(float depth, uint32_t mask, uint32_t color, uint32_t stencil, 
     cmd.SetStencilMask(g_state.stencilFront.writeMask);
 }
 
-// @func 0x0053539C AglRenderState::CommitDrawState
-void CommitDrawState()
+void CommitFragmentProgram()
 {
-    gpu::CommandList& cmd = Cmd();
     AglFragmentProgram* fp = g_state.fragmentProgram;
     if (g_state.fragmentProgramDirty) {
         g_state.fragmentProgramDirty = false;
         if (fp) {
-            cmd.SetFragmentProgram(fp->desc);
+            Cmd().SetFragmentProgram(fp->desc);
             UploadFragmentConstants(fp);
         }
     } else if (fp && fp->dirtyMask != 0) {
         UploadFragmentConstants(fp);
     }
+}
+
+// @func 0x0053539C AglRenderState::CommitDrawState
+void CommitDrawState()
+{
+    gpu::CommandList& cmd = Cmd();
+    CommitFragmentProgram();
 
     if (!g_state.vertexLayoutDirty)
         return;
@@ -341,16 +346,16 @@ void InvalidateRenderState()
 {
     AglRenderState& st = g_state;
     st.field_10A4 = 0;
-    st.field_10A8 = -1;
-    st.field_10B0 = 0;
-    st.technique = nullptr;
-    st.techniqueBlock = nullptr;
+    st.boundVertexBuffer = nullptr;
+    st.boundVertexDecl = nullptr;
+    st.vertexProgram = nullptr;
+    st.vertexProgramBlock = nullptr;
     st.material = nullptr;
-    st.field_10C0 = 0xFFFF;
+    st.meshAttributes = 0xFFFF;
     st.field_10F8 = 0;
     for (auto& texture : st.textures)
         texture = nullptr;
-    st.field_1178 = -1;
+    st.fogLayer = -1;
     st.samplerMinFilter[0] = st.samplerMinFilter[1] = 0;
     st.materialDirty = false;
     st.stencilFront = AglStencilState();

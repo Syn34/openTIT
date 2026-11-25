@@ -13,6 +13,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <vector>
 
 namespace agl {
 
@@ -174,6 +175,120 @@ int TextureDefaultChunkHandler(ape::iff::IffReader* /*reader*/, void* arg)
     texture->image.surface = nullptr;
     texture->image.isView = true;
     texture->serial = 0;
+    return 1;
+}
+
+// @func 0x005399CC TextureGtfChunkHandler
+// The chunk payload is a GTF file; it is loaded into GPU memory as is.
+int TextureGtfChunkHandler(ape::iff::IffReader* reader, void* arg)
+{
+    AglTexture* texture = *static_cast<AglTexture**>(arg);
+    if (reader->flags & kReaderResolveOnly) {
+        if (!texture)
+            return 1;
+        // The image is loaded again below.
+        MemBlockFree(&texture->image.mem);
+        texture->image.mem.data = nullptr;
+    }
+    if (g_defaultForLooseTextures && texture->UseDefaultImage())
+        return 1;
+
+    const uint32_t size = reader->GetChunkSize();
+    MemBlockAlloc(&texture->image.mem, size, 0x80, gpu::MemoryLocation::Local, kAglMem_Texture);
+    if (texture->image.mem.data)
+        reader->Read(texture->image.mem.data, size);
+    texture->ParseGtfImage(size);
+    texture->image.format = FindFormatByTextureFormat(texture->image.desc.format);
+    return 1;
+}
+
+namespace {
+
+// The part of a DDS file header the loader reads (little endian).
+struct DdsHeader {
+    uint32_t height;
+    uint32_t width;
+    uint32_t fourCC;
+};
+
+constexpr uint32_t FourCC(char a, char b, char c, char d)
+{
+    return uint32_t(uint8_t(a)) | (uint32_t(uint8_t(b)) << 8) | (uint32_t(uint8_t(c)) << 16) |
+           (uint32_t(uint8_t(d)) << 24);
+}
+
+uint32_t ReadLE32At(const uint8_t* p)
+{
+    return uint32_t(p[0]) | (uint32_t(p[1]) << 8) | (uint32_t(p[2]) << 16) | (uint32_t(p[3]) << 24);
+}
+
+bool IsPowerOfTwo(uint32_t value)
+{
+    return (value & (0u - value)) == value;
+}
+
+} // namespace
+
+// @func 0x00539C7C TextureDdsChunkHandler
+// The chunk payload is a DDS file: DXT1/3/5 images and the signed two
+// channel formats (D3D formats 60 V8U8 and 117 CxV8U8). Power of two DXT
+// images use the swizzled formats.
+int TextureDdsChunkHandler(ape::iff::IffReader* reader, void* arg)
+{
+    // NOTE: the console uses the chunk argument itself as the texture; the
+    // other texture chunks (and this port) read the texture from it.
+    AglTexture* texture = *static_cast<AglTexture**>(arg);
+
+    // Until the image is loaded the texture shows default texture 0.
+    const AglTexture* fallback = GetDefaultTexture(kAglTex_White);
+    texture->image.desc = fallback->image.desc;
+    texture->image.format = fallback->image.format;
+    MemBlockMakeView(&texture->image.mem, fallback->image.mem);
+    texture->attachment = nullptr;
+
+    uint8_t magic[4];
+    uint8_t header[0x7C];
+    reader->Read(magic, sizeof(magic));
+    reader->Read(header, sizeof(header));
+    DdsHeader dds;
+    dds.height = ReadLE32At(header + 0x08);
+    dds.width = ReadLE32At(header + 0x0C);
+    dds.fourCC = ReadLE32At(header + 0x50);
+    texture->width = uint16_t(dds.width);
+    texture->height = uint16_t(dds.height);
+
+    const bool powerOfTwo = IsPowerOfTwo(dds.width) && IsPowerOfTwo(dds.height);
+    uint32_t format;
+    bool signedChannels = false;
+    if (dds.fourCC == FourCC('D', 'X', 'T', '5') || dds.fourCC == FourCC('D', 'X', 'T', '4'))
+        format = powerOfTwo ? kAglFmt_DXT5 : kAglFmt_LinDXT5;
+    else if (dds.fourCC == FourCC('D', 'X', 'T', '3') || dds.fourCC == FourCC('D', 'X', 'T', '2'))
+        format = powerOfTwo ? kAglFmt_DXT3 : kAglFmt_LinDXT3;
+    else if (dds.fourCC == FourCC('D', 'X', 'T', '1'))
+        format = powerOfTwo ? kAglFmt_DXT1 : kAglFmt_LinDXT1;
+    else if (dds.fourCC == 117 || dds.fourCC == 60) {
+        format = kAglFmt_LinR8G8;
+        signedChannels = true;
+    } else {
+        return 0;
+    }
+
+    TextureCreate(&texture->image, uint16_t(dds.width), uint16_t(dds.height), 1, format, false, nullptr, false);
+    texture->sampler[0] = 1;
+    texture->sampler[1] = 1;
+    texture->sampler[2] = 0;
+    texture->sampler[6] |= 1;
+
+    const uint32_t size = texture->image.mem.size;
+    std::vector<uint8_t> pixels(size);
+    reader->Read(pixels.data(), size);
+    // Signed channels are stored doubled in the unsigned format.
+    if (signedChannels) {
+        for (uint8_t& value : pixels)
+            value = uint8_t(value << 1);
+    }
+    if (texture->image.mem.data)
+        std::memcpy(texture->image.mem.data, pixels.data(), size);
     return 1;
 }
 

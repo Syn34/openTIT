@@ -79,8 +79,7 @@ ape::world::ApeObj* Component15Object(EntityComponent* component, uint32_t index
 bool Component03Busy(EntityComponent* component);
 
 // -- world objects ----------------------------------------------------------------
-// Tints every render part of a geometry instance (0x000D6F90): colour bytes
-// at +0x08 and amount at +0x0C of each part's material block.
+// Tints every LOD mesh of a geometry instance (0x000D6F90, Entity.cpp).
 void ObjectSetTint(float amount, ape::world::ApeObj* object, const uint8_t color[4]);
 
 // Instance of a geometry definition (0x005A05E8); `flag` NOTE: meaning unknown.
@@ -152,9 +151,12 @@ void EntityRootMotionDelta(Entity* entity, ape::Matrix34& out, bool consume);
 void EntitySetWorldTransform(Entity* entity, const ape::Matrix34& transform);
 // Entity virtual slot 7 (+0x1C): state of a layer.
 void EntitySetState(Entity* entity, int layer, int state);
-// Opacity of a child entity (0x000DF3CC) and pushing its fade buffer (0x000DF4CC).
+// Opacity of a child prop object (0x000DF3CC) and pushing its fade buffer
+// (0x000DF4CC); see PropObjectEntity (PropObjectEntity.cpp).
 void EntitySetFadeAlpha(Entity* entity, bool flag, uint8_t alpha, bool immediate);
 void EntityApplyFadeBuffer(Entity* entity);
+// Listener (+0xF4) slot 52 (+0xD0): a contact point of the entity's body.
+void ListenerOnContact(class EntityListener* listener, const void* event);
 // Listener slot 37 (+0x94): the entity is heavy to carry; slot 51 (+0xCC):
 // it was dropped, with the carrier's drop settings.
 bool ListenerIsHeavy(EntityListener* listener);
@@ -163,6 +165,7 @@ void ListenerOnDropped(EntityListener* listener, const uint8_t* dropSettings);
 // field (0x00583E54).
 void ObjectApplyAlphaBuffer(ape::world::ApeObj* object, const void* buffer, uint8_t alpha);
 void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value);
+int32_t RenderObjectLodField(const ape::world::ApeObj* object);   // bits 18-23 of +0x140
 // Game world callback lists (0x0046B5F8): `fn(owner, entity)` runs later.
 using WorldCallback = void (*)(void* owner, Entity* entity);
 void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity);
@@ -267,8 +270,6 @@ void PhysicsCompSetTarget(EntityComponent* component, const ape::Vec3& point);
 // Attaches the entity a spawn produced with the attach record the spawn
 // parameters carry (Entity::AttachChild 0x000D15C0).
 void EntityAttachSpawned(Entity* parent, SpawnParams& params, Entity* child);
-// Base entity definition bounds (EntityDef slot 3, 0x000CB934).
-void EntityDefBaseBounds(const class EntityDef* def, ape::Aabb& out);
 
 } // namespace entity
 } // namespace sly

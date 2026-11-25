@@ -58,11 +58,6 @@
 * 0x004D00CC-0x004D0BE4: anim-script instance pool / AVL glue (0x004C8E80
   owner) - belongs with the anim-script module.
 * 0x004D0C90-0x004D28F8: Bink movie player wrapper (needs Bink).
-* The tile class
-  (nine-slice: creator 0x004D9DA0, Tick 0x004D8E88 building the piece
-  images, clone 0x004E7D60, layout 0x004E80A8, draw 0x004E81C0) and type 8
-  (0x004D7CF8, 0x004D7F24, 0x004D8200, 0x004E9144); CreateGuiTile and
-  CreateGuiType8 are TODO stubs in ApeGuiCreate.cpp.
 * 0x004F0000-0x004F2FC0: level scene object creation (ApeCameraDef,
   ApeGeomInstance) - render/scene dependent.
 * 0x004F32F4-0x004F7C48: setting manager / setting defs / tag settings. A
@@ -80,3 +75,14 @@
 * Screen fade: colour 0x010C2AD4, material 0x00F66854, debug mesh 0x00F6685C,
   drawn with the matrix 0x010C29E0 at depth -20 (DrawGui 0x004D4E28).
 * Tickers rebuild their glyphs in Tick (slot 38) and use the label Draw.
+
+## GUI pass 3 (agent1)
+* Tile (type 6) done: attributes textureTL..textureBR (table 0x00F668A8) and "size". The
+  layout picks one image (centre only), a three piece bar (middle row, or middle column when
+  only TC/BC are given) or the full nine-slice grid; missing pieces borrow a mirrored piece
+  (table 0x00AEF5B4, list position = mirror bits x/y). Borders keep the texture size (or half
+  the box), edges/centre repeat (wrap 1) or stretch when smaller than one texture. Console
+  quirk kept: the vertical bar stores the middle height in the middle piece's width.
+* Type 8 done: wraps a world instance ("objName" instance or geometry definition, cloned
+  with flags 5 and renamed "%s_GUIInst" unless "noclone"); its scale follows the GUI scale and
+  the children's positions are mirrored in z.

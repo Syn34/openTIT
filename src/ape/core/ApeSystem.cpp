@@ -2,6 +2,7 @@
 #include "ape/core/ApeSystem.h"
 #include "ape/sys/ApePlatform.h"
 #include "ape/core/ApeThread.h"
+#include "ape/world/ApeWorldInit.h"
 
 namespace ape {
 
@@ -10,9 +11,10 @@ bool g_engineFlag_10F0EA8 = false;
 
 // TODO(0x005DB1D0 SystemInit): only the thread registration of the core group
 // and the platform initialiser (0x0056D87C) are reimplemented. The original
-// then calls the core engine init (0x0055DC18),
-// audio (0x0050F520), graphics (0x00588828) and input (0x0056A944) initialisers
-// and creates the general heap sized by EngineConfig::field_1A4.
+// then calls the core engine init (0x0055DC18), the Agl graphics init
+// (0x0050F520, flag 4), the world module init (flag 2, ported) and the
+// debug draw init (0x0056A944, flag 8), and creates the general heap sized
+// by EngineConfig::field_1A4.
 bool SystemInit(uint32_t flags)
 {
     if (flags & kInit_Core) {
@@ -20,6 +22,8 @@ bool SystemInit(uint32_t flags)
         if (!PlatformSystemInit())
             return false;
     }
+    if ((flags & kInit_Graphics) && !world::InitWorld())
+        return false;
     return true;
 }
 

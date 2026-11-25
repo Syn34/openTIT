@@ -1,6 +1,9 @@
 // openTIT - Stubs for the calls the camera code makes into unported systems.
 #include "sly/camera/CameraHooks.h"
 
+#include "sly/entity/CharacterHooks.h"
+#include "sly/entity/Entity.h"
+
 #include "sly/camera/CameraSettings.h"
 #include "sly/entity/ActorEntities.h"
 
@@ -25,11 +28,10 @@ const OrthoCameraDesc* VehicleOrthoCamera(entity::Entity* vehicle) { (void)vehic
 
 float CameraInstanceFov(ape::world::ApeObj* camera) { (void)camera; return 0.0f; }
 
-void EntityAnimEventBase(entity::Entity* entity, const char* name, uint32_t arg0, uint32_t arg1, bool fired)
+void QueueEntityTransformCallback(entity::Entity* entity)
 {
-    (void)entity; (void)name; (void)arg0; (void)arg1; (void)fired;
+    entity::GameWorldQueueCallback(0, &entity::QueuedUpdateTransform, entity, entity);
 }
-void QueueEntityTransformCallback(entity::Entity* entity) { (void)entity; }
 
 void DeleteAnimController(void* controller) { (void)controller; }
 void AnimControllerUpdate(void* controller, float dt) { (void)controller; (void)dt; }

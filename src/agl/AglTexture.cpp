@@ -253,6 +253,12 @@ bool AglTexture::LoadGtf(const void* data, uint32_t size, bool inPlace)
         image.mem.borrowed = true;
     }
 
+    ParseGtfImage(size);
+    return true;
+}
+
+void AglTexture::ParseGtfImage(uint32_t size)
+{
     // GTF: header { version, size, numTextures } followed by texture
     // attributes { id, offsetToTex, textureSize, texture descriptor }.
     const auto* gtf = static_cast<const uint8_t*>(image.mem.data);
@@ -277,7 +283,6 @@ bool AglTexture::LoadGtf(const void* data, uint32_t size, bool inPlace)
     }
     width = image.desc.width;
     height = image.desc.height;
-    return true;
 }
 
 // @func 0x0053A640 AglTexture::Load

@@ -27,8 +27,10 @@ public:
     // @func 0x00743558 EntityInterface17C::~EntityInterface17C
     // @func 0x00743568 EntityInterface17C::~EntityInterface17C (deleting)
     virtual ~EntityInterface17C() = default;                 // slots 3/4
+    // Slot 5: NOTE: with the slot layout of hkpContactListener this is the
+    // "contact point added" callback; the event is passed through untouched.
     // @func 0x007435AC EntityInterface17C::Interface17CSlot5
-    virtual void Interface17CSlot5() {}
+    virtual void Interface17CSlot5(const void* event) { (void)event; }
     // @func 0x007435B0 EntityInterface17C::Interface17CSlot6
     virtual void Interface17CSlot6() {}
     // @func 0x007435B4 EntityInterface17C::Interface17CSlot7

@@ -267,6 +267,11 @@ void AnimControllerSetEngaged(Entity* entity, bool engaged);
 // its character component's +0x17C play rate is reset to 1.
 void CharacterClearAIHold(Entity* character);
 
+// Entity virtual slot 36 (+0x90): the Havok rigid body of the entity's
+// physics component, or null.
+void* EntityRigidBody(Entity* entity);
+// Spawner registered under a name (spawner map 0x00F65BE8 +0x04), or null.
+void* FindSpawnerByName(uint32_t nameHash);
 // -- physics body (entity virtual slot 16) ------------------------------------------
 bool BodyIsEnabled(EntityComponent* body);                // 0x002697F8
 void BodySetEnabled(EntityComponent* body, bool enabled); // 0x00260C14

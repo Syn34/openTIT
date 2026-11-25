@@ -685,7 +685,7 @@ int32_t ApeGuiTicker::GetType() const
 // @func 0x004E7D10 ApeGuiTile::~ApeGuiTile (deleting)
 ApeGuiTile::~ApeGuiTile()
 {
-    for (ApeGuiObject*& piece : pieces) {
+    for (auto*& piece : pieces) {
         delete piece;
         piece = nullptr;
     }

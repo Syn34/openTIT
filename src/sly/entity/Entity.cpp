@@ -8,14 +8,20 @@
 #include "ape/container/ApeTSortedMap.h"
 #include "ape/core/ApeString.h"
 #include "ape/world/ApeDef.h"
+#include "ape/world/ApeDefTypes.h"
 #include "ape/world/ApeInstances.h"
 #include "ape/world/ApeObj.h"
 #include "ape/world/ApeRenderNode.h"
 #include "ape/world/ApeSkeleton.h"
+#include "ape/sys/ApeGeometry.h"
+#include "ape/math/ApeMatrixOps.h"
+#include "agl/AglRenderTarget.h"
+#include "sly/camera/CameraHooks.h"
 #include "sly/game/AudioSystem.h"
 
 #include <cfloat>
 #include <cmath>
+#include <cstring>
 #include <vector>
 
 namespace sly {
@@ -376,10 +382,98 @@ void Entity::UpdateTransform(float /*dt*/)
     }
 }
 
-// TODO(0x000D7A00 Entity::UpdateChildTransforms): places every attached child
-// from the parent's bone/locator matrices (vector heavy).
+namespace {
+// Inverse of a rigid transform (orthonormal axes).
+ape::Matrix34 InverseRigid(const ape::Matrix34& m)
+{
+    ape::Matrix34 inv;
+    inv.xAxis = { m.xAxis.x, m.yAxis.x, m.zAxis.x, 0.0f };
+    inv.yAxis = { m.xAxis.y, m.yAxis.y, m.zAxis.y, 0.0f };
+    inv.zAxis = { m.xAxis.z, m.yAxis.z, m.zAxis.z, 0.0f };
+    const ape::Vec3& t = m.translation;
+    inv.translation = { -(t.x * m.xAxis.x + t.y * m.xAxis.y + t.z * m.xAxis.z),
+                        -(t.x * m.yAxis.x + t.y * m.yAxis.y + t.z * m.yAxis.z),
+                        -(t.x * m.zAxis.x + t.y * m.zAxis.y + t.z * m.zAxis.z), 0.0f };
+    return inv;
+}
+
+// Frame of a locator in its entity's model space.
+ape::Matrix34 LocatorModelTransform(const Entity* entity, const EntityLocator& locator)
+{
+    const ape::Matrix34 bone = entity->BoneTransform(locator.bone, false, true);
+    ape::Matrix34 out;
+    ape::world::Matrix34Mul(out, locator.transform, bone);
+    return out;
+}
+} // namespace
+
+// @func 0x000D7A00 Entity::UpdateChildTransforms
+// Every attached child that does not place itself goes to its attach offset
+// in the frame of the parent's locator, bone or object (or the parent's own
+// frame), compensated by the child's own locator or bone so that this point
+// of the child sits on the attach point. Rotation and scale can be kept.
 void Entity::UpdateChildTransforms()
 {
+    if (!children)
+        return;
+    for (EntityChildLink& link : *children) {
+        Entity* child = link.child;
+        if (!child || (link.flags & kChild_NoTransform))
+            continue;
+        if (!child->object && !child->HasTypeBit(22))   // NOTE: type bit 22: placed without a world object
+            continue;
+
+        ape::Matrix34 local;
+        ape::Matrix34FromQuat(local, link.rotation, link.offset);
+
+        ape::Matrix34 frame = transform;
+        if (link.parentLocator) {
+            const ape::Matrix34 locatorFrame = LocatorModelTransform(this, *link.parentLocator);
+            ape::world::Matrix34Mul(frame, locatorFrame, transform);
+        } else if (link.parentBone == -1) {
+            if (link.parentObject)
+                frame = link.parentObject->GetWorld();
+        } else {
+            frame = BoneTransform(link.parentBone, true, true);
+        }
+        if (link.flags & kChild_ParentRotation) {
+            frame.xAxis = transform.xAxis;
+            frame.yAxis = transform.yAxis;
+            frame.zAxis = transform.zAxis;
+        }
+
+        if (link.childLocator) {
+            const ape::Matrix34 inv = InverseRigid(LocatorModelTransform(child, *link.childLocator));
+            const ape::Matrix34 attach = local;
+            ape::world::Matrix34Mul(local, attach, inv);
+        } else if (link.childBone != -1) {
+            const ape::Matrix34 inv = InverseRigid(child->BoneTransform(link.childBone, false, true));
+            const ape::Matrix34 attach = local;
+            ape::world::Matrix34Mul(local, attach, inv);
+        }
+
+        ape::Matrix34 placed;
+        ape::world::Matrix34Mul(placed, local, frame);
+        if (link.flags & kChild_KeepRotation) {
+            placed.xAxis = child->transform.xAxis;
+            placed.yAxis = child->transform.yAxis;
+            placed.zAxis = child->transform.zAxis;
+        }
+        ape::Matrix34NormalizeAxes(placed);
+
+        if (!(link.flags & kChild_KeepScale)) {
+            static const ape::Vec3 kUnitScale = { 1.0f, 1.0f, 1.0f, 0.0f };   // 0x01164B30
+            const ape::Vec3& parentScale = object ? object->GetScale() : kUnitScale;
+            const ape::Vec3& childScale = child->object ? child->object->GetScale() : kUnitScale;
+            if (parentScale.x != childScale.x || parentScale.y != childScale.y || parentScale.z != childScale.z)
+                child->SetScale(parentScale, false);
+        }
+        child->SetTransform(placed);
+        if (child->object) {
+            ape::Matrix34Copy(child->object->m_local, placed);
+            child->object->MarkDirty();
+        }
+    }
 }
 
 // @func 0x000D1288 Entity::GetComponent
@@ -610,6 +704,93 @@ ape::world::ApeObj* Entity::ObjectForCollidable(const void* collidable, int32_t*
         }
     }
     return nullptr;
+}
+
+// @func 0x000D6F90 ObjectSetTint
+// Every LOD mesh of a geometry instance gets the colour and amount.
+void ObjectSetTint(float amount, ape::world::ApeObj* object, const uint8_t color[4])
+{
+    if (!object || object->GetType() != ape::world::kObjType_GeomInstance)
+        return;
+    auto* def = static_cast<ape::world::ApeGeomDef*>(object->GetDef());
+    for (uint32_t i = 0; i < def->m_lodCount; ++i) {
+        if (def->m_lods[i].mesh)
+            MeshSetTint(def->m_lods[i].mesh, color, amount);
+    }
+}
+
+// @func 0x000CE688 Entity::BoneTransform
+ape::Matrix34 Entity::BoneTransform(int bone, bool world, bool keepScale) const
+{
+    ape::Matrix34 out = world ? transform : ape::world::kWorldIdentity;
+    if (object && world)
+        out = object->GetWorld();
+    if (!object || bone < 0)
+        return out;
+    ape::world::ApeSkeleton* skeleton = object->GetSkeleton();
+    if (!skeleton)
+        return out;
+    const ape::Matrix34& model = skeleton->model[bone];
+    if (!world)
+        return model;
+    if (keepScale) {
+        ape::world::Matrix34Mul(out, model, object->GetWorld());
+    } else {
+        ape::Matrix34 frame;
+        ape::Matrix34NormalizeAxes(frame, object->GetWorld());
+        ape::world::Matrix34Mul(out, model, frame);
+    }
+    return out;
+}
+
+// @func 0x000DAABC Entity::BoneTransformByName
+ape::Matrix34 Entity::BoneTransformByName(uint32_t boneHash, bool world, bool keepScale) const
+{
+    int bone = -1;
+    if (boneHash != 0 && object) {
+        if (ape::world::ApeSkeleton* skeleton = object->GetSkeleton())
+            bone = skeleton->FindBone(boneHash);
+    }
+    return BoneTransform(bone, world, keepScale);
+}
+
+// @func 0x000DADA8 Entity::IsOffScreen
+bool Entity::IsOffScreen(float margin) const
+{
+    agl::AglRenderTarget* target = camera::MainRenderTarget();
+    if (!target)
+        return false;
+    float screen[4];
+    target->WorldToScreen(screen, Position());
+    return screen[0] < -margin || screen[0] > margin + 1.0f || screen[1] < -margin || screen[1] > margin + 1.0f;
+}
+
+// @func 0x000DD368 Entity::OnAnimEvent
+void Entity::OnAnimEvent(const char* name, uint32_t argument, Entity* source)
+{
+    (void)argument;
+    constexpr uint32_t kIgnored[] = { 0x5294E198u, 0x1B12498Fu, 0xD49B5F41u };   // NOTE: names unknown
+    if (!source)
+        return;
+    const uint32_t hash = ape::HashNameNoCase(name);
+    for (uint32_t ignored : kIgnored) {
+        if (hash == ignored)
+            return;
+    }
+    if (std::strncmp(name, "hkAttach", 8) != 0)
+        return;
+    const uint32_t part = ape::HashNameNoCase(name + 8);
+    if (Entity* parent = source->attachParent) {
+        if (EntityChildLink* link = parent->FindChildLink(this))
+            link->partName = part;
+    }
+}
+
+// @func 0x000DD4A0 EntityAnimEventListener
+void EntityAnimEventListener(const char* name, uint32_t argument, void* user)
+{
+    if (Entity* entity = static_cast<Entity*>(user))
+        entity->OnAnimEvent(name, argument, entity);
 }
 
 // @func 0x000DA25C Entity::Detached
@@ -942,7 +1123,7 @@ void Entity::SetSoundsMuted(bool muted)
         for (uint32_t i = 0; i < SoundSlotCount(); ++i) {
             audio::StopVoice(sounds[i].voice, true);
             sounds[i].voice = 0;
-            sounds[i].field_08 = 0;
+            sounds[i].attachObject = nullptr;
             sounds[i].id = -1;
         }
     }
@@ -1187,7 +1368,7 @@ bool Entity::Release(bool kill)
     for (uint32_t i = 0; i < SoundSlotCount(); ++i) {
         audio::StopVoice(sounds[i].voice, true);
         sounds[i].voice = 0;
-        sounds[i].field_08 = 0;
+        sounds[i].attachObject = nullptr;
         sounds[i].id = -1;
     }
 

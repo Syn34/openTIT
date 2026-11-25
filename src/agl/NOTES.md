@@ -210,3 +210,27 @@ The full link was failing because of files outside `src/agl`: missing
   in ape/sys/ApeIff.h. The TBLK registration lives in 0x00542704 together
   with the not yet ported TGTF/DXTN (DDS) handlers 0x005399CC/0x00539C7C.
 * AglDrawList gained SetWorldMatrix(Matrix34) and EndPrimitive (0x00523748).
+
+## agent1 pass 3
+* TGTF (0x005399CC) and DXTN (0x00539C7C) texture image chunks done. The registration
+  function 0x00542704 (also the texture system init 0x0051DF3C and two textures from the
+  display images 0x010F0E74/0x010F0E84) is not ported. NOTE: the console DXTN handler uses the
+  chunk argument as the texture, the other texture chunks read it through the argument.
+* `FlushRendering` 0x005126E4 (render thread wait, frame pacing 0x0053BF70 stub, drain of the
+  deferred destruction queue). Material create hook 0x00F8F114 (+8/+0xC) added
+  (`SetMaterialCreateHook`); nothing runs it until the material chunk handlers exist.
+* Technique Draw functions: the render item starts with the world matrix; its unused fourth
+  lanes hold the submesh (+0x0C), material (+0x1C), light set (+0x2C); +0x3C is the bone
+  palette (0x30 bytes per bone) and +0x40 an optional RGBA colour. A typical Draw (Debug,
+  0x005ADA18) multiplies the matrix by the view-projection (0x010DD7C0), uploads it
+  transposed to vertex constants 0..3, sets constant 4 and calls the submesh's virtual Draw
+  (platform submesh vtable 0x00B23EC0 slot 4 = 0x00538B44: bone upload to register 0x40,
+  vertex attributes, fragment program commit, draw arrays/indexed). None are ported yet.
+* Done since: `AglSubMesh::Draw` (0x00538B44; the platform path 0x005382C0 is a stub),
+  technique Draws of Debug, PrimTxr, SimpleColorTxr, GeoParticle, SprParticle,
+  ProjTxrDeferred, ZPass and Outline (outline params at item +0x40: RGBA + width), the draw
+  fog helpers 0x0050CF50/0x0050D0E0 (vertex constant 0x20, fog colour fragment constant).
+  `AglRenderState` cache fields renamed: 0x010F10A8 boundVertexBuffer, 0x010F10B0
+  boundVertexDecl, 0x010F10B4 vertexProgram (the bound technique's AglVertexProgram),
+  0x010F10C0 meshAttributes, 0x010F1178 fogLayer, 0x010F117C fogEnabled[2]. The material
+  pointer at +0x7C is the constants block (GeoParticle reads constants[3]).

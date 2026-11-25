@@ -98,8 +98,12 @@ void ConfigureEngine(ape::EngineConfig& c)
     c.field_154 = 0x4C00;
     c.field_158 = 0x6000;
     c.field_16E = 0x500;
-    c.field_178 = 0x400;
-    c.field_17C = 0x500;
+    // NOTE: main stores these as two 32-bit words (0x400 at +0x178, 0x500
+    // at +0x17C), which sets the 16-bit sizes at +0x17A and +0x17E.
+    c.emitterDefCapacity = 0;
+    c.lightDefCapacity = 0x400;
+    c.pointDefCapacity = 0;
+    c.field_17E = 0x500;
     c.field_18E = 0x1000;
     c.field_1A4 = 0x20000;
     c.field_1A8 = 0x60000;

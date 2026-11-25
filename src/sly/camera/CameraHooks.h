@@ -50,8 +50,6 @@ const OrthoCameraDesc* VehicleOrthoCamera(entity::Entity* vehicle);
 // Field of view of an ApeCameraInstance (+0x154).
 float CameraInstanceFov(ape::world::ApeObj* camera);
 
-// Base version of entity virtual slot 59 (0x000DD368), animation events.
-void EntityAnimEventBase(entity::Entity* entity, const char* name, uint32_t arg0, uint32_t arg1, bool fired);
 // Queues the entity's transform callback (0x000DD778) on the game world's
 // phase-0 callback list (0x0046B5F8).
 void QueueEntityTransformCallback(entity::Entity* entity);

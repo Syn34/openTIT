@@ -137,6 +137,13 @@ public:
 // NOTE: only kind 3 (player interaction prompt) is special-cased in this module.
 constexpr int kInteract_Player = 3;
 
+// Attach locator: a frame relative to a bone of an entity's skeleton.
+struct EntityLocator {
+    ape::Matrix34 transform;             // 0x00 in the bone's space
+    uint32_t field_40 = 0;
+    int16_t bone = -1;                   // 0x44
+};
+
 // One attached child entity (console record of 0xF0 bytes in the array at +0x154).
 struct EntityChildLink {
     ape::Vec3 offset;                    // 0x80 attach offset
@@ -144,10 +151,10 @@ struct EntityChildLink {
     uint32_t partName = 0;               // 0xA0 attach part / slot name hash
     uint32_t flags = 0;                  // 0xB0 EntityChildFlags
     Entity* child = nullptr;             // 0xC0
-    void* parentLocator = nullptr;       // 0xC4 locator on the parent, or null
+    EntityLocator* parentLocator = nullptr;   // 0xC4 locator on the parent, or null
     int32_t parentBone = -1;             // 0xC8 bone of the parent, -1 for none
-    void* field_CC = nullptr;            // 0xCC NOTE: object whose world matrix is used when no bone
-    void* childLocator = nullptr;        // 0xD0 locator on the child, or null
+    ape::world::ApeObj* parentObject = nullptr;   // 0xCC object whose world matrix is used when no bone
+    EntityLocator* childLocator = nullptr;   // 0xD0 locator on the child, or null
     int32_t childBone = -1;              // 0xD4
     uint32_t restoreState = 0;           // 0xDC passed back to the child on detach
     float restoreBlend = 0.0f;           // 0xE0
@@ -157,6 +164,8 @@ enum EntityChildFlags : uint32_t {
     kChild_NoTransform     = 1u << 24,  // the child places itself
     kChild_RestoreState    = 1u << 25,  // re-apply restoreState when detached
     kChild_KeepOnDetach    = 1u << 26,  // do not restore the blend on detach
+    kChild_KeepScale       = 1u << 28,  // the child keeps its own scale
+    kChild_KeepRotation    = 1u << 29,  // the child keeps its own rotation
     kChild_ParentRotation  = 1u << 30,  // use the parent's rotation, ignore the bone's
     kChild_ForwardAnim     = 1u << 31,  // anim layer weights are forwarded to the child
 };
@@ -173,6 +182,9 @@ enum EntityFlags : uint32_t {
     kEnt_TransformChanged = 0x00000800,
     kEnt_4000       = 0x00004000,
     kEnt_8000       = 0x00008000,
+    kEnt_NoObjectSync = 0x00001000,  // the world object is not moved with the entity
+    kEnt_RootMotion = 0x00002000,    // slot 13 applies root motion
+    kEnt_10000      = 0x00010000,    // NOTE: updated like kEnt_Visible
     kEnt_SoundCountShift = 19,     // bits 19-21: number of sound slots in use
     kEnt_SoundCountMask  = 0x7u << 19,
     kEnt_Hidden     = 0x00020000,  // bit 17: set by ApplyVisibility(false)
@@ -200,8 +212,8 @@ enum EntityClassBits : uint64_t {
 // One sound attached to an entity (+0x100, stride 0x0C).
 struct EntitySoundSlot {
     uint32_t voice = 0;       // audio::VoiceId
-    int32_t id = -1;
-    uint32_t field_08 = 0;
+    int32_t id = -1;          // bone the sound follows, -1 for none
+    void* attachObject = nullptr;   // world object it follows without a bone (else the entity)
 };
 
 // Attachment record a definition adds to every spawn (0xC0 bytes on the
@@ -255,8 +267,15 @@ public:
     char name[0x20] = {};                    // 0x38
     char* field_80 = nullptr;                // 0x80 NOTE: owned buffer, contents unknown
     ape::ApeTArray<SpawnAttachmentDesc>* attachments = nullptr;   // 0x88
+    // 0x08: world object the definition was made from (its geometry gives
+    // the default bounds). NOTE: filled by the definition loader (not ported).
+    ape::world::ApeObj* templateObject = nullptr;
 };
 void UnregisterEntityDef(EntityDef* def);
+// Bounds of a definition (EntityDef slot 3 base): its template object's
+// geometry box scaled by the object's scale, a point at the origin without
+// one.
+void EntityDefBaseBounds(const EntityDef* def, ape::Aabb& out);
 // Draws a flash/fade colour (RGBA) over the entity's geometry this frame
 // and over every attached child's (0x000D8F08); `additive` selects the
 // renderer's additive variant (NOTE: the name of the flag is a guess).
@@ -273,6 +292,10 @@ public:
     virtual bool PostUpdate(float dt);                             // slot 5
     // Slot 12. NOTE: the frame time is passed through but unused by the base.
     virtual void UpdateTransform(float dt = 0.0f);                 // slot 12
+    // Slot 13 (+0x34): applies the root motion of the playing animation to
+    // the transform while flags bit 13 is set (cleared when a non-looping
+    // animation is over).
+    virtual void ApplyRootMotion(float dt);
     // Slot 14 (+0x38): fade and flash pass of the frame (characters, props);
     // nothing by default.
     // @func 0x000D8FC0 Entity::UpdateFade
@@ -446,6 +469,17 @@ public:
     // -- skeleton ---------------------------------------------------------------
     int FindBone(uint32_t nameHash) const;
     ape::world::ApeSkeletonBone* GetBone(int index) const;
+    // Model transform of bone `bone` of the world object's skeleton (the
+    // identity, or the entity's frame, without one). With `world` it is
+    // carried into world space by the object's transform (unscaled unless
+    // `keepScale`); without a bone the result is then the object's (or the
+    // entity's) transform.
+    ape::Matrix34 BoneTransform(int bone, bool world, bool keepScale) const;
+    // Same for a bone given by name (no bone for 0 or an unknown name).
+    ape::Matrix34 BoneTransformByName(uint32_t boneHash, bool world, bool keepScale) const;
+    // The position projects outside the screen by more than `margin`
+    // (fraction of the screen) on either axis.
+    bool IsOffScreen(float margin) const;
     ape::world::ApeSkeletonBone* GetBoneByName(uint32_t nameHash) const;
 
     // -- misc -------------------------------------------------------------------
@@ -460,6 +494,9 @@ public:
     void UpdateChildTransforms();
     // Slot 58 (+0xE8): forgets a watcher added by AddWatcher.
     virtual void RemoveWatcher(void* watcher);
+    // Slot 59 (+0xEC): animation event `name` from `source`'s controller.
+    // "hkAttach<part>" moves the entity to another attach part of its parent.
+    virtual void OnAnimEvent(const char* name, uint32_t argument, Entity* source);
     bool HasTypeBit(uint32_t bit) const { return (typeBits[bit >> 5] & (1u << (bit & 31))) != 0; }
     void SetName(const char* name);
     // Switches the entity's anim script (slot 68) to a state.
@@ -494,6 +531,14 @@ public:
     // @func 0x0074CC74 Entity::AddRef
     void AddRef() { ++interactionCount; }
     uint32_t SoundSlotCount() const { return (flags & kEnt_SoundCountMask) >> kEnt_SoundCountShift; }
+    // Frame of something attached to the entity: a bone (when `bone` >= 0),
+    // else `attachObject`'s world transform, else the entity's, with a local
+    // rotation and offset applied first.
+    ape::Matrix34 AttachTransform(int bone, const ape::world::ApeObj* attachObject, const ape::Vec4& rotation,
+                                  const ape::Vec3& offset) const;
+    // Velocity estimate and the positions of the attached sounds (finished
+    // ones are dropped).
+    void UpdateMotion(float dt);
 
     // -- data -------------------------------------------------------------------
     // 0x20 local transform the world object had before the entity took it
@@ -518,6 +563,8 @@ public:
     ape::ApeTArray<EntityComponent*>* components = nullptr;   // 0xF8 (allocated on first add)
     ape::ApeTArray<void*>* watchers = nullptr;     // 0xFC NOTE: objects interested in this entity
     EntitySoundSlot sounds[4];                     // 0x100
+    ape::Vec3 lastPosition{};                      // 0x130 position at the last update
+    ape::Vec3 velocity{};                          // 0x140 estimated from the position change
     Entity* attachParent = nullptr;                // 0x150
     ape::ApeTArray<EntityChildLink>* children = nullptr;      // 0x154 (records of 0xF0 bytes)
 };
@@ -553,6 +600,20 @@ void UnregisterEntity(EntityList list, Entity* entity);
 void AddToInstanceRenderList(EntityComponent* component);
 uint32_t EntityCount(EntityList list);
 Entity* EntityAt(EntityList list, uint32_t index);
+
+// Listener the entities install on their animation controller: forwards
+// an event to the entity (`user`) (0x000DD4A0).
+void EntityAnimEventListener(const char* name, uint32_t argument, void* user);
+
+// Game world callback that runs the entity's slot 12 (UpdateTransform)
+// later in the frame (lists 0 and 2) (0x000DD778).
+void QueuedUpdateTransform(void* owner, Entity* entity);
+
+// One entity's share of the frame: the update step (flags, slot 4, child
+// transforms, motion) and the post-update step (slot 5, world object sync,
+// root motion, animation).
+void EntityUpdateStep(Entity* entity, float dt);
+void EntityPostUpdateStep(Entity* entity, float dt);
 
 Entity* FindEntity(uint32_t nameHash);
 Entity* FindNearestEntity(const ape::Vec3& position);

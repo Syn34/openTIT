@@ -84,6 +84,9 @@ public:
     ~ApeLevelScene() override = default;
 };
 
+// Makes objects owned by a scene leave it when they are destroyed (installs
+// the ApeBase destruction hook; part of InitWorld).
+void InstallSceneObjectHook();
 // Creates a level scene and prepares the global load state for parsing its
 // files into it.
 ApeScene* CreateScene(uint32_t createFlags);
