@@ -27,7 +27,7 @@ public:
     // A hurt member plays its second slot state and enters state 1.
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
     // Slot 11: the group and every member back to their first state.
-    virtual void ResetState();
+    void ResetState() override;
 
     struct Member {
         Entity* entity;
@@ -140,7 +140,7 @@ public:
     ~ActorB17990() override = default;
     bool Release(bool kill) override;                 // slot 10
     // Slot 11: back to state 1, offering nothing.
-    virtual void ResetState();
+    void ResetState() override;
     // 0x001D81F0 (not ported).
     void SetField1D81F0(bool on);
 

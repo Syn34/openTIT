@@ -4,6 +4,7 @@
 // Havok call or member it stands for.
 #pragma once
 
+#include "ape/math/ApeBounds.h"
 #include "ape/math/ApeMath.h"
 
 #include <cstdint>
@@ -41,6 +42,9 @@ ape::Vec3 RigidBodyCenterOfMass(void* body);
 // Drops the game's two user properties of a body (0x0093FED8, keys
 // 0xA734004D and 0x91C7CF5B) before it is released.
 void RigidBodyClearUserProperties(void* body);
+// Local bounds of a collision shape (shape virtual getAabb at the identity
+// transform, tolerance 0).
+void HavokShapeLocalAabb(void* shape, ape::Aabb& out);
 // hkReferencedObject::removeReference (0x007D4EA8).
 void HavokRelease(void* object);
 

@@ -166,9 +166,8 @@ public:
     void RefreshAbilities();
     // Character slots 10/11.
     bool Release(bool kill) override;                // 0x00122518
-    // Slot 11: back to the idle state with the physics and props reset
-    // (0x00122830). NOTE: the entity base slot (empty) is not declared on Entity.
-    virtual void ResetState();
+    // Slot 11: back to the idle state with the physics and props reset (0x00122830).
+    void ResetState() override;
     // Takes `entity` into the hands (null drops the current one): attached at
     // `part` (definition default when null) with `offset`/`rotation` (the
     // definition's carry offset and Euler angles when null) (0x00121FA8).
@@ -191,8 +190,8 @@ public:
     void* FindAnimClipByName(const char* name) override;     // slot 48
     // Slots 72/73: axes of the surface the physics component moves on
     // (ground, water, wall). NOTE: names from the values returned.
-    virtual ape::Vec3 GetUpVector();
-    virtual ape::Vec3 GetSideVector();
+    ape::Vec3 GetUpVector() override;
+    ape::Vec3 GetSideVector() override;
     uint32_t InteractionOffer(int kind, Entity* other) override;   // slot 74
     bool CanInteractWith(Entity* other, int kind) override;        // slot 76
 
@@ -235,8 +234,16 @@ public:
     // @func 0x0015E2B8 Character::HandleState46
     bool HandleState46(const StateMessage& msg) { (void)msg; return true; }
 
+    // Shows (or hides) the definition's HUD prompts of a player character
+    // (0x001231B8).
+    void ShowHudPrompts(bool show);
+    // @func 0x0012D354 Character::HideHudPrompts
+    void HideHudPrompts() { ShowHudPrompts(false); }
+    // Flags (flags3C8 bit 1) that some prompt stays up for good (0x0012E5E8).
+    void CheckPermanentPrompts();
+
     // Watchers told when the character leaves (+0x530) (0x0012E824 / 0x0012E8B0).
-    void AddWatcher(CharacterWatcher* watcher);
+    void AddCharacterWatcher(CharacterWatcher* watcher);
     void RemoveCharacterWatcher(CharacterWatcher* watcher);
 
     // Hit reactions (slots 83-87) and damage (slot 88).
@@ -260,12 +267,12 @@ public:
     // Slot 27: gravity factor of the physics body; while attached, the one
     // the parent's link restores on detach. NOTE: Entity calls slot 28
     // "Detached(blend)"; the value is the gravity factor it hands down.
-    virtual float GetGravityFactor();
+    float GetGravityFactor() override;
     void Detached(float gravityFactor) override;     // slot 28 (0x00124C94)
-    // Slot 35: the position the character aims from (0x0012905C).
-    virtual ape::Vec3 GetAimPosition();
+    // Slot 35: velocity of the character component (0x0012905C).
+    ape::Vec3 GetVelocity() override;
     // Slot 38: turn rate of the character component (0x001290F0).
-    virtual float GetTurnRate();
+    float GetTurnRate() override;
     // Slots 89-93: the character's Entity.Character.Damage.* settings.
     // @func 0x007382E0 Character::ProjectileDamageScale
     float ProjectileDamageScale() const override { return damage.projectile; }
@@ -321,6 +328,9 @@ public:
     void* fadeBuffer = nullptr;                     // 0x3D0 owned per-part alpha buffer
     int32_t lodField = 0;                           // 0x3E0 handed to the render object
     uint8_t opacity = 0xFF;                         // 0x3E4
+    float promptTime = -1.0f;                       // 0x490 overrides the prompts' time when not negative
+    bool promptsForced = false;                     // 0x494 shows the prompts not shown from the start
+    bool promptsHidden = false;                     // 0x495
     camera::DefaultCameraMode* cameraMode = nullptr; // 0x4A0 holds cameraSettings as an override
     camera::CameraSettings cameraSettings;          // 0x4B0
     // 0x530 objects watching the character; each removes itself when told
@@ -359,6 +369,16 @@ public:
     uint8_t dropSettings[0x10] = {};   // 0x1C0 NOTE: contents unknown
     TunableBlock block_2D0;         // 0x2D0
     TunableBlock block_304;         // 0x304
+    // HUD prompts shown for a player character (0x2C-byte records at
+    // +0x318, count at +0x3C8).
+    struct HudPrompt {
+        uint32_t hudName;           // +0x00 HUD element
+        float time;                 // +0x04 how long it shows (0: stays)
+        bool fromStart;             // +0x08 shown even without the override flag
+        char text[0x23];            // +0x09 optional text
+    };
+    HudPrompt hudPrompts[4] = {};   // 0x318
+    uint32_t hudPromptCount = 0;    // 0x3C8
     CameraSettingsBlock cameraBlock;   // 0x3E0 (settings at +0x3F0)
     TunableBlock block_470;         // 0x470
     TunableBlock block_510;         // 0x510

@@ -1,6 +1,8 @@
 // openTIT - Entity classes built from a definition's collision object (see PropEntities.h).
 #include "sly/entity/PropEntities.h"
 
+#include "sly/entity/AlterEgoBentley.h"
+
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
 #include "sly/camera/CameraHooks.h"

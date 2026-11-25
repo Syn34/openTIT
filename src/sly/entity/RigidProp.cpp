@@ -69,14 +69,20 @@ void RigidProp::HandleMessage(const EntityMessage& msg)
     }
 }
 
+// @func 0x00168620 RigidProp::SetVelocity
+void RigidProp::SetVelocity(const ape::Vec3& velocity)
+{
+    SetBodyVelocity(rigidBody, velocity);
+}
+
 // @func 0x00168714 RigidProp::GetVelocity
 ape::Vec3 RigidProp::GetVelocity()
 {
     return BodyVelocity();
 }
 
-// @func 0x001691D4 RigidProp::GetMassCenter
-ape::Vec3 RigidProp::GetMassCenter()
+// @func 0x001691D4 RigidProp::GetAimPoint
+ape::Vec3 RigidProp::GetAimPoint()
 {
     return BodyMassCenter();
 }

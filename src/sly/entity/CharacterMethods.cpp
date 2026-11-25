@@ -1277,8 +1277,41 @@ bool Character::HandleState16(const StateMessage& msg)
     return true;
 }
 
-// @func 0x0012E824 Character::AddWatcher
-void Character::AddWatcher(CharacterWatcher* watcher)
+// @func 0x001231B8 Character::ShowHudPrompts
+void Character::ShowHudPrompts(bool show)
+{
+    if (!(classBits & 1) || IsGameTimeFrozen())
+        return;
+    const CharacterDef* charDef = DefOf(this);
+    for (uint32_t i = 0; i < charDef->hudPromptCount; ++i) {
+        const CharacterDef::HudPrompt& prompt = charDef->hudPrompts[i];
+        void* element = FindHudElement(prompt.hudName);
+        if (!element)
+            continue;
+        if (!show || (!prompt.fromStart && !promptsForced) || promptsHidden) {
+            HudElementHide(element);
+        } else {
+            const float time = promptTime < 0.0f ? prompt.time : promptTime;
+            HudElementShow(element, time, prompt.text[0] ? prompt.text : nullptr);
+        }
+    }
+}
+
+// @func 0x0012E5E8 Character::CheckPermanentPrompts
+void Character::CheckPermanentPrompts()
+{
+    const CharacterDef* charDef = DefOf(this);
+    for (uint32_t i = 0; i < charDef->hudPromptCount; ++i) {
+        const float time = promptTime < 0.0f ? charDef->hudPrompts[i].time : promptTime;
+        if (time == 0.0f) {
+            flags3C8 |= kFlag3C8_Bit1;
+            return;
+        }
+    }
+}
+
+// @func 0x0012E824 Character::AddCharacterWatcher
+void Character::AddCharacterWatcher(CharacterWatcher* watcher)
 {
     watchers530.PushBack(watcher);
 }
@@ -1343,11 +1376,11 @@ void Character::Detached(float gravityFactor)
     Entity::Detached(gravityFactor);
 }
 
-// @func 0x0012905C Character::GetAimPosition
-ape::Vec3 Character::GetAimPosition()
+// @func 0x0012905C Character::GetVelocity
+ape::Vec3 Character::GetVelocity()
 {
     EntityComponent* component = GetComponent00();
-    return component ? CharacterCompAimPosition(component) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
+    return component ? CharacterCompVelocity(component) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
 }
 
 // @func 0x001290F0 Character::GetTurnRate

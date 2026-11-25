@@ -14,7 +14,7 @@ void CharacterCompSetAnimController(EntityComponent* component, void* controller
 uint32_t PhysicsCompCollisionGroup(EntityComponent* component) { (void)component; return 0; }
 void* PhysicsCompRigidBody(EntityComponent* component) { (void)component; return nullptr; }
 void RigidBodySetCollisionGroup(void* body, uint32_t group) { (void)body; (void)group; }
-ape::Vec3 CharacterCompAimPosition(EntityComponent* component) { (void)component; return { 0.0f, 0.0f, 0.0f, 0.0f }; }
+ape::Vec3 CharacterCompVelocity(EntityComponent* component) { (void)component; return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 float CharacterCompTurnRate(EntityComponent* component) { (void)component; return 0.0f; }
 float RigidBodyGravityFactor(void* body) { (void)body; return 0.0f; }
 void RigidBodySetGravityFactor(void* body, float factor) { (void)body; (void)factor; }
@@ -39,6 +39,7 @@ Entity* HitSourceOwner(Entity* source, HitOwnerKind kind) { (void)source; (void)
 bool ThrownBySelf(Entity* thrown, Entity* entity) { (void)thrown; (void)entity; return false; }
 void* HitOtherBody(const EntityHitRecord& hit) { (void)hit; return nullptr; }
 bool RigidBodyIsKeyframed(void* body) { (void)body; return false; }
+uint32_t HitOtherCollisionLayer(const EntityHitRecord& hit) { (void)hit; return 0; }
 float RigidBodyMass(void* body) { (void)body; return 0.0f; }
 void RecordMeleeHit(Entity* victim, const EntityHitRecord& hit) { (void)victim; (void)hit; }
 bool ListenerIgnoresDamage(EntityListener* listener) { (void)listener; return false; }
@@ -101,6 +102,10 @@ void PhysicsCompSetTarget(EntityComponent* component, const ape::Vec3& point) { 
 void* GadgetAbilityList() { return nullptr; }
 int GadgetAbilityCount(void* list) { (void)list; return 0; }
 uint32_t GadgetAbility(void* list, int index) { (void)list; (void)index; return 0; }
+void* FindHudElement(uint32_t name) { (void)name; return nullptr; }
+void HudElementHide(void* element) { (void)element; }
+void HudElementShow(void* element, float time, const char* text) { (void)element; (void)time; (void)text; }
+bool IsGameTimeFrozen() { return false; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }
