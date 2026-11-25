@@ -20,6 +20,8 @@ void PlayerHudColor(uint8_t out[4])
 {
     out[0] = out[1] = out[2] = out[3] = 0xFF;
 }
+// TODO(job manager +0x50 object byte +0xA15)
+void SetMinigameLinePending(bool) {}
 // TODO(ApeObj slot 14 clone / 0x00590FEC): world objects cannot be cloned
 // yet; the element shares the template.
 ape::world::ApeObj* HudCloneObject(ape::world::ApeObj* object)

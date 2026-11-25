@@ -40,5 +40,19 @@ public:
     void TickSpring(float dt);
 };
 
+// Element of definition type bit 0x20000 (vtable 0x00B1FA48, 0x1B0 bytes),
+// built inline by the element factory. NOTE: looked up by the AR server's
+// target view, hence the name; its own fields are only initialised here.
+class HudArElement : public HudElement {
+public:
+    explicit HudArElement(HudObjectDef* def) : HudElement(def) { typeFlags |= kHud_Type20000; }
+    // Slot 3 (0x00389C3C): the common element's reset.
+    void Refresh() override;
+
+    uint32_t field_190[5] = {};   // +0x190
+    bool field_1A4 = true;        // +0x1A4
+    bool field_1A5 = true;        // +0x1A5
+};
+
 } // namespace hud
 } // namespace sly

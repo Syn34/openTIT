@@ -392,5 +392,11 @@ void HudElement::Update(float dt)
     object->MarkDirty();
 }
 
+// @func 0x00389C3C HudArElement::Refresh
+void HudArElement::Refresh()
+{
+    HudElement::Refresh();
+}
+
 } // namespace hud
 } // namespace sly

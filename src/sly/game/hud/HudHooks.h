@@ -25,6 +25,9 @@ void GameWorldAddHudCallback(HudObject* element, int list);
 // (0x004883C0 with its definition's slot 4 value).
 bool PlayerHudColorAvailable();
 void PlayerHudColor(uint8_t out[4]);
+// Byte +0xA15 of the object at job manager +0x50: a timed text element
+// still has lines to show. NOTE: owner (a minigame goal?) unknown.
+void SetMinigameLinePending(bool pending);
 // Own copy of an element's template object (ApeObj virtual slot 14 with 5,
 // then 0x00590FEC registering dynamic lights).
 ape::world::ApeObj* HudCloneObject(ape::world::ApeObj* object);
