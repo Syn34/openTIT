@@ -2,6 +2,8 @@
 // 0x000E7FD4-0x000E8880).
 #include "sly/entity/ActorEntities.h"
 
+#include "ape/anim/ApeAnimScript.h"
+
 #include <algorithm>
 
 namespace sly {
@@ -17,6 +19,22 @@ constexpr uint32_t kType_Blast = 0x03C599D8u;
 constexpr uint32_t kType_Melee = 0x811B1D5Eu;
 
 } // namespace
+
+// @func 0x000E7730 ActorEntity::SetActive
+// NOTE: the anim script runs while the flag is off (instance bit 8 is set
+// to the inverse), which suggests kEnt_Active really means "frozen" for
+// actors.
+void ActorEntity::SetActive(bool active)
+{
+    if (animScript)
+        animScript->SetActive(!active);
+    flags = active ? (flags | kEnt_Active) : (flags & ~uint32_t(kEnt_Active));
+    SetActiveVisual(active);
+    if (active)
+        flags = (flags & ~uint32_t(kEnt_4000)) | kEnt_8000;
+    else
+        flags &= ~uint32_t(kEnt_4000 | kEnt_8000);
+}
 
 // @func 0x000E7FD4 ActorEntity::InteractionNeeds
 uint32_t ActorEntity::InteractionNeeds(int kind, Entity* other)

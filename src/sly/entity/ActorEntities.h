@@ -74,7 +74,7 @@ public:
     bool Update(float dt) override { return ScriptedEntity::Update(dt); }
     bool PostUpdate(float dt) override { return ScriptedEntity::PostUpdate(dt); }
     bool Release(bool kill) override { return ScriptedEntity::Release(kill); }
-    void SetActive(bool active) override { ScriptedEntity::SetActive(active); }
+    void SetActive(bool active) override;
 
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     bool Damage(float amount, Entity* source, uint32_t type) override;
