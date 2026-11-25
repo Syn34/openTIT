@@ -44,6 +44,8 @@ void AnimDriverStop(EntityComponent* driver, bool flag);
 void SetComponentWord1C(EntityComponent* component, uint32_t value);
 // Entity virtual slot 8 (+0x20): script state of a layer.
 int EntityGetState(const Entity* entity, int layer);
+// State data of a layer (state machine +0x14), null without any.
+uint8_t* EntityStateData(Entity* entity, int layer);
 
 // Starts a sound at a position or attached to an object (0x0044C474 with the
 // remaining parameters zero); returns the voice (0 when nothing played).

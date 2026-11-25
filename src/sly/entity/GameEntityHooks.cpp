@@ -16,6 +16,7 @@ uint32_t AnimDriverState(EntityComponent* driver) { (void)driver; return 0; }
 void AnimDriverStop(EntityComponent* driver, bool flag) { (void)driver; (void)flag; }
 void SetComponentWord1C(EntityComponent* component, uint32_t value) { (void)component; (void)value; }
 int EntityGetState(const Entity* entity, int layer) { (void)entity; (void)layer; return 0; }
+uint8_t* EntityStateData(Entity* entity, int layer) { (void)entity; (void)layer; return nullptr; }
 
 audio::VoiceId PlayEntitySound(audio::SoundName* sound, const ape::Vec3* position, const void* attachment)
 {
