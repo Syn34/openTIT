@@ -168,9 +168,6 @@ using WorldCallback = void (*)(void* owner, Entity* entity);
 void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity);
 // Takes the callbacks of `owner` off a game world list (0x0046B7A4).
 void GameWorldDequeueCallbacks(int list, void* owner);
-// Applies a fade/flash record to the entity's world object and, recursively,
-// its attached children (0x000D8F08).
-void EntityApplyFade(Entity* entity, const uint8_t* fade, bool flag);
 // Minigame reaction when the Bentley rewinds to its track (0x003F2990).
 void MinigameTrackRewound();
 // World transform of actor part `part` (0x000E7CE8): `local` placed by the

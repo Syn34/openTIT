@@ -134,5 +134,11 @@ void ScriptInstanceSetState(void* instance, uint32_t stateName)
 // TODO(0x00490518)
 void PropertySystemForgetDef(EntityDef* def) { (void)def; }
 
+// TODO(0x000D8C18 QueueObjectFlash)
+void QueueObjectFlash(ape::world::ApeObj* object, const uint8_t color[4], bool additive)
+{
+    (void)object; (void)color; (void)additive;
+}
+
 } // namespace entity
 } // namespace sly

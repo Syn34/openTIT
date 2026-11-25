@@ -257,6 +257,10 @@ public:
     ape::ApeTArray<SpawnAttachmentDesc>* attachments = nullptr;   // 0x88
 };
 void UnregisterEntityDef(EntityDef* def);
+// Draws a flash/fade colour (RGBA) over the entity's geometry this frame
+// and over every attached child's (0x000D8F08); `additive` selects the
+// renderer's additive variant (NOTE: the name of the flag is a guess).
+void EntityApplyFade(Entity* entity, const uint8_t* color, bool additive);
 
 class Entity {
 public:

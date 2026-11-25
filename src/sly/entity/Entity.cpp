@@ -582,6 +582,17 @@ Entity* Entity::FindDescendant(uint32_t name) const
     return nullptr;
 }
 
+// @func 0x000D8F08 EntityApplyFade
+// Flash/fade colour drawn over the entity's geometry this frame, and over
+// the geometry of every entity attached to it.
+void EntityApplyFade(Entity* entity, const uint8_t* color, bool additive)
+{
+    QueueObjectFlash(entity->object, color, additive);
+    ForEachChild(entity, [color, additive](EntityChildLink& link) {
+        EntityApplyFade(link.child, color, additive);
+    });
+}
+
 // @func 0x000DA25C Entity::Detached
 // Base version: just tells the children.
 void Entity::Detached(float blend)
