@@ -8,10 +8,14 @@
 #include "ape/container/ApeTSortedMap.h"
 #include "ape/core/ApeString.h"
 #include "ape/world/ApeDef.h"
+#include "ape/world/ApeDefTypes.h"
 #include "ape/world/ApeInstances.h"
 #include "ape/world/ApeObj.h"
 #include "ape/world/ApeRenderNode.h"
 #include "ape/world/ApeSkeleton.h"
+#include "ape/sys/ApeGeometry.h"
+#include "agl/AglRenderTarget.h"
+#include "sly/camera/CameraHooks.h"
 #include "sly/game/AudioSystem.h"
 
 #include <cfloat>
@@ -612,6 +616,65 @@ ape::world::ApeObj* Entity::ObjectForCollidable(const void* collidable, int32_t*
     return nullptr;
 }
 
+// @func 0x000D6F90 ObjectSetTint
+// Every LOD mesh of a geometry instance gets the colour and amount.
+void ObjectSetTint(float amount, ape::world::ApeObj* object, const uint8_t color[4])
+{
+    if (!object || object->GetType() != ape::world::kObjType_GeomInstance)
+        return;
+    auto* def = static_cast<ape::world::ApeGeomDef*>(object->GetDef());
+    for (uint32_t i = 0; i < def->m_lodCount; ++i) {
+        if (def->m_lods[i].mesh)
+            MeshSetTint(def->m_lods[i].mesh, color, amount);
+    }
+}
+
+// @func 0x000CE688 Entity::BoneTransform
+ape::Matrix34 Entity::BoneTransform(int bone, bool world, bool keepScale) const
+{
+    ape::Matrix34 out = world ? transform : ape::world::kWorldIdentity;
+    if (object && world)
+        out = object->GetWorld();
+    if (!object || bone < 0)
+        return out;
+    ape::world::ApeSkeleton* skeleton = object->GetSkeleton();
+    if (!skeleton)
+        return out;
+    const ape::Matrix34& model = skeleton->model[bone];
+    if (!world)
+        return model;
+    if (keepScale) {
+        ape::world::Matrix34Mul(out, model, object->GetWorld());
+    } else {
+        ape::Matrix34 frame;
+        ape::Matrix34NormalizeAxes(frame, object->GetWorld());
+        ape::world::Matrix34Mul(out, model, frame);
+    }
+    return out;
+}
+
+// @func 0x000DAABC Entity::BoneTransformByName
+ape::Matrix34 Entity::BoneTransformByName(uint32_t boneHash, bool world, bool keepScale) const
+{
+    int bone = -1;
+    if (boneHash != 0 && object) {
+        if (ape::world::ApeSkeleton* skeleton = object->GetSkeleton())
+            bone = skeleton->FindBone(boneHash);
+    }
+    return BoneTransform(bone, world, keepScale);
+}
+
+// @func 0x000DADA8 Entity::IsOffScreen
+bool Entity::IsOffScreen(float margin) const
+{
+    agl::AglRenderTarget* target = camera::MainRenderTarget();
+    if (!target)
+        return false;
+    float screen[4];
+    target->WorldToScreen(screen, Position());
+    return screen[0] < -margin || screen[0] > margin + 1.0f || screen[1] < -margin || screen[1] > margin + 1.0f;
+}
+
 // @func 0x000DA25C Entity::Detached
 // Base version: just tells the children.
 void Entity::Detached(float blend)
@@ -942,7 +1005,7 @@ void Entity::SetSoundsMuted(bool muted)
         for (uint32_t i = 0; i < SoundSlotCount(); ++i) {
             audio::StopVoice(sounds[i].voice, true);
             sounds[i].voice = 0;
-            sounds[i].field_08 = 0;
+            sounds[i].attachObject = nullptr;
             sounds[i].id = -1;
         }
     }
@@ -1187,7 +1250,7 @@ bool Entity::Release(bool kill)
     for (uint32_t i = 0; i < SoundSlotCount(); ++i) {
         audio::StopVoice(sounds[i].voice, true);
         sounds[i].voice = 0;
-        sounds[i].field_08 = 0;
+        sounds[i].attachObject = nullptr;
         sounds[i].id = -1;
     }
 

@@ -119,7 +119,6 @@ uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; r
 ape::world::ApeObj* Component15Object(EntityComponent* component, uint32_t index) { (void)component; (void)index; return nullptr; }
 bool Component03Busy(EntityComponent* component) { (void)component; return false; }
 
-void ObjectSetTint(float amount, ape::world::ApeObj* object, const uint8_t color[4]) { (void)amount; (void)object; (void)color; }
 ape::world::ApeObj* CreateGeomInstance(void* geomDef, bool flag) { (void)geomDef; (void)flag; return nullptr; }
 void SetGeomMaterialColor(ape::world::ApeObj* object, const uint8_t color[4]) { (void)object; (void)color; }
 void CharacterHudColor(const EntityDef* def, uint8_t out[4])
@@ -141,12 +140,6 @@ bool PhysicsWorldPresent() { return false; }
 
 void EntityPlayDirectorScript(Entity* entity, uint32_t script) { (void)entity; (void)script; }
 void EntityAttachSpawned(Entity* parent, SpawnParams& params, Entity* child) { (void)parent; (void)params; (void)child; }
-void EntityDefBaseBounds(const EntityDef* def, ape::Aabb& out)
-{
-    (void)def;
-    out.min = { 0.0f, 0.0f, 0.0f, 0.0f };
-    out.max = { 0.0f, 0.0f, 0.0f, 0.0f };
-}
 
 } // namespace entity
 } // namespace sly

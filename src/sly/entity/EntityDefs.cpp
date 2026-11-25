@@ -4,6 +4,8 @@
 
 #include "ape/container/ApeTSortedMap.h"
 #include "ape/core/ApeString.h"
+#include "ape/math/ApeBounds.h"
+#include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
 
 #include <vector>
@@ -46,6 +48,19 @@ EntityDef::~EntityDef()
     UnregisterEntityDef(this);
     delete attachments;
     delete componentDescs;
+}
+
+// @func 0x000CB934 EntityDefBaseBounds
+void EntityDefBaseBounds(const EntityDef* def, ape::Aabb& out)
+{
+    const ape::world::ApeObj* object = def->templateObject;
+    if (!object) {
+        static const ape::Vec3 kOrigin = { 0.0f, 0.0f, 0.0f, 0.0f };
+        ape::AabbFromPoint(out, kOrigin);
+        return;
+    }
+    out = object->GetDef()->GetBounds();
+    ape::AabbScale(out, object->GetScale());
 }
 
 // @func 0x000C9FC8 FindEntityDef

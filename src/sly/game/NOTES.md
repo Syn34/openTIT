@@ -115,3 +115,26 @@
 * Not done here: HUD bottle counter 0x002DE258 and the other HUD text users (need the HudObject
   text fields 0x003632C8 / 0x00363A3C), 0x002DF198, 0x002E4040, 0x002E4750 (end-of-job state),
   0x002E4AAC, 0x002E58C8, 0x002E5C68, 0x002E70B8, 0x002E74C8, 0x002E7588, 0x002E7694.
+
+## HUD elements (agent3, later pass, 0x0035695C-0x00381758)
+* `hud/HudManager.*`: HudObject now carries the real base layout (+0x0C name .. +0xA0 state)
+  plus the fields of the common element (+0xA4 text .. +0x18C state word) that the existing code
+  already used; base constructor/destructor, Update (placement), Refresh, SetActive, stack offset
+  slides and priority insertion (EnterStack), hide queue (0x0106C240), the show/intro/outro state
+  machine (PlayState, BeginShow, ShowTimed, ShowText, PlayIntro), text field helpers, busy
+  element, enable-all. `GuiIsPlaying` was really "object visible" (ApeObj flags bit 15): renamed
+  `ObjectVisible`; HudObject::gui is now `object` (ape::world::ApeObj*).
+* Element classes: `HudElement` (0x00B1F6B0, common element with text fields, spring and hold
+  time), `HudPopup` (0x20), `HudScreen` (2), `HudPrompt` (0x40), `HudSubtitle` (0x4000, timed
+  lines), `HudArElement` (0x20000). The type-bit factory 0x0035AC7C is not ported (needs the other
+  seven constructors: 0x00356BA0, 0x00357DC4, 0x00358760, 0x00358B64, 0x00359284, 0x003599C4,
+  0x00359E08, 0x0035A3A0).
+* Definition stand-in `HudObjectDef`: several kinds reuse the same offsets for different data
+  (text fields vs prompt objects, defaultFade vs the screen's hide flag); those overlays are
+  separate members with NOTEs.
+* `JobManager::UpdateBottleHud` (0x002DE258) uses the HUD text; the counter is "BottleCounter".
+* Not done: meter elements (vtables 0x00B1F758/0x00B1F790, created by 0x00364980/0x003651F0),
+  the remaining element classes' Update functions (2-5 KB each), the factory, 0x00365F28 /
+  0x00366710 (HUD per-frame update), 0x00367C20, 0x00368360.. (the 0x214-state element family).
+* Hooks: `hud/HudHooks.*` (world callback lists, placement query, anchor stack refresh, object
+  cloning, LOD, sounds, confirm button, continue, player HUD colour).
