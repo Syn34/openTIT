@@ -166,6 +166,34 @@ void SoundActor::PlaySlot(int index, bool force)
     currentSlot = index;
 }
 
+// @func 0x001AEA50 SoundActor::Update
+bool SoundActor::Update(float dt)
+{
+    if (!ActorEntity::Update(dt))
+        return false;
+    if (!def)
+        return true;
+    if (sequenceFlags & kSeq_ResumePending) {
+        ResumeSequence();
+        sequenceFlags &= ~kSeq_ResumePending;
+    }
+    // The timer of the state in effect decides whether to move on; a move
+    // runs the next state's timer at once (at most 10000 steps per frame).
+    using Timer = bool (SoundActor::*)(float, float);
+    static const Timer kTimers[7] = { &SoundActor::AdvanceTo1, &SoundActor::AdvanceTo2, &SoundActor::AdvanceTo3,
+                                      &SoundActor::AdvanceTo4, &SoundActor::AdvanceTo5, &SoundActor::AdvanceTo6,
+                                      &SoundActor::AdvanceWrap };
+    bool waiting = false;
+    for (int step = 0; step < 10000 && !waiting; ++step) {
+        const int state = EntityGetState(this, 0);
+        if (state < 0 || state > 6)
+            break;   // NOTE: the console spins through the remaining steps doing nothing
+        const float elapsed = EntityStateTime(this, 0);
+        waiting = (this->*kTimers[state])(elapsed, SlotDuration(state));
+    }
+    return true;
+}
+
 // @func 0x001AE9C8 SoundActor::PlaySlotByName
 void SoundActor::PlaySlotByName(uint32_t name)
 {

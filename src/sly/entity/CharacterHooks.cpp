@@ -65,6 +65,7 @@ float ScoringValue(EntityComponent* scoring) { (void)scoring; return 0.0f; }
 void ScoringAward(EntityComponent* scoring, int points, bool flag) { (void)scoring; (void)points; (void)flag; }
 void AddPlayerScore(uint32_t player, int points) { (void)player; (void)points; }
 void MinigameFigureRemoved(uint32_t model) { (void)model; }
+float EntityStateTime(Entity* entity, uint32_t layer) { (void)entity; (void)layer; return 0.0f; }
 void EntitySetStateTime(Entity* entity, uint32_t layer, float time) { (void)entity; (void)layer; (void)time; }
 void InteractionSetOffer(EntityComponent* interaction, uint32_t kinds) { (void)interaction; (void)kinds; }
 Entity* InteractionUser(EntityComponent* interaction) { (void)interaction; return nullptr; }

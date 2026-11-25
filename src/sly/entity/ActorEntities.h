@@ -216,6 +216,9 @@ public:
 
     bool Release(bool kill) override;                 // slot 10 (0x001AE6AC)
     void OnSuspend() override;                        // slot 60 (0x001AE768)
+    // Runs the slot timer of the current state until one keeps waiting
+    // (slot 4, 0x001AEA50).
+    bool Update(float dt) override;
 
     // Slot 105: plays sound slot `index` and switches to its state
     // (0x001AED20, not ported).
@@ -247,6 +250,7 @@ public:
 
     // Sequence flags (+0x228).
     enum SequenceFlags : uint32_t {
+        kSeq_ResumePending = 1u << 31, // resume the saved sequence on the next update
         kSeq_Held = 1u << 29,          // the timers do not advance
         kSeq_Scaled = 1u << 30,        // durations scaled by the definition (+0x188)
     };

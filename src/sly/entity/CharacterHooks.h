@@ -129,6 +129,7 @@ void AttachAnimScript(ape::ApeAnimScriptInstance* instance);
 // (+0x10DC cleared, flag 0x40 of +0x1070 set).
 void PlayerBlockDisguiseEnded(uint32_t player);
 // Time spent in the current state of a layer (the state machine's time array).
+float EntityStateTime(Entity* entity, uint32_t layer);
 void EntitySetStateTime(Entity* entity, uint32_t layer, float time);
 // Entity base version of slot 49 (0x000DBE78): starts or cross-fades a clip
 // on the animation controller; true when the entity has one and a clip.
