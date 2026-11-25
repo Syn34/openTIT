@@ -1094,15 +1094,16 @@ bool IsTranslucent(const AglRenderItem* item)
 // unless the material blends already, standard alpha blending is switched
 // on for the draw. Fragment constant 'slot' receives (blending forced,
 // alpha, 0, 0).
-void BeginItemAlpha(const AglRenderItem* item, uint32_t slot)
+void BeginItemAlpha(const AglRenderItem* item, uint32_t slot, float z = 0.0f)
 {
     if (!IsTranslucent(item)) {
-        SetShaderConstant(slot, kOpaqueItemParams);
+        const float params[4] = { kOpaqueItemParams[0], kOpaqueItemParams[1], z, kOpaqueItemParams[3] };
+        SetShaderConstant(slot, params);
         return;
     }
     gpu::CommandList& cmd = Cmd();
     cmd.SetDepthMask(false);
-    float params[4] = { 0.0f, float(uint8_t(item->field_47)) * (1.0f / 255.0f), 0.0f, 0.0f };
+    float params[4] = { 0.0f, float(uint8_t(item->field_47)) * (1.0f / 255.0f), z, 0.0f };
     if (!item->material->blendEnable) {
         cmd.SetBlendEnable(true);
         cmd.SetBlendFunc(gpu::BlendFactor::SrcAlpha, gpu::BlendFactor::OneMinusSrcAlpha,
@@ -1221,10 +1222,10 @@ void UploadItemLighting(const AglRenderItem* item, uint32_t lightBase, uint32_t 
 
 // Sets the stencil reference of the item (see AglItemStencil) when it
 // differs from the last one.
-void ApplyItemStencilRef(const AglRenderItem* item)
+void ApplyItemStencilRef(const AglRenderItem* item, uint8_t extraBits = 0)
 {
     AglItemStencil& stencil = GetItemStencil();
-    const uint8_t ref = uint8_t((((item->flags & 0x20) ? 0x80 : 0) | item->material->field_65) & stencil.writeMask);
+    const uint8_t ref = uint8_t((((item->flags & 0x20) ? 0x80 : 0) | extraBits | item->material->field_65) & stencil.writeMask);
     if (ref == stencil.ref)
         return;
     stencil.ref = ref;
@@ -1300,6 +1301,41 @@ void FinishItemDraw(AglRenderItem* item, uint32_t alphaSlot)
     ApplyItemStencilRef(item);
     DrawItemGeometry(item);
     EndItemAlpha(item);
+}
+
+// Fog of an item using the render target's precomputed fog constants: the
+// fog colour of the item's layer goes to fragment constant 'colorSlot';
+// the vertex parameters (constant 0x20) are only sent when the layer or
+// its on/off state differs from the last draw.
+void ApplyItemFogCached(const AglRenderItem* item, uint32_t colorSlot)
+{
+    AglRenderState& state = GetRenderState();
+    const int layer = (item->flags >> 6) & 1;
+    const bool enable = (item->material->flags & AglMaterial::kFlag_40) != 0;
+    const AglViewConstants& view = GetViewConstants();
+    if (state.fogLayer != layer || state.fogEnabled[layer] != enable) {
+        state.fogLayer = layer;
+        state.fogEnabled[layer] = enable;
+        Cmd().SetVertexProgramConstants(0x20, 4, &view.fogParams[layer][enable ? 1 : 0].x);
+    }
+    SetShaderConstant(colorSlot, &view.fogColor[layer].x);
+}
+
+// Per-vertex lights for materials that take dynamic lights.
+void UploadMaterialVertexLights(const AglRenderItem* item)
+{
+    if ((item->material->flags & AglMaterial::kFlag_Lit) && item->lights)
+        UploadLightBlock(item, false, 0);
+}
+
+// True when material constant 'index' exists and its bits are not zero.
+bool MaterialConstantBitsSet(const AglMaterial* material, uint32_t index)
+{
+    if (!material->constants || index >= material->constantCapacity)
+        return false;
+    uint32_t bits;
+    std::memcpy(&bits, &material->constants[index], sizeof(bits));
+    return bits != 0;
 }
 
 // The item's RGBA byte colour (render item +0x40) as floats; white when
@@ -1719,8 +1755,8 @@ public:
 };
 
 class SacLitPropTechnique : public AglTechnique {
-    // TODO(0x005B7F18 SacLitPropTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABCAC SacLitPropTechnique::~SacLitPropTechnique
     // @func 0x007AE6A0 SacLitPropTechnique::~SacLitPropTechnique (deleting)
@@ -1730,8 +1766,8 @@ public:
 };
 
 class SacFastPropTechnique : public AglTechnique {
-    // TODO(0x005B8640 SacFastPropTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABCBC SacFastPropTechnique::~SacFastPropTechnique
     // @func 0x007AE75C SacFastPropTechnique::~SacFastPropTechnique (deleting)
@@ -1741,8 +1777,8 @@ public:
 };
 
 class SacEnvMapTechnique : public AglTechnique {
-    // TODO(0x005B8EC0 SacEnvMapTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     // @func 0x007ABCCC SacEnvMapTechnique::~SacEnvMapTechnique
     // @func 0x007AE818 SacEnvMapTechnique::~SacEnvMapTechnique (deleting)
     ~SacEnvMapTechnique() override = default;
@@ -1752,8 +1788,8 @@ public:
 };
 
 class Sly2UVTechnique : public AglTechnique {
-    // TODO(0x005B9D0C Sly2UVTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     // @func 0x007ABCDC Sly2UVTechnique::~Sly2UVTechnique
     // @func 0x007AEA44 Sly2UVTechnique::~Sly2UVTechnique (deleting)
     ~Sly2UVTechnique() override = default;
@@ -1763,8 +1799,8 @@ public:
 };
 
 class SlyCausticsTechnique : public AglTechnique {
-    // TODO(0x005BA8BC SlyCausticsTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     // @func 0x007ABCEC SlyCausticsTechnique::~SlyCausticsTechnique
     // @func 0x007AEB00 SlyCausticsTechnique::~SlyCausticsTechnique (deleting)
     ~SlyCausticsTechnique() override = default;
@@ -1774,8 +1810,8 @@ public:
 };
 
 class SlyCharacterTechnique : public AglTechnique {
-    // TODO(0x005BB4D8 SlyCharacterTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABCFC SlyCharacterTechnique::~SlyCharacterTechnique
@@ -1844,8 +1880,8 @@ public:
 };
 
 class SlyDecalTechnique : public AglTechnique {
-    // TODO(0x005C39C8 SlyDecalTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABD6C SlyDecalTechnique::~SlyDecalTechnique
     // @func 0x007AF0C4 SlyDecalTechnique::~SlyDecalTechnique (deleting)
@@ -1866,8 +1902,8 @@ public:
 };
 
 class SlyEnvMapTechnique : public AglTechnique {
-    // TODO(0x005C57B0 SlyEnvMapTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     // @func 0x007ABD8C SlyEnvMapTechnique::~SlyEnvMapTechnique
     // @func 0x007AF23C SlyEnvMapTechnique::~SlyEnvMapTechnique (deleting)
     ~SlyEnvMapTechnique() override = default;
@@ -2026,8 +2062,8 @@ public:
 };
 
 class ShoDefaultTechnique : public AglTechnique {
-    // TODO(0x005D65C0 ShoDefaultTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABE7C ShoDefaultTechnique::~ShoDefaultTechnique
     ~ShoDefaultTechnique() override = default;
@@ -2043,8 +2079,8 @@ public:
 };
 
 class ShoNightBlendTechnique : public AglTechnique {
-    // TODO(0x005D8100 ShoNightBlendTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABE9C ShoNightBlendTechnique::~ShoNightBlendTechnique
     ~ShoNightBlendTechnique() override = default;
@@ -5199,19 +5235,41 @@ void ShoNightBlendTechnique::BeginMaterial(AglMaterial* material)
     Cmd().SetVertexProgramConstants(6, 4, kBlend);
 }
 
+// The scene's global light for the Sac classes: vertex constants 0x10
+// (ambient, or whatever the caller passes), 0x14 (directional colour) and
+// 0x17 (direction in the item's space, w = 1).
+void UploadSceneLight(const AglRenderItem* item, const float ambient[4])
+{
+    const ape::world::ApeSceneLighting& scene = ape::world::g_sceneLighting;
+    const float color[4] = { scene.directionalColor.x, scene.directionalColor.y, scene.directionalColor.z, 1.0f };
+    ape::Vec3 direction = scene.directionalDir;
+    ape::Matrix34InvRotateVectorInPlace(direction, ItemMatrix(item));
+    const float localDirection[4] = { direction.x, direction.y, direction.z, 1.0f };
+    gpu::CommandList& cmd = Cmd();
+    cmd.SetVertexProgramConstants(0x17, 4, localDirection);
+    cmd.SetVertexProgramConstants(0x10, 4, ambient);
+    cmd.SetVertexProgramConstants(0x14, 4, color);
+}
+
+void SceneAmbient(float out[4])
+{
+    const ape::Vec3& ambient = ape::world::g_sceneLighting.ambient;
+    out[0] = ambient.x;
+    out[1] = ambient.y;
+    out[2] = ambient.z;
+    out[3] = 1.0f;
+}
+
 // @func 0x005B67C8 SacSkinnedTechnique::Draw
-// Lit materials use the scene's global ambient and directional light
-// (vertex constants 0x10 ambient, 0x14 colour, 0x17 direction in the item's
-// space); unlit ones get the material colour tinted by the item's RGB bytes
-// in 0x10 with w = 0. The environment basis goes to vertex constants 7..10.
+// Lit materials use the scene's global light (see UploadSceneLight); unlit
+// ones get the material colour tinted by the item's RGB bytes in 0x10 with
+// w = 0. The environment basis goes to vertex constants 7..10.
 void SacSkinnedTechnique::Draw(AglRenderItem* item)
 {
     UploadWorldViewProj(item, 0);
     ApplyFog(0, false, 0x20);
-    const ape::world::ApeSceneLighting& scene = ape::world::g_sceneLighting;
-    float ambient[4] = { scene.ambient.x, scene.ambient.y, scene.ambient.z, 1.0f };
-    const float color[4] = { scene.directionalColor.x, scene.directionalColor.y, scene.directionalColor.z, 1.0f };
-    ape::Vec3 direction = scene.directionalDir;
+    float ambient[4];
+    SceneAmbient(ambient);
     if (!((item->material->flags & AglMaterial::kFlag_Lit) && item->lights)) {
         const float* tint = item->material->color0;
         for (int i = 0; i < 3; ++i)
@@ -5219,12 +5277,7 @@ void SacSkinnedTechnique::Draw(AglRenderItem* item)
         ambient[3] = 0.0f;
     }
     UploadEnvBasis(item, false, 0, 7);
-    ape::Matrix34InvRotateVectorInPlace(direction, ItemMatrix(item));
-    const float localDirection[4] = { direction.x, direction.y, direction.z, 1.0f };
-    gpu::CommandList& cmd = Cmd();
-    cmd.SetVertexProgramConstants(0x17, 4, localDirection);
-    cmd.SetVertexProgramConstants(0x10, 4, ambient);
-    cmd.SetVertexProgramConstants(0x14, 4, color);
+    UploadSceneLight(item, ambient);
     FinishItemDraw(item, 2);
 }
 
@@ -5246,6 +5299,136 @@ void SacPropTechnique::Draw(AglRenderItem* item)
     static const float kWhite[4] = { 1.0f, 1.0f, 1.0f, 1.0f };   // 0x01164BB0
     Cmd().SetVertexProgramConstants(7, 4, kWhite);
     FinishItemDraw(item, 2);
+}
+
+// @func 0x005B7F18 SacLitPropTechnique::Draw
+// Lit by the scene's global light, without fog.
+void SacLitPropTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyFog(0, false, 0x20);
+    float ambient[4];
+    SceneAmbient(ambient);
+    UploadSceneLight(item, ambient);
+    FinishItemDraw(item, 2);
+}
+
+// @func 0x005B8640 SacFastPropTechnique::Draw
+// The colour packed into the material's constant 0 (black without
+// constants), scaled per channel by the item's tint bytes, goes to vertex
+// constant 7. No fog.
+void SacFastPropTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyFog(0, false, 0x20);
+    uint32_t packed = 0;
+    if (item->material->constants)
+        std::memcpy(&packed, &item->material->constants[0], sizeof(packed));
+    float color[4];
+    for (int i = 0; i < 4; ++i) {
+        const uint32_t channel = (packed >> (8 * i)) & 0xFF;
+        color[i] = float(((channel * item->field_48[i]) >> 8) & 0xFF) * (1.0f / 255.0f);
+    }
+    Cmd().SetVertexProgramConstants(7, 4, color);
+    FinishItemDraw(item, 2);
+}
+
+// @func 0x005B8EC0 SacEnvMapTechnique::Draw
+// The EnvMap draw without fog.
+void SacEnvMapTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    if (item->lightMask & kItemLight_Lit)
+        UploadItemLights(item, 0x10);
+    UploadEnvBasis(item, IsPerPixelLit(item), 2, 7);
+    FinishItemDraw(item, 1);
+}
+
+// @func 0x005B9D0C Sly2UVTechnique::Draw
+// Per-vertex lit, no item alpha.
+void Sly2UVTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    UploadMaterialVertexLights(item);
+    ApplyItemStencilRef(item);
+    item->geometry->Draw(item);
+}
+
+// @func 0x005BA8BC SlyCausticsTechnique::Draw
+// Same draw as Sly2UV (a separate copy on the console).
+void SlyCausticsTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    UploadMaterialVertexLights(item);
+    ApplyItemStencilRef(item);
+    item->geometry->Draw(item);
+}
+
+// @func 0x005BB4D8 SlyCharacterTechnique::Draw
+// Characters always get the environment basis as vertex constants 7..10;
+// a non-zero material constant 7 adds stencil bit 0x40 to the item's tag.
+void SlyCharacterTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    UploadEnvBasis(item, false, 0, 7);
+    UploadItemLighting(item, 0x10, 1);
+    BeginItemAlpha(item, 2);
+    ApplyItemStencilRef(item, MaterialConstantBitsSet(item->material, 7) ? 0x40 : 0);
+    DrawItemGeometry(item);
+    EndItemAlpha(item);
+}
+
+// @func 0x005D65C0 ShoDefaultTechnique::Draw
+// Lit items always get their lights per vertex.
+void ShoDefaultTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    if (item->lightMask & kItemLight_Lit)
+        UploadLightBlock(item, false, 0);
+    FinishItemDraw(item, 2);
+}
+
+// @func 0x005D8100 ShoNightBlendTechnique::Draw
+// Same draw as ShoDefault (a separate copy on the console).
+void ShoNightBlendTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    if (item->lightMask & kItemLight_Lit)
+        UploadLightBlock(item, false, 0);
+    FinishItemDraw(item, 2);
+}
+
+// @func 0x005C39C8 SlyDecalTechnique::Draw
+// Lit like the other lit classes but without the item alpha.
+void SlyDecalTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    UploadItemLighting(item, 0x10, 1);
+    ApplyItemStencilRef(item);
+    item->geometry->Draw(item);
+}
+
+// @func 0x005C57B0 SlyEnvMapTechnique::Draw
+// The EnvMap draw with the cached fog; the item alpha constant carries
+// material constant 3 in z.
+void SlyEnvMapTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    if (item->lightMask & kItemLight_Lit)
+        UploadItemLights(item, 0x10);
+    UploadEnvBasis(item, IsPerPixelLit(item), 2, 7);
+    const float* constants = item->material->constants;
+    BeginItemAlpha(item, 1, constants ? constants[3] : 0.0f);
+    ApplyItemStencilRef(item);
+    DrawItemGeometry(item);
+    EndItemAlpha(item);
 }
 
 } // namespace agl
