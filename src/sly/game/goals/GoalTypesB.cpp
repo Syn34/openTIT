@@ -5,7 +5,12 @@
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/xml/ApeXml.h"
 #include "platform/Platform.h"
+#include "agl/AglOcclusion.h"
+#include "agl/AglRenderThread.h"
+#include "ape/level/ApeGui.h"
+#include "ape/xml/ApeStringTable.h"
 #include "sly/game/goals/GoalHooks.h"
+#include "sly/tuning/BinocucomGoalTuning.h"
 
 #include <cmath>
 
@@ -756,22 +761,348 @@ GoalBinocucomPhoto::~GoalBinocucomPhoto()
     SetStatus(kGoal_None, true);
 }
 
-// TODO(0x0032BCD0 GoalBinocucomPhoto::Update)
-uint8_t GoalBinocucomPhoto::Update(int player, const GameEvent& e)
+namespace {
+// Active photo goals (linked through nextActive), the goal and target whose
+// occlusion is being measured, and the query doing it.
+GoalBinocucomPhoto* s_activePhotoGoals = nullptr;   // 0x00F64C3C
+GoalBinocucomPhoto* s_currentPhotoGoal = nullptr;   // 0x00F64C40
+agl::AglOcclusionQuery* s_photoQuery = nullptr;     // 0x00F64C44
+int s_currentPhotoTarget = 0;                       // 0x0106B544
+
+constexpr uint32_t kPhotoAttr_Name = 0x0024728Bu;            // "Name"
+constexpr uint32_t kPhotoAttr_Entity = 0x7A30D7E3u;          // "Entity" (child element)
+constexpr uint32_t kPhotoAttr_Offset = 0x8ACA5893u;          // "Offset"
+constexpr uint32_t kPhotoAttr_MarkerOffset = 0x4A4D4D4Du;
+constexpr uint32_t kPhotoAttr_DisplayName = 0xE68DF62Du;     // "DisplayName"
+constexpr float kPhotoDegToRad = 0.017453292f;
+
+void DropPhotoQuery()
 {
-    return Goal::Update(player, e);
+    if (s_photoQuery) {
+        agl::QueueEndOfFrameRelease(s_photoQuery);
+        s_photoQuery = nullptr;
+    }
 }
 
-// TODO(0x0032AC78 GoalBinocucomPhoto::SetStatus)
+void ReadPhotoVec3(ape::xml::XmlElement* xml, uint32_t attribute, ape::Vec3& value, const ape::Vec3& fallback)
+{
+    float v[3];
+    const float def[3] = {fallback.x, fallback.y, fallback.z};
+    xml->GetVec3(attribute, v, def);
+    value.x = v[0];
+    value.y = v[1];
+    value.z = v[2];
+}
+
+// Reads one option bit, defaulting to its current state.
+void ReadPhotoOption(ape::xml::XmlElement* xml, uint32_t attribute, uint32_t& options, uint32_t bit)
+{
+    bool on = (options & bit) != 0;
+    xml->GetBool(attribute, &on, on);
+    options = on ? (options | bit) : (options & ~bit);
+}
+} // namespace
+
+// @func 0x0032B358 GoalBinocucomPhoto::Create
+Goal* GoalBinocucomPhoto::Create(ape::xml::XmlElement* xml, const GoalDesc* desc)
+{
+    uint32_t filter = 0;
+    bool gadgetFlag = false, reportGroup = false, characterFlag = false;
+    xml->GetHash(0x1F6AE7F0u, &filter, 0);
+    xml->GetBool(0x254881FCu, &gadgetFlag, false);
+    xml->GetBool(0x81213F1Du, &reportGroup, false);
+    xml->GetBool(0x5845B273u, &characterFlag, false);
+
+    GoalBinocucomPhoto* goal = new GoalBinocucomPhoto(desc);
+    goal->targets.Init(8, nullptr, true);
+    goal->nextActive = nullptr;
+    goal->photoFilter = filter;
+    goal->photoFlags = (gadgetFlag ? uint32_t(kPhoto_GadgetFlag) : 0u) | (reportGroup ? uint32_t(kPhoto_ReportGroup) : 0u) |
+                       (characterFlag ? uint32_t(kPhoto_CharacterFlag) : 0u);
+
+    const ape::Vec3 zero = {0.0f, 0.0f, 0.0f, 0.0f};   // console global 0x01164B40
+    for (ape::xml::XmlElement* child = xml->FirstChildElement(kPhotoAttr_Entity); child;
+         child = child->NextSiblingElement(kPhotoAttr_Entity)) {
+        Target t;
+        t.markerOffset = zero;
+        t.offset = zero;
+        t.angles = zero;
+        t.options = kTarget_OptionDE86C5DE | kTarget_Option9896A7D0 | kTarget_OptionFAA75B88;
+        if (child->GetHash(kPhotoAttr_Name, &t.name, 0) != ape::xml::kQuery_Ok)
+            continue;   // the console warns with the document path
+        child->GetHash(0x39F79104u, &t.bone, t.bone);
+        ReadPhotoVec3(child, 0xB095DE33u, t.angles, t.angles);
+        child->GetFloat(0x03B880B3u, &t.angle, g_binocucomPhotoDefaultAngle.Get());
+        child->GetFloat(0x8E727ACCu, &t.distMin, g_binocucomPhotoDefaultDistMin.Get());
+        child->GetFloat(0x8E7279DEu, &t.distMax, g_binocucomPhotoDefaultDistMax.Get());
+        child->GetFloat(0x37FA4A8Cu, &t.distMinClose, g_binocucomPhotoDefaultDistMinClose.Get());
+        child->GetFloat(0xA1D8E6BAu, &t.distMaxClose, g_binocucomPhotoDefaultDistMaxClose.Get());
+        child->GetFloat(0x3FD88018u, &t.distCull, g_binocucomPhotoDefaultDistCull.Get());
+        ReadPhotoVec3(child, kPhotoAttr_Offset, t.offset, zero);
+        child->GetFloat(0x001D691Du, &t.displayTime, g_binocucomPhotoDefaultDisplayTime.Get());
+        child->GetFloat(0x3450503Fu, &t.occlusionRadius, g_binocucomPhotoDefaultOcclusionRadius.Get());
+        child->GetFloat(0x6E3DE0E2u, &t.visibleFraction, 1.0f);
+        if (t.visibleFraction > 1.0f)
+            t.visibleFraction = 1.0f;
+        if (t.visibleFraction < 0.0f)
+            t.visibleFraction = 0.0f;
+        ReadPhotoVec3(child, kPhotoAttr_MarkerOffset, t.markerOffset, t.markerOffset);
+
+        ReadPhotoOption(child, 0x3B66FD69u, t.options, kTarget_Option3B66FD69);
+        ReadPhotoOption(child, 0x5D28E3FCu, t.options, kTarget_Option5D28E3FC);
+        ReadPhotoOption(child, 0x9446A097u, t.options, kTarget_Option9446A097);
+        ReadPhotoOption(child, 0xD9159FE7u, t.options, kTarget_OptionD9159FE7);
+        ReadPhotoOption(child, 0x09DA53D5u, t.options, kTarget_Option09DA53D5);
+        ReadPhotoOption(child, 0x65567820u, t.options, kTarget_Option65567820);
+        ReadPhotoOption(child, 0xDE86C5DEu, t.options, kTarget_OptionDE86C5DE);
+        ReadPhotoOption(child, 0x9896A7D0u, t.options, kTarget_Option9896A7D0);
+        ReadPhotoOption(child, 0xFAA75B88u, t.options, kTarget_OptionFAA75B88);
+
+        // Texts: "DisplayName" fills all three, the specific ids override.
+        if (ape::StringTable* table = ape::GetGuiStringTable()) {
+            uint32_t id = 0;
+            if (child->GetHash(kPhotoAttr_DisplayName, &id, 0) == ape::xml::kQuery_Ok && id != 0) {
+                const char* text = table->Find(id, "[Missing Display Name]", false);
+                t.checkBoxText = t.targetText = t.photoText = text;
+            }
+            id = 0;
+            child->GetHash(0x6D28A670u, &id, 0);
+            if (id != 0)
+                t.checkBoxText = table->Find(id, "[Missing CheckBox Name]", false);
+            id = 0;
+            child->GetHash(0x37A369BEu, &id, 0);
+            if (id != 0)
+                t.targetText = table->Find(id, "[Missing Target Name]", false);
+            id = 0;
+            child->GetHash(0xC619D13Bu, &id, 0);
+            if (id != 0)
+                t.photoText = table->Find(id, "[Missing Photo Name]", false);
+        }
+        child->GetFloat(0x2D72DAD4u, &t.field_84, t.field_84);
+        if (goal->targets.Count() < 8)
+            goal->targets.PushBack(t);
+    }
+    return goal;
+}
+
+// @func 0x0032AAE8 GoalBinocucomPhoto::BuildMarker
+void GoalBinocucomPhoto::BuildMarker(const Target& target, GoalMarker* marker) const
+{
+    marker->position[0] = target.markerOffset.x;
+    marker->position[1] = target.markerOffset.y;
+    marker->position[2] = target.markerOffset.z;
+    marker->kind = GoalMarker::kKind_Photo;
+    marker->entity = target.entity;
+    // Options 0-5 go to bits 28-23 of the second flag word, 6-8 to bits
+    // 23-21 of the first one (below the occlusion byte).
+    marker->flags78 = (marker->flags78 & ~0x1F800000u) | ((target.options >> 3) & 0x1F800000u);
+    marker->angle = target.angle;
+    marker->bone = target.bone;
+    marker->angles[0] = target.angles.x * kPhotoDegToRad;
+    marker->angles[1] = target.angles.y * kPhotoDegToRad;
+    marker->angles[2] = target.angles.z * kPhotoDegToRad;
+    marker->distMin = target.distMin;
+    marker->distMax = target.distMax;
+    marker->distMinClose = target.distMinClose;
+    marker->distMaxClose = target.distMaxClose;
+    marker->distCull = target.distCull;
+    marker->texts[0] = target.checkBoxText;
+    marker->texts[1] = target.targetText;
+    marker->texts[2] = target.photoText;
+    marker->pending = target.pending;
+    marker->displayTime = target.displayTime;
+    marker->flags74 = (marker->flags74 & 0x001FFFFFu) | (uint32_t(target.occluded ? 1 : 0) << 24) |
+                      ((target.options >> 2) & 0x00E00000u);
+    marker->field_7C = target.field_84;
+    marker->offset[0] = target.offset.x;
+    marker->offset[1] = target.offset.y;
+    marker->offset[2] = target.offset.z;
+}
+
+void GoalBinocucomPhoto::AddToActiveList()
+{
+    if (!s_activePhotoGoals) {
+        s_currentPhotoTarget = 0;
+        s_activePhotoGoals = this;
+        s_currentPhotoGoal = this;
+        // NOTE: the console leaves nextActive as it was; a goal removed from
+        // the middle of the list would keep a stale link, so it is cleared.
+        nextActive = nullptr;
+        DropPhotoQuery();
+        return;
+    }
+    for (GoalBinocucomPhoto* g = s_activePhotoGoals; g; g = g->nextActive)
+        if (g == this)
+            return;
+    nextActive = s_activePhotoGoals;
+    s_activePhotoGoals = this;
+}
+
+void GoalBinocucomPhoto::RemoveFromActiveList()
+{
+    if (s_activePhotoGoals == this) {
+        s_activePhotoGoals = nextActive;
+    } else {
+        for (GoalBinocucomPhoto* g = s_activePhotoGoals; g; g = g->nextActive) {
+            if (g->nextActive == this) {
+                g->nextActive = nextActive;
+                break;
+            }
+        }
+    }
+    if (s_currentPhotoGoal == this) {
+        s_currentPhotoGoal = s_activePhotoGoals;
+        DropPhotoQuery();
+    }
+}
+
+// @func 0x0032AC78 GoalBinocucomPhoto::SetStatus
 void GoalBinocucomPhoto::SetStatus(uint8_t newStatus, bool force)
 {
+    if (force || newStatus != status) {
+        void* character = JobOwnerCharacter(job);
+        if (newStatus == kGoal_Active) {
+            AddToActiveList();
+            if (targets.Count() == 0) {
+                // Nothing to photograph: complete straight away.
+                Goal::SetStatus(newStatus, force);
+                SetStatus(kGoal_Complete, false);
+                return;
+            }
+            if (void* binocucom = character ? CharacterBinocucom(character) : nullptr) {
+                if (photoFilter != 0) {
+                    // The console warns when the filter does not exist.
+                    if (void* filter = FindPhotoFilter(photoFilter))
+                        BinocucomSetPhotoFilter(binocucom, filter);
+                }
+                if (photoFlags & kPhoto_GadgetFlag)
+                    BinocucomSetPhotoFlag(binocucom, true);
+            }
+            if ((photoFlags & kPhoto_CharacterFlag) && character && EntityIsCharacter(character))
+                CharacterSetPhotoFlag(character, true);
+        } else if (status == kGoal_Active) {
+            RemoveFromActiveList();
+            if ((photoFlags & kPhoto_GadgetFlag) && character) {
+                if (void* binocucom = CharacterBinocucom(character)) {
+                    BinocucomSetPhotoFlag(binocucom, false);
+                    if (EntityIsCharacter(character))
+                        CharacterInputMapSetBit(character, 0x800);
+                }
+            }
+            if ((photoFlags & kPhoto_CharacterFlag) && character && EntityIsCharacter(character))
+                CharacterSetPhotoFlag(character, false);
+        }
+    }
     Goal::SetStatus(newStatus, force);
 }
 
-// TODO(0x0032AAE8 GoalBinocucomPhoto::BuildMarker)
-void GoalBinocucomPhoto::BuildMarker(const Target& target, GoalMarker* marker) const
+void GoalBinocucomPhoto::UpdateOcclusion()
 {
-    marker->entity = target.entity;
+    const int count = targets.Count();
+    // Moves the test on to the next target (and goal) once this one is done.
+    auto advance = [&]() {
+        if (++s_currentPhotoTarget >= count) {
+            s_currentPhotoGoal = nextActive ? nextActive : s_activePhotoGoals;
+            s_currentPhotoTarget = 0;
+        }
+    };
+    for (int i = 0; i < count; ++i) {
+        Target& target = targets[i];
+        const bool isCurrent = s_currentPhotoGoal == this && s_currentPhotoTarget == i;
+        if (!target.pending) {
+            if (isCurrent)
+                advance();
+            continue;
+        }
+        if (!target.entity)
+            continue;
+
+        // A sphere of the occlusion radius around the target point (the
+        // offset in the bone's space). NOTE: the console also builds the
+        // rotation of the target's angles into the local transform, but only
+        // the resulting translation is used.
+        const ape::Matrix34 bone = GoalEntityBoneTransform(target.entity, target.bone);
+        ape::Matrix34 sphere;
+        const ape::Vec3 radius = {target.occlusionRadius, target.occlusionRadius, target.occlusionRadius, 0.0f};
+        ape::Matrix34FromScale(sphere, radius);
+        sphere.translation.x = bone.translation.x + target.offset.x * bone.xAxis.x +
+                               target.offset.y * bone.yAxis.x + target.offset.z * bone.zAxis.x;
+        sphere.translation.y = bone.translation.y + target.offset.x * bone.xAxis.y +
+                               target.offset.y * bone.yAxis.y + target.offset.z * bone.zAxis.y;
+        sphere.translation.z = bone.translation.z + target.offset.x * bone.xAxis.z +
+                               target.offset.y * bone.yAxis.z + target.offset.z * bone.zAxis.z;
+
+        if (!isCurrent)
+            continue;
+        if (!s_photoQuery) {
+            s_photoQuery = agl::CreateOcclusionQuery(sphere, 8, 8);
+            continue;
+        }
+        uint32_t pixels[2] = {0, 0};   // drawn, visible
+        if (s_photoQuery->GetResult(pixels, 2)) {
+            bool occluded = true;
+            if (std::fabs(target.visibleFraction - 1.0f) < 1e-5f)
+                occluded = pixels[1] == 0;
+            else if (float(pixels[1]) / float(pixels[0]) > target.visibleFraction)
+                occluded = false;
+            target.occluded = occluded;
+            DropPhotoQuery();
+            advance();
+        } else {
+            s_photoQuery->transform.xAxis = {sphere.xAxis.x, sphere.xAxis.y, sphere.xAxis.z, s_photoQuery->transform.xAxis.pad};
+            s_photoQuery->transform.yAxis = {sphere.yAxis.x, sphere.yAxis.y, sphere.yAxis.z, s_photoQuery->transform.yAxis.pad};
+            s_photoQuery->transform.zAxis = {sphere.zAxis.x, sphere.zAxis.y, sphere.zAxis.z, s_photoQuery->transform.zAxis.pad};
+            s_photoQuery->transform.translation = {sphere.translation.x, sphere.translation.y,
+                                                   sphere.translation.z, s_photoQuery->transform.translation.pad};
+        }
+    }
+}
+
+// @func 0x0032BCD0 GoalBinocucomPhoto::Update
+uint8_t GoalBinocucomPhoto::Update(int player, const GameEvent& e)
+{
+    if (status == kGoal_Active) {
+        void* character = JobOwnerCharacter(job);
+        if ((photoFlags & kPhoto_GadgetFlag) && character) {
+            void* binocucom = CharacterBinocucom(character);
+            if (binocucom && !BinocucomViewUp(binocucom) && EntityIsCharacter(character))
+                CharacterInputMapSetBit(character, 0x400);
+        }
+        switch (e.type) {
+        case kEvent_06:
+            // A target that is still needed has gone away.
+            for (const Target& target : targets) {
+                if (target.pending && (!target.entity || !GoalEntityAlive(target.entity))) {
+                    SetStatus(kGoal_Failed, false);
+                    break;
+                }
+            }
+            break;
+        case kEvent_07: {
+            // A photo was taken of the entity named in the event.
+            const uint32_t photographed = uint32_t(e.arg0);
+            for (Target& target : targets) {
+                if (target.name == photographed) {
+                    target.pending = false;
+                    if (character)
+                        JobOwnerUntarget(job, target.name);
+                    ++repeatProgress;
+                }
+                if ((photoFlags & kPhoto_ReportGroup) && repeatProgress < targets.Count())
+                    JobManagerGroupAdvanced();
+            }
+            if (repeatProgress == targets.Count())
+                SetStatus(kGoal_Complete, false);
+            break;
+        }
+        case kEvent_0A:
+            UpdateOcclusion();
+            break;
+        default:
+            break;
+        }
+    }
+    return Goal::Update(player, e);
 }
 
 bool GoalBinocucomPhoto::ResolveTargets(bool pending)

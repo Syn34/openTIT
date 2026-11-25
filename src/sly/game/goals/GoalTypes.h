@@ -845,24 +845,65 @@ namespace sly {
 namespace goals {
 
 // "GoalBinocucomPhoto" (vtable 0x00B1E5D0): photograph a set of entities
-// with the binocucom. Only the target bookkeeping is ported; the camera
-// test (Update 0x0032BCD0), SetStatus (0x0032AC78), the factory (0x0032B358)
-// and the marker builder (0x0032AAE8) are TODO.
+// with the binocucom. While active the goal is on a global list of photo
+// goals; one target of one goal at a time gets an occlusion query around it
+// so the binocucom knows whether the target is hidden.
 class GoalBinocucomPhoto : public Goal {
 public:
     int TypeId() const override;
+    // Option bits of a target (+0x80). Bits 31-26 are the shared marker
+    // options (also read by the entity-child and interaction goals); 25-23
+    // default to set.
+    enum TargetOptions : uint32_t {
+        kTarget_Option3B66FD69 = 0x80000000u,
+        kTarget_Option5D28E3FC = 0x40000000u,
+        kTarget_Option9446A097 = 0x20000000u,
+        kTarget_OptionD9159FE7 = 0x10000000u,
+        kTarget_Option09DA53D5 = 0x08000000u,
+        kTarget_Option65567820 = 0x04000000u,
+        kTarget_OptionDE86C5DE = 0x02000000u,
+        kTarget_Option9896A7D0 = 0x01000000u,
+        kTarget_OptionFAA75B88 = 0x00800000u,
+    };
     // One photo target (0x90 bytes on the console).
     struct Target {
-        uint8_t pad[0x10];
-        uint32_t name = 0;        // +0x10
-        void* entity = nullptr;   // +0x14
-        uint8_t pad2[0x18];
-        bool pending = true;      // +0x30 still to be photographed
-        uint8_t pad3[0x5F];
+        ape::Vec3 markerOffset{};       // +0x00 XML 0x4A4D4D4D
+        uint32_t name = 0;              // +0x10 "Name"
+        void* entity = nullptr;         // +0x14 resolved
+        float angle = 0.0f;             // +0x18 "Angle" (degrees)
+        float distMin = 0.0f;           // +0x1C "DistMin"
+        float distMax = 0.0f;           // +0x20 "DistMax"
+        float distMinClose = 0.0f;      // +0x24 "DistMinClose"
+        float distMaxClose = 0.0f;      // +0x28 "DistMaxClose"
+        float distCull = 0.0f;          // +0x2C "DistCull"
+        bool pending = true;            // +0x30 still to be photographed
+        // Texts from the string table (null without one): +0x34 the
+        // check box line, +0x38 the target name, +0x3C the photo name.
+        const char* checkBoxText = nullptr;
+        const char* targetText = nullptr;
+        const char* photoText = nullptr;
+        ape::Vec3 offset{};             // +0x40 "Offset" (in the bone's space)
+        uint32_t bone = 0;              // +0x50 XML 0x39F79104: bone the target sits on
+        ape::Vec3 angles{};             // +0x60 XML 0xB095DE33 (degrees)
+        float displayTime = 0.0f;       // +0x70 XML 0x001D691D NOTE: default from DefaultDisplayTime
+        bool occluded = true;           // +0x74 last occlusion query result
+        float occlusionRadius = 0.0f;   // +0x78 "OcclusionRadius"
+        float visibleFraction = 1.0f;   // +0x7C XML 0x6E3DE0E2 (0..1): visible pixel share needed
+        uint32_t options = 0;           // +0x80 TargetOptions
+        float field_84 = 1.0f;          // +0x84 XML 0x2D72DAD4
+    };
+
+    // Goal flags (+0xA28).
+    enum PhotoFlags : uint32_t {
+        kPhoto_GadgetFlag   = 0x80000000u,   // XML 0x254881FC: binocucom flag 0x800 while active
+        kPhoto_ReportGroup  = 0x40000000u,   // XML 0x81213F1D: each photo advances the job's group
+        kPhoto_CharacterFlag = 0x20000000u,  // XML 0x5845B273: character flag +0x2C7 bit 6 while active
     };
 
     using Goal::Goal;
     ~GoalBinocucomPhoto() override;
+    // 0x0032B358
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
     uint8_t Update(int player, const GameEvent& e) override;
     void Reset(bool fromSave, int status) override;
     void ResetHints(bool stopHintScript) override;
@@ -872,11 +913,18 @@ public:
     void SetStatus(uint8_t newStatus, bool force) override;
     void BuildMarker(const Target& target, GoalMarker* marker) const;
 
-    ape::ApeTArray<Target> targets;   // +0xA0C
+    ape::ApeTArray<Target> targets;      // +0xA0C (at most eight)
+    GoalBinocucomPhoto* nextActive = nullptr;   // +0xA20 list of active photo goals
+    uint32_t photoFilter = 0;            // +0xA24 XML 0x1F6AE7F0: binocucom photo filter
+    uint32_t photoFlags = 0;             // +0xA28 PhotoFlags
 
 private:
     // Resolves every target; fails the goal if one is gone. False if it failed.
     bool ResolveTargets(bool pending);
+    // Steps the occlusion test of the current target (event 10).
+    void UpdateOcclusion();
+    void AddToActiveList();
+    void RemoveFromActiveList();
 };
 
 } // namespace goals
