@@ -128,7 +128,8 @@ public:
     uint32_t mode = 0;                   // 0x188
 };
 
-// vtable 0x00B17990 (destructor 0x00756154).
+// Input mover (vtable 0x00B17990, destructor 0x00756154; class flag 1 of
+// +0xC8). NOTE: identified from the input mover hooks of the level scripts.
 class ActorB17990 : public ActorEntity {
 public:
     // @func 0x00756154 ActorB17990::~ActorB17990
@@ -143,8 +144,18 @@ public:
     void ResetState() override;
     // 0x001D81F0 (not ported).
     void SetField1D81F0(bool on);
+    // Sets the input points (a fraction of the maximum when `scaled`) and
+    // shows the fill ratio on the meter.
+    void SetPoints(float points, bool scaled);
 
-    uint32_t field_248 = 0;              // 0x248
+    float maxPoints = 0.0f;              // 0x1F0
+    struct Meter {                       // NOTE: only the ratio is known
+        uint8_t field_00[0x14];
+        float ratio;                     // +0x14
+    };
+    Meter* meter = nullptr;              // 0x240
+    float points = 0.0f;                 // 0x248
+    float shownPoints = 0.0f;            // 0x24C
     uint32_t field_260 = 0;              // 0x260
 };
 
