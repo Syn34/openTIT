@@ -29,6 +29,8 @@ HudObject* FindTyped(uint32_t name, uint32_t type)
 
 } // namespace
 
+uint32_t g_bottleCounterName = 0;
+
 HudManagerState& Hud()
 {
     static HudManagerState state;

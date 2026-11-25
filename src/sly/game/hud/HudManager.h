@@ -160,6 +160,9 @@ struct HudManagerState {
 
 HudManagerState& Hud();
 
+// Name of the clue bottle counter element (0x00F64CD4). NOTE: start-up value unknown.
+extern uint32_t g_bottleCounterName;
+
 // The element's object is visible (ApeObj flags bit 15).
 bool ObjectVisible(const ape::world::ApeObj* object);
 // Elements queued by HideNow (0x0106C240), hidden at the end of the frame.

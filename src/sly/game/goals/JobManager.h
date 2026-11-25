@@ -546,6 +546,11 @@ public:
     // flag 0x20; the running level's own job counts as flagged (0x002E2740).
     bool IsJobValueFlagged(uint32_t value) const;
 
+    // 0x002DE258: shows the collected clue bottles on the bottle counter
+    // HUD element (state "all found" once the default count is reached;
+    // `pickup` selects the pickup flavour of that state).
+    void UpdateBottleHud(bool pickup);
+
     int32_t pendingKind = 0;         // +0x00 1: a job start is pending
     entity::Entity* pendingEntity = nullptr;   // +0x04 the entity that asked (class bit 17 set)
     Episode* pendingJob = nullptr;   // +0x08 job whose files are streamed for the start
