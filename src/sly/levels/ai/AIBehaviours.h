@@ -86,12 +86,16 @@ public:
     // Quick turn while fleeing (part of Think) and a perch point on a rail
     // (TODO 0x00020100).
     void QuickTurn(const Entity& player);
+    // Random point to wander to: inside the spawner's alternative object
+    // box, else around the spawn point within the bounding radius; kept at
+    // the current height unless the critter flies (0x0001E068).
+    ape::Vec3 RandomWanderPoint();
     bool FindPerch();
 
     float idleDelay = 0.0f;           // +0x138
     uint32_t field_13C = 0;           // +0x13C
     float quickTurnDelay = 0.0f;      // +0x140
-    uint32_t field_144 = 0;           // +0x144
+    float wanderMargin = 0.0f;        // +0x144 kept from the edge of the wander area
     float poiDelay = 0.0f;            // +0x148 time until the next point of interest
     ape::Vec3 poiPosition{};          // +0x150
     ape::Vec3 poiDirection{};         // +0x160

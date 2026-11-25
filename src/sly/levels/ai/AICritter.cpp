@@ -10,6 +10,7 @@
 #include "sly/entity/PhysicsHooks.h"
 #include "sly/entity/ScriptedEntity.h"
 #include "ape/world/ApeBase.h"
+#include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
 #include "ape/world/ApeSkeleton.h"
 #include "ape/math/ApeMatrixOps.h"
@@ -109,7 +110,7 @@ void CritterAI::Attach(Entity* newEntity)
     poiPosition = ape::Vec3{};
     poiDirection = kForward;
     field_1C = kState_Move;
-    field_144 = 0;
+    wanderMargin = 0.0f;
     if (spawnAnim)
         SetState(kState_Spawn);
     else if (idleDelay > 0.0f || !CharacterHasClip(characterComp, idleClip))
@@ -628,6 +629,41 @@ void CritterAI::UpdateState(float dt)
         break;
     }
     stateTime += dt;
+}
+
+// @func 0x0001E068 CritterAI::RandomWanderPoint
+// NOTE: the console draws the three random numbers with its own inlined
+// steps of the generator; three ordinary draws are used here.
+ape::Vec3 CritterAI::RandomWanderPoint()
+{
+    ape::Vec3 point;
+    ape::world::ApeObj* area = SpawnerAltObject(entity);
+    if (!area || PropBool(settings, AIProp::Critter_AlwaysUseBoundingRadius)) {
+        const float radius = PropFloat(settings, AIProp::Critter_BoundingRadius) - wanderMargin;
+        float x = ape::RandomRange(-radius, radius, ape::g_gameRandom);
+        float y = ape::RandomRange(wanderMargin, radius, ape::g_gameRandom);
+        float z = ape::RandomRange(-radius, radius, ape::g_gameRandom);
+        if (x * x + z * z > radius * radius) {
+            x *= 0.5f;
+            y *= 0.5f;
+            z *= 0.5f;
+        }
+        const ape::Vec3& origin = entity->objectRestoreTransform.translation;
+        point = {origin.x + x, origin.y + y, origin.z + z, 0.0f};
+    } else {
+        const ape::Aabb& box = area->GetDef()->GetBounds();
+        const float m = wanderMargin;
+        const float x = ape::RandomRange(box.min.x + m, box.max.x - m, ape::g_gameRandom);
+        const float y = ape::RandomRange(box.min.y + m, box.max.y - m, ape::g_gameRandom);
+        const float z = ape::RandomRange(box.min.z + m, box.max.z - m, ape::g_gameRandom);
+        const ape::Matrix34& w = area->GetWorld();
+        point = {x * w.xAxis.x + y * w.yAxis.x + z * w.zAxis.x + w.translation.x,
+                 x * w.xAxis.y + y * w.yAxis.y + z * w.zAxis.y + w.translation.y,
+                 x * w.xAxis.z + y * w.yAxis.z + z * w.zAxis.z + w.translation.z, 0.0f};
+    }
+    if (!(flags1 & kF1_FreeFacing))
+        point.y = transform.translation.y;
+    return point;
 }
 
 // TODO(0x00020100 CritterAI::FindPerch): picks a point on a rail spline

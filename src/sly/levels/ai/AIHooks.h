@@ -10,6 +10,7 @@
 #include <cstdint>
 
 namespace ape { class ApeAnimScriptInstance; class ApeRefCounted; }
+namespace ape::world { class ApeObj; }
 
 namespace sly {
 class WorldObject;
@@ -225,6 +226,8 @@ bool CharacterSpawnerSettings(const Entity* entity, uint32_t defNames[3],
 // and its "IsSpawnField" setting (0x010AB0E8).
 bool SpawnerAltObjectBounds(const Entity* entity, ape::Vec3& boxMin, ape::Vec3& boxMax);
 bool SpawnerIsSpawnField(const Entity* entity);
+// The spawner's alternative spawn object itself (0x00451E08), or null.
+ape::world::ApeObj* SpawnerAltObject(const Entity* entity);
 bool HasSpawner(const Entity* entity);
 // The spawner that created an entity (entity +0xDC), opaque here, and its
 // list of live spawned objects (spawner +0x14/+0x18).
