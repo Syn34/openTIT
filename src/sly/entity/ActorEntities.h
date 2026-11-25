@@ -328,13 +328,28 @@ public:
     void SetSlotState(int index, bool immediate) override;
     // Also runs a pending refresh and counts the delay down.
     bool Update(float dt) override;                   // slot 4
-    // 0x001BF8E8 (not ported).
+    // Flips the switch (or, with a non-negative reset time, turns it on and
+    // starts the time) and reports it for the player that flipped it.
     void Refresh();
+    // Messages 0x4DA1B5C3 / 0x59676D2A unlock / lock the switch.
+    void HandleMessage(const EntityMessage& msg) override;    // slot 43
+    // Collisions above the threshold, and melee and projectile hits from
+    // players, flip the switch (on the next update).
+    void OnHitCategory0(EntityHitRecord& hit) override;       // slot 83
+    void OnHitCategory1(EntityHitRecord& hit) override;       // slot 84
+    void OnHitCategory4(EntityHitRecord& hit) override;       // slot 87
+    // A hit is taken and the switch may flip now.
+    bool AcceptsFlip(EntityHitRecord& hit);
+    // Queues a flip credited to `player`.
+    void QueueFlip(int player) { switchFlags |= 0x40; flipPlayer = player; }
 
     int32_t position = 0;          // 0x22C 0 or 1 (indexes the state tables)
-    float field_234 = 0.0f;        // 0x234 NOTE: non-negative resets the position
+    int32_t flipPlayer = 0;        // 0x230 player slot credited with the flip
+    float resetTime = 0.0f;        // 0x234 non-negative: flips only turn on, for this long
     float delay = 0.0f;            // 0x238 slot 5 waits while positive
-    uint8_t switchFlags = 0;       // 0x23C bit 3 armed, bit 6 refresh pending
+    // Bit 3 used, bit 4 NOTE: unknown (skips the checks), bit 5 locked,
+    // bit 6 flip pending, bit 7 locks after one flip.
+    uint8_t switchFlags = 0;       // 0x23C
 };
 
 // vtable 0x00B168E0 (destructor 0x0075458C).

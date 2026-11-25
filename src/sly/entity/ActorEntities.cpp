@@ -11,6 +11,8 @@
 #include "sly/entity/GameCamera.h"
 #include "sly/camera/CameraModes.h"
 #include "sly/entity/GameEntityHooks.h"
+#include "sly/entity/ActorVariants.h"
+#include "sly/entity/EntityHits.h"
 
 namespace sly {
 namespace entity {
@@ -388,7 +390,7 @@ bool SoundActorB16678::AdvanceTo5(float elapsed, float duration)
     if (delay > 0.0f || (sequenceFlags & kSeq_Held) || duration < 0.0f || elapsed < duration)
         return true;
     PlaySlot(5, false);
-    if (field_234 >= 0.0f)
+    if (resetTime >= 0.0f)
         position = 0;
     if (EntityComponent* interaction = EntityInteraction(this))
         InteractionSetOffer(interaction, kSwitchInteraction[position == 1 ? 1 : 0]);
@@ -424,8 +426,84 @@ bool SoundActorB16678::Update(float dt)
     return true;
 }
 
-// TODO(0x001BF8E8 SoundActorB16678::Refresh)
-void SoundActorB16678::Refresh() {}
+// @func 0x001BF8E8 SoundActorB16678::Refresh
+void SoundActorB16678::Refresh()
+{
+    constexpr uint32_t kEvent_SwitchOn = 0x0B;    // NOTE: kinds of 0x0046528C / 0x00465308
+    constexpr uint32_t kEvent_SwitchOff = 0x0C;
+    if (switchFlags & 0x20)
+        return;
+    if (resetTime >= 0.0f) {
+        position = 1;
+        delay = resetTime;
+        PlaySlot(1, false);
+    } else if (position == 0 || position == 1) {
+        position = 1 - position;
+    } else {
+        return;
+    }
+    if (switchFlags & 0x80)
+        switchFlags |= 0x20;
+    GameWorldPostEntityEvent(uint8_t(flipPlayer), position == 1 ? kEvent_SwitchOn : kEvent_SwitchOff, this);
+    switchFlags |= 0x08;
+}
+
+// @func 0x001BF850 SoundActorB16678::HandleMessage
+void SoundActorB16678::HandleMessage(const EntityMessage& msg)
+{
+    constexpr uint32_t kMsg_Unlock = 0x4DA1B5C3u;   // NOTE: names unknown
+    constexpr uint32_t kMsg_Lock = 0x59676D2Au;
+    if (msg.id == kMsg_Unlock)
+        switchFlags &= ~0x20;
+    else if (msg.id == kMsg_Lock)
+        switchFlags |= 0x20;
+    ActorHandleMessageBase(this, msg);
+}
+
+namespace {
+// Player slot of a player entity: the top byte of its flags.
+int EntityPlayerSlot(const Entity* entity) { return int8_t(entity->flags >> 24); }
+} // namespace
+
+bool SoundActorB16678::AcceptsFlip(EntityHitRecord& hit)
+{
+    if (!ReceiveHit(hit) || (switchFlags & 0x20))
+        return false;
+    if (switchFlags & 0x10)
+        return true;
+    if (switchFlags & 0x08)
+        return false;
+    return resetTime <= 0.0f || EntityGetState(this, 0) == 1;
+}
+
+// @func 0x001BFC10 SoundActorB16678::OnHitCategory0
+void SoundActorB16678::OnHitCategory0(EntityHitRecord& hit)
+{
+    if (!AcceptsFlip(hit))
+        return;
+    const auto* d = static_cast<const ActorDef*>(def);
+    if (d->collisionScale > 0.0f && d->collisionThreshold > 0.0f &&
+        d->collisionThreshold < hit.data.collision.speed)
+        QueueFlip(0);
+}
+
+// @func 0x001BFB00 SoundActorB16678::OnHitCategory1
+void SoundActorB16678::OnHitCategory1(EntityHitRecord& hit)
+{
+    if (!AcceptsFlip(hit))
+        return;
+    if (static_cast<const ActorDef*>(def)->impactScale > 0.0f && (hit.source->classBits & 1))
+        QueueFlip(EntityPlayerSlot(hit.source));
+}
+
+// @func 0x001BFD28 SoundActorB16678::OnHitCategory4
+void SoundActorB16678::OnHitCategory4(EntityHitRecord& hit)
+{
+    if (!AcceptsFlip(hit))
+        return;
+    if ((hit.source->classBits & 1) && static_cast<const ActorDef*>(def)->projectileScale > 0.0f)
+        QueueFlip(EntityPlayerSlot(hit.source));
+}
 
 // @func 0x001C1B50 SoundActorB168E0::AdvanceTo2
 bool SoundActorB168E0::AdvanceTo2(float elapsed, float duration)
