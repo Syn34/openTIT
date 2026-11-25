@@ -233,18 +233,17 @@ public:
     virtual ape::Vec3 GetAimPosition();
     // Slot 38: turn rate of the character component (0x001290F0).
     virtual float GetTurnRate();
-    // Slots 89-93: how projectiles hitting the character are treated
-    // (Entity.Character.Damage.* settings).
+    // Slots 89-93: the character's Entity.Character.Damage.* settings.
     // @func 0x007382E0 Character::ProjectileDamageScale
-    virtual float ProjectileDamageScale() { return damage.projectile; }
+    float ProjectileDamageScale() const override { return damage.projectile; }
     // @func 0x007382E8 Character::ReflectsProjectiles
-    virtual bool ReflectsProjectiles() { return damage.projectileReflect; }
+    bool ReflectsProjectiles() override { return damage.projectileReflect; }
     // @func 0x007382F0 Character::ReflectsProjectilesRandomly
-    virtual bool ReflectsProjectilesRandomly() { return damage.projectileRandomReflect; }
+    bool ReflectsProjectilesRandomly() override { return damage.projectileRandomReflect; }
     // @func 0x007382F8 Character::ProjectileReflectAngle
-    virtual float ProjectileReflectAngle() { return damage.projectileAngle; }
+    float ProjectileReflectAngle() override { return damage.projectileAngle; }
     // @func 0x00738300 Character::ProjectileReflectVelScalar
-    virtual float ProjectileReflectVelScalar() { return damage.projectileVelScalar; }
+    float ProjectileReflectVelScalar() override { return damage.projectileVelScalar; }
     // Slots 95/96. NOTE: empty in every character class; meaning unknown.
     // @func 0x0073835C Character::Slot95
     virtual void Slot95() {}
@@ -301,8 +300,7 @@ class CharacterDef : public ScriptedEntityDef {
 public:
     ~CharacterDef() override;
     // Definition slot 2: the player name when set, else the definition name.
-    // NOTE: the slot is not declared on EntityDef yet.
-    const char* GetDisplayName() const;
+    const char* GetDisplayName() const override;
     // Linked definitions (up to four, null terminated) (0x00121B40 / 0x00121B68).
     EntityDef* LinkedDef(uint32_t index) const;
     int FindLinkedDef(const EntityDef* linked) const;

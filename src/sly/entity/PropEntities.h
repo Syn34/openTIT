@@ -65,13 +65,13 @@ void SetFatal(EntityHitRecord& hit, bool alive);
 class RigidBodyEntity : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
     // Slot 35: linear velocity of the body (zero without one).
-    virtual ape::Vec3 GetVelocity() { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
+    ape::Vec3 GetVelocity() override { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
     // Slot 71: centre of mass of the body.
-    virtual ape::Vec3 GetMassCenter() { return Position(); }
+    ape::Vec3 GetMassCenter() override { return Position(); }
     // Slot 82: some hit category can hurt the entity.
-    virtual bool CanBeDamaged() const { return false; }
+    bool CanBeDamaged() const override { return false; }
     // Slot 89: damage scale of projectiles.
-    virtual float ProjectileDamageScale() const { return 0.0f; }
+    float ProjectileDamageScale() const override { return 0.0f; }
 
     void* rigidBody = nullptr;           // 0x184 Havok rigid body
 

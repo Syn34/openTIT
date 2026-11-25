@@ -225,6 +225,17 @@ struct SpawnParams {
 class EntityDef {
 public:
     virtual ~EntityDef();
+    // Slot 2: name shown for the definition.
+    // @func 0x007435C0 EntityDef::GetDisplayName
+    virtual const char* GetDisplayName() const { return name; }
+    // Slots 4-6. NOTE: meanings unknown; scripted definitions return their
+    // words at +0xB4/+0xB8 from slots 4/5.
+    // @func 0x00746F4C EntityDef::DefSlot4
+    virtual uint32_t DefSlot4() const { return 0; }
+    // @func 0x00746F54 EntityDef::DefSlot5
+    virtual uint32_t DefSlot5() const { return 0; }
+    // @func 0x007372F4 EntityDef::DefSlot6
+    virtual uint32_t DefSlot6() const { return 0; }
     virtual Entity* Spawn(SpawnParams& params) { (void)params; return nullptr; }   // slot 7 (+0x1C)
 
     // Name for a new instance: the requested name, else the source object's
@@ -355,8 +366,9 @@ public:
     virtual bool Slot27() { return false; }
     // @func 0x00737390 Entity::Slot34
     virtual void Slot34() {}
-    // @func 0x007436E0 Entity::Slot35
-    virtual ape::Vec3 Slot35() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
+    // Slot 35 (+0x8C): linear velocity (none by default).
+    // @func 0x007436E0 Entity::GetVelocity
+    virtual ape::Vec3 GetVelocity() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
     // @func 0x00743710 Entity::Slot38
     virtual int Slot38() { return 0; }
     // @func 0x00737394 Entity::Slot41
@@ -381,8 +393,9 @@ public:
     virtual int Slot69() { return 0; }
     // @func 0x007374D0 Entity::Slot70
     virtual int Slot70() { return 0; }
-    // @func 0x00743754 Entity::Slot71
-    virtual ape::Vec3 Slot71() { return transform.translation; }
+    // Slot 71 (+0x11C): centre of mass (the position by default).
+    // @func 0x00743754 Entity::GetMassCenter
+    virtual ape::Vec3 GetMassCenter() { return transform.translation; }
     // @func 0x00743778 Entity::Slot72
     virtual ape::Vec3 Slot72() { return {0.0f, 0.0f, 0.0f, 0.0f}; }
     // @func 0x0074379C Entity::Slot73

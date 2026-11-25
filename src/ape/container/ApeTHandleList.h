@@ -36,7 +36,11 @@ public:
     // Value of a live handle, or null when the handle is stale or invalid.
     T* Get(Handle handle);
     // Removes the element of a live handle (stale handles are ignored).
-    void Remove(Handle handle);
+    void Remove(Handle handle) { Erase(handle); }
+    // Removes the element of a live handle and returns the handle of the
+    // element that followed it (index -1 with serial 0 after the last one);
+    // 0 for a stale or invalid handle.
+    Handle Erase(Handle handle);
     // Puts every node back on the free list (storage is kept).
     void Clear();
     int32_t Capacity() const { return m_capacity; }
@@ -189,10 +193,19 @@ T* ApeTHandleList<T>::Get(Handle handle)
 }
 
 template <class T>
-void ApeTHandleList<T>::Remove(Handle handle)
+typename ApeTHandleList<T>::Handle ApeTHandleList<T>::Erase(Handle handle)
 {
-    if (IsLive(handle))
-        Unlink((int32_t)(handle >> 16));
+    if (!m_count || !IsLive(handle))
+        return 0;
+    const int32_t index = (int32_t)(handle >> 16);
+    const Node& node = m_nodes[index];
+    Handle next;
+    if (index == m_tail)
+        next = 0xFFFF0000u;
+    else
+        next = ((uint32_t)node.next << 16) | ((m_nodes[node.next].flags >> 15) & 0xFFFFu);
+    Unlink(index);
+    return next;
 }
 
 template <class T>

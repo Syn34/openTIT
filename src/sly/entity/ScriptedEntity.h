@@ -36,9 +36,22 @@ public:
     // Slot 80 (+0x140): no health left.
     // @func 0x00737758 ScriptedEntity::IsDead
     virtual bool IsDead() const { return health <= 0.0f; }
-    // Slot 82 (+0x148). NOTE: true by default; meaning unknown.
-    // @func 0x00737840 ScriptedEntity::Slot82
-    virtual bool Slot82() { return true; }
+    // Slot 82 (+0x148): some hit category can hurt the entity.
+    // @func 0x00737840 ScriptedEntity::CanBeDamaged
+    virtual bool CanBeDamaged() const { return true; }
+    // Slots 89-93: how projectiles hitting the entity are treated: damage
+    // scale, reflection (and whether its direction is random), the reflection
+    // cone angle and the speed scale of reflected projectiles.
+    // @func 0x00743860 ScriptedEntity::ProjectileDamageScale
+    virtual float ProjectileDamageScale() const { return 1.0f; }
+    // @func 0x00743870 ScriptedEntity::ReflectsProjectiles
+    virtual bool ReflectsProjectiles() { return false; }
+    // @func 0x00743878 ScriptedEntity::ReflectsProjectilesRandomly
+    virtual bool ReflectsProjectilesRandomly() { return false; }
+    // @func 0x00743888 ScriptedEntity::ProjectileReflectAngle
+    virtual float ProjectileReflectAngle() { return 0.0f; }
+    // @func 0x007438A0 ScriptedEntity::ProjectileReflectVelScalar
+    virtual float ProjectileReflectVelScalar() { return 1.0f; }
 
     bool Update(float dt) override;
     bool PostUpdate(float dt) override;
@@ -104,10 +117,16 @@ public:
 };
 
 // Scripted entity definition (vtable 0x00B11D98, slot 7 Spawn is pure).
-// Destructor with no body of its own (0x007437D0).
+// Destructor with no body of its own.
 class ScriptedEntityDef : public EntityDef {
 public:
+    // @func 0x007437D0 ScriptedEntityDef::~ScriptedEntityDef
+    // @func 0x00743800 ScriptedEntityDef::~ScriptedEntityDef (deleting)
     ~ScriptedEntityDef() override = default;
+    // @func 0x007376D8 ScriptedEntityDef::DefSlot4
+    uint32_t DefSlot4() const override { return field_B4; }
+    // @func 0x007376E0 ScriptedEntityDef::DefSlot5
+    uint32_t DefSlot5() const override { return field_B8; }
     uint32_t field_B4 = 0;   // 0xB4 (returned by slot 4)
     uint32_t field_B8 = 0;   // 0xB8 (returned by slot 5)
     // Damage settings. NOTE: filled by the definition parser (not ported).

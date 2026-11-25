@@ -94,9 +94,21 @@ public:
     void OnHitCategory3(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
     // Slot 82: some hit category and some attacker can hurt the actor.
-    virtual bool CanBeDamaged() const;
+    bool CanBeDamaged() const override;
     // Slot 89: damage scale of projectiles.
-    virtual float ProjectileDamageScale() const;
+    float ProjectileDamageScale() const override;
+    // Slots 98-101 and 103 (empty in the base; the actor classes override
+    // some of them). NOTE: meanings unknown.
+    // @func 0x00747C18 ActorEntity::ActorSlot98
+    virtual void ActorSlot98() {}
+    // @func 0x00747C20 ActorEntity::ActorSlot99
+    virtual void ActorSlot99() {}
+    // @func 0x00747C24 ActorEntity::ActorSlot100
+    virtual void ActorSlot100() {}
+    // @func 0x00747C2C ActorEntity::ActorSlot101
+    virtual void ActorSlot101() {}
+    // @func 0x00747CD0 ActorEntity::ActorSlot103
+    virtual void ActorSlot103() {}
 
     // Filter consulted before projectile damage (+0x1A0); false ignores the hit.
     using HitFilter = bool (*)(ActorEntity* actor, EntityHitRecord& hit);

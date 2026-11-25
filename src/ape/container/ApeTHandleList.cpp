@@ -25,6 +25,14 @@ uint32_t NextHandleListSerial()
 // @func 0x0079B3B0 ApeTHandleList<T>::Grow (copy 2)
 // @func 0x0079A528 ApeTHandleList<T>::Grow (copy 3)
 // @func 0x00784FE4 ApeTHandleList<T>::Grow (copy 4)
+// Erase compiled to the same code in every pointer-sized instantiation (the
+// stream groups, the knowledge library, the spawn manager and two engine
+// lists).
+// @func 0x00767618 ApeTHandleList<T>::Erase (copy 1)
+// @func 0x00773C8C ApeTHandleList<T>::Erase (copy 2)
+// @func 0x00784DE4 ApeTHandleList<T>::Erase (copy 3)
+// @func 0x0078967C ApeTHandleList<T>::Erase (copy 4)
+// @func 0x0079A328 ApeTHandleList<T>::Erase (copy 5)
 // @func 0x0079BD1C ApeTHandleList<int32_t>::PushBack (trophy unlock queue)
 // @func 0x0079C07C ApeTHandleList<int32_t>::PopFront (trophy unlock queue)
 template class ApeTHandleList<int32_t>;

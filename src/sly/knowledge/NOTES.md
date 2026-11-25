@@ -12,8 +12,8 @@
 * `KnowledgeTypes.cpp`: the two type tables, the per-type factories and runtime allocators
   (0x007755E4-0x0077A950) and the runtime-data allocator templates (0x007737A4-0x00773998
   causes, 0x007742DC-0x00774D2C results, one instantiation per type with runtime data).
-  Still TODO there: 0x00773A90/0x00773C8C/0x00773E8C are the library's handle-list pool
-  (Init/Remove/Grow; the port keeps the library in vectors) and 0x00774E1C-0x00775550 are
+  Still TODO there: 0x00773A90/0x00773E8C are the library's handle-list pool Init/Grow
+  (the port keeps the library in vectors; Erase 0x00773C8C is a tagged ApeTHandleList copy) and 0x00774E1C-0x00775550 are
   RFireProjectile field getters used only by its Execute (0x00398040).
 * `KnowledgeCauses.cpp`, `KnowledgeResults.cpp`: per-type callbacks. Still TODO:
   RCameraShake (0x003958C8), RSetPosition (0x003967B0), RStartMeleeAttack::Execute

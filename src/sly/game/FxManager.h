@@ -16,15 +16,34 @@ namespace sly { namespace entity { class Entity; } }
 namespace sly {
 namespace game {
 
-// A running effect. NOTE: only the virtual slots the manager calls are
-// declared; the classes live in the effects module (vtables 0x00B1D4D8..).
+// A running effect (base vtable 0x00B1D4D8). The effect classes themselves
+// live in the effects module (vtables 0x00B1D500..) and are not ported.
 class FxEffect {
 public:
+    // @func 0x00767A38 FxEffect::~FxEffect
+    // @func 0x00767A48 FxEffect::~FxEffect (deleting)
     virtual ~FxEffect() = default;
+    // Slot 2 (+0x08). NOTE: empty in the base; meaning unknown.
+    // @func 0x00767A8C FxEffect::Slot2
+    virtual void Slot2() {}
+    // @func 0x00767A90 FxEffect::Update
     virtual void Update() {}                                // slot 3 (+0x0C)
-    virtual void Stop() {}                                  // slot 5 (+0x14)
+    // Slot 4 (+0x10): the effect has ended (the manager drops it).
+    // @func 0x00767A94 FxEffect::IsFinished
+    virtual bool IsFinished() const { return finished; }
+    // Slot 5 (+0x14): ends the effect.
+    // @func 0x00767A9C FxEffect::Stop
+    virtual void Stop() { finished = true; }
     // Ends the effect when it is attached to `object`.
+    // @func 0x00767AA8 FxEffect::KillIfAttachedTo
     virtual void KillIfAttachedTo(ape::world::ApeObj* object) { (void)object; }   // slot 6 (+0x18)
+    // Slot 7 (+0x1C): attached effects take `value` (+0x04) when attached to
+    // `object`. NOTE: meaning of the value unknown.
+    // @func 0x00767AAC FxEffect::SetValueIfAttachedTo
+    virtual void SetValueIfAttachedTo(ape::world::ApeObj* object, float value) { (void)object; (void)value; }
+
+    float value = 0.0f;       // +0x04
+    bool finished = false;    // +0x08
 };
 
 // One queued camera shake (0x60 bytes).

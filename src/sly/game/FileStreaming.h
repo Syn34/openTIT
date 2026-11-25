@@ -54,11 +54,16 @@ enum StreamFileStatus : int32_t {
 // One file of a group (base vtable 0x00B1D434).
 class StreamFile {
 public:
-    virtual ~StreamFile() = default;                // 0x00766B6C (frees the name)
+    // Frees the name.
+    // @func 0x00766B6C StreamFile::~StreamFile
+    // @func 0x00766BC0 StreamFile::~StreamFile (deleting)
+    virtual ~StreamFile() = default;
     // slot 2: advances the load; non-zero once it has finished.
     virtual int Update(bool wait) = 0;
-    // slot 3 / 4 (0x00766C2C / 0x00766C38 mark the file started / stopped).
+    // slot 3 / 4: mark the file started / stopped.
+    // @func 0x00766C2C StreamFile::Start
     virtual void Start() { started = true; }
+    // @func 0x00766C38 StreamFile::Cancel
     virtual void Cancel() { started = false; }
 
     uint32_t id = 0;                         // +0x04
@@ -80,7 +85,9 @@ using StreamFileFactory = StreamFile* (*)();
 class StreamDiskFile : public StreamFile {
 public:
     StreamDiskFile();
-    ~StreamDiskFile() override = default;   // 0x0076716C
+    // @func 0x0076716C StreamDiskFile::~StreamDiskFile
+    // @func 0x007671C0 StreamDiskFile::~StreamDiskFile (deleting)
+    ~StreamDiskFile() override = default;
 
     int Update(bool wait) override;         // 0x002E80C0
     void Start() override;                  // 0x002E84FC
@@ -109,6 +116,9 @@ class FtdGroup;
 class StreamPackedFile : public StreamFile {
 public:
     explicit StreamPackedFile(FtdGroup* owner) : group(owner) {}
+    // @func 0x0076722C StreamPackedFile::~StreamPackedFile
+    // @func 0x00767280 StreamPackedFile::~StreamPackedFile (deleting)
+    ~StreamPackedFile() override = default;
     int Update(bool wait) override;         // 0x002EA218
     void Cancel() override;                 // 0x002EA344
 
@@ -173,7 +183,7 @@ protected:
 class FtdGroup : public StreamGroup {
 public:
     FtdGroup();                               // 0x002E8DFC
-    ~FtdGroup() override;                     // 0x007672EC
+    ~FtdGroup() override;
     void Update(bool wait) override;          // 0x002EB7BC
     void Start(bool wait) override;           // 0x002EBAF8
     void Cancel() override;                   // 0x002EA464

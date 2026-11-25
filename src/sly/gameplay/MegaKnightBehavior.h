@@ -32,18 +32,26 @@ struct MegaKnightStamp {
     void Parse(XmlElement* element);
 };
 
-// Base of the behaviour actions (vtables 0x00B1D9D0..0x00B1DA60; slots 0/1/3
-// live at 0x007682xx-0x007688xx, outside this range).
+// Base of the behaviour actions (vtable 0x00B1D9B8; the actions 0x00B1D9D0..
+// 0x00B1DA60).
 class MegaKnightAction {
 public:
+    // @func 0x007686B0 MegaKnightAction::~MegaKnightAction
+    // @func 0x007686C0 MegaKnightAction::~MegaKnightAction (deleting)
     virtual ~MegaKnightAction() = default;
     // slot 2
-    virtual void Parse(XmlElement* element) = 0;
+    // @func 0x00768704 MegaKnightAction::Parse
+    virtual void Parse(XmlElement* element) { (void)element; }
+    // slot 3: kind of action (-1 for the base).
+    // @func 0x00768708 MegaKnightAction::Kind
+    virtual int Kind() const { return -1; }
 };
 
 // "GroundSmash" (0x24 bytes): the sequence to play.
 class MegaKnightGroundSmashAction : public MegaKnightAction {
 public:
+    ~MegaKnightGroundSmashAction() override;
+    int Kind() const override;
     void Parse(XmlElement* element) override;   // 0x00302F14
     char sequence[0x20] = {};                   // +0x04
 };
@@ -51,6 +59,8 @@ public:
 // "Laser" (8 bytes).
 class MegaKnightLaserAction : public MegaKnightAction {
 public:
+    ~MegaKnightLaserAction() override;
+    int Kind() const override;
     void Parse(XmlElement* element) override;   // 0x00302F6C
     float time = 0.0f;                          // +0x04
 };
@@ -70,6 +80,8 @@ struct MegaKnightMoveParams {
 // int (0xF95DFD73) and drops it.
 class MegaKnightMoveAction : public MegaKnightAction {
 public:
+    ~MegaKnightMoveAction() override;
+    int Kind() const override;
     void Parse(XmlElement* element) override;   // 0x00302FB0
     uint32_t field_04 = 0;
     ape::Vec3 positionA{};                      // +0x10 (zero vector)
@@ -80,6 +92,8 @@ public:
 // Action 0xD9ABF25D (0x70 bytes): a move ending with a stamp. NOTE: name unknown.
 class MegaKnightStampMoveAction : public MegaKnightAction {
 public:
+    ~MegaKnightStampMoveAction() override;
+    int Kind() const override;
     void Parse(XmlElement* element) override;   // 0x003030E8
     uint32_t target = 0;                        // +0x04 hash attribute 0x1E78B4AE
     float field_08 = 0.0f;                      // +0x08 0x1D424785
@@ -94,6 +108,8 @@ public:
 // Action 0x651BDBA8 (8 bytes). NOTE: reads "count" but stores 0.
 class MegaKnightCountAction : public MegaKnightAction {
 public:
+    ~MegaKnightCountAction() override;
+    int Kind() const override;
     void Parse(XmlElement* element) override;   // 0x00303298
     int32_t count = 0;
 };
@@ -101,6 +117,8 @@ public:
 // "Pause" (8 bytes).
 class MegaKnightPauseAction : public MegaKnightAction {
 public:
+    ~MegaKnightPauseAction() override;
+    int Kind() const override;
     void Parse(XmlElement* element) override;   // 0x003032EC
     float time = 0.0f;
 };
@@ -108,6 +126,8 @@ public:
 // "Camera" (0xC bytes): camera by name with an ease-in time.
 class MegaKnightCameraAction : public MegaKnightAction {
 public:
+    ~MegaKnightCameraAction() override;
+    int Kind() const override;
     void Parse(XmlElement* element) override;   // 0x00303328
     uint32_t name = 0;
     float easeIn = 0.0f;

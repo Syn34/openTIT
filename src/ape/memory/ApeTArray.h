@@ -57,9 +57,14 @@ class ApeTArray : public ApeArrayBase {
 
 public:
     ApeTArray() : ApeArrayBase(uint16_t(sizeof(T))) {}
-    ApeTArray(uint32_t capacity, ApeAllocator* allocator = nullptr) : ApeArrayBase(uint16_t(sizeof(T)))
+    // Out-of-line instantiations:
+    // @func 0x00762CC0 ApeTArray<T>::ApeTArray (copy 1, 4-byte elements)
+    // @func 0x00786658 ApeTArray<T>::ApeTArray (copy 2, 4-byte elements)
+    // @func 0x00742DD8 ApeTArray<T>::ApeTArray (copy 3, 0x4C-byte elements)
+    ApeTArray(uint32_t capacity, ApeAllocator* allocator = nullptr, bool flag = false)
+        : ApeArrayBase(uint16_t(sizeof(T)))
     {
-        Init(capacity, allocator, false);
+        Init(capacity, allocator, flag);
     }
     ~ApeTArray() { Release(); }
 
@@ -72,6 +77,15 @@ public:
     const T* begin() const { return Data(); }
     const T* end() const { return Data() + m_count; }
 
+    // Out-of-line instantiations (most for 4-byte elements):
+    // @func 0x0074E8DC ApeTArray<T>::PushBack (copy 1)
+    // @func 0x00761428 ApeTArray<T>::PushBack (copy 2)
+    // @func 0x00767F94 ApeTArray<T>::PushBack (copy 3)
+    // @func 0x00768020 ApeTArray<T>::PushBack (copy 4)
+    // @func 0x007680AC ApeTArray<T>::PushBack (copy 5)
+    // @func 0x00768138 ApeTArray<T>::PushBack (copy 6)
+    // @func 0x0077214C ApeTArray<T>::PushBack (copy 7)
+    // @func 0x00735530 ApeTArray<T>::PushBack (copy 8, 0x30-byte elements)
     T& PushBack(const T& value)
     {
         if (m_count == m_capacity)
@@ -83,7 +97,18 @@ public:
         return slot;
     }
 
+    // Appends `value` and returns its index.
+    // @func 0x0076A800 ApeTArray<T>::Add (copy 1)
+    // @func 0x0076A914 ApeTArray<T>::Add (copy 2)
+    // @func 0x0076AF44 ApeTArray<T>::Add (copy 3)
+    uint32_t Add(const T& value)
+    {
+        PushBack(value);
+        return uint32_t(m_count) - 1;
+    }
+
     // Removes element i by moving the last element into its place.
+    // @func 0x0076AE8C ApeTArray<T>::RemoveAtSwap (copy 1, 0x20-byte elements)
     void RemoveAtSwap(size_t i)
     {
         --m_count;

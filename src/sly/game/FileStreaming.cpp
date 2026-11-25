@@ -347,6 +347,8 @@ FtdGroup::FtdGroup()
     flags = (uint8_t)(flags & 0x1F);
 }
 
+// @func 0x007672EC FtdGroup::~FtdGroup
+// @func 0x00767374 FtdGroup::~FtdGroup (deleting)
 FtdGroup::~FtdGroup()
 {
     Cancel();
