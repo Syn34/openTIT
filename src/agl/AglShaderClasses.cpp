@@ -1349,6 +1349,10 @@ AglAnimationClock& GetAnimationClock()
 }
 
 // @func 0x005AE648 BuildWarpMatrices
+// @func 0x005D12C8 BuildWarpMatrices (copy 2, SlyTextureWarp)
+// @func 0x005D70E0 BuildWarpMatrices (copy 3, ShoTextureWarp)
+// NOTE: the console has a separate identical copy of this helper next to
+// each technique set that uses it.
 // The two scrolling texture coordinate transforms of the warp and water
 // materials, from the material constants: 0/1 and 3/4 scroll speeds of
 // layer A and B, 8/9 their rotation angles, 6/7 the u/v scale shared by
@@ -1402,6 +1406,16 @@ void SetTransformBranchBit0(bool on)
     AglRenderState& state = GetRenderState();
     state.field_10F8 = (state.field_10F8 & ~1u) | (on ? 1u : 0u);
     Cmd().SetTransformBranchBits(state.field_10F8);
+}
+
+// Vertex constants of the three rows of a warp transform from 'reg'.
+void UploadWarpRowsVertex(const ape::Matrix34& m, uint32_t reg)
+{
+    const ape::Vec3* rows[3] = { &m.xAxis, &m.yAxis, &m.zAxis };
+    for (uint32_t i = 0; i < 3; ++i) {
+        const float row[4] = { rows[i]->x, rows[i]->y, rows[i]->z, 0.0f };
+        Cmd().SetVertexProgramConstants(reg + i, 4, row);
+    }
 }
 
 // The item's RGBA byte colour (render item +0x40) as floats; white when
@@ -2089,9 +2103,9 @@ public:
 };
 
 class SlyTextureWarpTechnique : public AglTechnique {
-    // TODO(0x005D1628 SlyTextureWarpTechnique::BeginMaterial)
     // TODO(0x005D17E8 SlyTextureWarpTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABE3C SlyTextureWarpTechnique::~SlyTextureWarpTechnique
     // @func 0x007AFE80 SlyTextureWarpTechnique::~SlyTextureWarpTechnique (deleting)
@@ -2136,9 +2150,9 @@ public:
 };
 
 class ShoTextureWarpTechnique : public AglTechnique {
-    // TODO(0x005D7438 ShoTextureWarpTechnique::BeginMaterial)
     // TODO(0x005D7598 ShoTextureWarpTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABE8C ShoTextureWarpTechnique::~ShoTextureWarpTechnique
     ~ShoTextureWarpTechnique() override = default;
@@ -5543,6 +5557,32 @@ void SlyWaterTechnique::BeginMaterial(AglMaterial* material)
     const float extra[4] = { 0.0f, MaterialConstant(material, 10), MaterialConstant(material, 11),
                              MaterialConstant(material, 14) };
     SetShaderConstant(9, extra);
+}
+
+// @func 0x005D7438 ShoTextureWarpTechnique::BeginMaterial
+// Same constants as TextureWarp.
+void ShoTextureWarpTechnique::BeginMaterial(AglMaterial* material)
+{
+    ape::Matrix34 a{}, b{};
+    float params[4];
+    BuildWarpMatrices(material, a, b, params);
+    SetShaderConstant(1, params);
+    UploadWarpRows(a, 2);
+    UploadWarpRows(b, 5);
+}
+
+// @func 0x005D1628 SlyTextureWarpTechnique::BeginMaterial
+// The UV animation in vertex constant 4, the warp parameters in fragment
+// constant 1 and the two transforms in vertex constants 6..8 and 9..11.
+void SlyTextureWarpTechnique::BeginMaterial(AglMaterial* material)
+{
+    ape::Matrix34 a{}, b{};
+    float params[4];
+    BuildWarpMatrices(material, a, b, params);
+    UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    SetShaderConstant(1, params);
+    UploadWarpRowsVertex(a, 6);
+    UploadWarpRowsVertex(b, 9);
 }
 
 } // namespace agl
