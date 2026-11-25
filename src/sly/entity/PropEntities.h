@@ -135,6 +135,9 @@ public:
     bool Release(bool kill) override;                         // slot 10
     void SetFlag80(bool on) override;                         // slot 23
     void HandleMessage(const EntityMessage& msg) override;    // slot 43
+    // Slot 12: also turns the pivot of the world object 0x45A6A51A by `spin`.
+    // NOTE: the object's name is unknown.
+    void UpdateTransform(float dt) override;
     // Slot 21: the body follows the new transform.
     void SetTransform(const ape::Matrix34& m) override;
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
@@ -159,6 +162,7 @@ public:
     uint32_t field_194 = 0;              // 0x194
     Entity* interactor = nullptr;        // 0x198 NOTE: refused as interaction partner of kind 0
     uint32_t collisionGroup = 0;         // 0x19C
+    ape::Vec4 spin{ 0.0f, 0.0f, 0.0f, 1.0f };   // 0x1B0 quaternion applied to the 0x45A6A51A object's pivot
     uint8_t field_1C0 = 0;               // 0x1C0 cleared when the body leaves the world
     uint8_t field_1C1 = 0;               // 0x1C1
     uint32_t field_1C4 = 0;              // 0x1C4

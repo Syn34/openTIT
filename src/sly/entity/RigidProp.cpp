@@ -9,6 +9,10 @@
 #include "sly/entity/EntityHooks.h"
 #include "sly/entity/PhysicsHooks.h"
 
+#include "ape/math/ApeMatrixOps.h"
+#include "ape/world/ApeBase.h"
+#include "ape/world/ApeDef.h"
+#include "ape/world/ApeObj.h"
 #include <algorithm>
 
 namespace sly {
@@ -67,6 +71,24 @@ void RigidProp::HandleMessage(const EntityMessage& msg)
         ScoringAward(scoring, points, 1);
         AddPlayerScore(0, points);
     }
+}
+
+// @func 0x00169D50 RigidProp::UpdateTransform
+void RigidProp::UpdateTransform(float dt)
+{
+    Entity::UpdateTransform(dt);
+    constexpr uint32_t kSpinObject = 0x45A6A51Au;
+    ape::world::ApeObj* spinner = ape::world::FindInstance(kSpinObject, 0);
+    if (!spinner || spinner->m_pivot == &ape::world::kWorldIdentity)
+        return;
+    ape::Matrix34 rotation;
+    ape::Matrix34FromQuat(rotation, spin, ape::world::kWorldZero);
+    // The animated pivot is the object's own matrix (only the shared default is constant).
+    auto& pivot = const_cast<ape::Matrix34&>(*spinner->m_pivot);
+    ape::world::Matrix34Mul(pivot, rotation, pivot);
+    spinner->MarkDirty();
+    for (ape::world::ApeObj* o = spinner; o; o = o->GetParent())
+        o->MarkDirty();
 }
 
 // @func 0x00169AB0 RigidProp::SetTransform
