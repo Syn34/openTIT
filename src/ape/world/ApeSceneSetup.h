@@ -48,6 +48,14 @@ void AddToDynamicObjects(ApeObj* obj, bool recurse);
 // AddToDynamicObjects for every emitter and geometry instance.
 void CollectDynamicObjects();
 
+// Per-frame world update, once per clock frame: procedural animations,
+// animated lights, then the queued world transforms. 'dt' is the frame
+// time in seconds.
+void UpdateWorld(float dt);
+// Frame time of the last world update (0x01194560; also copied to the
+// renderer's animation time step 0x010DD5A8).
+float GetWorldFrameTime();
+
 // Per-frame procedural animation update (phase as for agl::EndFrame).
 void UpdateProcAnims(int phase);
 // Procedural animation manager and light list of the level (0x01194EC4,
@@ -57,7 +65,14 @@ void DestroyProcAnimManager();
 void ReleaseLightList();
 // Light link refresh (0x00583518 for all lights, 0x005832FC per object).
 void UpdateLightLinks();
+// Procedural animation and light animation steps of UpdateWorld.
+void AdvanceProcAnims(float dt);
+void ApplyProcAnims(float dt);
+void UpdateLightAnimations(float dt);
 void UpdateObjectLightLink(ApeObj* obj);
+
+// Post-load set-up of the camera instances (end of a level load).
+void SetupCameraInstances();
 
 // Passes of the scene load not ported yet (see ApeSceneSetup.cpp).
 void SetupSceneRenderNodes(ApeScene* scene);

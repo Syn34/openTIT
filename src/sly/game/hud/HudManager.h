@@ -157,6 +157,21 @@ public:
     void SetFieldText(const char* text, uint32_t index);
     // 0x0036336C: scale of text field `index` (unit scale without one).
     void FieldScale(float out[3], uint32_t index) const;
+    // 0x0036BFAC: shows or hides the scene object of text field `index`
+    // (and its children).
+    void SetFieldVisible(bool visible, uint32_t index);
+    // 0x0036C014: text of text field `index` (null without a label).
+    const char* FieldText(uint32_t index) const;
+    // 0x0036C06C: world position of text field `index`'s scene object (zero
+    // without one).
+    ape::Vec3 FieldPosition(uint32_t index) const;
+    // 0x0036C0E0: while updating or idle, the hold time starts again.
+    void RestartHold();
+    // 0x0036C124: replaces the clip of the idle (3, `loop` sets bit 19) or
+    // outro (4) state.
+    void SetStateAnim(int state, uint32_t clip, bool loop);
+    // 0x0036A4C0: sets a state of the element's anim script.
+    void SetScriptState(uint32_t state);
     // Name the element is registered under (its own or its definition's).
     uint32_t RegisteredName() const { return name ? name : (def ? def->name : 0); }
 

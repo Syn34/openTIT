@@ -99,7 +99,7 @@ void ResetRenderState()
     g_state.fragmentProgramDirty = false;
     for (auto& texture : g_state.textures)
         texture = nullptr;
-    g_state.field_1178 = -1;
+    g_state.fogLayer = -1;
     g_state.samplerMinFilter[0] = g_state.samplerMinFilter[1] = 0;
 
     g_state.stencilFront = AglStencilState();
@@ -355,7 +355,7 @@ void InvalidateRenderState()
     st.field_10F8 = 0;
     for (auto& texture : st.textures)
         texture = nullptr;
-    st.field_1178 = -1;
+    st.fogLayer = -1;
     st.samplerMinFilter[0] = st.samplerMinFilter[1] = 0;
     st.materialDirty = false;
     st.stencilFront = AglStencilState();

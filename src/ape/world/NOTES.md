@@ -118,3 +118,15 @@
 * The scene virtuals (vtables 0x00B24728/0x00B24770) are the SPU render job set-up
   (0x005894F8 copies the view into the job block 0x0117E280, 0x00589BC8 walks the
   visibility table, 0x00599804/0x00599FA8 wait on SPU job counters): console specific.
+* Per-frame `UpdateWorld` (0x005988C8, once per frame of the clock 0x011DE094, whose frame
+  number field +0x00 was added to `FrameClock`): ProcAnim advance/apply (0x0059845C,
+  0x005981D4) and light animation (0x00597158) are TODO stubs.
+* Instance virtuals added: geometry SetBoundingRadius 0x005A14A0 (draw distance = last LOD
+  distance + definition radius) and slot 15 0x005A0BCC; light SetDef 0x005A2FDC (copies type,
+  colour, model, intensity squared, priority, attenuation; type 3 without definition) and
+  slot 15 0x005A30CC; camera SetDef 0x005A5C28 (fov +0x154, local transform from the
+  definition) and slot 15 0x005A5DC0. The skeleton dump 0x00584160 they call is a stub.
+  Still open: geometry/light/spline destructors (visibility table 0x01193004 upkeep),
+  emitter SetDef/slot 15 (particle system), spline slot 9.
+* Level scene helpers (ApeLevelScene.cpp): 0x004F04D4 loads the level's scene files with
+  their world offsets, 0x004F2FC0 finishes the scene (camera set-up 0x005A5130 is a stub).

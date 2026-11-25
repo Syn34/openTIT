@@ -6,6 +6,9 @@
 #include "agl/AglResources.h"
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/level/ApeLevelDef.h"
+#include "ape/world/ApeInstances.h"
+#include "ape/world/ApeScene.h"
+#include "ape/world/ApeSceneSetup.h"
 
 namespace ape {
 
@@ -33,6 +36,23 @@ void LoadLevelDirectorFiles(const ApeLevelDef& level)
 {
     for (const std::string& path : level.directorFiles)
         ApeAnimScriptLibrary::Get(0)->LoadFile(path.c_str());
+}
+
+// @func 0x004F04D4 LoadLevelSceneFiles
+void LoadLevelSceneFiles(world::ApeScene* scene, const ApeLevelDef& level)
+{
+    for (const LevelSceneFile& file : level.sceneFiles) {
+        // Root instances of the file are moved by its offset.
+        world::g_levelInstanceOffset = file.worldOffset;
+        world::LoadSceneFile(scene, file.name.c_str(), false);
+    }
+}
+
+// @func 0x004F2FC0 FinishLevelScene
+void FinishLevelScene(world::ApeScene* scene)
+{
+    world::FinishSceneLoad(scene);
+    world::SetupCameraInstances();
 }
 
 } // namespace ape

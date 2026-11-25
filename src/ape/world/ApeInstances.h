@@ -190,6 +190,10 @@ public:
     void Release() override;
     void SetDef(ApeDef* def) override;
     ApeObj* Clone(uint32_t flags) override;
+    // Also refreshes the draw distance (last LOD distance plus radius).
+    void SetBoundingRadius(float radius) override;
+    // NOTE: slot 15 is a debug walk; geometry also dumps its skeleton.
+    void VirtualSlot15(int count, int arg) override;
 };
 
 class ApeLightInstance : public ApeRenderObj {
@@ -198,10 +202,20 @@ public:
     ApeLightInstance() : ApeRenderObj(kInstanceType) {}
     void Release() override;
 
-    // NOTE: written by the light construction (0x005A2528, not ported);
-    // the scene set-up treats 0 as ambient, 1 as directional and 2 as the
-    // lights that span the light grid (local lights).
+    // Takes the light parameters of the definition (defaults without one).
+    void SetDef(ApeDef* def) override;
+    // NOTE: slot 15 is a debug walk; lights also dump their skeleton.
+    void VirtualSlot15(int count, int arg) override;
+
+    // Copies of the definition's light parameters (SetDef).
+    Vec3 m_color = {1.0f, 1.0f, 1.0f, 0.0f}; // 0x160
+    // The scene set-up treats 0 as ambient, 1 as directional and 2 as the
+    // lights that span the light grid (local lights); 3 without definition.
     int32_t m_lightType = 0;              // 0x170
+    uint32_t m_lightModel = 1;            // 0x174
+    float m_intensity = 1.0f;             // 0x178 (the definition's value squared)
+    uint8_t m_priority = 0x7F;            // 0x17C
+    float m_atten[3] = {0.0f, 1.0f, 0.0f}; // 0x180
 };
 
 class ApeEmitterInstance : public ApeRenderObj {
@@ -222,6 +236,12 @@ public:
     ApeObj* Clone(uint32_t flags) override;
     // @func 0x007A9EE0 ApeCameraInstance::OnWorldTransformUpdated
     void OnWorldTransformUpdated(bool /*moved*/) override {}
+    // Takes the definition's field of view and transform.
+    void SetDef(ApeDef* def) override;
+    // NOTE: slot 15 is a debug walk; cameras also dump their skeleton.
+    void VirtualSlot15(int count, int arg) override;
+
+    float m_fov = 0.0f;                   // 0x154 (from the definition)
 };
 
 class ApePointInstance : public ApeObj {

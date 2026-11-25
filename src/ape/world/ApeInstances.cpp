@@ -523,6 +523,94 @@ ApeObj* ApePointInstance::Clone(uint32_t flags)
     return copy;
 }
 
+// @func 0x005A14A0 ApeGeomInstance::SetBoundingRadius
+void ApeGeomInstance::SetBoundingRadius(float radius)
+{
+    ApeObj::SetBoundingRadius(radius);
+    const ApeGeomDef* def = static_cast<const ApeGeomDef*>(m_def);
+    const float drawDist = def->m_lods[def->m_lodCount - 1].switchDist + def->GetSphere().w;
+    m_drawDistSq = drawDist * drawDist;
+    OnBoundsChanged();
+}
+
+namespace {
+// TODO(0x00584160 DumpSkeleton) debug dump of a posed skeleton (its output
+// was compiled out).
+void DumpSkeleton(ApeSkeleton* /*skeleton*/, int /*depth*/)
+{
+}
+} // namespace
+
+// @func 0x005A0BCC ApeGeomInstance::VirtualSlot15
+void ApeGeomInstance::VirtualSlot15(int count, int arg)
+{
+    // NOTE: at depth 0 the console only fetches the object and definition
+    // names (stripped debug output).
+    if (count < 1)
+        return;
+    ApeObj::VirtualSlot15(count - 1, arg | 1);
+    if (count - 1 > 0 && GetSkeleton())
+        DumpSkeleton(GetSkeleton(), count - 2);
+}
+
+// @func 0x005A2FDC ApeLightInstance::SetDef
+void ApeLightInstance::SetDef(ApeDef* def)
+{
+    ApeObj::SetDef(def);
+    if (!def) {
+        m_lightType = 3;
+        m_color = kWorldUnitScale;
+        m_lightModel = 1;
+        m_intensity = 1.0f;
+        m_priority = 0x7F;
+        m_atten[0] = 0.0f;
+        m_atten[1] = 1.0f;
+        return;
+    }
+    const ApeLightDef* light = static_cast<const ApeLightDef*>(def);
+    m_lightType = int32_t(light->m_lightType);
+    m_color = light->m_color;
+    m_lightModel = light->m_lightModel;
+    m_intensity = light->m_intensity * light->m_intensity;
+    m_priority = light->m_priority;
+    for (int i = 0; i < 3; ++i)
+        m_atten[i] = light->m_atten[i];
+}
+
+// @func 0x005A30CC ApeLightInstance::VirtualSlot15
+void ApeLightInstance::VirtualSlot15(int count, int arg)
+{
+    // NOTE: at depth 0 the console only fetches the object name (stripped
+    // debug output).
+    if (count < 1)
+        return;
+    ApeObj::VirtualSlot15(count - 1, arg | 1);
+    if (count - 1 > 0 && GetSkeleton())
+        DumpSkeleton(GetSkeleton(), count - 2);
+}
+
+// @func 0x005A5C28 ApeCameraInstance::SetDef
+void ApeCameraInstance::SetDef(ApeDef* def)
+{
+    if (def == m_def)
+        return;
+    ApeObj::SetDef(def);
+    if (!m_def)
+        return;
+    const ApeCameraDef* camera = static_cast<const ApeCameraDef*>(m_def);
+    m_fov = camera->m_fov;
+    m_local = camera->m_transform;
+    MarkDirty();
+}
+
+// @func 0x005A5DC0 ApeCameraInstance::VirtualSlot15
+void ApeCameraInstance::VirtualSlot15(int count, int arg)
+{
+    ApeObj::VirtualSlot15(count, arg | 1);
+    if (count > 0 && GetSkeleton())
+        DumpSkeleton(GetSkeleton(), count - 1);
+}
+
 // @func 0x005A6808 ApePointInstance::Release
 void ApePointInstance::Release()
 {
