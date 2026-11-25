@@ -215,6 +215,8 @@ struct CollectibleRecord {
 };
 ape::ApeTSortedMap<CollectibleRecord*>& MaskTable();
 ape::ApeTSortedMap<CollectibleRecord*>& TreasureTable();
+// Safe records (0x010681B4), keyed by the safe spawner's name.
+ape::ApeTSortedMap<CollectibleRecord*>& SafeTable();
 // Default clue bottle count of an episode (0x00F64C24, 30).
 extern int g_defaultBottleCount;
 // 0x0049E038: sets the unlock flags tied to a completed job (outside this
@@ -256,6 +258,13 @@ public:
     // (one word per episode slot); warns about spawners missing from the
     // mask table (0x002DF010).
     void ActivateMaskSpawner(class Spawner* spawner, const uint16_t* maskBits) const;
+    // Activates a treasure spawner: outside the hideout while its treasure
+    // is still missing; in the hideout (`inHideout`) once it is collected,
+    // or always when no episode is current (0x002DFAA0).
+    void ActivateTreasureSpawner(class Spawner* spawner, const uint16_t* treasureBits, bool inHideout) const;
+    // Fires the level's treasure spawners (spawn group 0xFB673D64) and the
+    // safe spawners (group 0x5E69B571) of opened safes (0x002DFC2C).
+    void SpawnCollectibles() const;
     // Lets every goal of the player prepare its scripts and reapply its
     // hints while a job runs (0x002DFEFC).
     void PrepareGoalScripts() const;

@@ -16,6 +16,7 @@ constexpr uint32_t kNoIndex = 0xFFFFFFFFu;
 
 ape::ApeTSortedMap<CollectibleRecord*> g_masks(0x10);      // 0x0106819C
 ape::ApeTSortedMap<CollectibleRecord*> g_treasures(0x10);  // 0x01068184
+ape::ApeTSortedMap<CollectibleRecord*> g_safes(0x10);      // 0x010681B4
 
 int CountBits(uint32_t bits)
 {
@@ -61,6 +62,7 @@ int g_defaultBottleCount = 30;
 
 ape::ApeTSortedMap<CollectibleRecord*>& MaskTable() { return g_masks; }
 ape::ApeTSortedMap<CollectibleRecord*>& TreasureTable() { return g_treasures; }
+ape::ApeTSortedMap<CollectibleRecord*>& SafeTable() { return g_safes; }
 
 // TODO(0x0049E038): sets the profile's unlock flags of the job's rewards.
 void UnlockJobRewards(uint32_t) {}
