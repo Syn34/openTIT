@@ -494,6 +494,9 @@ public:
     void UpdateChildTransforms();
     // Slot 58 (+0xE8): forgets a watcher added by AddWatcher.
     virtual void RemoveWatcher(void* watcher);
+    // Slot 59 (+0xEC): animation event `name` from `source`'s controller.
+    // "hkAttach<part>" moves the entity to another attach part of its parent.
+    virtual void OnAnimEvent(const char* name, uint32_t argument, Entity* source);
     bool HasTypeBit(uint32_t bit) const { return (typeBits[bit >> 5] & (1u << (bit & 31))) != 0; }
     void SetName(const char* name);
     // Switches the entity's anim script (slot 68) to a state.
@@ -597,6 +600,14 @@ void UnregisterEntity(EntityList list, Entity* entity);
 void AddToInstanceRenderList(EntityComponent* component);
 uint32_t EntityCount(EntityList list);
 Entity* EntityAt(EntityList list, uint32_t index);
+
+// Listener the entities install on their animation controller: forwards
+// an event to the entity (`user`) (0x000DD4A0).
+void EntityAnimEventListener(const char* name, uint32_t argument, void* user);
+
+// Game world callback that runs the entity's slot 12 (UpdateTransform)
+// later in the frame (lists 0 and 2) (0x000DD778).
+void QueuedUpdateTransform(void* owner, Entity* entity);
 
 // One entity's share of the frame: the update step (flags, slot 4, child
 // transforms, motion) and the post-update step (slot 5, world object sync,

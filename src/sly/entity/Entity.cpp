@@ -21,6 +21,7 @@
 
 #include <cfloat>
 #include <cmath>
+#include <cstring>
 #include <vector>
 
 namespace sly {
@@ -762,6 +763,34 @@ bool Entity::IsOffScreen(float margin) const
     float screen[4];
     target->WorldToScreen(screen, Position());
     return screen[0] < -margin || screen[0] > margin + 1.0f || screen[1] < -margin || screen[1] > margin + 1.0f;
+}
+
+// @func 0x000DD368 Entity::OnAnimEvent
+void Entity::OnAnimEvent(const char* name, uint32_t argument, Entity* source)
+{
+    (void)argument;
+    constexpr uint32_t kIgnored[] = { 0x5294E198u, 0x1B12498Fu, 0xD49B5F41u };   // NOTE: names unknown
+    if (!source)
+        return;
+    const uint32_t hash = ape::HashNameNoCase(name);
+    for (uint32_t ignored : kIgnored) {
+        if (hash == ignored)
+            return;
+    }
+    if (std::strncmp(name, "hkAttach", 8) != 0)
+        return;
+    const uint32_t part = ape::HashNameNoCase(name + 8);
+    if (Entity* parent = source->attachParent) {
+        if (EntityChildLink* link = parent->FindChildLink(this))
+            link->partName = part;
+    }
+}
+
+// @func 0x000DD4A0 EntityAnimEventListener
+void EntityAnimEventListener(const char* name, uint32_t argument, void* user)
+{
+    if (Entity* entity = static_cast<Entity*>(user))
+        entity->OnAnimEvent(name, argument, entity);
 }
 
 // @func 0x000DA25C Entity::Detached

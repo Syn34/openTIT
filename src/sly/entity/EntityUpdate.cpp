@@ -40,18 +40,16 @@ constexpr uint64_t kClassFrame_80 = 0x80;
 constexpr uint32_t kEnt_Flag20 = 0x20;
 constexpr uint32_t kEnt_Flag40 = 0x40;
 
-// World callback list 2: entities with children place them after the
-// update (0x000DD778).
+const ape::Vec4 kNoRotation = { 0.0f, 0.0f, 0.0f, 1.0f };   // 0x01164C90
+const ape::Vec3 kNoOffset = { 0.0f, 0.0f, 0.0f, 0.0f };     // 0x01164B40
+} // namespace
+
 // @func 0x000DD778 QueuedUpdateTransform
 void QueuedUpdateTransform(void* owner, Entity* entity)
 {
     (void)owner;
     entity->UpdateTransform();
 }
-
-const ape::Vec4 kNoRotation = { 0.0f, 0.0f, 0.0f, 1.0f };   // 0x01164C90
-const ape::Vec3 kNoOffset = { 0.0f, 0.0f, 0.0f, 0.0f };     // 0x01164B40
-} // namespace
 
 // @func 0x000CEA48 Entity::AttachTransform
 ape::Matrix34 Entity::AttachTransform(int bone, const ape::world::ApeObj* attachObject, const ape::Vec4& rotation,
