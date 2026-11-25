@@ -3,6 +3,7 @@
 
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
+#include "ape/math/ApeMatrixOps.h"
 #include "ape/xml/ApeXml.h"
 
 namespace ape {
@@ -54,6 +55,9 @@ constexpr uint32_t kAttrAttachFlag4 = 0x96423570u;    // NOTE: name unknown
 constexpr uint32_t kAttrAttachFlag3D = 0x7631EAF5u;   // NOTE: name unknown
 constexpr uint32_t kAttrPos[3] = {AnimHash("posX"), AnimHash("posY"), AnimHash("posZ")};
 constexpr uint32_t kAttrRot[3] = {AnimHash("rotX"), AnimHash("rotY"), AnimHash("rotZ")};
+constexpr uint32_t kAttrLocal = AnimHash("local");
+constexpr uint32_t kAttrVarPos[3] = {AnimHash("varposX"), AnimHash("varposY"), AnimHash("varposZ")};
+constexpr uint32_t kAttrVarRot[3] = {AnimHash("varrotX"), AnimHash("varrotY"), AnimHash("varrotZ")};
 constexpr uint32_t kAttrWorld[3] = {AnimHash("worldX"), AnimHash("worldY"), AnimHash("worldZ")};
 constexpr uint32_t kAttrVariable = AnimHash("variable");
 constexpr uint32_t kAttrFrom = AnimHash("From");
@@ -694,6 +698,58 @@ ApeAnimScriptAttachObjectCommand::ApeAnimScriptAttachObjectCommand(xml::XmlEleme
 ApeAnimScriptCommand* ApeAnimScriptAttachObjectCommand::Create(xml::XmlElement* element) const
 {
     return new ApeAnimScriptAttachObjectCommand(element);
+}
+
+// ---------------------------------------------------------------------------
+// MoveObject
+
+// @func 0x004C4708 ApeAnimScriptMoveObjectCommand::ApeAnimScriptMoveObjectCommand(xml)
+ApeAnimScriptMoveObjectCommand::ApeAnimScriptMoveObjectCommand(xml::XmlElement* element)
+{
+    if (element->GetHash(kAttrObject, &m_object, 0) != xml::kQuery_Ok)
+        element->GetInt(kAttrObjectHash, reinterpret_cast<int32_t*>(&m_object), 0);
+    m_hasMatrixVar = element->GetHash(kAttrMatrix, &m_matrixVar, 0) == xml::kQuery_Ok;
+    m_hasTarget = element->GetHash(AnimHash("target"), &m_target, 0) == xml::kQuery_Ok;
+    element->GetBool(kAttrLocal, &m_local, m_local);
+    element->GetBool(kAttrAttachFlag6, &m_flagE48AEDBD, m_flagE48AEDBD);
+
+    for (int i = 0; i < 3; ++i)
+        if (element->GetFloat(kAttrPos[i], &m_position[i], 0.0f) == xml::kQuery_Ok)
+            m_hasPosition = true;
+    for (int i = 0; i < 3; ++i)
+        if (element->GetFloat(kAttrRot[i], &m_rotation[i], 0.0f) == xml::kQuery_Ok)
+            m_hasRotation = true;
+
+    // Offset rotation: x, then y, then z, as quaternions of the half angles.
+    // NOTE: angles taken as radians and the multiplication order assumed;
+    // the console's vector code feeding FastSin/FastCos was not decoded.
+    const float hx = m_rotation[0] * 0.5f;
+    const float hy = m_rotation[1] * 0.5f;
+    const float hz = m_rotation[2] * 0.5f;
+    const Quat axes[3] = {
+        {FastSin(hx), 0.0f, 0.0f, FastCos(hx)},
+        {0.0f, FastSin(hy), 0.0f, FastCos(hy)},
+        {0.0f, 0.0f, FastSin(hz), FastCos(hz)},
+    };
+    Quat xy;
+    Quat xyz;
+    QuatMul(xy, axes[0], axes[1]);
+    QuatMul(xyz, xy, axes[2]);
+    const Vec3 zero{0.0f, 0.0f, 0.0f, 0.0f};
+    Matrix34FromQuat(m_offset, xyz, zero);
+
+    for (int i = 0; i < 3; ++i)
+        if (element->GetHash(kAttrVarPos[i], &m_posVars[i], 0) == xml::kQuery_Ok)
+            m_hasPosition = true;
+    for (int i = 0; i < 3; ++i)
+        if (element->GetHash(kAttrVarRot[i], &m_rotVars[i], 0) == xml::kQuery_Ok)
+            m_hasPosition = true;
+}
+
+// @func 0x004C4D9C ApeAnimScriptMoveObjectCommand::Create
+ApeAnimScriptCommand* ApeAnimScriptMoveObjectCommand::Create(xml::XmlElement* element) const
+{
+    return new ApeAnimScriptMoveObjectCommand(element);
 }
 
 } // namespace ape

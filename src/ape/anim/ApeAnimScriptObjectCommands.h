@@ -300,17 +300,35 @@ private:
     bool m_hasMatrixVar = false;  // bit 6 "matrix" given
 };
 
-// "MoveObject": moves an object along a path or towards a target.
-// TODO(0x004C4708 ApeAnimScriptMoveObjectCommand::ApeAnimScriptMoveObjectCommand(xml))
-// TODO(0x004C4D9C ApeAnimScriptMoveObjectCommand::Create)
+// "MoveObject": places an object relative to a target or a matrix
+// variable, with a fixed offset or one read from variables.
 // TODO(0x004C586C ApeAnimScriptMoveObjectCommand::Execute)
 class ApeAnimScriptMoveObjectCommand : public ApeAnimScriptCommand {
 public:
+    ApeAnimScriptMoveObjectCommand() = default;
+    explicit ApeAnimScriptMoveObjectCommand(xml::XmlElement* element);
     // @func 0x004C4D48 ApeAnimScriptMoveObjectCommand::~ApeAnimScriptMoveObjectCommand
     // @func 0x004C4D58 ApeAnimScriptMoveObjectCommand::~ApeAnimScriptMoveObjectCommand (deleting)
     ~ApeAnimScriptMoveObjectCommand() override = default;
     // @func 0x004C5BA0 ApeAnimScriptMoveObjectCommand::CreateDebugElement
     xml::XmlElement* CreateDebugElement() const override { return nullptr; }
+    ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
+
+private:
+    uint32_t m_matrixVar = 0;     // +0x0C "matrix"
+    uint32_t m_object = 0;        // +0x10 "object" / "ObjectHash"
+    uint32_t m_target = 0;        // +0x14 "target"
+    Matrix34 m_offset{};          // +0x20 rotation from rotX/Y/Z, no translation
+    bool m_local = false;         // +0x60 "local"
+    bool m_flagE48AEDBD = false;  // +0x61 NOTE: name unknown (also used by AttachObject)
+    bool m_hasPosition = false;   // +0x62 posX/Y/Z or a varpos/varrot variable given
+    bool m_hasRotation = false;   // +0x63 rotX/Y/Z given
+    bool m_hasTarget = false;     // +0x64
+    uint32_t m_posVars[3] = {};   // +0x68 "varposX/Y/Z": float variables
+    uint32_t m_rotVars[3] = {};   // +0x74 "varrotX/Y/Z"
+    bool m_hasMatrixVar = false;  // +0x80
+    float m_rotation[3] = {};     // +0x90 NOTE: placement assumed (vector stores not decoded)
+    float m_position[3] = {};     // +0xA0 NOTE: placement assumed
 };
 
 // "SetPostProc": changes the post-processing effects.
