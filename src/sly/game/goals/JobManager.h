@@ -40,27 +40,70 @@ enum JobState : uint8_t {
 };
 struct PlayerProgress {
     static constexpr int kEpisodeSlots = 12;
+    static constexpr int kCostumeSlots = 6;
+    static constexpr int kArcadeTables = 64;
+    static constexpr int kUnlockEntries = 64;
+
+    // Fresh record of a new profile: everything cleared, the costume slots
+    // named, the unlock entries keyed and the arcade tables filled with the
+    // default scores (0x000ADE04).
+    void Reset();
+    // Adds a pending count to the counter at +0x144 and clears the pending
+    // value (0x000AE3FC).
+    void AddPendingCount(uint8_t& pending);
+    // Notification flags 15 and 16 as a pair of booleans (0x000AE418 reads
+    // them, 0x000AE454 writes them; a byte of 1 sets a flag).
+    void GetNotifyPair(uint8_t out[2]) const;
+    void SetNotifyPair(const uint8_t in[2]);
+
+    uint8_t field_000 = 0;           // +0x000 NOTE: from 0x010B1804 at reset
+    uint8_t field_001 = 0;           // +0x001 NOTE: from 0x00F65BF4 (1) at reset
+    uint16_t field_002 = 0;          // +0x002 NOTE: from 0x00F65BF5 (1) at reset
+    uint32_t field_020 = 0;          // +0x020
     uint32_t bottleBits[kEpisodeSlots] = {};  // +0x034 one bit per clue bottle (Job::bottleSlot)
     uint16_t maskBits[kEpisodeSlots] = {};    // +0x064 one bit per mask (Job::maskSlot)
     uint32_t field_70 = 0;           // +0x070 NOTE: read by 0x00465D5C, meaning unknown
     uint8_t entityBits[kEpisodeSlots] = {};   // +0x094 per episode: entities of the index table found
     uint16_t jobBits[kEpisodeSlots] = {};     // +0x07C one bit per treasure (Job::bitGroup)
     uint32_t field_A0 = 0;           // +0x0A0 value of the running job (job +0x32C)
+    uint32_t field_134 = 0;          // +0x134
+    uint64_t field_138 = 0;          // +0x138
+    uint16_t field_140 = 0;          // +0x140
+    uint16_t field_142 = 0;          // +0x142
+    uint8_t field_144 = 0;           // +0x144 NOTE: a counter fed by AddPendingCount
+    uint8_t field_145 = 0;           // +0x145
+    uint8_t field_146 = 0;           // +0x146
     uint8_t penguinsShot = 0;        // +0x147 penguins Carmelita shot (stops at 0xFF)
     uint8_t field_149 = 0;           // +0x149 NOTE: a yes/no option
     uint32_t field_14C = 0;          // +0x14C
     uint8_t inJob = 0;               // +0x150 1 while a job runs
     uint32_t currentJobValue = 0;    // +0x154 job record +0x2D4 of the running job
+    uint8_t field_158 = 0;           // +0x158
     uint32_t notifyBits = 0;         // +0x15C named notification flags (sly/levels PlayerNotifyFlags)
-    EpisodeProgress episodes[kEpisodeSlots];  // +0x1A0
-    uint8_t jobStates[0x100] = {};   // +0x1D0 JobState by Episode::index. NOTE: count assumed
-    // Arcade high score tables (0x2C bytes each from +0x288); only the first
-    // byte (a high enough score was reached) is read here.
-    struct ArcadeScores {
-        uint8_t beaten = 0;
-        uint8_t rest[0x2B] = {};
+    // Costume choice per slot ("Head", "Body", "hands", ...): slot name and
+    // the chosen option (read by the CustomModel component).
+    struct CostumeChoice {
+        uint32_t slot = 0;
+        uint32_t option = 0;
     };
-    ArcadeScores arcade[64];         // +0x288
+    CostumeChoice costume[kCostumeSlots];   // +0x160
+    EpisodeProgress episodes[kEpisodeSlots];  // +0x1A0
+    uint8_t jobStates[0x90] = {};    // +0x1D0 JobState by Episode::index (144 jobs)
+    // Arcade high score tables (0x2C bytes each): five scores with the
+    // initials of who made them, and whether a top score was reached.
+    struct ArcadeScores {
+        int32_t scores[5] = {};
+        char initials[5][4] = {};
+        uint8_t beaten = 0;          // +0x28
+        uint8_t pad[3] = {};
+    };
+    ArcadeScores arcade[kArcadeTables];   // +0x260
+    // Unlockable entries keyed by name (table 0x00F64494).
+    struct UnlockEntry {
+        uint32_t name = 0;
+        uint32_t state = 0;
+    };
+    UnlockEntry unlocks[kUnlockEntries];  // +0xD60
     uint32_t unlockBits[2] = {};     // +0xF64 40 unlock flags
     uint32_t abilityBits[1] = {};    // +0xFB0 two bits per ability (see PlayerAbilities.h)
 };
@@ -470,6 +513,13 @@ public:
     // Selects the goal whose name hash is `nameHash` (null for 0)
     // (0x002E56F4).
     void SelectGoalByName(uint32_t nameHash, bool keepPlayers, bool requestLevel);
+    // Starts `job` from the hub: the profile's pending counters are taken
+    // over, the running job ends, the start is recorded (unless
+    // `skipBookkeeping`) and either the episode's hub / hideout level is
+    // asked for or the job's goals are built right away (tracking
+    // `goalName`); the "INITJOB" script runs afterwards (0x002E0930).
+    bool StartJobFromHub(Episode* job, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
+                         bool levelRequestFlag, bool skipBookkeeping, bool track);
     // Ends the running job instance, first updating its episode's flag 0x20
     // (0x002E5060).
     void FinishJobInstance();
@@ -563,6 +613,11 @@ void GameWorldRespawnPlayer();
 // Profile byte of player `player`'s block (game world +0x1070 + player *
 // 0x20C80).
 uint8_t PlayerBlockProfile(int player);
+// Per-profile values the game world keeps for the profile record: a
+// pending count (+0x1028 + profile) and a pair of flags (+0x1029 +
+// profile * 2).
+uint8_t& ProfilePendingCount(uint8_t profile);
+uint8_t* ProfileNotifyPair(uint8_t profile);
 // Running level (game world +0x128114).
 uint32_t RunningLevel();
 // Reloads the running level (0x004896F8 with 0).

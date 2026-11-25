@@ -4,6 +4,7 @@
 #include "sly/entity/Awards.h"
 #include "sly/entity/Entity.h"
 #include "sly/entity/EntityHooks.h"
+#include "sly/game/GameScripts.h"
 #include "sly/game/SlyGame.h"
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
@@ -53,6 +54,16 @@ void GameWorldSwitchPlayerCharacter(uint32_t) {}
 void GameWorldRespawnPlayer() {}
 uint32_t RunningLevel() { return 0; }
 uint8_t PlayerBlockProfile(int) { return 0; }
+uint8_t& ProfilePendingCount(uint8_t profile)
+{
+    static uint8_t counts[8] = {};
+    return counts[profile & 7];
+}
+uint8_t* ProfileNotifyPair(uint8_t profile)
+{
+    static uint8_t pairs[8][2] = {};
+    return pairs[profile & 7];
+}
 void GameWorldReloadLevel() {}
 void GameWorldSetState(int, int) {}
 void GameWorldSetStateData(uint32_t, uint32_t) {}
@@ -809,6 +820,45 @@ void JobManager::SelectGoalByName(uint32_t nameHash, bool keepPlayers, bool requ
         }
     }
     SelectGoal(goal, keepPlayers, requestLevel);
+}
+
+// @func 0x002E0930 JobManager::StartJobFromHub
+bool JobManager::StartJobFromHub(Episode* job, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
+                                 bool levelRequestFlag, bool skipBookkeeping, bool track)
+{
+    constexpr uint32_t kLevel_Dummy = 0x03E60C88u;     // "Dummy"
+    constexpr uint32_t kScript_InitJob = 0x9EECE88Du;  // "INITJOB"
+    constexpr float kFirstUpdateStep = 0.0177f;
+    const uint8_t profile = PlayerBlockProfile(0);
+    PlayerProgress& record = ProfileProgress(profile);
+    record.AddPendingCount(ProfilePendingCount(profile));
+    record.GetNotifyPair(ProfileNotifyPair(profile));
+    if (!job)
+        return false;
+    ResetRunningJob();
+    currentJob = nullptr;
+    if (instance)
+        return false;
+
+    if (!skipBookkeeping)
+        ApplyJobStart(job);
+    Job& episode = jobs[job->episode];
+    uint32_t level = 0;
+    if (toHub && episode.levelHub != 0 && episode.levelHub != kLevel_Dummy)
+        level = episode.levelHub;
+    else if (toHideout && episode.nameHash != 0)
+        level = episode.nameHash;
+    currentJob = &episode;
+    if (level != 0 && RunningLevel() != level) {
+        GameWorldRequestLevel(level);
+    } else if (level == 0) {
+        instance = job;
+        field_30 = goalName;
+        BuildRunningJobGoals(forceReload, levelRequestFlag, track);
+    }
+    if (ape::ApeAnimScriptInstance* script = StartObjectScript(kScript_InitJob, nullptr, 0, true))
+        script->Update(kFirstUpdateStep);
+    return true;
 }
 
 } // namespace game

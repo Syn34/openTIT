@@ -823,5 +823,99 @@ void JobManager::CollectTreasure(entity::Entity* treasure, entity::Entity* colle
     spawner->Deactivate(false);
 }
 
+// ---------------------------------------------------------------------------
+// Profile record helpers (0x000ADE04-0x000AE4A4)
+
+namespace {
+// Globals copied into a fresh record. NOTE: 0x010B1804 is set at run time
+// (meaning unknown); 0x00F65BF4/0x00F65BF5 hold 1.
+uint8_t g_profileField000 = 0;
+constexpr uint8_t kProfileField001 = 1;
+constexpr uint8_t kProfileField002 = 1;
+
+constexpr uint32_t kCostumeSlotNames[PlayerProgress::kCostumeSlots] = {
+    0x0021C5E0u,   // "Head"
+    0x001F31A2u,   // "Body"
+    0x041555C4u,   // "hands"
+    0x936FF31Du,   // NOTE: name unknown
+    0x03C72BA1u,   // "Boots"
+    0x03D69F9Cu,   // "Crook"
+};
+
+// Unlockable names (table 0x00F64494, 41 entries).
+constexpr uint32_t kUnlockNames[] = {
+    0xA70C9716u, 0xE3DEF6B5u, 0x467B8C48u, 0x2E01E5EBu, 0x95841725u, 0x2291A3C2u, 0xC201A536u,
+    0x59CC1B15u, 0x74C12935u, 0xBF4B1637u, 0x350D543Bu, 0x63910843u, 0x716016C8u, 0x85EA7462u,
+    0xDE07516Fu, 0x2986D493u, 0xF285665Bu, 0xC9A34D20u, 0xC25ED889u, 0xF4596EECu, 0x4A2AD4EAu,
+    0xFCA16EEFu, 0xAEAE3F00u, 0xBC676503u, 0xACAA7E76u, 0x1D17219Bu, 0xFE492072u, 0xD44B7705u,
+    0x29E1A78Cu, 0xA3907718u, 0xE3541252u, 0xF69E553Bu, 0x3FEEDCAFu, 0xFAC4F502u, 0xC7B84D81u,
+    0x4192876Du, 0x1AD96E63u, 0x40556837u, 0x46C660F7u, 0xA0355EFBu, 0x0C44F02Du,
+};
+
+// Default arcade tables: five scores of the gang, with higher defaults for
+// tables 6 to 11.
+void ResetArcadeTable(PlayerProgress::ArcadeScores& table, int index)
+{
+    static const char* const kInitials[5] = {"BTLY", "SLYC", "MURR", "CARM", "DIMI"};
+    for (int i = 0; i < 5; ++i) {
+        table.scores[i] = 5000 - 1000 * i;
+        std::memcpy(table.initials[i], kInitials[i], 4);
+    }
+    static const int32_t kTable6[5] = {25000, 20000, 18000, 15000, 10000};
+    static const int32_t kTable7[5] = {20000, 18000, 15000, 12000, 10000};
+    static const int32_t kTable8[5] = {4500, 4000, 3500, 3000, 2000};
+    static const int32_t kTable9[5] = {4000, 3700, 3500, 3000, 2000};
+    static const int32_t kTable10[5] = {1000, 800, 700, 600, 500};
+    const int32_t* scores = nullptr;
+    switch (index) {
+    case 6: scores = kTable6; break;
+    case 7: scores = kTable7; break;
+    case 8: case 11: scores = kTable8; break;
+    case 9: scores = kTable9; break;
+    case 10: scores = kTable10; break;
+    default: break;
+    }
+    if (scores)
+        std::memcpy(table.scores, scores, sizeof table.scores);
+    table.beaten = 0;
+}
+} // namespace
+
+// @func 0x000ADE04 PlayerProgress::Reset
+void PlayerProgress::Reset()
+{
+    *this = PlayerProgress();
+    field_000 = g_profileField000;
+    field_001 = kProfileField001;
+    field_002 = kProfileField002;
+    for (int i = 0; i < kCostumeSlots; ++i)
+        costume[i].slot = kCostumeSlotNames[i];
+    for (size_t i = 0; i < sizeof kUnlockNames / sizeof kUnlockNames[0]; ++i)
+        unlocks[i].name = kUnlockNames[i];
+    for (int i = 0; i < kArcadeTables; ++i)
+        ResetArcadeTable(arcade[i], i);
+}
+
+// @func 0x000AE3FC PlayerProgress::AddPendingCount
+void PlayerProgress::AddPendingCount(uint8_t& pending)
+{
+    field_144 = static_cast<uint8_t>(field_144 + pending);
+    pending = 0;
+}
+
+// @func 0x000AE418 PlayerProgress::GetNotifyPair
+void PlayerProgress::GetNotifyPair(uint8_t out[2]) const
+{
+    out[0] = (notifyBits & 0x8000u) != 0;
+    out[1] = (notifyBits & 0x10000u) != 0;
+}
+
+// @func 0x000AE454 PlayerProgress::SetNotifyPair
+void PlayerProgress::SetNotifyPair(const uint8_t in[2])
+{
+    notifyBits = in[0] == 1 ? (notifyBits | 0x8000u) : (notifyBits & ~0x8000u);
+    notifyBits = in[1] == 1 ? (notifyBits | 0x10000u) : (notifyBits & ~0x10000u);
+}
+
 } // namespace game
 } // namespace sly
