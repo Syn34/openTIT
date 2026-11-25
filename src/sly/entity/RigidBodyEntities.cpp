@@ -963,7 +963,7 @@ bool CompoundEntity::Damage(float amount, Entity* source, uint32_t type)
     if (amount <= 0.0f)
         return true;
     const uint32_t oldFlags = buffFlags;
-    field_2EC = 0;
+    killCount = 0;
     buffFlags |= 0x4000000;
     if (source && (source->typeBits[0] & 0x400))
         return true;
@@ -985,6 +985,37 @@ bool CompoundEntity::Damage(float amount, Entity* source, uint32_t type)
     if (lead && lead != this)
         lead->health = ClampHealth(health, lead->maxHealth);
     return health > 0.0f;
+}
+
+// @func 0x00175758 CompoundEntity::HandleMessage
+void CompoundEntity::HandleMessage(const EntityMessage& msg)
+{
+    constexpr uint32_t kMsg_Killed = 0xCCF83851u;
+    constexpr uint32_t kMsg_Removed = 0xB94AE51Bu;   // NOTE: name unknown; does not count as a kill
+    constexpr uint32_t kComp_Scoring = 0x28;
+    if (msg.id != kMsg_Killed && msg.id != kMsg_Removed)
+        return;
+    Entity* sender = MessageSenderEntity(msg);
+    if (!sender)
+        return;
+    if (void* body = sender->GetRenderObject()) {
+        if (!IsSinglePlayerMode()) {
+            if (auto* other = static_cast<CompoundEntity*>(PlayerEntity(1 - playerIndex)))
+                other->ForgetHavokObject(body);
+        }
+        ForgetHavokObject(body);
+    }
+    if (!(sender->typeBits[0] & 0x2) || AttackTargetOf(sender) != this)
+        return;
+    const int multiplier = partLevel ? int(partLevel) : 1;
+    if (msg.id != kMsg_Removed)
+        ++killCount;
+    if (EntityComponent* scoring = sender->GetComponent(kComp_Scoring)) {
+        const int points = int(ScoringValue(scoring));
+        ScoringAward(scoring, points, multiplier);
+        if (auto* lead = static_cast<CompoundEntity*>(PlayerEntity(0)))
+            lead->score += multiplier * points;
+    }
 }
 
 // @func 0x0016F04C CompoundEntity::SetFlag80
@@ -1086,9 +1117,9 @@ void CompoundEntity::ForgetHavokObject(void* object)
 {
     if (!object)
         return;
-    for (int32_t i = 0; i < field_1FC.size; ++i) {
-        if (field_1FC.data[i] == object) {
-            field_1FC.data[i] = nullptr;
+    for (int32_t i = 0; i < touchingBodies.size; ++i) {
+        if (touchingBodies.data[i] == object) {
+            touchingBodies.data[i] = nullptr;
             return;
         }
     }

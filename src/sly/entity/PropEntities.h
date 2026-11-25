@@ -595,6 +595,9 @@ public:
     // Slot 88: the Bentleys of both players share the first player's health;
     // nothing hurts while a timed buff runs or from type-10 sources.
     bool Damage(float amount, Entity* source, uint32_t type) override;
+    // Slot 43: a dying entity is forgotten by both Bentleys; its score
+    // (times the part level) goes to player 0 when this Bentley killed it.
+    void HandleMessage(const EntityMessage& msg) override;
     float ProjectileDamageScale() const override;     // slot 89
     // Heading (degrees, 0..360) from the entity to a hit position.
     float HeadingTo(const ape::Vec3& point) const;
@@ -610,7 +613,7 @@ public:
     void Interface17CSlot5() override;
     void Interface17CSlot6() override;
 
-    HkArray<void*> field_1FC;      // 0x1FC
+    HkArray<void*> touchingBodies; // 0x1FC NOTE: bodies of entities it is in contact with (guessed)
     HkArray<void*> field_208;      // 0x208
     Part* parts[11] = {};          // 0x214
     uint32_t buffFlags = 0;        // 0x290 bit 25: a timed buff is running
@@ -627,7 +630,8 @@ public:
     float pulseFrequency = 0.0f;   // 0x2CC
     uint32_t skinLevel = 0;        // 0x2D0
     uint32_t skinCount = 0;        // 0x2D8
-    uint32_t field_2EC = 0;        // 0x2EC cleared by damage
+    uint32_t killCount = 0;        // 0x2EC kills since the last damage
+    int32_t score = 0;             // 0x2F0 NOTE: read on the player 0 entity
     int32_t playerIndex = 0;       // 0x304 player this Bentley belongs to
     // Slot 79: the second player's Bentley shares the first player's health.
     void AddHealth(float amount) override;
