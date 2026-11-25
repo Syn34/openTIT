@@ -12,12 +12,14 @@
 #include "agl/AglTexture.h"
 #include "agl/AglRenderTarget.h"
 #include "ape/math/ApeMatrixOps.h"
+#include "ape/sys/ApeGeometry.h"
 #include "ape/world/ApeObj.h"
 #include "ape/world/ApeSceneSetup.h"
 
 #include "ape/core/ApeString.h"
 
 #include <algorithm>
+#include <cmath>
 #include <array>
 #include <vector>
 #include <cstring>
@@ -1338,6 +1340,70 @@ bool MaterialConstantBitsSet(const AglMaterial* material, uint32_t index)
     return bits != 0;
 }
 
+} // namespace
+
+AglAnimationClock& GetAnimationClock()
+{
+    static AglAnimationClock s_clock;
+    return s_clock;
+}
+
+// @func 0x005AE648 BuildWarpMatrices
+// The two scrolling texture coordinate transforms of the warp and water
+// materials, from the material constants: 0/1 and 3/4 scroll speeds of
+// layer A and B, 8/9 their rotation angles, 6/7 the u/v scale shared by
+// both, 2 and 5 extra parameters returned in 'params' (x, y). Each
+// transform is a 2D matrix stored as three rows: u axis, v axis and the
+// scroll offset, wrapped into (-1, 1).
+void BuildWarpMatrices(const AglMaterial* material, ape::Matrix34& a, ape::Matrix34& b, float params[4])
+{
+    const float* c = material->constants;
+    auto constant = [c](int index) { return c ? c[index] : 0.0f; };
+    const float time = GetAnimationClock().time;
+    const ape::Vec3 scale = { constant(6), constant(7), 0.0f, 0.0f };
+    static const ape::Vec3 kZAxis = { 0.0f, 0.0f, 1.0f, 0.0f };   // 0x01164B70
+
+    auto build = [&](ape::Matrix34& m, float speedU, float speedV, float angle) {
+        const float du = time * speedU;
+        const float dv = time * speedV;
+        ape::MatrixAxisAngle(angle, m, kZAxis);
+        const float u = m.xAxis.x * du + m.yAxis.x * dv + m.translation.x;
+        const float v = m.xAxis.y * du + m.yAxis.y * dv + m.translation.y;
+        const float w = m.xAxis.z * du + m.yAxis.z * dv + m.translation.z;
+        ape::Matrix34ScaleAxes(m, scale);
+        m.zAxis.x = u - std::trunc(u);
+        m.zAxis.y = v - std::trunc(v);
+        m.zAxis.z = w;
+    };
+    build(a, constant(0), constant(1), constant(8));
+    build(b, constant(3), constant(4), constant(9));
+    params[0] = constant(2);
+    params[1] = constant(5);
+    params[2] = 0.0f;
+    params[3] = 0.0f;
+}
+
+namespace {
+
+// Fragment constants of the three rows of a warp transform from 'slot'.
+void UploadWarpRows(const ape::Matrix34& m, uint32_t slot)
+{
+    const ape::Vec3* rows[3] = { &m.xAxis, &m.yAxis, &m.zAxis };
+    for (uint32_t i = 0; i < 3; ++i) {
+        const float row[4] = { rows[i]->x, rows[i]->y, rows[i]->z, 0.0f };
+        SetShaderConstant(slot + i, row);
+    }
+}
+
+// Sets bit 0 of the vertex program branch bits (kept in the render state,
+// 0x010F10F8) and sends them.
+void SetTransformBranchBit0(bool on)
+{
+    AglRenderState& state = GetRenderState();
+    state.field_10F8 = (state.field_10F8 & ~1u) | (on ? 1u : 0u);
+    Cmd().SetTransformBranchBits(state.field_10F8);
+}
+
 // The item's RGBA byte colour (render item +0x40) as floats; white when
 // the item has none (the constant at 0x01164BB0).
 void ItemColor(const AglRenderItem* item, float out[4])
@@ -1472,9 +1538,9 @@ void SimpleColorTxrUVTechnique::Draw(AglRenderItem* item)
 }
 
 class TextureWarpTechnique : public AglTechnique {
-    // TODO(0x005AE9A0 TextureWarpTechnique::BeginMaterial)
     // TODO(0x005AEB00 TextureWarpTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     // @func 0x005AF07C TextureWarpTechnique::End
     void End(AglMaterial* /*material*/) override {}
     // @func 0x007ABB7C TextureWarpTechnique::~TextureWarpTechnique
@@ -2033,9 +2099,9 @@ public:
 };
 
 class SlyWaterTechnique : public AglTechnique {
-    // TODO(0x005D2360 SlyWaterTechnique::BeginMaterial)
     // TODO(0x005D2614 SlyWaterTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABE4C SlyWaterTechnique::~SlyWaterTechnique
     // @func 0x007AFF38 SlyWaterTechnique::~SlyWaterTechnique (deleting)
@@ -5439,6 +5505,44 @@ void GeoParticleTechnique::BeginMaterial(AglMaterial* material)
     ApplyFog(0, (material->flags & AglMaterial::kFlag_40) != 0, 0x20);
     const float value[4] = { 0.0f, 0.0f, 0.0f, MaterialConstantBitsSet(material, 3) ? 0.0f : 1.0f };
     SetShaderConstant(0, value);
+}
+
+// @func 0x005AE9A0 TextureWarpTechnique::BeginMaterial
+// Warp parameters in fragment constant 1, the two scrolling transforms in
+// constants 2..4 and 5..7.
+void TextureWarpTechnique::BeginMaterial(AglMaterial* material)
+{
+    ape::Matrix34 a{}, b{};
+    float params[4];
+    BuildWarpMatrices(material, a, b, params);
+    SetShaderConstant(1, params);
+    UploadWarpRows(a, 2);
+    UploadWarpRows(b, 5);
+}
+
+// @func 0x005D2360 SlyWaterTechnique::BeginMaterial
+// Vertex program: branch bit 0 from material constant 15, the UV animation
+// in constant 9, the colour in 0xC and the wave scale (constants 12, 13) in
+// 0xD. Fragment program: the warp parameters and transforms in 1..7 and
+// (0, constant 10, constant 11, constant 14) in 9.
+void SlyWaterTechnique::BeginMaterial(AglMaterial* material)
+{
+    SetTransformBranchBit0(MaterialConstantBitsSet(material, 15));
+    if (material->anim)
+        UploadUVTransform(material->anim, 9, 1.0f, 1.0f);
+    gpu::CommandList& cmd = Cmd();
+    cmd.SetVertexProgramConstants(0xC, 4, material->color0);
+    const float waves[4] = { MaterialConstant(material, 12), MaterialConstant(material, 13), 0.0f, 0.0f };
+    cmd.SetVertexProgramConstants(0xD, 4, waves);
+    ape::Matrix34 a{}, b{};
+    float params[4];
+    BuildWarpMatrices(material, a, b, params);
+    SetShaderConstant(1, params);
+    UploadWarpRows(a, 2);
+    UploadWarpRows(b, 5);
+    const float extra[4] = { 0.0f, MaterialConstant(material, 10), MaterialConstant(material, 11),
+                             MaterialConstant(material, 14) };
+    SetShaderConstant(9, extra);
 }
 
 } // namespace agl
