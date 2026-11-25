@@ -206,6 +206,15 @@ public:
     void EndDisguise();
     void SetVisible(bool visible, bool immediate, bool children, bool components) override;   // slot 22
 
+    // The secondary script (+0x19C): ended ("End", one step, orphaned)
+    // (0x00129C18), or replaced by a new director script (0x00129CB8).
+    void EndScript19C();
+    void PlayScript19C(uint32_t scriptName);
+    // Gives the cull manager handle (+0x1E0, in use while +0x1E2 is set) back (0x00129B58).
+    void ReleaseCullHandle();
+    // Point the physics component steers to (component +0x2A0, flag bit 23) (0x0012BC20).
+    void SetPhysicsTarget(const ape::Vec3& point);
+
     // Hit reactions (slots 83-87) and damage (slot 88).
     void OnHitCategory0(EntityHitRecord& hit) override;   // physics impact
     void OnHitCategory1(EntityHitRecord& hit) override;   // melee
@@ -265,6 +274,8 @@ public:
     int32_t skinMode = kSkin_Default;               // 0x1B0 SkinMode
     uint32_t field_1B4 = 0;                         // 0x1B4 cleared by ResetState
     uint32_t field_1B8 = 0;                         // 0x1B8 cleared by ResetState / ResetFade
+    uint32_t cullHandle = 0;                        // 0x1E0
+    int16_t cullHandleUsed = 0;                     // 0x1E2
     ape::world::ApeObj* aimArcObject = nullptr;     // 0x1E4 aim UI arc
     ape::world::ApeObj* aimEndObject = nullptr;     // 0x1E8 aim UI end point
     DamageSettings damage;                          // 0x1EC

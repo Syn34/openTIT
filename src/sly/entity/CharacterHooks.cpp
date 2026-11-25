@@ -95,6 +95,9 @@ void SkinSetVariant(EntityComponent* skin, int32_t variant) { (void)skin; (void)
 ape::ApeRefCounted* WorldObjectRef(ape::world::ApeObj* object) { (void)object; return nullptr; }
 void SetAnimScriptKeepAlive(void* script, bool keep) { (void)script; (void)keep; }
 bool IgnoresKillOrder(Entity* entity) { (void)entity; return false; }
+void* EntityPlayDirectorScriptInstance(Entity* entity, uint32_t script) { (void)entity; (void)script; return nullptr; }
+void CullManagerRelease(uint32_t handle) { (void)handle; }
+void PhysicsCompSetTarget(EntityComponent* component, const ape::Vec3& point) { (void)component; (void)point; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }

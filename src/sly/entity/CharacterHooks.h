@@ -231,8 +231,15 @@ bool ActorCanInteractWith(Entity* actor, Entity* other, int kind);
 void InteractionSetOffer(EntityComponent* interaction, uint32_t kinds);
 
 // -- entities ---------------------------------------------------------------------
-// Plays a director script on the entity (0x000DCD20 with 0, 1).
+// Plays a director script on the entity (0x000DCD20 with 0, 1); the second
+// form hands the running instance back.
 void EntityPlayDirectorScript(Entity* entity, uint32_t script);
+void* EntityPlayDirectorScriptInstance(Entity* entity, uint32_t script);
+// Cull manager (0x00F64C38): gives a handle back (0x002F20A4).
+void CullManagerRelease(uint32_t handle);
+// Physics component steering point (+0x2A0, flag 0x800000 of +0x1A0, then
+// 0x00261328 with 2).
+void PhysicsCompSetTarget(EntityComponent* component, const ape::Vec3& point);
 // Attaches the entity a spawn produced with the attach record the spawn
 // parameters carry (Entity::AttachChild 0x000D15C0).
 void EntityAttachSpawned(Entity* parent, SpawnParams& params, Entity* child);

@@ -1191,6 +1191,47 @@ void Character::EndDisguise()
     PlayerBlockDisguiseEnded(PlayerSlot() & 0xFF);
 }
 
+// @func 0x00129C18 Character::EndScript19C
+void Character::EndScript19C()
+{
+    auto* script = static_cast<ape::ApeAnimScriptInstance*>(animScript19C);
+    if (!script)
+        return;
+    ape::ApeAnimScriptState* state = script->GetState();
+    if (state && state->GetNameHash() != kState_End) {
+        script->SetState(kState_End);
+        script->Update(1.0f / 60.0f);
+    }
+    DetachAnimScript(script);
+    animScript19C = nullptr;
+}
+
+// @func 0x00129CB8 Character::PlayScript19C
+void Character::PlayScript19C(uint32_t scriptName)
+{
+    EndScript19C();
+    void* script = EntityPlayDirectorScriptInstance(this, scriptName);
+    animScript19C = script;
+    if (script)
+        AttachAnimScript(static_cast<ape::ApeAnimScriptInstance*>(script));
+}
+
+// @func 0x00129B58 Character::ReleaseCullHandle
+void Character::ReleaseCullHandle()
+{
+    if (cullHandleUsed != 0) {
+        CullManagerRelease(cullHandle);
+        cullHandleUsed = 0;
+    }
+}
+
+// @func 0x0012BC20 Character::SetPhysicsTarget
+void Character::SetPhysicsTarget(const ape::Vec3& point)
+{
+    if (EntityComponent* physics = GetComponent00())
+        PhysicsCompSetTarget(physics, point);
+}
+
 // TODO(0x00124D58 Character::SwapCharacter)
 void Character::SwapCharacter(EntityDef* newDef, bool keepState)
 {
