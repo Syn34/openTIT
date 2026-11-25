@@ -1222,8 +1222,8 @@ public:
 };
 
 class OutlineTechnique : public AglTechnique {
-    // TODO(0x005AFBF8 OutlineTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     // @func 0x005AFBE8 OutlineTechnique::BeginMaterial
     void BeginMaterial(AglMaterial* /*material*/) override {}
     // @func 0x007ABBAC OutlineTechnique::~OutlineTechnique
@@ -1232,6 +1232,42 @@ public:
     // @func 0x007ACD64 OutlineTechnique::End
     void End(AglMaterial* /*material*/) override {}
 };
+
+// Extra data of an outline draw (render item +0x40).
+struct AglOutlineParams {
+    uint8_t color[4];   // RGBA
+    float width;        // NOTE: passed to the vertex program as constant 4.w
+};
+
+// @func 0x005AFBF8 OutlineTechnique::Draw
+// Outlines are drawn up to the distance whose square is the material's
+// first constant (none without constants). The colour (fragment constant 0)
+// and width (vertex constant 4) come from the item's outline parameters;
+// the alpha is the item's alpha byte.
+void OutlineTechnique::Draw(AglRenderItem* item)
+{
+    const AglMaterial* material = item->material;
+    const float maxDistSq = material->constants ? material->constants[0] : 0.0f;
+    const ape::Vec3& eye = GetViewConstants().viewRotationT.translation;
+    const float dx = eye.x - item->position[0];
+    const float dy = eye.y - item->position[1];
+    const float dz = eye.z - item->position[2];
+    if (maxDistSq < dx * dx + dy * dy + dz * dz)
+        return;
+
+    UploadWorldViewProj(item, 0);
+    float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    float vertexParams[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    if (const auto* params = static_cast<const AglOutlineParams*>(item->field_40)) {
+        for (int i = 0; i < 4; ++i)
+            color[i] = float(params->color[i]) * (1.0f / 255.0f);
+        vertexParams[3] = params->width;
+    }
+    color[3] = float(uint8_t(item->field_47)) / 255.0f;
+    Cmd().SetVertexProgramConstants(4, 4, vertexParams);
+    SetShaderConstant(0, color);
+    item->geometry->Draw(item);
+}
 
 class GeoParticleTechnique : public AglTechnique {
     // TODO(0x005B0388 GeoParticleTechnique::BeginMaterial)
