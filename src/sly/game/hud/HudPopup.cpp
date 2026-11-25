@@ -16,12 +16,6 @@ namespace hud {
 
 namespace {
 
-void SetScriptState(HudObject* element, uint32_t state)
-{
-    if (element->animScript)
-        static_cast<ape::ApeAnimScriptInstance*>(element->animScript)->SetStateAndUpdate(state);
-}
-
 uint32_t ClipName(const char* prefix, const char* suffix)
 {
     char name[0x60];
@@ -64,7 +58,7 @@ void HudPopup::Update(float dt)
         if (HudClipDone(animController)) {
             animState = (animState & 1u) | (2u << 1);
             PlayHudClip(animController, idleAnim, 1.0f, true);
-            SetScriptState(this, kHudStateNames[3]);
+            SetScriptState(kHudStateNames[3]);
         }
     } else if (state == 3) {
         if (HudClipDone(animController))
@@ -102,7 +96,7 @@ void HudPopup::SetActive(bool on)
     if (object)
         object->SetVisible(on, true);
     if (on)
-        SetScriptState(this, kStateBase + variant);
+        SetScriptState(kStateBase + variant);
 }
 
 // @func 0x0036F1C8 HudPopup::SetEnabled
@@ -122,10 +116,10 @@ void HudPopup::Show()
     if (object)
         object->SetVisible(true, true);
     variant = 0;
-    SetScriptState(this, kStateBase);
+    SetScriptState(kStateBase);
     animState = (animState & 1u) | (1u << 1);
     PlayHudClip(animController, introAnim, 1.0f, false);
-    SetScriptState(this, kHudStateNames[1]);
+    SetScriptState(kHudStateNames[1]);
 }
 
 // @func 0x0036EFC8 HudPopup::Hide
@@ -136,10 +130,10 @@ void HudPopup::Hide()
         return;
     if (object)
         object->SetVisible(true, true);
-    SetScriptState(this, kStateBase + variant);
+    SetScriptState(kStateBase + variant);
     animState = (animState & 1u) | (3u << 1);
     PlayHudClip(animController, outroAnim, 1.0f, false);
-    SetScriptState(this, kHudStateNames[4]);
+    SetScriptState(kHudStateNames[4]);
 }
 
 } // namespace hud

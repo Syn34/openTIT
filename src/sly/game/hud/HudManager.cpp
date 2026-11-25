@@ -156,6 +156,59 @@ void HudObject::FieldScale(float out[3], uint32_t index) const
     }
 }
 
+// @func 0x0036BFAC HudObject::SetFieldVisible
+void HudObject::SetFieldVisible(bool visible, uint32_t index)
+{
+    if (index >= def->textFieldCount)
+        return;
+    if (ape::world::ApeObj* scene = textFields[index].sceneObject)
+        scene->SetVisible(visible, true);
+}
+
+// @func 0x0036C014 HudObject::FieldText
+const char* HudObject::FieldText(uint32_t index) const
+{
+    if (index >= def->textFieldCount || !textFields[index].label)
+        return nullptr;
+    return static_cast<const ape::ApeGuiLabel*>(textFields[index].label)->GetText();
+}
+
+// @func 0x0036C06C HudObject::FieldPosition
+ape::Vec3 HudObject::FieldPosition(uint32_t index) const
+{
+    if (index < def->textFieldCount) {
+        if (const ape::world::ApeObj* scene = textFields[index].sceneObject)
+            return scene->GetWorld().translation;
+    }
+    return {0.0f, 0.0f, 0.0f, 0.0f};
+}
+
+// @func 0x0036C0E0 HudObject::RestartHold
+void HudObject::RestartHold()
+{
+    const uint32_t state = animState >> 1;
+    if (state == 3 || state == 2)
+        holdTime = fadeTime < 0.0f ? defaultFade : fadeTime;
+}
+
+// @func 0x0036C124 HudObject::SetStateAnim
+void HudObject::SetStateAnim(int state, uint32_t clip, bool loop)
+{
+    if (state == 3) {
+        altIdleAnim = clip;
+        stateFlags = loop ? (stateFlags | kState_Bit19) : (stateFlags & ~uint32_t(kState_Bit19));
+    } else if (state == 4) {
+        altOutroAnim = clip;
+    }
+}
+
+// @func 0x0036A4C0 HudObject::SetScriptState
+void HudObject::SetScriptState(uint32_t state)
+{
+    if (animScript)
+        static_cast<ape::ApeAnimScriptInstance*>(animScript)->SetStateAndUpdate(state);
+}
+
 // @func 0x00367530 hud::SetFieldText
 void SetFieldText(HudObject* object, const char* text, uint32_t index)
 {

@@ -24,12 +24,6 @@ namespace {
 constexpr uint32_t kScript_VisibleOn = 0x152FB9B1u;    // "visibleON"
 constexpr uint32_t kScript_VisibleOff = 0x90C77BBDu;   // "visibleOFF"
 
-void SetScriptState(HudObject* element, uint32_t state)
-{
-    if (element->animScript)
-        static_cast<ape::ApeAnimScriptInstance*>(element->animScript)->SetStateAndUpdate(state);
-}
-
 // The object named `name` in the hierarchy of `root` (the engine's 0x004A5AE8).
 ape::world::ApeObj* FindSceneChild(ape::world::ApeObj* root, uint32_t name)
 {
@@ -123,7 +117,7 @@ HudElement::~HudElement()
         if (ape::ApeGuiObject* fieldObject = textFields[i].object)
             fieldObject->SetVisible(false);
     }
-    SetScriptState(this, kScript_VisibleOff);
+    SetScriptState(kScript_VisibleOff);
     for (uint32_t i = 0; i < def->textFieldCount; ++i) {
         if (textFields[i].object)
             ape::StopGuiScripts("", textFields[i].object);
@@ -146,7 +140,7 @@ void HudElement::SetActive(bool active)
         if (ape::ApeGuiObject* fieldObject = textFields[i].object)
             fieldObject->SetVisible(active);
     }
-    SetScriptState(this, active ? kScript_VisibleOn : kScript_VisibleOff);
+    SetScriptState(active ? kScript_VisibleOn : kScript_VisibleOff);
 }
 
 // @func 0x0036BCAC HudElement::Refresh
