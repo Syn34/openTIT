@@ -5,7 +5,8 @@
 #include <cstdint>
 
 namespace ape { namespace xml { class XmlElement; } }
-namespace sly { namespace entity { struct ComponentDesc; } }
+namespace sly { namespace entity { struct ComponentDesc; class Entity; class EntityComponent; } }
+namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; }
 
 namespace sly {
 namespace components {
@@ -43,6 +44,14 @@ void MarkerSetColorOverride(void* hudObject, MarkerColorOverride& record, bool e
 // colour override record; the copied material is released by slot 2.
 void GameWorldForgetColorOverride(MarkerColorOverride& record);
 void MaterialRelease(void* material);
+
+// -- entities ------------------------------------------------------------------------
+// 0x000DCA20: runs `script` as a child of the entity's own anim script.
+ape::ApeAnimScriptInstance* EntityStartScript(entity::Entity* entity, ape::ApeAnimScript* script);
+// Entity virtual slot 24 (+0x60): NOTE: busy / engaged flag (base 0x007377D8).
+void EntitySetBusy(entity::Entity* entity, bool busy);
+// Gadget component (type 0x1A) word +0xF4 bits 20-27: the gadget mode.
+uint32_t GadgetMode(entity::EntityComponent* gadget);
 
 // <BossGrizz> component parser (forwards to levels::ai::ParseBossGrizzComponentDesc).
 entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,

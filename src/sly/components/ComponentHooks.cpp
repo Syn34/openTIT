@@ -30,6 +30,11 @@ void MarkerSetColorOverride(void* hudObject, MarkerColorOverride& record, bool e
 void GameWorldForgetColorOverride(MarkerColorOverride&) {}
 void MaterialRelease(void*) {}
 
+// TODO(0x000DCA20 / slot 24 / gadget +0xF4)
+ape::ApeAnimScriptInstance* EntityStartScript(entity::Entity*, ape::ApeAnimScript*) { return nullptr; }
+void EntitySetBusy(entity::Entity*, bool) {}
+uint32_t GadgetMode(entity::EntityComponent*) { return 0; }
+
 // The parser lives with the AI component (sly/levels/ai/AIBossGrizz.cpp).
 entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                        uint8_t scope)
