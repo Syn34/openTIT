@@ -17,8 +17,9 @@ public:
     // Queues the marker for the instance render pass while its geometry is
     // shown (slot 6).
     void Update(float dt) override;
-    // TODO(0x0027BE38 ContextualMarkerComponent slot 8): places and scales
-    // the geometry.
+    // Places the geometry at the attach point and scales it with the camera
+    // distance (slot 8).
+    void RenderInstance() override;
     void SetOption(bool enabled) override;
     void SetVisible(bool visible, bool immediate) override;
 

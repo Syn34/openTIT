@@ -4,11 +4,14 @@
 // progress record they read is modelled as far as these use it.
 #pragma once
 
+#include "ape/container/ApeTSortedMap.h"
 #include "ape/memory/ApeTArray.h"
+#include "sly/game/Upgrades.h"
 
 #include <cstdint>
 
 namespace sly {
+class Spawner;
 namespace goals { class Goal; }
 
 namespace game {
@@ -18,18 +21,31 @@ using goals::Goal;
 // record per profile, indexed by the profile byte at +0x1070). NOTE: only the
 // fields the job manager touches are named; offsets are record-relative.
 struct EpisodeProgress {
-    uint16_t flags = 0;              // bits 3-4 started/finished, bit 5 NOTE: set while its job runs
-    uint16_t field_02 = 0;
+    uint16_t flags = 0;              // bits 0-2 safe state (3 = opened), bits 3-4 started (1) /
+                                     // finished (2), bit 5 NOTE: set while its job runs, bit 6
+                                     // completed, bits 7-8 NOTE: meaning unknown
+    uint8_t stage = 0xFF;            // +0x02 job order being played, 0xFF = none
+    uint8_t pad_03 = 0;
+};
+// Job states (record +0x1D0, one byte per job, indexed by Episode::index).
+enum JobState : uint8_t {
+    kJobState_Locked = 0,
+    kJobState_Available = 1,
+    kJobState_Complete = 2,
 };
 struct PlayerProgress {
+    static constexpr int kEpisodeSlots = 12;
+    uint32_t bottleBits[kEpisodeSlots] = {};  // +0x034 one bit per clue bottle (Job::bottleSlot)
+    uint16_t maskBits[kEpisodeSlots] = {};    // +0x064 one bit per mask (Job::maskSlot)
     uint32_t field_70 = 0;           // +0x070 NOTE: read by 0x00465D5C, meaning unknown
-    uint16_t jobBits[0x28] = {};     // +0x07C per job group, one bit per collected item. NOTE: count assumed
+    uint16_t jobBits[kEpisodeSlots] = {};     // +0x07C one bit per treasure (Job::bitGroup)
     uint32_t field_A0 = 0;           // +0x0A0 value of the running job (job +0x32C)
     uint8_t field_149 = 0;           // +0x149 NOTE: a yes/no option
     uint32_t field_14C = 0;          // +0x14C
     uint8_t inJob = 0;               // +0x150 1 while a job runs
     uint32_t currentJobValue = 0;    // +0x154 job record +0x2D4 of the running job
-    EpisodeProgress episodes[0x20];  // +0x1A0 NOTE: count assumed
+    EpisodeProgress episodes[kEpisodeSlots];  // +0x1A0
+    uint8_t jobStates[0x100] = {};   // +0x1D0 JobState by Episode::index. NOTE: count assumed
     uint32_t unlockBits[2] = {};     // +0xF64 40 unlock flags
     uint32_t abilityBits[1] = {};    // +0xFB0 two bits per ability (see PlayerAbilities.h)
 };
@@ -39,30 +55,221 @@ PlayerProgress& CurrentProgress();
 // The record of profile 'profile' (stand-in, see CurrentProgress).
 PlayerProgress& ProfileProgress(uint8_t profile);
 
-// Job record (0x35C bytes).
+// NOTE: the console's own terms are the other way round: the 0x35C-byte
+// records ("Job" here) are its episodes (<Episode>: timePeriod, start and end
+// movies, a hub and a hideout level) and the 0x218-byte records ("Episode"
+// here) its jobs (<Job>: jobScript, movieOnJobComplete). The port keeps the
+// names the job manager was first written with.
+struct Episode;
+
+// Job record (0x35C bytes, console constructor 0x002DA734).
 struct Job {
-    uint8_t data[0x2D4] = {};
-    uint32_t field_2D4 = 0;          // +0x2D4 copied to the progress record when it starts
-    uint8_t pad_2D8[0x10] = {};
-    uint32_t nameHash = 0;           // +0x2E8
-    uint8_t pad_2EC[0x40] = {};
+    Job();
+
+    char name[0x41];                 // +0x000
+    char desc[0x41];                 // +0x041
+    char timePeriod[0x41];           // +0x082
+    char startMovie[0x81];           // +0x0C3
+    char endMovie[0x81];             // +0x144
+    char endMovie2[0x81];            // +0x1C5
+    char endMovie3[0x81];            // +0x246
+    char abbrev[5];                  // +0x2C7
+    Episode* stages = nullptr;       // +0x2CC first of its 0x218-byte records
+    uint8_t stageCount = 0;          // +0x2D0
+    uint32_t field_2D4 = 0;          // +0x2D4 id; copied to the progress record when it starts
+    uint32_t field_2D8 = 0;          // +0x2D8 NOTE: attribute 0xC9F8B7B3
+    uint32_t field_2DC = 0;          // +0x2DC NOTE: attribute 0xA3A3941F
+    uint32_t field_2E0 = 0;          // +0x2E0 NOTE: attribute 0x41299858
+    uint32_t levelHub = 0;           // +0x2E4
+    uint32_t nameHash = 0;           // +0x2E8 (attribute "levelHideout")
+    uint32_t levels[16] = {};        // +0x2EC <Level name=...> children
     uint32_t field_32C = 0;          // +0x32C
-    uint8_t pad_330[6] = {};
-    uint8_t episode = 0;             // +0x336
-    uint8_t pad_337[2] = {};
-    uint8_t bitGroup = 0xFF;         // +0x339 index into PlayerProgress::jobBits, 0xFF = none
-    uint8_t pad_33A[2] = {};
-    uint8_t active = 0;              // +0x33C
+    float field_330 = -1.0f;         // +0x330 NOTE: attribute 0x74BC9C7B
+    uint8_t levelCount = 0;          // +0x334
+    uint8_t numBottles = 0;          // +0x335
+    uint8_t episode = 0;             // +0x336 own index (the progress record's episode slot)
+    uint8_t bottleSlot = 0xFF;       // +0x337 index into PlayerProgress::bottleBits
+    uint8_t maskSlot = 0xFF;         // +0x338 index into PlayerProgress::maskBits
+    uint8_t bitGroup = 0xFF;         // +0x339 index into PlayerProgress::jobBits (treasures), 0xFF = none
+    uint8_t isDebugEpisode = 0;      // +0x33A
+    uint8_t field_33B = 0;           // +0x33B NOTE: bool attribute 0xE587C810
+    uint8_t active = 1;              // +0x33C
+    uint8_t field_33D = 0;           // +0x33D NOTE: bool attribute 0x37C7C4AD (gives a mask slot)
+    float episodeWeight = 0.0f;      // +0x340 share in the game's completion
+    float jobWeight = 0.0f;          // +0x344 completion formula weights
+    float maskWeight = 0.0f;         // +0x348
+    float bottleWeight = 0.0f;       // +0x34C
+    float treasureWeight = 0.0f;     // +0x350
+    float safeWeight = 0.0f;         // +0x354
+    uint32_t field_358 = 0;          // +0x358 NOTE: attribute 0xEED7AB50
+
+    // Progress of this episode in the current profile's record.
+    EpisodeProgress& Progress() const;
+    // Started (1) / finished (2) state, bits 3-4 (0x002DA85C).
+    int ProgressState() const;
+    // Completed flag 0x40 (0x002DA89C).
+    bool IsCompleted() const;
+    // Progress flag 0x100 (0x002DA8E8 / 0x002DA944). NOTE: meaning unknown.
+    void SetFlag100(bool on);
+    bool Flag100() const;
+    // Progress flag 0x80 (0x002DAFA0 / 0x002DAF54). NOTE: meaning unknown.
+    void SetFlag80(bool on);
+    bool Flag80() const;
+    // Safe state, bits 0-2; 3 is opened (0x002DA990).
+    int SafeState() const;
+    // Job order being played, 0xFF for none (0x002DAFFC).
+    uint8_t CurrentStage() const;
+    // Treasures collected / placed in this episode (0x002DA9D0 / 0x002DAA54).
+    int CollectedTreasures() const;
+    int TreasureCount() const;
+    // Clue bottles collected (0x002DAB04).
+    int CollectedBottles() const;
+    // Masks collected in `progress` / the current record (0x002DAC24 /
+    // 0x002DAE5C), and the masks that belong to the episode (0x002DAEA0).
+    int CollectedMasks(const PlayerProgress& progress) const;
+    int CollectedMasks() const;
+    int MaskCount() const;
+    // Completion in percent from the weighted jobs, masks, bottles,
+    // treasures and safe (0x002DB040 / 0x002DB5D4).
+    float Completion(const PlayerProgress& progress) const;
+    float Completion() const;
+    // Every job of the current stage is complete (0x002DB618).
+    bool IsStageComplete() const;
+    // Makes the current stage's jobs available and completes the earlier
+    // ones; true if any job belongs to the current stage (0x002DB70C).
+    bool UpdateJobStates() const;
+    // Starts the episode unless it is finished: state 1, stage 0 (0x002DB8B0).
+    void Start();
 };
 
-// Episode record (0x218 bytes).
+// Episode record (0x218 bytes, console constructor 0x002D9740). The job
+// manager's running instance (+0x28) points at one.
 struct Episode {
-    uint8_t data[0x1D4] = {};
-    uint32_t nameHash = 0;           // +0x1D4
+    Episode();
+
+    // A <HideoutCharacter> entry (0xC bytes, 0xB copied).
+    struct HideoutCharacter {
+        uint32_t name = 0;
+        uint32_t field_04 = 0;       // NOTE: attribute 0x09999BDC
+        bool selectable = true;
+        bool field_09 = false;       // NOTE: attribute 0xABB46BE6
+        bool field_0A = false;       // NOTE: attribute 0xB15553D6
+    };
+    struct ScriptPath {
+        char path[0x81];
+    };
+
+    // State of the job in the current profile's record (0x002D98A4).
+    uint8_t State() const;
+    // Replaces the stored copy of the text with the same id by `text`'s
+    // string and marks it changed (0x002D98DC).
+    void StoreText(const TextField& text);
+    // Copies the stored text with `text`'s id over `text`; false if there is
+    // none (0x002D9994).
+    bool LoadText(TextField& text) const;
+
+    char name[0x41];                 // +0x000
+    char desc[0x41];                 // +0x041
+    char jobScript[0x81];            // +0x082
+    char movieOnJobComplete[0x81];   // +0x103
+    char abbrev[0x10];               // +0x184
+    uint8_t field_194 = 0;           // +0x194
+    ape::ApeTArray<ScriptPath> scriptPaths;          // +0x198
+    ape::ApeTArray<TextField> texts;                 // +0x1AC
+    ape::ApeTArray<HideoutCharacter> characters;     // +0x1C0
+    uint32_t nameHash = 0;           // +0x1D4 id
+    uint32_t field_1D8 = 0;          // +0x1D8 NOTE: attribute 0x53B55808
+    uint32_t field_1DC = 0;          // +0x1DC NOTE: attribute 0xC9F8B7B3
+    uint32_t field_1E0 = 0;          // +0x1E0 NOTE: attribute 0xA3A3941F
+    uint32_t field_1E4 = 0;          // +0x1E4 NOTE: attribute 0x41299858
+    uint32_t field_1E8 = 0xD433715Au;  // +0x1E8 NOTE: attribute 0x6E6EDD6B
+    uint32_t associatedDef = 0;      // +0x1EC
+    float field_1F0 = -1.0f;         // +0x1F0 NOTE: attribute 0x74BC9C7B
+    uint8_t episode = 0;             // +0x1F4 index of its 0x35C-byte record
+    uint8_t order = 0;               // +0x1F5 stage it belongs to
+    uint8_t index = 0;               // +0x1F6 PlayerProgress::jobStates slot
+    uint8_t field_1F7 = 0;           // +0x1F7 attribute "disguiseLocked"
+    uint8_t field_1F8 = 0;           // +0x1F8 NOTE: bool attribute 0xE587C810
+    uint8_t field_1F9 = 1;           // +0x1F9 NOTE: bool attribute 0x6AAB7C29
+    uint8_t field_1FA = 0;           // +0x1FA NOTE: int attribute 0xBE8B7B06
+    // Streaming of the job's script packages (0x002D9A14-0x002DA5E0, not
+    // ported): load state, request, buffer and the per-package requests.
+    int32_t loadState = 0;           // +0x1FC
+    void* request = nullptr;         // +0x200
+    void* buffer = nullptr;          // +0x208
+    uint32_t bufferSize = 0;         // +0x20C
+    void* packageRequests = nullptr; // +0x210
+    void* goals = nullptr;           // +0x214
 };
+using JobInstance = Episode;
+
+// Collectible records of the mask (0x0106819C) and treasure (0x01068184)
+// tables, keyed by name hash.
+struct CollectibleRecord {
+    uint8_t episode = 0;             // +0x00 index of the 0x35C-byte record it belongs to
+    uint8_t bit = 0;                 // +0x01 bit in that record's mask / treasure word
+    uint8_t pad_02[2] = {};
+    uint32_t key = 0;                // +0x04 name hash of the record whose bit is tested
+    uint32_t field_08 = 0;           // +0x08 NOTE: must be set for a mask to count
+    uint32_t foundIn = 0;            // +0x0C id (+0x2D4) of the episode where it is found
+};
+ape::ApeTSortedMap<CollectibleRecord*>& MaskTable();
+ape::ApeTSortedMap<CollectibleRecord*>& TreasureTable();
+// Default clue bottle count of an episode (0x00F64C24, 30).
+extern int g_defaultBottleCount;
+// 0x0049E038: sets the unlock flags tied to a completed job (outside this
+// range).
+void UnlockJobRewards(uint32_t jobId);
 
 class JobManager {
 public:
+    // Registers itself as the job manager, makes room for 12 episode and
+    // 144 job records and loads "Scripts/Episodes.xml" (0x002DD4FC).
+    JobManager();
+    // Frees the collectible tables and the records (0x002DD604).
+    ~JobManager();
+    JobManager(const JobManager&) = delete;
+    JobManager& operator=(const JobManager&) = delete;
+
+    static constexpr uint32_t kMaxJobs = 12;       // 0x2850 bytes
+    static constexpr uint32_t kMaxEpisodes = 144;  // 0x12D80 bytes
+
+    // Reads the episode list: movie unlockables, movie entries, the
+    // entity index table and every <Episode file=...> (0x002DCDD0).
+    void Load(const char* path);
+    // Reads one episode file into the next record; the slot counters hand
+    // out the bottle, mask and treasure word indices (0x002DB968).
+    void LoadEpisode(const char* path, uint8_t* bottleSlot, uint8_t* maskSlot, uint8_t* treasureSlot,
+                     bool active);
+    // Loads the running job's script files into the shared job library
+    // unless it already holds scripts (0x002DD898); 0x002DDA54 empties the
+    // library first.
+    void LoadJobScripts();
+    void ReloadJobScripts();
+    // Level start: counts the collected bottles and masks, picks the goal
+    // to track, clears the per-level state and, when the tracked goal
+    // belongs to another level, asks for that level (0x002DDDCC).
+    void OnLevelStart();
+    // Links the job library's scripts, then OnLevelStart (0x002DE198).
+    void OnLevelLoaded();
+    // Activates a mask spawner unless its mask is collected in `maskBits`
+    // (one word per episode slot); warns about spawners missing from the
+    // mask table (0x002DF010).
+    void ActivateMaskSpawner(class Spawner* spawner, const uint16_t* maskBits) const;
+    // Lets every goal of the player prepare its scripts and reapply its
+    // hints while a job runs (0x002DFEFC).
+    void PrepareGoalScripts() const;
+    // Stores the running job's value in the profile record (0x002DFFDC).
+    void SetRunningJobValue(uint32_t value) const;
+    // Masks collected over every active record (0x002DDC5C).
+    int CountCollectedMasks() const;
+    // The current record, else the first non-debug record that lists the
+    // running level (0x002DDD24).
+    Job* CurrentEpisode() const;
+    // 0x35C-byte record whose id (+0x2D4) is `id`, or null (0x002DABCC).
+    Job* FindJobById(uint32_t id) const;
+    // Its index, or -1.
+    uint32_t JobIndexById(uint32_t id) const;
     // Episode by name hash, or null / its index, or -1 (0x002E1220 / 0x002E1278).
     Episode* FindEpisode(uint32_t nameHash) const;
     uint32_t EpisodeIndex(uint32_t nameHash) const;
@@ -119,22 +326,27 @@ public:
     Episode* episodes = nullptr;     // +0x1C
     uint32_t episodeCount = 0;       // +0x20
     Job* currentJob = nullptr;       // +0x24
-    struct JobInstance* instance = nullptr;  // +0x28 the running job (byte +0x1F7: NOTE failed?)
+    Episode* instance = nullptr;     // +0x28 the running job
+    uint32_t streamFlags = 0;        // +0x10 bit 29: a package stream is pending
     uint32_t field_30 = 0;           // +0x30
+    uint32_t collectedBottles = 0;   // +0x38 of the current episode, counted at level start
+    uint32_t collectedMasks = 0;     // +0x3C over every active episode
+    uint32_t field_40 = 0;           // +0x40
+    uint32_t field_44 = 0;           // +0x44
     Goal* trackedGoal = nullptr;     // +0x48
+    uint32_t field_4C = 0;           // +0x4C
+    uint32_t field_50 = 0;           // +0x50
+    uint32_t field_54 = 0;           // +0x54
     uint32_t pendingRequest[2] = {}; // +0x58
+    uint32_t trackedGoalId = 0;      // +0x60 goal to track after loading, 0 = first open goal
     uint32_t flags = 0;              // +0x64 bit 29: a request is pending
 
 private:
     void ResetRunningJob();
 };
 
-// The running instance of a job (opaque; byte +0x1F7 read).
-struct JobInstance {
-    uint8_t data[0x1F7] = {};
-    uint8_t field_1F7 = 0;
-};
-// 0x002DDAB0: cleans up the running job (outside this range).
+// TODO(0x002DDAB0 JobManager::ClearGoals): removes every goal of the
+// player's goal list and clears the tracked goal.
 void JobManagerCleanup(JobManager* manager);
 // 0x0045C7A8 on a local player's block (game world +0x1070 + i * 0x20C80).
 void PlayerResetJobState(int player);
@@ -155,16 +367,38 @@ void SetProgressFlag149(bool on);
 void SetProgressField14C(uint32_t value);
 uint32_t ProgressField14C();
 uint32_t CurrentJobValue();
+// The player's goal with id `id` (0x00465F30 on the players block), or null.
+Goal* PlayerFindGoal(uint32_t id);
+// Asks the game world for level `levelName` (0x004674C4).
+void GameWorldRequestLevel(uint32_t levelName);
 // Goal `index` of the player's goal list (game world +0x10C0, count
 // +0x10C8), null for -1 or out of range (0x002E6A3C).
 Goal* PlayerGoalAt(uint32_t index);
 
 // Sets the unlock flag of the unlockable whose key is `key` (0x002E2874).
 void UnlockByKey(uint32_t key);
+// Movie unlockable (<MovieUnlockable>, 0x70 bytes).
+struct Unlockable {
+    char movieName[0x20] = {};       // +0x00
+    char movieFile[0x40] = {};       // +0x20
+    uint32_t key = 0;                // +0x60 movieFile hash
+    bool defaultUnlocked = false;    // +0x64
+    uint32_t group = 0;              // +0x68 0 cinematic, 1 NOTE: hash 0xF9AB1627
+    int32_t index = -1;              // +0x6C load order
+};
+// Movie entry (element 0x5B5D34CD, 0x28 bytes) keyed by movieFile hash.
+// NOTE: the element and the two integers are not named.
+struct MovieEntry {
+    int32_t field_00 = 0;            // NOTE: attribute 0xBF873E4B
+    int32_t field_04 = 0;            // NOTE: attribute 0x95E16172
+    char text[0x20] = {};            // +0x08
+};
+ape::ApeTSortedMap<MovieEntry*>& MovieEntries();     // 0x010681E4
+// Index of each entity named by the element 0x9A5AAD6E (load order).
+ape::ApeTSortedMap<uint8_t*>& EpisodeEntityIndices(); // 0x010681CC
 // Unlockables (array 0x010681FC, count 0x01068204; key at record +0x60).
 uint32_t UnlockableCount();
 uint32_t UnlockableKey(uint32_t index);
-struct Unlockable;
 Unlockable* UnlockableAt(uint32_t index);
 uint32_t UnlockableGroup(uint32_t index);   // record +0x68
 // Appends the unlockables of `group` to `out` (0x002E6FC0).

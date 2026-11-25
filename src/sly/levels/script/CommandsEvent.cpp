@@ -32,6 +32,11 @@ constexpr uint32_t kEntityVarName = 0x70D68D3Au;
 constexpr AnimScriptVarType kVarType_Entity = static_cast<AnimScriptVarType>(15);
 } // namespace
 
+// @func 0x0009A320 StaticInit_CommandsEvent
+// Compiler-generated initialiser of this file: a file-local zero vector
+// pulled in from a shared header (0x00F9CD98).
+[[maybe_unused]] static const float s_zeroVector[3] = { 0.0f, 0.0f, 0.0f };
+
 // @func 0x0009A190 ResolveEventEntity
 WorldObject* ResolveEventEntity(ApeAnimScriptInstance* instance, uint32_t nameHash)
 {
