@@ -171,6 +171,7 @@ class TargetableDefA : public ScriptedEntityDef {
 public:
     ~TargetableDefA() override;
     PropDamageSettings damage;         // 0xC4
+    uint8_t targetingFlags[6] = {};    // 0x119
     void* collisionShape = nullptr;    // 0x120
 };
 
@@ -297,6 +298,17 @@ public:
     float ProjectileDamageScale() const override;     // slot 89
     // Slot 94: the figure's own state (0x0017DB34, not ported).
     virtual void SetTargetState(int state);
+    // Slot 95: the state of layer 0; slot 97 asks slot 95.
+    virtual int GetTargetState();
+    virtual int GetTargetState97();
+    // Slots 104/105: empty.
+    // @func 0x0018E0BC TargetableA::Slot104
+    virtual void Slot104() {}
+    // @func 0x0018E380 TargetableA::Slot105
+    virtual void Slot105() {}
+    // Both answer with the definition's targeting flag for the kind.
+    uint32_t InteractionOffer(int kind, Entity* other) override;
+    uint32_t InteractionNeeds(int kind, Entity* other) override;
     const TargetableDefA* Def() const { return static_cast<const TargetableDefA*>(def); }
 
     TargetableB* held = nullptr;             // 0x520

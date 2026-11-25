@@ -6,6 +6,7 @@
 #include "sly/entity/PropEntities.h"
 
 #include "sly/entity/EntityHits.h"
+#include "sly/entity/GameEntityHooks.h"
 #include "sly/entity/PhysicsHooks.h"
 
 #include <algorithm>
@@ -211,6 +212,18 @@ bool TargetableA::Release(bool kill)
 
 // TODO(0x0017DB34 TargetableA::SetTargetState)
 void TargetableA::SetTargetState(int state) { (void)state; }
+
+// @func 0x001882B8 TargetableA::GetTargetState
+int TargetableA::GetTargetState() { return EntityGetState(this, 0); }
+
+// @func 0x0018CDDC TargetableA::GetTargetState97
+int TargetableA::GetTargetState97() { return GetTargetState(); }
+
+// @func 0x00185B04 TargetableA::InteractionOffer
+uint32_t TargetableA::InteractionOffer(int kind, Entity* /*other*/) { return Def()->targetingFlags[kind]; }
+
+// @func 0x00185AEC TargetableA::InteractionNeeds
+uint32_t TargetableA::InteractionNeeds(int kind, Entity* /*other*/) { return Def()->targetingFlags[kind]; }
 
 // @func 0x00184B74 TargetableA::GetVelocity
 ape::Vec3 TargetableA::GetVelocity() { return BodyVelocity(); }
