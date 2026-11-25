@@ -8,6 +8,8 @@ namespace hud {
 bool HudPlacementEnabled() { return true; }
 // TODO(0x0035B470 anchor stack refresh)
 void RefreshAnchorStacks() {}
+// TODO(0x0046B7A4 game world callback list)
+void GameWorldRemoveHudCallback(HudObject*) {}
 
 } // namespace hud
 } // namespace sly

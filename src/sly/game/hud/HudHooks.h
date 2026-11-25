@@ -10,6 +10,10 @@ namespace hud {
 bool HudPlacementEnabled();
 // 0x0035B470 on the anchor stacks (0x0106C330): re-stacks the visible elements.
 void RefreshAnchorStacks();
+class HudObject;
+// 0x0046B7A4 on the game world: takes the element's phase-8 callback
+// (0x00F37878) off the world's callback list.
+void GameWorldRemoveHudCallback(HudObject* element);
 
 } // namespace hud
 } // namespace sly

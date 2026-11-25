@@ -185,14 +185,14 @@ void HudObject::HideNow()
     list.Add(RegisteredName(), this);
 }
 
-// @func 0x00365A54 hud::SetAllHidden
-void SetAllHidden(bool hidden, bool flag)
+// @func 0x00365A54 hud::SetAllEnabled
+void SetAllEnabled(bool enabled, bool flag)
 {
     HudManagerState& state = Hud();
-    state.allHidden = hidden;
+    state.allEnabled = enabled;
     for (uint32_t i = 0; i < state.objects.Count(); ++i)
-        state.objects.Data()[i].value->SetHidden(hidden, flag);
-    if (!state.allHidden)
+        state.objects.Data()[i].value->SetEnabled(enabled, flag);
+    if (!state.allEnabled)
         RefreshAnchorStacks();
 }
 

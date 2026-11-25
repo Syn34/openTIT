@@ -96,11 +96,12 @@ public:
     virtual void Refresh();
     // Slot 5 (0x0036A470): shows or hides the element's object.
     virtual void SetActive(bool active);
-    // Slot 6 (0x00772944, other module): bit 0 of +0xA0.
-    virtual void SetHidden(bool hidden, bool flag)
+    // Slot 6 (0x00772944, other module): bit 0 of +0xA0 (set by the
+    // constructor).
+    virtual void SetEnabled(bool enabled, bool flag)
     {
         (void)flag;
-        animState = (animState & ~1u) | (hidden ? 1u : 0u);
+        animState = (animState & ~1u) | (enabled ? 1u : 0u);
     }
 
     // 0x00362BEC: queues the element to be hidden at the end of the frame.
@@ -149,10 +150,15 @@ public:
         kState_Bit18      = 0x00040000,   // NOTE: set by ShowBusyElement, meaning unknown
         kState_ScriptOk   = 0x00800000,   // bit 23: the anim script took the last state
         kState_AnimOk     = 0x01000000,   // bit 24: the last state animation started
+        kState_Bit19      = 0x00080000,   // NOTE: loop the alternative idle clip
+        kState_Bit20      = 0x00100000,
+        kState_Bit21      = 0x00200000,   // handed to PlayIntro as `b` when the hold time ends
+        kState_Bit22      = 0x00400000,   // handed to PlayIntro as `a` when the hold time ends
         kState_Bit27      = 0x08000000,
         kState_OutroB     = 0x10000000,   // bit 28
         kState_OutroA     = 0x20000000,   // bit 29
         kState_Shown      = 0x40000000,   // bit 30
+        kState_Persistent = 0x80000000u,  // bit 31: Refresh keeps the element shown. NOTE: name assumed
     };
 
     uint32_t typeFlags = 0;        // +0x04 HudTypeFlags
@@ -189,7 +195,8 @@ struct HudManagerState {
     ape::ApeTSortedMap<HudObject*> objects;      // 0x0106C228 every element by name
     ape::ApeTSortedMap<HudObject*> hideList;     // 0x0106C240 elements to hide at the end of the frame
     ape::ApeTSortedMap<HudObject*> updateList;   // 0x0106C258 elements updated per frame
-    bool allHidden = false;                      // 0x00F64CC4
+    bool allEnabled = false;                     // 0x00F64CC4
+    ape::ApeTArray<HudObject*> field_C2C0;       // 0x0106C2C0 NOTE: elements leave it on Refresh; use unknown
     uint32_t contextValue = 0;                   // 0x00F64CB4
     uint32_t contextName = 0;                    // 0x0106C270
     bool pendingScreen = false;                  // 0x0106C274
@@ -217,11 +224,9 @@ void ReshowText(float fade, HudObject* object, const char* text, bool timed);
 
 // The element's object is visible (ApeObj flags bit 15).
 bool ObjectVisible(const ape::world::ApeObj* object);
-// Elements queued by HideNow (0x0106C240), hidden at the end of the frame.
-// NOTE: lives in HudManagerState.
-// 0x00365A54: hides or shows every element (slot 6); showing again also
+// 0x00365A54: enables or disables every element (slot 6); disabling also
 // refreshes the anchor stacks (0x0035B470, not ported).
-void SetAllHidden(bool hidden, bool flag);
+void SetAllEnabled(bool enabled, bool flag);
 
 // Lookups (null when the name is 0, unknown, or of another type).
 HudObject* Find(uint32_t name);                    // 0x003568E0 kHud_Object
