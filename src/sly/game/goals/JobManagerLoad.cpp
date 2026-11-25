@@ -156,6 +156,13 @@ JobManager* GetJobManager() { return g_jobManager; }
 void SetJobManager(JobManager* manager) { g_jobManager = manager; }
 
 ape::ApeTSortedMap<MovieEntry*>& MovieEntries() { return g_movieEntries; }
+
+// @func 0x002E2D44 FindMovieEntry
+MovieEntry* FindMovieEntry(uint32_t key)
+{
+    MovieEntry** entry = g_movieEntries.Find(key);
+    return entry ? *entry : nullptr;
+}
 ape::ApeTSortedMap<uint8_t*>& EpisodeEntityIndices() { return g_entityIndices; }
 uint32_t UnlockableCount() { return static_cast<uint32_t>(g_unlockables.size()); }
 Unlockable* UnlockableAt(uint32_t index) { return index < g_unlockables.size() ? g_unlockables[index] : nullptr; }

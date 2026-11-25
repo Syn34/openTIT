@@ -38,6 +38,7 @@ struct PlayerProgress {
     uint32_t bottleBits[kEpisodeSlots] = {};  // +0x034 one bit per clue bottle (Job::bottleSlot)
     uint16_t maskBits[kEpisodeSlots] = {};    // +0x064 one bit per mask (Job::maskSlot)
     uint32_t field_70 = 0;           // +0x070 NOTE: read by 0x00465D5C, meaning unknown
+    uint8_t entityBits[kEpisodeSlots] = {};   // +0x094 per episode: entities of the index table found
     uint16_t jobBits[kEpisodeSlots] = {};     // +0x07C one bit per treasure (Job::bitGroup)
     uint32_t field_A0 = 0;           // +0x0A0 value of the running job (job +0x32C)
     uint8_t field_149 = 0;           // +0x149 NOTE: a yes/no option
@@ -323,6 +324,34 @@ public:
     void SelectJobByValue(uint32_t value);
     // Appends every job named `nameHash` to `out` (0x002E2D7C).
     void CollectJobs(uint32_t nameHash, ape::ApeTArray<Job*>& out) const;
+    // The current episode's stage has an unfinished job whose character
+    // (+0x1EC) is `character` (a character also matches its variant, e.g.
+    // Sly / Sly in disguise) (0x002E16E8); 0x002E1900 returns that job.
+    bool CurrentStageUsesCharacter(uint32_t character) const;
+    Episode* CurrentStageJobForCharacter(uint32_t character) const;
+    // A hideout character of the current stage's jobs can be selected
+    // (0x002E1B1C; true without an episode) / has flag +0x09 (0x002E1C88).
+    bool HideoutCharacterSelectable(uint32_t name) const;
+    bool HideoutCharacterFlag09(uint32_t name) const;
+    // The hideout characters offered by the last started episode: those of
+    // its latest unlocked job, the +0x0A ones only once that job is
+    // complete (0x002E2438).
+    void CollectHideoutCharacters(ape::ApeTArray<Episode::HideoutCharacter>& out) const;
+    // Records that entity `entity` of the index table was found in the
+    // current episode; the first one found anywhere awards a trophy
+    // (0x002E2B34).
+    void MarkEpisodeEntityFound(uint32_t entity) const;
+    // Completion of the whole game in percent: every episode's completion
+    // weighted by its episode weight (0x002E3188).
+    float GameCompletion(const PlayerProgress* progress) const;
+    // Collected share in percent over all episodes: clue bottles
+    // (0x002E32D8), masks of the active episodes (0x002E34A8), treasures
+    // (0x002E3698) and opened safes of the episodes with treasures
+    // (0x002E3898). A null record means the current profile.
+    float BottlePercent(const PlayerProgress* progress) const;
+    float MaskPercent(const PlayerProgress* progress) const;
+    float TreasurePercent(const PlayerProgress* progress) const;
+    float SafePercent(const PlayerProgress* progress) const;
     // Ends the running job instance, first updating its episode's flag 0x20
     // (0x002E5060).
     void FinishJobInstance();
@@ -405,6 +434,15 @@ struct MovieEntry {
     char text[0x20] = {};            // +0x08
 };
 ape::ApeTSortedMap<MovieEntry*>& MovieEntries();     // 0x010681E4
+// Movie entry of a movie file name hash, or null (0x002E2D44).
+MovieEntry* FindMovieEntry(uint32_t key);
+// Job value of the running level: the level's own, else (while the
+// current episode runs a job) the episode's +0x32C; with no level, the
+// profile's running job value or the default (0x002E29B0).
+uint32_t RunningLevelJobValue();
+// 0x010683D4: job value used when nothing else names one. NOTE: written
+// outside this module.
+extern uint32_t g_defaultJobValue;
 // Index of each entity named by the element 0x9A5AAD6E (load order).
 ape::ApeTSortedMap<uint8_t*>& EpisodeEntityIndices(); // 0x010681CC
 // Unlockables (array 0x010681FC, count 0x01068204; key at record +0x60).

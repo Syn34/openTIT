@@ -3,6 +3,7 @@
 #include "sly/game/goals/JobManager.h"
 
 #include "ape/core/ApeString.h"
+#include "sly/entity/Awards.h"
 #include "sly/tuning/GoalTuning.h"
 
 #include <cstring>
@@ -363,6 +364,246 @@ void Job::Start()
     progress.flags = static_cast<uint16_t>((progress.flags & ~0x18) | 0x08);
     progress.stage = 0;
     UpdateJobStates();
+}
+
+// ---------------------------------------------------------------------------
+// Queries over the current episode and the whole game (0x002E16E8-0x002E3A70)
+
+namespace {
+
+// Characters that also answer to a second name (the variant of the same
+// character used by some jobs).
+bool CharacterMatches(uint32_t jobCharacter, uint32_t character)
+{
+    struct Alias { uint32_t name, variant; };
+    static constexpr Alias kAliases[] = {
+        {0x1D8C2817u, 0x9AA76568u},   // "Bentley"
+        {0x00014120u, 0x1D5B6571u},   // "Sly"
+        {0xDF0611F9u, 0xB4D78147u},   // "CarmelitaFox"
+        {0x88397820u, 0xC92661E2u},   // "Murray"
+    };
+    for (const Alias& alias : kAliases) {
+        if (jobCharacter == alias.name)
+            return character == alias.name || character == alias.variant;
+    }
+    return jobCharacter == character;
+}
+
+const PlayerProgress& ProgressOrCurrent(const PlayerProgress* progress)
+{
+    return progress ? *progress : CurrentProgress();
+}
+
+} // namespace
+
+uint32_t g_defaultJobValue = 0;
+
+// @func 0x002E1900 JobManager::CurrentStageJobForCharacter
+Episode* JobManager::CurrentStageJobForCharacter(uint32_t character) const
+{
+    const Job* job = currentJob;
+    if (!job || character == 0)
+        return nullptr;
+    const PlayerProgress& progress = CurrentProgress();
+    const uint8_t stage = progress.episodes[job->episode].stage;
+    for (uint8_t i = 0; i < job->stageCount; ++i) {
+        Episode& candidate = job->stages[i];
+        if (progress.jobStates[candidate.index] == kJobState_Complete || candidate.order != stage)
+            continue;
+        if (candidate.associatedDef != 0 && CharacterMatches(candidate.associatedDef, character))
+            return &candidate;
+    }
+    return nullptr;
+}
+
+// @func 0x002E16E8 JobManager::CurrentStageUsesCharacter
+bool JobManager::CurrentStageUsesCharacter(uint32_t character) const
+{
+    return CurrentStageJobForCharacter(character) != nullptr;
+}
+
+// @func 0x002E1B1C JobManager::HideoutCharacterSelectable
+// A finished episode still offers the characters of its last stage.
+bool JobManager::HideoutCharacterSelectable(uint32_t name) const
+{
+    const Job* job = currentJob;
+    if (!job)
+        return true;
+    const EpisodeProgress& progress = CurrentProgress().episodes[job->episode];
+    uint32_t stage = progress.stage;
+    if (((progress.flags >> 3) & 3) == 2 && stage != 0)
+        --stage;
+    for (uint8_t i = 0; i < job->stageCount; ++i) {
+        const Episode& candidate = job->stages[i];
+        if (candidate.order != stage)
+            continue;
+        for (const Episode::HideoutCharacter& character : candidate.characters) {
+            if (character.name == name)
+                return character.selectable;
+        }
+    }
+    return false;
+}
+
+// @func 0x002E1C88 JobManager::HideoutCharacterFlag09
+bool JobManager::HideoutCharacterFlag09(uint32_t name) const
+{
+    const Job* job = currentJob;
+    if (!job)
+        return false;
+    const uint8_t stage = CurrentProgress().episodes[job->episode].stage;
+    for (uint8_t i = 0; i < job->stageCount; ++i) {
+        const Episode& candidate = job->stages[i];
+        if (candidate.order != stage)
+            continue;
+        for (const Episode::HideoutCharacter& character : candidate.characters) {
+            if (character.name == name)
+                return character.field_09;
+        }
+    }
+    return false;
+}
+
+// @func 0x002E2438 JobManager::CollectHideoutCharacters
+void JobManager::CollectHideoutCharacters(ape::ApeTArray<Episode::HideoutCharacter>& out) const
+{
+    const Job* job = LastStartedJob();
+    if (!job)
+        return;
+    const PlayerProgress& progress = CurrentProgress();
+    for (uint8_t i = job->stageCount; i > 0; --i) {
+        const Episode& candidate = job->stages[i - 1];
+        const uint8_t state = progress.jobStates[candidate.index];
+        if (state == kJobState_Locked)
+            continue;
+        for (const Episode::HideoutCharacter& character : candidate.characters) {
+            if (!character.field_0A || state == kJobState_Complete)
+                out.PushBack(character);
+        }
+        return;
+    }
+}
+
+// @func 0x002E29B0 RunningLevelJobValue
+uint32_t RunningLevelJobValue()
+{
+    const PlayerProgress& progress = CurrentProgress();
+    const uint32_t profileValue = progress.field_A0 ? progress.field_A0 : g_defaultJobValue;
+    uint32_t value = 0;
+    if (!CurrentLevelJobValue(&value))
+        return profileValue;
+    if (value != 0)
+        return value;
+    JobManager* manager = GetJobManager();
+    const Job* job = manager ? manager->currentJob : nullptr;
+    if (!job)
+        return profileValue;
+    if (progress.episodes[job->episode].flags & 0x20)
+        return job->field_32C;
+    return 0;
+}
+
+// @func 0x002E2B34 JobManager::MarkEpisodeEntityFound
+void JobManager::MarkEpisodeEntityFound(uint32_t entity) const
+{
+    constexpr uint32_t kTrophy_FirstFound = 0xC3FB61E2u;
+    const Job* job = CurrentEpisode();
+    if (!job)
+        return;
+    if (job->episode >= PlayerProgress::kEpisodeSlots) {
+        ape::TempFormat("Episode Index is out of bounds '%i'! Range is [0 - %i]! Have an engineer increase "
+                        "the size of the array.",
+                        job->episode, PlayerProgress::kEpisodeSlots);
+        return;
+    }
+    if (entity == 0)
+        return;
+    uint8_t** index = EpisodeEntityIndices().Find(entity);
+    if (!index || !*index)
+        return;
+    PlayerProgress& progress = CurrentProgress();
+    progress.entityBits[job->episode] |= (uint8_t)(1u << (**index & 0x3F));
+    int found = 0;
+    for (uint32_t i = 0; i < jobCount; ++i)
+        found += CountBits(progress.entityBits[jobs[i].episode]);
+    if (found == 1)
+        AwardTrophyByName(kTrophy_FirstFound);
+}
+
+// @func 0x002E3188 JobManager::GameCompletion
+float JobManager::GameCompletion(const PlayerProgress* progress) const
+{
+    const PlayerProgress& record = ProgressOrCurrent(progress);
+    float weights = 0.0f;
+    float score = 0.0f;
+    for (uint32_t i = 0; i < jobCount; ++i) {
+        weights += jobs[i].episodeWeight;
+        score += jobs[i].Completion(record) * jobs[i].episodeWeight * 0.01f;
+    }
+    return weights > 0.0f ? (score / weights) * 100.0f : 0.0f;
+}
+
+// @func 0x002E32D8 JobManager::BottlePercent
+float JobManager::BottlePercent(const PlayerProgress* progress) const
+{
+    const PlayerProgress& record = ProgressOrCurrent(progress);
+    uint32_t total = 0;
+    uint32_t found = 0;
+    for (uint32_t i = 0; i < jobCount; ++i) {
+        const Job& job = jobs[i];
+        if (job.bottleSlot != 0xFF && ValidBottleSlot(job.bottleSlot))
+            found += CountBits(record.bottleBits[job.bottleSlot]);
+        total += job.numBottles;
+    }
+    return total ? (static_cast<float>(found) / total) * 100.0f : 0.0f;
+}
+
+// @func 0x002E34A8 JobManager::MaskPercent
+float JobManager::MaskPercent(const PlayerProgress* progress) const
+{
+    const PlayerProgress& record = ProgressOrCurrent(progress);
+    uint32_t total = 0;
+    uint32_t found = 0;
+    for (uint32_t i = 0; i < jobCount; ++i) {
+        const Job& job = jobs[i];
+        if (!job.active)
+            continue;
+        found += job.CollectedMasks(record);
+        total += CountRecordsOf(g_masks, IndexOfId(job.field_2D4));
+    }
+    return total ? (static_cast<float>(found) / total) * 100.0f : 0.0f;
+}
+
+// @func 0x002E3698 JobManager::TreasurePercent
+float JobManager::TreasurePercent(const PlayerProgress* progress) const
+{
+    const PlayerProgress& record = ProgressOrCurrent(progress);
+    uint32_t total = 0;
+    uint32_t found = 0;
+    for (uint32_t i = 0; i < jobCount; ++i) {
+        const Job& job = jobs[i];
+        if (job.bitGroup != 0xFF)
+            found += CountBits(record.jobBits[job.bitGroup]);
+        total += CountRecordsOf(g_treasures, IndexOfId(job.field_2D4));
+    }
+    return total ? (static_cast<float>(found) / total) * 100.0f : 0.0f;
+}
+
+// @func 0x002E3898 JobManager::SafePercent
+float JobManager::SafePercent(const PlayerProgress* progress) const
+{
+    const PlayerProgress& record = ProgressOrCurrent(progress);
+    uint32_t withSafe = 0;
+    uint32_t opened = 0;
+    for (uint32_t i = 0; i < jobCount; ++i) {
+        const Job& job = jobs[i];
+        if (CountRecordsOf(g_treasures, IndexOfId(job.field_2D4)) == 0)
+            continue;
+        ++withSafe;
+        if ((record.episodes[job.episode].flags & 7) == 3)
+            ++opened;
+    }
+    return withSafe ? (static_cast<float>(opened) / withSafe) * 100.0f : 0.0f;
 }
 
 } // namespace game
