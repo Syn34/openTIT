@@ -48,6 +48,30 @@ bool ObjectVisible(const ape::world::ApeObj* object)
     return object->IsVisible();
 }
 
+// @func 0x0035695C HudObject::HudObject
+HudObject::HudObject(uint32_t state, HudObjectDef* def_)
+    : def(def_), field_10(def_->field_4C), object(def_->templateObject), offset(ape::world::kWorldZero),
+      baseOffset(def_->baseOffset)
+{
+    animState = (state << 1) | 1u;
+    const ape::Vec3& zero = ape::world::kWorldZero;
+    if (def->anchor != kAnchor_None && baseOffset.x == zero.x && baseOffset.y == zero.y && baseOffset.z == zero.z)
+        baseOffset = g_defaultHudOffset;
+    typeFlags = 0;
+    if (!object)
+        return;
+    if (def->objectFlags & HudObjectDef::kObject_Clone)
+        object = HudCloneObject(object);
+    else
+        object->AddRef();
+    object->field_118 = this;
+    object->field_114 = reinterpret_cast<void*>(uintptr_t(kObjectTag));
+    animController = new anim::AnimController(object);
+    animController->flags |= anim::AnimController::kFlag_AlwaysAnimate;
+    if ((def->objectFlags & HudObjectDef::kObject_Lod) && object->GetType() == ape::world::kObjType_GeomInstance)
+        HudSetObjectLod(object, 13);
+}
+
 // @func 0x0036A098 HudObject::~HudObject
 // @func 0x0036A1C0 HudObject::~HudObject (deleting)
 HudObject::~HudObject()
@@ -204,10 +228,15 @@ const uint32_t kHudStateNames[5] = {
     0x048129EBu,   // "Outro"
 };
 
-namespace {
+ape::Vec3 g_defaultHudOffset{};
 
-// Plays the clip registered as `clip` on `controller` (0x004A5C90).
-bool PlayClip(anim::AnimController* controller, uint32_t clip, float speed, bool loop)
+bool HudClipDone(anim::AnimController* controller)
+{
+    anim::AnimLayer* layer = controller ? controller->FindLayer(0) : nullptr;
+    return layer ? layer->IsDone(false) : true;
+}
+
+bool PlayHudClip(anim::AnimController* controller, uint32_t clip, float speed, bool loop)
 {
     if (!controller)
         return false;
@@ -217,6 +246,8 @@ bool PlayClip(anim::AnimController* controller, uint32_t clip, float speed, bool
     controller->Play(static_cast<anim::HkaAnimationBinding*>(found), speed, 0.0f, 0.0f, loop, 0);
     return true;
 }
+
+namespace {
 
 // Moves the default layer's main control to `t` of its length (0x004A5DA8).
 void SetClipProgress(anim::AnimController* controller, float t)
@@ -270,7 +301,7 @@ void HudObject::PlayState(int state, bool loop)
         clip = altIdleAnim;
     else if (state == 4 && altOutroAnim)
         clip = altOutroAnim;
-    const bool played = PlayClip(animController, clip, animSpeed, loop);
+    const bool played = PlayHudClip(animController, clip, animSpeed, loop);
     stateFlags = played ? (stateFlags | kState_AnimOk) : (stateFlags & ~kState_AnimOk);
     if (played && progress != 0.0f)
         SetClipProgress(animController, progress);

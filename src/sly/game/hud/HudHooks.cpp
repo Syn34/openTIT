@@ -1,6 +1,8 @@
 // openTIT - HUD module hooks (stubs).
 #include "sly/game/hud/HudHooks.h"
 
+#include "ape/world/ApeObj.h"
+
 namespace sly {
 namespace hud {
 
@@ -10,6 +12,15 @@ bool HudPlacementEnabled() { return true; }
 void RefreshAnchorStacks() {}
 // TODO(0x0046B7A4 game world callback list)
 void GameWorldRemoveHudCallback(HudObject*) {}
+// TODO(ApeObj slot 14 clone / 0x00590FEC): world objects cannot be cloned
+// yet; the element shares the template.
+ape::world::ApeObj* HudCloneObject(ape::world::ApeObj* object)
+{
+    object->AddRef();
+    return object;
+}
+// TODO(0x004A5C20 render LOD)
+void HudSetObjectLod(ape::world::ApeObj*, uint32_t) {}
 
 } // namespace hud
 } // namespace sly

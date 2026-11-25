@@ -26,6 +26,7 @@ enum HudTypeFlags : uint32_t {
     kHud_Object  = 0x00000001,   // every registered element
     kHud_Type2   = 0x00000002,   // NOTE: the pause/countdown screen element (goal timer test)
     kHud_Type4   = 0x00000004,
+    kHud_Type20  = 0x00000020,   // popup element (HudPopup)
     kHud_Type40  = 0x00000040,
     kHud_Type200 = 0x00000200,
     kHud_Type400 = 0x00000400,
@@ -50,9 +51,20 @@ enum HudAnchor : int32_t {
 
 // Definition of an element (shared by its instances).
 struct HudObjectDef {
+    char defName[0x20] = {};         // +0x04
+    char animPrefix[0x20] = {};      // +0x24 base of the element's clip names (empty: defName)
     uint32_t name = 0;               // +0x44
+    ape::world::ApeObj* templateObject = nullptr;   // +0x48 the element's scene object (shared or cloned)
+    uint32_t field_4C = 0;           // +0x4C
     int32_t anchor = kAnchor_None;   // +0x54 HudAnchor
     int32_t priority = 0;            // +0x70 order in the anchor stack (ascending)
+    ape::Vec3 baseOffset{};          // +0x80 screen position (zero: the default position)
+    enum ObjectFlags : uint8_t {
+        kObject_Clone = 0x80,        // each element gets its own copy of the object
+        kObject_Lod   = 0x40,        // geometry objects get render LOD 13. NOTE: meaning assumed
+    };
+    uint8_t objectFlags = 0;         // +0x90 ObjectFlags
+    uint8_t startShown = 0;          // +0x91 (popup elements)
     float offset[3] = {};            // +0x60 space the element takes in its stack
     struct TextFieldDef {            // 0x20 bytes
         uint8_t field_00[0x14] = {};
@@ -86,6 +98,10 @@ public:
     // element in +0x118).
     static constexpr uint32_t kObjectTag = 0x7DF841DCu;
 
+    HudObject() = default;
+    // 0x0035695C: element of `def` starting in state `state`; takes (or
+    // clones) the definition's object and gives it an animation controller.
+    HudObject(uint32_t state, HudObjectDef* def);
     // 0x0036A098 / 0x0036A1C0: ends the anim script, releases the object and
     // the animation controller.
     virtual ~HudObject();
@@ -227,6 +243,15 @@ bool ObjectVisible(const ape::world::ApeObj* object);
 // 0x00365A54: enables or disables every element (slot 6); disabling also
 // refreshes the anchor stacks (0x0035B470, not ported).
 void SetAllEnabled(bool enabled, bool flag);
+
+// Screen position of elements whose definition gives none (0x0106C9F0).
+extern ape::Vec3 g_defaultHudOffset;
+
+// Clip helpers of the elements (the engine's 0x004A5C90 / 0x004A5D40):
+// plays the clip registered as `clip` on the controller; the default
+// layer's clip is done (true without a controller or layer).
+bool PlayHudClip(anim::AnimController* controller, uint32_t clip, float speed, bool loop);
+bool HudClipDone(anim::AnimController* controller);
 
 // Lookups (null when the name is 0, unknown, or of another type).
 HudObject* Find(uint32_t name);                    // 0x003568E0 kHud_Object
