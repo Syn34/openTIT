@@ -530,6 +530,7 @@ public:
     // 0x0033273C (the factory's constructor).
     GoalHealthMonitor(const GoalDesc* desc, const ape::ApeTArray<float>& thresholds,
                       uint32_t target, bool percent);
+    ~GoalHealthMonitor() override;
     static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
     uint8_t Update(int player, const GameEvent& e) override;
     void ResetHints(bool stopHintScript) override;
@@ -672,6 +673,7 @@ public:
     };
 
     using Goal::Goal;
+    ~GoalScore() override;
     uint8_t Update(int player, const GameEvent& e) override;
     void Reset(bool fromSave, int status) override;
     void ResetHints(bool stopHintScript) override;

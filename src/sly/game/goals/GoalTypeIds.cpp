@@ -1,4 +1,5 @@
-// openTIT - Goal class type ids (vtable slot 3) and the penguin goal base.
+// openTIT - Goal class type ids (vtable slot 3), out-of-line destructors
+// and the penguin goal base.
 //
 // Every goal class answers a small constant identifying its type (the job
 // manager and the HUD switch on it). The two unnamed goal classes with ids
@@ -75,6 +76,14 @@ bool GoalGroup::BlocksNextScripts() const { return firstChild != nullptr; }
 // @func 0x00769B58 GoalSet::~GoalSet
 // @func 0x00769B84 GoalSet::~GoalSet (deleting)
 GoalSet::~GoalSet() = default;
+
+// @func 0x0076B458 GoalHealthMonitor::~GoalHealthMonitor
+// @func 0x0076B724 GoalHealthMonitor::~GoalHealthMonitor (deleting)
+GoalHealthMonitor::~GoalHealthMonitor() = default;
+
+// @func 0x0076B050 GoalScore::~GoalScore
+// @func 0x0076BAD0 GoalScore::~GoalScore (deleting)
+GoalScore::~GoalScore() = default;
 
 // ---------------------------------------------------------------------------
 // PenguinGameGoal
