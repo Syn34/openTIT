@@ -831,7 +831,7 @@ constexpr uint32_t kType_SpawnedBit = 0x04;       // +0xC0 bit 2 (owner at +0x19
 constexpr uint32_t kType_EnvironmentBit = 0x10000000;   // +0xC0 bit 28: no reaction scaling
 
 // Class bits of the friendly-fire rule.
-constexpr uint64_t kClass_FriendlyFire = 0x20;          // bit 5 on the victim: always full damage
+constexpr uint64_t kClass_Disguised = 0x20;          // bit 5: disguised (on the other team; full damage)
 constexpr uint64_t kClass_HurtsFriends = 0x8000000;     // bit 27 on the attacker
 
 bool IsCharacterEntity(const Entity* entity)
@@ -865,7 +865,7 @@ uint32_t TeamOf(const Entity* entity) { return (entity->flags >> 22) & 3; }
 // takes full damage or the attacker always hurts friends.
 bool Character::IsFriendlyHit(const Entity* attacker) const
 {
-    return attacker && TeamOf(this) == TeamOf(attacker) && !(classBits & kClass_FriendlyFire) &&
+    return attacker && TeamOf(this) == TeamOf(attacker) && !(classBits & kClass_Disguised) &&
            !(attacker->classBits & kClass_HurtsFriends);
 }
 
@@ -911,7 +911,7 @@ void Character::OnHitCategory1(EntityHitRecord& hit)
         // own (non-player) hits, and the friendly scale caps the reaction scale.
         const bool fromPlayer = (hit.flags & EntityHitRecord::kHit_FromPlayer) != 0;
         if (TeamOf(this) == TeamOf(source) && (!fromPlayer || TeamOf(this) == 0) &&
-            !(classBits & kClass_FriendlyFire) && !(source->classBits & kClass_HurtsFriends) &&
+            !(classBits & kClass_Disguised) && !(source->classBits & kClass_HurtsFriends) &&
             objects::g_characterDamageGlobalFriendly <= scale)
             scale = objects::g_characterDamageGlobalFriendly;
         amount *= scale;
@@ -966,7 +966,7 @@ void Character::OnHitCategory3(EntityHitRecord& hit)
     }
     float amount = hit.data.knock.amount * scale;
     if (IsCharacterEntity(source) && TeamOf(this) == TeamOf(source) &&
-        (!(classBits & kClass_FriendlyFire) || scale <= 0.0f) && !(source->classBits & kClass_HurtsFriends))
+        (!(classBits & kClass_Disguised) || scale <= 0.0f) && !(source->classBits & kClass_HurtsFriends))
         amount *= objects::g_characterDamageGlobalFriendly;
     ApplyDamage(amount, source, hit, kType_Environment);
 }
@@ -1107,7 +1107,7 @@ bool Character::CanInteractWith(Entity* other, int kind)
     if (health <= 0.0f)
         return false;
     // Characters of one team do not interact (except kind 4 and friendly-fire characters).
-    if (kind != 4 && IsCharacterEntity(other) && TeamOf(this) == TeamOf(other) && !(classBits & kClass_FriendlyFire))
+    if (kind != 4 && IsCharacterEntity(other) && TeamOf(this) == TeamOf(other) && !(classBits & kClass_Disguised))
         return false;
     if (isPlayer) {
         if (kind == 0) {
@@ -1128,6 +1128,66 @@ bool Character::CanInteractWith(Entity* other, int kind)
     if (kind == 4 && listener && ListenerIsAlly(listener))
         return false;
     return Entity::CanInteractWith(other, kind);
+}
+
+// -- scripts and character swaps -----------------------------------------------------------------
+
+namespace {
+constexpr uint32_t kState_End = 0x00010CBBu;   // "End"
+}
+
+// @func 0x00128C74 Character::PlayCharacterScript
+ape::ApeAnimScriptInstance* Character::PlayCharacterScript(uint32_t scriptName, bool stopCurrent)
+{
+    ape::ApeAnimScriptLibrary* library = ape::ApeAnimScriptLibrary::Get(0);
+    if (!library)
+        return nullptr;
+    ape::ApeAnimScript* script = library->FindScript(scriptName);
+    ape::ApeAnimScriptInstance* instance = nullptr;
+    if (animScript198 && (script || stopCurrent)) {
+        auto* current = static_cast<ape::ApeAnimScriptInstance*>(animScript198);
+        current->SetState(kState_End);
+        DetachAnimScript(current);
+        animScript198 = nullptr;
+    }
+    if (script) {
+        instance = EntityStartScript(this, script, false, true);
+        animScript198 = instance;
+        if (instance)
+            AttachAnimScript(instance);
+    }
+    return instance;
+}
+
+// @func 0x00125950 Character::BecomeSly
+void Character::BecomeSly()
+{
+    SwapCharacter(FindEntityDef(kChar_Sly), false);
+}
+
+// @func 0x00125998 Character::EndDisguise
+// A disguised character that is hit turns back into Sly; the player block
+// forgets the disguise.
+void Character::EndDisguise()
+{
+    if (EntityGetState(this, 0) == 5 || !(classBits & kClass_Disguised))
+        return;
+    SwapCharacter(FindEntityDef(kChar_Sly), false);
+    PlayerBlockDisguiseEnded(PlayerSlot() & 0xFF);
+}
+
+// TODO(0x00124D58 Character::SwapCharacter)
+void Character::SwapCharacter(EntityDef* newDef, bool keepState)
+{
+    (void)newDef; (void)keepState;
+}
+
+// @func 0x00128E2C Character::SetVisible
+void Character::SetVisible(bool visible, bool immediate, bool includeChildren, bool components)
+{
+    if (carried)
+        carried->SetVisible(visible, immediate, includeChildren, components);
+    Entity::SetVisible(visible, immediate, includeChildren, components);
 }
 
 // -- entity slot overrides ----------------------------------------------------------------

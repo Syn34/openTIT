@@ -53,6 +53,13 @@ void EntityRootMotionDelta(Entity* entity, ape::Matrix34& out, bool consume)
     out = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 0 } };
 }
 void EntitySetWorldTransform(Entity* entity, const ape::Matrix34& transform) { (void)entity; (void)transform; }
+ape::ApeAnimScriptInstance* EntityStartScript(Entity* entity, ape::ApeAnimScript* script, bool flag, bool attach)
+{
+    (void)entity; (void)script; (void)flag; (void)attach;
+    return nullptr;
+}
+void AttachAnimScript(ape::ApeAnimScriptInstance* instance) { (void)instance; }
+void PlayerBlockDisguiseEnded(uint32_t player) { (void)player; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }

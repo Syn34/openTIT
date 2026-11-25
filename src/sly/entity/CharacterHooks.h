@@ -12,6 +12,7 @@
 #include <cstdint>
 
 namespace ape::world { class ApeObj; }
+namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; }
 
 namespace sly {
 namespace entity {
@@ -120,6 +121,13 @@ struct EntityChildLink;
 class EntityListener;
 // Entity::AttachChild (0x000D15C0) with a filled link record.
 void EntityAttachChild(Entity* parent, const EntityChildLink& link);
+// Starts a director script on the entity (0x000DCA20) and clears an
+// instance's orphan flag again (+0x88 bit 9).
+ape::ApeAnimScriptInstance* EntityStartScript(Entity* entity, ape::ApeAnimScript* script, bool flag, bool attach);
+void AttachAnimScript(ape::ApeAnimScriptInstance* instance);
+// Player block (game world +0x1070 + player * 0x20C80): the disguise ended
+// (+0x10DC cleared, flag 0x40 of +0x1070 set).
+void PlayerBlockDisguiseEnded(uint32_t player);
 // Entity virtual slot 52 (+0xD0): motion of the root animation this frame.
 void EntityRootMotionDelta(Entity* entity, ape::Matrix34& out, bool consume);
 // Entity virtual slot 21 (+0x54): takes a new world transform.

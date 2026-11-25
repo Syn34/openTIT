@@ -173,6 +173,17 @@ public:
     uint32_t InteractionOffer(int kind, Entity* other) override;   // slot 74
     bool CanInteractWith(Entity* other, int kind) override;        // slot 76
 
+    // Starts the director script `scriptName` of the default library as the
+    // character's script (+0x198), ending the current one first when a new
+    // one starts or `stopCurrent` (0x00128C74).
+    ape::ApeAnimScriptInstance* PlayCharacterScript(uint32_t scriptName, bool stopCurrent);
+    // Swaps the character to another definition (0x00124D58, not ported).
+    void SwapCharacter(EntityDef* newDef, bool keepState);
+    // 0x00125950 / 0x00125998.
+    void BecomeSly();
+    void EndDisguise();
+    void SetVisible(bool visible, bool immediate, bool children, bool components) override;   // slot 22
+
     // Hit reactions (slots 83-87) and damage (slot 88).
     void OnHitCategory0(EntityHitRecord& hit) override;   // physics impact
     void OnHitCategory1(EntityHitRecord& hit) override;   // melee
