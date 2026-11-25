@@ -444,7 +444,8 @@ public:
     void UpdateWorldTransform(bool children);
     // Places the attached children (0x000D7A00).
     void UpdateChildTransforms();
-    void RemoveWatcher(void* watcher);
+    // Slot 58 (+0xE8): forgets a watcher added by AddWatcher.
+    virtual void RemoveWatcher(void* watcher);
     bool HasTypeBit(uint32_t bit) const { return (typeBits[bit >> 5] & (1u << (bit & 31))) != 0; }
     void SetName(const char* name);
     // Switches the entity's anim script (slot 68) to a state.

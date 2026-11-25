@@ -9,6 +9,7 @@
 
 #include "sly/entity/EntityHits.h"
 #include "sly/entity/GameEntityHooks.h"
+#include "sly/entity/EntityHooks.h"
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
@@ -259,6 +260,25 @@ void AlterEgoEntity::SendScriptEvent(uint32_t event)
         static_cast<ape::ApeAnimScriptInstance*>(animScript1A4)->SendEvent(event);
 }
 
+// @func 0x001787E0 AlterEgoEntity::GetGravityFactor
+float AlterEgoEntity::GetGravityFactor()
+{
+    if (!PhysicsWorldPresent())
+        return 0.0f;
+    void* body = GetRenderObject();
+    return body ? RigidBodyGravityFactor(body) : 0.0f;
+}
+
+// @func 0x001788A0 AlterEgoEntity::Detached
+void AlterEgoEntity::Detached(float gravityFactor)
+{
+    if (PhysicsWorldPresent()) {
+        if (void* body = GetRenderObject())
+            RigidBodySetGravityFactor(body, gravityFactor);
+    }
+    Entity::Detached(gravityFactor);
+}
+
 // @func 0x00178650 AlterEgoEntity::SetVelocity
 void AlterEgoEntity::SetVelocity(const ape::Vec3& velocity) { SetBodyVelocity(rigidBody, velocity); }
 
@@ -382,6 +402,65 @@ void TargetableB::SetRenderId(uint32_t id)
         RigidBodySetCollisionGroup(rigidBody, id);
     collisionGroup = id;
     Entity::SetRenderId(id);
+}
+
+namespace {
+// State `stateHash` of the anim script a watcher runs, or null.
+ape::ApeAnimScriptState* WatcherScriptState(ape::ApeAnimScriptInstance* instance, uint32_t stateHash)
+{
+    ape::ApeAnimScript* script = instance ? instance->GetScript() : nullptr;
+    return script ? script->FindState(stateHash) : nullptr;
+}
+
+// NOTE: state names unknown.
+constexpr uint32_t kState_WatcherStacked = 0xDC175839u;
+constexpr uint32_t kState_WatcherFigure = 0x2DA34781u;
+constexpr uint32_t kState_WatcherModel = 0x047034DEu;
+constexpr uint32_t kMsgKey_TargetDropped = 0x0C8B8AB8u;
+constexpr uint32_t kMsg_TargetDropped = 0x00531BA0u;
+constexpr uint64_t kClass_Carried = 1ull << 17;
+} // namespace
+
+// @func 0x001943F0 TargetableB::AddWatcher
+bool TargetableB::AddWatcher(void* watcher)
+{
+    Entity::AddWatcher(watcher);
+    if (!stacking)
+        return false;
+    auto* instance = static_cast<ape::ApeAnimScriptInstance*>(static_cast<Entity*>(watcher)->GetAnimScript());
+    if (!instance)
+        return false;
+    ape::ApeAnimScriptState* state = WatcherScriptState(instance, kState_WatcherStacked);
+    if (!state || !object || !state->HasEvent(instance, object->GetNameHash()))
+        return false;
+    EntityPostScriptMessage(this, kMsgKey_TargetDropped, kMsg_TargetDropped, 0);
+    if (holder)
+        holder->held = nullptr;
+    field_270 = 0;
+    holder = nullptr;
+    parent = nullptr;
+    classBits &= ~kClass_Carried;
+    Damage(maxHealth, nullptr, 0);
+    return true;
+}
+
+// @func 0x0018E384 TargetableA::AddWatcher
+bool TargetableA::AddWatcher(void* watcher)
+{
+    Entity::AddWatcher(watcher);
+    auto* instance = static_cast<ape::ApeAnimScriptInstance*>(static_cast<Entity*>(watcher)->GetAnimScript());
+    if (!instance)
+        return true;
+    ape::ApeAnimScriptState* state = nullptr;
+    if (modelName == 0)
+        state = WatcherScriptState(instance, kState_WatcherFigure);
+    if (!state)
+        state = WatcherScriptState(instance, kState_WatcherModel);
+    if (!state)
+        return true;
+    if (!held)
+        instance->SetStateAndUpdate(state);
+    return false;
 }
 
 // @func 0x00197150 TargetableB::HandleMessage
@@ -531,6 +610,13 @@ bool CompoundEntity::Release(bool kill)
 
 // TODO(0x0016BC0C CompoundEntity::SetPropState)
 void CompoundEntity::SetPropState(int32_t state, uint32_t arg) { (void)arg; propState = state; }
+
+// @func 0x0016F04C CompoundEntity::SetFlag80
+void CompoundEntity::SetFlag80(bool on)
+{
+    Entity::SetFlag80(on);
+    ToggleBodyInWorld(rigidBody, bodyAction, on, propState == 6);
+}
 
 // @func 0x0016F1C0 CompoundEntity::SetVelocity
 void CompoundEntity::SetVelocity(const ape::Vec3& velocity) { SetBodyVelocity(rigidBody, velocity); }
@@ -716,6 +802,19 @@ void TargetableCBase::SetVelocity(const ape::Vec3& velocity) { RigidBodyEntity::
 ape::Vec3 TargetableCBase::GetVelocity()
 {
     return rigidBody ? RigidBodyLinearVelocity(rigidBody) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
+}
+
+// @func 0x001FC570 TargetableCBase::GetAimPoint
+ape::Vec3 TargetableCBase::GetAimPoint()
+{
+    if (EntityComponent1F(this))
+        return GetCenter();
+    if (!rigidBody)
+        return Position();
+    const ape::Vec3& offset = Def()->aimOffset;
+    if (offset.x == 0.0f && offset.y == 0.0f && offset.z == 0.0f)
+        return RigidBodyCenterOfMass(rigidBody);
+    return GetCenter();
 }
 
 // @func 0x001FB888 TargetableCBase::CanBeDamaged

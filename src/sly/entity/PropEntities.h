@@ -178,6 +178,9 @@ public:
     void SetFlag80(bool on) override;                 // slot 23
     // Slot 99: 1 puts the body into the world, 4 takes it out (0x0017734C).
     virtual void SetAlterState(int32_t state);
+    // Slots 27/28: gravity factor of the body while the physics world runs.
+    float GetGravityFactor() override;
+    void Detached(float gravityFactor) override;
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     ape::Vec3 GetAimPoint() override;                 // slot 71
@@ -242,7 +245,9 @@ public:
     // without one. NOTE: the slot is not declared on EntityDef yet.
     void GetBounds(ape::Aabb& out) const;
     ~TargetableDefC() override;
-    uint8_t field_C4[0x24] = {};       // 0xC4
+    uint8_t field_C4[0x0C] = {};       // 0xC4
+    ape::Vec3 aimOffset{};             // 0xD0 (12 bytes used) NOTE: name from GetAimPoint
+    uint8_t field_DC[0x0C] = {};       // 0xDC
     PropDamageSettings damage;         // 0xE8
     uint8_t targetingFlags[6] = {};    // 0x120
     void* collisionShape = nullptr;    // 0x128
@@ -315,6 +320,9 @@ public:
     // Slot 35: linear velocity of the body.
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;
+    // Slot 71: centre of mass of the body unless the definition moves the
+    // aim point, then the entity centre.
+    ape::Vec3 GetAimPoint() override;
     // Slot 82: some hit category can hurt the entity.
     virtual bool CanBeDamaged() const;
     void OnHitCategory2(EntityHitRecord& hit) override;
@@ -367,6 +375,12 @@ public:
     void SetRenderId(uint32_t id) override;
     // A kill order (message 0xD77F98D6 with argument 0x14FBC) destroys the entity.
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
+    // Slot 57: while stacking, a watcher whose script state 0xDC175839 has
+    // the event named after this entity knocks it off its holder and
+    // destroys it.
+    bool AddWatcher(void* watcher) override;
+    // @func 0x001946F0 TargetableB::RemoveWatcher
+    void RemoveWatcher(void* watcher) override { Entity::RemoveWatcher(watcher); }
     void* bodyAction = nullptr;              // 0x188
     uint8_t stateHistory[4] = {};            // 0x1B8 indexed by historyIndex
     uint32_t historyIndex = 0;               // 0x1BC
@@ -399,6 +413,10 @@ public:
 // instances.
 class TargetableA : public RigidBodyEntity {
 public:
+    // Slot 57: a watcher with an anim script is sent to its "figure" state
+    // (0x2DA34781 unless the figure looks for a model, else 0x047034DE)
+    // while nothing is held; refused when such a state exists.
+    bool AddWatcher(void* watcher) override;
     static constexpr int kSharedObjects = 6;
     // Shared world objects, counted by every instance; cleared when the last
     // instance goes.
@@ -485,6 +503,7 @@ public:
 
     ~CompoundEntity() override;
     bool Release(bool kill) override;                 // slot 10
+    void SetFlag80(bool on) override;                 // slot 23
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     bool CanBeDamaged() const override;               // slot 82
@@ -497,7 +516,7 @@ public:
     // Slot 99: physics state (0x0016BC0C, not ported).
     virtual void SetPropState(int32_t state, uint32_t arg);
     void* bodyAction = nullptr;              // 0x188
-    int32_t propState = 0;                   // 0x18C
+    int32_t propState = 0;                   // 0x18C 6: body active
     int32_t hitHeading = 0;                  // 0x2E0 degrees
     const PropDamageSettings& DamageSettings() const;
     // Empty overrides of the +0x17C interface's slots 5 and 6.
