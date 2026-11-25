@@ -64,6 +64,7 @@ enum ComponentDescType : uint32_t {
 
 // <PHYSICS> (vtable 0x00B1BFC8, 0xA0 bytes): the entity's rigid body.
 struct PhysicsComponentDesc : ComponentDesc {
+    ~PhysicsComponentDesc() override;
     explicit PhysicsComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Physics) {}
     void* world = nullptr;       // 0x14 level physics world when parsed
     uint32_t field18[2] = {};    // 0x18 NOTE: not set by the parser
@@ -88,6 +89,7 @@ struct TargetingRange {
     float value14 = 0.5f;        // +0x14 attribute 0xF5DFB24A. NOTE: name unknown
 };
 struct TargetingComponentDesc : ComponentDesc {
+    ~TargetingComponentDesc() override;
     explicit TargetingComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Targeting) {}
     TargetingRange ranges[6];    // 0x14
     bool simple = false;         // 0xA4
@@ -102,6 +104,7 @@ struct TargetingComponentDesc : ComponentDesc {
 
 // <Anim> (vtable 0x00B1434C, 0x1C bytes).
 struct AnimComponentDesc : ComponentDesc {
+    ~AnimComponentDesc() override;
     explicit AnimComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Anim) {}
     uint32_t animSet = 0;        // 0x14 "set"
     uint32_t animTree = 0;       // 0x18 "tree"
@@ -110,6 +113,7 @@ struct AnimComponentDesc : ComponentDesc {
 // <Combat> (vtable 0x00B1C040, 0x48 bytes): attack definitions and the
 // reaction animation set per reaction type (<Reaction Type=... Name=...>).
 struct CombatComponentDesc : ComponentDesc {
+    ~CombatComponentDesc() override;
     explicit CombatComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Combat) {}
     // 0x14..0x28: two groups of three hashes (attributes 0xFB92D658,
     // 0xFB92E002, 0xFB929D5A and 0xBF173D65, 0xBF17470F, 0xBF170467).
@@ -124,6 +128,7 @@ struct CombatComponentDesc : ComponentDesc {
 // <ContextualMarker> (vtable 0x00B1C0BC, 0x70 bytes): a HUD marker
 // attached to the entity, scaled with distance.
 struct ContextualMarkerComponentDesc : ComponentDesc {
+    ~ContextualMarkerComponentDesc() override;
     explicit ContextualMarkerComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_ContextualMarker) {}
     ape::Vec4 attachRot = {0.0f, 0.0f, 0.0f, 1.0f};       // 0x20 quaternion of AttachRot (degrees)
     ape::Vec3 attachOffset = {0.0f, 0.0f, 0.0f, 0.0f};    // 0x30
@@ -142,12 +147,14 @@ struct ContextualMarkerComponentDesc : ComponentDesc {
 
 // <ControlAI> (vtable 0x00B1432C, 0x18 bytes).
 struct ControlAIComponentDesc : ComponentDesc {
+    ~ControlAIComponentDesc() override;
     explicit ControlAIComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_ControlAI) {}
     uint32_t behavior = 0;       // 0x14
 };
 
 // <AnimMap> (vtable 0x00B1C618, 0x24 bytes).
 struct AnimMapComponentDesc : ComponentDesc {
+    ~AnimMapComponentDesc() override;
     explicit AnimMapComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_AnimMap) {}
     uint32_t map = 0;            // 0x14
     uint32_t tree = 0;           // 0x18
@@ -157,6 +164,7 @@ struct AnimMapComponentDesc : ComponentDesc {
 
 // <ProcAnim> (vtable 0x00B1C568, 0x80 bytes): spring-driven bone chain.
 struct ProcAnimComponentDesc : ComponentDesc {
+    ~ProcAnimComponentDesc() override;
     explicit ProcAnimComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_ProcAnim) {}
     // Flag word 0x20.
     bool flag31 = false;         // bit 31 attribute 0x002480E8. NOTE: name unknown
@@ -190,6 +198,7 @@ struct ProcEye {
     float lowerRotPivot[2] = {0.5f, 0.5f};   // +0x34 LowerRotPivotU/V
 };
 struct ProcEyesComponentDesc : ComponentDesc {
+    ~ProcEyesComponentDesc() override;
     explicit ProcEyesComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_ProcEyes) {}
     bool flag11 = false;         // 0x11 attribute 0x2A9B2CB7 (in the base's padding). NOTE: name unknown
     ape::ApeTArray<ProcEye> eyes;   // 0x14
@@ -198,6 +207,7 @@ struct ProcEyesComponentDesc : ComponentDesc {
 // <IK> (vtable 0x00B1C7D0, 0x60 bytes): names of the IK solvers the
 // component drives, from its child elements.
 struct IKComponentDesc : ComponentDesc {
+    ~IKComponentDesc() override;
     explicit IKComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_IK) {}
     uint32_t jointTwoSolvers[8] = {};    // 0x14 <JointTwoSolver Name=...>
     // 0x34 <JointThreeSolver Name=...>. NOTE: the console leaves unused slots
@@ -209,6 +219,7 @@ struct IKComponentDesc : ComponentDesc {
 
 // <FacePlayer> (vtable 0x00B1C720, 0x20 bytes): turns a part towards the player.
 struct FacePlayerComponentDesc : ComponentDesc {
+    ~FacePlayerComponentDesc() override;
     explicit FacePlayerComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_FacePlayer) {}
     uint32_t part = 0;           // 0x14
     float rotSpeed = 0.0f;       // 0x18 radians per second (degrees in the XML)
@@ -225,6 +236,7 @@ struct PowerFx {
     float timeout = 0.0f;        // +0x0C
 };
 struct FxComponentDesc : ComponentDesc {
+    ~FxComponentDesc() override;
     explicit FxComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_FX) {}
     PowerFx cloak;               // 0x20 <Cloak>
     float cloakPowerCost = 0.0f; // 0x30
@@ -258,6 +270,7 @@ struct RadarDefEntry {
     uint32_t value = 0;          // +0x04 attribute 0x7BA7CDEF. NOTE: name unknown
 };
 struct RadarComponentDesc : ComponentDesc {
+    ~RadarComponentDesc() override;
     explicit RadarComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Radar) {}
     // 0x14: marker type per radar mode (location, entity, binoPhoto,
     // binoRecord, hacking, vehicle, blueprint, follow, switch).
@@ -276,6 +289,7 @@ struct RadarComponentDesc : ComponentDesc {
 
 // <RadarBlip> (vtable 0x00B1C920, 0x18 bytes).
 struct RadarBlipComponentDesc : ComponentDesc {
+    ~RadarBlipComponentDesc() override;
     explicit RadarBlipComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_RadarBlip) {}
     uint32_t blipType = 0x03F0D768u;   // 0x14 "Type", default "Enemy"
 };
@@ -287,6 +301,7 @@ enum InteractPhysicsState : uint32_t {   // names at 0x00AD3FE4
     kPhysState_Crawl, kPhysState_PlayDead, kPhysState_ClimbWall,
 };
 struct InteractComponentDesc : ComponentDesc {
+    ~InteractComponentDesc() override;
     explicit InteractComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Interact) {}
     ape::Vec3 vec20 = {0.0f, 0.0f, 0.0f, 0.0f};    // 0x20 attribute 0x3B6C1F30. NOTE: name unknown
     ape::Vec3 rotation = {0.0f, 0.0f, 0.0f, 0.0f}; // 0x30 attribute 0x98DB3873, radians. NOTE: name unknown
@@ -325,6 +340,7 @@ struct ReceptacleSlot {
     uint32_t pad84[3] = {};
 };
 struct ReceptacleComponentDesc : ComponentDesc {
+    ~ReceptacleComponentDesc() override;
     explicit ReceptacleComponentDesc(uint32_t nameHash)
         : ComponentDesc(nameHash, kCompDesc_Receptacle)
     {
@@ -344,6 +360,7 @@ struct MoverPoint {
     ape::Vec3 offset = {0.0f, 0.0f, 0.0f, 0.0f};   // +0x10 "Offset"
 };
 struct MoverComponentDesc : ComponentDesc {
+    ~MoverComponentDesc() override;
     explicit MoverComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Mover) {}
     uint32_t pathType = 0xE2E902C9u;   // 0x14 NOTE: default name unknown
     uint32_t motionType = 0x85D98325u; // 0x18 default "Linear"
@@ -359,6 +376,7 @@ struct MoverComponentDesc : ComponentDesc {
 // <OffscreenMarker> (vtable 0x00B1CF18, 0x2C bytes): HUD marker of an
 // entity, with its own colours on and off screen.
 struct OffscreenMarkerComponentDesc : ComponentDesc {
+    ~OffscreenMarkerComponentDesc() override;
     explicit OffscreenMarkerComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_OffscreenMarker) {}
     uint32_t hash14 = 0;         // 0x14 attribute 0x457D8076. NOTE: name unknown
     uint32_t hash18 = 0;         // 0x18 attribute 0x4EA1C7E6. NOTE: name unknown
@@ -374,6 +392,7 @@ struct OffscreenMarkerComponentDesc : ComponentDesc {
 
 // <SimplePhysics> (vtable 0x00B1CF70, 0x24 bytes).
 struct SimplePhysicsComponentDesc : ComponentDesc {
+    ~SimplePhysicsComponentDesc() override;
     explicit SimplePhysicsComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_SimplePhysics) {}
     float radius = 0.5f;         // 0x14
     float height = 1.0f;         // 0x18
@@ -383,6 +402,7 @@ struct SimplePhysicsComponentDesc : ComponentDesc {
 
 // <JumpRope> (vtable 0x00B1CB38, 0x1C bytes).
 struct JumpRopeComponentDesc : ComponentDesc {
+    ~JumpRopeComponentDesc() override;
     explicit JumpRopeComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_JumpRope) {}
     uint32_t materialObject = 0; // 0x14
     uint32_t anchorEntity = 0;   // 0x18
@@ -390,6 +410,7 @@ struct JumpRopeComponentDesc : ComponentDesc {
 
 // <AeSpline> (vtable 0x00B0EF54, 0x14 bytes): no attributes of its own.
 struct AeSplineComponentDesc : ComponentDesc {
+    ~AeSplineComponentDesc() override;
     explicit AeSplineComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_AeSpline) {}
 };
 
@@ -400,6 +421,7 @@ struct WheelchairSlave {
     uint32_t parent = 0;         // +0x04
 };
 struct WheelchairComponentDesc : ComponentDesc {
+    ~WheelchairComponentDesc() override;
     explicit WheelchairComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Wheelchair) {}
     int32_t chairType = 0;       // 0x14
     uint32_t chairBone = 0;      // 0x18
@@ -414,6 +436,7 @@ struct WheelchairComponentDesc : ComponentDesc {
 
 // <tracker> (vtable 0x00B1D0F0, 0x2C bytes).
 struct TrackerComponentDesc : ComponentDesc {
+    ~TrackerComponentDesc() override;
     explicit TrackerComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Tracker) {}
     uint32_t script = 0;         // 0x14
     float minRange = 0.0f;       // 0x18
@@ -426,6 +449,7 @@ struct TrackerComponentDesc : ComponentDesc {
 // <Vortex> (vtable 0x00B1CBA8, 0x1C bytes). NOTE: the console leaves both
 // values uninitialised before the reads (they are the read defaults).
 struct VortexComponentDesc : ComponentDesc {
+    ~VortexComponentDesc() override;
     explicit VortexComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Vortex) {}
     float radius = 0.0f;         // 0x14
     float strength = 0.0f;       // 0x18
@@ -433,6 +457,7 @@ struct VortexComponentDesc : ComponentDesc {
 
 // <Scoring> (vtable 0x00B1CC70, 0x40 bytes).
 struct ScoringComponentDesc : ComponentDesc {
+    ~ScoringComponentDesc() override;
     explicit ScoringComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Scoring) {}
     float score = 0.0f;          // 0x14 NOTE: uninitialised on the console before the read
     ape::Vec3 endPos = {0.0f, 0.0f, 0.0f, 0.0f};   // 0x20
@@ -443,6 +468,7 @@ struct ScoringComponentDesc : ComponentDesc {
 
 // <SystemCracker> (vtable 0x00B1CC00, 0x1C bytes).
 struct SystemCrackerComponentDesc : ComponentDesc {
+    ~SystemCrackerComponentDesc() override;
     explicit SystemCrackerComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_SystemCracker) {}
     uint32_t script = 0;         // 0x14
     bool flag18 = false;         // 0x18 attribute 0xCC2ABC8B. NOTE: name unknown
@@ -460,14 +486,17 @@ struct PulseFieldComponentDesc : ComponentDesc {
     float timeOffset = 0.0f;     // 0x28
 };
 struct MagNetComponentDesc : PulseFieldComponentDesc {
+    ~MagNetComponentDesc() override;
     explicit MagNetComponentDesc(uint32_t nameHash) : PulseFieldComponentDesc(nameHash, kCompDesc_MagNet) {}
 };
 struct SpeedBoostComponentDesc : PulseFieldComponentDesc {
+    ~SpeedBoostComponentDesc() override;
     explicit SpeedBoostComponentDesc(uint32_t nameHash) : PulseFieldComponentDesc(nameHash, kCompDesc_SpeedBoost) {}
 };
 
 // <BallRoll> (vtable 0x00B1D1D0, 0x30 bytes).
 struct BallRollComponentDesc : ComponentDesc {
+    ~BallRollComponentDesc() override;
     explicit BallRollComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_BallRoll) {}
     uint32_t boneName = 0;       // 0x14
     uint32_t entityName = 0;     // 0x18
@@ -488,6 +517,7 @@ struct MonsterClosetSpawn {
     bool respawnEnabled = true;  // 0x10
 };
 struct MonsterClosetComponentDesc : ComponentDesc {
+    ~MonsterClosetComponentDesc() override;
     explicit MonsterClosetComponentDesc(uint32_t nameHash)
         : ComponentDesc(nameHash, kCompDesc_MonsterCloset)
     {
@@ -499,6 +529,7 @@ struct MonsterClosetComponentDesc : ComponentDesc {
 
 // <DamageSequence> (vtable 0x00B1D258, 0x2C bytes).
 struct DamageSequenceComponentDesc : ComponentDesc {
+    ~DamageSequenceComponentDesc() override;
     explicit DamageSequenceComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_DamageSequence) {}
     uint32_t script = 0;         // 0x14
     int32_t int18 = -1;          // 0x18 attribute 0xBF260CF3. NOTE: name unknown
@@ -511,6 +542,7 @@ struct DamageSequenceComponentDesc : ComponentDesc {
 
 // <Buoyancy> (vtable 0x00B1CAA0, 0x64 bytes): floating on water.
 struct BuoyancyComponentDesc : ComponentDesc {
+    ~BuoyancyComponentDesc() override;
     explicit BuoyancyComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Buoyancy) {}
     float maxDepth = 4.0f;       // 0x14
     float floatSpeed = 2.0f;     // 0x18
@@ -533,6 +565,7 @@ struct BuoyancyComponentDesc : ComponentDesc {
 
 // <WallClimb> (vtable 0x00B1D148, 0x70 bytes). Angles are read in degrees.
 struct WallClimbComponentDesc : ComponentDesc {
+    ~WallClimbComponentDesc() override;
     explicit WallClimbComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_WallClimb) {}
     float grabAngleH = 60.0f;    // 0x14 radians after parsing
     float grabDistance = 8.0f;   // 0x18

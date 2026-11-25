@@ -31,6 +31,9 @@ Goal* JobGoalAt(const Job* job, uint32_t index);
 // Per-goal save word (+0x20074 + slot*4): status in bits 28-31, bit 26 dirty.
 uint32_t JobGoalSaveWord(const Job* job, int slot);
 void JobSetGoalSaveWord(Job* job, int slot, uint32_t value);
+// Next free goal save slot of a job (counter in the top 12 bits of Job +0x04;
+// each call takes one).
+int JobTakeGoalSaveSlot(Job* job);
 // Byte +0xAC of the job's owner object (+0x08). NOTE: meaning unknown.
 uint8_t JobOwnerFlag(const Job* job);
 

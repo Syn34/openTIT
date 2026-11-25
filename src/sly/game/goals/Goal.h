@@ -10,9 +10,8 @@
 // entities, spawners, lasers... that are enabled while the goal is active).
 //
 // Console layout: the base object is 0xA0C bytes (vtable 0x00B1E1F8); its
-// constructor 0x00769BD8 and destructor 0x00769480 live outside this
-// module's address range, as do the one-line virtual defaults 0x00769Axx
-// (implemented inline here, untagged). Subclass data starts at +0xA0C.
+// constructor 0x00769BD8 and destructor 0x00769480 are approximated (see
+// Goal.cpp). Subclass data starts at +0xA0C.
 #pragma once
 
 #include "ape/memory/ApeTArray.h"
@@ -176,6 +175,14 @@ struct GoalMarkerList {
 struct GoalCycleEntry {
     char* text = nullptr;
     float duration = 0.0f;
+
+    // 0x00321230 / 0x00321240 (constructor / destructor).
+    GoalCycleEntry() = default;
+    ~GoalCycleEntry() { SetText(nullptr); }
+    GoalCycleEntry(const GoalCycleEntry&) = delete;
+    GoalCycleEntry& operator=(const GoalCycleEntry&) = delete;
+    // 0x00321288: keeps a copy of `value` (none for a null or empty text).
+    void SetText(const char* value);
 };
 
 // A message sent to a goal through slot 2 (0x00321BE4): an id and two words.
@@ -196,19 +203,20 @@ struct GoalBlob {
 
 class Goal {
 public:
-    // Untagged stand-in for the console constructor 0x00769BD8 (out of
-    // range): copies the parse description. Subclasses only use the job and
-    // game pointers.
+    // Copies the parse description (script lists, hints, blobs and cycle
+    // texts are deep-copied) and takes the next save slot of the job.
     explicit Goal(const struct GoalDesc* desc);
     virtual ~Goal();
 
     // slot 2 (+0x08)
     virtual void HandleMessage(const GoalMessage& msg);
-    // slot 3: per class type id (0x0076Bxxx, out of range).
+    // slot 3: per class type id.
+    // @func 0x00769A20 Goal::TypeId
     virtual int TypeId() const { return 0; }
     // slot 4 (+0x10): processes one game event for `player`; returns the status.
     virtual uint8_t Update(int player, const GameEvent& e);
     // slot 5 (+0x14)
+    // @func 0x00769A28 Goal::OnLevelLoaded
     virtual void OnLevelLoaded() {}
     // slot 6 (+0x18): resets the goal, `fromSave` takes the status from the
     // job's save word; `status` -1 picks it from the flags.
@@ -220,40 +228,53 @@ public:
     // slot 9 (+0x24)
     virtual void ReapplyHints(Goal* owner);
     // slot 10 (+0x28)
+    // @func 0x00769A2C Goal::SetFlags
     virtual void SetFlags(uint32_t value) { flags = value; }
     // slots 11/12 (+0x2C/+0x30): "???" for a hidden goal.
+    // @func 0x00769A34 Goal::GetName
     virtual const char* GetName() { return status == kGoal_Locked2 ? "???" : name; }
+    // @func 0x00769A58 Goal::GetDescription
     virtual const char* GetDescription() { return status == kGoal_Locked2 ? "???" : description; }
     // slot 13 (+0x34): progress counter shown by the HUD; false if none.
+    // @func 0x00769A7C Goal::GetProgress
     virtual bool GetProgress(struct GoalProgress* out) { (void)out; return false; }
     // slot 14 (+0x38)
+    // @func 0x00769A84 Goal::IsComplete
     virtual bool IsComplete() { return status == kGoal_Complete; }
     // slot 15 (+0x3C): adds the goal's waypoint markers (minigame goals let
     // the minigame do it).
+    // @func 0x00769A98 Goal::CollectMarkers
     virtual void CollectMarkers(struct GoalMarkerList* list) { (void)list; }
     // slot 16 (+0x40): the entity the HUD points at; false if none.
     virtual bool GetTarget(struct GoalTarget* out);
     // slot 17 (+0x44)
+    // @func 0x00769A9C Goal::Field8A0
     virtual uint32_t Field8A0() { return field_8A0; }
     // slot 18 (+0x48)
+    // @func 0x00769AA4 Goal::CollectAllMarkers
     virtual void CollectAllMarkers(struct GoalMarkerList* list) { CollectMarkers(list); }
     // slot 19 (+0x4C)
+    // @func 0x00769AE0 Goal::Field8F4
     virtual uint32_t Field8F4(int i) { return field_8F4[i]; }
     // slot 20 (+0x50)
+    // @func 0x00769AF8 Goal::Field960
     virtual uint32_t Field960() const { return field_960; }
     // slot 21 (+0x54): text of the current cycle entry and its fade value.
     virtual const char* CurrentCycleText(float* fade);
     // slot 22 (+0x58)
     virtual void ResetCycle();
     // slot 23 (+0x5C)
+    // @func 0x00769B00 Goal::Field96C
     virtual bool Field96C() const { return field_96C; }
     // slot 24 (+0x60)
+    // @func 0x00769B08 Goal::FreezeStatus
     virtual void FreezeStatus(bool frozen)
     {
         flags = frozen ? (flags | kGoalFlag_StatusFrozen) : (flags & ~kGoalFlag_StatusFrozen);
     }
     // slot 25 (+0x64): true when the goal's own scripts suppress the
     // following goal's start scripts.
+    // @func 0x00769B34 Goal::BlocksNextScripts
     virtual bool BlocksNextScripts() const { return false; }
     // slot 26 (+0x68)
     virtual void SetStatus(uint8_t newStatus, bool force);
@@ -288,7 +309,8 @@ public:
     uint32_t flags = 0;                 // +0x14 GoalFlags
     uint32_t initialFlags = 0;          // +0x18
     char name[0x80] = {};               // +0x1C
-    char description[0x800] = {};       // +0x9C
+    char description[0x400] = {};       // +0x9C
+    char field_49C[0x400] = {};         // +0x49C NOTE: second text of the description; unused here
     bool showDescription = false;       // +0x99C NOTE: a group shows its active child's description
     uint32_t targetName = 0;            // +0x89C
     uint32_t field_8A0 = 0;             // +0x8A0
@@ -296,16 +318,24 @@ public:
     int32_t progressBase = 0;           // +0x8A8 count added to a group's progress
     uint32_t hintScriptName = 0;        // +0x8AC anim script started while the goal is active
     ape::ApeAnimScriptInstance* hintScript = nullptr; // +0x8B0
+    uint8_t field_8B4 = 0;              // +0x8B4
+    uint8_t field_8B5 = 0;              // +0x8B5
     GoalScriptCursor scripts[kScriptSlotCount];       // +0x8B8
     ape::ApeTArray<GoalHint>* hints = nullptr;         // +0x8E0
+    uint32_t field_8E4[4] = {};         // +0x8E4
     uint32_t field_8F4[27] = {};        // +0x8F4
     uint32_t field_960 = 0;             // +0x960
+    uint32_t field_964 = 0;             // +0x964
+    uint32_t field_968 = 0;             // +0x968
     bool field_96C = false;             // +0x96C
     bool completesParent = false;       // +0x8B6 a completed child completes its group
     bool showProgressTotal = false;     // +0x8B7 GetProgress() reports a total
     uint32_t checkpoints[9] = {};       // +0x970
     int32_t saveSlot = 0;               // +0x994 index of the goal's job save word
     int32_t index = -1;                 // +0x998 position in the job's goal list
+    char field_99D[0x10] = {};          // +0x99D
+    uint32_t field_9B0 = 0;             // +0x9B0
+    uint32_t field_9B4 = 0;             // +0x9B4
     GoalBlob blobs[4];                  // +0x9B8
     int32_t cycleCount = 0;             // +0x9E8
     int32_t cycleIndex = 0;             // +0x9EC
@@ -315,19 +345,50 @@ public:
     bool countsForGroup = true;         // +0x9FC the parent group looks at this child's result
     bool failRestarts = false;          // +0x9FD a failed group resets instead of failing
     bool targetFlag = false;            // +0x9FE
+    uint32_t nameHash = 0;              // +0xA00
     Goal* nextGoal = nullptr;           // +0xA04 chained goal (shares the start scripts)
     Goal* parentGoal = nullptr;         // +0xA08
 };
 
 // Parse description handed from 0x00322D88 to the factories (0x2A8 bytes on
-// the console). Only the members the ported code reads are modelled.
+// the console). The layout follows what the base constructor copies; the
+// rest of the block (+0x168..) is only read by the parser itself.
 struct GoalDesc {
-    SlyGame* game = nullptr;
-    Job* job = nullptr;
-    uint8_t repeatCount = 0;
-    uint32_t flags = 0;
-    const char* name = nullptr;
-    const char* description = nullptr;
+    SlyGame* game = nullptr;            // +0x00
+    Job* job = nullptr;                 // +0x04
+    uint32_t repeatCount = 0;           // +0x08 (low byte used)
+    uint32_t flags = 0;                 // +0x0C
+    const char* name = nullptr;         // +0x10
+    const char* description = nullptr;  // +0x14
+    const char* text2 = nullptr;        // +0x18 NOTE: second text; purpose unknown
+    uint32_t targetName = 0;            // +0x1C
+    uint32_t field_20 = 0;              // +0x20 -> Goal::field_8A0
+    uint32_t progressName = 0;          // +0x24
+    int32_t progressBase = 0;           // +0x28
+    uint32_t hintScriptName = 0;        // +0x2C
+    uint8_t field_30 = 0;               // +0x30 -> Goal::field_8B4
+    uint8_t field_31 = 0;               // +0x31 -> Goal::field_8B5
+    bool completesParent = false;       // +0x32
+    bool showProgressTotal = false;     // +0x33
+    GoalScriptCursor scripts[kScriptSlotCount];   // +0x34 parsed script lists (copied)
+    ape::ApeTArray<GoalHint>* hints = nullptr;    // +0x5C (copied)
+    uint32_t field_60[4] = {};          // +0x60 -> Goal::field_8E4
+    uint32_t field_70[27] = {};         // +0x70 -> Goal::field_8F4
+    uint32_t field_DC = 0;              // +0xDC -> Goal::field_960
+    uint32_t field_E0 = 0;              // +0xE0 -> Goal::field_964
+    uint32_t field_E4 = 0;              // +0xE4 -> Goal::field_968
+    bool field_E8 = false;              // +0xE8 -> Goal::field_96C
+    uint32_t checkpoints[9] = {};       // +0xEC
+    bool showDescription = false;       // +0x110
+    bool failRestarts = false;          // +0x111
+    bool targetFlag = false;            // +0x112
+    const GoalCycleEntry* cycle = nullptr; // +0x114 cycling texts (copied)
+    int32_t cycleCount = 0;             // +0x118
+    int32_t index = -1;                 // +0x11C
+    char field_120[0x10] = {};          // +0x120 -> Goal::field_99D
+    uint32_t field_130 = 0;             // +0x130 -> Goal::field_9B0
+    uint32_t field_134 = 0;             // +0x134 -> Goal::field_9B4
+    GoalBlob blobs[4];                  // +0x138 (copied)
 };
 
 } // namespace goals

@@ -79,16 +79,44 @@ public:
     explicit EntityComponent(const ComponentDesc* desc);
     // Leaves the live component registry and the update list (0x00250384).
     virtual ~EntityComponent();                                    // slots 0/1
+    // Slots 2/3 (+0x08/+0x0C): component-specific blocks other systems
+    // read; none by default. NOTE: names unknown (the control components
+    // return their input flags and input record, other kinds data blocks).
+    // @func 0x00737584 EntityComponent::DataBlockA
+    virtual void* DataBlockA() { return nullptr; }
+    // @func 0x0073758C EntityComponent::DataBlockB
+    virtual void* DataBlockB() { return nullptr; }
+    // Slot 4 (+0x10). NOTE: name assumed (control components clear their input).
+    // @func 0x00737594 EntityComponent::ResetState
+    virtual void ResetState() {}
+    // @func 0x00762AAC EntityComponent::OnOwnerSpawned
     virtual void OnOwnerSpawned(Entity* owner) { (void)owner; }    // slot 5 (+0x14)
+    // @func 0x00762AB0 EntityComponent::Update
     virtual void Update(float dt) { (void)dt; }                    // slot 6 (+0x18)
+    // @func 0x00762AB4 EntityComponent::PostUpdate
     virtual void PostUpdate(float dt) { (void)dt; }                // slot 7 (+0x1C)
     // Places the component's geometry before the instance render pass, for
     // components in the instance render list (slot 8, +0x20).
     virtual void RenderInstance();
-    // NOTE: slot 11 (+0x2C); the flag's meaning depends on the component.
-    virtual void SetOption(bool value) { (void)value; }
+    // Slot 9 (+0x24). NOTE: empty by default, meaning unknown.
+    // @func 0x00737598 EntityComponent::Slot9
+    virtual void Slot9() {}
+    // Slot 10 (+0x28). NOTE: returns 0 by default, meaning unknown.
+    // @func 0x0073759C EntityComponent::Slot10
+    virtual int Slot10() { return 0; }
+    // Slot 11 (+0x2C): by default switches the component on or off; some
+    // components give the flag their own meaning.
+    // @func 0x007375A4 EntityComponent::SetOption
+    virtual void SetOption(bool value) { enabled = value; }
+    // @func 0x007375AC EntityComponent::SetVisible
     virtual void SetVisible(bool visible, bool immediate) { (void)visible; (void)immediate; } // slot 12
+    // Slot 13 (+0x34): visibility pushed down from the owner; by default the
+    // same as SetVisible. NOTE: name assumed.
+    // @func 0x007375B0 EntityComponent::SetVisibleFromOwner
+    virtual void SetVisibleFromOwner(bool visible, bool immediate) { SetVisible(visible, immediate); }
+    // @func 0x007375F4 EntityComponent::SetAlpha
     virtual void SetAlpha(uint8_t alpha, bool children) { (void)alpha; (void)children; }      // slot 14
+    // @func 0x007375F8 EntityComponent::OnTimeScale
     virtual void OnTimeScale(uint32_t value, bool recurse) { (void)value; (void)recurse; }    // slot 15
 
     uint32_t id = 0;          // 0x04 per-entity identifier (name hash of the component)
@@ -242,6 +270,8 @@ public:
     // Opacity of the geometry (scaled by the geometry's own alpha unless
     // `absolute`), optionally of the children too; components are told.
     virtual void SetAlpha(uint8_t alpha, bool children, bool flag, bool absolute); // slot 29 (+0x74)
+    // Slot 30 (+0x78): colour tint of the model (amount 0..1).
+    virtual void SetTint(float amount, const uint8_t color[4], bool immediate);
     virtual void SetHighlight(bool on, bool children);             // slot 31
     virtual void SetTimeScale(uint32_t value, bool children);      // slot 32
     virtual void* GetHudScript();                                  // slot 33

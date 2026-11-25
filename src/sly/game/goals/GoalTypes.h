@@ -20,6 +20,7 @@ namespace goals {
 // "GoalWait" (vtable 0x00B1F1B0): completes after "Time" seconds.
 class GoalWait : public Goal {
 public:
+    int TypeId() const override;
     using Goal::Goal;
     ~GoalWait() override;
     static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
@@ -34,6 +35,7 @@ public:
 // when it runs out.
 class GoalTimer : public Goal {
 public:
+    int TypeId() const override;
     using Goal::Goal;
     ~GoalTimer() override;
     static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
@@ -52,6 +54,7 @@ public:
 // or pushes a stick in a direction.
 class GoalInput : public Goal {
 public:
+    int TypeId() const override;
     using Goal::Goal;
     ~GoalInput() override;
     static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
@@ -69,6 +72,7 @@ public:
 // "GoalCostume" (vtable 0x00B1E7B0): the player wears a costume.
 class GoalCostume : public Goal {
 public:
+    int TypeId() const override;
     using Goal::Goal;
     ~GoalCostume() override;
     static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
@@ -82,6 +86,7 @@ public:
 // inside [Min, max] when event 6 arrives.
 class GoalBinocucomPower : public Goal {
 public:
+    int TypeId() const override;
     using Goal::Goal;
     ~GoalBinocucomPower() override;
     static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
@@ -106,6 +111,7 @@ struct BinocucomRecordTarget {
 // a while; fails when the recording quality (event 8) drops too low.
 class GoalBinocucomRecord : public Goal {
 public:
+    int TypeId() const override;
     using Goal::Goal;
     ~GoalBinocucomRecord() override;
     static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
@@ -137,6 +143,7 @@ struct EntityChildLink {
 // child attached.
 class GoalEntityChild : public Goal {
 public:
+    int TypeId() const override;
     using Goal::Goal;
     ~GoalEntityChild() override;
     static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
@@ -163,6 +170,7 @@ enum class MinigameKind;
 // complete or fail the goal on the next update.
 class MinigameGoal : public Goal {
 public:
+    int TypeId() const override;
     using Goal::Goal;
     ~MinigameGoal() override;
     uint8_t Update(int player, const GameEvent& e) override;
@@ -187,14 +195,16 @@ struct MinigameConfig {
     uint32_t words[kMaxWords] = {};
 };
 
-// Base of the penguin minigame goals (vtable 0x00B1E4D0; its constructor
-// and destructor are outside this module's range).
+// Base of the penguin minigame goals (vtable 0x00B1E4D0).
 class PenguinGameGoal : public MinigameGoal {
 public:
     using MinigameGoal::MinigameGoal;
+    ~PenguinGameGoal() override;
     // slot 28 (+0x70): builds the minigame without installing it (the
-    // penguin montage runs several of them).
-    virtual gameplay::Minigame* BuildMinigame() = 0;
+    // penguin montage runs several of them); none by default.
+    virtual gameplay::Minigame* BuildMinigame();
+    // slot 29 (+0x74): NOTE: empty in every penguin goal; purpose unknown.
+    virtual void PenguinHook();
 
     MinigameConfig config;   // +0xA14
 };
@@ -202,6 +212,7 @@ public:
 // "GoalBentleyVsPenelope" (vtable 0x00B1E458): the Bentley vs Penelope fight.
 class GoalBentleyVsPenelope : public MinigameGoal {
 public:
+    int TypeId() const override;
     using MinigameGoal::MinigameGoal;
     ~GoalBentleyVsPenelope() override;
     static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
@@ -214,6 +225,7 @@ public:
         using PenguinGameGoal::PenguinGameGoal;                                  \
         ~Name() override;                                                        \
         static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);    \
+        int TypeId() const override;                                             \
         void InstallMinigame() override;                                         \
         gameplay::Minigame* BuildMinigame() override;                            \
     }
@@ -232,6 +244,7 @@ SLY_PENGUIN_GOAL(GoalPenguinWhackGame);      // vtable 0x00B1EE60
 // "GoalFencing" (vtable 0x00B1E918).
 class GoalFencing : public MinigameGoal {
 public:
+    int TypeId() const override;
     using MinigameGoal::MinigameGoal;
     ~GoalFencing() override;
     static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
@@ -245,6 +258,7 @@ public:
 // "GoalFishingGame" (vtable 0x00B1E990).
 class GoalFishingGame : public MinigameGoal {
 public:
+    int TypeId() const override;
     using MinigameGoal::MinigameGoal;
     ~GoalFishingGame() override;
     void InstallMinigame() override;
@@ -257,6 +271,7 @@ public:
 // "GoalQteGame" (vtable 0x00B1EF58).
 class GoalQteGame : public MinigameGoal {
 public:
+    int TypeId() const override;
     using MinigameGoal::MinigameGoal;
     ~GoalQteGame() override;
     void InstallMinigame() override;
@@ -275,6 +290,7 @@ public:
 // trophy.
 class GoalPenguinMontageGame : public MinigameGoal {
 public:
+    int TypeId() const override;
     static constexpr uint32_t kTrophy_NoLoss = 0xCBB04602;
     static constexpr int kRoundCount = 6;
 
@@ -300,6 +316,7 @@ public:
 // "GoalBartenderGame" (vtable 0x00B1E3E0).
 class GoalBartenderGame : public MinigameGoal {
 public:
+    int TypeId() const override;
     using MinigameGoal::MinigameGoal;
     ~GoalBartenderGame() override;
     void InstallMinigame() override;
@@ -322,6 +339,8 @@ namespace goals {
 // through Goal::nextGoal; the group completes or fails according to `mode`.
 class GoalGroup : public Goal {
 public:
+    int TypeId() const override;
+    bool BlocksNextScripts() const override;
     enum Mode : int32_t {
         kMode_All         = 1,   // every counted child complete
         kMode_NotAll      = 2,
@@ -377,6 +396,14 @@ private:
     void PlayChildCompleteState(int count);
 };
 
+// "GoalSet" (vtable 0x00B1E2F0): a group under another element name; it
+// adds nothing to GoalGroup.
+class GoalSet : public GoalGroup {
+public:
+    using GoalGroup::GoalGroup;
+    ~GoalSet() override;
+};
+
 } // namespace goals
 } // namespace sly
 
@@ -398,6 +425,7 @@ struct CameraEntityTarget {
 // which listed entity the player is looking at. It never completes by itself.
 class GoalCameraEntity : public Goal {
 public:
+    int TypeId() const override;
     static constexpr int kMaxTargets = 16;
 
     using Goal::Goal;
@@ -431,6 +459,7 @@ struct InteractionLink {
 // listed interaction is in the required state.
 class GoalInteraction : public Goal {
 public:
+    int TypeId() const override;
     enum Check : uint32_t {
         kCheck_Available = 0,   // state < 2
         kCheck_State1    = 1,
@@ -462,6 +491,7 @@ namespace goals {
 // after too long too far away, completes after long enough close by.
 class GoalFollow : public Goal {
 public:
+    int TypeId() const override;
     enum FollowFlags : uint32_t {
         kFollow_TooFar     = 0x01000000,   // warning currently shown
         kFollow_ShowMarker = 0x80000000,   // (XML 0x76E96977)
@@ -496,9 +526,11 @@ public:
 // drops past each threshold. Never holds up its job.
 class GoalHealthMonitor : public Goal {
 public:
+    int TypeId() const override;
     // 0x0033273C (the factory's constructor).
     GoalHealthMonitor(const GoalDesc* desc, const ape::ApeTArray<float>& thresholds,
                       uint32_t target, bool percent);
+    ~GoalHealthMonitor() override;
     static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
     uint8_t Update(int player, const GameEvent& e) override;
     void ResetHints(bool stopHintScript) override;
@@ -517,6 +549,7 @@ public:
 // while active. Never holds up its job.
 class GoalMarkEntity : public Goal {
 public:
+    int TypeId() const override;
     enum MarkFlags : uint32_t {
         kMark_HideWhileTargeted = 0x02000000,   // option bit 25
     };
@@ -550,6 +583,7 @@ namespace goals {
 // completes once every entity of the second set is gone.
 class GoalOperationMousetrap : public GoalGroup {
 public:
+    int TypeId() const override;
     enum Phase : int32_t {
         kPhase_None   = 0,   // nothing targeted
         kPhase_SetB   = 1,   // the second set is targeted
@@ -599,6 +633,7 @@ namespace goals {
 // with a target.
 class GoalScore : public Goal {
 public:
+    int TypeId() const override;
     enum Compare : uint8_t {
         kCompare_Less = 0, kCompare_AtMost = 1, kCompare_Near = 2,
         kCompare_Greater = 3, kCompare_AtLeast = 4,
@@ -638,6 +673,7 @@ public:
     };
 
     using Goal::Goal;
+    ~GoalScore() override;
     uint8_t Update(int player, const GameEvent& e) override;
     void Reset(bool fromSave, int status) override;
     void ResetHints(bool stopHintScript) override;
@@ -672,6 +708,7 @@ namespace goals {
 // and the marker builder (0x0032AAE8) are TODO.
 class GoalBinocucomPhoto : public Goal {
 public:
+    int TypeId() const override;
     // One photo target (0x90 bytes on the console).
     struct Target {
         uint8_t pad[0x10];

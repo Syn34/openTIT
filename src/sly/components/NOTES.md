@@ -63,4 +63,5 @@ hashing the executable's strings and word pairs. Hashes with no match keep a
   SpeedBoost, MonsterCloset, BallRoll, WallClimb, DamageSequence and the control family).
   MagNet/SpeedBoost embed an interface object (vtable 0x00B1CD24, base dtor 0x0048F6B0);
   AeSpline unregisters a game-world listener in its destructor (0x0046B7A4).
-* Description destructors live at 0x0076xxxx (outside this range).
+* Description destructors (0x0076xxxx, plus 0x00738DB0/0x0074EC00/0x0074EC44/0x00749668)
+  and the inventory slot defaults are in `ComponentDescDtors.cpp`.

@@ -9,9 +9,12 @@
   module life cycle, 'KNOF'/'KNOH'/'KNOD' chunk handlers. `AIHooks.cpp` Knowledge* stubs now
   forward here. `CreateKnowledgeSystem`/`DestroyKnowledgeSystem` should be called from the
   AI manager constructor/teardown (0x000186CC / 0x00018B30, not ported).
-* `KnowledgeTypes.cpp`: the two type tables and the type factories. The factories
-  (0x007755E4-0x0077A950) and the generic runtime entry allocators (0x007737A4/0x007743CC)
-  are outside the assigned range and are untagged; whoever owns that range can tag them.
+* `KnowledgeTypes.cpp`: the two type tables, the per-type factories and runtime allocators
+  (0x007755E4-0x0077A950) and the runtime-data allocator templates (0x007737A4-0x00773998
+  causes, 0x007742DC-0x00774D2C results, one instantiation per type with runtime data).
+  Still TODO there: 0x00773A90/0x00773C8C/0x00773E8C are the library's handle-list pool
+  (Init/Remove/Grow; the port keeps the library in vectors) and 0x00774E1C-0x00775550 are
+  RFireProjectile field getters used only by its Execute (0x00398040).
 * `KnowledgeCauses.cpp`, `KnowledgeResults.cpp`: per-type callbacks. Still TODO:
   RCameraShake (0x003958C8), RSetPosition (0x003967B0), RStartMeleeAttack::Execute
   (0x0039724C), RFireProjectile (0x00397970/0x00397D8C/0x00398040).
