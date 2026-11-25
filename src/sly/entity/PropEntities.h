@@ -356,6 +356,9 @@ public:
     void SetTransform(const ape::Matrix34& m) override;
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;
+    // Slot 20: the definition's aim offset placed by the entity transform
+    // (the entity default without one).
+    ape::Vec3 GetCenter() override;
     // Slot 71: centre of mass of the body unless the definition moves the
     // aim point, then the entity centre.
     ape::Vec3 GetAimPoint() override;

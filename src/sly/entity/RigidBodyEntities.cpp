@@ -1273,6 +1273,18 @@ ape::Vec3 TargetableCBase::GetVelocity()
     return rigidBody ? RigidBodyLinearVelocity(rigidBody) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
 }
 
+// @func 0x001FD620 TargetableCBase::GetCenter
+ape::Vec3 TargetableCBase::GetCenter()
+{
+    const ape::Vec3& o = Def()->aimOffset;
+    if (o.x == 0.0f && o.y == 0.0f && o.z == 0.0f)
+        return Entity::GetCenter();
+    const ape::Matrix34& m = transform;
+    return { m.translation.x + m.xAxis.x * o.x + m.yAxis.x * o.y + m.zAxis.x * o.z,
+             m.translation.y + m.xAxis.y * o.x + m.yAxis.y * o.y + m.zAxis.y * o.z,
+             m.translation.z + m.xAxis.z * o.x + m.yAxis.z * o.y + m.zAxis.z * o.z, 0.0f };
+}
+
 // @func 0x001FC570 TargetableCBase::GetAimPoint
 ape::Vec3 TargetableCBase::GetAimPoint()
 {
