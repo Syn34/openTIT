@@ -101,6 +101,18 @@ void HavokShapeAabb(const void* shape, const ape::Matrix34& transform, ape::Aabb
 // Body that owns a collidable: for collidables of type 1 (byte +0x18) the
 // owner sits at the signed offset in byte +0x10; null otherwise.
 void* CollidableOwnerBody(const void* collidable);
+// Contact point event of the contact listener (hkpContactPointEvent):
+// its two bodies (+0x04/+0x08; the properties are completed first by
+// 0x009155FC when +0x20 is not set) and disabling the contact (flag 8 in
+// byte +0x0F of the contact properties at +0x18).
+void* ContactEventBody(const void* event, int index);
+void ContactEventDisable(const void* event);
+// Game user properties of a body (hkpProperty list +0x7C/+0x80): the owner
+// type ("OwnerType", 0xA734004D; "Entity" = 0x7A30D7E3) and the owner
+// ("OwnerPtr", 0x91C7CF5B); 0 when absent.
+uint32_t RigidBodyOwnerType(void* body);
+void* RigidBodyOwner(void* body);
+constexpr uint32_t kBodyOwner_Entity = 0x7A30D7E3u;
 // hkReferencedObject::removeReference (0x007D4EA8).
 void HavokRelease(void* object);
 

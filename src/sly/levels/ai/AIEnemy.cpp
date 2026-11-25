@@ -41,7 +41,7 @@ void EnemyAI::Disengage()
     flags0 &= static_cast<uint8_t>(~kF0_Bit0);
     DropTarget();
     if (claimSlot)
-        *claimSlot = nullptr;
+        claimSlot->owner = nullptr;
     claimSlot = nullptr;
 }
 

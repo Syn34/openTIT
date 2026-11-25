@@ -777,6 +777,15 @@ public:
     void Interface17CSlot5(const void* event) override;
     void Interface17CSlot6() override;
 
+    // Tuning record the minigame hands over (0x003F2BA0). NOTE: only the
+    // speed scale (+0x1C) is read here.
+    struct Tuning {
+        uint8_t field_00[0x1C];
+        float speedScale;          // +0x1C
+    };
+    // @func 0x00172B78 CompoundEntity::SetTuning
+    void SetTuning(const Tuning* record) { tuning = record; speedScale = record->speedScale; }
+    const Tuning* tuning = nullptr;  // 0x1F0
     HkArray<void*> touchingBodies; // 0x1FC NOTE: bodies of entities it is in contact with (guessed)
     HkArray<void*> field_208;      // 0x208
     Part* parts[11] = {};          // 0x214

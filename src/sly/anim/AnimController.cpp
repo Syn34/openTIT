@@ -5,6 +5,7 @@
 #include "sly/entity/EntityHooks.h"
 
 #include "ape/core/ApeString.h"
+#include "ape/memory/ApeBucketAlloc.h"
 #include "ape/world/ApeBase.h"
 #include "ape/world/ApeInstances.h"
 #include "ape/world/ApeObj.h"
@@ -112,11 +113,28 @@ AnimController::AnimController(ape::world::ApeObj* object_) : object(object_)
     AnimControllers().PushBack(this);
 }
 
-// TODO(0x0034BF9C AnimController::~AnimController): the rig, poses, layers,
-// per-bone objects and the five helper arrays are not released yet; only
-// the global list entry is dropped.
+// @func 0x0034BF9C AnimController::~AnimController
 AnimController::~AnimController()
 {
+    // Bone objects go back to the default pivot.
+    if (boneObjects && rig) {
+        if (object->GetType() == ape::world::kObjType_CameraInstance) {
+            object->m_pivot = &ape::world::kWorldIdentity;
+        } else {
+            for (int32_t i = 0; i < rig->skeleton->boneCount; ++i) {
+                if (boneObjects[i])
+                    boneObjects[i]->m_pivot = &ape::world::kWorldIdentity;
+            }
+        }
+    }
+    if (boneBuffer) {
+        ape::BucketFree(boneBuffer, boneBufferSize);
+        boneBuffer = nullptr;
+    }
+    if (boneObjects) {
+        ape::BucketFree(boneObjects, boneObjectsSize);
+        boneObjects = nullptr;
+    }
     ape::ApeTArray<AnimController*>& all = AnimControllers();
     for (uint32_t i = 0; i < all.Count(); ++i) {
         if (all[i] == this) {
@@ -124,6 +142,48 @@ AnimController::~AnimController()
             break;
         }
     }
+    if (pose) {
+        HkPoseDelete(pose);
+        pose = nullptr;
+    }
+    if (rig) {
+        HkRemoveReference(rig);
+        rig = nullptr;
+    }
+    if (pose2) {
+        HkPoseDelete(pose2);
+        pose2 = nullptr;
+    }
+    if (rig2) {
+        HkRemoveReference(rig2);
+        rig2 = nullptr;
+    }
+    if (block74) {
+        ape::BucketFree(block74, 0xB0);
+        block74 = nullptr;
+    }
+    if (records6C) {
+        for (AnimRecord140& record : *records6C)
+            delete record.object;
+    }
+    if (layers) {
+        for (AnimLayer* layer : *layers)
+            delete layer;
+    }
+    delete field_70;
+    delete records6C;
+    delete field_68;
+    delete records64;
+    delete records60;
+    delete layers;
+    field_70 = nullptr;
+    records6C = nullptr;
+    field_68 = nullptr;
+    records64 = nullptr;
+    records60 = nullptr;
+    layers = nullptr;
+    // NOTE: the console's listener pool (+0x44) goes back to its allocator;
+    // the port keeps the listeners in place.
 }
 
 // @func 0x0034CC34 AnimController::FindLayer
@@ -140,11 +200,82 @@ AnimLayer* AnimController::FindLayer(uint32_t anim) const
     return nullptr;
 }
 
-// TODO(0x0034F690 AnimController::BindSkeleton)
+// @func 0x0034F690 AnimController::BindSkeleton
 void AnimController::BindSkeleton(const HkaSkeleton* bones, bool force)
 {
-    (void)bones;
-    (void)force;
+    if ((rig && !force) || !bones)
+        return;
+    if (rig) {
+        HkRemoveReference(rig);
+        rig = nullptr;
+    }
+    if (pose) {
+        HkPoseDelete(pose);
+        pose = nullptr;
+    }
+    if (pose2) {
+        HkPoseDelete(pose2);
+        pose2 = nullptr;
+    }
+    if (rig2) {
+        HkRemoveReference(rig2);
+        rig2 = nullptr;
+    }
+    rig = HkNewAnimatedSkeleton(bones);
+    if (rig)
+        rig->referencePoseWeightThreshold = 0.01f;
+    pose = HkNewReferencePose(bones);
+
+    if (boneObjects) {
+        ape::BucketFree(boneObjects, boneObjectsSize);
+        boneObjectsSize = 0;
+    }
+    if (boneBuffer) {
+        ape::BucketFree(boneBuffer, boneBufferSize);
+        boneBufferSize = 0;
+    }
+    boneObjects = nullptr;
+    boneBuffer = nullptr;
+    // Objects with a skeleton of their own are posed through it.
+    if (object->GetSkeleton())
+        return;
+
+    auto initPivot = [](BonePivot& pivot) {
+        pivot.transform = ape::world::kWorldIdentity;
+        pivot.scale = ape::world::kWorldUnitScale;
+    };
+    if (object->GetType() == ape::world::kObjType_CameraInstance) {
+        // A camera is posed as a whole.
+        boneBufferSize = sizeof(BonePivot);
+        auto* pivots = static_cast<BonePivot*>(ape::BucketAlloc(boneBufferSize));
+        boneObjectsSize = sizeof(ape::world::ApeObj*);
+        boneObjects = static_cast<ape::world::ApeObj**>(ape::BucketAlloc(boneObjectsSize));
+        initPivot(pivots[0]);
+        boneBuffer = pivots;
+        object->m_pivot = &pivots[0].transform;
+        boneObjects[0] = object;
+        return;
+    }
+    // One pivot per Havok bone, placed on the object of the same name
+    // (bone 0 is the object itself).
+    const int32_t count = bones->boneCount;
+    boneBufferSize = uint32_t(count) * sizeof(BonePivot);
+    auto* pivots = static_cast<BonePivot*>(ape::BucketAlloc(boneBufferSize));
+    boneObjectsSize = uint32_t(count) * sizeof(ape::world::ApeObj*);
+    boneObjects = static_cast<ape::world::ApeObj**>(ape::BucketAlloc(boneObjectsSize));
+    boneBuffer = pivots;
+    for (int32_t i = 0; i < count; ++i) {
+        const char* name = reinterpret_cast<const char*>(
+            reinterpret_cast<uintptr_t>(bones->bones[i].name) & ~uintptr_t(1));
+        const char* colon = ape::StrRChr(name, ':');
+        if (colon && ape::StrLen(colon) > 1)
+            name = colon + 1;
+        ape::world::ApeObj* boneObject = i == 0 ? object : FindDescendant(object, ape::HashNameNoCase(name));
+        initPivot(pivots[i]);
+        boneObjects[i] = boneObject;
+        if (boneObject)
+            boneObject->m_pivot = &pivots[i].transform;
+    }
 }
 
 // @func 0x0035133C AnimController::AddLayer

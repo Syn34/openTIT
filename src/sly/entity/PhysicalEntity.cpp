@@ -106,6 +106,56 @@ void PhysicalEntity::SetPhysState(int state, uint32_t arg)
     physState = state;
 }
 
+// @func 0x000EFFC8 PhysicalEntity::InteractionDisabled
+bool PhysicalEntity::InteractionDisabled() const
+{
+    return (Def()->defFlags & PhysicalEntityDef::kDefFlag_NoInteraction) != 0;
+}
+
+// @func 0x000F1D0C PhysicalEntity::OnStep
+// @func 0x000F1D80 PhysicalEntity::OnStep (thunk, +0x17C)
+void PhysicalEntity::OnStep(const void* event)
+{
+    if (physState != kPhys_InWorld) {
+        ContactEventDisable(event);
+        return;
+    }
+    HandleBodyContact(event, body);
+    HandleTriggerContact(event, triggerBody);
+}
+
+// TODO(0x000F0E48 PhysicalEntity::HandleBodyContact): impacts of the main
+// body (owner/target filtering, reflection, damage, impact sounds).
+bool PhysicalEntity::HandleBodyContact(const void* event, void* ownBody)
+{
+    (void)event;
+    return ownBody != nullptr;
+}
+
+// @func 0x000EFFE4 PhysicalEntity::HandleTriggerContact
+// The trigger body never collides; when it touches another physical
+// entity (type bits 1 and 13) both are destroyed outright.
+bool PhysicalEntity::HandleTriggerContact(const void* event, void* ownBody)
+{
+    constexpr uint32_t kDamage_Destroy = 0xA77EB5E9u;   // NOTE: name unknown
+    if (!ownBody)
+        return false;
+    void* other = ContactEventBody(event, 0);
+    if (other == ownBody)
+        other = ContactEventBody(event, 1);
+    else if (ContactEventBody(event, 1) != ownBody)
+        return false;
+    ContactEventDisable(event);
+    auto* owner = static_cast<Entity*>(RigidBodyOwner(other));
+    if (RigidBodyOwnerType(other) == kBodyOwner_Entity && owner && (owner->typeBits[0] & 0x2) &&
+        (owner->typeBits[0] & 0x2000) && owner != this) {
+        auto* physical = static_cast<PhysicalEntity*>(owner);
+        physical->Damage(physical->maxHealth, nullptr, kDamage_Destroy);
+        Damage(maxHealth, nullptr, kDamage_Destroy);
+    }
+    return true;
+}
+
 // @func 0x000ED35C PhysicalEntity::Release
 bool PhysicalEntity::Release(bool kill)
 {

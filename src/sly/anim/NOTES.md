@@ -33,3 +33,21 @@
 * Flag names of the layer word (+0x0C) and the controller word (+0x28) follow their use.
 * Float arguments: some callers skip a GPR for a float argument, others do not; argument order
   of the ported signatures follows the field each value lands in.
+
+## Files, streams and registration (agent3, later pass)
+* `AnimStream.*`: the stream readers handed to Havok's loader: the IFF chunk stream (vtable
+  0x00B1F608, Read 0x003555BC), the buffered chunk reader (0x00B1F480, ctor 0x0034640C,
+  forwarding slots 0x003476A8..0x003479EC) and the game file reader (0x00B1F338, slots
+  0x00347B04..0x00347EA0; built in place by its users). `HkStreamReader` is a stand-in for
+  Havok's stream interface (slots 4-12). The buffered reader itself (0x007DFEF8) is a hook; the
+  port reads unbuffered.
+* Chunk handlers of the animation files: three resource kinds (skeletons, animations, skeleton
+  maps), each with a group, a name and a data chunk (0x0034B4F4..0x0034BC7C); the animations
+  group can name a separate file (LoadAnimationFile 0x0034B2C8). RegisterAnimSkeletons
+  0x0034A5E4 is ported; the animation (0x00348F04) and skeleton map (0x0034AB90) registrations
+  are TODO. LoadSkeletonMapFile (0x0034AF14) never closes its file (console behaviour).
+* BuildHavokBoneMap 0x0034B0F8: ape skeleton bone -> Havok bone index map ("xxx:" prefixes
+  are stripped from Havok bone names, as in BindSkeleton).
+* AnimController: destructor 0x0034BF9C and BindSkeleton 0x0034F690 are ported. The helper
+  arrays +0x60..+0x70 only have their record sizes (0xE0 / 0x20 / ? / 0x140 / ?); nothing in
+  the port fills them. BuildPose 0x0034D1A8 (pose blending, IK) is still TODO.

@@ -70,6 +70,10 @@ void HavokShapeLocalAabb(const void* shape, ape::Aabb& out)
     out.max = { 0.0f, 0.0f, 0.0f, 0.0f };
 }
 void* CollidableOwnerBody(const void* collidable) { (void)collidable; return nullptr; }
+void* ContactEventBody(const void* event, int index) { (void)event; (void)index; return nullptr; }
+void ContactEventDisable(const void* event) { (void)event; }
+uint32_t RigidBodyOwnerType(void* body) { (void)body; return 0; }
+void* RigidBodyOwner(void* body) { (void)body; return nullptr; }
 void HavokRelease(void* object) { (void)object; }
 
 } // namespace entity

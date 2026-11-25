@@ -69,19 +69,33 @@ public:
     void TickEntity(float dt) override;
     void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value) override;
     void ChooseState() override;
+    bool Think(float dt) override;
+    void UpdateState(float dt) override;
 
+    // Flight clip for the way the critter is heading: up, banking left or
+    // right, or the move clip (0x000210F8).
+    void UpdateFlightClip();
     // Clip played while moving (0x0001F330).
     void SetMoveClip(uint32_t clipHash);
-    // Keeps the critter on the ground. TODO(0x0001D548): the ground probe
-    // (0x0001D1E0) has bad instruction data.
+    // Keeps the critter on the ground (0x0001D548) with a probe between two
+    // points (0x0001D1E0, TODO).
     void SnapToGround(bool fromSpawnHeight);
+    bool GroundProbe(const ape::Vec3& top, const ape::Vec3& bottom, ape::Vec3& hit);
     // Point to run to, away from `away`. TODO(0x0001E420): bad instruction data.
     ape::Vec3 FleePoint(const ape::Vec3& away);
+    // Quick turn while fleeing (part of Think) and a perch point on a rail
+    // (TODO 0x00020100).
+    void QuickTurn(const Entity& player);
+    // Random point to wander to: inside the spawner's alternative object
+    // box, else around the spawn point within the bounding radius; kept at
+    // the current height unless the critter flies (0x0001E068).
+    ape::Vec3 RandomWanderPoint();
+    bool FindPerch();
 
     float idleDelay = 0.0f;           // +0x138
     uint32_t field_13C = 0;           // +0x13C
     float quickTurnDelay = 0.0f;      // +0x140
-    uint32_t field_144 = 0;           // +0x144
+    float wanderMargin = 0.0f;        // +0x144 kept from the edge of the wander area
     float poiDelay = 0.0f;            // +0x148 time until the next point of interest
     ape::Vec3 poiPosition{};          // +0x150
     ape::Vec3 poiDirection{};         // +0x160
