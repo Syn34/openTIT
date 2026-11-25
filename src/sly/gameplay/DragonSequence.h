@@ -80,7 +80,8 @@ public:
     virtual void Stop(bool reset);
     // slot 4
     virtual void Update(float dt);
-    // slot 5: a projectile reported `event` (default 0x007684D0, no-op).
+    // slot 5: a projectile reported `event` (no-op by default).
+    // @func 0x007684D0 DragonAction::OnProjectileEvent
     virtual void OnProjectileEvent(void* projectile, uint32_t event) { (void)projectile; (void)event; }
     // slot 6
     virtual bool IsDone();
@@ -95,6 +96,9 @@ class DragonStateAction : public DragonAction {
 public:
     DragonStateAction(DragonBoss* dragon, DragonBodyPart* part, uint32_t state)
         : DragonAction(dragon, part), state(state) {}
+    // @func 0x007681C4 DragonStateAction::~DragonStateAction
+    // @func 0x007684D4 DragonStateAction::~DragonStateAction (deleting)
+    ~DragonStateAction() override = default;
     void Start() override;
     void Update(float dt) override;
 
@@ -152,6 +156,8 @@ public:
 class DragonCommand {
 public:
     DragonCommand(DragonThread* thread, const char* name);
+    // @func 0x00768518 DragonCommand::~DragonCommand
+    // @func 0x00768528 DragonCommand::~DragonCommand (deleting)
     virtual ~DragonCommand() = default;
     // slot 2
     virtual void Parse(ape::xml::XmlElement* xml);
@@ -161,10 +167,14 @@ public:
     virtual bool Start(DragonBodyPart* part);
     // slot 5
     virtual void Update(float dt) = 0;
-    // slot 6 (default 0x0076856C)
+    // slot 6
+    // @func 0x0076856C DragonCommand::OnProjectileEvent
     virtual void OnProjectileEvent(void* projectile, uint32_t event) { (void)projectile; (void)event; }
     // slot 7
     virtual bool IsDone() = 0;
+    // slot 8: kind of command (0 for the base).
+    // @func 0x00768570 DragonCommand::Kind
+    virtual int Kind() const { return 0; }
 
     DragonThread* thread = nullptr;   // +0x04
     char name[0x20] = {};             // +0x08
@@ -176,6 +186,11 @@ public:
 class DragonWaitCommand : public DragonCommand {
 public:
     using DragonCommand::DragonCommand;
+    // @func 0x007681D4 DragonWaitCommand::~DragonWaitCommand
+    // @func 0x00768580 DragonWaitCommand::~DragonWaitCommand (deleting)
+    ~DragonWaitCommand() override = default;
+    // @func 0x00768578 DragonWaitCommand::Kind
+    int Kind() const override { return 1; }
     void Parse(ape::xml::XmlElement* xml) override;
     void Reset(bool rearm) override;
     bool Start(DragonBodyPart* part) override;
@@ -190,6 +205,11 @@ public:
 class DragonNextCollectionCommand : public DragonCommand {
 public:
     using DragonCommand::DragonCommand;
+    // @func 0x007681E4 DragonNextCollectionCommand::~DragonNextCollectionCommand
+    // @func 0x007685CC DragonNextCollectionCommand::~DragonNextCollectionCommand (deleting)
+    ~DragonNextCollectionCommand() override = default;
+    // @func 0x007685C4 DragonNextCollectionCommand::Kind
+    int Kind() const override { return 2; }
     void Parse(ape::xml::XmlElement* xml) override;
     void Reset(bool rearm) override;
     bool Start(DragonBodyPart* part) override;
@@ -210,6 +230,8 @@ public:
     DragonActionCommand(DragonThread* thread, const char* name, ActionType type)
         : DragonCommand(thread, name), type(type) {}
     ~DragonActionCommand() override;
+    // @func 0x00768610 DragonActionCommand::Kind
+    int Kind() const override { return 3; }
     void Parse(ape::xml::XmlElement* xml) override;
     void Reset(bool rearm) override;
     bool Start(DragonBodyPart* part) override;
@@ -231,6 +253,11 @@ public:
 class DragonPartStateCommand : public DragonCommand {
 public:
     using DragonCommand::DragonCommand;
+    // @func 0x007681F4 DragonPartStateCommand::~DragonPartStateCommand
+    // @func 0x00768620 DragonPartStateCommand::~DragonPartStateCommand (deleting)
+    ~DragonPartStateCommand() override = default;
+    // @func 0x00768618 DragonPartStateCommand::Kind
+    int Kind() const override { return 4; }
     void Parse(ape::xml::XmlElement* xml) override;
     void Reset(bool rearm) override;
     bool Start(DragonBodyPart* part) override;
@@ -245,6 +272,11 @@ public:
 class DragonEnableThreadCommand : public DragonCommand {
 public:
     using DragonCommand::DragonCommand;
+    // @func 0x00768204 DragonEnableThreadCommand::~DragonEnableThreadCommand
+    // @func 0x0076866C DragonEnableThreadCommand::~DragonEnableThreadCommand (deleting)
+    ~DragonEnableThreadCommand() override = default;
+    // @func 0x00768664 DragonEnableThreadCommand::Kind
+    int Kind() const override { return 5; }
     void Parse(ape::xml::XmlElement* xml) override;
     void Reset(bool rearm) override;
     bool Start(DragonBodyPart* part) override;
