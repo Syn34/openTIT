@@ -14,6 +14,8 @@
 #include "ape/math/ApeMatrixOps.h"
 #include "ape/world/ApeObj.h"
 
+#include <cmath>
+
 namespace ape {
 
 namespace {
@@ -240,6 +242,87 @@ void ApeGuiObject::CloneChildren(ApeGuiObject* newParent, void* newOwner) const
 {
     for (ApeGuiObject* child = firstChild; child; child = child->nextSibling)
         child->Clone(child->name, newParent, newOwner, true);
+}
+
+// @func 0x004D3E60 FindGuiFocusAt
+ApeGuiObject* FindGuiFocusAt(ApeGuiObject* object, uint32_t pad, const float point[2], float* best)
+{
+    ApeGuiObject* found = nullptr;
+    if (!object->IsVisible())
+        return nullptr;
+    if (object->HasFlag(ApeGuiObject::kFlag_30)) {
+        float min[2], max[2];
+        Matrix34 world;
+        object->GetScreenRect(min, max, world);
+        Vec3 p{};
+        p.x = point[0];
+        p.y = point[1];
+        Vec3 local;
+        Matrix34InvTransformPoint(local, p, world);
+        if (local.x >= min[0] && local.x <= max[0] && local.y >= min[1] && local.y <= max[1]) {
+            const float distanceSq = local.x * local.x + local.y * local.y + local.z * local.z;
+            if (distanceSq < *best && SendGuiEvent(kGuiEvent_CanFocus, pad, object, reinterpret_cast<uintptr_t>(found))) {
+                found = object;
+                *best = distanceSq;
+            }
+        }
+    }
+    for (ApeGuiObject* child = object->firstChild; child; child = child->nextSibling) {
+        if (ApeGuiObject* hit = FindGuiFocusAt(child, pad, point, best))
+            found = hit;
+    }
+    return found;
+}
+
+// @func 0x004D4178 FindGuiFocusInDirection
+// Score: the angle off the direction (0..1) plus the distance in screen
+// heights; candidates behind 'current' count from the opposite screen edge.
+ApeGuiObject* FindGuiFocusInDirection(ApeGuiObject* object, uint32_t pad, ApeGuiObject* current, const float dir[2],
+                                      float* best)
+{
+    ApeGuiObject* found = nullptr;
+    if (!object->IsVisible())
+        return nullptr;
+    if (object->HasFlag(ApeGuiObject::kFlag_30) && object != current) {
+        float screen[2];
+        GetGuiScreenSize(screen);
+        float delta[2] = { 0.0f, 0.0f };
+        float along = 0.0f;
+        if (current) {
+            float min[2], max[2];
+            Matrix34 from, to;
+            current->GetScreenRect(min, max, from);
+            object->GetScreenRect(min, max, to);
+            delta[0] = to.translation.x - from.translation.x;
+            delta[1] = to.translation.y - from.translation.y;
+            along = delta[0] * dir[0] + delta[1] * dir[1];
+            if (along < 0.0f) {
+                auto sign = [](float v) { return (float)((v > 1e-5f) - (v < -1e-5f)); };
+                delta[0] = (sign(dir[0]) * screen[0] + to.translation.x) - from.translation.x;
+                delta[1] = (sign(dir[1]) * screen[1] + to.translation.y) - from.translation.y;
+                along = delta[0] * dir[0] + delta[1] * dir[1];
+            }
+        }
+        if (!current || along > 0.0f) {
+            float distance = std::sqrt(delta[0] * delta[0] + delta[1] * delta[1]);
+            float angle = 0.0f;
+            if (distance > 0.0f) {
+                const float cosine = std::fmin(std::fmax(along / distance, -1.0f), 1.0f);
+                angle = std::acos(cosine) / 3.1415927f;
+                distance /= screen[1];
+            }
+            const float score = angle + distance;
+            if (score < *best && SendGuiEvent(kGuiEvent_CanFocus, pad, object, reinterpret_cast<uintptr_t>(found))) {
+                *best = score;
+                found = object;
+            }
+        }
+    }
+    for (ApeGuiObject* child = object->firstChild; child; child = child->nextSibling) {
+        if (ApeGuiObject* hit = FindGuiFocusInDirection(child, pad, current, dir, best))
+            found = hit;
+    }
+    return found;
 }
 
 } // namespace ape

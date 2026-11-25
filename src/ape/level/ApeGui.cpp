@@ -3,6 +3,7 @@
 
 #include "agl/AglDisplay.h"
 #include "agl/AglDrawList.h"
+#include "agl/AglPrimitives.h"
 #include "agl/AglRenderTarget.h"
 #include "agl/AglResources.h"
 #include "agl/AglTexture.h"
@@ -51,6 +52,10 @@ agl::AglRenderTarget* s_guiTarget = nullptr;        // 0x00F6684C
 agl::AglRenderTarget* s_gui3dTarget = nullptr;      // 0x00F66850
 agl::AglRenderTarget* s_guiDrawTarget = nullptr;    // 0x00F6688C
 agl::AglDrawList* s_drawListOverride = nullptr;     // 0x00F66890
+agl::AglMaterial* s_fadeMaterial = nullptr;          // 0x00F66854
+agl::AglDebugMesh* s_fadeMesh = nullptr;            // 0x00F6685C
+bool s_navigationEnabled = false;                   // 0x00F66880
+uint32_t s_navigationMask = 0;                      // 0x00F66888
 // NOTE: cleared by ShutdownGui; its use is not known.
 void* s_field_F66884 = nullptr;                     // 0x00F66884
 
@@ -893,6 +898,166 @@ void ShutdownGui()
         s_guiTarget->Release();
         s_guiTarget = nullptr;
     }
+}
+
+namespace {
+
+// Corners of the fade quad in strip order, as screen fractions (0x00AEF460).
+constexpr float kFadeCorners[4][2] = { { 1.0f, 0.0f }, { 0.0f, 0.0f }, { 1.0f, 1.0f }, { 0.0f, 1.0f } };
+constexpr float kFadeDepth = -20.0f;
+
+void FillFadeQuad(agl::AglDrawVertex* vertices)
+{
+    float screen[2];
+    GetGuiScreenSize(screen);
+    for (int i = 0; i < 4; ++i) {
+        agl::AglDrawVertex& v = vertices[i];
+        v.position[0] = kFadeCorners[i][0] * screen[0];
+        v.position[1] = kFadeCorners[i][1] * screen[1];
+        v.position[2] = kFadeDepth;
+        v.uv[0] = kFadeCorners[i][0];
+        v.uv[1] = kFadeCorners[i][1];
+        v.color[0] = g_guiFadeColor.r;
+        v.color[1] = g_guiFadeColor.g;
+        v.color[2] = g_guiFadeColor.b;
+        v.color[3] = g_guiFadeColor.a;
+    }
+}
+
+} // namespace
+
+// @func 0x004D4E28 DrawGui
+void DrawGui(bool draw)
+{
+    if (!draw)
+        return;
+    if (s_fadeMaterial) {
+        agl::AglDrawList& list = GetGuiDrawList();
+        list.SetMaterial(s_fadeMaterial, 0x475549);
+        list.SetWorldMatrix(g_guiViewTransform, 0x475549);
+        agl::AglDrawPrimitive primitive;
+        list.AllocPrimitive(&primitive, (uint8_t)agl::gpu::PrimitiveType::TriangleStrip, 4, 0x475549);
+        FillFadeQuad(primitive.vertices);
+        list.EndPrimitive();
+    }
+    for (ApeGuiObject* object = GuiRootObjects(); object; object = object->nextSibling)
+        object->Draw();
+}
+
+// @func 0x004D5070 SetGuiFadeColor
+void SetGuiFadeColor(xml::Color8 color)
+{
+    g_guiFadeColor = color;
+    if (color.a == 0) {
+        if (s_fadeMaterial) {
+            agl::DestroyDebugMesh(s_fadeMesh);
+            s_fadeMesh = nullptr;
+            s_fadeMaterial->Release();
+            s_fadeMaterial = nullptr;
+        }
+        return;
+    }
+    if (!s_fadeMaterial) {
+        s_fadeMaterial = agl::CreateSpriteMaterial(nullptr);
+        s_fadeMesh = agl::CreateDebugMesh(s_fadeMaterial, 3, 4, 0);
+    }
+    // The mesh keeps the same quad (debug vertex layout).
+    FillFadeQuad(static_cast<agl::AglDrawVertex*>(agl::LockDebugMeshVertices(s_fadeMesh)));
+    agl::UnlockDebugMeshVertices(s_fadeMesh);
+}
+
+void SetGuiNavigation(bool enabled, uint32_t buttonMask)
+{
+    s_navigationEnabled = enabled;
+    s_navigationMask = buttonMask;
+}
+
+namespace {
+
+// Direction of each combination of the direction bits (up, down, left,
+// right; 0x010C2B40, built on first use). Opposite bits cancel to none.
+struct GuiDirectionTable {
+    float dir[16][2] = {};
+    GuiDirectionTable()
+    {
+        const float d = 0.70710677f;
+        auto set = [this](int bits, float x, float y) { dir[bits][0] = x; dir[bits][1] = y; };
+        set(kGuiPad_Up, 0.0f, -1.0f);
+        set(kGuiPad_Down, 0.0f, 1.0f);
+        set(kGuiPad_Left, -1.0f, 0.0f);
+        set(kGuiPad_Left | kGuiPad_Up, -d, -d);
+        set(kGuiPad_Left | kGuiPad_Down, -d, d);
+        set(kGuiPad_Right, 1.0f, 0.0f);
+        set(kGuiPad_Right | kGuiPad_Up, d, -d);
+        set(kGuiPad_Right | kGuiPad_Down, d, d);
+    }
+};
+
+} // namespace
+
+// @func 0x004D4538 UpdateGui
+// For each pad with input: a direction press moves the focus to the best
+// placed focusable object; a cursor picks the focusable object under it.
+// Focus changes and button presses are sent as GUI events (to the focused
+// object). Then the script players and the object tree are ticked.
+void UpdateGui(float dt)
+{
+    for (uint32_t pad = 0; pad < kGuiSlotCount; ++pad) {
+        GuiPadInput input;
+        input.userData = s_padFilterData;
+        if (!s_padFilter || !s_padFilter(pad, &input))
+            continue;
+
+        ApeGuiObject* focus = nullptr;
+        if (s_navigationEnabled && (input.buttons & input.edges & s_navigationMask) != 0) {
+            static const GuiDirectionTable s_directions;
+            const float* dir = s_directions.dir[input.buttons & s_navigationMask & 0xF];
+            float best = 3.4028235e38f;
+            for (ApeGuiObject* root = GuiRootObjects(); root; root = root->nextSibling) {
+                if (ApeGuiObject* found = FindGuiFocusInDirection(root, pad, static_cast<ApeGuiObject*>(s_slots[pad]),
+                                                                  dir, &best))
+                    focus = found;
+            }
+            if (focus && s_filter)
+                SendGuiEvent(4, pad, focus, reinterpret_cast<uintptr_t>(s_slots[pad]));
+        }
+        if (!focus && (input.flags & kGuiPadInput_Cursor) != 0) {
+            float screen[2];
+            GetGuiScreenSize(screen);
+            const float point[2] = { (input.cursor[0] + 1.0f) * screen[0] * 0.5f,
+                                     (input.cursor[1] + 1.0f) * screen[1] * 0.5f };
+            float best = 3.4028235e38f;
+            for (ApeGuiObject* root = GuiRootObjects(); root && !focus; root = root->nextSibling)
+                focus = FindGuiFocusAt(root, pad, point, &best);
+        }
+
+        auto* current = static_cast<ApeGuiObject*>(s_slots[pad]);
+        if (current != focus) {
+            if (current && s_filter)
+                SendGuiEvent(2, pad, current, 0);
+            if (focus && s_filter)
+                SendGuiEvent(1, pad, focus, 0);
+            s_slots[pad] = focus;
+        }
+
+        const uint32_t pressed = input.buttons & input.edges;
+        if ((pressed & kGuiPad_Accept) && s_filter)
+            SendGuiEvent(5, pad, focus, 0);
+        if ((pressed & kGuiPad_Cancel) && s_filter)
+            SendGuiEvent(6, pad, focus, 0);
+        if ((pressed & kGuiPad_Button10) && s_filter)
+            SendGuiEvent(7, pad, focus, 0);
+        if ((pressed & kGuiPad_Button20) && s_filter)
+            SendGuiEvent(8, pad, focus, 0);
+        if ((pressed & (kGuiPad_Left | kGuiPad_Right)) && s_filter)
+            SendGuiEvent((input.buttons & kGuiPad_Right) ? 10 : 11, pad, focus, 0);
+        if ((pressed & kGuiPad_Start) && s_filter)
+            SendGuiEvent(9, pad, focus, 0);
+    }
+
+    TickGuiScripts(dt);
+    for (ApeGuiObject* object = GuiRootObjects(); object; object = object->nextSibling)
+        object->Tick(dt);
 }
 
 // @func 0x004D4104 GetGuiScreenSize

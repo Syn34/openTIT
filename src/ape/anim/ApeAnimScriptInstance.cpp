@@ -311,4 +311,32 @@ void ApeAnimScriptInstance::UpdateAll(float dt)
     }
 }
 
+// @func 0x004D00CC ApeAnimScriptInstance::DestroyAllInstances
+void ApeAnimScriptInstance::DestroyAllInstances()
+{
+    if (s_paused)
+        return;
+    std::vector<ApeAnimScriptInstance*>& instances = All();
+    while (!instances.empty()) {
+        delete instances.back();
+        instances.pop_back();
+    }
+}
+
+// @func 0x004D0280 ApeAnimScriptInstance::DestroyInstance
+void ApeAnimScriptInstance::DestroyInstance(ApeAnimScriptInstance* instance)
+{
+    std::vector<ApeAnimScriptInstance*>& instances = All();
+    for (size_t i = 0; i < instances.size(); ++i) {
+        if (instances[i] != instance)
+            continue;
+        // Swap with the last entry, delete, drop the last entry.
+        instances[i] = instances.back();
+        instances.back() = instance;
+        delete instance;
+        instances.pop_back();
+        return;
+    }
+}
+
 } // namespace ape

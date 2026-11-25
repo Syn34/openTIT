@@ -11,6 +11,46 @@ namespace sly {
 namespace levels {
 namespace ai {
 
+const BismarqueStepList& BismarqueAI::CurrentSteps() const
+{
+    const BismarquePhase& p = pattern->phases[phase];
+    if (modeFlags & 0x40000000u)
+        return p.modeC;
+    if (modeFlags & 0x80000000u)
+        return p.modeB;
+    return p.normal;
+}
+
+// @func 0x0003E040 BismarqueAI::CurrentStep
+const BismarqueStep& BismarqueAI::CurrentStep() const
+{
+    return CurrentSteps().steps[stepIndex];
+}
+
+// @func 0x00042D5C BismarqueAI::AdvanceStep
+void BismarqueAI::AdvanceStep()
+{
+    if (!pattern)
+        return;
+    ++stepIndex;
+    if (stepIndex >= int32_t(CurrentSteps().count)) {
+        currentAttack = -1;
+        stepIndex = 0;
+    }
+    EnterStepState();
+}
+
+// @func 0x0003E0CC BismarqueAI::EnterStepState
+void BismarqueAI::EnterStepState()
+{
+    // AI state of each step kind. NOTE: the states' names are not known.
+    static constexpr int kStepStates[13] = { 2, 5, 8, 0xC, 0xF, 0, 0x10, 0x11, 0x20, 0x21, 0x22, 0x23, 0x24 };
+    if (!pattern)
+        return;
+    const int kind = CurrentStep().kind;
+    SetState(kind >= 0 && kind < 13 ? kStepStates[kind] : 0);
+}
+
 // @func 0x00042D3C BismarqueAI::GetTargetPosition
 ape::Vec3 BismarqueAI::GetTargetPosition()
 {

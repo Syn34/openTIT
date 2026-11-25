@@ -201,7 +201,7 @@ Matrix34 g_guiViewTransform = {
     { 0.0f, 0.0f, 1.0f, 0.0f },
     { 0.0f, 0.0f, -1.0f, 0.0f },
 };
-uint8_t g_guiUnknown2AD4[4] = {};   // 0x010C2AD4 NOTE: zeroed, use not identified
+xml::Color8 g_guiFadeColor = {};   // 0x010C2AD4 colour of the full screen GUI fade (alpha 0: none)
 
 namespace {
 

@@ -129,6 +129,19 @@ int TaggChunkHandler(IffReader* reader, void* arg);
 void BeginLoadedObjectList(ApeTArray<void*>* list);
 void ClearLoadedObjectSlots();
 void AddLoadedObject(int slot, void* object);
+
+// Base of objects created by chunk handlers and owned by the loaded object
+// list (vtable 0x00B24110): a block of data and its size.
+class ApeLoadedData {
+public:
+    ApeLoadedData() = default;
+    virtual ~ApeLoadedData();
+    ApeLoadedData(const ApeLoadedData&) = delete;
+    ApeLoadedData& operator=(const ApeLoadedData&) = delete;
+
+    uint32_t size = 0;      // +0x04
+    void* data = nullptr;   // +0x08
+};
 void* GetLoadedObjectSlot(int slot);
 
 } // namespace ape::iff

@@ -222,10 +222,16 @@ public:
 
     int32_t alterState = 0;              // 0x188
     uint32_t field_18C = 0;              // 0x18C cleared by states 1 and 3
+    float flashTime = 0.0f;              // 0x190
     Entity* refusedPartner = nullptr;    // 0x194 NOTE: refused for interactions of kind 0
     uint32_t collisionGroup = 0;         // 0x198
     void* animScript1A0 = nullptr;       // 0x1A0
     void* animScript1A4 = nullptr;       // 0x1A4
+    bool flashVisible = false;           // 0x1B0 object visibility before the flash pass
+    bool flashing = false;               // 0x1B1
+    uint8_t flashFade[4] = {};           // 0x1B2 fade record
+    // Slot 14: while alive and flashing, blinks four times a second.
+    void UpdateFade() override;
 };
 
 // Definition of the Bentley alter ego entity (vtable 0x00B14590, 0x110
@@ -310,6 +316,8 @@ public:
     bool CanInteractWith(Entity* other, int kind) override;   // slot 76
     // Killing drops the nav obstacle and the body.
     bool Release(bool kill) override;                 // slot 10
+    // Slot 21: the body (in the world) follows, without waking its neighbours.
+    void SetTransform(const ape::Matrix34& m) override;
     // Unless broken (state 4), goes back to state 0 with the lock request in
     // bits 30 (flag) and 31 (locked) of the state data. NOTE: the class is
     // inferred from the code address (scripts call it on "lockable" entities).
@@ -382,14 +390,23 @@ public:
     bool Damage(float amount, Entity* source, uint32_t type) override;   // slot 88
     // Slot 89: damage scale of projectiles.
     virtual float ProjectileDamageScale() const;
-    // Slot 99: physics state (0x001F9F70, not ported).
+    // The flag takes the body (and its nav obstacle) out of the world;
+    // clearing it puts the body of an active target back in place.
+    void SetFlag80(bool on) override;                 // slot 23
+    // Nav obstacle for the body when slot 42 asks for one.
+    void AddNavObstacle();
+    // Slot 99: target state (bits 12-15 of targetFlags). 1 shows the entity
+    // and puts the body into the world (with a nav obstacle when slot 42
+    // says so); 0 and 4 take it out.
     virtual void SetTargetState(int32_t state, uint32_t arg);
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     const TargetableDefC* Def() const { return static_cast<const TargetableDefC*>(def); }
 
     void* rigidBody = nullptr;           // 0x1A0
+    uint32_t field_1A4 = 0;              // 0x1A4 cleared by states 1 and 3
     Entity* thrower = nullptr;           // 0x1AC NOTE: its touch does not kill
-    uint16_t targetFlags = 0;            // 0x1B0 bits 8-9: NOTE unknown, any kills on impact; bit 10: destroyed
+    uint16_t targetFlags = 0;            // 0x1B0 bits 8-9: NOTE unknown, any kills on impact; bit 10: destroyed; bits 12-15: state
+    void* navObstacle = nullptr;         // 0x1B4 levels::NavObstacleHandle
 };
 
 // Entity of TargetableDefC with a linked entity and a game world update
@@ -483,6 +500,13 @@ public:
     TargetableA* holder = nullptr;           // 0x298
     bool stacking = false;                   // 0x29C
     bool freezeWhenOrphaned = false;         // 0x2A0 NOTE: stops updating when its parent goes away
+    bool flashVisible = false;               // 0x2B0 visibility before the flash pass
+    bool flashing = false;                   // 0x2B1
+    float flashTime = 0.0f;                  // 0x2B4
+    uint8_t flashFade[4] = {};               // 0x2B8 fade record
+    // Slot 14: blinks five times a second while flashing; dead targets are
+    // hidden and at once shown again (as on the console).
+    void UpdateFade() override;
 };
 
 // Entity of TargetableDefA (vtable 0x00B14B98 + 0x00B14D48/0x00B14D70,
@@ -624,6 +648,8 @@ public:
     // Slot 43: a dying entity is forgotten by both Bentleys; its score
     // (times the part level) goes to player 0 when this Bentley killed it.
     void HandleMessage(const EntityMessage& msg) override;
+    // Slot 14: while alive and flashing, blinks twice a second.
+    void UpdateFade() override;
     // Slot 69: the shared target (see s_target).
     // @func 0x0017574C CompoundEntity::GetTrackedTarget
     Entity* GetTrackedTarget() override { return s_target; }
@@ -634,12 +660,14 @@ public:
     float ProjectileDamageScale() const override;     // slot 89
     // Heading (degrees, 0..360) from the entity to a hit position.
     float HeadingTo(const ape::Vec3& point) const;
-    // Slot 99: physics state (0x0016BC0C, not ported).
+    // Slot 99: 6 puts the body into the world, 4 takes it out (forgetting
+    // its contacts), 3 rewinds a shooter camera to the Bentley.
     virtual void SetPropState(int32_t state, uint32_t arg);
     // Slot 100: sets the velocity that brings the body to `target` in `dt`.
     virtual void DriveTowards(const ape::Vec3& target, float dt);
     void* bodyAction = nullptr;              // 0x188
     int32_t propState = 0;                   // 0x18C 6: body active
+    uint32_t field_190[3] = {};              // 0x190 cleared by state 6
     int32_t hitHeading = 0;                  // 0x2E0 degrees
     const PropDamageSettings& DamageSettings() const;
     // Empty overrides of the +0x17C interface's slots 5 and 6.
@@ -664,6 +692,12 @@ public:
     uint32_t skinLevel = 0;        // 0x2D0
     uint32_t skinCount = 0;        // 0x2D8
     uint32_t killCount = 0;        // 0x2EC kills since the last damage
+    bool flashVisible = false;     // 0x2F8 visibility before the flash pass
+    bool flashing = false;         // 0x2F9
+    float flashTime = 0.0f;        // 0x2FC
+    uint8_t flashFade[4] = {};     // 0x300 fade record
+    uint8_t field_30C = 0;         // 0x30C cleared by state 6
+    uint32_t field_310 = 0;        // 0x310 cleared by state 6
     int32_t score = 0;             // 0x2F0 NOTE: read on the player 0 entity
     int32_t playerIndex = 0;       // 0x304 player this Bentley belongs to
     // Slot 79: the second player's Bentley shares the first player's health.

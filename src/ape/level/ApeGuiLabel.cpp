@@ -129,10 +129,8 @@ ApeGuiLabel::ApeGuiLabel(const GuiLabelDesc& desc) : ApeGuiObject(desc)
     animPeriod = desc.animRate >= 1e-5f ? 1.0f / desc.animRate : 3.4028235e38f;
 }
 
-namespace {
-
-// The label attributes of an element (0x004DC720); the defaults come from
-// 'source' when a label is cloned.
+// The label attributes of an element; the defaults come from 'source' when
+// a label is cloned.
 // @func 0x004DC720 ReadGuiLabelDesc
 void ReadGuiLabelDesc(xml::XmlDocument* doc, xml::XmlElement* element, ApeGuiObject* source, GuiLabelDesc& desc)
 {
@@ -193,8 +191,6 @@ void ReadGuiLabelDesc(xml::XmlDocument* doc, xml::XmlElement* element, ApeGuiObj
             plat::Log(plat::LogLevel::Warning, "%s: unknown GUI label animmode\n", path);
     }
 }
-
-} // namespace
 
 // @func 0x004DCE7C CreateGuiLabel
 ApeGuiObject* CreateGuiLabel(xml::XmlDocument* doc, xml::XmlElement* element, const GuiObjectDesc& base,

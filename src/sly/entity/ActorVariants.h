@@ -10,6 +10,9 @@ namespace entity {
 
 // Base version of an actor's message handler (0x000E5E44, entity module).
 void ActorHandleMessageBase(ActorEntity* actor, const EntityMessage& msg);
+// Base version of an actor's slot 21 (0x000E5EF0, entity module): the
+// transform, then its parts and phantoms.
+void ActorSetTransformBase(ActorEntity* actor, const ape::Matrix34& m);
 
 // A group of member actors that react together (vtable 0x00B15310;
 // destructor 0x00751314).

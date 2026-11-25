@@ -1,5 +1,7 @@
 // openTIT - Scripted actors (see ActorEntities.h).
 #include "sly/entity/ActorEntities.h"
+#include "ape/world/ApeBase.h"
+#include "sly/entity/PhysicsHooks.h"
 #include <cmath>
 
 #include "sly/entity/CharacterHooks.h"
@@ -142,7 +144,7 @@ constexpr uint32_t kSlotNames[7] = { 0xB9B6CE5Du, 0xCE7C29A3u, 0x8FA5922Du, 0xDC
 bool SoundActor::Release(bool kill)
 {
     if (kill) {
-        field_218 = nullptr;
+        slotTimer = nullptr;
         for (SoundSlot& slot : sounds) {
             audio::StopVoice(slot.voice, true);
             slot.voice = 0;
@@ -162,10 +164,43 @@ void SoundActor::OnSuspend()
     }
 }
 
-// TODO(0x001AED20 SoundActor::PlaySlot)
+// @func 0x001AED20 SoundActor::PlaySlot
 void SoundActor::PlaySlot(int index, bool force)
 {
-    (void)force;
+    const auto* d = static_cast<const SoundActorDef*>(def);
+    if (!d)
+        return;
+    sequenceFlags &= ~kSeq_Scaled;
+    if (Entity* player = PlayerEntity(0)) {
+        for (EntityComponent* driver = player->GetComponent(kComp_17); driver;
+             driver = player->GetComponent(kComp_17, driver)) {
+            if (AnimDriverState(driver) == 7) {
+                sequenceFlags |= kSeq_Scaled;
+                break;
+            }
+        }
+    }
+    if (currentSlot != -1)
+        audio::StopVoice(sounds[currentSlot].voice, true);
+    const float scale = (sequenceFlags & kSeq_Scaled) ? d->durationScale : 1.0f;
+    SoundSlot& slot = sounds[index];
+    const float duration = slot.duration * scale;
+    if (force || duration > 0.0f) {
+        if (d->slotSounds[index].name != 0) {
+            const ape::Vec3& o = d->soundOffset;
+            const ape::Matrix34& m = transform;
+            const ape::Vec3 at{ m.translation.x + m.xAxis.x * o.x + m.yAxis.x * o.y + m.zAxis.x * o.z,
+                                m.translation.y + m.xAxis.y * o.x + m.yAxis.y * o.y + m.zAxis.y * o.z,
+                                m.translation.z + m.xAxis.z * o.x + m.yAxis.z * o.y + m.zAxis.z * o.z, 0.0f };
+            slot.voice = PlayEntitySound(slot.sound, &at, nullptr);
+        }
+        if (animScript) {
+            if (slotTimer)
+                slotTimer->duration = duration;
+            SetSlotState(index, force);
+        }
+    }
+    EntitySetState(this, 0, index);
     currentSlot = index;
 }
 
@@ -316,8 +351,33 @@ void SoundActorB16B48::PlaySlot(int index, bool force)
     }
 }
 
-// TODO(0x001C3EF0 SoundActorB16B48::SetLight)
-void SoundActorB16B48::SetLight(bool on) { lightFlags = on ? (lightFlags | 0x80) : (lightFlags & ~0x80); }
+// @func 0x001C3EF0 SoundActorB16B48::SetLight
+void SoundActorB16B48::SetLight(bool on)
+{
+    const auto* d = static_cast<const SoundActorB16B48Def*>(def);
+    if (!d)
+        return;
+    if (d->lightHasBodies) {
+        for (size_t i = 0; i < lightBodies.Count(); ++i) {
+            void* body = lightBodies[i];
+            if (!body)
+                continue;
+            if (!on) {
+                if (RigidBodyInWorld(body))
+                    RigidBodyRemoveFromWorld(body);
+            } else if (!RigidBodyInWorld(body)) {
+                RigidBodyAddToWorld(body, ~0u);
+                ape::Matrix34 placed;
+                ActorPartTransform(this, placed, d->bodyParts[i], ape::world::kWorldIdentity);
+                RigidBodySetTransform(body, placed);
+            }
+        }
+    }
+    for (size_t i = 0; i < lightObjects.Count(); ++i) {
+        if (lightObjects[i])
+            lightObjects[i]->SetVisible(on, true);
+    }
+}
 
 // @func 0x001C42E8 SoundActorB16B48::AdvanceTo2
 bool SoundActorB16B48::AdvanceTo2(float elapsed, float duration)
@@ -764,12 +824,31 @@ void SoundActorB17270::OnHitCategory4(EntityHitRecord& hit)
         OnStruck();
 }
 
+// @func 0x001CC440 SoundActorB17270::SetTransform
+void SoundActorB17270::SetTransform(const ape::Matrix34& m)
+{
+    ActorSetTransformBase(this, m);
+    baseTransform = m;
+    aimFrame = baseTransform;
+    ape::Vec3 aim = { aimFrame.zAxis.x, aimFrame.zAxis.y, aimFrame.zAxis.z, 0.0f };
+    if (turretFlags & 0x80)
+        aim.y = 0.0f;
+    const float lengthSq = aim.z * aim.z + aim.x * aim.x + aim.y * aim.y;
+    if (lengthSq >= 1e-05f) {
+        const float inv = 1.0f / std::sqrt(lengthSq);
+        aim = { aim.x * inv, aim.y * inv, aim.z * inv, 0.0f };
+    }
+    wantedAim = { aim.x, aim.y, aim.z, wantedAim.pad };
+    currentAim = { aim.x, aim.y, aim.z, currentAim.pad };
+    restAim = { aim.x, aim.y, aim.z, restAim.pad };
+}
+
 // @func 0x001CF620 SoundActorB17270::AimAt
 void SoundActorB17270::AimAt(const ape::Vec3& point)
 {
-    const float dx = point.x - aimOrigin.x;
-    const float dy = point.y - aimOrigin.y;
-    const float dz = point.z - aimOrigin.z;
+    const float dx = point.x - aimFrame.translation.x;
+    const float dy = point.y - aimFrame.translation.y;
+    const float dz = point.z - aimFrame.translation.z;
     const float inv = 1.0f / std::sqrt(dz * dz + dx * dx + dy * dy);
     wantedAim = { dx * inv, dy * inv, dz * inv, wantedAim.pad };
 }
@@ -1045,6 +1124,16 @@ uint32_t InteractivePropC::InteractionNeeds(int kind, Entity* other)
 {
     (void)other;
     return static_cast<const InteractivePropADef*>(def)->interactionFlags[kind];
+}
+
+// @func 0x001E4230 InteractivePropC::GetAimPoint
+ape::Vec3 InteractivePropC::GetAimPoint()
+{
+    const ape::Vec3& o = static_cast<const InteractivePropADef*>(def)->aimOffset;
+    const ape::Matrix34& m = frameObject ? frameObject->GetWorld() : transform;
+    return { m.translation.x + m.xAxis.x * o.x + m.yAxis.x * o.y + m.zAxis.x * o.z,
+             m.translation.y + m.xAxis.y * o.x + m.yAxis.y * o.y + m.zAxis.y * o.z,
+             m.translation.z + m.xAxis.z * o.x + m.yAxis.z * o.y + m.zAxis.z * o.z, 0.0f };
 }
 
 // @func 0x001E411C InteractivePropC::CanInteractWith

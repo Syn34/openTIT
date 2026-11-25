@@ -16,6 +16,8 @@
 #include <cstddef>
 #include <cstdint>
 
+namespace ape::iff { class IffReader; }
+
 namespace agl {
 
 struct AglSurface;
@@ -249,5 +251,11 @@ public:
     int8_t field_94 = 0;                 // sign bit tested by the display code
     uint32_t field_98 = 0;
 };
+
+// Chunk handlers of raw RSX data blocks ("TBLK" textures, "MBLK") and the
+// MBLK registration.
+int TextureBlockChunkHandler(ape::iff::IffReader* reader, void* arg);
+int MemoryBlockChunkHandler(ape::iff::IffReader* reader, void* arg);
+void RegisterMemoryBlockChunk();
 
 } // namespace agl

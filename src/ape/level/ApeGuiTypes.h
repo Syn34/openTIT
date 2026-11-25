@@ -189,6 +189,10 @@ struct GuiLabelGlyph {
     void Tick(float dt, float period, uint32_t mode);
 };
 
+// Reads the label attributes of an element into 'desc' (font, text,
+// leading, ...); the defaults come from 'source' (a label) when cloning.
+void ReadGuiLabelDesc(xml::XmlDocument* doc, xml::XmlElement* element, ApeGuiObject* source, GuiLabelDesc& desc);
+
 // "label" (type 3, vtable 0x00B227D8, 0xF0 bytes): text drawn with a font
 // set. The text may reference string table entries ("$Name"), is wrapped
 // at "wrap" pixels and can be revealed character by character.
@@ -251,6 +255,8 @@ protected:
     void CountGlyphs();
     // Number of glyph slots that are drawn (the reveal limit).
     uint32_t GetVisibleGlyphLimit() const;
+    // Labels whose layout size changes the layout (tickers) keep this set.
+    void SetLayoutDirty() const { const_cast<ApeGuiLabel*>(this)->layoutDirty = true; }
 
 public:
     ApeGuiFontSet* font = nullptr;  // +0xA8 (referenced, load referenced)
@@ -275,12 +281,35 @@ public:
     float animPeriod = 0.0f;        // +0xE8 seconds per glyph animation frame
 };
 
-// "ticker" (type 5, vtable 0x00B22B78): a scrolling label.
+struct GuiTickerDesc : GuiLabelDesc {
+    float scrollSpeed = 1.0f;            // +0xA8 "scrollspeed" (pixels per second)
+    float width = 0.0f;                  // +0xAC attribute 0xB75E2EC9: visible width (0: the parent's)
+    float gap = 0.0f;                    // +0xB0 attribute 0x77B9554D: space before the text repeats
+    float startOffset = 0.0f;            // +0xB4 attribute 0x911A2AA2: scroll position after a reset
+    bool scroll = false;                 // +0xB8 attribute 0x280D85C8: scrolling enabled
+};
+
+// "ticker" (type 5, vtable 0x00B22B78, 0x110 bytes): a single line label
+// whose text scrolls to the left and wraps around. The glyphs are rebuilt
+// every tick while it scrolls; drawing is the label's.
 class ApeGuiTicker : public ApeGuiLabel {
 public:
-    explicit ApeGuiTicker(const GuiLabelDesc& desc) : ApeGuiLabel(desc) {}
+    explicit ApeGuiTicker(const GuiTickerDesc& desc);
     ~ApeGuiTicker() override;
+    ApeGuiObject* Clone(const char* name, ApeGuiObject* parent, void* owner, bool recursive) const override;
     int32_t GetType() const override;
+    void GetLayoutSize(float out[2]) const override;
+    void Invalidate() override;
+    void Tick(float dt) override;
+
+    float scrollSpeed = 0.0f;   // +0xEC
+    // mutable: GetLayoutSize stores the layout width here.
+    mutable float width = 0.0f; // +0xF0
+    float gap = 0.0f;           // +0xF4
+    float scrollOffset = 0.0f;  // +0xF8
+    float startOffset = 0.0f;   // +0xFC
+    bool scrolling = false;     // +0x100 bit 7
+    bool scrollEnabled = false; // +0x100 bit 6 (the configured value)
 };
 
 // "tile" (type 6, vtable 0x00B22C40).

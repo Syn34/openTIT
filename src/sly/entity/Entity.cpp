@@ -853,6 +853,8 @@ ape::world::ApeSkeletonBone* Entity::GetBoneByName(uint32_t boneName) const
 
 // @func 0x000F8528 MatchObjectName
 // @func 0x000F85BC MatchObjectName (copy 2)
+// @func 0x004D0ABC MatchObjectName (copy 3)
+// @func 0x004D0B50 MatchObjectName (copy 4)
 // Hierarchy visitor: stops (returns false) at the object whose name hash, or
 // hash of its name when no hash is stored, equals the one searched for.
 static bool MatchObjectName(ape::world::ApeObj* object, void* arg)

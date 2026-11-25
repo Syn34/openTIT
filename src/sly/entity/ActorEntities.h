@@ -48,6 +48,13 @@ public:
 class SoundActorDef : public ActorDef {
 public:
     ~SoundActorDef() override;
+    // Per slot: a sound to play when it starts (non-zero name).
+    struct SlotSound {
+        uint32_t name = 0;
+        uint32_t field_04 = 0;
+    };
+    SlotSound slotSounds[7];        // 0x130
+    ape::Vec3 soundOffset{};        // 0x170 where the sounds play, local to the actor
     float durationScale = 1.0f;     // 0x188 applied with SoundActor::kSeq_Scaled
 };
 
@@ -55,6 +62,7 @@ public:
 class InteractivePropADef : public ActorDef {
 public:
     ~InteractivePropADef() override;
+    ape::Vec3 aimOffset{};              // 0x160 (12 bytes used) aim point, local to the prop's frame
     uint8_t interactionFlags[6] = {};   // 0x170 per interaction kind (InteractivePropC)
     uint32_t bufferSize = 0;        // 0x254
     void* buffer = nullptr;         // 0x258 owned
@@ -223,7 +231,11 @@ public:
     // Player interaction is refused while a single user holds the prop and
     // the asking character does not carry its key object.
     bool CanInteractWith(Entity* other, int kind) override;
+    // Slot 71: the definition's aim offset in the frame of `frameObject`
+    // (or of the prop).
+    ape::Vec3 GetAimPoint() override;
 
+    ape::world::ApeObj* frameObject = nullptr; // 0x1AC
     Entity* keyObject = nullptr;              // 0x1B0
     uint8_t propFlags = 0;                    // 0x1B4 bit 7: anyone may interact
     void* phantomA = nullptr;                 // 0x270
@@ -244,8 +256,8 @@ public:
     // (slot 4, 0x001AEA50).
     bool Update(float dt) override;
 
-    // Slot 105: plays sound slot `index` and switches to its state
-    // (0x001AED20, not ported).
+    // Slot 105: plays sound slot `index` and switches to its state. Durations
+    // are scaled while the player runs a script animation (driver state 7).
     virtual void PlaySlot(int index, bool force);
     // Slots 106-112: timers of the slot sequence. Unless the sequence is held
     // (flag bit 29) each moves on to its next slot once `elapsed` reaches
@@ -286,7 +298,11 @@ public:
         float duration = 0.0f;                      // +0x0C
     };
     SoundSlot sounds[7];                      // 0x1A8
-    void* field_218 = nullptr;                // 0x218 NOTE: its float +0x14 takes the slot duration
+    struct SlotTimer {                        // NOTE: only the duration is known
+        uint8_t field_00[0x14];
+        float duration;                       // +0x14 takes the slot duration
+    };
+    SlotTimer* slotTimer = nullptr;           // 0x218
     int32_t currentSlot = -1;                 // 0x21C
     float savedTime = 0.0f;                   // 0x220
     int32_t savedSlot = 0;                    // 0x224
@@ -303,20 +319,25 @@ public:
     bool AdvanceTo3(float elapsed, float duration) override;
     bool AdvanceTo4(float elapsed, float duration) override;
     bool AdvanceWrap(float elapsed, float duration) override;
-    // 0x001C3EF0 (not ported). NOTE: name from the flag it pairs with.
+    // Shows or hides the light objects and, when the definition says so,
+    // puts the light's bodies into the world at their parts (or takes them
+    // out). NOTE: name from the flag it pairs with; the lit flag itself is
+    // not changed here.
     void SetLight(bool on);
 
-    ape::ApeTArray<void*> field_22C;          // 0x22C
-    ape::ApeTArray<void*> field_240;          // 0x240
+    ape::ApeTArray<ape::world::ApeObj*> lightObjects;   // 0x22C
+    ape::ApeTArray<void*> lightBodies;        // 0x240 Havok rigid bodies
     uint8_t lightFlags = 0;                   // 0x25C bit 7 lit, bit 5 held
 };
 
 // Definition of SoundActorB16B48. NOTE: only the options its timers read.
 class SoundActorB16B48Def : public SoundActorDef {
 public:
+    int32_t* bodyParts = nullptr;      // 0x1A4 part index of each light body
     bool restartWhenWaiting = false;   // 0x1BC
     bool unlightOnSlot3 = false;       // 0x1BD
     bool unlightOnSlot4 = false;       // 0x1BE
+    bool lightHasBodies = false;       // 0x1BF
 };
 
 // Sound actor with a two-way switch (vtable 0x00B16678; destructor
@@ -504,13 +525,18 @@ public:
     bool IsAimed() const;
     // Shots past the first wait the weapon's interval each (+0x1F4).
     void ResetAim();
+    // Slot 21: the aim frame follows; the aim resets to its z axis (kept
+    // level with turretFlags bit 7).
+    void SetTransform(const ape::Matrix34& m) override;
     // Adds a target (counted reference).
     void AddTarget(Entity* target);
     // Lets go of every target and keeps only `target` (if any).
     void SetOnlyTarget(Entity* target);
 
     float shotDelay = 0.0f;                   // 0x1F4 NOTE: set by ResetAim
-    ape::Vec3 aimOrigin{};                    // 0x260
+    ape::Matrix34 aimFrame{};                 // 0x230 z axis = rest aim, translation = aim origin
+    ape::Matrix34 baseTransform{};            // 0x270 last transform set
+    ape::Vec3 restAim{};                      // 0x2B0
     ape::Vec3 wantedAim{};                    // 0x2C0 unit direction
     ape::Vec3 currentAim{};                   // 0x2D0 unit direction
     EntityComponent* weapon = nullptr;        // 0x2E0 skin component; its +0x4D0 is the shot interval
@@ -518,6 +544,7 @@ public:
     float field_2FC = 0.0f;                   // 0x2FC copied into the cool-down by slot 4
     float coolDown = 0.0f;                    // 0x314 slots 3 and 6 wait while positive
     int32_t shotCount = 0;                    // 0x30C
+    uint8_t turretFlags = 0;                  // 0x310 bit 7: aims level
     uint32_t field_328 = 0;                   // 0x328 cleared by SetOnlyTarget
     ape::ApeTArray<Entity*> targets;          // 0x32C counted references
     bool field_355 = false;                   // 0x355 NOTE: selects the alternative states

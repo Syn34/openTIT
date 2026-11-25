@@ -37,6 +37,67 @@ void SetUseDefaultForLooseTextures(bool enable)
     g_defaultForLooseTextures = enable;
 }
 
+// Raw data chunks copied into RSX local memory (memory class 4): "TBLK"
+// texture blocks (vtable 0x00B24120, loaded object slot 0) and "MBLK"
+// blocks (vtable 0x00B24180, slot 1).
+class AglTextureBlock : public ape::iff::ApeLoadedData {
+public:
+    explicit AglTextureBlock(uint32_t bytes);
+    ~AglTextureBlock() override;
+};
+
+class AglMemoryBlock : public ape::iff::ApeLoadedData {
+public:
+    explicit AglMemoryBlock(uint32_t bytes);
+    ~AglMemoryBlock() override;
+};
+
+AglTextureBlock::AglTextureBlock(uint32_t bytes)
+{
+    data = ape::SysAlloc(0x80, bytes, ape::kMemClass_HeapA, 1);
+    size = bytes;
+}
+
+// @func 0x007A3A08 AglTextureBlock::~AglTextureBlock
+// @func 0x007A3A60 AglTextureBlock::~AglTextureBlock (deleting)
+AglTextureBlock::~AglTextureBlock()
+{
+    ape::SysFree(data, ape::kMemClass_HeapA, 1);
+}
+
+AglMemoryBlock::AglMemoryBlock(uint32_t bytes)
+{
+    data = ape::SysAlloc(0x80, bytes, ape::kMemClass_HeapA, 1);
+    size = bytes;
+}
+
+// @func 0x007A3B1C AglMemoryBlock::~AglMemoryBlock
+// @func 0x007A3B74 AglMemoryBlock::~AglMemoryBlock (deleting)
+AglMemoryBlock::~AglMemoryBlock()
+{
+    ape::SysFree(data, ape::kMemClass_HeapA, 1);
+}
+
+// @func 0x00542630 TextureBlockChunkHandler
+int TextureBlockChunkHandler(ape::iff::IffReader* reader, void* /*arg*/)
+{
+    const uint32_t bytes = reader->GetChunkSize();
+    auto* block = new AglTextureBlock(bytes);
+    ape::iff::AddLoadedObject(0, block);
+    reader->Read(block->data, bytes);
+    return 1;
+}
+
+// @func 0x00548C00 MemoryBlockChunkHandler
+int MemoryBlockChunkHandler(ape::iff::IffReader* reader, void* /*arg*/)
+{
+    const uint32_t bytes = reader->GetChunkSize();
+    auto* block = new AglMemoryBlock(bytes);
+    ape::iff::AddLoadedObject(1, block);
+    reader->Read(block->data, bytes);
+    return 1;
+}
+
 // @func 0x0051D4B4 TextureHeaderChunkHandler
 int TextureHeaderChunkHandler(ape::iff::IffReader* reader, void* arg)
 {
@@ -187,6 +248,12 @@ int BoneTableChunkHandler(ape::iff::IffReader* reader, void* arg)
             --table[0];   // out of range: dropped
     }
     return 1;
+}
+
+// @func 0x00548CD4 RegisterMemoryBlockChunk
+void RegisterMemoryBlockChunk()
+{
+    ape::iff::RegisterChunkHandler(ape::iff::MakeId('M', 'B', 'L', 'K'), MemoryBlockChunkHandler, 0, nullptr, 0);
 }
 
 } // namespace agl

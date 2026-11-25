@@ -333,6 +333,31 @@ public:
 };
 
 // Bosses (vtables 0x00B0E888, 0x00B0E9C0, 0x00B0EAF8, 0x00B0EC30).
+// Bismarque's attack patterns: per fight phase three lists of steps (the
+// normal one and two alternatives picked by the controller's mode bits).
+struct BismarqueStep {          // 0x2C bytes
+    int32_t kind = 0;           // +0x00 0-12, see BismarqueAI::EnterStepState
+    uint8_t field_04[0x28] = {};
+};
+struct BismarqueStepList {
+    const BismarqueStep* steps = nullptr;   // +0x00
+    uint32_t field_04 = 0;
+    uint16_t count = 0;                     // +0x08
+    uint16_t field_0A = 0;
+};
+struct BismarquePhase {         // 0x74 bytes
+    BismarqueStepList normal;   // +0x00
+    uint8_t field_0C[0x1C];
+    BismarqueStepList modeB;    // +0x28 controller mode bit 31
+    uint8_t field_34[0x08];
+    BismarqueStepList modeC;    // +0x3C controller mode bit 30 (wins over bit 31)
+    uint8_t field_48[0x2C];
+};
+struct BismarquePattern {       // NOTE: only the phase table is known
+    uint8_t header[0x70];
+    BismarquePhase phases[1];   // +0x70, one per fight phase
+};
+
 class BismarqueAI : public AIController {
 public:
     bool AllowsInteraction() override;
@@ -353,6 +378,20 @@ public:
     // Counter attack cool-down ran out and the player is close (0x00046638).
     bool CounterAttackReady(float dt);
 
+    // Step list of the current phase for the current mode.
+    const BismarqueStepList& CurrentSteps() const;
+    // The current step (0x0003E040).
+    const BismarqueStep& CurrentStep() const;
+    // Moves to the next step; past the last one the attack ends (0x00042D5C).
+    void AdvanceStep();
+    // Enters the AI state of the current step's kind (0x0003E0CC).
+    void EnterStepState();
+
+    uint32_t modeFlags = 0;                // +0x204 bit 30 mode C, bit 31 mode B
+    int32_t currentAttack = -1;            // +0x250 -1 between attacks
+    int32_t stepIndex = 0;                 // +0x254
+    const BismarquePattern* pattern = nullptr;   // +0x264
+    int32_t phase = 0;                     // +0x2CC
     ape::world::ApeObj* markers[2] = {};   // +0x290
     ape::world::ApeObj* anchors[2] = {};   // +0x298
     float counterCooldown = 0.0f;          // +0x2EC

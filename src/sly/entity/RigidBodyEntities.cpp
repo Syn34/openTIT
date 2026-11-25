@@ -10,6 +10,9 @@
 #include "sly/entity/EntityHits.h"
 #include "sly/entity/GameEntityHooks.h"
 #include "sly/entity/EntityHooks.h"
+#include "ape/world/ApeInstances.h"
+#include "sly/camera/CameraModes.h"
+#include "sly/entity/GameCamera.h"
 #include "sly/entity/PhysicalEntity.h"
 #include "sly/levels/ai/AIController.h"
 #include "sly/levels/nav/NavGraph.h"
@@ -324,6 +327,18 @@ void AlterEgoEntity::SetTransform(const ape::Matrix34& m)
         MoveBody(rigidBody, m);
 }
 
+// @func 0x0017C7F8 AlterEgoEntity::UpdateFade
+void AlterEgoEntity::UpdateFade()
+{
+    Entity::UpdateFade();
+    if (health > 0.0f && flashing && (flags & kEnt_Visible) &&
+        std::cos(flashTime * 4.0f * 2.0f * 3.1415f) > 0.0f) {
+        EntityApplyFade(this, flashFade, true);
+        flashVisible = object && object->IsVisible();
+        SetVisible(false, true, true, false);
+    }
+}
+
 // @func 0x0017A008 AlterEgoEntity::CanInteractWith
 bool AlterEgoEntity::CanInteractWith(Entity* other, int kind)
 {
@@ -592,6 +607,30 @@ bool TargetableA::AddWatcher(void* watcher)
     return false;
 }
 
+// @func 0x00197210 TargetableB::UpdateFade
+void TargetableB::UpdateFade()
+{
+    Entity::UpdateFade();
+    bool on = flashing;
+    if (on && std::cos(flashTime * 3.1415f * 2.0f / 0.2f) < 0.0f)
+        on = false;
+    if (health > 0.0f) {
+        if (!on || !(flags & kEnt_Visible))
+            return;
+        EntityApplyFade(this, flashFade, true);
+        if (health <= 0.0f)
+            SetVisible(true, true, true, true);
+    } else {
+        SetVisible(false, true, true, false);
+        if (health <= 0.0f)
+            SetVisible(true, true, true, true);
+        flashVisible = (flags & kEnt_Visible) != 0;
+        return;
+    }
+    flashVisible = (flags & kEnt_Visible) != 0;
+    SetVisible(false, true, true, false);
+}
+
 // @func 0x00192F00 TargetableB::Damage
 bool TargetableB::Damage(float amount, Entity* source, uint32_t type)
 {
@@ -825,8 +864,42 @@ bool CompoundEntity::Release(bool kill)
     return ScriptedEntity::Release(kill);
 }
 
-// TODO(0x0016BC0C CompoundEntity::SetPropState)
-void CompoundEntity::SetPropState(int32_t state, uint32_t arg) { (void)arg; propState = state; }
+// @func 0x0016BC0C CompoundEntity::SetPropState
+void CompoundEntity::SetPropState(int32_t state, uint32_t arg)
+{
+    (void)arg;
+    if (state == propState)
+        return;
+    if (state == 6) {
+        field_30C = 0;
+        field_310 = 0;
+        if (rigidBody && !RigidBodyInWorld(rigidBody) && !(flags & kEnt_80)) {
+            RigidBodyAddToWorld(rigidBody, ~0u);
+            RigidBodyClearHalfA6(rigidBody);
+            if (bodyAction)
+                PhysicsAddAction(bodyAction);
+        }
+        field_190[0] = field_190[1] = field_190[2] = 0;
+        classBits |= 1;
+    } else if (state == 4) {
+        // NOTE: the console also calls slot 15 here and ignores the result.
+        if (rigidBody && RigidBodyInWorld(rigidBody)) {
+            touchingBodies.size = 0;
+            field_208.size = 0;
+            RigidBodyRemoveFromWorld(rigidBody);
+        }
+    } else if (state == 3) {
+        GameCamera* camera = MainGameCamera();
+        camera::CameraMode* mode = camera && camera->modeCount ? camera->modes[camera->modeCount - 1] : nullptr;
+        if (mode && mode->GetType() == camera::kCamMode_Shooter) {
+            auto* shooter = static_cast<camera::ShooterCameraMode*>(mode);
+            shooter->rewindStop = shooter->spline->FindClosestParam(Position(), nullptr, nullptr);
+            shooter->rewinding = true;
+            MinigameTrackRewound();
+        }
+    }
+    propState = state;
+}
 
 namespace {
 // Health within 0..maxHealth (as ScriptedEntity::AddHealth keeps it).
@@ -990,6 +1063,22 @@ bool CompoundEntity::Damage(float amount, Entity* source, uint32_t type)
 }
 
 Entity* CompoundEntity::s_target = nullptr;
+
+// @func 0x00175A20 CompoundEntity::UpdateFade
+void CompoundEntity::UpdateFade()
+{
+    Entity::UpdateFade();
+    bool on = flashing;
+    if (!on)
+        flashTime = 0.0f;
+    else if (std::cos(flashTime * 3.1415f * 2.0f * 2.0f) < 0.0f)
+        on = false;
+    if (health > 0.0f && on && propState != 3 && (flags & kEnt_Visible)) {
+        EntityApplyFade(this, flashFade, false);
+        flashVisible = (flags & kEnt_Visible) != 0;
+        SetVisible(false, true, true, false);
+    }
+}
 
 // @func 0x00175758 CompoundEntity::HandleMessage
 void CompoundEntity::HandleMessage(const EntityMessage& msg)
@@ -1217,6 +1306,14 @@ void PushBlock::SetLocked(bool flag, bool locked)
     }
 }
 
+// @func 0x001B8BB0 PushBlock::SetTransform
+void PushBlock::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    if (rigidBody && RigidBodyInWorld(rigidBody))
+        RigidBodySetTransform(rigidBody, m);
+}
+
 // @func 0x001B8F20 PushBlock::OnResume
 void PushBlock::OnResume()
 {
@@ -1257,8 +1354,61 @@ bool TargetableCBase::Release(bool kill)
     return ScriptedEntity::Release(kill);
 }
 
-// TODO(0x001F9F70 TargetableCBase::SetTargetState)
-void TargetableCBase::SetTargetState(int32_t state, uint32_t arg) { (void)state; (void)arg; }
+void TargetableCBase::AddNavObstacle()
+{
+    if (!Slot42())
+        return;
+    ape::Aabb bounds;
+    Def()->GetBounds(bounds);
+    const uint32_t mask = (Def()->hitFlags & (1u << 24)) ? 0xFFFFu : 0xFFFEu;
+    navObstacle = NavAddBodyObstacle(rigidBody, bounds, GetDebugName(), mask);
+}
+
+// @func 0x001FAF44 TargetableCBase::SetFlag80
+void TargetableCBase::SetFlag80(bool on)
+{
+    Entity::SetFlag80(on);
+    if (!rigidBody || RigidBodyInWorld(rigidBody) != on)
+        return;
+    if (on) {
+        RigidBodyRemoveFromWorld(rigidBody);
+        if (levels::NavManager* nav = levels::GetNavManager())
+            levels::RemoveNavObstacle(*nav, navObstacle);
+    } else if ((targetFlags >> 12) != 0) {
+        RigidBodyAddToWorld(rigidBody, ~0u);
+        AddNavObstacle();
+        SetTransform(transform);
+    }
+}
+
+// @func 0x001F9F70 TargetableCBase::SetTargetState
+void TargetableCBase::SetTargetState(int32_t state, uint32_t arg)
+{
+    (void)arg;
+    if ((targetFlags >> 12) == uint32_t(state))
+        return;
+    if (state == 0 || state == 4) {
+        if (rigidBody && RigidBodyInWorld(rigidBody)) {
+            RigidBodyRemoveFromWorld(rigidBody);
+            if (levels::NavManager* nav = levels::GetNavManager())
+                levels::RemoveNavObstacle(*nav, navObstacle);
+        }
+    } else if (state == 1) {
+        SetVisible(true, true, true, true);
+        // NOTE: the console also clears filter bits 5-15 here.
+        if (rigidBody) {
+            RigidBodySetFilterGroup(rigidBody, renderId);
+            if (!RigidBodyInWorld(rigidBody)) {
+                RigidBodyAddToWorld(rigidBody, ~0u);
+                AddNavObstacle();
+            }
+        }
+        field_1A4 = 0;
+    } else if (state == 3) {
+        field_1A4 = 0;
+    }
+    targetFlags = uint16_t((uint32_t(state) << 12) | (targetFlags & 0xFFF));
+}
 
 // @func 0x001FF4B0 TargetableCLinked::Release
 bool TargetableCLinked::Release(bool kill)

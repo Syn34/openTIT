@@ -159,6 +159,11 @@ void* LockDebugMeshVertices(AglDebugMesh* handle)
     return handle->mesh->vertices.data;
 }
 
+// @func 0x00523A98 UnlockDebugMeshVertices
+void UnlockDebugMeshVertices(AglDebugMesh*)
+{
+}
+
 // @func 0x0051B788 CreateSphereMesh
 AglSubMesh* CreateSphereMesh(AglMaterial* material, int rings, int segments)
 {
