@@ -449,6 +449,22 @@ public:
     // tracks the goal after the last completed one; a pending goal id is
     // selected instead (0x002DEDB4).
     void RestoreGoals(bool fromSave, bool restoreFlags);
+    // Records in the profile that `job` starts: earlier episodes (when the
+    // job's episode is active) and their jobs count as finished, the job's
+    // episode is started at the job's stage and its job states updated
+    // (0x002E0008).
+    void ApplyJobStart(Episode* job);
+    // Makes `goal` the one to play: in its level (now, unless `forceReload`
+    // asks to load it again) it is selected at once; otherwise the goals are
+    // reset and the level is (re)loaded with the goal selected afterwards
+    // (0x002E0498).
+    void PlayGoal(Goal* goal, bool forceReload, bool levelRequestFlag);
+    // Builds the running job's goals and, with `track`, plays the goal named
+    // by the pending id (else the first goal) (0x002E06D8).
+    bool BuildRunningJobGoals(bool forceReload, bool levelRequestFlag, bool track);
+    // Selects the goal whose name hash is `nameHash` (null for 0)
+    // (0x002E56F4).
+    void SelectGoalByName(uint32_t nameHash, bool keepPlayers, bool requestLevel);
     // Ends the running job instance, first updating its episode's flag 0x20
     // (0x002E5060).
     void FinishJobInstance();
@@ -541,6 +557,8 @@ void GameWorldSwitchPlayerCharacter(uint32_t def);
 void GameWorldRespawnPlayer();
 // Running level (game world +0x128114).
 uint32_t RunningLevel();
+// Reloads the running level (0x004896F8 with 0).
+void GameWorldReloadLevel();
 // Goal `index` of the player's goal list (game world +0x10C0, count
 // +0x10C8), null for -1 or out of range (0x002E6A3C).
 Goal* PlayerGoalAt(uint32_t index);

@@ -52,6 +52,7 @@ void GameWorldUseAssociatedPlayer(Goal*) {}
 void GameWorldSwitchPlayerCharacter(uint32_t) {}
 void GameWorldRespawnPlayer() {}
 uint32_t RunningLevel() { return 0; }
+void GameWorldReloadLevel() {}
 void GameWorldSetState(int, int) {}
 void GameWorldSetStateData(uint32_t, uint32_t) {}
 bool CurrentLevelJobValue(uint32_t*) { return false; }
@@ -676,6 +677,137 @@ void JobManager::RestoreGoals(bool fromSave, bool restoreFlags)
         }
     }
     flags &= ~kManager_Bit28;
+}
+
+// @func 0x002E0008 JobManager::ApplyJobStart
+void JobManager::ApplyJobStart(Episode* job)
+{
+    if (!job)
+        return;
+    PlayerProgress& progress = CurrentProgress();
+    const bool episodeActive = jobs[job->episode].active != 0;
+    for (uint32_t i = 0; i < jobCount; ++i) {
+        Job& episode = jobs[i];
+        const bool before = i < job->episode && episodeActive;
+        bool markRunning = false;   // flag 0x20
+        bool markLater = false;     // flag 0x80
+        for (uint8_t s = 0; s < episode.stageCount; ++s) {
+            Episode& stage = episode.stages[s];
+            uint8_t& state = progress.jobStates[stage.index];
+            if (before || state == kJobState_Complete) {
+                state = kJobState_Complete;
+                UnlockJobRewards(stage.nameHash);
+                if (stage.field_1F7 == 0)
+                    markRunning = true;
+            }
+            if (&stage == job && s != 0)
+                markLater = true;
+        }
+        uint16_t& flags = progress.episodes[episode.episode].flags;
+        if (before)
+            flags = static_cast<uint16_t>((flags & ~0x18) | 0x10);
+        if (markLater)
+            flags |= 0x80;
+        if (markRunning) {
+            flags |= 0x20;
+            progress.field_A0 = episode.field_32C;
+        }
+    }
+
+    Job& episode = jobs[job->episode];
+    EpisodeProgress& record = progress.episodes[episode.episode];
+    if (progress.jobStates[job->index] != kJobState_Complete)
+        record.stage = job->order;
+    if (((record.flags >> 3) & 3) != 2)
+        record.flags = static_cast<uint16_t>((record.flags & ~0x18) | 0x08);
+    if (!(record.flags & 0x20))
+        record.flags = job->field_1F7 == 0 ? static_cast<uint16_t>(record.flags | 0x20)
+                                           : static_cast<uint16_t>(record.flags & ~0x20);
+    if (record.flags & 0x20)
+        progress.field_A0 = episode.field_32C;
+    episode.UpdateJobStates();
+}
+
+// @func 0x002E0498 JobManager::PlayGoal
+void JobManager::PlayGoal(Goal* goal, bool forceReload, bool levelRequestFlag)
+{
+    constexpr uint32_t kSharedScriptLibrary = 0x7719A548u;
+    if (!goal)
+        return;
+    const int players = g_game ? g_game->localPlayerCount : 0;
+    for (int i = 0; i < players; ++i)
+        PlayerResetJobState(i);
+    ApplyJobStart(instance);
+
+    auto reloadScripts = [this]() {
+        if (!instance)
+            return;
+        if (ape::ApeAnimScriptLibrary* library = ape::ApeAnimScriptLibrary::Get(kSharedScriptLibrary)) {
+            library->Clear();
+            LoadJobScripts();
+        }
+    };
+    const uint32_t level = goal->Field960();
+    if (level == 0 || (!forceReload && RunningLevel() == level)) {
+        reloadScripts();
+        SelectGoal(goal, false, false);
+        return;
+    }
+    RestoreGoals(false, true);
+    if (RunningLevel() == level) {
+        GameWorldReloadLevel();
+        reloadScripts();
+    } else {
+        // NOTE: the console passes `levelRequestFlag` along with the level.
+        (void)levelRequestFlag;
+        GameWorldRequestLevel(level);
+    }
+    flags |= 1u << 31;
+    trackedGoalId = goal->nameHash;
+}
+
+// @func 0x002E06D8 JobManager::BuildRunningJobGoals
+bool JobManager::BuildRunningJobGoals(bool forceReload, bool levelRequestFlag, bool track)
+{
+    bool built = false;
+    Episode* job = instance;
+    if (job && job->ParseGoals()) {
+        built = true;
+        if (g_game)
+            job->MoveGoalsTo(g_game->goals);
+        instance = job;
+        currentJob = &jobs[job->episode];
+        if (track) {
+            Goal* goal = nullptr;
+            if (field_30 != 0) {
+                for (uint32_t i = 0; i < PlayerGoalCount() && !goal; ++i) {
+                    if (PlayerGoalListAt(i)->nameHash == field_30)
+                        goal = PlayerGoalListAt(i);
+                }
+            }
+            if (!goal)
+                goal = PlayerGoalCount() ? PlayerGoalListAt(0) : nullptr;
+            if (goal)
+                PlayGoal(goal, forceReload, levelRequestFlag);
+            else
+                built = false;
+        }
+    }
+    field_30 = 0;
+    return built;
+}
+
+// @func 0x002E56F4 JobManager::SelectGoalByName
+void JobManager::SelectGoalByName(uint32_t nameHash, bool keepPlayers, bool requestLevel)
+{
+    Goal* goal = nullptr;
+    if (nameHash != 0) {
+        for (uint32_t i = 0; i < PlayerGoalCount() && !goal; ++i) {
+            if (PlayerGoalListAt(i)->nameHash == nameHash)
+                goal = PlayerGoalListAt(i);
+        }
+    }
+    SelectGoal(goal, keepPlayers, requestLevel);
 }
 
 } // namespace game
