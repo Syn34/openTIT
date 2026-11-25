@@ -186,6 +186,7 @@ Entity::Entity()
 // @func 0x000D7024 Entity::~Entity (base part, vtable 0x00B12278)
 // @func 0x000DF934 Entity::~Entity (copy, called by derived destructors)
 // @func 0x000D729C Entity::~Entity (base part forwarding copy)
+// @func 0x000D7254 Entity::~Entity (deleting, base vtable 0x00B12278)
 // Hands the world object back: its original transform is restored when the
 // entity had taken it over, it is hidden, tagged with the render id and
 // released. The component, watcher and child arrays are freed (the
