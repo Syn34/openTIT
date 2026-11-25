@@ -6,6 +6,8 @@
 
 #include "ape/core/ApeString.h"
 #include "ape/file/ApeFile.h"
+#include "ape/memory/ApeMem.h"
+#include "ape/world/ApeSkeleton.h"
 #include "ape/sys/ApeIff.h"
 
 namespace sly {
@@ -343,6 +345,30 @@ bool RegisterAnimSkeletons(const char*, uint32_t nameHash, void* resource, uint3
     }
     AnimSkeletons().Add(nameHash, skeleton);
     return true;
+}
+
+// @func 0x0034B0F8 BuildHavokBoneMap
+uint16_t* BuildHavokBoneMap(uint32_t skeletonName, const ape::world::ApeSkeletonDef* def)
+{
+    auto* skeleton = static_cast<HkaSkeleton*>(*AnimSkeletons().Find(skeletonName));
+    if (!skeleton)
+        return nullptr;   // NOTE: the console warns "Couldn't find Havok skeleton"
+    const uint16_t count = def->numBones;
+    auto* map = static_cast<uint16_t*>(ape::MemAlloc(count * 2u + 2u, ape::kMemClass_Default, 0x10));
+    map[0] = count;
+    for (uint32_t i = 0; i < count; ++i)
+        map[1 + i] = 0xFFFF;
+    for (int32_t i = 0; i < skeleton->boneCount; ++i) {
+        const char* name = reinterpret_cast<const char*>(
+            reinterpret_cast<uintptr_t>(skeleton->bones[i].name) & ~uintptr_t(1));
+        const char* colon = ape::StrRChr(name, ':');
+        if (colon && ape::StrLen(colon) > 1)
+            name = colon + 1;
+        const int bone = def->FindBone(ape::HashNameNoCase(name));
+        if (bone != -1)
+            map[1 + bone] = uint16_t(i);
+    }
+    return map;
 }
 
 // TODO(0x00348F04 RegisterAnimAnimations): bindings and annotations of a

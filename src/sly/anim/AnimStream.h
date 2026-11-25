@@ -8,7 +8,7 @@
 
 #include <cstdint>
 
-namespace ape { namespace iff { struct IffReader; } namespace file { class File; } }
+namespace ape { namespace iff { struct IffReader; } namespace file { class File; } namespace world { struct ApeSkeletonDef; } }
 
 namespace sly {
 namespace anim {
@@ -139,6 +139,13 @@ bool RegisterAnimSkeletonMaps(const char* name, uint32_t nameHash, void* resourc
 // Resources kept by the registrations (0x0106BC2C skeletons, 0x0106BC58
 // skeleton maps).
 ape::ApeTArray<void*>& AnimSkeletonResources();
+
+// 0x0034B0F8: map from the bones of `def` to the bones of the registered
+// Havok skeleton `skeletonName` (entry 0 holds the count, then one Havok
+// index per bone, 0xFFFF for none). Havok bone names lose an "xxx:" prefix
+// before matching. Null when the skeleton is not registered. Free with
+// ape::MemFree.
+uint16_t* BuildHavokBoneMap(uint32_t skeletonName, const ape::world::ApeSkeletonDef* def);
 
 // Havok's buffered stream reader (0x007DFEF8, 0x24 bytes) over `inner`.
 HkStreamReader* HkNewBufferedReader(HkStreamReader* inner, int bufferSize);
