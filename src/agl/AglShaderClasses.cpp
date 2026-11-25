@@ -1418,6 +1418,31 @@ void UploadWarpRowsVertex(const ape::Matrix34& m, uint32_t reg)
     }
 }
 
+// Vertex constants 'reg'..'reg'+3: the item's world matrix transposed (the
+// last row (0, 0, 0, 1)).
+void UploadWorldMatrixTransposed(const AglRenderItem* item, uint32_t reg)
+{
+    const float m[16] = {
+        item->axisX[0], item->axisY[0], item->axisZ[0], item->position[0],
+        item->axisX[1], item->axisY[1], item->axisZ[1], item->position[1],
+        item->axisX[2], item->axisY[2], item->axisZ[2], item->position[2],
+        0.0f, 0.0f, 0.0f, 1.0f,
+    };
+    Cmd().SetVertexProgramConstants(reg, 16, m);
+}
+
+// A colour packed as A, R, G, B bytes in a material constant, as (r, g, b, a).
+void UnpackMaterialColor(const AglMaterial* material, uint32_t index, float out[4])
+{
+    uint32_t packed = 0;
+    if (material->constants && index < material->constantCapacity)
+        std::memcpy(&packed, &material->constants[index], sizeof(packed));
+    out[0] = float((packed >> 16) & 0xFF) * (1.0f / 255.0f);
+    out[1] = float((packed >> 8) & 0xFF) * (1.0f / 255.0f);
+    out[2] = float(packed & 0xFF) * (1.0f / 255.0f);
+    out[3] = float(packed >> 24) * (1.0f / 255.0f);
+}
+
 // The item's RGBA byte colour (render item +0x40) as floats; white when
 // the item has none (the constant at 0x01164BB0).
 void ItemColor(const AglRenderItem* item, float out[4])
@@ -1900,8 +1925,8 @@ public:
 };
 
 class SlyCharacter2Technique : public AglTechnique {
-    // TODO(0x005BD3B0 SlyCharacter2Technique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABD0C SlyCharacter2Technique::~SlyCharacter2Technique
@@ -1940,8 +1965,8 @@ public:
 };
 
 class SlyCharacterFakeFurTechnique : public AglTechnique {
-    // TODO(0x005C1EB8 SlyCharacterFakeFurTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABD4C SlyCharacterFakeFurTechnique::~SlyCharacterFakeFurTechnique
@@ -2059,8 +2084,8 @@ public:
 };
 
 class SlyShrubTechnique : public AglTechnique {
-    // TODO(0x005CDC38 SlyShrubTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABE0C SlyShrubTechnique::~SlyShrubTechnique
     // @func 0x007AFC50 SlyShrubTechnique::~SlyShrubTechnique (deleting)
@@ -5673,6 +5698,98 @@ void SlyTextureWarpTechnique::BeginMaterial(AglMaterial* material)
     SetShaderConstant(1, params);
     UploadWarpRowsVertex(a, 6);
     UploadWarpRowsVertex(b, 9);
+}
+
+// @func 0x005CDC38 SlyShrubTechnique::Draw
+// Vertex constants: 4 = (1, 1, 1, item alpha), 5 = (item position, 1),
+// 6..8 = sway parameters from material constants 1..6 (6.w is the animation
+// time). A positive integer in material constant 0 is the alpha test
+// reference for the draw.
+void SlyShrubTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    const AglMaterial* material = item->material;
+    gpu::CommandList& cmd = Cmd();
+    const float alpha[4] = { 1.0f, 1.0f, 1.0f, float(uint8_t(item->field_47)) * (1.0f / 255.0f) };
+    cmd.SetVertexProgramConstants(4, 4, alpha);
+    const float position[4] = { item->position[0], item->position[1], item->position[2], 1.0f };
+    cmd.SetVertexProgramConstants(5, 4, position);
+    const float sway0[4] = { MaterialConstant(material, 1), 1.0f, MaterialConstant(material, 2),
+                             GetAnimationClock().time };
+    cmd.SetVertexProgramConstants(6, 4, sway0);
+    const float sway1[4] = { MaterialConstant(material, 3), 1.0f, MaterialConstant(material, 4), 0.0f };
+    cmd.SetVertexProgramConstants(7, 4, sway1);
+    const float sway2[4] = { MaterialConstant(material, 5), 1.0f, MaterialConstant(material, 6), 0.0f };
+    cmd.SetVertexProgramConstants(8, 4, sway2);
+
+    int32_t alphaRef = 0;
+    if (material->constants)
+        std::memcpy(&alphaRef, &material->constants[0], sizeof(alphaRef));
+    const bool alphaTest = alphaRef > 0;
+    if (alphaTest)
+        cmd.SetAlphaFunc(gpu::CompareFunc::GEqual, uint32_t(alphaRef));
+    cmd.SetAlphaTestEnable(alphaTest);
+    ApplyItemStencilRef(item);
+    DrawItemGeometry(item);
+    if (alphaTest)
+        Cmd().SetAlphaTestEnable(false);
+}
+
+// @func 0x005BC8F8 SetupLitCharacterDraw
+// Common part of the SlyCharacter2 and SlyCharacterFakeFur draws: world x
+// view-projection (vertex 0..3), cached fog; for lit items also the world
+// matrix transposed (vertex 6..9), the six scene light colours tinted by
+// the ARGB colour in material constant 11 (vertex 0xA..0xF), the item's
+// lights (from 0x10), a rim colour (RGB bytes of constant 8 times constant
+// 9, w = constant 7) in fragment constant 3 and the eye in the item's space
+// in fragment constant 1.
+void SetupLitCharacterDraw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    if (!(item->lightMask & kItemLight_Lit))
+        return;
+    const AglMaterial* material = item->material;
+    UploadWorldMatrixTransposed(item, 6);
+    float tint[4];
+    UnpackMaterialColor(material, 11, tint);
+    const AglViewConstants& view = GetViewConstants();
+    for (uint32_t i = 0; i < 6; ++i) {
+        const ape::Vec4& c = view.ambient[i];
+        const float value[4] = { c.x * tint[0], c.y * tint[1], c.z * tint[2], c.w * tint[3] };
+        Cmd().SetVertexProgramConstants(0xA + i, 4, value);
+    }
+    UploadItemLights(item, 0x10);
+    float rim[4];
+    UnpackMaterialColor(material, 8, rim);
+    const float rimScale = MaterialConstant(material, 9);
+    const float rimValue[4] = { rim[0] * rimScale, rim[1] * rimScale, rim[2] * rimScale,
+                                MaterialConstant(material, 7) };
+    SetShaderConstant(3, rimValue);
+    UploadLocalEye(item, 1);
+}
+
+// @func 0x005BD3B0 SlyCharacter2Technique::Draw
+// Always tagged with stencil bit 0x40.
+void SlyCharacter2Technique::Draw(AglRenderItem* item)
+{
+    SetupLitCharacterDraw(item);
+    BeginItemAlpha(item, 2);
+    ApplyItemStencilRef(item, 0x40);
+    DrawItemGeometry(item);
+    EndItemAlpha(item);
+}
+
+// @func 0x005C1EB8 SlyCharacterFakeFurTechnique::Draw
+// Same draw as SlyCharacter2 (a separate copy on the console).
+void SlyCharacterFakeFurTechnique::Draw(AglRenderItem* item)
+{
+    SetupLitCharacterDraw(item);
+    BeginItemAlpha(item, 2);
+    ApplyItemStencilRef(item, 0x40);
+    DrawItemGeometry(item);
+    EndItemAlpha(item);
 }
 
 } // namespace agl
