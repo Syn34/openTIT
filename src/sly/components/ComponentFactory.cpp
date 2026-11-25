@@ -12,6 +12,8 @@
 #include "sly/components/SystemCracker.h"
 #include "sly/components/TrackerComponent.h"
 #include "sly/entity/EntityHooks.h"
+#include "sly/levels/ai/AIBossGrizz.h"
+#include "sly/levels/ai/AIComponent.h"
 
 namespace sly {
 namespace entity {
@@ -42,6 +44,10 @@ EntityComponent* CreateComponent(ComponentDesc* desc)
         return new ControlRadarComponent(static_cast<ControlComponentDesc*>(desc));
     case 0x0C:
         return new ControlScriptedC(desc);
+    case 0x0D:
+        return new levels::ai::AIComponent(static_cast<levels::ai::AIComponentDesc*>(desc));
+    case 0x30:
+        return new levels::ai::BossGrizzComponent(static_cast<levels::ai::BossGrizzDesc*>(desc));
     case kCompDesc_ControlAI:
         return new ControlAIComponent(static_cast<ControlAIComponentDesc*>(desc));
     case kCompDesc_AnimMap:
