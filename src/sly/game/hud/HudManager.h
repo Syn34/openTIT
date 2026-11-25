@@ -87,6 +87,11 @@ struct HudObjectDef {
     // other kinds keep defaultFade: hide the screen's sub-objects.
     bool hideSubObjects = false;
     uint8_t elementFlags = 0;        // +0xA0 bit 0: the element starts shown and stays (persistent)
+    // Prompt definitions (type bit 0x40) keep three GUI objects (+0x94..
+    // +0x9C) and three scene object names (+0xA0..+0xA8) where the other
+    // kinds keep the members above.
+    ape::ApeGuiObject* promptGui[3] = {};
+    uint32_t promptObjects[3] = {};
 };
 
 // Anim script states of the element states (0x00F64F88): "NONE", "Intro",

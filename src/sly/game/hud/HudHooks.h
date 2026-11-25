@@ -4,6 +4,8 @@
 
 #include <cstdint>
 
+#include "sly/game/AudioSystem.h"
+
 namespace sly {
 namespace hud {
 
@@ -28,6 +30,15 @@ void PlayerHudColor(uint8_t out[4]);
 // Byte +0xA15 of the object at job manager +0x50: a timed text element
 // still has lines to show. NOTE: owner (a minigame goal?) unknown.
 void SetMinigameLinePending(bool pending);
+// Sound `sound` of the HUD bank (0x00446984 with the bank 0x010B809C).
+audio::SoundName* FindHudSound(uint32_t sound);
+// Starts a HUD sound (0x0044C474 without position).
+void PlayHudSound(audio::SoundName* sound);
+// The active player's confirm button (pad bit 0x80) went down this frame
+// (application player block 0x010B1A98 + player * 0x2EC0, world byte +0x1071).
+bool ConfirmButtonPressed();
+// 0x0048970C on the game world: continues after a prompt.
+void GameWorldContinue();
 // Own copy of an element's template object (ApeObj virtual slot 14 with 5,
 // then 0x00590FEC registering dynamic lights).
 ape::world::ApeObj* HudCloneObject(ape::world::ApeObj* object);

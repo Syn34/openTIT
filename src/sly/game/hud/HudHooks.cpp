@@ -22,6 +22,14 @@ void PlayerHudColor(uint8_t out[4])
 }
 // TODO(job manager +0x50 object byte +0xA15)
 void SetMinigameLinePending(bool) {}
+// TODO(0x00446984 sound lookup in the HUD bank)
+audio::SoundName* FindHudSound(uint32_t) { return nullptr; }
+// TODO(0x0044C474)
+void PlayHudSound(audio::SoundName*) {}
+// TODO(application pad state)
+bool ConfirmButtonPressed() { return false; }
+// TODO(0x0048970C)
+void GameWorldContinue() {}
 // TODO(ApeObj slot 14 clone / 0x00590FEC): world objects cannot be cloned
 // yet; the element shares the template.
 ape::world::ApeObj* HudCloneObject(ape::world::ApeObj* object)
