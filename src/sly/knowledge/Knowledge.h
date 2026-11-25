@@ -248,6 +248,11 @@ struct KRuntime {
         } var;
         uint32_t hash;               // RChangeState: target state
         void* object;                // results holding an engine object
+        struct {
+            uint32_t bone;           // attach bone / locator the shot leaves from (0: entity)
+            uint32_t projectile;     // projectile entity definition name
+            float angle;             // field 9, in radians
+        } fire;                      // RFireProjectile
         uint8_t raw[0x6C];
     } payload = {};
     static constexpr uint16_t kBroken = 0x8000;

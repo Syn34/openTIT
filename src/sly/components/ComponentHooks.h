@@ -2,10 +2,12 @@
 // ported yet. Each is a TODO stub until its owner exists.
 #pragma once
 
+#include "ape/math/ApeMath.h"
+
 #include <cstdint>
 
 namespace ape { namespace xml { class XmlElement; } }
-namespace sly { namespace entity { struct ComponentDesc; class Entity; class EntityComponent; } }
+namespace sly { namespace entity { struct ComponentDesc; class Entity; class EntityComponent; class EntityDef; } }
 namespace ape::world { class ApeObj; }
 namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; class ApeRefCounted; }
 
@@ -80,6 +82,27 @@ ape::world::ApeObj* MarkerGeometry(uint32_t geomName);
 // Locator of the owner's world object definition (+0xD0 +0x6C) by name
 // (ApeLocatorSet::Find), or null.
 void* EntityFindLocator(entity::Entity* entity, uint32_t name);
+
+// -- projectiles -----------------------------------------------------------------------
+// Muzzle transform of the owner's active weapon (skin component, weapon slot
+// `slot`): 0x00250F40 fills the matrix (starting from `muzzle`).
+void SkinWeaponMuzzle(entity::EntityComponent* skin, ape::Matrix34& muzzle, uint32_t slot);
+// Skin component +0x4F0: index of the active weapon slot.
+uint32_t SkinActiveWeaponSlot(entity::EntityComponent* skin);
+// 0x000EDE30: spawns a projectile of `def` (a projectile definition, def
+// flags 0x2000) fired by `owner` at `transform` with `velocity` towards
+// `target` ("EntityCompWeapon_Proj_%i"); null if nothing was spawned.
+entity::Entity* SpawnWeaponProjectile(float speed, entity::EntityDef* def, entity::Entity* owner,
+                                      const ape::Matrix34& transform, const ape::Vec3& velocity,
+                                      const ape::Matrix34& target);
+// Point instance of the loaded level by name (instance list 0x00F8F154);
+// null if there is none. Its world transform is at +0x50.
+void* FindPointInstance(uint32_t name);
+const ape::Matrix34& PointInstanceTransform(void* point);
+// Turret-like owners (type bit 57) aim at a point before firing: 0x001CF620
+// sets the wanted direction, 0x001CF690 tells whether the aim has reached it.
+void TurretAimAt(entity::Entity* turret, const ape::Vec3& point);
+bool TurretIsAimed(entity::Entity* turret);
 
 // <BossGrizz> component parser (forwards to levels::ai::ParseBossGrizzComponentDesc).
 entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,

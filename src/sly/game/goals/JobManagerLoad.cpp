@@ -422,7 +422,7 @@ void JobManager::OnLevelStart()
     if (streamFlags & (1u << 29)) {
         // NOTE: the console stops the package stream here (not ported).
         streamFlags = 0;
-        JobManagerCleanup(this);
+        ClearGoals();
     }
 
     if (trackedGoal) {

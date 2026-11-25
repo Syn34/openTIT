@@ -31,6 +31,8 @@ void CharacterSetAnimSpeed(EntityComponent*, float) {}
 bool SoundAlertSuppressed(Entity*) { return false; }
 void SkinRequestFire(EntityComponent*) {}
 bool EntityHasAttachPoint(Entity*, uint32_t) { return true; }
+// TODO(0x0001B8C0): the AI manager's attack sighting list lives in sly/levels/ai.
+void AIAddMeleeAttack(Entity*, Entity*, uint32_t, const MeleeAttackParams&) {}
 
 } // namespace knowledge
 } // namespace sly

@@ -6,7 +6,10 @@
 #include "platform/Platform.h"
 #include "sly/entity/Entity.h"
 #include "sly/game/AudioSystem.h"
+#include "sly/game/FxManager.h"
 #include "sly/levels/ai/AIController.h"
+
+#include <cstring>
 
 namespace sly {
 namespace knowledge {
@@ -374,8 +377,31 @@ bool RSetGravityExecute(KRef* ref, KnowledgeData* list)
     return false;
 }
 
-// TODO(0x003958C8 RCameraShake::Execute)
-bool RCameraShakeExecute(KRef*, KnowledgeData*) { return false; }
+// Queues a camera shake centred on the owner. Field 0 goes to the last
+// shake value, fields 1-10 to values 1-10 (3 is a name hash), field 11 is
+// the radius; values 0, 3 and 11 keep their defaults.
+// @func 0x003958C8 RCameraShake::Execute
+bool RCameraShakeExecute(KRef* ref, KnowledgeData* list)
+{
+    game::CameraShake shake;
+    shake.values[1] = ResultValue(ref, 1).f;
+    shake.values[2] = ResultValue(ref, 2).f;
+    const uint32_t shakeName = ResultValue(ref, 3).u;   // NOTE: a name hash kept in a float slot
+    std::memcpy(&shake.values[4], &shakeName, sizeof shakeName);
+    shake.values[5] = ResultValue(ref, 4).f;
+    shake.values[6] = ResultValue(ref, 5).f;
+    shake.values[7] = ResultValue(ref, 6).f;
+    shake.values[8] = ResultValue(ref, 7).f;
+    shake.values[9] = ResultValue(ref, 8).f;
+    shake.values[10] = ResultValue(ref, 9).f;
+    shake.values[11] = ResultValue(ref, 10).f;
+    shake.values[12] = ResultValue(ref, 0).f;
+    shake.radius = ResultValue(ref, 11).f;
+    shake.position = list->owner ? list->owner->Position() : ape::Vec3{0.0f, 0.0f, 0.0f, 0.0f};
+    if (game::FxManager* fx = game::GetFxManager())
+        fx->AddCameraShake(shake);
+    return false;
+}
 
 // @func 0x00395EB4 RControllerRumble::Execute
 bool RControllerRumbleExecute(KRef* ref, KnowledgeData*)
@@ -441,8 +467,20 @@ bool RStopDirScriptExecute(KRef*, KnowledgeData* list)
     return true;
 }
 
-// TODO(0x003967B0 RSetPosition::Execute)
-bool RSetPositionExecute(KRef*, KnowledgeData*) { return false; }
+// With field 0 set, puts the owner back at the transform its world object had
+// when the entity took it over.
+// @func 0x003967B0 RSetPosition::Execute
+bool RSetPositionExecute(KRef* ref, KnowledgeData* list)
+{
+    Entity* owner = list->owner;
+    if (!owner)
+        return false;
+    if (ResultValue(ref, 0).b) {
+        const ape::Matrix34 start = owner->objectRestoreTransform;
+        owner->SetTransform(start);
+    }
+    return true;
+}
 
 // Speed, or with Time > 0 the speed that plays the clip in Time seconds.
 // @func 0x00396930 RSetAnimSpeed::Execute
@@ -502,8 +540,29 @@ void RStartMeleeAttackClone(KRef* ref, KnowledgeData* list)
                                       ResultValue(ref, 0).str, ""));
 }
 
-// TODO(0x0039724C RStartMeleeAttack::Execute)
-bool RStartMeleeAttackExecute(KRef*, KnowledgeData*) { return false; }
+// Starts a melee attack of the owner (an AI character) against its living
+// target, from the attach bone resolved by Link.
+// @func 0x0039724C RStartMeleeAttack::Execute
+bool RStartMeleeAttackExecute(KRef* ref, KnowledgeData* list)
+{
+    MeleeAttackParams params;
+    params.field_30 = ResultValue(ref, 1).f;
+    params.field_3C = ResultValue(ref, 2).f;
+    params.field_40 = ResultValue(ref, 3).f;
+    params.offset = {ResultValue(ref, 4).f, ResultValue(ref, 5).f, ResultValue(ref, 6).f, 0.0f};
+    params.field_34 = ResultValue(ref, 7).u;
+    params.field_38 = ResultValue(ref, 8).u;
+
+    Entity* owner = list->owner;
+    if (!owner || !owner->listener)
+        return false;
+    auto* controller = static_cast<levels::ai::AIController*>(owner->listener);
+    Entity* target = controller->target;
+    if (!target || !(target->typeBits[0] & 0x2u) || !target->IsAlive())
+        return false;
+    AIAddMeleeAttack(owner, target, RuntimeOf(ref, list)->payload.hash, params);
+    return false;
+}
 
 // @func 0x003976C8 REndMeleeAttack::Link
 void REndMeleeAttackLink(KRef* ref, KnowledgeData* list)
@@ -535,10 +594,33 @@ bool REndMeleeAttackExecute(KRef* ref, KnowledgeData* list)
     return false;
 }
 
-// TODO(0x00397970 RFireProjectile::Link)
-void RFireProjectileLink(KRef*, KnowledgeData*) {}
-// TODO(0x00397D8C RFireProjectile::Clone)
-void RFireProjectileClone(KRef*, KnowledgeData*) {}
+// Resolves the bone (field 0, optional) and projectile definition (field 1)
+// names; field 9 is an angle in degrees.
+// @func 0x00397970 RFireProjectile::Link
+void RFireProjectileLink(KRef* ref, KnowledgeData* list)
+{
+    KRuntime* runtime = RuntimeOf(ref, list);
+    const char* bone = ResultValue(ref, 0).str;
+    runtime->payload.fire.bone = bone ? ape::HashNameNoCase(bone) : 0;
+    if (const char* projectile = ResultValue(ref, 1).str)
+        runtime->payload.fire.projectile = ape::HashNameNoCase(projectile);
+    else
+        ReportResultError(ref, list, "RFireProjectile: No projectile def name defined!");
+    runtime->payload.fire.angle = ResultValue(ref, 9).f * 0.017453292f;
+}
+
+// Checks the clone's owner (a character) has the attach bone.
+// @func 0x00397D8C RFireProjectile::Clone
+void RFireProjectileClone(KRef* ref, KnowledgeData* list)
+{
+    Entity* owner = list->owner;
+    const uint32_t bone = RuntimeOf(ref, list)->payload.fire.bone;
+    if (!IsCharacter(owner) || !bone || EntityHasAttachPoint(owner, bone))
+        return;
+    ReportResultError(ref, list,
+                      ape::TempFormat("RFireProjectile: Cannot find bone (%s) for character %s!",
+                                      ResultValue(ref, 0).str, owner->GetDebugName()));
+}
 // TODO(0x00398040 RFireProjectile::Execute)
 bool RFireProjectileExecute(KRef*, KnowledgeData*) { return false; }
 
