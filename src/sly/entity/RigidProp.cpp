@@ -16,36 +16,12 @@ namespace entity {
 
 namespace {
 
-// Damage types per hit category (shared with the other entity classes).
-// NOTE: names unknown.
-constexpr uint32_t kType_PhysicsImpact = 0x80F43146u;
-constexpr uint32_t kType_Melee = 0x045D9554u;
-constexpr uint32_t kType_Blast = 0x03C599D8u;
-constexpr uint32_t kType_Environment = 0x811B1D5Eu;
-
 // Messages that pay out the prop's score to whoever destroyed it.
 constexpr uint32_t kMsg_Killed = 0xCCF83851u;
 constexpr uint32_t kMsg_B94AE51B = 0xB94AE51Bu;   // NOTE: name unknown
 constexpr uint32_t kComp_Scoring = 0x28;
 // Entity type bit 1: entities that record what they attack (+0x174).
 constexpr uint32_t kType_Attacker = 0x02;
-
-// Bodies that a push cannot move.
-bool IsPushable(void* body)
-{
-    if (!body)
-        return false;
-    const uint8_t motion = RigidBodyMotionType(body);
-    return motion != 5 && motion != 4;
-}
-
-void SetFatal(EntityHitRecord& hit, bool alive)
-{
-    hit.flags = alive ? uint16_t(hit.flags & ~EntityHitRecord::kHit_Fatal)
-                      : uint16_t(hit.flags | EntityHitRecord::kHit_Fatal);
-}
-
-ape::Vec3 Scaled(const ape::Vec3& v, float s) { return { v.x * s, v.y * s, v.z * s, 0.0f }; }
 
 } // namespace
 
@@ -54,14 +30,7 @@ bool RigidProp::Release(bool kill)
 {
     if (kill) {
         SetPropState(kProp_Removed, 0);
-        if (bodyAction)
-            HavokRelease(bodyAction);
-        if (rigidBody) {
-            if (RigidBodyInWorld(rigidBody))
-                RigidBodyRemoveFromWorld(rigidBody);
-            RigidBodyClearUserProperties(rigidBody);
-            HavokRelease(rigidBody);
-        }
+        ReleaseBody();
     }
     return ScriptedEntity::Release(kill);
 }
@@ -103,90 +72,50 @@ void RigidProp::HandleMessage(const EntityMessage& msg)
 // @func 0x00168714 RigidProp::GetVelocity
 ape::Vec3 RigidProp::GetVelocity()
 {
-    return rigidBody ? RigidBodyLinearVelocity(rigidBody) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
+    return BodyVelocity();
 }
 
 // @func 0x001691D4 RigidProp::GetMassCenter
 ape::Vec3 RigidProp::GetMassCenter()
 {
-    return rigidBody ? RigidBodyCenterOfMass(rigidBody) : Position();
+    return BodyMassCenter();
 }
 
 // @func 0x001687B0 RigidProp::CanBeDamaged
 bool RigidProp::CanBeDamaged() const
 {
-    const RigidPropDef* d = Def();
-    return d->collisionScale != 0.0f || d->impactScale != 0.0f || d->blastScale != 0.0f ||
-           d->environmentScale != 0.0f || d->projectileScale != 0.0f;
+    return Def()->damage.CanHurt();
 }
 
 // @func 0x00168810 RigidProp::OnHitCategory0
-// Collisions hurt above a speed threshold, in proportion to the excess
-// speed, up to a maximum.
 void RigidProp::OnHitCategory0(EntityHitRecord& hit)
 {
-    const RigidPropDef* d = Def();
-    if (!ReceiveHit(hit) || d->collisionScale <= 0.0f || d->collisionMax <= 0.0f)
-        return;
-    const float speed = hit.data.collision.speed;
-    if (speed <= d->collisionThreshold)
-        return;
-    const float amount = std::min((speed - d->collisionThreshold) * d->collisionScale, d->collisionMax);
-    SetFatal(hit, Damage(amount, hit.source, kType_PhysicsImpact));
+    HitCollision(Def()->damage, hit);
 }
 
 // @func 0x00168950 RigidProp::OnHitCategory1
-// NOTE: the console's push code here has undecodable instruction data in the
-// reference; it is written like the blast and environment pushes.
 void RigidProp::OnHitCategory1(EntityHitRecord& hit)
 {
-    const RigidPropDef* d = Def();
-    if (!ReceiveHit(hit))
-        return;
-    const float strength = hit.data.impact.push;
-    if (IsPushable(rigidBody) && strength != 0.0f && d->impactPush != 0.0f)
-        RigidBodyApplyImpulse(rigidBody, Scaled(hit.data.impact.direction, -strength * d->impactPush));
-    if (d->impactScale > 0.0f)
-        SetFatal(hit, Damage(hit.data.impact.damage * d->impactScale, hit.source, kType_Melee));
+    HitImpact(Def()->damage, hit);
 }
 
 // @func 0x00168BD0 RigidProp::OnHitCategory2
 void RigidProp::OnHitCategory2(EntityHitRecord& hit)
 {
-    const RigidPropDef* d = Def();
-    if (!ReceiveHit(hit))
-        return;
-    const auto& blast = hit.data.blast;
-    float falloff = 1.0f;
-    if (blast.innerRadius < blast.distance && blast.innerRadius < blast.outerRadius)
-        falloff = (blast.outerRadius - blast.distance) / (blast.outerRadius - blast.innerRadius);
-    if (IsPushable(rigidBody) && blast.force != 0.0f && d->blastPush > 0.0f)
-        RigidBodyApplyImpulse(rigidBody, Scaled(blast.pushDirection, blast.force * d->blastPush * falloff));
-    if (d->blastScale > 0.0f)
-        Damage(blast.damage * falloff * d->blastScale, hit.source, kType_Blast);
-    hit.flags |= EntityHitRecord::kHit_Fatal;
+    HitBlast(Def()->damage, hit, false);
 }
 
 // @func 0x00168E50 RigidProp::OnHitCategory3
 void RigidProp::OnHitCategory3(EntityHitRecord& hit)
 {
-    const RigidPropDef* d = Def();
-    if (!ReceiveHit(hit))
-        return;
-    if (IsPushable(rigidBody) && hit.data.knock.knockback != 0.0f && d->environmentPush != 0.0f)
-        RigidBodyApplyImpulse(rigidBody, Scaled(hit.vec10, hit.data.knock.knockback * d->environmentPush));
-    if (d->environmentScale > 0.0f)
-        SetFatal(hit, Damage(hit.data.knock.amount * d->environmentScale, hit.source, kType_Environment));
+    HitEnvironment(Def()->damage, hit);
 }
 
 // @func 0x00169040 RigidProp::OnHitCategory4
 // Projectiles hurt with the hit's own reaction as the damage type.
 void RigidProp::OnHitCategory4(EntityHitRecord& hit)
 {
-    const RigidPropDef* d = Def();
-    if (!ReceiveHit(hit) || d->projectileScale <= 0.0f)
-        return;
-    SetFatal(hit, Damage(hit.data.projectile.damage * d->projectileScale, hit.source, hit.reaction));
+    HitProjectile(Def()->damage, hit, hit.reaction);
 }
 
 // @func 0x001690F8 RigidProp::Damage
@@ -205,7 +134,7 @@ bool RigidProp::Damage(float amount, Entity* source, uint32_t type)
 // @func 0x001691C8 RigidProp::ProjectileDamageScale
 float RigidProp::ProjectileDamageScale() const
 {
-    return Def()->projectileScale;
+    return Def()->damage.projectileScale;
 }
 
 // @func 0x00167570 RigidProp::SetPropState
