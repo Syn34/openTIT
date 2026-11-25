@@ -522,6 +522,10 @@ public:
     // stage (or the episode itself) unless it is a replay, then ends it.
     // Returns the level to go to next (0x002E5414).
     uint32_t CompleteRunningJob();
+    // Advances a pending job start: streams the job's files (showing the
+    // loading element), starts the job and prepares the scripts of the goal
+    // to play, then plays it once its sequences are streamed (0x002E0C38).
+    void UpdatePendingStart();
     bool StartJobFromHub(Episode* job, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
                          bool levelRequestFlag, bool skipBookkeeping, bool track);
     // Ends the running job instance, first updating its episode's flag 0x20
@@ -549,7 +553,7 @@ public:
     uint32_t field_40 = 0;           // +0x40
     entity::Entity* field_44 = nullptr;   // +0x44 NOTE: an entity whose script is told when a job ends
     Goal* trackedGoal = nullptr;     // +0x48
-    uint32_t field_4C = 0;           // +0x4C
+    Goal* failingGoal = nullptr;     // +0x4C goal whose fail scripts run every update
     uint32_t field_50 = 0;           // +0x50
     uint32_t field_54 = 0;           // +0x54
     uint32_t pendingRequest[2] = {}; // +0x58

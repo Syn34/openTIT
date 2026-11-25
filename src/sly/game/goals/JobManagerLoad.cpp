@@ -434,7 +434,7 @@ void JobManager::OnLevelStart()
         }
     }
     trackedGoal = goal;
-    field_4C = 0;
+    failingGoal = nullptr;
     field_50 = 0;
     field_40 = 0;
     field_44 = nullptr;

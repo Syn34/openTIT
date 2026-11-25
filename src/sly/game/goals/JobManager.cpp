@@ -904,5 +904,95 @@ uint32_t JobManager::CompleteRunningJob()
     return nextLevel;
 }
 
+// @func 0x002E0C38 JobManager::UpdatePendingStart
+void JobManager::UpdatePendingStart()
+{
+    constexpr uint32_t kHud_Loading = 0x24D73841u;   // NOTE: element name unknown
+    constexpr uint64_t kClass_JobStarter = 0x20000;
+    auto goalToPlay = [this]() -> Goal* {
+        if (trackedGoal)
+            return trackedGoal;
+        if (field_30 != 0) {
+            for (uint32_t i = 0; i < PlayerGoalCount(); ++i) {
+                if (PlayerGoalListAt(i)->nameHash == field_30)
+                    return PlayerGoalListAt(i);
+            }
+        }
+        return PlayerGoalCount() ? PlayerGoalListAt(0) : nullptr;
+    };
+
+    if (streamFlags & (1u << 29)) {
+        if (pendingKind == 1) {
+            // Streaming the files while the loading element comes up.
+            if (pendingJob->loadState == Episode::kLoad_None)
+                pendingJob->StartLoading();
+            else if (pendingJob->loadState == Episode::kLoad_Loading)
+                pendingJob->UpdateLoading();
+            hud::HudObject* loading = hud::Find(kHud_Loading);
+            if (!loading) {
+                pendingKind = 2;
+            } else if (!loading->gui || !hud::GuiIsPlaying(loading->gui)) {
+                hud::ShowTextByName(-1.0f, kHud_Loading, nullptr, true);
+            } else {
+                const uint32_t state = loading->animState >> 1;
+                if (state == 3 || state == 2)
+                    pendingKind = 2;
+            }
+        } else if (pendingKind == 2) {
+            if (pendingJob->loadState == Episode::kLoad_Loading) {
+                pendingJob->UpdateLoading();
+            } else {
+                StartJobFromHub(pendingJob, pendingValue, (streamFlags & (1u << 31)) != 0,
+                                (streamFlags & (1u << 30)) != 0, false, false, false, false);
+                if (Goal* goal = goalToPlay()) {
+                    for (int slot = 0; slot < goals::kScriptSlotCount; ++slot)
+                        goal->PrepareScriptSlot(slot);
+                }
+                pendingKind = 3;
+            }
+        } else if (pendingKind == 3) {
+            Goal* goal = goalToPlay();
+            bool streamed = true;
+            if (goal) {
+                for (int slot = 0; slot < goals::kScriptSlotCount && streamed; ++slot)
+                    streamed = goal->ScriptSlotStreamed(slot);
+            }
+            if (streamed) {
+                if (goal)
+                    PlayGoal(goal, false, false);
+                field_30 = 0;
+                if (instance) {
+                    for (uint32_t i = 0; i < PlayerGoalCount(); ++i) {
+                        if (Goal* each = PlayerGoalListAt(i)) {
+                            each->PrepareScripts();
+                            each->ReapplyHints(nullptr);
+                        }
+                    }
+                }
+                pendingJob->ReleaseStreams();
+                flags |= 1u << 28;
+                if (pendingEntity) {
+                    if (entity::EntityComponent* targeting = entity::EntityTargeting(pendingEntity)) {
+                        targeting->SetOption(true);
+                        TargetingSetEnabled(targeting, false);
+                    }
+                }
+                hud::ShowByName(kHud_Loading, false, true, false);
+                if (pendingEntity)
+                    pendingEntity->classBits &= ~kClass_JobStarter;
+                if (pendingJob)
+                    pendingJob->ReleaseStreams();
+                pendingKind = 0;
+                pendingEntity = nullptr;
+                pendingJob = nullptr;
+                pendingValue = 0;
+                streamFlags = 0;
+            }
+        }
+    }
+    if (failingGoal)
+        failingGoal->RunScriptSlot(goals::kScripts_Failed);
+}
+
 } // namespace game
 } // namespace sly
