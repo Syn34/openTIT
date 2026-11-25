@@ -124,6 +124,15 @@ const AglFormatInfo& GetFormatInfo(uint32_t format)
     return kFormats[format < kAglFmt_Count ? format : kAglFmt_A8R8G8B8];
 }
 
+uint32_t FindFormatByTextureFormat(uint8_t textureFormat)
+{
+    for (uint32_t i = 0; i < kAglFmt_Count; ++i) {
+        if (kFormats[i].textureFormat == textureFormat)
+            return i;
+    }
+    return 0;
+}
+
 bool IsDepthFormat(uint32_t format)
 {
     return format == kAglFmt_ShadowZ16 || format == kAglFmt_ShadowZ24S8 || format == kAglFmt_Z16 ||

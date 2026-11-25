@@ -83,6 +83,9 @@ struct AglFormatInfo {
 };
 
 const AglFormatInfo& GetFormatInfo(uint32_t format);
+// First format whose texture format byte is 'textureFormat' (a GTF image's
+// format); 0 when none matches.
+uint32_t FindFormatByTextureFormat(uint8_t textureFormat);
 bool IsDepthFormat(uint32_t format);
 
 // Antialiasing modes of render surfaces (console surface AA values).
