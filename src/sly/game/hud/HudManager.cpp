@@ -2,7 +2,12 @@
 #include "sly/game/hud/HudManager.h"
 
 #include "ape/core/ApeString.h"
+#include "ape/world/ApeBase.h"
+#include "ape/world/ApeObj.h"
+#include "sly/anim/AnimController.h"
+#include "sly/game/hud/HudHooks.h"
 
+#include <cmath>
 #include <cstdio>
 
 namespace sly {
@@ -29,11 +34,63 @@ HudManagerState& Hud()
     return state;
 }
 
-bool GuiIsPlaying(const void* gui)
+bool ObjectVisible(const ape::world::ApeObj* object)
 {
-    // TODO: GUI instance flags (+0xA4 bit 15) once the GUI module exists.
-    (void)gui;
-    return false;
+    return object->IsVisible();
+}
+
+// @func 0x0036A2FC HudObject::Update
+void HudObject::Update(float dt)
+{
+    if (animController)
+        animController->UpdateLayers(dt);
+    if (!object || !object->IsVisible())
+        return;
+    const ape::Vec3& zero = ape::world::kWorldZero;
+    const bool atOrigin = baseOffset.x == zero.x && baseOffset.y == zero.y && baseOffset.z == zero.z;
+    if (atOrigin || !HudPlacementEnabled())
+        return;
+    ape::Matrix34 local = object->GetLocal();
+    local.translation.x = zero.x + baseOffset.x + offset.x;
+    local.translation.y = zero.y + baseOffset.y + offset.y;
+    local.translation.z = zero.z + baseOffset.z + offset.z;
+    object->SetLocal(local);
+    object->MarkDirty();
+}
+
+// @func 0x0036A410 HudObject::Refresh
+void HudObject::Refresh()
+{
+    SetActive(false);
+    const float origin[3] = {ape::world::kWorldZero.x, ape::world::kWorldZero.y, ape::world::kWorldZero.z};
+    SetStackOffset(origin, true);
+}
+
+// @func 0x0036A470 HudObject::SetActive
+void HudObject::SetActive(bool active)
+{
+    if (object)
+        object->SetVisible(active, true);
+}
+
+// @func 0x00362BEC HudObject::HideNow
+void HudObject::HideNow()
+{
+    auto& list = Hud().hideList;
+    if (*list.Find(RegisteredName()))
+        return;
+    list.Add(RegisteredName(), this);
+}
+
+// @func 0x00365A54 hud::SetAllHidden
+void SetAllHidden(bool hidden, bool flag)
+{
+    HudManagerState& state = Hud();
+    state.allHidden = hidden;
+    for (uint32_t i = 0; i < state.objects.Count(); ++i)
+        state.objects.Data()[i].value->SetHidden(hidden, flag);
+    if (!state.allHidden)
+        RefreshAnchorStacks();
 }
 
 // TODO(0x00363A3C HudObject::ShowText)
@@ -87,11 +144,32 @@ void HudObject::Show(bool a, bool intro, bool b)
         PlayOutro(a, b);
 }
 
-// TODO(0x003626E8 HudObject::SetStackOffset)
-void HudObject::SetStackOffset(const float offset[3], bool immediate)
+// @func 0x003626E8 HudObject::SetStackOffset
+void HudObject::SetStackOffset(const float target[3], bool immediate)
 {
-    (void)offset;
-    (void)immediate;
+    if (!immediate) {
+        // Slide there over half a second.
+        offsetTween.target = &offset;
+        offsetTween.elapsed = 0.0f;
+        offsetTween.SetDuration(0.5f);
+        offsetTween.from = offset;
+        offsetTween.to = {target[0], target[1], target[2], offsetTween.to.pad};
+        return;
+    }
+    const bool moved = std::fabs(offset.x - target[0]) >= 1e-5f || std::fabs(offset.y - target[1]) >= 1e-5f ||
+                       std::fabs(offset.z - target[2]) >= 1e-5f;
+    if (moved) {
+        ape::Matrix34 local = object->GetLocal();
+        local.translation.x = target[0];
+        local.translation.y = target[1];
+        local.translation.z = target[2];
+        object->SetLocal(local);
+        object->MarkDirty();
+    }
+    offset.x = target[0];
+    offset.y = target[1];
+    offset.z = target[2];
+    offsetTween.Clear();
 }
 
 // @func 0x00362830 hud::AnchorMirror
@@ -302,7 +380,7 @@ bool AnyUpdatingElementVisible()
     auto& list = Hud().updateList;
     for (uint32_t i = 0; i < list.Count(); ++i) {
         HudObject* object = list.Data()[i].value;
-        if (object->gui && GuiIsPlaying(object->gui))
+        if (object->object && ObjectVisible(object->object))
             return true;
     }
     return false;

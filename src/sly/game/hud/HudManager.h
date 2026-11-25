@@ -9,6 +9,10 @@
 
 #include "ape/container/ApeTSortedMap.h"
 #include "ape/memory/ApeTArray.h"
+#include "sly/game/Tween.h"
+
+namespace ape::world { class ApeObj; }
+namespace sly { namespace anim { class AnimController; } }
 
 #include <cstdint>
 
@@ -45,17 +49,36 @@ enum HudAnchor : int32_t {
 
 // Definition of an element (shared by its instances).
 struct HudObjectDef {
+    uint32_t name = 0;               // +0x44
     int32_t anchor = kAnchor_None;   // +0x54 HudAnchor
     float offset[3] = {};            // +0x60 space the element takes in its stack
 };
 
+// Base of the HUD elements (vtable 0x00B1F678). NOTE: the console's base is
+// 0xC0 bytes; the fields from +0xD0 on (meter values, the state word +0x18C)
+// belong to the larger element classes and are kept here until those
+// classes are ported.
 class HudObject {
 public:
     virtual ~HudObject() = default;
-    // slot 3 (+0x0C)
-    virtual void Refresh() {}
-    // slot 5 (+0x14)
-    virtual void SetActive(bool active) { (void)active; }
+    // Slot 2 (0x0036A2FC): animates the element and places its object at
+    // its stack offset.
+    virtual void Update(float dt);
+    // Slot 3 (0x0036A410): deactivated and back at its stack origin.
+    virtual void Refresh();
+    // Slot 5 (0x0036A470): shows or hides the element's object.
+    virtual void SetActive(bool active);
+    // Slot 6 (0x00772944, other module): bit 0 of +0xA0.
+    virtual void SetHidden(bool hidden, bool flag)
+    {
+        (void)flag;
+        animState = (animState & ~1u) | (hidden ? 1u : 0u);
+    }
+
+    // 0x00362BEC: queues the element to be hidden at the end of the frame.
+    void HideNow();
+    // Name the element is registered under (its own or its definition's).
+    uint32_t RegisteredName() const { return name ? name : (def ? def->name : 0); }
 
     // 0x00363A3C: shows the element with a text (fade time, -1 = default).
     void ShowText(float fade, const char* text, bool flag);
@@ -85,8 +108,15 @@ public:
 
     uint32_t typeFlags = 0;        // +0x04 HudTypeFlags
     HudObjectDef* def = nullptr;   // +0x08
-    void* gui = nullptr;           // +0x18 GUI instance of the element
-    uint32_t animState = 0;        // +0xA0 (state = value >> 1; 0 idle, 4 NOTE: looping)
+    uint32_t name = 0;             // +0x0C (0: the definition's name)
+    uint32_t field_10 = 0;         // +0x10 from the definition (+0x4C)
+    void* animScript = nullptr;    // +0x14 ApeAnimScriptInstance
+    ape::world::ApeObj* object = nullptr;   // +0x18 the element's scene object
+    anim::AnimController* animController = nullptr;   // +0x1C
+    ape::Vec3 offset{};            // +0x20 current stack offset
+    Vec3Tween offsetTween;         // +0x30 slides `offset` to a new stack position
+    ape::Vec3 baseOffset{};        // +0x90 screen position of the element (definition +0x80)
+    uint32_t animState = 0;        // +0xA0 bit 0 hidden; state = value >> 1 (0 idle, 4 NOTE: looping)
     bool field_A4 = false;         // +0xA4
     uint32_t updateFlags = 0;      // +0xD0 bit 31 cleared by ResetUpdateFlags()
     float targetValue = 0.0f;      // +0xD8
@@ -98,7 +128,9 @@ public:
 // Module state (the globals around 0x0106C228).
 struct HudManagerState {
     ape::ApeTSortedMap<HudObject*> objects;      // 0x0106C228 every element by name
+    ape::ApeTSortedMap<HudObject*> hideList;     // 0x0106C240 elements to hide at the end of the frame
     ape::ApeTSortedMap<HudObject*> updateList;   // 0x0106C258 elements updated per frame
+    bool allHidden = false;                      // 0x00F64CC4
     uint32_t contextValue = 0;                   // 0x00F64CB4
     uint32_t contextName = 0;                    // 0x0106C270
     bool pendingScreen = false;                  // 0x0106C274
@@ -113,9 +145,13 @@ struct HudManagerState {
 
 HudManagerState& Hud();
 
-// GUI instance +0xA4 bit 15: its animation is playing. NOTE: the GUI module
-// is not ported; stubbed in HudManager.cpp.
-bool GuiIsPlaying(const void* gui);
+// The element's object is visible (ApeObj flags bit 15).
+bool ObjectVisible(const ape::world::ApeObj* object);
+// Elements queued by HideNow (0x0106C240), hidden at the end of the frame.
+// NOTE: lives in HudManagerState.
+// 0x00365A54: hides or shows every element (slot 6); showing again also
+// refreshes the anchor stacks (0x0035B470, not ported).
+void SetAllHidden(bool hidden, bool flag);
 
 // Lookups (null when the name is 0, unknown, or of another type).
 HudObject* Find(uint32_t name);                    // 0x003568E0 kHud_Object
