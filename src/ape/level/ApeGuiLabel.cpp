@@ -110,6 +110,7 @@ uint32_t DecodeGuiChar(const char*& cursor, uint32_t* length, bool advance)
 // ---------------------------------------------------------------------------
 
 // @func 0x004DC430 ApeGuiLabel::ApeGuiLabel
+// @func 0x004DC5BC ApeGuiLabel::ApeGuiLabel (thunk)
 ApeGuiLabel::ApeGuiLabel(const GuiLabelDesc& desc) : ApeGuiObject(desc)
 {
     font = desc.font;
@@ -233,17 +234,6 @@ ApeGuiObject* ApeGuiLabel::Clone(const char* newName, ApeGuiObject* newParent, v
 // Text
 // ---------------------------------------------------------------------------
 
-struct ApeGuiLabel::FormatState {
-    char* out = nullptr;            // write position
-    size_t capacity = 0;            // size of the output buffer
-    uint32_t bytes = 0;             // bytes written
-    uint32_t chars = 0;             // characters written
-    uint32_t lineChars = 0;         // characters on the current line
-    float lineWidth = 0.0f;         // width of the current line
-    char* lastBreak = nullptr;      // where the line may be broken (a space, or before a character)
-    float widthAtBreak = 0.0f;      // line width at lastBreak
-    uint32_t lastChar = 0;
-};
 
 // @func 0x004DB828 ApeGuiLabel::FormatText
 void ApeGuiLabel::FormatText(const char* src, FormatState& st)
@@ -414,20 +404,36 @@ void ApeGuiLabel::SetText(const char* newText, bool layoutNow)
     state.capacity = sizeof(buffer);
     FormatText(newText, state);
 
+    ReserveText(state.bytes);
+    // Glyph slots for every character (spaces and breaks included).
+    ReserveGlyphs(state.chars);
     if (state.bytes)
         text.assign(buffer, state.bytes);
-    else
-        text.clear();
-
-    // Glyph slots for every character (spaces and breaks included).
-    if (state.chars == 0)
-        glyphs.clear();
-    else if (glyphs.size() < state.chars)
-        glyphs.assign(RoundUp32(state.chars), GuiLabelGlyph{});
 
     Invalidate();
     if (layoutNow && layoutDirty)
         Layout(true);
+}
+
+// @func 0x004DB780 ApeGuiLabel::ReserveText
+void ApeGuiLabel::ReserveText(uint32_t bytes)
+{
+    if (text.capacity() <= bytes || bytes == 0) {
+        text.clear();
+        text.shrink_to_fit();
+        if (bytes)
+            text.reserve((bytes + 32u) & ~31u);
+    }
+}
+
+// @func 0x004DB6CC ApeGuiLabel::ReserveGlyphs
+void ApeGuiLabel::ReserveGlyphs(uint32_t count)
+{
+    if (glyphs.size() < count || count == 0) {
+        glyphs.clear();
+        if (count)
+            glyphs.assign(RoundUp32(count), GuiLabelGlyph{});
+    }
 }
 
 // @func 0x004E2178 ApeGuiLabel::CountGlyphs

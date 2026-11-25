@@ -215,13 +215,30 @@ public:
     // Distance between text lines in screen units.
     float GetLineSpacing() const;
 
+    // Copies 'src' into the output, expanding "$Name" references and
+    // inserting line breaks for the wrap width. Used by SetText and by
+    // game classes that set the text in steps.
+    struct FormatState {
+        char* out = nullptr;            // write position
+        size_t capacity = 0;            // size of the output buffer
+        uint32_t bytes = 0;             // bytes written
+        uint32_t chars = 0;             // characters written
+        uint32_t lineChars = 0;         // characters on the current line
+        float lineWidth = 0.0f;         // width of the current line
+        char* lastBreak = nullptr;      // where the line may be broken (a space, or before a character)
+        float widthAtBreak = 0.0f;      // line width at lastBreak
+        uint32_t lastChar = 0;
+    };
+    void FormatText(const char* src, FormatState& state);
+    // Makes room for a text of 'bytes' bytes (0: no text).
+    void ReserveText(uint32_t bytes);
+    // Makes room for 'count' glyphs (0: none); the slots are cleared when
+    // they are reallocated.
+    void ReserveGlyphs(uint32_t count);
+
 protected:
     // Builds the glyph quads of the text ('force': even when hidden).
     void Layout(bool force);
-    // Copies 'src' into the output, expanding "$Name" references and
-    // inserting line breaks for the wrap width.
-    struct FormatState;
-    void FormatText(const char* src, FormatState& state);
     // Width of a space in screen units.
     float GetSpaceWidth(const Vec3& worldScale) const;
     // Horizontal start of each line for the alignment; returns the line count.
