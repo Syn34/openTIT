@@ -197,3 +197,16 @@ The full link was failing because of files outside `src/agl`: missing
   `AglRenderHook` (0x00F66FD0).
 * Build: `src/agl` compiles warning-free. The full link currently fails only because
   `src/sly/levels/script/CommandsL.cpp` (another agent's work) does not compile.
+
+## agent1 additions
+* World-range shader classes: SelectTechnique of Debug (skinned -> "_SK"),
+  SimpleColorTxr(UV), TextureWarp (lit pair), ScreenWarp, LineOutline, and
+  CreateTechniques of TextureWarp, LineOutline and Outline (four variants:
+  Outline, Outline_SK, OutlineNS, OutlineNS_SK). The technique Draw bodies
+  (0x005ADA18, 0x005ADD54, 0x005ADEE4, 0x005AE0F0, 0x005AE9A0/0x005AEB00,
+  0x005AF518/0x005AF730, 0x005AFBF8) are still open.
+* "TBLK" (0x00542630, slot 0) and "MBLK" (0x00548C00, slot 1) chunks copy raw
+  data into memory class 4; base class ApeLoadedData (vtable 0x00B24110) is
+  in ape/sys/ApeIff.h. The TBLK registration lives in 0x00542704 together
+  with the not yet ported TGTF/DXTN (DDS) handlers 0x005399CC/0x00539C7C.
+* AglDrawList gained SetWorldMatrix(Matrix34) and EndPrimitive (0x00523748).

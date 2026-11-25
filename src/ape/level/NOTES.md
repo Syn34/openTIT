@@ -58,8 +58,7 @@
 * 0x004D00CC-0x004D0BE4: anim-script instance pool / AVL glue (0x004C8E80
   owner) - belongs with the anim-script module.
 * 0x004D0C90-0x004D28F8: Bink movie player wrapper (needs Bink).
-* GUI pad navigation/update 0x004D4538 (with 0x004D3E60, 0x004D4178: focus
-  search by direction), draw helpers 0x004D4E28/0x004D5070, the tile class
+* The tile class
   (nine-slice: creator 0x004D9DA0, Tick 0x004D8E88 building the piece
   images, clone 0x004E7D60, layout 0x004E80A8, draw 0x004E81C0) and type 8
   (0x004D7CF8, 0x004D7F24, 0x004D8200, 0x004E9144); CreateGuiTile and
@@ -69,3 +68,15 @@
 * 0x004F32F4-0x004F7C48: setting manager / setting defs / tag settings. A
   reflection framework built on hash containers at 0x0079A1C8/0x0079B0F0/
   0x0079B250 and the string pool 0x00565CC8; none of those exist yet.
+
+## GUI pass 2 (agent1)
+* Pad input: the pad filter fills GuiPadInput (buttons, edges, cursor flags
+  0x30000 and position -1..1). Direction bits 1/2/4/8 = up/down/left/right
+  (table 0x010C2B40), 0x40 cancel, 0x80 accept, 0x4000 start, 0x10/0x20 send
+  events 7/8. Navigation needs SetGuiNavigation (globals 0x00F66880 and
+  0x00F66888; their console setters were not found).
+* Object flag 30 (attribute 0xFFD1EC91) marks objects that can take the pad
+  focus; GUI event 3 lets the game veto a candidate.
+* Screen fade: colour 0x010C2AD4, material 0x00F66854, debug mesh 0x00F6685C,
+  drawn with the matrix 0x010C29E0 at depth -20 (DrawGui 0x004D4E28).
+* Tickers rebuild their glyphs in Tick (slot 38) and use the label Draw.
