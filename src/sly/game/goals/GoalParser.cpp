@@ -175,7 +175,7 @@ const GoalElement kGoalElements[] = {
     {0x36610C4F, CreateGoalSet},                  // "GoalSet"
     {0x2DFF7805, GoalBinocucomRecord::Create},
     {0x5F3BC8F0, GoalMarkEntity::Create},
-    {0x49836CC6, CreateBartenderGoal},
+    {0x49836CC6, GoalBartenderGame::Create},
     {0x44390A06, GoalEntityChild::Create},
     {0x7A6E6B01, CreateQteGoal},                  // "GoalQTEGame"
     {0x70DEDF48, GoalCameraEntity::Create},
@@ -581,8 +581,6 @@ Goal* CreatePenguinMontageGoal(XmlElement*, const GoalDesc*) { return nullptr; }
 Goal* CreateBinocucomPhotoGoal(XmlElement*, const GoalDesc*) { return nullptr; }
 // TODO(0x0033DC0C GoalShootingGallery::Create)
 Goal* CreateShootingGalleryGoal(XmlElement*, const GoalDesc*) { return nullptr; }
-// TODO(0x003292C8 GoalBartenderGame::Create)
-Goal* CreateBartenderGoal(XmlElement*, const GoalDesc*) { return nullptr; }
 // TODO(0x0033A520 GoalQteGame::Create)
 Goal* CreateQteGoal(XmlElement*, const GoalDesc*) { return nullptr; }
 
