@@ -36,6 +36,7 @@ void ObjectApplyAlphaBuffer(ape::world::ApeObj* object, const void* buffer, uint
 void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value) { (void)object; (void)value; }
 void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity) { (void)list; (void)fn; (void)owner; (void)entity; }
 void GameWorldDequeueCallbacks(int list, void* owner) { (void)list; (void)owner; }
+void ActorPartTransform(Entity* actor, ape::Matrix34& out, int part, const ape::Matrix34& local) { (void)actor; (void)part; out = local; }
 Entity* HitSourceOwner(Entity* source, HitOwnerKind kind) { (void)source; (void)kind; return nullptr; }
 bool ThrownBySelf(Entity* thrown, Entity* entity) { (void)thrown; (void)entity; return false; }
 void* HitOtherBody(const EntityHitRecord& hit) { (void)hit; return nullptr; }

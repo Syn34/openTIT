@@ -1,5 +1,7 @@
 // openTIT - Scripted actors (see ActorEntities.h).
 #include "sly/entity/ActorEntities.h"
+#include "ape/world/ApeBase.h"
+#include "sly/entity/PhysicsHooks.h"
 #include <cmath>
 
 #include "sly/entity/CharacterHooks.h"
@@ -349,8 +351,33 @@ void SoundActorB16B48::PlaySlot(int index, bool force)
     }
 }
 
-// TODO(0x001C3EF0 SoundActorB16B48::SetLight)
-void SoundActorB16B48::SetLight(bool on) { lightFlags = on ? (lightFlags | 0x80) : (lightFlags & ~0x80); }
+// @func 0x001C3EF0 SoundActorB16B48::SetLight
+void SoundActorB16B48::SetLight(bool on)
+{
+    const auto* d = static_cast<const SoundActorB16B48Def*>(def);
+    if (!d)
+        return;
+    if (d->lightHasBodies) {
+        for (size_t i = 0; i < lightBodies.Count(); ++i) {
+            void* body = lightBodies[i];
+            if (!body)
+                continue;
+            if (!on) {
+                if (RigidBodyInWorld(body))
+                    RigidBodyRemoveFromWorld(body);
+            } else if (!RigidBodyInWorld(body)) {
+                RigidBodyAddToWorld(body, ~0u);
+                ape::Matrix34 placed;
+                ActorPartTransform(this, placed, d->bodyParts[i], ape::world::kWorldIdentity);
+                RigidBodySetTransform(body, placed);
+            }
+        }
+    }
+    for (size_t i = 0; i < lightObjects.Count(); ++i) {
+        if (lightObjects[i])
+            lightObjects[i]->SetVisible(on, true);
+    }
+}
 
 // @func 0x001C42E8 SoundActorB16B48::AdvanceTo2
 bool SoundActorB16B48::AdvanceTo2(float elapsed, float duration)

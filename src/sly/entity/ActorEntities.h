@@ -314,20 +314,25 @@ public:
     bool AdvanceTo3(float elapsed, float duration) override;
     bool AdvanceTo4(float elapsed, float duration) override;
     bool AdvanceWrap(float elapsed, float duration) override;
-    // 0x001C3EF0 (not ported). NOTE: name from the flag it pairs with.
+    // Shows or hides the light objects and, when the definition says so,
+    // puts the light's bodies into the world at their parts (or takes them
+    // out). NOTE: name from the flag it pairs with; the lit flag itself is
+    // not changed here.
     void SetLight(bool on);
 
-    ape::ApeTArray<void*> field_22C;          // 0x22C
-    ape::ApeTArray<void*> field_240;          // 0x240
+    ape::ApeTArray<ape::world::ApeObj*> lightObjects;   // 0x22C
+    ape::ApeTArray<void*> lightBodies;        // 0x240 Havok rigid bodies
     uint8_t lightFlags = 0;                   // 0x25C bit 7 lit, bit 5 held
 };
 
 // Definition of SoundActorB16B48. NOTE: only the options its timers read.
 class SoundActorB16B48Def : public SoundActorDef {
 public:
+    int32_t* bodyParts = nullptr;      // 0x1A4 part index of each light body
     bool restartWhenWaiting = false;   // 0x1BC
     bool unlightOnSlot3 = false;       // 0x1BD
     bool unlightOnSlot4 = false;       // 0x1BE
+    bool lightHasBodies = false;       // 0x1BF
 };
 
 // Sound actor with a two-way switch (vtable 0x00B16678; destructor
