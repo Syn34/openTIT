@@ -43,11 +43,24 @@ public:
     void* DataBlockB() override;
     // Clears the input record.
     void ResetState() override;
-    // Slot 16 (+0x40). NOTE: returns 0 in every control class seen; meaning unknown.
-    virtual int ControlSlot16();
+    // Slot 6: actions pressed since the last update become "pressed" (just
+    // went down) or stay "held" in the two-bit action states.
+    void Update(float dt) override;
+    // Slot 16 (+0x40): pad button mask an action (name hash) is bound to; 0
+    // when the controller has no such action.
+    virtual uint32_t ButtonForAction(uint32_t action) const;
 
-    uint8_t inputFlags[4] = {};      // 0x18
-    uint8_t input[0x30] = {};        // 0x20 controller input record. NOTE: layout unknown
+    // The controller's input record (0x30 bytes at +0x20).
+    struct Input {
+        ape::Vec3 stick{};           // +0x20 left stick (x, 0, y)
+        ape::Vec3 move{};            // +0x30 NOTE: the stick turned into world space
+        float magnitude = 0.0f;      // +0x40 stick deflection, at most 1
+        uint32_t actions[2] = {};    // +0x44 two bits per action (16 per word)
+        uint32_t pad = 0;            // +0x4C
+    };
+    uint32_t pressed = 0;            // 0x18 bit per action pressed since the last update
+    uint32_t field_1C = 0;           // 0x1C
+    Input input;                     // 0x20
 };
 
 // <ControlAI> (type 6, vtable 0x00B1C1B8, 0x60 bytes): input produced by the

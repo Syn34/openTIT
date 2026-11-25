@@ -856,6 +856,12 @@ bool StartStreamGroup(uint32_t id)
     return group != nullptr;
 }
 
+StreamGroup* FindStreamGroup(uint32_t id)
+{
+    StreamGroup** group = s_streaming.groups.Find(id);
+    return group ? *group : nullptr;
+}
+
 // @func 0x002E9B78 CancelStreamGroup
 bool CancelStreamGroup(uint32_t id)
 {
