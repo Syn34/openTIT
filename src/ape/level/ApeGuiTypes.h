@@ -112,6 +112,8 @@ public:
 // "image" (type 1, vtable 0x00B229E8, 0xD0 bytes).
 class ApeGuiImage : public ApeGuiObject {
 public:
+    // A detached image without a texture (the pieces of a tile).
+    ApeGuiImage() = default;
     explicit ApeGuiImage(const GuiImageDesc& desc);
     ~ApeGuiImage() override;
     // Shows 'texture' (null: default texture 1) with the texture
@@ -316,23 +318,46 @@ public:
     bool scrollEnabled = false; // +0x100 bit 6 (the configured value)
 };
 
-// "tile" (type 6, vtable 0x00B22C40).
+struct GuiTileDesc : GuiObjectDesc {
+    // "textureTL", "textureTC", "textureTR", "textureML", "textureMC",
+    // "textureMR", "textureBL", "textureBC", "textureBR".
+    ApeGuiTexture* textures[9] = {};     // +0x80
+    float size[2] = {};                  // +0xA4 "size"
+};
+
+// "tile" (type 6, vtable 0x00B22C40, 0x100 bytes): a box drawn from up to
+// nine textures (corners, edges, centre). The corners keep their texture
+// size, the edges and the centre repeat (or stretch) to fill the box.
+// Missing pieces reuse the mirrored opposite piece. With only the middle
+// row (or column) the box is a three piece bar; with only the centre a
+// single image.
 class ApeGuiTile : public ApeGuiObject {
 public:
-    explicit ApeGuiTile(const GuiObjectDesc& desc) : ApeGuiObject(desc) {}
+    explicit ApeGuiTile(const GuiTileDesc& desc);
     ~ApeGuiTile() override;
+    ApeGuiObject* Clone(const char* name, ApeGuiObject* parent, void* owner, bool recursive) const override;
     int32_t GetType() const override;
     void SetScale(const Vec3& scale) override;
     void GetSize(float out[2]) const override;
     void SetSize(const float size[2]) override;
     void SetColor(xml::Color8 color) override;
     void SetBlendMode(uint32_t mode) override;
+    void GetLayoutSize(float out[2]) const override;
     void Invalidate() override;
+    // Rebuilds the piece images when the layout changed, then ticks the
+    // children.
+    void Tick(float dt) override;
+    void Draw() override;
 
-    // The nine pieces of the tiled box (corners, edges, centre).
-    ApeGuiObject* pieces[9] = {};   // +0xCC
-    float size[2] = {};     // +0xF0
-    bool layoutDirty = false; // +0xF8 set by Invalidate
+    ApeGuiTexture* textures[9] = {};    // +0xA8 (not referenced)
+    // The piece images; they have the tile as parent but are not in its
+    // child list.
+    ApeGuiImage* pieces[9] = {};        // +0xCC
+    float size[2] = {};                 // +0xF0
+    bool layoutDirty = false;           // +0xF8 set by Invalidate
+
+private:
+    void BuildPieces();
 };
 
 // "group" (type 7, vtable 0x00B22D08, 0xC0 bytes): stacks its visible

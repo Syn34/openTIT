@@ -290,6 +290,308 @@ void ApeGuiGradient::Draw()
 }
 
 // ---------------------------------------------------------------------------
+// Tile
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Texture size used for laying out the tile pieces.
+void GetGuiTextureImageSize(const ApeGuiTexture* texture, float out[2])
+{
+    const agl::AglTexture* image =
+        texture->GetLoadState() == kGuiLoad_Loaded ? texture->texture : agl::GetDefaultTexture(0);
+    out[0] = float(image->width);
+    out[1] = float(image->height);
+}
+
+// Pieces of the nine-slice grid, row by row.
+enum TilePiece { kTL, kTC, kTR, kML, kMC, kMR, kBL, kBC, kBR, kTilePieces };
+
+// Mirroring of a piece that borrows another piece's texture.
+enum TileMirror : uint32_t { kMirrorX = 1, kMirrorY = 2 };
+
+// For a missing piece: the pieces whose texture it may use instead, in
+// order; the position in the list (1..3) is the mirroring (0x00AEF5B4).
+constexpr int kTileFallbacks[kTilePieces][3] = {
+    { kTR, kBL, kBR }, { -1, kBC, -1 }, { kTL, kBR, kBL },
+    { kMR, -1, -1 },   { -1, -1, -1 },  { kML, -1, -1 },
+    { kBR, kTL, kTR }, { -1, kTC, -1 }, { kBL, kTR, kTL },
+};
+
+// How the textures present divide the box.
+enum TileLayout {
+    kTileEmpty = 0,     // no texture: a single piece with the default texture
+    kTileCenter = 1,    // only the centre
+    kTileBar = 3,       // three pieces: the middle row or the middle column
+    kTileNine = 9,      // the full grid
+};
+
+struct TilePieceLayout {
+    bool used = false;
+    float size[2] = {};
+    float pos[2] = {};
+    ApeGuiTexture* texture = nullptr;
+    uint32_t mirror = 0;    // TileMirror bits
+};
+
+// Size of a border piece along one axis: the texture size, or half the box
+// when two borders do not fit.
+float TileBorderSize(float boxSize, float textureSize, float scale)
+{
+    return boxSize >= textureSize * 2.0f * scale ? textureSize * scale : boxSize * 0.5f;
+}
+
+} // namespace
+
+ApeGuiTile::ApeGuiTile(const GuiTileDesc& desc) : ApeGuiObject(desc)
+{
+    for (int i = 0; i < kTilePieces; ++i)
+        textures[i] = desc.textures[i];
+    size[0] = desc.size[0];
+    size[1] = desc.size[1];
+    layoutDirty = true;
+    Tick(0.0f);
+}
+
+// @func 0x004E7D60 ApeGuiTile::Clone
+ApeGuiObject* ApeGuiTile::Clone(const char* newName, ApeGuiObject* newParent, void* newOwner,
+                                bool recursive) const
+{
+    GuiTileDesc desc;
+    FillCloneDesc(desc, newName, newParent, newOwner);
+    for (int i = 0; i < kTilePieces; ++i)
+        desc.textures[i] = textures[i];
+    desc.size[0] = size[0];
+    desc.size[1] = size[1];
+    auto* copy = new ApeGuiTile(desc);
+    if (recursive)
+        CloneChildren(copy, newOwner);
+    return copy;
+}
+
+// @func 0x004E80A8 ApeGuiTile::GetLayoutSize
+void ApeGuiTile::GetLayoutSize(float out[2]) const
+{
+    ScaledLayoutSize(this, size, out);
+}
+
+// @func 0x004D8E88 ApeGuiTile::Tick
+void ApeGuiTile::Tick(float dt)
+{
+    if (layoutDirty) {
+        BuildPieces();
+        layoutDirty = false;
+    }
+    ApeGuiObject::Tick(dt);
+}
+
+void ApeGuiTile::BuildPieces()
+{
+    float box[2];
+    GetLayoutSize(box);
+    const Vec3 worldScale = GetWorldScale();
+    const float scale[2] = { worldScale.x, worldScale.y };
+    const xml::Color8 worldColor = GetWorldColor();
+
+    // Classify the textures present. The layout size of the pieces comes
+    // from the last texture looked at.
+    int layout = kTileEmpty;
+    bool vertical = false;   // a bar made of the middle column
+    float texSize[2] = { 0.0f, 0.0f };
+    for (int i = 0; i < kTilePieces && layout < kTileNine; ++i) {
+        if (!textures[i])
+            continue;
+        switch (i) {
+        case kTL: case kTR: case kBL: case kBR:
+            layout = kTileNine;
+            break;
+        case kTC: case kBC:
+            if (layout <= kTileBar) {
+                layout = kTileBar;
+                if (textures[kML] || textures[kMR])
+                    layout = kTileNine;
+                else
+                    vertical = true;
+            }
+            break;
+        case kML: case kMR:
+            if (layout <= kTileBar) {
+                layout = kTileBar;
+                if (textures[kTC] || textures[kBC])
+                    layout = kTileNine;
+            }
+            break;
+        case kMC:
+            if (layout < kTileCenter)
+                layout = kTileCenter;
+            break;
+        }
+        GetGuiTextureImageSize(textures[i], texSize);
+    }
+    if (layout == kTileEmpty) {
+        if (const agl::AglTexture* image = agl::GetDefaultTexture(1)) {
+            texSize[0] = float(image->width);
+            texSize[1] = float(image->height);
+        }
+    }
+
+    TilePieceLayout piece[kTilePieces];
+    for (int i = 0; i < kTilePieces; ++i)
+        piece[i].texture = textures[i];
+
+    if (layout == kTileEmpty || layout == kTileCenter) {
+        piece[kMC].used = true;
+        piece[kMC].size[0] = box[0];
+        piece[kMC].size[1] = box[1];
+    } else if (layout == kTileBar && !vertical) {
+        TilePieceLayout& left = piece[kML];
+        TilePieceLayout& middle = piece[kMC];
+        TilePieceLayout& right = piece[kMR];
+        left.used = middle.used = right.used = true;
+        left.size[1] = middle.size[1] = right.size[1] = box[1];
+        const float border = TileBorderSize(box[0], texSize[0], scale[0]);
+        left.size[0] = right.size[0] = border;
+        middle.pos[0] = border;
+        middle.size[0] = box[0] - 2.0f * border;
+        right.pos[0] = border + middle.size[0];
+        if (!left.texture) {
+            left.texture = right.texture;
+            left.mirror |= kMirrorX;
+        }
+        if (!right.texture) {
+            right.texture = left.texture;
+            right.mirror |= kMirrorX;
+        }
+    } else if (layout == kTileBar) {
+        TilePieceLayout& top = piece[kTC];
+        TilePieceLayout& middle = piece[kMC];
+        TilePieceLayout& bottom = piece[kBC];
+        top.used = middle.used = bottom.used = true;
+        top.size[0] = middle.size[0] = bottom.size[0] = box[0];
+        const float border = TileBorderSize(box[1], texSize[1], scale[1]);
+        top.size[1] = bottom.size[1] = border;
+        // NOTE: the console stores the middle piece's height in its width
+        // and leaves the height at zero, so the bottom piece starts right
+        // under the top one. Reproduced as is.
+        middle.size[0] = box[1] - 2.0f * border;
+        middle.pos[1] = top.size[1];
+        bottom.pos[1] = top.size[1] + middle.size[1];
+        if (!top.texture) {
+            top.texture = bottom.texture;
+            top.mirror |= kMirrorY;
+        }
+        if (!bottom.texture) {
+            bottom.texture = top.texture;
+            bottom.mirror |= kMirrorY;
+        }
+    } else if (layout == kTileNine) {
+        float x = 0.0f, y = 0.0f;
+        for (int i = 0; i < kTilePieces; ++i) {
+            TilePieceLayout& p = piece[i];
+            const int col = i % 3, row = i / 3;
+            p.used = true;
+            // The middle row and column take what the borders leave.
+            p.size[1] = row == 1 ? box[1] - 2.0f * piece[0].size[1] : TileBorderSize(box[1], texSize[1], scale[1]);
+            p.size[0] = col == 1 ? box[0] - 2.0f * piece[0].size[0] : TileBorderSize(box[0], texSize[0], scale[0]);
+            if (col == 0)
+                x = 0.0f;
+            p.pos[0] = x;
+            p.pos[1] = y;
+            x += p.size[0];
+            if (col == 2)
+                y += p.size[1];
+            for (int k = 0; k < 3 && !p.texture; ++k) {
+                const int other = kTileFallbacks[i][k];
+                if (other < 0)
+                    continue;
+                p.mirror = uint32_t(k + 1);
+                p.texture = textures[other];
+            }
+            if (!p.texture) {
+                p.mirror = 0;
+                p.texture = textures[kMC];
+            }
+        }
+    }
+
+    for (int i = 0; i < kTilePieces; ++i) {
+        const TilePieceLayout& p = piece[i];
+        if (!p.used) {
+            delete pieces[i];
+            pieces[i] = nullptr;
+            continue;
+        }
+        const int col = i % 3, row = i / 3;
+
+        // Along each axis the piece either repeats its texture (scale = the
+        // tile's, texture coordinates beyond 1) or stretches it. The
+        // corners, a bar's ends across the bar and pieces smaller than their
+        // texture stretch.
+        Vec3 pieceScale = { 1.0f, 1.0f, 1.0f, 0.0f };
+        float uv[2] = { 0.0f, 0.0f };
+        float st[2] = { 1.0f, 1.0f };
+        float* scaleAxis[2] = { &pieceScale.x, &pieceScale.y };
+        for (int axis = 0; axis < 2; ++axis) {
+            const float ratio = p.size[axis] / (texSize[axis] * scale[axis]);
+            bool stretch = !p.texture || (layout == kTileBar && axis != int(vertical));
+            if (!stretch && ratio < 1.0f)
+                stretch = axis == 0 ? col != 1 : row != 1;
+            if (stretch) {
+                *scaleAxis[axis] = ratio * scale[axis];
+                st[axis] = 1.0f;
+            } else {
+                *scaleAxis[axis] = scale[axis];
+                st[axis] = ratio;
+            }
+        }
+        if (p.mirror & kMirrorX) {
+            uv[0] = 1.0f;
+            st[0] = -st[0];
+        }
+        if (p.mirror & kMirrorY) {
+            uv[1] = 1.0f;
+            st[1] = -st[1];
+        }
+
+        ApeGuiImage*& image = pieces[i];
+        if (!image) {
+            image = new ApeGuiImage();
+            image->parent = this;
+        }
+        image->SetPosition({ p.pos[0], p.pos[1], 0.0f, 0.0f });
+        image->SetScale(pieceScale);
+        image->SetColor(worldColor);
+        if (p.texture || layout == kTileEmpty) {
+            image->SetTexture(p.texture, uv, st);
+            image->SetBlendMode(GetBlendMode());
+        }
+        if (p.texture) {
+            // Borders clamp, the middle row and column repeat.
+            agl::AglTexture* glTexture =
+                p.texture->GetLoadState() == kGuiLoad_Loaded ? p.texture->texture : agl::GetDefaultTexture(0);
+            if (glTexture) {
+                constexpr uint16_t kWrapRepeat = 1;
+                constexpr uint16_t kWrapClamp = 3;
+                glTexture->SetWrap(col == 1 ? kWrapRepeat : kWrapClamp, row == 1 ? kWrapRepeat : kWrapClamp, 1);
+            }
+        }
+        image->SetVisible(true);
+    }
+}
+
+// @func 0x004E81C0 ApeGuiTile::Draw
+void ApeGuiTile::Draw()
+{
+    if (IsVisible()) {
+        for (ApeGuiImage* image : pieces) {
+            if (image)
+                image->Draw();
+        }
+    }
+    ApeGuiObject::Draw();
+}
+
+// ---------------------------------------------------------------------------
 // Group
 // ---------------------------------------------------------------------------
 

@@ -417,10 +417,35 @@ ApeGuiObject* CreateGuiObject(xml::XmlDocument* doc, xml::XmlElement* element, A
 
 namespace ape {
 
-// TODO(0x004D9DA0 CreateGuiTile)
-ApeGuiObject* CreateGuiTile(xml::XmlDocument*, xml::XmlElement*, const GuiObjectDesc&, ApeGuiObject*)
+// @func 0x004D9DA0 CreateGuiTile
+ApeGuiObject* CreateGuiTile(xml::XmlDocument* doc, xml::XmlElement* element, const GuiObjectDesc& base,
+                            ApeGuiObject* source)
 {
-    return nullptr;
+    // Attribute names of the nine textures (0x00F668A8).
+    static const char* const kTextureAttributes[9] = {
+        "textureTL", "textureTC", "textureTR", "textureML", "textureMC",
+        "textureMR", "textureBL", "textureBC", "textureBR",
+    };
+    GuiTileDesc desc = MakeDesc<GuiTileDesc>(base);
+    float defaultSize[2] = { 0.0f, 0.0f };
+    ApeGuiTexture* defaultTextures[9] = {};
+    if (CheckSourceType(doc, source, kGuiObject_Type6)) {
+        const auto* tile = static_cast<const ApeGuiTile*>(source);
+        for (int i = 0; i < 9; ++i)
+            defaultTextures[i] = tile->textures[i];
+        source->GetSize(defaultSize);
+    }
+    for (int i = 0; i < 9; ++i) {
+        desc.textures[i] = defaultTextures[i];
+        if (const char* textureName = element->GetString(kTextureAttributes[i])) {
+            desc.textures[i] =
+                static_cast<ApeGuiTexture*>(ApeGuiResource::FindByName(HashNameNoCase(textureName)));
+            if (!desc.textures[i])
+                Warn(doc, "unknown GUI texture ", textureName);
+        }
+    }
+    element->GetVec2(kAttrSize, desc.size, defaultSize);
+    return new ApeGuiTile(desc);
 }
 
 // @func 0x004D8200 CreateGuiType8
