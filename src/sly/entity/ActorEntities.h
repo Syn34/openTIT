@@ -27,6 +27,19 @@ public:
     };
     ~ActorDef() override;
     ape::ApeTArray<Part>* parts = nullptr;   // 0xC0 allocated on demand
+    // Answers to InteractionNeeds by interaction kind. NOTE: the number of
+    // kinds is not known (the table may run up to 0xF0).
+    uint8_t interactionNeeds[16] = {};       // 0xC4
+    // Damage taken per hit category (0 = immune). NOTE: filled by the
+    // definition parser (not ported).
+    float impactScale = 0.0f;                // 0xF0 category 1
+    float blastScale = 0.0f;                 // 0xF8 category 2
+    float collisionScale = 0.0f;             // 0x100 category 0, per unit of speed
+    float collisionThreshold = 0.0f;         // 0x104 speed below which nothing happens
+    float collisionMax = 0.0f;               // 0x108
+    float meleeScale = 0.0f;                 // 0x10C category 3
+    float projectileScale = 0.0f;            // 0x114 category 4
+    float attackerScale[4] = {};             // 0x118 by the attacker's flag bits 22-23
 };
 
 // Definition of SoundActor and base of its subclasses' definitions
@@ -63,7 +76,29 @@ public:
     bool Release(bool kill) override { return ScriptedEntity::Release(kill); }
     void SetActive(bool active) override { ScriptedEntity::SetActive(active); }
 
+    uint32_t InteractionNeeds(int kind, Entity* other) override;
+    bool Damage(float amount, Entity* source, uint32_t type) override;
+    void OnHitCategory0(EntityHitRecord& hit) override;
+    void OnHitCategory1(EntityHitRecord& hit) override;
+    void OnHitCategory2(EntityHitRecord& hit) override;
+    void OnHitCategory3(EntityHitRecord& hit) override;
+    void OnHitCategory4(EntityHitRecord& hit) override;
+    // Slot 82: some hit category and some attacker can hurt the actor.
+    virtual bool CanBeDamaged() const;
+    // Slot 89: damage scale of projectiles.
+    virtual float ProjectileDamageScale() const;
+
+    // Filter consulted before projectile damage (+0x1A0); false ignores the hit.
+    using HitFilter = bool (*)(ActorEntity* actor, EntityHitRecord& hit);
+
     ape::ApeTArray<void*>* field_184 = nullptr;   // 0x184 allocated on demand
+    HitFilter projectileFilter = nullptr;         // 0x1A0
+    uint32_t actorFlags = 0;                      // 0x1A4 bit 31: health ran out
+
+private:
+    const ActorDef* Def() const { return static_cast<const ActorDef*>(def); }
+    // Applies `amount` through slot 88 and marks the hit fatal if it killed.
+    void ApplyHitDamage(EntityHitRecord& hit, float amount, uint32_t type);
 };
 
 // Interactive prop that refuses player interaction while its definition says

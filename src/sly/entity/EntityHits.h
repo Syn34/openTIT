@@ -20,7 +20,7 @@ class ScriptedEntity;
 
 struct EntityHitRecord {
     enum Flags : uint16_t {
-        kHit_Accepted   = 0x0100,  // bit 8: set by a receiver when the hit landed
+        kHit_Fatal      = 0x0100,  // bit 8: set by actors when the hit killed them
         kHit_Deferrable = 0x0200,  // bit 9: may be queued during the physics step
         kHit_FromPlayer = 0x1000,  // bit 12
     };
@@ -35,8 +35,8 @@ struct EntityHitRecord {
     uint16_t flags = 3u << 13;           // +0x0E
     ape::Vec3 vec10{};                   // +0x10 category 3: direction; category 1: hit position
 
-    // Category payload from +0x20. NOTE: only categories 1 and 3 are
-    // decoded; the queue copies the whole block.
+    // Category payload from +0x20. NOTE: the category names are guesses
+    // from the fields actors read; the queue copies the whole block.
     struct Knockback {                   // category 3
         float amount;                    // +0x20
         float knockback;                 // +0x24
@@ -49,9 +49,29 @@ struct EntityHitRecord {
         uint32_t flags_48;               // bits 30/31 only
         uint32_t field_4C;
     };
+    struct Collision {                   // category 0
+        uint32_t field_20[4];
+        float speed;                     // +0x30 compared with the actor's threshold
+    };
+    struct Blast {                       // category 2
+        uint32_t field_20[4];
+        float outerRadius;               // +0x30
+        float innerRadius;               // +0x34 full damage inside
+        uint32_t field_38;
+        float damage;                    // +0x3C
+        uint32_t field_40[8];
+        float distance;                  // +0x60 of the receiver from the centre
+    };
+    struct Projectile {                  // category 4
+        uint32_t field_20[5];
+        float damage;                    // +0x34
+    };
     union {
         Knockback knock;
         Impact impact;
+        Collision collision;
+        Blast blast;
+        Projectile projectile;
         uint32_t raw[18];                // +0x20..+0x67
     } data = {};
 };
