@@ -36,6 +36,18 @@ EntityComponent* CreateComponent(ComponentDesc* desc);
 // Offset of the "centre" component (type 0x1F) from the entity origin (0x002BC1E0).
 ape::Vec3 CenterComponentOffset(EntityComponent* component);
 
+// -- release ---------------------------------------------------------------------
+// 0x0046B6CC on the game world: drops the entity from its 13 per-frame event
+// lists.
+void GameWorldForgetEntity(Entity* entity);
+// Watcher virtual slot 74 (+0x128): the watched entity left the world.
+void WatcherEntityReleased(void* watcher, Entity* entity);
+// Spawner (entity +0xDC) virtual slot 8 (+0x20): its spawn left the world.
+void SpawnerEntityReleased(void* spawner, Entity* entity);
+// Clears the entity from the two global target tables (0x01019BE0, count
+// 0x01019BD0, and 0x0101DBF0, count 0x0101DBE0). NOTE: owners unknown.
+void ClearEntityFromTargetTables(Entity* entity);
+
 // -- render ids --------------------------------------------------------------
 // Allocates a fresh render/visibility id (0x004A2560).
 uint32_t NewRenderId();

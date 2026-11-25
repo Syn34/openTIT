@@ -1056,14 +1056,65 @@ void Entity::OnInteractEnd(Entity* other, int kind)
         comp->playerMask &= ~(1u << other->PlayerSlot());
 }
 
-// TODO(0x000D74C0 Entity::Release): drops a reference (interactionCount);
-// with `kill` it leaves the world: unregisters from the game world, tells its
-// watchers, detaches from its parent and children, deletes its components,
-// stops its sounds and clears it from the global target tables.
+// @func 0x000D74C0 Entity::Release
+// Drops one reference. With `kill` the entity also leaves the world: it is
+// no longer alive, the game world, its watchers and its spawner forget it, it
+// leaves its parent, its children are released (killed too when asked), its
+// components are deleted, its sounds stopped and it is cleared from the
+// global target tables and the second entity list.
+// NOTE: when the count goes negative the console only fetches the name
+// (slot 19) for a stripped warning.
 bool Entity::Release(bool kill)
 {
-    (void)kill;
-    --interactionCount;
+    if (--interactionCount < 0)
+        return true;
+    if (!kill)
+        return true;
+
+    flags &= ~kEnt_Alive;
+    GameWorldForgetEntity(this);
+
+    if (watchers) {
+        for (void* watcher : *watchers)
+            WatcherEntityReleased(watcher, this);
+        watchers->Clear();
+    }
+    if (field_DC) {
+        SpawnerEntityReleased(field_DC, this);
+        field_DC = nullptr;
+    }
+    if (attachParent)
+        attachParent->DetachChild(this);
+
+    if (children) {
+        for (EntityChildLink& link : *children) {
+            if (Entity* child = link.child) {
+                child->SetAttachParent(nullptr);
+                child->Release(kill);
+            }
+        }
+        children->Clear();
+    }
+
+    // The first component is taken each time and the last moved into its slot.
+    while (components && components->Count() != 0) {
+        EntityComponent* component = (*components)[0];
+        const uint32_t last = components->Count() - 1u;
+        components->PopBack();
+        if (last != 0)
+            (*components)[0] = (*components)[last];
+        delete component;
+    }
+
+    for (uint32_t i = 0; i < SoundSlotCount(); ++i) {
+        audio::StopVoice(sounds[i].voice, true);
+        sounds[i].voice = 0;
+        sounds[i].field_08 = 0;
+        sounds[i].id = -1;
+    }
+
+    ClearEntityFromTargetTables(this);
+    UnregisterEntity(kList_B, this);
     return true;
 }
 

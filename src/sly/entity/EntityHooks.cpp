@@ -20,6 +20,15 @@ EntityComponent* CreateComponent(ComponentDesc*) { return nullptr; }
 // TODO(0x002BC1E0 CenterComponent::GetOffset)
 ape::Vec3 CenterComponentOffset(EntityComponent*) { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 
+// TODO(0x0046B6CC GameWorld::ForgetEntity)
+void GameWorldForgetEntity(Entity*) {}
+// TODO(watcher slot 74): the watcher classes are not ported.
+void WatcherEntityReleased(void*, Entity*) {}
+// TODO(spawner slot 8 0x00455F54): sly::Spawner is reached as an opaque pointer here.
+void SpawnerEntityReleased(void*, Entity*) {}
+// TODO(0x01019BE0 / 0x0101DBF0 target tables)
+void ClearEntityFromTargetTables(Entity*) {}
+
 // TODO(0x004A2560 NewRenderId)
 uint32_t NewRenderId()
 {
