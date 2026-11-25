@@ -188,9 +188,15 @@ public:
     // NOTE: both only look the interaction component up.
     void InteractionCancel() override;                // slot 63
     void InteractionEnd(bool completed) override;     // slot 64
+    // Showing spawns the attached entity (state 0); hiding detaches and
+    // kills it (state 3).
+    void ApplyVisibility(bool visible) override;      // slot 55
+    // Spawns the entity of definition `attachedDef` and attaches it (0x001F50E4).
+    void SpawnAttached();
 
     ape::Matrix34 userTransform{};            // 0x1B0
     Entity* attached = nullptr;               // 0x1F0
+    uint32_t attachedDef = 0;                 // 0x230 definition name of the attached entity
 };
 
 // Interactive prop with two phantoms (vtable 0x00B17DF8; destructor

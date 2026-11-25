@@ -948,6 +948,24 @@ bool InteractivePropC::Release(bool kill)
     return ActorEntity::Release(kill);
 }
 
+// @func 0x001F7168 InteractivePropB::ApplyVisibility
+void InteractivePropB::ApplyVisibility(bool visible)
+{
+    if (visible && !attached) {
+        SpawnAttached();
+        EntitySetState(this, 0, 0);
+    } else if (!visible && attached) {
+        DetachChild(attached);
+        attached->Release(false);
+        attached->Release(true);
+        attached = nullptr;
+        EntitySetState(this, 0, 3);
+    }
+}
+
+// TODO(0x001F50E4 InteractivePropB::SpawnAttached)
+void InteractivePropB::SpawnAttached() {}
+
 // @func 0x001E40E0 InteractivePropC::InteractionEnd
 void InteractivePropC::InteractionEnd(bool completed)
 {
