@@ -179,7 +179,7 @@ const GoalElement kGoalElements[] = {
     {0x44390A06, GoalEntityChild::Create},
     {0x7A6E6B01, CreateQteGoal},                  // "GoalQTEGame"
     {0x70DEDF48, GoalCameraEntity::Create},
-    {0x6AB6FFCB, CreateOperationMousetrapGoal},   // "OperationMousetrap"
+    {0x6AB6FFCB, GoalOperationMousetrap::Create},   // "OperationMousetrap"
     {0x618B173D, GoalPenguinWhackGame::Create},
 };
 // Elements that are recognised but make no goal.
@@ -587,8 +587,57 @@ Goal* CreateShootingGalleryGoal(XmlElement*, const GoalDesc*) { return nullptr; 
 Goal* CreateBartenderGoal(XmlElement*, const GoalDesc*) { return nullptr; }
 // TODO(0x0033A520 GoalQteGame::Create)
 Goal* CreateQteGoal(XmlElement*, const GoalDesc*) { return nullptr; }
-// TODO(0x003344B8 GoalOperationMousetrap::Create)
-Goal* CreateOperationMousetrapGoal(XmlElement*, const GoalDesc*) { return nullptr; }
+
+// -- Operation Mousetrap ------------------------------------------------------------------
+
+// @func 0x00333918 GoalOperationMousetrap::GoalOperationMousetrap
+GoalOperationMousetrap::GoalOperationMousetrap(const GoalDesc* desc, const GoalGroupSetup& setup,
+                                               const ape::ApeTArray<uint32_t>& setA,
+                                               const ape::ApeTArray<uint32_t>& setB)
+    : GoalGroup(desc)
+{
+    setup.ApplyTo(this);
+    namesA.Init(3, nullptr, true);
+    namesB.Init(3, nullptr, true);
+    entitiesA.Init(3, nullptr, true);
+    entitiesB.Init(3, nullptr, true);
+    helper = nullptr;
+    phase = kPhase_None;
+    started = false;
+    wantSetA = true;
+    for (uint32_t name : setA)
+        namesA.PushBack(name);
+    for (uint32_t name : setB)
+        namesB.PushBack(name);
+}
+
+// @func 0x003344B8 GoalOperationMousetrap::Create
+Goal* GoalOperationMousetrap::Create(XmlElement* xml, const GoalDesc* desc)
+{
+    // NOTE: the console builds the group even when the options are bad.
+    GoalGroupSetup setup;
+    ParseGoalGroupSetup(xml, &setup);
+    constexpr uint32_t kSetANames[3] = {0x7DCA6B6Au, 0x7DCA6B6Bu, 0x7DCA6B6Cu};   // NOTE: base name unknown
+    constexpr uint32_t kSetBNames[3] = {0x0408E082u, 0x0408E083u, 0x0408E084u};   // "Gear1".."Gear3"
+    ape::ApeTArray<uint32_t> setA(3, nullptr, true);
+    ape::ApeTArray<uint32_t> setB(3, nullptr, true);
+    for (uint32_t attribute : kSetANames) {
+        uint32_t name = 0;
+        xml->GetHash(attribute, &name, 0);
+        setA.PushBack(name);
+    }
+    for (uint32_t attribute : kSetBNames) {
+        uint32_t name = 0;
+        xml->GetHash(attribute, &name, 0);
+        setB.PushBack(name);
+    }
+    auto* goal = new GoalOperationMousetrap(desc, setup, setA, setB);
+    for (XmlElement* child = xml->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        if (Goal* childGoal = ParseGoal(desc->game, desc->job, child, desc->index))
+            goal->AddChild(childGoal);
+    }
+    return goal;
+}
 
 } // namespace goals
 } // namespace sly

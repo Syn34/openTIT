@@ -46,7 +46,6 @@ Goal* CreateBinocucomPhotoGoal(ape::xml::XmlElement* xml, const GoalDesc* desc);
 Goal* CreateShootingGalleryGoal(ape::xml::XmlElement* xml, const GoalDesc* desc);  // 0x0033DC0C
 Goal* CreateBartenderGoal(ape::xml::XmlElement* xml, const GoalDesc* desc);  // 0x003292C8
 Goal* CreateQteGoal(ape::xml::XmlElement* xml, const GoalDesc* desc);        // 0x0033A520
-Goal* CreateOperationMousetrapGoal(ape::xml::XmlElement* xml, const GoalDesc* desc);   // 0x003344B8
 // "GoalSet": a group whose children are the goal elements below it (0x00321EC8).
 Goal* CreateGoalSet(ape::xml::XmlElement* xml, const GoalDesc* desc);
 

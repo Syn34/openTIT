@@ -594,8 +594,13 @@ public:
     static constexpr uint32_t kMsg_TargetSetA = 0xF41445FE;
     static constexpr uint32_t kMsg_TargetSetB = 0x3281C093;
 
-    using GoalGroup::GoalGroup;
+    // 0x00333918: a group with the given options and the two name sets.
+    GoalOperationMousetrap(const GoalDesc* desc, const struct GoalGroupSetup& setup,
+                           const ape::ApeTArray<uint32_t>& setA, const ape::ApeTArray<uint32_t>& setB);
     ~GoalOperationMousetrap() override;
+    // 0x003344B8: reads the group options, the names "...1".."...3" (set A)
+    // and "Gear1".."Gear3" (set B) and the child goals.
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
     void HandleMessage(const GoalMessage& msg) override;
     uint8_t Update(int player, const GameEvent& e) override;
     void ResetHints(bool stopHintScript) override;
