@@ -305,6 +305,7 @@ public:
     ape::Vec3 GetVelocity() override;
     // Suspending freezes the body and keeps its velocity for the resume.
     void OnSuspend() override;                        // slot 60
+    void OnResume() override;                         // slot 61
     // Kind 0 is refused while the block is locked (+0x248 bit 15), kind 4 always.
     bool CanInteractWith(Entity* other, int kind) override;   // slot 76
 

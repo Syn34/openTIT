@@ -1180,6 +1180,14 @@ void PushBlock::OnSuspend()
     }
 }
 
+// @func 0x001B8F20 PushBlock::OnResume
+void PushBlock::OnResume()
+{
+    ScriptedEntity::OnResume();
+    if (rigidBody && RigidBodyInWorld(rigidBody))
+        RigidBodySetLinearVelocity(rigidBody, { savedVelocity.x, savedVelocity.y, savedVelocity.z, 0.0f });
+}
+
 // @func 0x001B900C PushBlock::CanInteractWith
 bool PushBlock::CanInteractWith(Entity* other, int kind)
 {
