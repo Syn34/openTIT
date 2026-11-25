@@ -138,13 +138,14 @@ public:
     virtual void Update(float dt);
     // Slot 3 (0x0036A410): deactivated and back at its stack origin.
     virtual void Refresh();
-    // Slot 4 (0x00772940, empty in the base): start of a frame (tracker
-    // lists forget their entries).
+    // Slot 4 (empty in the base): start of a frame (tracker lists forget
+    // their entries).
+    // @func 0x00772940 HudObject::BeginFrame
     virtual void BeginFrame() {}
     // Slot 5 (0x0036A470): shows or hides the element's object.
     virtual void SetActive(bool active);
-    // Slot 6 (0x00772944, other module): bit 0 of +0xA0 (set by the
-    // constructor).
+    // Slot 6: bit 0 of +0xA0 (set by the constructor).
+    // @func 0x00772944 HudObject::SetEnabled
     virtual void SetEnabled(bool enabled, bool flag)
     {
         (void)flag;
