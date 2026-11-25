@@ -23,6 +23,9 @@ void ScheduleDeferredRelease(void* object);
 void* TakeDeferredRelease();
 // End-of-frame bookkeeping for the graphics layer (phase 0..3).
 void EndFrame(int phase);
+// Waits until the render thread and the GPU are idle and every deferred
+// destruction has run (used before a scene is torn down).
+void FlushRendering();
 // Releases an occlusion query at the next end of frame (main thread part).
 void QueueEndOfFrameRelease(class AglOcclusionQuery* query);
 void ResetEndOfFrameReleases();

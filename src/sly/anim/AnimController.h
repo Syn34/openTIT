@@ -65,6 +65,22 @@ public:
     // 0x0035133C: creates a layer for `anim`, binds it to the rig and
     // appends it to the layer list.
     AnimLayer* AddLayer(uint32_t anim);
+    // 0x0034F690 (TODO): binds the controller to a skeleton (bone objects,
+    // per-bone buffers, its own animated skeleton and pose).
+    void BindSkeleton(const HkaSkeleton* bones, bool force);
+    // 0x00350764: binds the controller (and with `layersToo` every layer)
+    // to the skeleton registered as `name`.
+    void SetSkeleton(uint32_t name, bool layersToo, bool force);
+    // 0x00351898: creates a blend layer for `anim` with the bone weight list
+    // named `weightList` (holding its last frame when `holdLastFrame`).
+    AnimLayer* AddBlendLayer(uint32_t anim, uint32_t weightList, bool holdLastFrame);
+    // 0x00351A40: creates the layers listed by an anim tree.
+    void BuildLayers(const struct AnimTree* tree);
+    // 0x003514AC: plays `binding` on the first layer (created when there is
+    // none; the controller binds the clip's skeleton first if it has no
+    // rig) and attaches the control listener named `listener`.
+    AnimLayer* Play(HkaAnimationBinding* binding, float speed, float blendTime, float startTime, bool loop,
+                    uint32_t listener);
     // 0x0034CDB0: the controller animates this frame (running, and drawn,
     // forced, within its cull distance or not a geometry instance).
     bool IsAnimatedThisFrame() const;
@@ -108,6 +124,24 @@ public:
     void* field_74 = nullptr;                 // +0x74 0xB0-byte block
 };
 
+// An anim tree (registry 0x0106BB9C): the layers an Anim component's
+// controller starts with.
+struct AnimTreeLayer {
+    enum Kind : uint32_t {
+        kKind_Plain = 0xFF45EF93,   // NOTE: name unknown
+        kKind_Blend = 0x19A18BC2,   // NOTE: name unknown
+    };
+    uint32_t anim = 0;            // +0x00
+    uint32_t kind = 0;            // +0x04 Kind
+    uint32_t field_08 = 0;
+    uint32_t weightList = 0;      // +0x0C bone weight list name (blend layers)
+    bool holdLastFrame = false;   // +0x10
+};
+struct AnimTree {
+    uint32_t count = 0;
+    AnimTreeLayer* layers = nullptr;
+};
+
 // -- module state ---------------------------------------------------------------
 
 // Every live controller (0x0106BC70).
@@ -130,6 +164,17 @@ void BuildPendingPoses(float dt, const ape::ApeTArray<AnimController*>& list);
 ape::ApeTSortedMap<void*>& AnimClips();
 // 0x0034A398: the clip registered under `name`, or null.
 void* FindAnimClip(uint32_t name);
+
+// Anim trees (0x0106BB9C), blend maps (0x0106BBB4) and skeleton bindings
+// (0x0106BC14) by name hash; the lookups return null for unknown names.
+ape::ApeTSortedMap<void*>& AnimTrees();
+ape::ApeTSortedMap<void*>& AnimBlendMaps();
+ape::ApeTSortedMap<void*>& AnimSkeletons();
+void* FindAnimTree(uint32_t name);        // 0x003482B0
+void* FindAnimBlendMap(uint32_t name);    // 0x00348650
+void* FindAnimSkeleton(uint32_t name);    // 0x00348ECC
+struct BoneWeightList;
+BoneWeightList* FindBoneWeightList(uint32_t name);   // 0x003489B0
 
 // 0x0034F600: depth first search below `root` for the object named `name`.
 ape::world::ApeObj* FindDescendant(ape::world::ApeObj* root, uint32_t name);

@@ -24,6 +24,9 @@ uint32_t GetDeferredDestructionFrame();
 // signed 16-bit value as on the console).
 struct AglRefCounted {
     int16_t refCount = 1;
+    // 1-based slot of the scene that loaded the resource (0 for none); the
+    // console keeps it in bits 6..9 of the word holding the count.
+    uint8_t sceneSlot = 0;
 
     void AddRef() { ++refCount; }
     // Drops a reference; true when this was the last one.

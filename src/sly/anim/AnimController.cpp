@@ -4,6 +4,7 @@
 #include "sly/anim/AnimLayer.h"
 #include "sly/entity/EntityHooks.h"
 
+#include "ape/core/ApeString.h"
 #include "ape/world/ApeBase.h"
 #include "ape/world/ApeInstances.h"
 #include "ape/world/ApeObj.h"
@@ -35,6 +36,48 @@ ape::ApeTSortedMap<void*>& AnimClips()
 void* FindAnimClip(uint32_t name)
 {
     return *AnimClips().Find(name);
+}
+
+ape::ApeTSortedMap<void*>& AnimTrees()
+{
+    static ape::ApeTSortedMap<void*> trees;
+    return trees;
+}
+
+ape::ApeTSortedMap<void*>& AnimBlendMaps()
+{
+    static ape::ApeTSortedMap<void*> maps;
+    return maps;
+}
+
+ape::ApeTSortedMap<void*>& AnimSkeletons()
+{
+    static ape::ApeTSortedMap<void*> skeletons;
+    return skeletons;
+}
+
+// @func 0x003482B0 FindAnimTree
+void* FindAnimTree(uint32_t name)
+{
+    return *AnimTrees().Find(name);
+}
+
+// @func 0x00348650 FindAnimBlendMap
+void* FindAnimBlendMap(uint32_t name)
+{
+    return *AnimBlendMaps().Find(name);
+}
+
+// @func 0x00348ECC FindAnimSkeleton
+void* FindAnimSkeleton(uint32_t name)
+{
+    return *AnimSkeletons().Find(name);
+}
+
+// @func 0x003489B0 FindBoneWeightList
+BoneWeightList* FindBoneWeightList(uint32_t name)
+{
+    return *BoneWeightLists().Find(name);
 }
 
 namespace {
@@ -97,23 +140,83 @@ AnimLayer* AnimController::FindLayer(uint32_t anim) const
     return nullptr;
 }
 
-// TODO(0x00350178 AnimLayer::Bind): binds a layer to a rig (skeleton,
-// pose, main control); the layer stays unbound until it is ported.
-static void BindLayer(AnimLayer* layer, const HkaSkeleton* skeleton, bool flag)
+// TODO(0x0034F690 AnimController::BindSkeleton)
+void AnimController::BindSkeleton(const HkaSkeleton* bones, bool force)
 {
-    (void)layer;
-    (void)skeleton;
-    (void)flag;
+    (void)bones;
+    (void)force;
 }
 
 // @func 0x0035133C AnimController::AddLayer
 AnimLayer* AnimController::AddLayer(uint32_t anim)
 {
     auto* layer = new AnimLayer(this, anim);
-    BindLayer(layer, rig ? rig->skeleton : nullptr, false);
+    layer->Bind(rig ? rig->skeleton : nullptr, false);
     if (!layers)
         layers = new ape::ApeTArray<AnimLayer*>();
     layers->PushBack(layer);
+    return layer;
+}
+
+// @func 0x00350764 AnimController::SetSkeleton
+void AnimController::SetSkeleton(uint32_t name, bool layersToo, bool force)
+{
+    auto* bones = static_cast<const HkaSkeleton*>(FindAnimSkeleton(name));
+    if (!bones)
+        return;   // NOTE: the console formats a (compiled-out) warning with the name
+    BindSkeleton(bones, force);
+    if (layersToo && layers) {
+        for (AnimLayer* layer : *layers)
+            layer->Bind(bones, force);
+    }
+}
+
+// @func 0x00351898 AnimController::AddBlendLayer
+AnimLayer* AnimController::AddBlendLayer(uint32_t anim, uint32_t weightList, bool holdLastFrame)
+{
+    auto* layer = new AnimBlendLayer();
+    layer->anim = anim;
+    layer->owner = this;
+    layer->Bind(rig ? rig->skeleton : nullptr, false);
+    layer->holdLastFrame = holdLastFrame;
+    layer->SetBoneWeights(FindBoneWeightList(weightList));
+    if (layer->weightList)
+        layer->defaultWeightList = layer->weightList;
+    if (!layers)
+        layers = new ape::ApeTArray<AnimLayer*>();
+    layers->PushBack(layer);
+    return layer;
+}
+
+// @func 0x00351A40 AnimController::BuildLayers
+void AnimController::BuildLayers(const AnimTree* tree)
+{
+    if (!tree)
+        return;
+    for (uint32_t i = 0; i < tree->count; ++i) {
+        const AnimTreeLayer& entry = tree->layers[i];
+        if (entry.kind == AnimTreeLayer::kKind_Plain)
+            AddLayer(entry.anim);
+        else if (entry.kind == AnimTreeLayer::kKind_Blend)
+            AddBlendLayer(entry.anim, entry.weightList, entry.holdLastFrame);
+    }
+}
+
+// @func 0x003514AC AnimController::Play
+AnimLayer* AnimController::Play(HkaAnimationBinding* binding, float speed, float blendTime, float startTime,
+                                bool loop, uint32_t listener)
+{
+    if (!rig) {
+        // The clip names the skeleton it was made for.
+        const char* skeletonName = reinterpret_cast<const char*>(
+            reinterpret_cast<uintptr_t>(binding->skeletonName) & ~uintptr_t(1));
+        auto* bones = static_cast<const HkaSkeleton*>(FindAnimSkeleton(ape::HashNameNoCase(skeletonName)));
+        // NOTE: a missing skeleton only fed a compiled-out warning.
+        BindSkeleton(bones, false);
+    }
+    AnimLayer* layer = (layers && layers->Count() != 0) ? (*layers)[0] : AddLayer(0);
+    layer->Play(binding, speed, blendTime, startTime, loop);
+    layer->AttachListener(listener);
     return layer;
 }
 
