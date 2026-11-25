@@ -3,6 +3,7 @@
 
 #include "sly/entity/Entity.h"
 #include "sly/game/goals/JobManager.h"
+#include "sly/knowledge/Knowledge.h"
 
 namespace sly {
 namespace levels {
@@ -89,9 +90,9 @@ void NavAgentDestroy(NavAgent*) {}
 void NavAgentRequestGoal(NavAgent*, const ape::Vec3&) {}
 ape::Vec3 NavAgentGoal(NavAgent*) { return {}; }
 
-void KnowledgeLevelStart() {}
-void KnowledgeLevelEnd() {}
-void KnowledgeReset() {}
+void KnowledgeLevelStart() { knowledge::KnowledgeLevelStart(); }
+void KnowledgeLevelEnd() { knowledge::KnowledgeLevelEnd(); }
+void KnowledgeReset() { knowledge::KnowledgeReset(); }
 void AIObjectPoolLevelStart() {}
 void AIObjectPoolLevelEnd() {}
 void AIObjectPoolReset() {}

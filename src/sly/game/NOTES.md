@@ -32,3 +32,17 @@
   next to each field in `SpawnerSettings`/`SpawnGroupSettings`.
 * Tween easing 2 ("Overshoot") name is a guess from its curve.
 * AppShutdown calls pad virtual slot 8 with 0; read as `StopRumble(0)`.
+
+## File streaming / effect manager (agent2)
+* `FileStreaming.*` (0x002E80C0-0x002EC2F8): stream groups (packed "Streaming/<name>.ftd"
+  groups from the ASTF/ASTH/ASTD table, plain-file groups from the level definition's async
+  file groups), per-type callbacks and factories (`RegisterStreamType`, called from
+  SlyGame::SlyGame, not ported), the character pack prefetcher. The group prerequisite
+  (`StreamBlob`, +0x14) is never created here; its layout is inferred. Group type 0x63C971C0
+  (kept by CancelNonCharacterGroups) has no known name. `UpdateFileStreaming` should be
+  called per frame (0x0047C2B8 / 0x00491710), `ClearStreamGroups` at level unload
+  (0x0047E578), `CreateStreamGroupsFromLevel` from 0x0047C8A0.
+* `FxManager.*`: walkers of the effect handle list and the camera shake queue of the
+  manager at 0x00F64C38. `gameplay::StartCameraShake` and the LevelServices camera shake
+  stub could forward to `FxManager::AddCameraShake`. Not done: 0x002EF7B8 (argument order
+  unclear), the effect classes, effect creation (0x002F0E0C), shake update (0x002F27D0).

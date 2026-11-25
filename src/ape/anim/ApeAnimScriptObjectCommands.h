@@ -262,32 +262,73 @@ private:
     uint32_t m_object = 0;        // "object": GUI variable
 };
 
-// "AttachObject": parents an object to another one (optionally at a bone
-// or locator, with an offset and rotation).
-// TODO(0x004B9ED8 ApeAnimScriptAttachObjectCommand::ApeAnimScriptAttachObjectCommand)
-// TODO(0x004C30C8 ApeAnimScriptAttachObjectCommand::ApeAnimScriptAttachObjectCommand(xml))
-// TODO(0x004C3658 ApeAnimScriptAttachObjectCommand::Create)
+// "AttachObject": parents an object to another one (optionally at a part
+// or locator, with an offset and rotation, or at a matrix variable).
 // TODO(0x004C36D0 ApeAnimScriptAttachObjectCommand::Execute)
 class ApeAnimScriptAttachObjectCommand : public ApeAnimScriptCommand {
 public:
+    ApeAnimScriptAttachObjectCommand();
+    explicit ApeAnimScriptAttachObjectCommand(xml::XmlElement* element);
     // @func 0x004C3604 ApeAnimScriptAttachObjectCommand::~ApeAnimScriptAttachObjectCommand
     // @func 0x004C3614 ApeAnimScriptAttachObjectCommand::~ApeAnimScriptAttachObjectCommand (deleting)
     ~ApeAnimScriptAttachObjectCommand() override = default;
     // @func 0x004C3DB4 ApeAnimScriptAttachObjectCommand::CreateDebugElement
     xml::XmlElement* CreateDebugElement() const override { return nullptr; }
+    ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
+
+private:
+    uint32_t m_object = 0;        // +0x0C "object" (hash) / "ObjectHash" (int)
+    uint32_t m_target = 0;        // +0x10 "target" / "TargetHash"
+    uint32_t m_locator = 0;       // +0x14 "locator" / "LocatorHash"
+    uint32_t m_part = 0;          // +0x18 "part"
+    uint32_t m_field_1C = 0;      // +0x1C NOTE: hash attribute 0xFB888634, name unknown
+    uint32_t m_matrixVar = 0;     // +0x20 "matrix": matrix variable used as the offset
+    float m_offset[3] = {};       // +0x24 "posX/Y/Z" (only without a matrix variable)
+    float m_rotation[3] = {};     // +0x30 "rotX/Y/Z" (only without a matrix variable)
+    float m_world[3] = {};        // +0x40 "worldX/Y/Z"
+    // Flag byte +0x3C.
+    bool m_flag72C27306 = true;   // bit 7 NOTE: name unknown (default on)
+    bool m_flagE48AEDBD = false;  // bit 6 NOTE: name unknown
+    bool m_flagFF40848E = false;  // bit 5 NOTE: name unknown
+    bool m_flag96423570 = false;  // bit 4 NOTE: name unknown
+    bool m_inheritScale = false;  // bit 3 "inheritscale"
+    bool m_hasWorldX = false;     // bit 2 "worldX" given
+    bool m_hasWorldY = false;      // bit 1
+    bool m_hasWorldZ = false;      // bit 0
+    // Flag byte +0x3D.
+    bool m_flag7631EAF5 = false;  // bit 7 NOTE: name unknown
+    bool m_hasMatrixVar = false;  // bit 6 "matrix" given
 };
 
-// "MoveObject": moves an object along a path or towards a target.
-// TODO(0x004C4708 ApeAnimScriptMoveObjectCommand::ApeAnimScriptMoveObjectCommand(xml))
-// TODO(0x004C4D9C ApeAnimScriptMoveObjectCommand::Create)
+// "MoveObject": places an object relative to a target or a matrix
+// variable, with a fixed offset or one read from variables.
 // TODO(0x004C586C ApeAnimScriptMoveObjectCommand::Execute)
 class ApeAnimScriptMoveObjectCommand : public ApeAnimScriptCommand {
 public:
+    ApeAnimScriptMoveObjectCommand() = default;
+    explicit ApeAnimScriptMoveObjectCommand(xml::XmlElement* element);
     // @func 0x004C4D48 ApeAnimScriptMoveObjectCommand::~ApeAnimScriptMoveObjectCommand
     // @func 0x004C4D58 ApeAnimScriptMoveObjectCommand::~ApeAnimScriptMoveObjectCommand (deleting)
     ~ApeAnimScriptMoveObjectCommand() override = default;
     // @func 0x004C5BA0 ApeAnimScriptMoveObjectCommand::CreateDebugElement
     xml::XmlElement* CreateDebugElement() const override { return nullptr; }
+    ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
+
+private:
+    uint32_t m_matrixVar = 0;     // +0x0C "matrix"
+    uint32_t m_object = 0;        // +0x10 "object" / "ObjectHash"
+    uint32_t m_target = 0;        // +0x14 "target"
+    Matrix34 m_offset{};          // +0x20 rotation from rotX/Y/Z, no translation
+    bool m_local = false;         // +0x60 "local"
+    bool m_flagE48AEDBD = false;  // +0x61 NOTE: name unknown (also used by AttachObject)
+    bool m_hasPosition = false;   // +0x62 posX/Y/Z or a varpos/varrot variable given
+    bool m_hasRotation = false;   // +0x63 rotX/Y/Z given
+    bool m_hasTarget = false;     // +0x64
+    uint32_t m_posVars[3] = {};   // +0x68 "varposX/Y/Z": float variables
+    uint32_t m_rotVars[3] = {};   // +0x74 "varrotX/Y/Z"
+    bool m_hasMatrixVar = false;  // +0x80
+    float m_rotation[3] = {};     // +0x90 NOTE: placement assumed (vector stores not decoded)
+    float m_position[3] = {};     // +0xA0 NOTE: placement assumed
 };
 
 // "SetPostProc": changes the post-processing effects.
