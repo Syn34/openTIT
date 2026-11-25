@@ -74,3 +74,14 @@
 * Collectible spawning (0x002DF010 masks, 0x002DFAA0 / 0x002DFC2C treasures and safes) uses
   spawn groups 0xFB673D64 (treasures) and 0x5E69B571 (safes); their names are unknown. The
   safe table is 0x010681B4 (`SafeTable`).
+
+## Goals: base class and type ids (agent1, 0x00769xxx-0x0076Bxxx)
+* `goals/Goal.cpp`: the base constructor 0x00769BD8 now copies the full parse
+  description (`GoalDesc`, laid out from what the constructor reads; the parser 0x00322D88
+  that fills it is not ported) and the destructor 0x00769480 frees the same members. The
+  console goal also derives from the event-listener base (vtable 0x00B21A30, ctor 0x0048F27C,
+  dtor 0x0048F6B0, not ported); `GoalStopListening` stands in for its destructor.
+  `JobTakeGoalSaveSlot` (GoalHooks) is the job's goal counter (Job +0x04 top 12 bits).
+* `goals/GoalTypeIds.cpp`: every goal class's type id (slot 3), GoalSet, the penguin goal
+  base and the health monitor / score destructors. The two goal classes with ids 0x22
+  (vtable 0x00B1EDE8) and 0x23 (0x00B1EFD0) are not ported.
