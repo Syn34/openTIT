@@ -222,7 +222,7 @@ void Goal::HandleMessage(const GoalMessage& msg)
     if (msg.id != kMsg_GoalEvent)
         return;
     GameEvent e;
-    WorldObject* sender = reinterpret_cast<WorldObject*>(uintptr_t(msg.sender));
+    WorldObject* sender = static_cast<WorldObject*>(msg.sender);
     InitEvent17(e, sender, msg.arg, 0, 0, 0);
     if (e.type == 0x21)   // NOTE: kept from the console; InitEvent17 never sets it
         return;

@@ -1,5 +1,6 @@
 // openTIT - Goal XML parser (0x00321D3C-0x003248B0).
 #include "sly/game/goals/GoalParser.h"
+#include "sly/game/goals/GoalShootingGallery.h"
 
 #include "ape/core/ApeString.h"
 #include "ape/xml/ApeXml.h"
@@ -171,7 +172,7 @@ const GoalElement kGoalElements[] = {
     {0x224E433F, GoalScore::Create},                // "GoalScore"
     {0x21C65C77, GoalInput::Create},
     {0x1B6E4E1B, GoalFencing::Create},
-    {0x4226626F, CreateShootingGalleryGoal},      // "ShootingGallery"
+    {0x4226626F, GoalShootingGallery::Create},    // "ShootingGallery"
     {0x36610C4F, CreateGoalSet},                  // "GoalSet"
     {0x2DFF7805, GoalBinocucomRecord::Create},
     {0x5F3BC8F0, GoalMarkEntity::Create},
@@ -577,8 +578,6 @@ Goal* CreateGoalSet(XmlElement* xml, const GoalDesc* desc)
 Goal* CreateGoal9E69AF49(XmlElement*, const GoalDesc*) { return nullptr; }
 // TODO(0x003396A8 GoalPenguinMontageGame::Create)
 Goal* CreatePenguinMontageGoal(XmlElement*, const GoalDesc*) { return nullptr; }
-// TODO(0x0033DC0C GoalShootingGallery::Create)
-Goal* CreateShootingGalleryGoal(XmlElement*, const GoalDesc*) { return nullptr; }
 // TODO(0x0033A520 GoalQteGame::Create)
 Goal* CreateQteGoal(XmlElement*, const GoalDesc*) { return nullptr; }
 

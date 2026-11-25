@@ -171,6 +171,10 @@ public:
     int32_t spawnerCount = 0;                   // +0x24
     WorldObject* levelObject = nullptr;         // +0x28
     SpawnPlacement placement = kPlacement_Default; // +0x2C
+    // Second owner callback (+0x30/+0x34). NOTE: its caller is not ported; the
+    // shooting gallery goal installs the same handler in both slots.
+    SpawnCallback onRelease = nullptr;          // +0x30
+    void* onReleaseData = nullptr;              // +0x34
     SpawnCallback onSpawn = nullptr;            // +0x38 NOTE: called by Spawner::NotifyOwner
     void* onSpawnData = nullptr;                // +0x3C
 };
