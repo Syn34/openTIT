@@ -222,6 +222,34 @@ void UnlockJobRewards(uint32_t jobId);
 
 class JobManager {
 public:
+    // Registers itself as the job manager, makes room for 12 episode and
+    // 144 job records and loads "Scripts/Episodes.xml" (0x002DD4FC).
+    JobManager();
+    // Frees the collectible tables and the records (0x002DD604).
+    ~JobManager();
+    JobManager(const JobManager&) = delete;
+    JobManager& operator=(const JobManager&) = delete;
+
+    static constexpr uint32_t kMaxJobs = 12;       // 0x2850 bytes
+    static constexpr uint32_t kMaxEpisodes = 144;  // 0x12D80 bytes
+
+    // Reads the episode list: movie unlockables, movie entries, the
+    // entity index table and every <Episode file=...> (0x002DCDD0).
+    void Load(const char* path);
+    // Reads one episode file into the next record; the slot counters hand
+    // out the bottle, mask and treasure word indices (0x002DB968).
+    void LoadEpisode(const char* path, uint8_t* bottleSlot, uint8_t* maskSlot, uint8_t* treasureSlot,
+                     bool active);
+    // Loads the running job's script files into the shared job library
+    // unless it already holds scripts (0x002DD898); 0x002DDA54 empties the
+    // library first.
+    void LoadJobScripts();
+    void ReloadJobScripts();
+    // Masks collected over every active record (0x002DDC5C).
+    int CountCollectedMasks() const;
+    // The current record, else the first non-debug record that lists the
+    // running level (0x002DDD24).
+    Job* CurrentEpisode() const;
     // 0x35C-byte record whose id (+0x2D4) is `id`, or null (0x002DABCC).
     Job* FindJobById(uint32_t id) const;
     // Its index, or -1.
@@ -292,7 +320,8 @@ private:
     void ResetRunningJob();
 };
 
-// 0x002DDAB0: cleans up the running job (outside this range).
+// TODO(0x002DDAB0 JobManager::ClearGoals): removes every goal of the
+// player's goal list and clears the tracked goal.
 void JobManagerCleanup(JobManager* manager);
 // 0x0045C7A8 on a local player's block (game world +0x1070 + i * 0x20C80).
 void PlayerResetJobState(int player);
@@ -319,10 +348,28 @@ Goal* PlayerGoalAt(uint32_t index);
 
 // Sets the unlock flag of the unlockable whose key is `key` (0x002E2874).
 void UnlockByKey(uint32_t key);
+// Movie unlockable (<MovieUnlockable>, 0x70 bytes).
+struct Unlockable {
+    char movieName[0x20] = {};       // +0x00
+    char movieFile[0x40] = {};       // +0x20
+    uint32_t key = 0;                // +0x60 movieFile hash
+    bool defaultUnlocked = false;    // +0x64
+    uint32_t group = 0;              // +0x68 0 cinematic, 1 NOTE: hash 0xF9AB1627
+    int32_t index = -1;              // +0x6C load order
+};
+// Movie entry (element 0x5B5D34CD, 0x28 bytes) keyed by movieFile hash.
+// NOTE: the element and the two integers are not named.
+struct MovieEntry {
+    int32_t field_00 = 0;            // NOTE: attribute 0xBF873E4B
+    int32_t field_04 = 0;            // NOTE: attribute 0x95E16172
+    char text[0x20] = {};            // +0x08
+};
+ape::ApeTSortedMap<MovieEntry*>& MovieEntries();     // 0x010681E4
+// Index of each entity named by the element 0x9A5AAD6E (load order).
+ape::ApeTSortedMap<uint8_t*>& EpisodeEntityIndices(); // 0x010681CC
 // Unlockables (array 0x010681FC, count 0x01068204; key at record +0x60).
 uint32_t UnlockableCount();
 uint32_t UnlockableKey(uint32_t index);
-struct Unlockable;
 Unlockable* UnlockableAt(uint32_t index);
 uint32_t UnlockableGroup(uint32_t index);   // record +0x68
 // Appends the unlockables of `group` to `out` (0x002E6FC0).

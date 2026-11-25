@@ -13,13 +13,10 @@ namespace sly {
 namespace game {
 
 namespace {
-JobManager* g_jobManager = nullptr;
 PlayerProgress g_progressStandIn;
 constexpr uint32_t kNoIndex = 0xFFFFFFFFu;
 } // namespace
 
-JobManager* GetJobManager() { return g_jobManager; }
-void SetJobManager(JobManager* manager) { g_jobManager = manager; }
 PlayerProgress& CurrentProgress() { return g_progressStandIn; }
 PlayerProgress& ProfileProgress(uint8_t) { return g_progressStandIn; }
 uint32_t PlayerGoalCount() { return 0; }
@@ -30,10 +27,6 @@ void JobManagerCleanup(JobManager*) {}
 void PlayerResetJobState(int) {}
 void GameWorldSetState(int, int) {}
 void GameWorldSetStateData(uint32_t, uint32_t) {}
-uint32_t UnlockableCount() { return 0; }
-uint32_t UnlockableKey(uint32_t) { return 0; }
-Unlockable* UnlockableAt(uint32_t) { return nullptr; }
-uint32_t UnlockableGroup(uint32_t) { return 0; }
 bool CurrentLevelJobValue(uint32_t*) { return false; }
 void TargetingSetEnabled(void*, bool) {}
 
