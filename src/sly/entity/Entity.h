@@ -255,8 +255,15 @@ public:
     char name[0x20] = {};                    // 0x38
     char* field_80 = nullptr;                // 0x80 NOTE: owned buffer, contents unknown
     ape::ApeTArray<SpawnAttachmentDesc>* attachments = nullptr;   // 0x88
+    // 0x08: world object the definition was made from (its geometry gives
+    // the default bounds). NOTE: filled by the definition loader (not ported).
+    ape::world::ApeObj* templateObject = nullptr;
 };
 void UnregisterEntityDef(EntityDef* def);
+// Bounds of a definition (EntityDef slot 3 base): its template object's
+// geometry box scaled by the object's scale, a point at the origin without
+// one.
+void EntityDefBaseBounds(const EntityDef* def, ape::Aabb& out);
 // Draws a flash/fade colour (RGBA) over the entity's geometry this frame
 // and over every attached child's (0x000D8F08); `additive` selects the
 // renderer's additive variant (NOTE: the name of the flag is a guess).
@@ -446,6 +453,17 @@ public:
     // -- skeleton ---------------------------------------------------------------
     int FindBone(uint32_t nameHash) const;
     ape::world::ApeSkeletonBone* GetBone(int index) const;
+    // Model transform of bone `bone` of the world object's skeleton (the
+    // identity, or the entity's frame, without one). With `world` it is
+    // carried into world space by the object's transform (unscaled unless
+    // `keepScale`); without a bone the result is then the object's (or the
+    // entity's) transform.
+    ape::Matrix34 BoneTransform(int bone, bool world, bool keepScale) const;
+    // Same for a bone given by name (no bone for 0 or an unknown name).
+    ape::Matrix34 BoneTransformByName(uint32_t boneHash, bool world, bool keepScale) const;
+    // The position projects outside the screen by more than `margin`
+    // (fraction of the screen) on either axis.
+    bool IsOffScreen(float margin) const;
     ape::world::ApeSkeletonBone* GetBoneByName(uint32_t nameHash) const;
 
     // -- misc -------------------------------------------------------------------

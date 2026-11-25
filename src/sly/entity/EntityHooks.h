@@ -12,7 +12,7 @@
 
 #include <cstdint>
 
-namespace ape::world { class ApeObj; }
+namespace ape::world { class ApeObj; struct AglMesh; }
 namespace ape { class ApeAnimScriptInstance; class ApeRefCounted; }
 
 namespace sly {
@@ -167,6 +167,9 @@ void PropertySystemForgetDef(EntityDef* def);
 // NOTE: the render-side callback is 0x005A1584; the part/material mapping
 // needs the mesh and material layouts of the renderer.
 void QueueObjectFlash(ape::world::ApeObj* object, const uint8_t color[4], bool additive);
+// Tint record of a renderer mesh (mesh +0x5C, optional): colour bytes at
+// +0x08 and amount at +0x0C.
+void MeshSetTint(ape::world::AglMesh* mesh, const uint8_t color[4], float amount);
 
 } // namespace entity
 } // namespace sly

@@ -79,8 +79,7 @@ ape::world::ApeObj* Component15Object(EntityComponent* component, uint32_t index
 bool Component03Busy(EntityComponent* component);
 
 // -- world objects ----------------------------------------------------------------
-// Tints every render part of a geometry instance (0x000D6F90): colour bytes
-// at +0x08 and amount at +0x0C of each part's material block.
+// Tints every LOD mesh of a geometry instance (0x000D6F90, Entity.cpp).
 void ObjectSetTint(float amount, ape::world::ApeObj* object, const uint8_t color[4]);
 
 // Instance of a geometry definition (0x005A05E8); `flag` NOTE: meaning unknown.
@@ -267,8 +266,6 @@ void PhysicsCompSetTarget(EntityComponent* component, const ape::Vec3& point);
 // Attaches the entity a spawn produced with the attach record the spawn
 // parameters carry (Entity::AttachChild 0x000D15C0).
 void EntityAttachSpawned(Entity* parent, SpawnParams& params, Entity* child);
-// Base entity definition bounds (EntityDef slot 3, 0x000CB934).
-void EntityDefBaseBounds(const class EntityDef* def, ape::Aabb& out);
 
 } // namespace entity
 } // namespace sly
