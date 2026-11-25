@@ -372,13 +372,37 @@ StringTable* GetGuiStringTable();
 // Game hooks
 // ---------------------------------------------------------------------------
 
-// NOTE: two callbacks the game installs to filter GUI input per pad; the
-// second one has no pad argument. Their exact contract is not known.
-using GuiPadFilter = bool (*)(uint32_t pad, void* userData);
+// Pad input the game reports to the GUI each frame (filled by the pad
+// filter callback).
+struct GuiPadInput {
+    void* userData = nullptr;   // +0x00 the filter's user data
+    uint32_t buttons = 0;       // +0x04 GuiPadButton bits held
+    uint32_t edges = 0;         // +0x08 bits that changed this frame
+    uint32_t flags = 0;         // +0x0C kGuiPadInput_Cursor: 'cursor' is valid
+    float cursor[2] = {};       // +0x10 pointer position, -1..1 on both axes
+};
+enum GuiPadButton : uint32_t {
+    kGuiPad_Up = 0x01, kGuiPad_Down = 0x02, kGuiPad_Left = 0x04, kGuiPad_Right = 0x08,
+    kGuiPad_Button10 = 0x10, kGuiPad_Button20 = 0x20,   // NOTE: GUI events 7 and 8
+    kGuiPad_Cancel = 0x40, kGuiPad_Accept = 0x80,
+    kGuiPad_Start = 0x4000,
+};
+constexpr uint32_t kGuiPadInput_Cursor = 0x30000;
+// Returns false when the pad has nothing for the GUI this frame.
+using GuiPadFilter = bool (*)(uint32_t pad, GuiPadInput* input);
 void SetGuiPadFilter(GuiPadFilter filter, void* userData);
+// Directional focus navigation: enabled flag (0x00F66880) and the direction
+// bits it reacts to (0x00F66888).
+void SetGuiNavigation(bool enabled, uint32_t buttonMask);
+// Per frame GUI update: pad focus and button events, script players and
+// the object animations.
+void UpdateGui(float dt);
 // GUI events are reported to one handler the game installs. The event
-// carries a type (1, 2 and 0x10 are sent by the game's menu code), a pad
-// index, the handler's user data, the object concerned and one argument.
+// carries a type, a pad index, the handler's user data, the object
+// concerned and one argument. Types sent by the GUI: 1 focus gained, 2
+// focus lost, 3 may-take-focus query, 4 focus moved by direction, 5 accept,
+// 6 cancel, 7 and 8 (two more buttons), 9 start, 10/11 right/left; script
+// message steps send any of these.
 struct GuiEvent {
     uint32_t type;      // +0x00
     uint32_t pad;       // +0x04
