@@ -38,6 +38,17 @@ public:
     virtual bool Reload() { return true; }
 };
 
+// Follow-camera settings of a character definition (vtable 0x00B14108;
+// the settings sit at +0x10).
+class CameraSettingsBlock : public TunableBlock {
+public:
+    // The Camera.Default.* values except the field-of-view rate, the
+    // heading rate and the look-ahead mode, which keep their own (0x00119C00).
+    void LoadDefaults() override;
+
+    camera::CameraSettings settings;   // +0x10
+};
+
 // Damage settings of a character (vtable 0x00B0DB6C, Entity.Character.Damage.*).
 class DamageSettings : public TunableBlock {
 public:
@@ -315,8 +326,7 @@ public:
     uint8_t dropSettings[0x10] = {};   // 0x1C0 NOTE: contents unknown
     TunableBlock block_2D0;         // 0x2D0
     TunableBlock block_304;         // 0x304
-    TunableBlock cameraBlock;       // 0x3E0 (settings at +0x10)
-    camera::CameraSettings cameraSettings;   // 0x3F0
+    CameraSettingsBlock cameraBlock;   // 0x3E0 (settings at +0x3F0)
     TunableBlock block_470;         // 0x470
     TunableBlock block_510;         // 0x510
     uint32_t abilityBits[4] = {};   // 0x550 abilities the character starts with

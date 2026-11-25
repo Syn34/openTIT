@@ -129,6 +129,20 @@ void Entity::SetTint(float amount, const uint8_t color[4], bool immediate)
     }
 }
 
+// -- camera settings block --------------------------------------------------------
+
+// @func 0x00119C00 CameraSettingsBlock::LoadDefaults
+void CameraSettingsBlock::LoadDefaults()
+{
+    const float fovInterp = settings.fovInterp;
+    const int32_t lookAheadVelMode = settings.lookAheadVelMode;
+    const float headingMaxRate = settings.headingMaxRate;
+    settings.LoadDefaults();
+    settings.fovInterp = fovInterp;
+    settings.lookAheadVelMode = lookAheadVelMode;
+    settings.headingMaxRate = headingMaxRate;
+}
+
 // -- definition -------------------------------------------------------------------
 
 // @func 0x0011F010 CharacterDef::GetBounds
