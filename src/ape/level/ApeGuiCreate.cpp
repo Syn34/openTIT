@@ -416,12 +416,6 @@ ApeGuiObject* CreateGuiObject(xml::XmlDocument* doc, xml::XmlElement* element, A
 
 namespace ape {
 
-// TODO(0x004DCC04 CreateGuiTicker)
-ApeGuiObject* CreateGuiTicker(xml::XmlDocument*, xml::XmlElement*, const GuiObjectDesc&, ApeGuiObject*)
-{
-    return nullptr;
-}
-
 // TODO(0x004D9DA0 CreateGuiTile)
 ApeGuiObject* CreateGuiTile(xml::XmlDocument*, xml::XmlElement*, const GuiObjectDesc&, ApeGuiObject*)
 {
