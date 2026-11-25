@@ -72,6 +72,7 @@ int32_t InteractionUsers(EntityComponent* interaction) { (void)interaction; retu
 Entity* CharacterCarried(Entity* character) { (void)character; return nullptr; }
 uint32_t PlayerBlockValue10D8(uint32_t player) { (void)player; return 0; }
 bool ActorCanInteractWith(Entity* actor, Entity* other, int kind) { (void)actor; (void)other; (void)kind; return true; }
+void GroupRecordSetCounter(void* record, uint32_t counter) { (void)record; (void)counter; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }

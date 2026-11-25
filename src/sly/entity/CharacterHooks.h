@@ -182,6 +182,8 @@ void AddPlayerScore(uint32_t player, int points);
 // The active minigame forgets a figure of that model (0x003DE47C).
 void MinigameFigureRemoved(uint32_t model);
 
+// Word +0x14 of an actor group member's record takes the group counter.
+void GroupRecordSetCounter(void* record, uint32_t counter);
 // Interaction component: the entity interacting (+0x40) and the number of
 // interactions in progress (+0x44).
 Entity* InteractionUser(EntityComponent* interaction);
