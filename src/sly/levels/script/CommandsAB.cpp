@@ -174,7 +174,8 @@ SeqDialogPagesScriptCommand::SeqDialogPagesScriptCommand(XmlElement* element)
     element->GetBool(kAttrPagesFlag0, &m_flag0, m_flag0);
 }
 
-// NOTE: the destructors live at 0x0074xxxx (outside this range).
+// @func 0x007417F8 SeqDialogPagesScriptCommand::~SeqDialogPagesScriptCommand
+// @func 0x00741828 SeqDialogPagesScriptCommand::~SeqDialogPagesScriptCommand (deleting)
 SeqDialogPagesScriptCommand::~SeqDialogPagesScriptCommand() = default;
 
 // @func 0x000A2028 SeqDialogPagesScriptCommand::Create
@@ -515,7 +516,8 @@ SeqActorQteCommand::SeqActorQteCommand(XmlElement* element)
     element->GetFloat(kAttrQte34, &m_value34, m_value34);
 }
 
-// NOTE: the destructors live at 0x0074xxxx (outside this range).
+// @func 0x0073FFF8 SeqActorQteCommand::~SeqActorQteCommand
+// @func 0x00741AC4 SeqActorQteCommand::~SeqActorQteCommand (deleting)
 SeqActorQteCommand::~SeqActorQteCommand() = default;
 
 // @func 0x000A33C4 SeqActorQteCommand::Create
@@ -599,7 +601,8 @@ private:
 // @func 0x000A3688 SeqEntityStateCommand::SeqEntityStateCommand
 SeqEntityStateCommand::SeqEntityStateCommand() = default;
 
-// NOTE: the destructors live at 0x0074xxxx (outside this range).
+// @func 0x00741B9C SeqEntityStateCommand::~SeqEntityStateCommand
+// @func 0x00741BCC SeqEntityStateCommand::~SeqEntityStateCommand (deleting)
 SeqEntityStateCommand::~SeqEntityStateCommand() = default;
 
 // @func 0x000A3700 SeqEntityStateCommand::Create

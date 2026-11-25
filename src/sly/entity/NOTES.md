@@ -74,3 +74,15 @@
 * `Entity::Release` (0x000D74C0), `SetScriptState`, script start helpers (EntityScripts.cpp)
   and the instance render list (`AddToInstanceRenderList`, 0x000D6614; the console list
   holds components, the port reuses the kList_C pointer vector).
+
+## Default virtual slots (agent1, 0x00737xxx/0x00743xxx/0x00747xxx)
+* `Entity`, `ScriptedEntity`, `EntityDef`, `ScriptedEntityDef`, the two listener interfaces,
+  `TunableBlock`/`DamageSettings`, `Character` (slots 89-96) and `ActorEntity` gained their
+  console default slots. Slots whose callers are not ported keep numbered names
+  (`Slot9`, `DefSlot4`, ...). `Entity::GetRenderObject` returns null like the base on the
+  console (only characters answer an object).
+* `ActorVariants.h` / `ActorEntities.h`: destructors and the four interface thunks of the
+  actor variants, the sound actor subclasses and InteractivePropC are tagged.
+* Not done: Entity slot 36 overrides of RigidProp-like classes (they return their rigid
+  body, which contradicts the slot name), PushBlock's destructor (members not modelled),
+  the ActorDef subclasses without port classes (vtables 0x00B152C8.. 0x00B188C0).

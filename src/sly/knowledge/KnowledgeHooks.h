@@ -3,6 +3,8 @@
 // field or virtual slot it stands for.
 #pragma once
 
+#include "ape/math/ApeMath.h"
+
 #include <cstdint>
 
 namespace ape { class ApeLevelDef; }
@@ -82,6 +84,19 @@ void SkinRequestFire(EntityComponent* skin);
 // Locator (object def +0xD0 +0x6C, 0x005848CC) or bone (0x000D14DC) named
 // `name` exists on the entity.
 bool EntityHasAttachPoint(Entity* entity, uint32_t name);
+
+// A melee attack an AI character starts against its target: the AI manager
+// remembers it as an attack sighting (0x0001B8C0, record of 0x50 bytes).
+// Field names follow the sighting offsets; their meaning is not decoded.
+struct MeleeAttackParams {
+    float field_30 = 0.0f;       // rule field 1 (NOTE: radius, after the Link error text)
+    float field_3C = 0.0f;       // rule field 2
+    float field_40 = 0.0f;       // rule field 3
+    ape::Vec3 offset{};          // rule fields 4-6, from the attach bone
+    uint32_t field_34 = 0;       // rule field 7
+    uint32_t field_38 = 0;       // rule field 8
+};
+void AIAddMeleeAttack(Entity* attacker, Entity* target, uint32_t bone, const MeleeAttackParams& params);
 
 } // namespace knowledge
 } // namespace sly

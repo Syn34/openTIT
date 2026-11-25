@@ -8,6 +8,7 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
 #include "sly/game/goals/Goal.h"
+#include "sly/game/hud/HudManager.h"
 
 namespace sly {
 namespace game {
@@ -19,11 +20,10 @@ constexpr uint32_t kNoIndex = 0xFFFFFFFFu;
 
 PlayerProgress& CurrentProgress() { return g_progressStandIn; }
 PlayerProgress& ProfileProgress(uint8_t) { return g_progressStandIn; }
-uint32_t PlayerGoalCount() { return 0; }
-Goal* PlayerGoalListAt(uint32_t) { return nullptr; }
+uint32_t PlayerGoalCount() { return g_game ? g_game->goals.Count() : 0; }
+Goal* PlayerGoalListAt(uint32_t index) { return index < PlayerGoalCount() ? g_game->goals[index] : nullptr; }
 uint32_t LiveJobId() { return 0; }
 int GameWorldState(int) { return 0; }
-void JobManagerCleanup(JobManager*) {}
 void PlayerResetJobState(int) {}
 void GameWorldSetState(int, int) {}
 void GameWorldSetStateData(uint32_t, uint32_t) {}
@@ -204,7 +204,7 @@ void JobManager::FlushPendingRequest()
 void JobManager::ResetRunningJob()
 {
     constexpr uint32_t kSharedScriptLibrary = 0x7719A548u;
-    JobManagerCleanup(this);
+    ClearGoals();
     if (ape::ApeAnimScriptLibrary* library = ape::ApeAnimScriptLibrary::Get(kSharedScriptLibrary))
         library->Clear();
     instance = nullptr;
@@ -372,6 +372,32 @@ Goal* PlayerGoalAt(uint32_t index)
     if (index == kNoIndex || index >= PlayerGoalCount())
         return nullptr;
     return PlayerGoalListAt(index);
+}
+
+// @func 0x002DDAB0 JobManager::ClearGoals
+void JobManager::ClearGoals()
+{
+    constexpr uint32_t kFlag_ClearingGoals = 1u << 30;
+    flags |= kFlag_ClearingGoals;
+    if (g_game) {
+        ape::ApeTArray<Goal*>& list = g_game->goals;
+        while (list.Count() != 0) {
+            Goal* goal = list[0];
+            goals::GoalProgress progress;
+            if (goal->GetStatus() == goals::kGoal_Active && goal->GetProgress(&progress))
+                hud::ShowByName(progress.name, true, true, false);   // hides its counter
+            goal->ResetHints(true);
+            delete goal;
+            // The list keeps its order: later goals move up one place.
+            for (uint32_t i = 1; i < list.Count(); ++i)
+                list[i - 1] = list[i];
+            list.PopBack();
+        }
+        list.Clear();
+        g_game->jobStateBits &= 0x000FFFFFu;
+    }
+    flags &= ~kFlag_ClearingGoals;
+    trackedGoal = nullptr;
 }
 
 } // namespace game

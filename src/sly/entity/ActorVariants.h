@@ -15,6 +15,13 @@ void ActorHandleMessageBase(ActorEntity* actor, const EntityMessage& msg);
 // destructor 0x00751314).
 class ActorGroup : public ActorEntity {
 public:
+    // @func 0x00751314 ActorGroup::~ActorGroup
+    // @func 0x0075140C ActorGroup::~ActorGroup (deleting)
+    // @func 0x0075184C ActorGroup::~ActorGroup (thunk, +0x17C)
+    // @func 0x00751638 ActorGroup::~ActorGroup (deleting thunk, +0x17C)
+    // @func 0x00751750 ActorGroup::~ActorGroup (thunk, +0x180)
+    // @func 0x00751520 ActorGroup::~ActorGroup (deleting thunk, +0x180)
+    ~ActorGroup() override = default;
     // @func 0x001AA5E0 ActorGroup::Release
     bool Release(bool kill) override { return ActorEntity::Release(kill); }
     // A hurt member plays its second slot state and enters state 1.
@@ -34,6 +41,13 @@ public:
 // Counts hits from players (vtable 0x00B15550; destructor 0x00751AA4).
 class HitCounterActor : public ActorEntity {
 public:
+    // @func 0x00751AA4 HitCounterActor::~HitCounterActor
+    // @func 0x00751B5C HitCounterActor::~HitCounterActor (deleting)
+    // @func 0x00751E90 HitCounterActor::~HitCounterActor (thunk, +0x17C)
+    // @func 0x00751D00 HitCounterActor::~HitCounterActor (deleting thunk, +0x17C)
+    // @func 0x00751DD4 HitCounterActor::~HitCounterActor (thunk, +0x180)
+    // @func 0x00751C2C HitCounterActor::~HitCounterActor (deleting thunk, +0x180)
+    ~HitCounterActor() override = default;
     // @func 0x001ABAF8 HitCounterActor::Release
     bool Release(bool kill) override { return ActorEntity::Release(kill); }
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
@@ -50,6 +64,13 @@ public:
 // destructor 0x00751FD4).
 class WatchActor : public ActorEntity {
 public:
+    // @func 0x00751FD4 WatchActor::~WatchActor
+    // @func 0x0075208C WatchActor::~WatchActor (deleting)
+    // @func 0x007523C0 WatchActor::~WatchActor (thunk, +0x17C)
+    // @func 0x00752230 WatchActor::~WatchActor (deleting thunk, +0x17C)
+    // @func 0x00752304 WatchActor::~WatchActor (thunk, +0x180)
+    // @func 0x0075215C WatchActor::~WatchActor (deleting thunk, +0x180)
+    ~WatchActor() override = default;
     // @func 0x001ACA78 WatchActor::Release
     bool Release(bool kill) override { return ActorEntity::Release(kill); }
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
@@ -60,6 +81,13 @@ public:
 // Plays a state when told to (vtable 0x00B15C20; destructor 0x007526AC).
 class SignalActor : public ActorEntity {
 public:
+    // @func 0x007526AC SignalActor::~SignalActor
+    // @func 0x00752764 SignalActor::~SignalActor (deleting)
+    // @func 0x00752A98 SignalActor::~SignalActor (thunk, +0x17C)
+    // @func 0x00752908 SignalActor::~SignalActor (deleting thunk, +0x17C)
+    // @func 0x007529DC SignalActor::~SignalActor (thunk, +0x180)
+    // @func 0x00752834 SignalActor::~SignalActor (deleting thunk, +0x180)
+    ~SignalActor() override = default;
     // @func 0x001B06CC SignalActor::Release
     bool Release(bool kill) override { return ActorEntity::Release(kill); }
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
@@ -70,6 +98,13 @@ public:
 // vtable 0x00B15E60 (destructor 0x00752CB0).
 class ActorB15E60 : public ActorEntity {
 public:
+    // @func 0x00752CB0 ActorB15E60::~ActorB15E60
+    // @func 0x00752D68 ActorB15E60::~ActorB15E60 (deleting)
+    // @func 0x0075309C ActorB15E60::~ActorB15E60 (thunk, +0x17C)
+    // @func 0x00752F0C ActorB15E60::~ActorB15E60 (deleting thunk, +0x17C)
+    // @func 0x00752FE0 ActorB15E60::~ActorB15E60 (thunk, +0x180)
+    // @func 0x00752E38 ActorB15E60::~ActorB15E60 (deleting thunk, +0x180)
+    ~ActorB15E60() override = default;
     // @func 0x001B2A1C ActorB15E60::Release
     bool Release(bool kill) override { return ActorEntity::Release(kill); }
 };
@@ -78,6 +113,13 @@ public:
 // destructor 0x00753C08).
 class ScriptObjectActor : public ActorEntity {
 public:
+    // @func 0x00753C08 ScriptObjectActor::~ScriptObjectActor
+    // @func 0x00753CC0 ScriptObjectActor::~ScriptObjectActor (deleting)
+    // @func 0x00753FF4 ScriptObjectActor::~ScriptObjectActor (thunk, +0x17C)
+    // @func 0x00753E64 ScriptObjectActor::~ScriptObjectActor (deleting thunk, +0x17C)
+    // @func 0x00753F38 ScriptObjectActor::~ScriptObjectActor (thunk, +0x180)
+    // @func 0x00753D90 ScriptObjectActor::~ScriptObjectActor (deleting thunk, +0x180)
+    ~ScriptObjectActor() override = default;
     // Drops the script's held object and plays the release state.
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
     // Only player interaction, and only in mode 1 (+0x188 >> 1).
@@ -89,6 +131,13 @@ public:
 // vtable 0x00B17990 (destructor 0x00756154).
 class ActorB17990 : public ActorEntity {
 public:
+    // @func 0x00756154 ActorB17990::~ActorB17990
+    // @func 0x0075620C ActorB17990::~ActorB17990 (deleting)
+    // @func 0x00756540 ActorB17990::~ActorB17990 (thunk, +0x17C)
+    // @func 0x007563B0 ActorB17990::~ActorB17990 (deleting thunk, +0x17C)
+    // @func 0x00756484 ActorB17990::~ActorB17990 (thunk, +0x180)
+    // @func 0x007562DC ActorB17990::~ActorB17990 (deleting thunk, +0x180)
+    ~ActorB17990() override = default;
     bool Release(bool kill) override;                 // slot 10
     // Slot 11: back to state 1, offering nothing.
     void ResetState() override;

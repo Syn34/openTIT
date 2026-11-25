@@ -101,6 +101,20 @@ public:
     // @func 0x0076A800 ApeTArray<T>::Add (copy 1)
     // @func 0x0076A914 ApeTArray<T>::Add (copy 2)
     // @func 0x0076AF44 ApeTArray<T>::Add (copy 3)
+    // @func 0x00733964 ApeTArray<T>::Add (copy 4, 0xC0-byte elements)
+    // @func 0x007450E4 ApeTArray<T>::Add (copy 5, 0xF0-byte elements)
+    // @func 0x00745564 ApeTArray<T>::Add (copy 6, 0xA0-byte elements)
+    // @func 0x00745720 ApeTArray<T>::Add (copy 7, 0xA0-byte elements)
+    // @func 0x0075C8F4 ApeTArray<T>::Add (copy 8, 0x160-byte elements)
+    // @func 0x0075EBFC ApeTArray<T>::Add (copy 9, 0x80-byte elements)
+    // @func 0x0075FF20 ApeTArray<T>::Add (copy 10, 0x90-byte elements)
+    // @func 0x007617C0 ApeTArray<T>::Add (copy 11, 0x100-byte elements)
+    // @func 0x0076A618 ApeTArray<T>::Add (copy 12, 0x90-byte elements)
+    // @func 0x0076AD3C ApeTArray<T>::Add (copy 13, 0x30-byte elements)
+    // @func 0x0076E400 ApeTArray<T>::Add (copy 14, 0xE0-byte elements)
+    // @func 0x0076E704 ApeTArray<T>::Add (copy 15, 0x140-byte elements)
+    // @func 0x0077AF70 ApeTArray<T>::Add (copy 16, 0x80-byte elements)
+    // @func 0x00788A00 ApeTArray<T>::Add (copy 17, 0x80-byte elements)
     uint32_t Add(const T& value)
     {
         PushBack(value);
@@ -109,11 +123,28 @@ public:
 
     // Removes element i by moving the last element into its place.
     // @func 0x0076AE8C ApeTArray<T>::RemoveAtSwap (copy 1, 0x20-byte elements)
+    // @func 0x00735874 ApeTArray<T>::RemoveAtSwap (copy 2, 0x20-byte elements)
+    // @func 0x00735A20 ApeTArray<T>::RemoveAtSwap (copy 3, 8-byte elements)
+    // @func 0x00735D10 ApeTArray<T>::RemoveAtSwap (copy 4, 0x70-byte elements)
+    // @func 0x0074534C ApeTArray<T>::RemoveAtSwap (copy 5, 0xF0-byte elements)
+    // @func 0x0074E2FC ApeTArray<T>::RemoveAtSwap (copy 6, 0x10-byte elements)
+    // @func 0x0076E5A8 ApeTArray<T>::RemoveAtSwap (copy 7, 0xE0-byte elements)
+    // @func 0x0076E8F4 ApeTArray<T>::RemoveAtSwap (copy 8, 0x140-byte elements)
     void RemoveAtSwap(size_t i)
     {
         --m_count;
         if (i != m_count)
             Data()[i] = Data()[m_count];
+    }
+
+    // Removes element i keeping the order of the others.
+    // @func 0x00755C34 ApeTArray<T>::RemoveAt (copy 1, 8-byte elements)
+    // @func 0x0075DC24 ApeTArray<T>::RemoveAt (copy 2, 4-byte elements)
+    void RemoveAt(size_t i)
+    {
+        for (size_t j = i; j + 1 < m_count; ++j)
+            Data()[j] = Data()[j + 1];
+        --m_count;
     }
 
     // Index of the last element equal to value, or -1.

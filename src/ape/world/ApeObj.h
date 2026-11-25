@@ -88,8 +88,9 @@ public:
     virtual void DetachChild(ApeObj* child);
     // @func 0x007A9918 ApeObj::GetSkeleton
     virtual ApeSkeleton* GetSkeleton() { return nullptr; }
-    // @func 0x007A9920 ApeObj::VirtualSlot8
-    virtual void VirtualSlot8() {}
+    // Slot 8: records the frame the object was drawn in (render objects only).
+    // @func 0x007A9920 ApeObj::SetFrameStamp
+    virtual void SetFrameStamp(uint32_t stamp) { (void)stamp; }
     // Pushes the world bounding sphere to the render node.
     virtual void OnBoundsChanged();
     virtual void SetVisible(bool visible, bool recurse);

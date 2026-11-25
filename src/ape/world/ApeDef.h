@@ -112,6 +112,7 @@ public:
     }
 
     // Constructs a definition in pooled storage.
+    // @func 0x007A71A4 ApeTDefList<ApeGeomDef>::Create
     static T* Create()
     {
         void* storage = ApeTListAllocator<T>::GetAllocator().Alloc();
@@ -144,6 +145,7 @@ public:
     }
     static void DestroyErased(void* def) { Destroy(static_cast<T*>(def)); }
 
+    // @func 0x0077CEBC ApeTDefList<ApeCameraDef>::Find
     static T* Find(uint32_t nameHash) { return static_cast<T*>(*Map().Find(nameHash)); }
 
 private:

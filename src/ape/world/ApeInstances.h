@@ -89,7 +89,8 @@ public:
     void SetShadowParams(uint32_t unused, uint32_t a, uint32_t b, bool recurse);
     void SetLodField(uint32_t value);
     bool IsDrawnThisFrame() const;
-    void SetFrameStamp(uint32_t stamp) { m_frameStamp[g_renderWriteBuffer & 1] = stamp; }
+    // @func 0x007A99F8 ApeRenderObj::SetFrameStamp
+    void SetFrameStamp(uint32_t stamp) override { m_frameStamp[g_renderWriteBuffer & 1] = stamp; }
     void RemoveFromDynamicList();
     bool IsDynamic() const { return (m_flags141 & 0x02) != 0; }
     uint8_t GetDrawMode() const { return m_drawMode; }
@@ -140,6 +141,13 @@ public:
     {
         GetInstanceMap(T::kInstanceType).Add(obj->GetNameHash(), obj);
         obj->SetRegistered(true);
+    }
+    // Registered instance of the name, or null.
+    // @func 0x00772838 ApeTInstanceList<ApePointInstance>::Find
+    // @func 0x0074D21C ApeTInstanceList<ApeSplineInstance>::Find
+    static T* Find(uint32_t nameHash)
+    {
+        return static_cast<T*>(*GetInstanceMap(T::kInstanceType).Find(nameHash));
     }
     // @func 0x005A1CE0 ApeTInstanceList<ApeGeomInstance>::Destroy
     // @func 0x005A1E94 ApeTInstanceList<ApeGeomInstance>::Destroy (thunk)

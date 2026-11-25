@@ -35,7 +35,8 @@ public:
     ~CharacterSpawner() override;
 
     void Reset() override;
-    bool IsCharacterSpawner() const override { return true; }   // 0x00739870 (shared "return 1")
+    // @func 0x00739870 CharacterSpawner::IsCharacterSpawner
+    bool IsCharacterSpawner() const override { return true; }
     const char* SpawnDefName() const override;
     const char* SpawnObjectName() const override;
 

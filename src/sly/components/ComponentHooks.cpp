@@ -58,5 +58,25 @@ entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* roo
     return levels::ai::ParseBossGrizzComponentDesc(root, elem, scope);
 }
 
+// TODO(0x00250F40 / 0x000EDE30): weapon muzzle and projectile spawning live
+// with the skin component and the entity module.
+void SkinWeaponMuzzle(entity::EntityComponent*, ape::Matrix34&, uint32_t) {}
+uint32_t SkinActiveWeaponSlot(entity::EntityComponent*) { return 0; }
+entity::Entity* SpawnWeaponProjectile(float, entity::EntityDef*, entity::Entity*, const ape::Matrix34&,
+                                      const ape::Vec3&, const ape::Matrix34&)
+{
+    return nullptr;
+}
+// TODO(0x00F8F154): the level's point instance list is not ported.
+void* FindPointInstance(uint32_t) { return nullptr; }
+const ape::Matrix34& PointInstanceTransform(void*)
+{
+    static const ape::Matrix34 kIdentity{};
+    return kIdentity;
+}
+// TODO(0x001CF620 / 0x001CF690): turret entity aiming (other range).
+void TurretAimAt(entity::Entity*, const ape::Vec3&) {}
+bool TurretIsAimed(entity::Entity*) { return true; }
+
 } // namespace components
 } // namespace sly

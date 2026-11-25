@@ -20,9 +20,7 @@ bool s_coreRunning = false;          // 0x01164880
 plat::Mutex s_coreMutex;             // 0x01164CD8
 uint32_t s_profileChunkSize = 0;     // 0x01164E48
 
-// Root chunks of every engine data file. NOTE: these handlers live at
-// 0x007A50B4..0x007A5284, outside this module's range; they are written out
-// here (untagged) because the core init registers them.
+// Root chunks of every engine data file.
 constexpr uint32_t kFormChunk = iff::MakeId('F', 'O', 'R', 'M');
 constexpr uint32_t kPlatformChunk = iff::MakeId('P', 'L', 'A', 'T');
 constexpr uint32_t kProfileChunk = iff::MakeId('P', 'R', 'O', 'F');
@@ -31,12 +29,14 @@ constexpr uint32_t kProfileNameChunk = iff::MakeId('P', 'R', 'F', 'N');
 constexpr uint32_t kRootChunkFlags = 0x18;
 
 // "FORM": a container; its children are parsed in place.
+// @func 0x007A50B4 FormChunkHandler
 int FormChunkHandler(iff::IffReader* reader, void* arg)
 {
     return reader->ParseChunks(arg) ? 1 : 0;
 }
 
 // "PLAT": three platform bytes; marks the file as written for this platform.
+// @func 0x007A50D4 PlatformChunkHandler
 int PlatformChunkHandler(iff::IffReader* reader, void*)
 {
     uint8_t version = 0, platform = 0, variant = 0;
@@ -48,18 +48,22 @@ int PlatformChunkHandler(iff::IffReader* reader, void*)
 }
 
 // "PROF": a profiling section; remembers its size and parses it.
+// @func 0x007A5208 ProfileChunkHandler
 int ProfileChunkHandler(iff::IffReader* reader, void* arg)
 {
     s_profileChunkSize = reader->GetChunkSize();
     return reader->ParseChunks(arg) ? 1 : 0;
 }
 
+// @func 0x007A527C ProfileEndChunkHandler
 int ProfileEndChunkHandler(iff::IffReader*, void*)
 {
     return 1;
 }
 
-// "PRFN": profile name, skipped.
+// "PRFN": profile name, skipped. NOTE: the console reads the whole rest of
+// the chunk into a 0x400-byte stack buffer at once; it is read in pieces here.
+// @func 0x007A5284 ProfileNameChunkHandler
 int ProfileNameChunkHandler(iff::IffReader* reader, void*)
 {
     uint8_t buffer[0x400];

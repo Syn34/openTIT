@@ -77,8 +77,13 @@ public:
 // Actor base (0x00B12898 + 0x00B12A44/0x00B12A6C at +0x17C/+0x180).
 class ActorEntity : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
-    // The console's out-of-line destructor is 0x007476B0 (not in this range);
-    // derived classes inline it.
+    // Derived classes inline it.
+    // @func 0x007476B0 ActorEntity::~ActorEntity
+    // @func 0x00747764 ActorEntity::~ActorEntity (deleting)
+    // @func 0x00747A88 ActorEntity::~ActorEntity (thunk, +0x17C)
+    // @func 0x00747900 ActorEntity::~ActorEntity (deleting thunk, +0x17C)
+    // @func 0x007479D0 ActorEntity::~ActorEntity (thunk, +0x180)
+    // @func 0x00747830 ActorEntity::~ActorEntity (deleting thunk, +0x180)
     ~ActorEntity() override { delete field_184; }
     // Minimal versions of 0x000E4720 / 0x000E4544 / 0x000E7730 (entity module).
     bool Update(float dt) override { return ScriptedEntity::Update(dt); }
@@ -136,10 +141,12 @@ public:
     bool InteractionBegin(Entity* user) override;              // slot 62
 };
 
-// Definition of SearchlightActor (vtable 0x00B18230; destructor outside this
-// range, stand-in).
+// Definition of SearchlightActor (vtable 0x00B18230; stand-in).
 class SearchlightDef : public ActorDef {
 public:
+    // @func 0x00757308 SearchlightDef::~SearchlightDef
+    // @func 0x00757338 SearchlightDef::~SearchlightDef (deleting)
+    ~SearchlightDef() override = default;
     uint8_t interactionNeeds[6] = {};   // 0x12E per interaction kind
     ape::Vec3 cameraOffset{};           // 0x140 camera position relative to the light
     ape::Vec4 field_150{};              // 0x150 NOTE: read by the spotlight camera constructor
@@ -187,10 +194,17 @@ public:
 };
 
 // Interactive prop with two phantoms (vtable 0x00B17DF8; destructor
-// 0x00756758 outside this range). NOTE: its definition is the class at
+// 0x00756758). NOTE: its definition is the class at
 // 0x00B17DB0, which ActorEntities.h calls InteractivePropADef.
 class InteractivePropC : public ActorEntity {
 public:
+    // @func 0x00756758 InteractivePropC::~InteractivePropC
+    // @func 0x00756810 InteractivePropC::~InteractivePropC (deleting)
+    // @func 0x00756B44 InteractivePropC::~InteractivePropC (thunk, +0x17C)
+    // @func 0x007569B4 InteractivePropC::~InteractivePropC (deleting thunk, +0x17C)
+    // @func 0x00756A88 InteractivePropC::~InteractivePropC (thunk, +0x180)
+    // @func 0x007568E0 InteractivePropC::~InteractivePropC (deleting thunk, +0x180)
+    ~InteractivePropC() override = default;
     bool Release(bool kill) override;                 // slot 10
     void InteractionEnd(bool completed) override;     // slot 64: cancels
     // Offers interaction kind 0 to everyone.
@@ -296,9 +310,16 @@ public:
 };
 
 // Sound actor with a two-way switch (vtable 0x00B16678; destructor
-// 0x0075420C outside this range).
+// 0x0075420C).
 class SoundActorB16678 : public SoundActor {
 public:
+    // @func 0x0075420C SoundActorB16678::~SoundActorB16678
+    // @func 0x0075424C SoundActorB16678::~SoundActorB16678 (deleting)
+    // @func 0x007543E0 SoundActorB16678::~SoundActorB16678 (thunk, +0x17C)
+    // @func 0x00754328 SoundActorB16678::~SoundActorB16678 (deleting thunk, +0x17C)
+    // @func 0x00754398 SoundActorB16678::~SoundActorB16678 (thunk, +0x180)
+    // @func 0x007542B8 SoundActorB16678::~SoundActorB16678 (deleting thunk, +0x180)
+    ~SoundActorB16678() override = default;
     // The class carries its own copy of SoundActor::Release (0x001BF794).
     bool Release(bool kill) override;
     bool AdvanceTo2(float elapsed, float duration) override;   // only while armed
@@ -316,9 +337,16 @@ public:
     uint8_t switchFlags = 0;       // 0x23C bit 3 armed, bit 6 refresh pending
 };
 
-// vtable 0x00B168E0 (destructor 0x0075458C outside this range).
+// vtable 0x00B168E0 (destructor 0x0075458C).
 class SoundActorB168E0 : public SoundActor {
 public:
+    // @func 0x0075458C SoundActorB168E0::~SoundActorB168E0
+    // @func 0x007545CC SoundActorB168E0::~SoundActorB168E0 (deleting)
+    // @func 0x00754760 SoundActorB168E0::~SoundActorB168E0 (thunk, +0x17C)
+    // @func 0x007546A8 SoundActorB168E0::~SoundActorB168E0 (deleting thunk, +0x17C)
+    // @func 0x00754718 SoundActorB168E0::~SoundActorB168E0 (thunk, +0x180)
+    // @func 0x00754638 SoundActorB168E0::~SoundActorB168E0 (deleting thunk, +0x180)
+    ~SoundActorB168E0() override = default;
     bool AdvanceTo2(float elapsed, float duration) override;   // only while armed
     bool AdvanceTo3(float elapsed, float duration) override;
     bool AdvanceTo5(float elapsed, float duration) override;   // not while armed
@@ -327,9 +355,16 @@ public:
 };
 
 // Sound actor with six phantom-tracked entities (vtable 0x00B16DB0;
-// destructor 0x00754B74 outside this range).
+// destructor 0x00754B74).
 class SoundActorB16DB0 : public SoundActor {
 public:
+    // @func 0x00754B74 SoundActorB16DB0::~SoundActorB16DB0
+    // @func 0x00754BB4 SoundActorB16DB0::~SoundActorB16DB0 (deleting)
+    // @func 0x00754D48 SoundActorB16DB0::~SoundActorB16DB0 (thunk, +0x17C)
+    // @func 0x00754C90 SoundActorB16DB0::~SoundActorB16DB0 (deleting thunk, +0x17C)
+    // @func 0x00754D00 SoundActorB16DB0::~SoundActorB16DB0 (thunk, +0x180)
+    // @func 0x00754C20 SoundActorB16DB0::~SoundActorB16DB0 (deleting thunk, +0x180)
+    ~SoundActorB16DB0() override = default;
     bool Release(bool kill) override;
     // Both wait while something occupies the actor, depending on flag bit 29.
     bool AdvanceTo2(float elapsed, float duration) override;
@@ -356,9 +391,16 @@ public:
 };
 
 // Like SoundActorB16DB0 with the records at +0x22C (vtable 0x00B17008;
-// destructor 0x00754E18 outside this range).
+// destructor 0x00754E18).
 class SoundActorB17008 : public SoundActor {
 public:
+    // @func 0x00754E18 SoundActorB17008::~SoundActorB17008
+    // @func 0x00754E58 SoundActorB17008::~SoundActorB17008 (deleting)
+    // @func 0x00754FEC SoundActorB17008::~SoundActorB17008 (thunk, +0x17C)
+    // @func 0x00754F34 SoundActorB17008::~SoundActorB17008 (deleting thunk, +0x17C)
+    // @func 0x00754FA4 SoundActorB17008::~SoundActorB17008 (thunk, +0x180)
+    // @func 0x00754EC4 SoundActorB17008::~SoundActorB17008 (deleting thunk, +0x180)
+    ~SoundActorB17008() override = default;
     bool Release(bool kill) override;
     bool AdvanceTo2(float elapsed, float duration) override;
     bool AdvanceTo5(float elapsed, float duration) override;
@@ -371,10 +413,17 @@ public:
     Tracked tracked[6];            // 0x22C
 };
 
-// vtable 0x00B17728 (destructor 0x00755374 outside this range): the
+// vtable 0x00B17728 (destructor 0x00755374): the
 // sequence only advances from slot 6 back to 1.
 class SoundActorB17728 : public SoundActor {
 public:
+    // @func 0x00755374 SoundActorB17728::~SoundActorB17728
+    // @func 0x007553B4 SoundActorB17728::~SoundActorB17728 (deleting)
+    // @func 0x00755548 SoundActorB17728::~SoundActorB17728 (thunk, +0x17C)
+    // @func 0x00755490 SoundActorB17728::~SoundActorB17728 (deleting thunk, +0x17C)
+    // @func 0x00755500 SoundActorB17728::~SoundActorB17728 (thunk, +0x180)
+    // @func 0x00755420 SoundActorB17728::~SoundActorB17728 (deleting thunk, +0x180)
+    ~SoundActorB17728() override = default;
     bool Release(bool kill) override;
     // The first update looks the attached entity up by name.
     bool Update(float dt) override;                   // slot 4

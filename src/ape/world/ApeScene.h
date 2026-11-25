@@ -58,11 +58,15 @@ protected:
     ApeTArray<void*> m_loadedObjects;   // 0x44
 };
 
-// The level scene class (console vtable 0x00B24770). NOTE: its destructors
-// (0x007A9BDC/0x007A9D48) are outside this module's range.
+// The level scene class (console vtable 0x00B24770). Its query virtuals are
+// not ported.
 class ApeLevelScene : public ApeScene {
 public:
     using ApeScene::ApeScene;
+    // Adds nothing to the scene destructor (the console has its own copy).
+    // @func 0x007A9BDC ApeLevelScene::~ApeLevelScene
+    // @func 0x007A9D48 ApeLevelScene::~ApeLevelScene (deleting)
+    ~ApeLevelScene() override = default;
 };
 
 // Creates a level scene and prepares the global load state for parsing its
