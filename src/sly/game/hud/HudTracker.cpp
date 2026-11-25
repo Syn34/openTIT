@@ -35,12 +35,6 @@ ape::world::ApeObj* FindSceneChild(ape::world::ApeObj* root, uint32_t name)
     return anim::FindDescendant(root, name);
 }
 
-void SetScriptState(HudObject* element, uint32_t state)
-{
-    if (element->animScript)
-        static_cast<ape::ApeAnimScriptInstance*>(element->animScript)->SetStateAndUpdate(state);
-}
-
 } // namespace
 
 // @func 0x0035A3A0 HudTracker::HudTracker
@@ -97,13 +91,13 @@ void HudTracker::Update(float dt)
         if (HudClipDone(animController)) {
             animState = (animState & 1u) | (2u << 1);
             PlayHudClip(animController, idleAnim, 1.0f, false);
-            SetScriptState(this, kHudStateNames[3]);
+            SetScriptState(kHudStateNames[3]);
         }
     } else if (state == 2) {
         if (HudClipDone(animController)) {
             animState = (animState & 1u) | (3u << 1);
             PlayHudClip(animController, outroAnim, 1.0f, false);
-            SetScriptState(this, kHudStateNames[4]);
+            SetScriptState(kHudStateNames[4]);
         }
     } else if (state == 3) {
         if (HudClipDone(animController))

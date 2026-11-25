@@ -35,6 +35,8 @@ agl::AglMaterial* GeomFindMaterial(ape::world::ApeObj* geom, uint32_t name);
 // 0x0046B5F8 on the game world: `callback(owner, context)` runs on world
 // callback list `list` later this frame.
 void QueueWorldCallback(int list, void* callback, void* context, entity::Entity* owner);
+// 0x0046B7A4 on the game world: takes `callback(owner, context)` off list `list`.
+void DequeueWorldCallback(int list, void* callback, void* context, entity::Entity* owner);
 // IK component update (0x002934E0) and vortex pull (0x002B0B10) are not ported.
 
 // -- HUD markers ---------------------------------------------------------------------

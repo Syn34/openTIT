@@ -93,3 +93,10 @@ hashing the executable's strings and word pairs. Hashes with no match keep a
   (state machine embedded at +0x50; the per-state handlers are TODO). `ControlSlot16` is now
   `ButtonForAction`. The pad controllers' Update functions (0x0027C478, 0x0027E508, 0x0027FCB8)
   are TODO (vector code / bad instruction data).
+
+## FacePlayer (agent3)
+* `FacePlayer.*`: component type 0x16 (vtable 0x00B1C730): ctor 0x0025C090, PostUpdate
+  0x0028F588, SetOption 0x00290190, ResetFacing 0x00290084, ApplyToPart 0x002901E0 and its
+  world callback 0x002908EC. The six anim script state hashes it sets while turning are unnamed.
+  The forward default 0x01164B70 is assumed (0,0,1). When the stepped facing degenerates the
+  console fills all three components with the old z (kept).
