@@ -161,6 +161,18 @@ public:
     void SetActive(bool active) override;            // slot 44 (0x00124598)
     void SetRenderId(uint32_t id) override;          // slot 26 (0x00124A04)
 
+    // Hit reactions (slots 83-87) and damage (slot 88).
+    void OnHitCategory0(EntityHitRecord& hit) override;   // physics impact
+    void OnHitCategory1(EntityHitRecord& hit) override;   // melee
+    void OnHitCategory2(EntityHitRecord& hit) override;   // blast
+    void OnHitCategory3(EntityHitRecord& hit) override;   // environment
+    void OnHitCategory4(EntityHitRecord& hit) override;   // projectile
+    bool Damage(float amount, Entity* source, uint32_t type) override;
+    // Friendly-fire test of the hit reactions.
+    bool IsFriendlyHit(const Entity* attacker) const;
+    // Applies a hit's damage, knockback and reaction (0x00125A80, not ported).
+    void ApplyDamage(float amount, Entity* attacker, EntityHitRecord& hit, uint32_t type);
+
     // Counted references at +0x1A4 / +0x1AC (0x00121E8C / 0x00121F10).
     // NOTE: roles unknown; +0x1AC is set by the level AI.
     void SetReference1A4(Entity* entity);

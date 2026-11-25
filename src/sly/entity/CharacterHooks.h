@@ -129,6 +129,26 @@ void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value);
 using WorldCallback = void (*)(void* owner, Entity* entity);
 void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity);
 
+// Who is behind an indirect hit source: the thrower of a thrown object
+// (+0x1AC), the owner of an owned one (+0x188) or the spawner (+0x190).
+enum HitOwnerKind { kHitOwner_Thrower, kHitOwner_Owner, kHitOwner_Spawner };
+Entity* HitSourceOwner(Entity* source, HitOwnerKind kind);
+// A thrown object (type bit 5) whose throw mode (+0x1B0 bits 8-9) is 3 and
+// whose thrower is `entity`.
+bool ThrownBySelf(Entity* thrown, Entity* entity);
+// The other body of a physics impact hit (hit +0x34, a Havok collidable
+// whose owner is a rigid body), its motion type (+0xE8 == 4: keyframed) and mass.
+void* HitOtherBody(const struct EntityHitRecord& hit);
+bool RigidBodyIsKeyframed(void* body);
+float RigidBodyMass(void* body);
+// Statistics of a melee hit taken (0x000B2AE0).
+void RecordMeleeHit(Entity* victim, const struct EntityHitRecord& hit);
+// AI listener byte +0x131 bit 3: the character ignores damage.
+bool ListenerIgnoresDamage(EntityListener* listener);
+// Game world reactions to damage: a player (0x0047BC68) or a tracked NPC (0x0047C1F0).
+void GameWorldPlayerDamaged(uint32_t player);
+void GameWorldNpcDamaged(Entity* entity);
+
 // -- entities ---------------------------------------------------------------------
 // Plays a director script on the entity (0x000DCD20 with 0, 1).
 void EntityPlayDirectorScript(Entity* entity, uint32_t script);

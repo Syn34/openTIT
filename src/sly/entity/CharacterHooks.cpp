@@ -1,7 +1,7 @@
 // openTIT - Stubs for CharacterHooks.h.
 #include "sly/entity/CharacterHooks.h"
 
-#include "sly/game/goals/JobManager.h"
+#include "sly/entity/EntityHits.h"
 
 namespace sly {
 namespace entity {
@@ -35,6 +35,15 @@ void ListenerOnDropped(EntityListener* listener, const uint8_t* dropSettings) { 
 void ObjectApplyAlphaBuffer(ape::world::ApeObj* object, const void* buffer, uint8_t alpha) { (void)object; (void)buffer; (void)alpha; }
 void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value) { (void)object; (void)value; }
 void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity) { (void)list; (void)fn; (void)owner; (void)entity; }
+Entity* HitSourceOwner(Entity* source, HitOwnerKind kind) { (void)source; (void)kind; return nullptr; }
+bool ThrownBySelf(Entity* thrown, Entity* entity) { (void)thrown; (void)entity; return false; }
+void* HitOtherBody(const EntityHitRecord& hit) { (void)hit; return nullptr; }
+bool RigidBodyIsKeyframed(void* body) { (void)body; return false; }
+float RigidBodyMass(void* body) { (void)body; return 0.0f; }
+void RecordMeleeHit(Entity* victim, const EntityHitRecord& hit) { (void)victim; (void)hit; }
+bool ListenerIgnoresDamage(EntityListener* listener) { (void)listener; return false; }
+void GameWorldPlayerDamaged(uint32_t player) { (void)player; }
+void GameWorldNpcDamaged(Entity* entity) { (void)entity; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }

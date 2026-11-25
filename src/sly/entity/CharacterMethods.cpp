@@ -16,6 +16,7 @@
 #include "sly/entity/CharacterHooks.h"
 #include "sly/entity/EntityHooks.h"
 #include "sly/entity/GameEntityHooks.h"
+#include "sly/objects/CharacterMoveTuning.h"
 
 #include <algorithm>
 #include <cmath>
@@ -796,6 +797,217 @@ void Character::SetRenderId(uint32_t id)
             RigidBodySetCollisionGroup(body, id);
     }
     Entity::SetRenderId(id);
+}
+
+// -- damage ---------------------------------------------------------------------------------
+
+namespace {
+
+// Damage types handed to ApplyDamage per hit category. NOTE: names unknown;
+// the actor base uses the same values.
+constexpr uint32_t kType_PhysicsImpact = 0x80F43146u;   // category 0
+constexpr uint32_t kType_Melee = 0x045D9554u;           // category 1
+constexpr uint32_t kType_Blast = 0x03C599D8u;           // category 2
+constexpr uint32_t kType_Environment = 0x811B1D5Eu;     // category 3
+constexpr uint32_t kType_Projectile = 0xA77EB5E9u;      // category 4
+// Damage type that posts no "damaged" game event. NOTE: name unknown.
+constexpr uint32_t kType_Silent = 0x20CE2C3Au;
+
+// Hit reactions with their own environment scale. NOTE: names unknown.
+constexpr uint32_t kReaction_Fire = 0x0020EE36u;
+constexpr uint32_t kReaction_Electric = 0x2DA0A51Du;
+constexpr uint32_t kReaction_Poison = 0x8CFF6308u;
+
+// Entity type bits used to find who is behind a hit.
+constexpr uint32_t kType_CharacterBit = 0x08;     // +0xC0 bit 3
+constexpr uint32_t kType_ThrownBit = 0x20;        // +0xC0 bit 5 (owner at +0x1AC)
+constexpr uint32_t kType_OwnedBit = 0x1000;       // +0xC0 bit 12 (owner at +0x188)
+constexpr uint32_t kType_SpawnedBit = 0x04;       // +0xC0 bit 2 (owner at +0x190)
+constexpr uint32_t kType_EnvironmentBit = 0x10000000;   // +0xC0 bit 28: no reaction scaling
+
+// Class bits of the friendly-fire rule.
+constexpr uint64_t kClass_FriendlyFire = 0x20;          // bit 5 on the victim: always full damage
+constexpr uint64_t kClass_HurtsFriends = 0x8000000;     // bit 27 on the attacker
+
+bool IsCharacterEntity(const Entity* entity)
+{
+    return entity && (entity->typeBits[0] & kType_CharacterBit);
+}
+
+// Character responsible for a hit: the source itself, or the character that
+// threw, owns or spawned it.
+Entity* AttackingCharacter(Entity* source)
+{
+    if (!source)
+        return nullptr;
+    Entity* owner = source;
+    const uint32_t type = source->typeBits[0];
+    if (type & kType_ThrownBit)
+        owner = HitSourceOwner(source, kHitOwner_Thrower);
+    else if (type & kType_OwnedBit)
+        owner = HitSourceOwner(source, kHitOwner_Owner);
+    else if (type & kType_SpawnedBit)
+        owner = HitSourceOwner(source, kHitOwner_Spawner);
+    return IsCharacterEntity(owner) ? owner : nullptr;
+}
+
+uint32_t TeamOf(const Entity* entity) { return (entity->flags >> 22) & 3; }
+
+} // namespace
+
+// Friendly fire between characters of one team is scaled down (the
+// Entity.Character.Damage.GlobalFriendly tuning), unless the victim always
+// takes full damage or the attacker always hurts friends.
+bool Character::IsFriendlyHit(const Entity* attacker) const
+{
+    return attacker && TeamOf(this) == TeamOf(attacker) && !(classBits & kClass_FriendlyFire) &&
+           !(attacker->classBits & kClass_HurtsFriends);
+}
+
+// @func 0x00126E04 Character::OnHitCategory0
+// Physics impacts: the impact speed times the scalar of keyframed or of
+// dynamic bodies (by the mass of the body that hit).
+void Character::OnHitCategory0(EntityHitRecord& hit)
+{
+    if (!ReceiveHit(hit))
+        return;
+    void* otherBody = HitOtherBody(hit);
+    if (!otherBody)
+        return;
+    Entity* attacker = AttackingCharacter(hit.source);
+    if (attacker == this)
+        return;
+
+    float amount;
+    if (RigidBodyIsKeyframed(otherBody))
+        amount = hit.data.collision.speed * damage.impactScalarKey;
+    else
+        amount = hit.data.collision.speed * RigidBodyMass(otherBody) * damage.impactScalarDyn;
+    if (attacker && IsFriendlyHit(attacker))
+        amount *= objects::g_characterDamageGlobalFriendly;
+    ApplyDamage(amount, attacker, hit, kType_PhysicsImpact);
+}
+
+// @func 0x00127048 Character::OnHitCategory1
+void Character::OnHitCategory1(EntityHitRecord& hit)
+{
+    if (!ReceiveHit(hit))
+        return;
+    float amount = hit.data.impact.damage * damage.melee;
+    float scale = 1.0f;
+    if (hit.reaction == kReaction_Fire)
+        scale = damage.environmentFire;
+    else if (hit.reaction == kReaction_Electric)
+        scale = damage.environmentElectric;
+
+    Entity* source = hit.source;
+    if (IsCharacterEntity(source)) {
+        // Friendly melee: players hurt their own team only through their
+        // own (non-player) hits, and the friendly scale caps the reaction scale.
+        const bool fromPlayer = (hit.flags & EntityHitRecord::kHit_FromPlayer) != 0;
+        if (TeamOf(this) == TeamOf(source) && (!fromPlayer || TeamOf(this) == 0) &&
+            !(classBits & kClass_FriendlyFire) && !(source->classBits & kClass_HurtsFriends) &&
+            objects::g_characterDamageGlobalFriendly <= scale)
+            scale = objects::g_characterDamageGlobalFriendly;
+        amount *= scale;
+    }
+    if (scale != 0.0f) {
+        ApplyDamage(amount, source, hit, kType_Melee);
+        RecordMeleeHit(this, hit);
+    }
+}
+
+// @func 0x001271D8 Character::OnHitCategory2
+// Blasts: full damage inside the inner radius, falling off to the outer one.
+void Character::OnHitCategory2(EntityHitRecord& hit)
+{
+    if (!ReceiveHit(hit))
+        return;
+    const auto& blast = hit.data.blast;
+    float falloff = 1.0f;
+    if (blast.innerRadius < blast.distance && blast.innerRadius < blast.outerRadius)
+        falloff = (blast.outerRadius - blast.distance) / (blast.outerRadius - blast.innerRadius);
+    float amount = blast.damage * falloff * damage.blast;
+
+    Entity* source = hit.source;
+    Entity* attacker = IsCharacterEntity(source) ? source : nullptr;
+    // A character's own thrown explosive never hurts it.
+    if (source && (source->typeBits[0] & kType_ThrownBit) && ThrownBySelf(source, this))
+        amount = 0.0f;
+    if (attacker && IsFriendlyHit(attacker))
+        amount *= objects::g_characterDamageGlobalFriendly;
+    ApplyDamage(amount, attacker, hit, kType_Blast);
+    hit.flags |= EntityHitRecord::kHit_Fatal;
+}
+
+// @func 0x00127358 Character::OnHitCategory3
+// Environment damage, scaled by the kind of reaction (fire, electricity,
+// poison) unless the source is an environment entity.
+void Character::OnHitCategory3(EntityHitRecord& hit)
+{
+    if (!ReceiveHit(hit))
+        return;
+    Entity* source = hit.source;
+    float scale = 1.0f;
+    if (!source || !(source->typeBits[0] & kType_EnvironmentBit)) {
+        if (hit.reaction == kReaction_Electric)
+            scale = damage.environmentElectric;
+        else if (hit.reaction == kReaction_Fire)
+            scale = damage.environmentFire;
+        else if (hit.reaction == kReaction_Poison)
+            scale = damage.environment * objects::g_characterPoisonDamageRatio;
+        else
+            scale = damage.environment;
+    }
+    float amount = hit.data.knock.amount * scale;
+    if (IsCharacterEntity(source) && TeamOf(this) == TeamOf(source) &&
+        (!(classBits & kClass_FriendlyFire) || scale <= 0.0f) && !(source->classBits & kClass_HurtsFriends))
+        amount *= objects::g_characterDamageGlobalFriendly;
+    ApplyDamage(amount, source, hit, kType_Environment);
+}
+
+// @func 0x001274D4 Character::OnHitCategory4
+void Character::OnHitCategory4(EntityHitRecord& hit)
+{
+    if (!ReceiveHit(hit))
+        return;
+    Entity* source = hit.source;
+    float amount = hit.data.projectile.damage * damage.projectile;
+    if (IsCharacterEntity(source) && IsFriendlyHit(source))
+        amount *= objects::g_characterDamageGlobalFriendly;
+    ApplyDamage(amount, source, hit, kType_Projectile);
+}
+
+// @func 0x001275B8 Character::Damage
+bool Character::Damage(float amount, Entity* source, uint32_t type)
+{
+    if (health <= 0.0f)
+        return false;
+    const bool isPlayer = (classBits & 1) != 0;
+    if (isPlayer && objects::g_cheatInvulnerable) {
+        amount = 0.0f;
+    } else if (!isPlayer && listener) {
+        // AI characters that ignore damage, and neutral ones, take none.
+        if (ListenerIgnoresDamage(listener) || (TeamOf(this) == 0 && !(classBits & kClass_HurtsFriends)))
+            amount = 0.0f;
+    }
+    const bool alive = ScriptedEntity::Damage(amount, source, type);
+    if (amount > 0.0f) {
+        DropCarried(false);
+        if (isPlayer)
+            GameWorldPlayerDamaged(PlayerSlot() & 0xFF);
+        else if (classBits & kClass_400000)
+            GameWorldNpcDamaged(this);
+        if (type != kType_Silent)
+            GameWorldPostEntityEvent(uint8_t(PlayerSlot()), 0x10, this);
+    }
+    return alive;
+}
+
+// TODO(0x00125A80 Character::ApplyDamage)
+void Character::ApplyDamage(float amount, Entity* attacker, EntityHitRecord& hit, uint32_t type)
+{
+    (void)amount; (void)attacker; (void)hit; (void)type;
 }
 
 // -- entity slot overrides ----------------------------------------------------------------
