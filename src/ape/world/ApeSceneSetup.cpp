@@ -217,6 +217,12 @@ void SetupObjectLighting()
     ForEachInstance<ApeEmitterInstance>([](ApeEmitterInstance* obj) { UpdateObjectLightLink(obj); });
 }
 
+// TODO(0x005A5130 SetupCameraInstances) camera instance frustum and look-at
+// set-up after a level load.
+void SetupCameraInstances()
+{
+}
+
 // TODO(0x00596A8C UpdateProcAnims) procedural animation of the render node
 // table on the worker threads, then the per-object node refresh.
 void UpdateProcAnims(int /*phase*/)

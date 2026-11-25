@@ -59,6 +59,9 @@ void ReleaseLightList();
 void UpdateLightLinks();
 void UpdateObjectLightLink(ApeObj* obj);
 
+// Post-load set-up of the camera instances (end of a level load).
+void SetupCameraInstances();
+
 // Passes of the scene load not ported yet (see ApeSceneSetup.cpp).
 void SetupSceneRenderNodes(ApeScene* scene);
 void BuildInstanceBatches();
