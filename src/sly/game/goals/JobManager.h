@@ -348,15 +348,17 @@ public:
     uint32_t field_54 = 0;           // +0x54
     uint32_t pendingRequest[2] = {}; // +0x58
     uint32_t trackedGoalId = 0;      // +0x60 goal to track after loading, 0 = first open goal
-    uint32_t flags = 0;              // +0x64 bit 29: a request is pending
+    uint32_t flags = 0;              // +0x64 bit 29: a request is pending, bit 30: goals being cleared
+
+    // Removes and deletes every goal of the player's goal list (hiding the
+    // HUD counter of an active goal that shows one) and drops the tracked
+    // goal (0x002DDAB0).
+    void ClearGoals();
 
 private:
     void ResetRunningJob();
 };
 
-// TODO(0x002DDAB0 JobManager::ClearGoals): removes every goal of the
-// player's goal list and clears the tracked goal.
-void JobManagerCleanup(JobManager* manager);
 // 0x0045C7A8 on a local player's block (game world +0x1070 + i * 0x20C80).
 void PlayerResetJobState(int player);
 

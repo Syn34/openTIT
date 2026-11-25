@@ -5,6 +5,7 @@
 #include "sly/components/ContextualMarker.h"
 #include "sly/components/DamageSequence.h"
 #include "sly/components/InventoryDescs.h"
+#include "sly/components/MonsterCloset.h"
 #include "sly/components/OffscreenMarker.h"
 #include "sly/components/PulseField.h"
 #include "sly/components/SystemCracker.h"
@@ -54,6 +55,8 @@ EntityComponent* CreateComponent(ComponentDesc* desc)
         return new MagNetComponent(static_cast<MagNetComponentDesc*>(desc));
     case kCompDesc_SpeedBoost:
         return new SpeedBoostComponent(static_cast<SpeedBoostComponentDesc*>(desc));
+    case kCompDesc_MonsterCloset:
+        return new MonsterClosetComponent(static_cast<MonsterClosetComponentDesc*>(desc));
     case kCompDesc_DamageSequence:
         return new DamageSequenceComponent(static_cast<DamageSequenceComponentDesc*>(desc));
     default:
