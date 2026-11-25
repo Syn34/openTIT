@@ -33,7 +33,8 @@ HudObject* FindTyped(uint32_t name, uint32_t type)
 
 } // namespace
 
-uint32_t g_bottleCounterName = 0;
+uint32_t g_bottleCounterName = 0x48A26956u;   // "BottleCounter"
+uint32_t g_busyElementName = 0x39A21479u;
 
 HudManagerState& Hud()
 {
@@ -312,6 +313,39 @@ void HudObject::ShowText(float fade, const char* newText, bool timed, bool flag,
         }
     }
     EnterStack();
+}
+
+// @func 0x003671B0 hud::ShowBusyElement
+void ShowBusyElement()
+{
+    // NOTE: the console does not check that the element exists.
+    HudObject* object = Find(g_busyElementName);
+    if (!object)
+        return;
+    object->stateFlags |= HudObject::kState_Shown | HudObject::kState_Bit18;
+    object->SetActive(true);
+    static const uint8_t kNoTint[4] = {0, 0, 0, 0};
+    object->ShowTimed(-1.0f, nullptr, false, nullptr, kNoTint);
+}
+
+// @func 0x00367290 hud::HideBusyElement
+void HideBusyElement()
+{
+    HudObject* object = Find(g_busyElementName);
+    if (!object)
+        return;
+    object->PlayIntro(false, false);
+    object->stateFlags &= ~HudObject::kState_Shown;
+    object->SetActive(false);
+}
+
+// @func 0x003679C8 hud::ReshowText
+void ReshowText(float fade, HudObject* object, const char* text, bool timed)
+{
+    if (!object || (object->stateFlags & HudObject::kState_Suppressed))
+        return;
+    object->Refresh();
+    object->ShowText(fade, text, timed);
 }
 
 // @func 0x0036341C HudObject::EnterStack

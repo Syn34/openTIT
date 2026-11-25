@@ -140,6 +140,7 @@ public:
     enum StateFlags : uint32_t {
         kState_Suppressed = 0x02000000,   // bit 25: show/hide requests are ignored
         kState_Leaving    = 0x04000000,   // bit 26: outro requested
+        kState_Bit18      = 0x00040000,   // NOTE: set by ShowBusyElement, meaning unknown
         kState_ScriptOk   = 0x00800000,   // bit 23: the anim script took the last state
         kState_AnimOk     = 0x01000000,   // bit 24: the last state animation started
         kState_Bit27      = 0x08000000,
@@ -197,8 +198,16 @@ struct HudManagerState {
 
 HudManagerState& Hud();
 
-// Name of the clue bottle counter element (0x00F64CD4). NOTE: start-up value unknown.
+// Name of the clue bottle counter element (0x00F64CD4, "BottleCounter").
 extern uint32_t g_bottleCounterName;
+// Element shown by ShowBusyElement (0x00F64D44, hash 0x39A21479). NOTE: its
+// name is unknown; the game application shows it around saving/loading.
+extern uint32_t g_busyElementName;
+// 0x003671B0 / 0x00367290: shows / hides that element.
+void ShowBusyElement();
+void HideBusyElement();
+// 0x003679C8: resets an element and shows it with a text (see ShowText).
+void ReshowText(float fade, HudObject* object, const char* text, bool timed);
 
 // The element's object is visible (ApeObj flags bit 15).
 bool ObjectVisible(const ape::world::ApeObj* object);
