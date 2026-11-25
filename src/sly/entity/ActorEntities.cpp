@@ -492,6 +492,103 @@ bool SoundActorB17728::AdvanceWrap(float elapsed, float duration)
     return false;
 }
 
+// -- SoundActorB17270 ---------------------------------------------------------------------
+
+namespace {
+// Alternative slot states of SoundActorB17270. NOTE: names unknown; the
+// plain ones are the slot names.
+constexpr uint32_t kB17270_Slot2Engaged = 0xDBA69E75u;
+constexpr uint32_t kB17270_Slot6Alt = 0x8C7121FCu;
+constexpr float kScriptStep = 1.0f / 60.0f;
+
+bool B17270Waiting(SoundActorB17270* actor, float elapsed, float duration, bool coolDown)
+{
+    return EntityGetState(actor, 1) != 0 || !actor->engaged || (coolDown && actor->coolDown > 0.0f) ||
+           (actor->sequenceFlags & SoundActor::kSeq_Held) || (duration >= 0.0f && elapsed < duration);
+}
+} // namespace
+
+// @func 0x001CF710 SoundActorB17270::AdvanceTo3
+bool SoundActorB17270::AdvanceTo3(float elapsed, float duration)
+{
+    if (B17270Waiting(this, elapsed, duration, true))
+        return true;
+    PlaySlot(3, false);
+    return false;
+}
+
+// @func 0x001CF810 SoundActorB17270::AdvanceTo4
+bool SoundActorB17270::AdvanceTo4(float elapsed, float duration)
+{
+    if (B17270Waiting(this, elapsed, duration, false))
+        return true;
+    PlaySlot(4, true);
+    coolDown = field_2FC;
+    flags357 |= 0x80;
+    return false;
+}
+
+// @func 0x001CF910 SoundActorB17270::AdvanceTo5
+// A negative duration keeps it in slot 4.
+bool SoundActorB17270::AdvanceTo5(float elapsed, float duration)
+{
+    if (EntityGetState(this, 1) != 0 || !engaged || (sequenceFlags & kSeq_Held) || duration < 0.0f ||
+        elapsed < duration)
+        return true;
+    PlaySlot(5, false);
+    flags357 &= ~0x80;
+    return false;
+}
+
+// @func 0x001CFA10 SoundActorB17270::AdvanceTo6
+// Slot 6 is passed through straight to slot 3.
+bool SoundActorB17270::AdvanceTo6(float elapsed, float duration)
+{
+    if (B17270Waiting(this, elapsed, duration, true))
+        return true;
+    PlaySlot(6, false);
+    PlaySlot(3, false);
+    return false;
+}
+
+// @func 0x001CFB38 SoundActorB17270::AdvanceWrap
+// Back to slot 1 only once disengaged.
+bool SoundActorB17270::AdvanceWrap(float elapsed, float duration)
+{
+    if (EntityGetState(this, 1) != 0 || field_355 || engaged || (sequenceFlags & kSeq_Held) ||
+        (duration >= 0.0f && elapsed < duration))
+        return true;
+    PlaySlot(1, false);
+    return false;
+}
+
+// @func 0x001CFC30 SoundActorB17270::SetSlotState
+void SoundActorB17270::SetSlotState(int index, bool immediate)
+{
+    if (index == 2 || index == 6) {
+        if (!animScript)
+            return;
+        uint32_t state;
+        if (index == 2)
+            state = (field_355 && engaged) ? kB17270_Slot2Engaged : kSlotNames[2];
+        else
+            state = field_355 ? kB17270_Slot6Alt : kSlotNames[6];
+        if (animScript->SetState(state) && immediate)
+            animScript->Update(kScriptStep);
+        return;
+    }
+    SoundActor::SetSlotState(index, immediate);
+}
+
+// @func 0x001CFDB0 SoundActorB17270::ResumeSequence
+void SoundActorB17270::ResumeSequence()
+{
+    PlayFrom(savedTime, savedSlot, true);
+    field_355 = false;
+    engaged = false;
+    flags357 &= ~0x80;
+}
+
 // @func 0x001AF40C SoundActor::SetSlotState
 void SoundActor::SetSlotState(int index, bool immediate)
 {

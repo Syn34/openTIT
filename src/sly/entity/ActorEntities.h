@@ -327,7 +327,26 @@ public:
     // Offers interaction kind 2 (bit value 4).
     // @func 0x001CEC84 SoundActorB17270::InteractionOffer
     uint32_t InteractionOffer(int kind, Entity* other) override { (void)kind; (void)other; return 4; }
+    // The sequence only moves while layer 1 is idle and the actor is engaged
+    // (+0x356); slot 2 never advances on its own.
+    // @func 0x001CF700 SoundActorB17270::AdvanceTo2
+    bool AdvanceTo2(float, float) override { return true; }
+    bool AdvanceTo3(float elapsed, float duration) override;
+    bool AdvanceTo4(float elapsed, float duration) override;
+    bool AdvanceTo5(float elapsed, float duration) override;
+    bool AdvanceTo6(float elapsed, float duration) override;
+    bool AdvanceWrap(float elapsed, float duration) override;
+    // Slots 2 and 6 have alternative states while engaged.
+    void SetSlotState(int index, bool immediate) override;
+    // Also disengages.
+    void ResumeSequence() override;
+
+    float field_2FC = 0.0f;                   // 0x2FC copied into the cool-down by slot 4
+    float coolDown = 0.0f;                    // 0x314 slots 3 and 6 wait while positive
     ape::ApeTArray<void*> field_32C;          // 0x32C emptied before it is freed
+    bool field_355 = false;                   // 0x355 NOTE: selects the alternative states
+    bool engaged = false;                     // 0x356
+    uint8_t flags357 = 0;                     // 0x357 bit 7 set by slot 4, cleared by slot 5
 };
 
 // vtable 0x00B174C0 (0x3D0 bytes).
