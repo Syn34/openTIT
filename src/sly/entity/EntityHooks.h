@@ -99,6 +99,11 @@ bool ForwardVisibilityToComponents();
 // Bit 7 of byte +0x140 of component 0x20. NOTE: read as "keep hidden".
 bool ComponentHidesRender(EntityComponent* component);
 
+// Animation controller flag word +0x28 bit 14. NOTE: cleared while the
+// entity is suspended.
+void AnimControllerSetRunning(void* controller, bool running);
+// Global 0x01032148: the physics step is running (hits are deferred).
+bool PhysicsStepInProgress();
 // Animation controllers are deleted through their virtual slot 1.
 void AnimControllerDestroy(void* controller);
 // 0x0048F298 (entity, true): removes the entity from its event listener group.

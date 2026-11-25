@@ -20,6 +20,10 @@ EntityComponent* CreateComponent(ComponentDesc*) { return nullptr; }
 // TODO(0x002BC1E0 CenterComponent::GetOffset)
 ape::Vec3 CenterComponentOffset(EntityComponent*) { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 
+// TODO(anim controller +0x28 bit 14)
+void AnimControllerSetRunning(void*, bool) {}
+// TODO(0x01032148 physics step flag)
+bool PhysicsStepInProgress() { return false; }
 // TODO(0x0046B6CC GameWorld::ForgetEntity)
 void GameWorldForgetEntity(Entity*) {}
 // TODO(watcher slot 74): the watcher classes are not ported.
