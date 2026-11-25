@@ -1,5 +1,6 @@
 // openTIT - Entity layer calls into systems that are not ported yet (see EntityHooks.h).
 #include "sly/entity/EntityHooks.h"
+#include "sly/entity/Entity.h"
 
 #include "ape/anim/ApeAnimScript.h"
 
@@ -20,6 +21,10 @@ EntityComponent* CreateComponent(ComponentDesc*) { return nullptr; }
 // TODO(0x002BC1E0 CenterComponent::GetOffset)
 ape::Vec3 CenterComponentOffset(EntityComponent*) { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 
+// TODO(world object as script reference)
+ape::ApeRefCounted* EntityWorldObjectRef(Entity*) { return nullptr; }
+// TODO(0x000CE688 bone transforms)
+ape::Matrix34 EntityBoneWorldTransform(Entity* entity, uint32_t) { return entity->transform; }
 // TODO(anim controller +0x28 bit 14)
 void AnimControllerSetRunning(void*, bool) {}
 // TODO(0x004705F8 / 0x00470660 / 0x00482D14): game events live in sly/game.

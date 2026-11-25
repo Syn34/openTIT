@@ -1,6 +1,8 @@
 // openTIT - Component hooks (stubs).
 #include "sly/components/ComponentHooks.h"
 
+#include "sly/entity/Entity.h"
+
 #include "sly/levels/ai/AIBossGrizz.h"
 
 namespace sly {
@@ -30,8 +32,11 @@ void MarkerSetColorOverride(void* hudObject, MarkerColorOverride& record, bool e
 void GameWorldForgetColorOverride(MarkerColorOverride&) {}
 void MaterialRelease(void*) {}
 
-// TODO(0x000DCA20 / slot 24 / gadget +0xF4)
-ape::ApeAnimScriptInstance* EntityStartScript(entity::Entity*, ape::ApeAnimScript*) { return nullptr; }
+// TODO(slot 24 / gadget +0xF4)
+ape::ApeAnimScriptInstance* EntityStartScript(entity::Entity* entity, ape::ApeAnimScript* script)
+{
+    return entity ? entity->StartScript(script, 0, true) : nullptr;
+}
 void EntitySetBusy(entity::Entity*, bool) {}
 // NOTE: world objects and script object references are separate classes in the port.
 ape::ApeRefCounted* EntityScriptObject(entity::Entity*) { return nullptr; }
