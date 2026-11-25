@@ -69,8 +69,13 @@ public:
 // Actor base (0x00B12898 + 0x00B12A44/0x00B12A6C at +0x17C/+0x180).
 class ActorEntity : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
-    // The console's out-of-line destructor is 0x007476B0 (not in this range);
-    // derived classes inline it.
+    // Derived classes inline it.
+    // @func 0x007476B0 ActorEntity::~ActorEntity
+    // @func 0x00747764 ActorEntity::~ActorEntity (deleting)
+    // @func 0x00747A88 ActorEntity::~ActorEntity (thunk, +0x17C)
+    // @func 0x00747900 ActorEntity::~ActorEntity (deleting thunk, +0x17C)
+    // @func 0x007479D0 ActorEntity::~ActorEntity (thunk, +0x180)
+    // @func 0x00747830 ActorEntity::~ActorEntity (deleting thunk, +0x180)
     ~ActorEntity() override { delete field_184; }
     // Minimal versions of 0x000E4720 / 0x000E4544 / 0x000E7730 (entity module).
     bool Update(float dt) override { return ScriptedEntity::Update(dt); }
