@@ -185,6 +185,42 @@ void AnimComponent::RefreshLayerSlot(uint32_t anim)
     slot->loops = layer ? layer->OverflowCount() : 0;
 }
 
+// Debug switch 0x0105AE90: clips start without blending.
+static bool s_noAnimBlend = false;
+
+// @func 0x00276EC0 AnimComponent::PlayClip
+bool AnimComponent::PlayClip(float speed, float startTime, float blendTime, float duration, uint32_t clip,
+                             uint32_t animName, bool loop, uint32_t listener)
+{
+    for (uint32_t i = 0; i < soundCount; ++i) {
+        if (sounds[i].tag != animName && animName != ~0u)
+            continue;
+        audio::StopVoice(sounds[i].voice, true);
+        --soundCount;
+        sounds[i] = sounds[soundCount];
+        sounds[soundCount] = AttachedSound{};
+        --i;
+    }
+    auto* binding = controller ? static_cast<anim::HkaAnimationBinding*>(anim::FindAnimClip(clip)) : nullptr;
+    if (!binding)
+        return false;   // NOTE: the console warns with the owner's name
+    if (s_noAnimBlend)
+        blendTime = 0.0f;
+    anim::AnimLayer* layer = controller->FindLayer(animName);
+    if (!layer) {
+        layer = controller->Play(binding, speed, blendTime, startTime, loop, 0);
+    } else {
+        layer->Play(binding, speed, blendTime, startTime, loop);
+    }
+    layer->AttachListener(listener);
+    if (duration > 0.0f) {
+        const float fitted = (layer->Duration() - startTime) / duration;
+        if (anim::AnimLayer* named = controller->FindLayer(animName))
+            named->SetPlaybackSpeed(fitted);
+    }
+    return true;
+}
+
 // @func 0x00298270 AnimComponent::PlayAdditive
 bool AnimComponent::PlayAdditive(uint32_t clip, uint32_t anim, bool loop, uint32_t /*unused*/)
 {
