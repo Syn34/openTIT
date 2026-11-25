@@ -306,6 +306,12 @@ public:
     virtual void ApplyVisibility(bool visible);                    // slot 55 (+0xDC)
     virtual void OnSuspend();                                      // slot 60 (+0xF0)
     virtual void OnResume();                                       // slot 61 (+0xF4)
+    // Slots 62-64 (bases 0x007374A8/B0/B4: true, empty, empty): an
+    // interaction with the entity begins, is cancelled or ends. NOTE: names
+    // from the actors that override them.
+    virtual bool InteractionBegin() { return true; }
+    virtual void InteractionCancel() {}
+    virtual void InteractionEnd(bool completed) { (void)completed; }
     // @func 0x0074705C Entity::GetAnimScript
     virtual void* GetAnimScript() { return nullptr; }              // slot 68 (+0x110)
     // @func 0x007437C0 Entity::InteractionOffer

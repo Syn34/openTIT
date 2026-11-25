@@ -65,6 +65,14 @@ float ScoringValue(EntityComponent* scoring) { (void)scoring; return 0.0f; }
 void ScoringAward(EntityComponent* scoring, int points, bool flag) { (void)scoring; (void)points; (void)flag; }
 void AddPlayerScore(uint32_t player, int points) { (void)player; (void)points; }
 void MinigameFigureRemoved(uint32_t model) { (void)model; }
+void EntitySetStateTime(Entity* entity, uint32_t layer, float time) { (void)entity; (void)layer; (void)time; }
+void InteractionSetOffer(EntityComponent* interaction, uint32_t kinds) { (void)interaction; (void)kinds; }
+Entity* InteractionUser(EntityComponent* interaction) { (void)interaction; return nullptr; }
+int32_t InteractionUsers(EntityComponent* interaction) { (void)interaction; return 0; }
+Entity* CharacterCarried(Entity* character) { (void)character; return nullptr; }
+uint32_t PlayerBlockValue10D8(uint32_t player) { (void)player; return 0; }
+bool ActorCanInteractWith(Entity* actor, Entity* other, int kind) { (void)actor; (void)other; (void)kind; return true; }
+void GroupRecordSetCounter(void* record, uint32_t counter) { (void)record; (void)counter; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }

@@ -42,6 +42,22 @@ struct PropDamageSettings {
     }
 };
 
+// Hit reactions shared by the rigid body entities: the hit is taken
+// (ScriptedEntity::ReceiveHit), `body` (may be null) is pushed and `self`
+// hurt by the category's settings.
+namespace propdamage {
+void Collision(ScriptedEntity& self, const PropDamageSettings& settings, EntityHitRecord& hit);
+void Impact(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit);
+// `positiveOnly`: hurt only when the computed damage is positive
+// (otherwise whenever the scale is).
+void Blast(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit,
+           bool positiveOnly);
+void Environment(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit);
+void Projectile(ScriptedEntity& self, const PropDamageSettings& settings, EntityHitRecord& hit, uint32_t type);
+// Records whether a hit killed the entity in its flags.
+void SetFatal(EntityHitRecord& hit, bool alive);
+} // namespace propdamage
+
 // Base of the scripted entities that own one Havok rigid body built from
 // their definition's collision object (RigidProp, CompoundEntity,
 // AlterEgoEntity, TargetableA/B). Each class has its own copy of the
@@ -64,17 +80,17 @@ protected:
     void ReleaseBody(void* action);
     ape::Vec3 BodyVelocity() const;
     ape::Vec3 BodyMassCenter() const;
-    // The hit reactions: the hit is taken (ScriptedEntity::ReceiveHit), the
-    // body is pushed and the entity hurt by the category's settings.
-    void HitCollision(const PropDamageSettings& settings, EntityHitRecord& hit);
-    void HitImpact(const PropDamageSettings& settings, EntityHitRecord& hit);
-    // `positiveOnly`: hurt only when the computed damage is positive
-    // (otherwise whenever the scale is).
-    void HitBlast(const PropDamageSettings& settings, EntityHitRecord& hit, bool positiveOnly);
-    void HitEnvironment(const PropDamageSettings& settings, EntityHitRecord& hit);
-    void HitProjectile(const PropDamageSettings& settings, EntityHitRecord& hit, uint32_t type);
-    // Records whether a hit killed the entity in its flags.
-    static void SetFatal(EntityHitRecord& hit, bool alive);
+    // The hit reactions with this entity's body (see propdamage).
+    void HitCollision(const PropDamageSettings& settings, EntityHitRecord& hit)
+    { propdamage::Collision(*this, settings, hit); }
+    void HitImpact(const PropDamageSettings& settings, EntityHitRecord& hit)
+    { propdamage::Impact(*this, rigidBody, settings, hit); }
+    void HitBlast(const PropDamageSettings& settings, EntityHitRecord& hit, bool positiveOnly)
+    { propdamage::Blast(*this, rigidBody, settings, hit, positiveOnly); }
+    void HitEnvironment(const PropDamageSettings& settings, EntityHitRecord& hit)
+    { propdamage::Environment(*this, rigidBody, settings, hit); }
+    void HitProjectile(const PropDamageSettings& settings, EntityHitRecord& hit, uint32_t type)
+    { propdamage::Projectile(*this, settings, hit, type); }
 };
 
 // Definition of RigidProp (vtable 0x00B14360, 0x120 bytes).
@@ -201,6 +217,8 @@ public:
 class TargetableDefC : public ScriptedEntityDef {
 public:
     ~TargetableDefC() override;
+    uint8_t field_C4[0x24] = {};       // 0xC4
+    PropDamageSettings damage;         // 0xE8
     uint8_t targetingFlags[6] = {};    // 0x120
     void* collisionShape = nullptr;    // 0x128
 };
@@ -211,6 +229,22 @@ public:
     ~PushBlockDef() override;
     ape::ApeTArray<void*> field_C0;    // 0xC0
     void* collisionShape = nullptr;    // 0xE4
+};
+
+// Push block (vtable 0x00B160A8; spawned by PushBlockDef, destructor
+// 0x00753258 outside this range): a rigid body the player pushes around.
+class PushBlock : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
+public:
+    // Slot 35: linear velocity of the body.
+    virtual ape::Vec3 GetVelocity();
+    // Suspending freezes the body and keeps its velocity for the resume.
+    void OnSuspend() override;                        // slot 60
+    // Kind 0 is refused while the block is locked (+0x248 bit 15), kind 4 always.
+    bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+
+    ape::Vec3 savedVelocity{};          // 0x230
+    void* rigidBody = nullptr;          // 0x240
+    int16_t blockFlags = 0;             // 0x248 bit 15: locked
 };
 
 // Chain definition (vtable 0x00B15150, 0xC0 bytes; derives from the plain
@@ -246,8 +280,28 @@ public:
 // this range).
 class TargetableCBase : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
+    bool Release(bool kill) override;                 // slot 10
+    // Slot 27/28: gravity factor of the body (the parent's link's while attached).
+    virtual float GetGravityFactor();
+    void Detached(float gravityFactor) override;
+    // Slot 35: linear velocity of the body.
+    virtual ape::Vec3 GetVelocity();
+    // Slot 82: some hit category can hurt the entity.
+    virtual bool CanBeDamaged() const;
+    void OnHitCategory2(EntityHitRecord& hit) override;
+    void OnHitCategory3(EntityHitRecord& hit) override;
+    void OnHitCategory4(EntityHitRecord& hit) override;
+    bool Damage(float amount, Entity* source, uint32_t type) override;   // slot 88
+    // Slot 89: damage scale of projectiles.
+    virtual float ProjectileDamageScale() const;
+    // Slot 99: physics state (0x001F9F70, not ported).
+    virtual void SetTargetState(int32_t state, uint32_t arg);
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     const TargetableDefC* Def() const { return static_cast<const TargetableDefC*>(def); }
+
+    void* rigidBody = nullptr;           // 0x1A0
+    uint32_t field_1AC = 0;              // 0x1AC cleared on release
+    uint16_t targetFlags = 0;            // 0x1B0 bit 10: destroyed
 };
 
 class TargetableA;

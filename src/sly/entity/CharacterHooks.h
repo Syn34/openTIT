@@ -128,6 +128,8 @@ void AttachAnimScript(ape::ApeAnimScriptInstance* instance);
 // Player block (game world +0x1070 + player * 0x20C80): the disguise ended
 // (+0x10DC cleared, flag 0x40 of +0x1070 set).
 void PlayerBlockDisguiseEnded(uint32_t player);
+// Time spent in the current state of a layer (the state machine's time array).
+void EntitySetStateTime(Entity* entity, uint32_t layer, float time);
 // Entity virtual slot 52 (+0xD0): motion of the root animation this frame.
 void EntityRootMotionDelta(Entity* entity, ape::Matrix34& out, bool consume);
 // Entity virtual slot 21 (+0x54): takes a new world transform.
@@ -179,6 +181,21 @@ void AddPlayerScore(uint32_t player, int points);
 
 // The active minigame forgets a figure of that model (0x003DE47C).
 void MinigameFigureRemoved(uint32_t model);
+
+// Word +0x14 of an actor group member's record takes the group counter.
+void GroupRecordSetCounter(void* record, uint32_t counter);
+// Interaction component: the entity interacting (+0x40) and the number of
+// interactions in progress (+0x44).
+Entity* InteractionUser(EntityComponent* interaction);
+int32_t InteractionUsers(EntityComponent* interaction);
+// What a character carries (Character +0x1A8).
+Entity* CharacterCarried(Entity* character);
+// Player block value +0x10D8 (game world +0x1070 + player * 0x20C80). NOTE: meaning unknown.
+uint32_t PlayerBlockValue10D8(uint32_t player);
+// Actor base version of CanInteractWith (0x000E7FF0, entity module).
+bool ActorCanInteractWith(Entity* actor, Entity* other, int kind);
+// Interaction component: the interaction kinds it offers (0x00266E6C).
+void InteractionSetOffer(EntityComponent* interaction, uint32_t kinds);
 
 // -- entities ---------------------------------------------------------------------
 // Plays a director script on the entity (0x000DCD20 with 0, 1).

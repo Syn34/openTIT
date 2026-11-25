@@ -7,6 +7,8 @@
 
 #include "sly/entity/EntityHits.h"
 #include "sly/entity/GameEntityHooks.h"
+#include "ape/world/ApeObj.h"
+#include "sly/entity/CharacterHooks.h"
 #include "sly/entity/PhysicsHooks.h"
 
 #include <algorithm>
@@ -40,13 +42,80 @@ ape::Vec3 Scaled(const ape::Vec3& v, float s) { return { v.x * s, v.y * s, v.z *
 
 } // namespace
 
-// -- shared helpers ------------------------------------------------------------------
+namespace propdamage {
 
-void RigidBodyEntity::SetFatal(EntityHitRecord& hit, bool alive)
+void SetFatal(EntityHitRecord& hit, bool alive)
 {
     hit.flags = alive ? uint16_t(hit.flags & ~EntityHitRecord::kHit_Fatal)
                       : uint16_t(hit.flags | EntityHitRecord::kHit_Fatal);
 }
+
+// Collisions hurt above a speed threshold, in proportion to the excess
+// speed, up to a maximum.
+void Collision(ScriptedEntity& self, const PropDamageSettings& settings, EntityHitRecord& hit)
+{
+    if (!self.ReceiveHit(hit) || settings.collisionScale <= 0.0f || settings.collisionMax <= 0.0f)
+        return;
+    const float speed = hit.data.collision.speed;
+    if (speed <= settings.collisionThreshold)
+        return;
+    const float amount = std::min((speed - settings.collisionThreshold) * settings.collisionScale,
+                                  settings.collisionMax);
+    SetFatal(hit, self.Damage(amount, hit.source, kType_PhysicsImpact));
+}
+
+// NOTE: the console's push code of this reaction has undecodable instruction
+// data in the reference; it is written like the blast and environment pushes
+// (against the hit direction).
+void Impact(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit)
+{
+    if (!self.ReceiveHit(hit))
+        return;
+    const float strength = hit.data.impact.push;
+    if (IsPushable(body) && strength != 0.0f && settings.impactPush != 0.0f)
+        RigidBodyApplyImpulse(body, Scaled(hit.data.impact.direction, -strength * settings.impactPush));
+    if (settings.impactScale > 0.0f)
+        SetFatal(hit, self.Damage(hit.data.impact.damage * settings.impactScale, hit.source, kType_Melee));
+}
+
+// Blasts: full effect inside the inner radius, falling off to the outer one.
+void Blast(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit,
+           bool positiveOnly)
+{
+    if (!self.ReceiveHit(hit))
+        return;
+    const auto& blast = hit.data.blast;
+    float falloff = 1.0f;
+    if (blast.innerRadius < blast.distance && blast.innerRadius < blast.outerRadius)
+        falloff = (blast.outerRadius - blast.distance) / (blast.outerRadius - blast.innerRadius);
+    if (IsPushable(body) && blast.force != 0.0f && settings.blastPush > 0.0f)
+        RigidBodyApplyImpulse(body, Scaled(blast.pushDirection, blast.force * settings.blastPush * falloff));
+    const float amount = blast.damage * falloff * settings.blastScale;
+    if (positiveOnly ? amount > 0.0f : settings.blastScale > 0.0f)
+        self.Damage(amount, hit.source, kType_Blast);
+    hit.flags |= EntityHitRecord::kHit_Fatal;
+}
+
+void Environment(ScriptedEntity& self, void* body, const PropDamageSettings& settings, EntityHitRecord& hit)
+{
+    if (!self.ReceiveHit(hit))
+        return;
+    if (IsPushable(body) && hit.data.knock.knockback != 0.0f && settings.environmentPush != 0.0f)
+        RigidBodyApplyImpulse(body, Scaled(hit.vec10, hit.data.knock.knockback * settings.environmentPush));
+    if (settings.environmentScale > 0.0f)
+        SetFatal(hit, self.Damage(hit.data.knock.amount * settings.environmentScale, hit.source, kType_Environment));
+}
+
+void Projectile(ScriptedEntity& self, const PropDamageSettings& settings, EntityHitRecord& hit, uint32_t type)
+{
+    if (!self.ReceiveHit(hit) || settings.projectileScale <= 0.0f)
+        return;
+    SetFatal(hit, self.Damage(hit.data.projectile.damage * settings.projectileScale, hit.source, type));
+}
+
+} // namespace propdamage
+
+// -- shared helpers ------------------------------------------------------------------
 
 void RigidBodyEntity::ReleaseBody(void* action)
 {
@@ -68,68 +137,6 @@ ape::Vec3 RigidBodyEntity::BodyVelocity() const
 ape::Vec3 RigidBodyEntity::BodyMassCenter() const
 {
     return rigidBody ? RigidBodyCenterOfMass(rigidBody) : Position();
-}
-
-// Collisions hurt above a speed threshold, in proportion to the excess
-// speed, up to a maximum.
-void RigidBodyEntity::HitCollision(const PropDamageSettings& settings, EntityHitRecord& hit)
-{
-    if (!ReceiveHit(hit) || settings.collisionScale <= 0.0f || settings.collisionMax <= 0.0f)
-        return;
-    const float speed = hit.data.collision.speed;
-    if (speed <= settings.collisionThreshold)
-        return;
-    const float amount = std::min((speed - settings.collisionThreshold) * settings.collisionScale,
-                                  settings.collisionMax);
-    SetFatal(hit, Damage(amount, hit.source, kType_PhysicsImpact));
-}
-
-// NOTE: the console's push code of this reaction has undecodable instruction
-// data in the reference; it is written like the blast and environment pushes
-// (against the hit direction).
-void RigidBodyEntity::HitImpact(const PropDamageSettings& settings, EntityHitRecord& hit)
-{
-    if (!ReceiveHit(hit))
-        return;
-    const float strength = hit.data.impact.push;
-    if (IsPushable(rigidBody) && strength != 0.0f && settings.impactPush != 0.0f)
-        RigidBodyApplyImpulse(rigidBody, Scaled(hit.data.impact.direction, -strength * settings.impactPush));
-    if (settings.impactScale > 0.0f)
-        SetFatal(hit, Damage(hit.data.impact.damage * settings.impactScale, hit.source, kType_Melee));
-}
-
-// Blasts: full effect inside the inner radius, falling off to the outer one.
-void RigidBodyEntity::HitBlast(const PropDamageSettings& settings, EntityHitRecord& hit, bool positiveOnly)
-{
-    if (!ReceiveHit(hit))
-        return;
-    const auto& blast = hit.data.blast;
-    float falloff = 1.0f;
-    if (blast.innerRadius < blast.distance && blast.innerRadius < blast.outerRadius)
-        falloff = (blast.outerRadius - blast.distance) / (blast.outerRadius - blast.innerRadius);
-    if (IsPushable(rigidBody) && blast.force != 0.0f && settings.blastPush > 0.0f)
-        RigidBodyApplyImpulse(rigidBody, Scaled(blast.pushDirection, blast.force * settings.blastPush * falloff));
-    const float amount = blast.damage * falloff * settings.blastScale;
-    if (positiveOnly ? amount > 0.0f : settings.blastScale > 0.0f)
-        Damage(amount, hit.source, kType_Blast);
-    hit.flags |= EntityHitRecord::kHit_Fatal;
-}
-
-void RigidBodyEntity::HitEnvironment(const PropDamageSettings& settings, EntityHitRecord& hit)
-{
-    if (!ReceiveHit(hit))
-        return;
-    if (IsPushable(rigidBody) && hit.data.knock.knockback != 0.0f && settings.environmentPush != 0.0f)
-        RigidBodyApplyImpulse(rigidBody, Scaled(hit.vec10, hit.data.knock.knockback * settings.environmentPush));
-    if (settings.environmentScale > 0.0f)
-        SetFatal(hit, Damage(hit.data.knock.amount * settings.environmentScale, hit.source, kType_Environment));
-}
-
-void RigidBodyEntity::HitProjectile(const PropDamageSettings& settings, EntityHitRecord& hit, uint32_t type)
-{
-    if (!ReceiveHit(hit) || settings.projectileScale <= 0.0f)
-        return;
-    SetFatal(hit, Damage(hit.data.projectile.damage * settings.projectileScale, hit.source, type));
 }
 
 // -- AlterEgoEntity (vtable 0x00B14968; damage block at definition +0xC8) -------------
@@ -346,6 +353,135 @@ bool CompoundEntity::CanBeDamaged() const { return DamageSettings().CanHurt(); }
 
 // @func 0x00170630 CompoundEntity::ProjectileDamageScale
 float CompoundEntity::ProjectileDamageScale() const { return DamageSettings().projectileScale; }
+
+// -- PushBlock (vtable 0x00B160A8) ----------------------------------------------------
+
+// @func 0x001B8D84 PushBlock::GetVelocity
+ape::Vec3 PushBlock::GetVelocity()
+{
+    return rigidBody ? RigidBodyLinearVelocity(rigidBody) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
+}
+
+// @func 0x001B8DF8 PushBlock::OnSuspend
+void PushBlock::OnSuspend()
+{
+    ScriptedEntity::OnSuspend();
+    savedVelocity = { 0.0f, 0.0f, 0.0f, savedVelocity.pad };
+    if (rigidBody && RigidBodyInWorld(rigidBody)) {
+        const ape::Vec3 velocity = RigidBodyLinearVelocity(rigidBody);
+        savedVelocity = { velocity.x, velocity.y, velocity.z, savedVelocity.pad };
+        RigidBodySetLinearVelocity(rigidBody, { 0.0f, 0.0f, 0.0f, 0.0f });
+    }
+}
+
+// @func 0x001B900C PushBlock::CanInteractWith
+bool PushBlock::CanInteractWith(Entity* other, int kind)
+{
+    if ((kind == 0 && blockFlags < 0) || kind == 4)
+        return false;
+    return Entity::CanInteractWith(other, kind);
+}
+
+// -- TargetableCBase (vtable 0x00B18B48; damage block at definition +0xE8) -----------
+
+namespace {
+// Environment reaction that hurts at full strength. NOTE: name unknown.
+constexpr uint32_t kReaction_FullStrength = 0x04E8CCF7u;
+} // namespace
+
+// @func 0x001FAE1C TargetableCBase::Release
+bool TargetableCBase::Release(bool kill)
+{
+    if (kill) {
+        SetTargetState(4, 0);
+        if (rigidBody) {
+            for (int i = 0; i < RigidBodyConstraintCount(rigidBody); ++i)
+                HavokRelease(RigidBodyConstraint(rigidBody, i));
+            RigidBodyClearUserProperties(rigidBody);
+            HavokRelease(rigidBody);
+            rigidBody = nullptr;
+        }
+        field_1AC = 0;
+    }
+    return ScriptedEntity::Release(kill);
+}
+
+// TODO(0x001F9F70 TargetableCBase::SetTargetState)
+void TargetableCBase::SetTargetState(int32_t state, uint32_t arg) { (void)state; (void)arg; }
+
+// @func 0x001FB770 TargetableCBase::GetGravityFactor
+// NOTE: Entity slot 36 ("GetRenderObject") hands out the physics body here.
+float TargetableCBase::GetGravityFactor()
+{
+    if (attachParent) {
+        const EntityChildLink* link = attachParent->FindChildLink(this);
+        return link ? link->restoreBlend : 0.0f;
+    }
+    void* body = GetRenderObject();
+    return body ? RigidBodyGravityFactor(body) : 0.0f;
+}
+
+// @func 0x001FB804 TargetableCBase::Detached
+void TargetableCBase::Detached(float gravityFactor)
+{
+    if (void* body = GetRenderObject())
+        RigidBodySetGravityFactor(body, gravityFactor);
+    Entity::Detached(gravityFactor);
+}
+
+// @func 0x001FB464 TargetableCBase::GetVelocity
+ape::Vec3 TargetableCBase::GetVelocity()
+{
+    return rigidBody ? RigidBodyLinearVelocity(rigidBody) : ape::Vec3{ 0.0f, 0.0f, 0.0f, 0.0f };
+}
+
+// @func 0x001FB888 TargetableCBase::CanBeDamaged
+bool TargetableCBase::CanBeDamaged() const { return Def()->damage.CanHurt(); }
+
+// @func 0x001FBF80 TargetableCBase::OnHitCategory2
+void TargetableCBase::OnHitCategory2(EntityHitRecord& hit)
+{
+    propdamage::Blast(*this, rigidBody, Def()->damage, hit, false);
+}
+
+// @func 0x001FC200 TargetableCBase::OnHitCategory3
+// Like the standard environment reaction, except that one reaction always
+// hurts at full strength and only positive damage is applied.
+void TargetableCBase::OnHitCategory3(EntityHitRecord& hit)
+{
+    const PropDamageSettings& settings = Def()->damage;
+    if (!ReceiveHit(hit))
+        return;
+    if (rigidBody && RigidBodyMotionType(rigidBody) != 5 && RigidBodyMotionType(rigidBody) != 4 &&
+        hit.data.knock.knockback != 0.0f && settings.environmentPush != 0.0f) {
+        const float s = hit.data.knock.knockback * settings.environmentPush;
+        RigidBodyApplyImpulse(rigidBody, { hit.vec10.x * s, hit.vec10.y * s, hit.vec10.z * s, 0.0f });
+    }
+    const float scale = hit.reaction == kReaction_FullStrength ? 1.0f : settings.environmentScale;
+    const float amount = hit.data.knock.amount * scale;
+    if (amount > 0.0f)
+        propdamage::SetFatal(hit, Damage(amount, hit.source, kType_Environment));
+}
+
+// @func 0x001FC410 TargetableCBase::OnHitCategory4
+void TargetableCBase::OnHitCategory4(EntityHitRecord& hit)
+{
+    propdamage::Projectile(*this, Def()->damage, hit, hit.reaction);
+}
+
+// @func 0x001FC4C8 TargetableCBase::Damage
+bool TargetableCBase::Damage(float amount, Entity* source, uint32_t type)
+{
+    if (amount <= 0.0f)
+        return true;
+    ScriptedEntity::Damage(amount, source, type);
+    if (health == 0.0f)
+        targetFlags |= 0x400;
+    return health > 0.0f;
+}
+
+// @func 0x001FC564 TargetableCBase::ProjectileDamageScale
+float TargetableCBase::ProjectileDamageScale() const { return Def()->damage.projectileScale; }
 
 } // namespace entity
 } // namespace sly
