@@ -1126,6 +1126,16 @@ uint32_t InteractivePropC::InteractionNeeds(int kind, Entity* other)
     return static_cast<const InteractivePropADef*>(def)->interactionFlags[kind];
 }
 
+// @func 0x001E4230 InteractivePropC::GetAimPoint
+ape::Vec3 InteractivePropC::GetAimPoint()
+{
+    const ape::Vec3& o = static_cast<const InteractivePropADef*>(def)->aimOffset;
+    const ape::Matrix34& m = frameObject ? frameObject->GetWorld() : transform;
+    return { m.translation.x + m.xAxis.x * o.x + m.yAxis.x * o.y + m.zAxis.x * o.z,
+             m.translation.y + m.xAxis.y * o.x + m.yAxis.y * o.y + m.zAxis.y * o.z,
+             m.translation.z + m.xAxis.z * o.x + m.yAxis.z * o.y + m.zAxis.z * o.z, 0.0f };
+}
+
 // @func 0x001E411C InteractivePropC::CanInteractWith
 bool InteractivePropC::CanInteractWith(Entity* other, int kind)
 {

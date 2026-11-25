@@ -62,6 +62,7 @@ public:
 class InteractivePropADef : public ActorDef {
 public:
     ~InteractivePropADef() override;
+    ape::Vec3 aimOffset{};              // 0x160 (12 bytes used) aim point, local to the prop's frame
     uint8_t interactionFlags[6] = {};   // 0x170 per interaction kind (InteractivePropC)
     uint32_t bufferSize = 0;        // 0x254
     void* buffer = nullptr;         // 0x258 owned
@@ -230,7 +231,11 @@ public:
     // Player interaction is refused while a single user holds the prop and
     // the asking character does not carry its key object.
     bool CanInteractWith(Entity* other, int kind) override;
+    // Slot 71: the definition's aim offset in the frame of `frameObject`
+    // (or of the prop).
+    ape::Vec3 GetAimPoint() override;
 
+    ape::world::ApeObj* frameObject = nullptr; // 0x1AC
     Entity* keyObject = nullptr;              // 0x1B0
     uint8_t propFlags = 0;                    // 0x1B4 bit 7: anyone may interact
     void* phantomA = nullptr;                 // 0x270
