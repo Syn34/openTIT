@@ -3,6 +3,7 @@
 #include "sly/components/ComponentDescs2.h"
 #include "sly/components/Components.h"
 #include "sly/components/ContextualMarker.h"
+#include "sly/components/ControlComponents.h"
 #include "sly/components/DamageSequence.h"
 #include "sly/components/InventoryDescs.h"
 #include "sly/components/MonsterCloset.h"
@@ -27,6 +28,20 @@ EntityComponent* CreateComponent(ComponentDesc* desc)
     switch (desc->type) {
     case kCompDesc_ContextualMarker:
         return new ContextualMarkerComponent(static_cast<ContextualMarkerComponentDesc*>(desc));
+    case 0x05:
+        return new ControlPlayerComponent(static_cast<ControlComponentDesc*>(desc));
+    case 0x07:
+        return new ControlPassiveComponent(desc);
+    case 0x08:
+        return new ControlScriptedA(desc);
+    case 0x09:
+        return new ControlVehicleComponent(static_cast<ControlComponentDesc*>(desc));
+    case 0x0A:
+        return new ControlScriptedB(desc);
+    case 0x0B:
+        return new ControlRadarComponent(static_cast<ControlComponentDesc*>(desc));
+    case 0x0C:
+        return new ControlScriptedC(desc);
     case kCompDesc_ControlAI:
         return new ControlAIComponent(static_cast<ControlAIComponentDesc*>(desc));
     case kCompDesc_AnimMap:

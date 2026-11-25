@@ -181,16 +181,16 @@ InventoryComponentDesc::~InventoryComponentDesc() = default;
 ControlComponent::~ControlComponent() = default;
 
 // @func 0x00763390 ControlComponent::DataBlockA
-void* ControlComponent::DataBlockA() { return inputFlags; }
+void* ControlComponent::DataBlockA() { return &pressed; }
 
 // @func 0x0076339C ControlComponent::DataBlockB
-void* ControlComponent::DataBlockB() { return input; }
+void* ControlComponent::DataBlockB() { return &input; }
 
 // @func 0x007633A8 ControlComponent::ResetState
-void ControlComponent::ResetState() { std::memset(input, 0, sizeof(input)); }
+void ControlComponent::ResetState() { input = Input(); }
 
-// @func 0x007633CC ControlComponent::ControlSlot16
-int ControlComponent::ControlSlot16() { return 0; }
+// @func 0x007633CC ControlComponent::ButtonForAction
+uint32_t ControlComponent::ButtonForAction(uint32_t) const { return 0; }
 
 // ---------------------------------------------------------------------------
 // Inventory slot descriptions (vtables 0x00B1BE78 base, 0x00B1BEA0 entity,
