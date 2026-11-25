@@ -2180,7 +2180,11 @@ void SprParticleTechnique::End(AglMaterial* material)
 // Material float constant `index`, or 0 when the material has none.
 static float MaterialConstant(const AglMaterial* material, int index)
 {
-    return material->constants ? material->constants[index] : 0.0f;
+    // NOTE: the console reads past short constant blocks; out of range
+    // slots read as 0 here.
+    if (!material->constants || index >= int(material->constantCapacity))
+        return 0.0f;
+    return material->constants[index];
 }
 
 // NOTE: materials whose word 0x78 top nibble is 2 (the default) get 1.0 in
@@ -4353,7 +4357,7 @@ public:
     // @func 0x007AB9AC SlyWater2Class::~SlyWater2Class
     // NOTE: the deleting destructor is 0x007B0034.
     ~SlyWater2Class() override = default;
-    // TODO(0x005D47A0 SlyWater2Class::SelectTechnique)
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
     // TODO(0x005D4198 SlyWater2Class::SetupMaterial)
     SlyWater2Class() : AglShaderClass("SlyWater2") {}
     void CreateTechniques() override;
@@ -4370,7 +4374,7 @@ public:
     // @func 0x007AB9FC SlyWater3Class::~SlyWater3Class
     // NOTE: the deleting destructor is 0x007B00EC.
     ~SlyWater3Class() override = default;
-    // TODO(0x005D62E8 SlyWater3Class::SelectTechnique)
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
     // TODO(0x005D5C80 SlyWater3Class::SetupMaterial)
     SlyWater3Class() : AglShaderClass("SlyWater3") {}
     void CreateTechniques() override;
@@ -4380,6 +4384,58 @@ public:
 void SlyWater3Class::CreateTechniques()
 {
     AddVariants<SlyWater3Technique>(kVariants_SlyWater3, 0, 64, false, kParams_F8AC30);
+}
+
+// Technique of the SlyWater2/3 classes (identical code, different
+// constant slots). Index bits: lights (0x20 + local light count) for lit
+// materials, 4 when texture 2 is not the default normal map, 0x10 when the
+// water is not beyond the view (see below) and one of the wave amplitudes
+// 'waveA'/'waveB' is not zero, 8 with five or more texture layers when not
+// beyond. "Beyond" means the geometry's bounding sphere, grown by material
+// constants 'growA' and 'growB', lies entirely behind the eye. The index
+// is also stored as the item's light mask.
+AglTechnique* SelectWaterTechnique(AglMaterial* material, AglRenderItem* item, int growA, int growB, int waveA,
+                                   int waveB)
+{
+    uint32_t lights = 0;
+    if ((item->material->flags & AglMaterial::kFlag_Lit) && item->lights)
+        lights = uint32_t(item->lights->variant) + 0x20;
+    // NOTE: the console caches default texture 5 in a static per class.
+    const uint32_t normalMap = material->textures[2] != GetDefaultTexture(5) ? 4u : 0u;
+
+    const AglSubMesh* mesh = item->geometry;
+    const ape::Matrix34 world = ItemMatrix(item);
+    const AglViewConstants& view = GetViewConstants();
+    ape::Vec3 eye, direction;
+    ape::Matrix34InvTransformPoint(eye, view.viewRotationT.translation, world);
+    ape::Matrix34InvRotateVector(direction, view.viewRotationT.zAxis, world);
+    const float dx = mesh->boundCenter[0] - eye.x;
+    const float dy = mesh->boundCenter[1] - eye.y;
+    const float dz = mesh->boundCenter[2] - eye.z;
+    const float ahead = -(dz * direction.z + (dy * direction.y + dx * direction.x));
+    const bool beyond =
+        ahead > mesh->boundRadius + MaterialConstant(material, growA) + MaterialConstant(material, growB);
+
+    constexpr float kEpsilon = 1e-5f;
+    const bool waves = !beyond && (std::fabs(MaterialConstant(material, waveA)) >= kEpsilon ||
+                                   std::fabs(MaterialConstant(material, waveB)) >= kEpsilon);
+    uint32_t index = lights | normalMap | (waves ? 0x10u : 0u);
+    if (material->textureCount >= 5 && !beyond)
+        index |= 8;
+    item->lightMask = uint8_t(index);
+    return Pick(material, index & 0xFF);
+}
+
+// @func 0x005D47A0 SlyWater2Class::SelectTechnique
+AglTechnique* SlyWater2Class::SelectTechnique(AglMaterial* material, AglRenderItem* item)
+{
+    return SelectWaterTechnique(material, item, 31, 32, 25, 28);
+}
+
+// @func 0x005D62E8 SlyWater3Class::SelectTechnique
+AglTechnique* SlyWater3Class::SelectTechnique(AglMaterial* material, AglRenderItem* item)
+{
+    return SelectWaterTechnique(material, item, 33, 34, 27, 30);
 }
 
 class ShoDefaultClass : public AglShaderClass {
