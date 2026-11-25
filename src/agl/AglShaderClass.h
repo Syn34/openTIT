@@ -175,6 +175,8 @@ bool AreSlyShadersDisabled();
 // Registered class with the given name hash, following the aliases of
 // retired class names; null if unknown.
 AglShaderClass* FindShaderClass(uint32_t nameHash);
+// The out-of-line lookup game code calls (same result as FindShaderClass).
+AglShaderClass* GetShaderClass(uint32_t nameHash);
 
 // Static class lists (AglShaderClasses.cpp), each terminated by null.
 AglShaderClass* const* GetUnlistedShaderClasses();

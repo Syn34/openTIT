@@ -44,6 +44,8 @@ void Matrix34RotationZ(float radians, Matrix34& out);
 void Matrix34MulRotation(Matrix34& out, const Matrix34& a, const Matrix34& b);
 void Matrix34MulRotationKeepTranslation(Matrix34& out, const Matrix34& a, const Matrix34& b);
 
+// m = pre * m (full affine product: pre is applied first).
+void Matrix34PreMultiply(Matrix34& m, const Matrix34& pre);
 // Multiplies every row (translation included) component-wise by s.
 void Matrix34ScaleColumns(Matrix34& m, const Vec3& s);
 // Scales axis i of the rotation part by s[i].
