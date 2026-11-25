@@ -58,6 +58,8 @@ public:
     void SetState(int newState);
     // Heads for `point` and switches to state 1 (0x000F5E28).
     void SetTargetPoint(const ape::Vec3& point);
+    // Blasts hurt the mine; without health left it enters physics state 4.
+    void OnHitCategory2(EntityHitRecord& hit) override;
     const ProjectileMineDef* Def() const { return static_cast<const ProjectileMineDef*>(def); }
 
     bool armed = false;       // 0x270
