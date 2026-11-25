@@ -3,6 +3,7 @@
 
 #include "agl/AglDisplay.h"
 #include "agl/AglDrawList.h"
+#include "agl/AglPrimitives.h"
 #include "agl/AglRenderTarget.h"
 #include "agl/AglResources.h"
 #include "agl/AglTexture.h"
@@ -51,6 +52,8 @@ agl::AglRenderTarget* s_guiTarget = nullptr;        // 0x00F6684C
 agl::AglRenderTarget* s_gui3dTarget = nullptr;      // 0x00F66850
 agl::AglRenderTarget* s_guiDrawTarget = nullptr;    // 0x00F6688C
 agl::AglDrawList* s_drawListOverride = nullptr;     // 0x00F66890
+agl::AglMaterial* s_fadeMaterial = nullptr;          // 0x00F66854
+agl::AglDebugMesh* s_fadeMesh = nullptr;            // 0x00F6685C
 // NOTE: cleared by ShutdownGui; its use is not known.
 void* s_field_F66884 = nullptr;                     // 0x00F66884
 
@@ -893,6 +896,72 @@ void ShutdownGui()
         s_guiTarget->Release();
         s_guiTarget = nullptr;
     }
+}
+
+namespace {
+
+// Corners of the fade quad in strip order, as screen fractions (0x00AEF460).
+constexpr float kFadeCorners[4][2] = { { 1.0f, 0.0f }, { 0.0f, 0.0f }, { 1.0f, 1.0f }, { 0.0f, 1.0f } };
+constexpr float kFadeDepth = -20.0f;
+
+void FillFadeQuad(agl::AglDrawVertex* vertices)
+{
+    float screen[2];
+    GetGuiScreenSize(screen);
+    for (int i = 0; i < 4; ++i) {
+        agl::AglDrawVertex& v = vertices[i];
+        v.position[0] = kFadeCorners[i][0] * screen[0];
+        v.position[1] = kFadeCorners[i][1] * screen[1];
+        v.position[2] = kFadeDepth;
+        v.uv[0] = kFadeCorners[i][0];
+        v.uv[1] = kFadeCorners[i][1];
+        v.color[0] = g_guiFadeColor.r;
+        v.color[1] = g_guiFadeColor.g;
+        v.color[2] = g_guiFadeColor.b;
+        v.color[3] = g_guiFadeColor.a;
+    }
+}
+
+} // namespace
+
+// @func 0x004D4E28 DrawGui
+void DrawGui(bool draw)
+{
+    if (!draw)
+        return;
+    if (s_fadeMaterial) {
+        agl::AglDrawList& list = GetGuiDrawList();
+        list.SetMaterial(s_fadeMaterial, 0x475549);
+        list.SetWorldMatrix(g_guiViewTransform, 0x475549);
+        agl::AglDrawPrimitive primitive;
+        list.AllocPrimitive(&primitive, (uint8_t)agl::gpu::PrimitiveType::TriangleStrip, 4, 0x475549);
+        FillFadeQuad(primitive.vertices);
+        list.EndPrimitive();
+    }
+    for (ApeGuiObject* object = GuiRootObjects(); object; object = object->nextSibling)
+        object->Draw();
+}
+
+// @func 0x004D5070 SetGuiFadeColor
+void SetGuiFadeColor(xml::Color8 color)
+{
+    g_guiFadeColor = color;
+    if (color.a == 0) {
+        if (s_fadeMaterial) {
+            agl::DestroyDebugMesh(s_fadeMesh);
+            s_fadeMesh = nullptr;
+            s_fadeMaterial->Release();
+            s_fadeMaterial = nullptr;
+        }
+        return;
+    }
+    if (!s_fadeMaterial) {
+        s_fadeMaterial = agl::CreateSpriteMaterial(nullptr);
+        s_fadeMesh = agl::CreateDebugMesh(s_fadeMaterial, 3, 4, 0);
+    }
+    // The mesh keeps the same quad (debug vertex layout).
+    FillFadeQuad(static_cast<agl::AglDrawVertex*>(agl::LockDebugMeshVertices(s_fadeMesh)));
+    agl::UnlockDebugMeshVertices(s_fadeMesh);
 }
 
 // @func 0x004D4104 GetGuiScreenSize

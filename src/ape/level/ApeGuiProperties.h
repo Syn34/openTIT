@@ -84,6 +84,7 @@ struct GuiViewport {
     int16_t x, y, width, height;
 };
 extern GuiViewport g_guiViewport;        // 0x010C2AE8
-extern Matrix34 g_guiViewTransform;      // 0x010C29E0 NOTE: use not identified
+extern Matrix34 g_guiViewTransform;      // 0x010C29E0 world matrix of the screen fade quad
+extern xml::Color8 g_guiFadeColor;       // 0x010C2AD4 colour of the full screen fade (alpha 0: none)
 
 } // namespace ape

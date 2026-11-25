@@ -53,6 +53,8 @@ AglDebugMesh* CreateDebugMesh(AglMaterial* material, int primitiveIndex, uint32_
 void DestroyDebugMesh(AglDebugMesh* mesh);
 // Vertex memory of a debug mesh, marked as being written by the CPU.
 void* LockDebugMeshVertices(AglDebugMesh* mesh);
+// Ends writing the vertices (nothing to do here).
+void UnlockDebugMeshVertices(AglDebugMesh* mesh);
 
 // A unit sphere as one triangle strip of 'rings' x 'segments' quads.
 AglSubMesh* CreateSphereMesh(AglMaterial* material, int rings, int segments);

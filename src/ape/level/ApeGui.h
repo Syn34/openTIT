@@ -408,6 +408,12 @@ bool InitGuiRendering(const int16_t* viewport);
 void DestroyGuiObjects();
 // Shuts the GUI down (objects and the render target).
 void ShutdownGui();
+// Records the GUI into the draw list ('draw' false: nothing): the screen
+// fade quad, then every root object.
+void DrawGui(bool draw);
+// Sets the colour of a quad covering the screen behind the GUI (alpha 0
+// removes it).
+void SetGuiFadeColor(xml::Color8 color);
 // Size of the GUI screen in pixels (the back buffer).
 void GetGuiScreenSize(float out[2]);
 // The draw list GUI objects record into: the override when one is set,
