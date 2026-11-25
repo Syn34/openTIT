@@ -4449,11 +4449,45 @@ public:
     // @func 0x007ABAEC ShoNightBlendClass::~ShoNightBlendClass
     // NOTE: the deleting destructor is 0x007B031C.
     ~ShoNightBlendClass() override = default;
-    // TODO(0x005D8C6C ShoNightBlendClass::SelectTechnique)
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     ShoNightBlendClass() : AglShaderClass("SHO_NightBlend") {}
     void CreateTechniques() override;
 };
+
+// @func 0x005D8C6C ShoNightBlendClass::SelectTechnique
+// Lit items use the lit pairs (4 + local light count). Unlit items pick by
+// opacity (bit 1: opaque) and fog (bit 0: the far side of the geometry's
+// bounding sphere is nearer than the fog start of layer 0; always set for
+// materials without fog). Bit 0 of the final index selects the UV
+// animated variant.
+AglTechnique* ShoNightBlendClass::SelectTechnique(AglMaterial* material, AglRenderItem* item)
+{
+    item->lightMask = 0;
+    uint32_t variant;
+    if ((item->material->flags & AglMaterial::kFlag_Lit) && item->lights) {
+        item->lightMask = 1;
+        variant = uint32_t(item->lights->variant) + 4;
+    } else {
+        bool fogged = false;
+        if (material->flags & AglMaterial::kFlag_40) {
+            const AglSubMesh* mesh = item->geometry;
+            const ape::Matrix34 world = ItemMatrix(item);
+            const float* c = mesh->boundCenter;
+            ape::Vec3 centre = {
+                c[0] * world.xAxis.x + c[1] * world.yAxis.x + c[2] * world.zAxis.x + world.translation.x,
+                c[0] * world.xAxis.y + c[1] * world.yAxis.y + c[2] * world.zAxis.y + world.translation.y,
+                c[0] * world.xAxis.z + c[1] * world.yAxis.z + c[2] * world.zAxis.z + world.translation.z, 0.0f };
+            const ape::Matrix34& view = GetViewConstants().view;
+            const float viewZ = centre.x * view.xAxis.z + centre.y * view.yAxis.z + centre.z * view.zAxis.z +
+                                view.translation.z;
+            const float fogStart = GetViewConstants().fogParams[0][1].x;
+            fogged = fogStart < mesh->boundRadius - viewZ;
+        }
+        variant = (IsTranslucent(item) ? 0u : 2u) | (fogged ? 0u : 1u);
+    }
+    return Pick(material, variant << 1 | (material->anim ? 1u : 0u));
+}
 
 // @func 0x005D8890 ShoNightBlendClass::CreateTechniques
 void ShoNightBlendClass::CreateTechniques()
