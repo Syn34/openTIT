@@ -44,6 +44,9 @@ ape::Vec3 RigidBodyCenterOfMass(void* body);
 void RigidBodySetTransform(void* body, const ape::Matrix34& transform);
 // Wakes the body and, through its constraints, every body linked to it (0x003556AC).
 void RigidBodyWakeConnected(void* body);
+// Clears the halfword +0xA6 of a body when it enters the world.
+// NOTE: the Havok field is not identified.
+void RigidBodyClearHalfA6(void* body);
 // Position of the body (its motion state's transform, +0x120).
 ape::Vec3 RigidBodyPosition(void* body);
 // Drops the game's two user properties of a body (0x0093FED8, keys

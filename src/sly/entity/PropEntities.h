@@ -634,12 +634,14 @@ public:
     float ProjectileDamageScale() const override;     // slot 89
     // Heading (degrees, 0..360) from the entity to a hit position.
     float HeadingTo(const ape::Vec3& point) const;
-    // Slot 99: physics state (0x0016BC0C, not ported).
+    // Slot 99: 6 puts the body into the world, 4 takes it out (forgetting
+    // its contacts), 3 rewinds a shooter camera to the Bentley.
     virtual void SetPropState(int32_t state, uint32_t arg);
     // Slot 100: sets the velocity that brings the body to `target` in `dt`.
     virtual void DriveTowards(const ape::Vec3& target, float dt);
     void* bodyAction = nullptr;              // 0x188
     int32_t propState = 0;                   // 0x18C 6: body active
+    uint32_t field_190[3] = {};              // 0x190 cleared by state 6
     int32_t hitHeading = 0;                  // 0x2E0 degrees
     const PropDamageSettings& DamageSettings() const;
     // Empty overrides of the +0x17C interface's slots 5 and 6.
@@ -664,6 +666,8 @@ public:
     uint32_t skinLevel = 0;        // 0x2D0
     uint32_t skinCount = 0;        // 0x2D8
     uint32_t killCount = 0;        // 0x2EC kills since the last damage
+    uint8_t field_30C = 0;         // 0x30C cleared by state 6
+    uint32_t field_310 = 0;        // 0x310 cleared by state 6
     int32_t score = 0;             // 0x2F0 NOTE: read on the player 0 entity
     int32_t playerIndex = 0;       // 0x304 player this Bentley belongs to
     // Slot 79: the second player's Bentley shares the first player's health.

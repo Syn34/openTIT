@@ -10,6 +10,9 @@
 #include "sly/entity/EntityHits.h"
 #include "sly/entity/GameEntityHooks.h"
 #include "sly/entity/EntityHooks.h"
+#include "ape/world/ApeInstances.h"
+#include "sly/camera/CameraModes.h"
+#include "sly/entity/GameCamera.h"
 #include "sly/entity/PhysicalEntity.h"
 #include "sly/levels/ai/AIController.h"
 #include "sly/levels/nav/NavGraph.h"
@@ -825,8 +828,42 @@ bool CompoundEntity::Release(bool kill)
     return ScriptedEntity::Release(kill);
 }
 
-// TODO(0x0016BC0C CompoundEntity::SetPropState)
-void CompoundEntity::SetPropState(int32_t state, uint32_t arg) { (void)arg; propState = state; }
+// @func 0x0016BC0C CompoundEntity::SetPropState
+void CompoundEntity::SetPropState(int32_t state, uint32_t arg)
+{
+    (void)arg;
+    if (state == propState)
+        return;
+    if (state == 6) {
+        field_30C = 0;
+        field_310 = 0;
+        if (rigidBody && !RigidBodyInWorld(rigidBody) && !(flags & kEnt_80)) {
+            RigidBodyAddToWorld(rigidBody, ~0u);
+            RigidBodyClearHalfA6(rigidBody);
+            if (bodyAction)
+                PhysicsAddAction(bodyAction);
+        }
+        field_190[0] = field_190[1] = field_190[2] = 0;
+        classBits |= 1;
+    } else if (state == 4) {
+        // NOTE: the console also calls slot 15 here and ignores the result.
+        if (rigidBody && RigidBodyInWorld(rigidBody)) {
+            touchingBodies.size = 0;
+            field_208.size = 0;
+            RigidBodyRemoveFromWorld(rigidBody);
+        }
+    } else if (state == 3) {
+        GameCamera* camera = MainGameCamera();
+        camera::CameraMode* mode = camera && camera->modeCount ? camera->modes[camera->modeCount - 1] : nullptr;
+        if (mode && mode->GetType() == camera::kCamMode_Shooter) {
+            auto* shooter = static_cast<camera::ShooterCameraMode*>(mode);
+            shooter->rewindStop = shooter->spline->FindClosestParam(Position(), nullptr, nullptr);
+            shooter->rewinding = true;
+            MinigameTrackRewound();
+        }
+    }
+    propState = state;
+}
 
 namespace {
 // Health within 0..maxHealth (as ScriptedEntity::AddHealth keeps it).

@@ -19,6 +19,7 @@ ape::Vec3 RigidBodyLinearVelocity(void* body) { (void)body; return { 0.0f, 0.0f,
 ape::Vec3 RigidBodyCenterOfMass(void* body) { (void)body; return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 void RigidBodySetTransform(void* body, const ape::Matrix34& transform) { (void)body; (void)transform; }
 void RigidBodyWakeConnected(void* body) { (void)body; }
+void RigidBodyClearHalfA6(void* body) { (void)body; }
 ape::Vec3 RigidBodyPosition(void* body) { (void)body; return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 void RigidBodyClearUserProperties(void* body) { (void)body; }
 void HavokShapeLocalAabb(void* shape, ape::Aabb& out)
