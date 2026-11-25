@@ -72,6 +72,15 @@ public:
     const T* begin() const { return Data(); }
     const T* end() const { return Data() + m_count; }
 
+    // Out-of-line instantiations (most for 4-byte elements):
+    // @func 0x0074E8DC ApeTArray<T>::PushBack (copy 1)
+    // @func 0x00761428 ApeTArray<T>::PushBack (copy 2)
+    // @func 0x00767F94 ApeTArray<T>::PushBack (copy 3)
+    // @func 0x00768020 ApeTArray<T>::PushBack (copy 4)
+    // @func 0x007680AC ApeTArray<T>::PushBack (copy 5)
+    // @func 0x00768138 ApeTArray<T>::PushBack (copy 6)
+    // @func 0x0077214C ApeTArray<T>::PushBack (copy 7)
+    // @func 0x00735530 ApeTArray<T>::PushBack (copy 8, 0x30-byte elements)
     T& PushBack(const T& value)
     {
         if (m_count == m_capacity)
