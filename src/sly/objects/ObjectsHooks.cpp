@@ -195,6 +195,7 @@ SoundZone* FindSoundZone(uint32_t nameHash) { return audio::FindSoundZone(nameHa
 MixState* FindMixState(uint32_t nameHash) { return audio::FindMixState(nameHash); }
 float SoundZoneFadeDistance(const SoundZone* zone) { return zone->fadeDistance; }
 float SoundZoneRadius(const SoundZone* zone) { return zone->radius; }
+float SoundZoneFadeCurve(const SoundZone* zone) { return zone->fadeCurve; }
 void* SoundZoneActiveTrigger(const SoundZone* zone) { return zone->activeTriggers; }
 void SetSoundZoneActiveTrigger(SoundZone* zone, void* trigger) { zone->activeTriggers = trigger; }
 void SoundZoneActivate(SoundZone* zone) { audio::ActivateSoundZone(zone); }
