@@ -27,6 +27,28 @@ const AglGlobalShaderParam kParams_F88B5C[] = {
     { nullptr, 0 },
 };
 
+const AglGlobalShaderParam kParams_F88B7C[] = {
+    { "gvBumpParams", 1 },
+    { "gvIndirectMtx1[0]", 2 },
+    { "gvIndirectMtx1[1]", 3 },
+    { "gvIndirectMtx1[2]", 4 },
+    { "gvIndirectMtx2[0]", 5 },
+    { "gvIndirectMtx2[1]", 6 },
+    { "gvIndirectMtx2[2]", 7 },
+    { "gfBlendAlpha", 8 },
+    { nullptr, 0 },
+};
+
+// Empty table (LineOutline).
+const AglGlobalShaderParam kParams_F88C14[] = {
+    { nullptr, 0 },
+};
+
+const AglGlobalShaderParam kParams_F88C34[] = {
+    { "gvColor", 0 },
+    { nullptr, 0 },
+};
+
 const AglGlobalShaderParam kParams_F88BD4[] = {
     { "gvBumpOffsets[0]", 1 },
     { "gvBumpOffsets[1]", 2 },
@@ -1100,8 +1122,10 @@ public:
 };
 
 class LineOutlineTechnique : public AglTechnique {
-    // TODO(0x005AFAD0 LineOutlineTechnique::Draw)
 public:
+    // @func 0x005AFAD0 LineOutlineTechnique::Draw
+    // Line outlines are drawn by the outline pass, not per item.
+    void Draw(AglRenderItem* /*item*/) override {}
     // @func 0x005AFACC LineOutlineTechnique::BeginMaterial
     void BeginMaterial(AglMaterial* /*material*/) override {}
     // @func 0x007ABB9C LineOutlineTechnique::~LineOutlineTechnique
@@ -2017,6 +2041,7 @@ public:
     ~DebugClass() override = default;
     DebugClass() : AglShaderClass("Debug") {}
     void CreateTechniques() override;
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
 // @func 0x007ABEF4 DebugClass::CreateTechniques
@@ -2024,6 +2049,13 @@ void DebugClass::CreateTechniques()
 {
     AddShader<DebugTechnique>("FlatColor", "FlatColor", nullptr);
     AddShader<DebugTechnique>("FlatColor_SK", "FlatColor", nullptr);
+}
+
+// @func 0x005ADD18 DebugClass::SelectTechnique
+// Skinned geometry uses the "_SK" technique.
+AglTechnique* DebugClass::SelectTechnique(AglMaterial* material, AglRenderItem* item)
+{
+    return Pick(material, item->geometry->skinMatrices ? 1 : 0);
 }
 
 class PrimTxrClass : public AglShaderClass {
@@ -2064,12 +2096,19 @@ public:
     ~SimpleColorTxrClass() override = default;
     SimpleColorTxrClass() : AglShaderClass("SimpleColorTxr") {}
     void CreateTechniques() override;
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
 // @func 0x007AC498 SimpleColorTxrClass::CreateTechniques
 void SimpleColorTxrClass::CreateTechniques()
 {
     AddShader<SimpleColorTxrTechnique>("SimpleColorTxr", "SimpleColorTxr", nullptr);
+}
+
+// @func 0x005AE098 SimpleColorTxrClass::SelectTechnique
+AglTechnique* SimpleColorTxrClass::SelectTechnique(AglMaterial* material, AglRenderItem* /*item*/)
+{
+    return Pick(material, 0);
 }
 
 class SimpleColorTxrUVClass : public AglShaderClass {
@@ -2079,12 +2118,19 @@ public:
     ~SimpleColorTxrUVClass() override = default;
     SimpleColorTxrUVClass() : AglShaderClass("SimpleColorTxrUV") {}
     void CreateTechniques() override;
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
 // @func 0x007AC64C SimpleColorTxrUVClass::CreateTechniques
 void SimpleColorTxrUVClass::CreateTechniques()
 {
     AddShader<SimpleColorTxrUVTechnique>("SimpleColorTxrUV", "SimpleColorTxrUV", kParams_F88B5C);
+}
+
+// @func 0x005AE630 SimpleColorTxrUVClass::SelectTechnique
+AglTechnique* SimpleColorTxrUVClass::SelectTechnique(AglMaterial* material, AglRenderItem* /*item*/)
+{
+    return Pick(material, 0);
 }
 
 class TextureWarpClass : public AglShaderClass {
@@ -2097,11 +2143,20 @@ public:
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
     // Warp layer and parameters; also used by the water classes.
     bool SetupWarp(AglMaterial* material, const AglMaterialDesc* desc);
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
-// TODO(0x005AF080 TextureWarpClass::CreateTechniques)
+// @func 0x005AF24C TextureWarpClass::SelectTechnique
+AglTechnique* TextureWarpClass::SelectTechnique(AglMaterial* material, AglRenderItem* item)
+{
+    return Pick(material, IsLit(item) ? 1 : 0);
+}
+
+// @func 0x005AF080 TextureWarpClass::CreateTechniques
 void TextureWarpClass::CreateTechniques()
 {
+    AddShader<TextureWarpTechnique>("TextureWarp", nullptr, kParams_F88B7C);
+    AddShader<TextureWarpTechnique>("TextureWarp_Lit", nullptr, kParams_F88B7C);
 }
 
 class ScreenWarpClass : public AglShaderClass {
@@ -2112,7 +2167,14 @@ public:
     ScreenWarpClass() : AglShaderClass("ScreenWarp") {}
     void CreateTechniques() override;
     bool SetupMaterial(AglMaterial* material, const AglMaterialDesc* desc) override;
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
+
+// @func 0x005AFABC ScreenWarpClass::SelectTechnique
+AglTechnique* ScreenWarpClass::SelectTechnique(AglMaterial* material, AglRenderItem* /*item*/)
+{
+    return Pick(material, 0);
+}
 
 // @func 0x007AC8B8 ScreenWarpClass::CreateTechniques
 void ScreenWarpClass::CreateTechniques()
@@ -2134,11 +2196,21 @@ public:
     ~LineOutlineClass() override = default;
     LineOutlineClass() : AglShaderClass("LineOutline") {}
     void CreateTechniques() override;
+    // @func 0x005AFBD0 LineOutlineClass::SetupMaterial
+    bool SetupMaterial(AglMaterial* /*material*/, const AglMaterialDesc* /*desc*/) override { return true; }
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
-// TODO(0x005AFAD4 LineOutlineClass::CreateTechniques)
+// @func 0x005AFBD8 LineOutlineClass::SelectTechnique
+AglTechnique* LineOutlineClass::SelectTechnique(AglMaterial* material, AglRenderItem* /*item*/)
+{
+    return Pick(material, 0);
+}
+
+// @func 0x005AFAD4 LineOutlineClass::CreateTechniques
 void LineOutlineClass::CreateTechniques()
 {
+    AddShader<LineOutlineTechnique>("LineOutline", "LineOutline", kParams_F88C14);
 }
 
 class OutlineClass : public AglShaderClass {
@@ -2152,9 +2224,14 @@ public:
     AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
 
-// TODO(0x005AFF0C OutlineClass::CreateTechniques)
+// @func 0x005AFF0C OutlineClass::CreateTechniques
+// "NS" variants: NOTE: their use is decided by SelectTechnique.
 void OutlineClass::CreateTechniques()
 {
+    AddShader<OutlineTechnique>("Outline", "Outline", kParams_F88C34);
+    AddShader<OutlineTechnique>("Outline_SK", "Outline", kParams_F88C34);
+    AddShader<OutlineTechnique>("OutlineNS", "Outline", kParams_F88C34);
+    AddShader<OutlineTechnique>("OutlineNS_SK", "Outline", kParams_F88C34);
 }
 
 // @func 0x005B0280 OutlineClass::SetupMaterial
