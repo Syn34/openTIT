@@ -185,6 +185,93 @@ void AnimComponent::RefreshLayerSlot(uint32_t anim)
     slot->loops = layer ? layer->OverflowCount() : 0;
 }
 
+// Debug switch 0x0105AE90: clips start without blending.
+static bool s_noAnimBlend = false;
+
+// @func 0x00276EC0 AnimComponent::PlayClip
+bool AnimComponent::PlayClip(float speed, float startTime, float blendTime, float duration, uint32_t clip,
+                             uint32_t animName, bool loop, uint32_t listener)
+{
+    for (uint32_t i = 0; i < soundCount; ++i) {
+        if (sounds[i].tag != animName && animName != ~0u)
+            continue;
+        audio::StopVoice(sounds[i].voice, true);
+        --soundCount;
+        sounds[i] = sounds[soundCount];
+        sounds[soundCount] = AttachedSound{};
+        --i;
+    }
+    auto* binding = controller ? static_cast<anim::HkaAnimationBinding*>(anim::FindAnimClip(clip)) : nullptr;
+    if (!binding)
+        return false;   // NOTE: the console warns with the owner's name
+    if (s_noAnimBlend)
+        blendTime = 0.0f;
+    anim::AnimLayer* layer = controller->FindLayer(animName);
+    if (!layer) {
+        layer = controller->Play(binding, speed, blendTime, startTime, loop, 0);
+    } else {
+        layer->Play(binding, speed, blendTime, startTime, loop);
+    }
+    layer->AttachListener(listener);
+    if (duration > 0.0f) {
+        const float fitted = (layer->Duration() - startTime) / duration;
+        if (anim::AnimLayer* named = controller->FindLayer(animName))
+            named->SetPlaybackSpeed(fitted);
+    }
+    return true;
+}
+
+// @func 0x00298270 AnimComponent::PlayAdditive
+bool AnimComponent::PlayAdditive(uint32_t clip, uint32_t anim, bool loop, uint32_t /*unused*/)
+{
+    auto* binding = controller ? static_cast<anim::HkaAnimationBinding*>(anim::FindAnimClip(clip)) : nullptr;
+    if (!binding)
+        return false;   // NOTE: the console warns with the owner's name
+    anim::AnimLayer* layer = controller->FindLayer(anim);
+    if (!layer)
+        return true;    // NOTE: warns as well, but reports success
+    binding->blendHint = anim::HkaAnimationBinding::kBlend_Additive;
+    // NOTE: the caller's fourth argument lands in an unused register; no
+    // bone weight list is applied.
+    layer->AddSecondaryControl(binding, loop, 1.0f, 0.0f, 0);
+    layer->SetSecondaryMasterWeight(field_17C);
+    return true;
+}
+
+// @func 0x00276A20 AnimComponent::SetLayerTime
+void AnimComponent::SetLayerTime(float time, bool normalized, uint32_t anim)
+{
+    anim::AnimLayer* layer = Layer(anim);
+    if (!layer)
+        return;
+    if (normalized) {
+        const float length = layer->Duration();
+        time = length > 1e-5f ? length * time : 1.0f;
+    }
+    layer->SetLocalTime(time);
+}
+
+// @func 0x00276AD8 AnimComponent::LayerSpeed
+float AnimComponent::LayerSpeed(uint32_t anim) const
+{
+    anim::AnimLayer* layer = Layer(anim);
+    return layer ? layer->PlaybackSpeed() : 0.0f;
+}
+
+// @func 0x00276B40 AnimComponent::LayerDuration
+float AnimComponent::LayerDuration(uint32_t anim) const
+{
+    anim::AnimLayer* layer = Layer(anim);
+    return layer ? layer->Duration() : 0.0f;
+}
+
+// @func 0x00276E4C AnimComponent::SetLayerSpeed
+void AnimComponent::SetLayerSpeed(float speed, uint32_t anim)
+{
+    if (anim::AnimLayer* layer = Layer(anim))
+        layer->SetPlaybackSpeed(speed);
+}
+
 // @func 0x00298748 AnimComponent::StopSecondary
 void AnimComponent::StopSecondary(uint32_t anim)
 {

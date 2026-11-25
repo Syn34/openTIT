@@ -9,6 +9,7 @@
 #include "sly/components/InventoryDescs.h"
 #include "sly/components/MonsterCloset.h"
 #include "sly/components/OffscreenMarker.h"
+#include "sly/components/ProcEyes.h"
 #include "sly/components/PulseField.h"
 #include "sly/components/SystemCracker.h"
 #include "sly/components/TrackerComponent.h"
@@ -31,6 +32,8 @@ EntityComponent* CreateComponent(ComponentDesc* desc)
     switch (desc->type) {
     case kCompDesc_Anim:
         return new AnimComponent(static_cast<AnimComponentDesc*>(desc));
+    case kCompDesc_ProcEyes:
+        return new ProcEyesComponent(static_cast<ProcEyesComponentDesc*>(desc));
     case kCompDesc_ContextualMarker:
         return new ContextualMarkerComponent(static_cast<ContextualMarkerComponentDesc*>(desc));
     case 0x05:

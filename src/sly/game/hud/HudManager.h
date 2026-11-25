@@ -26,6 +26,7 @@ enum HudTypeFlags : uint32_t {
     kHud_Object  = 0x00000001,   // every registered element
     kHud_Type2   = 0x00000002,   // NOTE: the pause/countdown screen element (goal timer test)
     kHud_Type4   = 0x00000004,
+    kHud_Type20  = 0x00000020,   // popup element (HudPopup)
     kHud_Type40  = 0x00000040,
     kHud_Type200 = 0x00000200,
     kHud_Type400 = 0x00000400,
@@ -50,18 +51,57 @@ enum HudAnchor : int32_t {
 
 // Definition of an element (shared by its instances).
 struct HudObjectDef {
+    char defName[0x20] = {};         // +0x04
+    char animPrefix[0x20] = {};      // +0x24 base of the element's clip names (empty: defName)
     uint32_t name = 0;               // +0x44
+    ape::world::ApeObj* templateObject = nullptr;   // +0x48 the element's scene object (shared or cloned)
+    uint32_t field_4C = 0;           // +0x4C
     int32_t anchor = kAnchor_None;   // +0x54 HudAnchor
     int32_t priority = 0;            // +0x70 order in the anchor stack (ascending)
+    ape::Vec3 baseOffset{};          // +0x80 screen position (zero: the default position)
+    enum ObjectFlags : uint8_t {
+        kObject_Clone = 0x80,        // each element gets its own copy of the object
+        kObject_Lod   = 0x40,        // geometry objects get render LOD 13. NOTE: meaning assumed
+    };
+    uint8_t objectFlags = 0;         // +0x90 ObjectFlags
+    uint8_t startShown = 0;          // +0x91 (popup elements)
     float offset[3] = {};            // +0x60 space the element takes in its stack
     struct TextFieldDef {            // 0x20 bytes
-        uint8_t field_00[0x14] = {};
+        enum Flags : uint32_t {
+            kField_Clone       = 0x80000000u,   // the element clones the template
+            kField_PlayerColor = 0x40000000u,   // the label takes the player character's HUD colour
+        };
+        uint8_t color[4] = {};       // +0x00 label colour (used when its alpha is not zero)
+        uint32_t objectName = 0;     // +0x04 scene object of the field (in the element's hierarchy)
+        ape::ApeGuiObject* templateObject = nullptr;   // +0x08 GUI object of the field
+        ape::ApeGuiObject* framePath = nullptr;        // +0x0C names the frame inside a clone
+        ape::ApeGuiObject* labelPath = nullptr;        // +0x10 names the label inside the frame
         uint32_t introScript = 0;    // +0x14 GUI script played on the field with the intro
         uint32_t outroScript = 0;    // +0x18 ... with the outro
         uint32_t field_1C = 0;
     };
     TextFieldDef* textFieldDefs = nullptr;   // +0x94
     uint32_t textFieldCount = 0;     // +0x98 text fields of the element
+    float defaultFade = 0.0f;        // +0x9C hold time of timed texts
+    // Byte +0x9C of screen element definitions, which keep a flag where the
+    // other kinds keep defaultFade: hide the screen's sub-objects.
+    bool hideSubObjects = false;
+    uint8_t elementFlags = 0;        // +0xA0 bit 0: the element starts shown and stays (persistent)
+    // Prompt definitions (type bit 0x40) keep three GUI objects (+0x94..
+    // +0x9C) and three scene object names (+0xA0..+0xA8) where the other
+    // kinds keep the members above.
+    ape::ApeGuiObject* promptGui[3] = {};
+    uint32_t promptObjects[3] = {};
+    // Tracker list definitions (type bit 4) keep 16-byte field records at
+    // +0x94 (count +0x98) and the name of their marker object at +0x9C.
+    struct TrackerFieldDef {
+        uint32_t objectName = 0;                 // +0x00
+        ape::ApeGuiObject* object = nullptr;     // +0x04 shown with the element
+        uint32_t field_08 = 0;
+        uint32_t field_0C = 0;
+    };
+    TrackerFieldDef* trackerFields = nullptr;
+    uint32_t trackerMarkerName = 0;
 };
 
 // Anim script states of the element states (0x00F64F88): "NONE", "Intro",
@@ -70,9 +110,9 @@ extern const uint32_t kHudStateNames[5];
 
 // A text field of an element (16 bytes, array at HudObject +0x148).
 struct HudTextField {
-    uint32_t field_00 = 0;
+    ape::world::ApeObj* sceneObject = nullptr;   // +0x00 TextFieldDef::objectName
     ape::ApeGuiObject* object = nullptr;   // +0x04 shown with the element
-    uint32_t field_08 = 0;                 // +0x08 non-zero: show `object`
+    ape::ApeGuiObject* field_08 = nullptr; // +0x08 frame; `object` is only shown when set
     ape::ApeGuiObject* label = nullptr;    // +0x0C the label holding the text
 };
 
@@ -86,6 +126,10 @@ public:
     // element in +0x118).
     static constexpr uint32_t kObjectTag = 0x7DF841DCu;
 
+    HudObject() = default;
+    // 0x0035695C: element of `def` starting in state `state`; takes (or
+    // clones) the definition's object and gives it an animation controller.
+    HudObject(uint32_t state, HudObjectDef* def);
     // 0x0036A098 / 0x0036A1C0: ends the anim script, releases the object and
     // the animation controller.
     virtual ~HudObject();
@@ -94,6 +138,9 @@ public:
     virtual void Update(float dt);
     // Slot 3 (0x0036A410): deactivated and back at its stack origin.
     virtual void Refresh();
+    // Slot 4 (0x00772940, empty in the base): start of a frame (tracker
+    // lists forget their entries).
+    virtual void BeginFrame() {}
     // Slot 5 (0x0036A470): shows or hides the element's object.
     virtual void SetActive(bool active);
     // Slot 6 (0x00772944, other module): bit 0 of +0xA0 (set by the
@@ -181,7 +228,15 @@ public:
     float fadeTime = 0.0f;         // +0x150
     float holdTime = 0.0f;         // +0x154
     HudObject* linked = nullptr;   // +0x158 shown once this element's object is hidden
+    ape::Vec3 springTarget{};      // +0x160 position the spring pulls the object to
+    ape::Vec3 springVelocity{};    // +0x170
+    float springStiffness = 0.0f;  // +0x180
+    float springDamping = 0.0f;    // +0x184
     float animSpeed = 1.0f;        // +0x188
+    // Meter elements: owner (+0xA8, overlaying the text of other kinds) and
+    // the flag byte +0xC0 (bit 5 switches the meter's script variant).
+    uint32_t meterOwner = 0;
+    uint8_t meterFlagsC0 = 0;
     uint32_t updateFlags = 0;      // +0xD0 bit 31 cleared by ResetUpdateFlags()
     float targetValue = 0.0f;      // +0xD8
     float shownValue = 0.0f;       // +0xDC
@@ -206,6 +261,7 @@ struct HudManagerState {
     uint32_t fallbackType200Name = 0;            // 0x00F64D10
     HudObject* meterA = nullptr;                 // 0x00F64CB8
     HudObject* meterB = nullptr;                 // 0x00F64CBC
+    ape::ApeTArray<HudObject*> meters;           // 0x0106C280 every meter element
     ape::ApeTArray<HudObject*> stacks[kAnchor_Count];   // 0x0106C2D4 elements per corner
 };
 
@@ -225,8 +281,37 @@ void ReshowText(float fade, HudObject* object, const char* text, bool timed);
 // The element's object is visible (ApeObj flags bit 15).
 bool ObjectVisible(const ape::world::ApeObj* object);
 // 0x00365A54: enables or disables every element (slot 6); disabling also
-// refreshes the anchor stacks (0x0035B470, not ported).
+// drops the text override.
 void SetAllEnabled(bool enabled, bool flag);
+
+// A temporary restyling of an element's first label (0x0106C330).
+struct HudTextOverride {
+    ape::Matrix34 transform{};          // +0x00
+    uint8_t savedColor[4] = {};         // +0x40 label colour to restore
+    ape::Vec3 savedScale{};             // +0x50 label scale to restore (zero: nothing saved)
+    uint32_t field_60 = 0;
+    HudObject* owner = nullptr;         // +0x64 refreshed when the override ends
+    HudObject* element = nullptr;       // +0x68 element whose label is restyled
+    uint32_t field_6C[5] = {};
+    bool field_84 = false;
+};
+HudTextOverride& TextOverride();
+// 0x0035B470: restores the label and clears the override.
+void ResetTextOverride(HudTextOverride& state);
+
+void RefreshElement(HudObject* object);                             // 0x0035B3BC
+void SetFieldScale(HudObject* object, const ape::Vec3& scale, uint32_t index);   // 0x0035B404
+void BeginFrameAll();                                               // 0x0035C070
+void DetachAnimScripts();                                           // 0x0035C028
+
+// Screen position of elements whose definition gives none (0x0106C9F0).
+extern ape::Vec3 g_defaultHudOffset;
+
+// Clip helpers of the elements (the engine's 0x004A5C90 / 0x004A5D40):
+// plays the clip registered as `clip` on the controller; the default
+// layer's clip is done (true without a controller or layer).
+bool PlayHudClip(anim::AnimController* controller, uint32_t clip, float speed, bool loop);
+bool HudClipDone(anim::AnimController* controller);
 
 // Lookups (null when the name is 0, unknown, or of another type).
 HudObject* Find(uint32_t name);                    // 0x003568E0 kHud_Object
@@ -265,6 +350,12 @@ void RequestScreen(bool skip, const char* name);                     // 0x003696
 void SetPowMeterPrefix(const char* prefix);                          // 0x00369CAC
 void SnapMeterA();                                                   // 0x00369D58
 void SnapMeterB();                                                   // 0x00369658
+// Meter B's anim script state for on/off (0x003697E0) and its variant
+// flag (0x00369874).
+void SetMeterBState(bool on);
+void SetMeterBVariant(bool on);
+// 0x00369BC8: snaps the meter of `owner` to its target value.
+void SnapMeterOf(uint32_t owner);
 void ResetUpdateFlags();                                             // 0x00369500
 bool AnyUpdatingElementVisible();                                    // 0x003695A0
 
