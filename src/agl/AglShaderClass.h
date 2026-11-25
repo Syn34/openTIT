@@ -30,17 +30,21 @@ struct AglLightSet {
     int32_t variant = 0;
 };
 
-// One draw: geometry, material and the per-draw state.
+// One draw: geometry, material and the per-draw state. The first 0x40
+// bytes are the world transform (rows x, y, z, translation); on the console
+// the unused fourth lane of each row holds one of the pointers.
 struct AglRenderItem {
-    uint8_t field_0[0xC] = {};
+    float axisX[3] = {};                     // 0x00
     AglSubMesh* geometry = nullptr;          // 0x0C
-    uint8_t field_10[0xC] = {};
+    float axisY[3] = {};                     // 0x10
     AglMaterial* material = nullptr;         // 0x1C
-    uint8_t field_20[0xC] = {};
+    float axisZ[3] = {};                     // 0x20
     const AglLightSet* lights = nullptr;     // 0x2C
-    float position[3] = {};                  // 0x30
-    uint8_t field_3C[4] = {};
-    int32_t field_40 = 0;
+    float position[3] = {};                  // 0x30 translation
+    const float* bonePalette = nullptr;      // 0x3C skinning matrices (3 rows of 4 floats per bone)
+    // NOTE: per-class extra data: an RGBA byte colour for debug draws, the
+    // silhouette pass for outlines.
+    const void* field_40 = nullptr;
     uint8_t flags = 0;                       // 0x44
     uint8_t lightMask = 0;                   // 0x45: lights the technique uses (set by SelectTechnique)
     uint8_t field_46 = 0;

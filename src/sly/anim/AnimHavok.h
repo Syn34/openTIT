@@ -30,9 +30,12 @@ struct HkaAnimation {
 
 // hkaAnimationBinding.
 struct HkaAnimationBinding {
+    enum BlendHint : int8_t { kBlend_Normal = 0, kBlend_Additive = 1 };
     uint8_t referencedObject[8] = {};
     const char* skeletonName = nullptr; // +0x08 m_originalSkeletonName
     HkaAnimation* animation = nullptr;  // +0x0C m_animation
+    uint8_t trackMaps[0x18] = {};       // +0x10 transform/float track index arrays
+    int8_t blendHint = kBlend_Normal;   // +0x28 m_blendHint
 };
 
 // One annotation returned by hkaAnimation::getAnnotations (12 bytes).

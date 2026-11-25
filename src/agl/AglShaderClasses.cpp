@@ -10,6 +10,8 @@
 #include "agl/AglResources.h"
 #include "agl/AglState.h"
 #include "agl/AglTexture.h"
+#include "agl/AglRenderTarget.h"
+#include "ape/math/ApeMatrixOps.h"
 
 #include "ape/core/ApeString.h"
 
@@ -1048,13 +1050,37 @@ bool SetupWarpMaterial(AglMaterial* material, const AglMaterialDesc* desc)
     return true;
 }
 
+// Uploads world x view-projection of a render item, transposed, to the
+// four vertex constant registers starting at 'reg' (inlined into the
+// technique Draw functions on the console).
+void UploadWorldViewProj(const AglRenderItem* item, uint32_t reg)
+{
+    const ape::Matrix44& vp = GetViewConstants().viewProj;
+    const float* rows[4] = { item->axisX, item->axisY, item->axisZ, item->position };
+    float mvp[4][4];
+    for (int i = 0; i < 4; ++i) {
+        // Rows are directions (w = 0) except the translation (w = 1).
+        const float w = i == 3 ? 1.0f : 0.0f;
+        const float* r = rows[i];
+        mvp[i][0] = r[0] * vp.rows[0].x + r[1] * vp.rows[1].x + r[2] * vp.rows[2].x + w * vp.rows[3].x;
+        mvp[i][1] = r[0] * vp.rows[0].y + r[1] * vp.rows[1].y + r[2] * vp.rows[2].y + w * vp.rows[3].y;
+        mvp[i][2] = r[0] * vp.rows[0].z + r[1] * vp.rows[1].z + r[2] * vp.rows[2].z + w * vp.rows[3].z;
+        mvp[i][3] = r[0] * vp.rows[0].w + r[1] * vp.rows[1].w + r[2] * vp.rows[2].w + w * vp.rows[3].w;
+    }
+    float transposed[16];
+    for (int c = 0; c < 4; ++c)
+        for (int r = 0; r < 4; ++r)
+            transposed[c * 4 + r] = mvp[r][c];
+    Cmd().SetVertexProgramConstants(reg, 16, transposed);
+}
+
 } // namespace
 
 // --- techniques -------------------------------------------------------------------
 
 class DebugTechnique : public AglTechnique {
-    // TODO(0x005ADA18 DebugTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     // @func 0x005ADA08 DebugTechnique::BeginMaterial
     void BeginMaterial(AglMaterial* /*material*/) override {}
     // @func 0x007ABB3C DebugTechnique::~DebugTechnique
@@ -1065,8 +1091,8 @@ public:
 };
 
 class PrimTxrTechnique : public AglTechnique {
-    // TODO(0x005ADD54 PrimTxrTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     // @func 0x005ADD50 PrimTxrTechnique::BeginMaterial
     void BeginMaterial(AglMaterial* /*material*/) override {}
     // @func 0x007ABB4C PrimTxrTechnique::~PrimTxrTechnique
@@ -1077,8 +1103,8 @@ public:
 };
 
 class SimpleColorTxrTechnique : public AglTechnique {
-    // TODO(0x005ADEE4 SimpleColorTxrTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     // @func 0x005ADEE0 SimpleColorTxrTechnique::BeginMaterial
     void BeginMaterial(AglMaterial* /*material*/) override {}
     // @func 0x007ABB5C SimpleColorTxrTechnique::~SimpleColorTxrTechnique
@@ -1087,6 +1113,44 @@ public:
     // @func 0x007AC450 SimpleColorTxrTechnique::End
     void End(AglMaterial* /*material*/) override {}
 };
+
+// @func 0x005ADA18 DebugTechnique::Draw
+// Debug geometry is drawn in one colour (constant 4): the item's RGBA bytes
+// or translucent yellow. Translucent colours enable alpha blending.
+void DebugTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    float color[4] = { 1.0f, 1.0f, 0.0f, 0.5f };
+    if (const auto* rgba = static_cast<const uint8_t*>(item->field_40)) {
+        for (int i = 0; i < 4; ++i)
+            color[i] = float(rgba[i]) * (1.0f / 255.0f);
+        if (color[3] < 1.0f) {
+            gpu::CommandList& cmd = Cmd();
+            cmd.SetBlendEnable(true);
+            cmd.SetBlendFunc(gpu::BlendFactor::SrcAlpha, gpu::BlendFactor::OneMinusSrcAlpha,
+                             gpu::BlendFactor::SrcAlpha, gpu::BlendFactor::OneMinusSrcAlpha);
+            cmd.SetBlendEquation(gpu::BlendEquation::Add, gpu::BlendEquation::Add);
+        }
+    }
+    Cmd().SetVertexProgramConstants(4, 4, color);
+    item->geometry->Draw(item);
+}
+
+// @func 0x005ADD54 PrimTxrTechnique::Draw
+void PrimTxrTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    item->geometry->Draw(item);
+}
+
+// @func 0x005ADEE4 SimpleColorTxrTechnique::Draw
+// The material's first colour tints the texture (vertex constant 4).
+void SimpleColorTxrTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    Cmd().SetVertexProgramConstants(4, 4, item->material->color0);
+    item->geometry->Draw(item);
+}
 
 class SimpleColorTxrUVTechnique : public AglTechnique {
     // TODO(0x005AE0F0 SimpleColorTxrUVTechnique::Draw)

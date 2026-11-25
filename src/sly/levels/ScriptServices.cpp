@@ -240,6 +240,7 @@ void SequenceAddHudType(uint32_t type, bool visible, bool force, uint32_t left, 
 void SequenceAddTimeLimit(float limit) { (void)limit; }
 void SequenceAddCutsceneFlag(bool skippable) { (void)skippable; }
 void SequenceAddSetEntityUpdate(uint32_t entity, bool update) { (void)entity; (void)update; }
+void SequenceAddEnablePart(ape::ApeRefCounted*, uint32_t, bool, bool) {}
 void SequenceAddSetEntityVisible(uint32_t entity, uint32_t child, bool visible, bool recursive, bool flag16, bool processComponents, bool flag18) { (void)entity; (void)child; (void)visible; (void)recursive; (void)flag16; (void)processComponents; (void)flag18; }
 void SequenceAddEmitterParam(uint32_t entity, int32_t value) { (void)entity; (void)value; }
 void SequenceAddLetterbox(bool visible, bool wait) { (void)visible; (void)wait; }

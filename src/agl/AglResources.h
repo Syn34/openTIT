@@ -45,6 +45,10 @@ public:
     static AglSubMesh* Create();
     static void Destroy(void* object);
     void Release() override;
+    // Draws the geometry for a render item: uploads the item's bones (when
+    // skinned), binds the vertex streams and the fragment program and issues
+    // the draw (console vtable slot 4 of the platform submesh).
+    virtual void Draw(const struct AglRenderItem* item);
     // Claims the next vertex stream slot (vertices + streamIndex). The
     // first pass named this Lock; the counter at 0x6D is the number of
     // vertex streams (the sphere/quad builders use it as the stream index).

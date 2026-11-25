@@ -175,13 +175,14 @@ ApeScene::~ApeScene()
     }
 }
 
+void InstallSceneObjectHook()
+{
+    g_sceneObjectDestroyedHook = &RemoveDestroyedSceneObject;
+}
+
 // @func 0x005903F4 CreateScene
 ApeScene* CreateScene(uint32_t createFlags)
 {
-    // NOTE: the console installs this hook in the world module's start-up
-    // (0x00588828, not ported).
-    g_sceneObjectDestroyedHook = &RemoveDestroyedSceneObject;
-
     ApeScene* scene = new ApeLevelScene(createFlags);
     g_dirtyRootListLocked = true;
     scene->m_flags |= ApeScene::kFlag_Loading;

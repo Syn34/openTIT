@@ -75,3 +75,46 @@
   (0x005A8BA8, 0x005A8BE4, 0x005A8C30), 0x005A9B48.. to the end of the range (render passes:
   "Reflection", "TextureWarp", "Outline", "LineOutline").
 * Skeleton debug dump 0x00584160/0x00583FBC (stripped prints only).
+
+## Scene loading and world start-up (agent1, pass 3)
+* `ApeScene.cpp`: LoadSceneFile (0x005904EC), FinishSceneLoad (0x005964B4), DestroyScene
+  (0x00596E3C), the load callback every object list runs while a scene file is parsed
+  (0x00588E70: phase 0 marks the object with the scene slot, phase 1 adds it to the scene's
+  object list) and the ApeBase destruction hook 0x00588F44 (removes a destroyed object from its
+  scene). The former `ApeBase::m_tagFlags` is the scene slot (bits 6..9 of the flags word);
+  textures and materials carry the same field (`AglRefCounted::sceneSlot`). The scene keeps
+  `ApeSceneObject {object, release}` entries because the port has no common base for
+  ApeBase and the Agl resources (on the console they share one: same unique id counter, same
+  flags word layout).
+* CreateScene disables Agl deferred destruction (0x010DDC90) and FinishSceneLoad enables it
+  again. 0x0116BD05 is set while DestroyScene releases objects (readers not ported).
+* `ApeSceneSetup.cpp`: the FinishSceneLoad passes. Done: world transform updates (0x00588FFC,
+  0x0058F118), light grid (0x0058FD50, grid = 128x128 around the local lights' centre, at
+  least covering them), global ambient/directional light (0x00590DA0, `g_sceneLighting`,
+  EngineConfig block 0x010C5AD0 on the console), dynamic objects (0x00590FEC, 0x00591178),
+  empty geometry hiding (0x0058F8C4, through two new mesh hooks), object lighting
+  (0x0058FADC). TODO stubs: render nodes 0x0058EA70, instance batching 0x00595968 (geometry
+  instances sharing a definition merged into batches; table 0x0116BF00, 0x110-byte records),
+  ProcAnim manager create/destroy/update (0x0059541C, 0x00596770, 0x00596A8C), light list
+  0x00591A30/0x005965BC, light links 0x00583518/0x005832FC, views 0x005908A0, shadow bounds
+  0x0058DBE8.
+* `ApeLightInstance::m_lightType` (+0x170): 0 ambient, 1 directional, 2 local (inferred).
+* Instance creation/cloning (ApeInstances.cpp): CreateGeomInstance 0x005A05E8,
+  CreateCameraInstance 0x005A59AC, CreatePointInstance 0x005A68EC and `ApeObj::Clone` (console
+  slot 14) for geometry 0x005A089C, camera 0x005A5B28 and point 0x005A6B28 instances. Clone
+  flags: 1 children, 2 own definition copy, 4 (emitters), 8 no ProcAnim registration, 0x10
+  (lights) skip light construction. Light 0x005A2E50 / emitter 0x005A42D0 / spline
+  0x005A7E80 clones and their creators (0x005A2BA8, 0x005A3FFC, 0x005A7CB4) are open; the
+  light construction 0x005A2528 is the light animation set-up (tags "IntensityOffset",
+  "IntensityAmplitude", "IntensityPeriod", "IntensityRandomStart", parsed by 0x00591410).
+* `ApeWorldInit.cpp`: InitWorld 0x00588828 and the twelve per-type start-up functions (pool
+  sizes from EngineConfig +0x168..+0x182, new 16-bit fields; chunk ids GEOB/GEOH/GLOD,
+  LITB/LITH, EMIT/EMIH, CAMC/CAMH, SPDS/SPDH/SPDP, PNDC/PNDH, GINS/GINH + SKEL/SKHD/BONS,
+  LINS/LINH, EINS/EINH, CAMI/CMIH, PNTC/PNTH, SPIS/SPIH, regions "PVS "/PVSH/PVSR, occluder
+  quads OCCP/OCCH/OCCV/OCHT/OCFT/OCNT, locators LOCA/LCRH/LCRD). SystemInit flag 2 runs it
+  (flag 4 is the Agl init 0x0050F520). The emitter definition chunk 0x0059DB28 is a skipping
+  stub (particle systems); the GPU parts of InitWorld (0x00586DB4, 0x00586BF4, 0x00586B3C,
+  0x005868D0) are stubs.
+* The scene virtuals (vtables 0x00B24728/0x00B24770) are the SPU render job set-up
+  (0x005894F8 copies the view into the job block 0x0117E280, 0x00589BC8 walks the
+  visibility table, 0x00599804/0x00599FA8 wait on SPU job counters): console specific.

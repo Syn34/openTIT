@@ -80,6 +80,9 @@ public:
     bool CreateFromPixels(const AglDecodedImage& decoded);
     // Uses a GTF image (copied to GPU memory unless 'inPlace').
     bool LoadGtf(const void* data, uint32_t size, bool inPlace);
+    // Reads the descriptor of the GTF image held in image.mem ('size'
+    // bytes) and takes its size; malformed images keep the old descriptor.
+    void ParseGtfImage(uint32_t size);
     // Loads an image file by extension ("BMP", "TGA" or "GTF").
     bool Load(const void* data, uint32_t size, const char* extension);
     // Loads a loose image file referenced by a level (falls back to the
@@ -136,6 +139,9 @@ AglTexture* TextureLoadFile(const char* path, bool useDefaultOnFailure);
 int TextureHeaderChunkHandler(ape::iff::IffReader* reader, void* arg);
 int TextureFileChunkHandler(ape::iff::IffReader* reader, void* arg);
 int TextureDefaultChunkHandler(ape::iff::IffReader* reader, void* arg);
+// Texture image chunks: a GTF image ("TGTF") or a DDS image ("DXTN").
+int TextureGtfChunkHandler(ape::iff::IffReader* reader, void* arg);
+int TextureDdsChunkHandler(ape::iff::IffReader* reader, void* arg);
 // Called for every texture a level creates (0x00F8F118).
 void SetTextureCreateHook(void (*hook)(AglTexture* texture, void* userdata, int), void* userdata);
 // Called for every material a level creates (0x00F8F114 + 8 / + 0xC).

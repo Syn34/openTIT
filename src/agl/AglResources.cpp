@@ -2,6 +2,10 @@
 #include "agl/AglResources.h"
 
 #include "agl/AglTexture.h"
+#include "agl/AglPrimitives.h"
+#include "agl/AglShader.h"
+#include "agl/AglShaderClass.h"
+#include "agl/AglState.h"
 
 #include "ape/memory/ApeMem.h"
 #include "ape/memory/ApeTFreeList.h"
@@ -66,6 +70,84 @@ AglSubMesh::~AglSubMesh()
     }
     if (owner)
         owner->Release();
+}
+
+namespace {
+
+// First vertex constant register of the bone matrices.
+constexpr uint32_t kBoneRegister = 0x40;
+// Bones a mesh can use (the console's stack buffer holds 64).
+constexpr uint32_t kMaxMeshBones = 64;
+
+// Set when meshes with GPU side buffers draw through their platform path
+// (0x00F674FC). NOTE: the console sets it outside this module.
+bool g_usePlatformMeshPath = false;
+
+// TODO(0x005382C0 AglSubMesh::DrawPlatform) draw of meshes whose vertices
+// are skinned into the GPU side buffers (platformData).
+void DrawPlatformMesh(const AglSubMesh& /*mesh*/, const AglRenderItem* /*item*/)
+{
+}
+
+} // namespace
+
+// @func 0x00538B44 AglSubMesh::Draw
+void AglSubMesh::Draw(const AglRenderItem* item)
+{
+    gpu::CommandList& cmd = Cmd();
+
+    // Skinned meshes reference bones of the item's palette through their
+    // bone table (a count followed by the palette index of every bone).
+    if (const auto* boneTable = static_cast<const uint8_t*>(skinMatrices)) {
+        const uint32_t count = boneTable[0] < kMaxMeshBones ? boneTable[0] : kMaxMeshBones;
+        float bones[kMaxMeshBones * 12];
+        for (uint32_t i = 0; i < count; ++i) {
+            const float* bone = item->bonePalette + size_t(boneTable[i + 1]) * 12;
+            for (int k = 0; k < 12; ++k)
+                bones[i * 12 + k] = bone[k];
+        }
+        cmd.SetVertexProgramConstants(kBoneRegister, count * 12, bones);
+    }
+
+    if (platformData && g_usePlatformMeshPath) {
+        DrawPlatformMesh(*this, item);
+        return;
+    }
+
+    AglRenderState& state = GetRenderState();
+    const AglVertexDecl* decl = vertexDecl;
+    if (state.boundVertexDecl != decl)
+        state.boundVertexBuffer = nullptr;
+    state.boundVertexDecl = decl;
+    if (decl && state.boundVertexBuffer != vertices.data) {
+        state.boundVertexBuffer = vertices.data;
+        // Only the attributes both the layout and the bound program use.
+        const uint16_t programInputs = state.vertexProgram ? state.vertexProgram->attributeInputMask : 0xFFFF;
+        const uint16_t used = uint16_t(programInputs & decl->attributeMask);
+        for (const AglVertexStream* stream = decl->streams; stream->size != 0; ++stream) {
+            const uint32_t attribute = stream->attribute + stream->attributeOffset;
+            if (stream->skip || !(used & (1u << attribute)))
+                continue;
+            cmd.SetVertexAttribute(uint8_t(attribute), 0, uint8_t(decl->stride), stream->size,
+                                   static_cast<gpu::VertexAttribType>(stream->type), vertices.Ptr(stream->offset));
+        }
+        // Attributes the previous mesh enabled that this one does not use.
+        uint16_t stale = uint16_t((state.meshAttributes | used) ^ used);
+        state.meshAttributes = used;
+        for (int attribute = gpu::kMaxVertexAttributes - 1; stale != 0 && attribute >= 0; --attribute) {
+            if (stale & (1u << attribute)) {
+                stale = uint16_t(stale & ~(1u << attribute));
+                cmd.DisableVertexAttribute(uint8_t(attribute));
+            }
+        }
+    }
+
+    CommitFragmentProgram();
+    const auto prim = static_cast<gpu::PrimitiveType>(primitive);
+    if (indexCount == 0)
+        cmd.DrawArrays(prim, 0, vertexCount);
+    else
+        cmd.DrawIndexArray(prim, indexCount, static_cast<gpu::IndexType>(field_3C), indices.Ptr());
 }
 
 AglSubMesh* AglSubMesh::Create()

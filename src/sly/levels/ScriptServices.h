@@ -419,6 +419,10 @@ void SequenceAddCutsceneFlag(bool skippable);
 // SeqSetEntityUpdateCommand (0x00438F3C).
 void SequenceAddSetEntityUpdate(uint32_t entity, bool update);
 // SeqSetEntityVisibleCommand (0x00438D14).
+// 0x00438348 (SeqSetRenderFlagCommand) on a resolved anim script object.
+// NOTE: the sequencer port takes a WorldObject*; this stub stands in until
+// script objects map to world objects.
+void SequenceAddEnablePart(ape::ApeRefCounted* object, uint32_t part, bool enable, bool recursive);
 void SequenceAddSetEntityVisible(uint32_t entity, uint32_t child, bool visible, bool recursive, bool flag16, bool processComponents, bool flag18);
 // SeqEmitterParamCommand (0x004388A0).
 void SequenceAddEmitterParam(uint32_t entity, int32_t value);
