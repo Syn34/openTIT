@@ -316,6 +316,8 @@ public:
     bool CanInteractWith(Entity* other, int kind) override;   // slot 76
     // Killing drops the nav obstacle and the body.
     bool Release(bool kill) override;                 // slot 10
+    // Slot 21: the body (in the world) follows, without waking its neighbours.
+    void SetTransform(const ape::Matrix34& m) override;
     // Unless broken (state 4), goes back to state 0 with the lock request in
     // bits 30 (flag) and 31 (locked) of the state data. NOTE: the class is
     // inferred from the code address (scripts call it on "lockable" entities).

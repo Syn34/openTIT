@@ -1306,6 +1306,14 @@ void PushBlock::SetLocked(bool flag, bool locked)
     }
 }
 
+// @func 0x001B8BB0 PushBlock::SetTransform
+void PushBlock::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    if (rigidBody && RigidBodyInWorld(rigidBody))
+        RigidBodySetTransform(rigidBody, m);
+}
+
 // @func 0x001B8F20 PushBlock::OnResume
 void PushBlock::OnResume()
 {

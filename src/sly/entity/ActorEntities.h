@@ -520,13 +520,18 @@ public:
     bool IsAimed() const;
     // Shots past the first wait the weapon's interval each (+0x1F4).
     void ResetAim();
+    // Slot 21: the aim frame follows; the aim resets to its z axis (kept
+    // level with turretFlags bit 7).
+    void SetTransform(const ape::Matrix34& m) override;
     // Adds a target (counted reference).
     void AddTarget(Entity* target);
     // Lets go of every target and keeps only `target` (if any).
     void SetOnlyTarget(Entity* target);
 
     float shotDelay = 0.0f;                   // 0x1F4 NOTE: set by ResetAim
-    ape::Vec3 aimOrigin{};                    // 0x260
+    ape::Matrix34 aimFrame{};                 // 0x230 z axis = rest aim, translation = aim origin
+    ape::Matrix34 baseTransform{};            // 0x270 last transform set
+    ape::Vec3 restAim{};                      // 0x2B0
     ape::Vec3 wantedAim{};                    // 0x2C0 unit direction
     ape::Vec3 currentAim{};                   // 0x2D0 unit direction
     EntityComponent* weapon = nullptr;        // 0x2E0 skin component; its +0x4D0 is the shot interval
@@ -534,6 +539,7 @@ public:
     float field_2FC = 0.0f;                   // 0x2FC copied into the cool-down by slot 4
     float coolDown = 0.0f;                    // 0x314 slots 3 and 6 wait while positive
     int32_t shotCount = 0;                    // 0x30C
+    uint8_t turretFlags = 0;                  // 0x310 bit 7: aims level
     uint32_t field_328 = 0;                   // 0x328 cleared by SetOnlyTarget
     ape::ApeTArray<Entity*> targets;          // 0x32C counted references
     bool field_355 = false;                   // 0x355 NOTE: selects the alternative states

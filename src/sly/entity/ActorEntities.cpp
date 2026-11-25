@@ -824,12 +824,31 @@ void SoundActorB17270::OnHitCategory4(EntityHitRecord& hit)
         OnStruck();
 }
 
+// @func 0x001CC440 SoundActorB17270::SetTransform
+void SoundActorB17270::SetTransform(const ape::Matrix34& m)
+{
+    ActorSetTransformBase(this, m);
+    baseTransform = m;
+    aimFrame = baseTransform;
+    ape::Vec3 aim = { aimFrame.zAxis.x, aimFrame.zAxis.y, aimFrame.zAxis.z, 0.0f };
+    if (turretFlags & 0x80)
+        aim.y = 0.0f;
+    const float lengthSq = aim.z * aim.z + aim.x * aim.x + aim.y * aim.y;
+    if (lengthSq >= 1e-05f) {
+        const float inv = 1.0f / std::sqrt(lengthSq);
+        aim = { aim.x * inv, aim.y * inv, aim.z * inv, 0.0f };
+    }
+    wantedAim = { aim.x, aim.y, aim.z, wantedAim.pad };
+    currentAim = { aim.x, aim.y, aim.z, currentAim.pad };
+    restAim = { aim.x, aim.y, aim.z, restAim.pad };
+}
+
 // @func 0x001CF620 SoundActorB17270::AimAt
 void SoundActorB17270::AimAt(const ape::Vec3& point)
 {
-    const float dx = point.x - aimOrigin.x;
-    const float dy = point.y - aimOrigin.y;
-    const float dz = point.z - aimOrigin.z;
+    const float dx = point.x - aimFrame.translation.x;
+    const float dy = point.y - aimFrame.translation.y;
+    const float dz = point.z - aimFrame.translation.z;
     const float inv = 1.0f / std::sqrt(dz * dz + dx * dx + dy * dy);
     wantedAim = { dx * inv, dy * inv, dz * inv, wantedAim.pad };
 }
