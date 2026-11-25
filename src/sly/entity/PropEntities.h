@@ -210,11 +210,24 @@ public:
     bool freezeWhenOrphaned = false;         // 0x2A0 NOTE: stops updating when its parent goes away
 };
 
-// Entity of TargetableDefA (vtable 0x00B14B98, 0x6C0 bytes; constructor
-// 0x0017DD90). Only the link to a held TargetableB is modelled.
+// Entity of TargetableDefA (vtable 0x00B14B98 + 0x00B14D48/0x00B14D70,
+// 0x6C0 bytes; constructor 0x0017DD90): the minigame figure that can hold a
+// TargetableB. Six world objects (0x00F6498C..0x00F649A0) are shared by all
+// instances.
 class TargetableA : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
+    static constexpr int kSharedObjects = 6;
+    // Shared world objects, counted by every instance; cleared when the last
+    // instance goes.
+    static ape::world::ApeObj* s_sharedObjects[kSharedObjects];
+
+    ~TargetableA() override;
+
     TargetableB* held = nullptr;             // 0x520
+    void* animScript524 = nullptr;           // 0x524
+    ape::world::ApeObj* object_530 = nullptr; // 0x530 counted
+    ape::ApeTArray<void*> field_678;         // 0x678
+    HkArray<void*> field_68C;                // 0x68C
 };
 
 // Scripted entity owning eleven sub-objects and two Havok pointer arrays

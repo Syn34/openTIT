@@ -64,6 +64,7 @@ Entity* AttackTargetOf(Entity* attacker) { (void)attacker; return nullptr; }
 float ScoringValue(EntityComponent* scoring) { (void)scoring; return 0.0f; }
 void ScoringAward(EntityComponent* scoring, int points, bool flag) { (void)scoring; (void)points; (void)flag; }
 void AddPlayerScore(uint32_t player, int points) { (void)player; (void)points; }
+void MinigameFigureRemoved(uint32_t model) { (void)model; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }

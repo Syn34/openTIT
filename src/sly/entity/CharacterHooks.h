@@ -177,6 +177,9 @@ void ScoringAward(EntityComponent* scoring, int points, bool flag);
 // Score counter of a player's entity (+0x1D0 of the player 0 entity at game world +0x1078).
 void AddPlayerScore(uint32_t player, int points);
 
+// The active minigame forgets a figure of that model (0x003DE47C).
+void MinigameFigureRemoved(uint32_t model);
+
 // -- entities ---------------------------------------------------------------------
 // Plays a director script on the entity (0x000DCD20 with 0, 1).
 void EntityPlayDirectorScript(Entity* entity, uint32_t script);
