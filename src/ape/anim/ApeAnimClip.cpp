@@ -235,9 +235,18 @@ char g_animClipFileNameBuffer[0x41];   // 0x010C2708
 // AnimClipPool
 // ---------------------------------------------------------------------------
 
-AnimClipPool::AnimClipPool(uint16_t capacity, AnimSet* owner)
-    : m_entries(capacity), m_owner(owner)
+// @func 0x00789280 AnimClipPool::AllocateStorage
+void AnimClipPool::AllocateStorage(uint16_t capacity)
 {
+    if (capacity == 0)
+        return;
+    m_entries.assign(capacity, AnimClipEntry{});
+}
+
+AnimClipPool::AnimClipPool(uint16_t capacity, AnimSet* owner)
+    : m_owner(owner)
+{
+    AllocateStorage(capacity);
     for (AnimClipEntry& entry : m_entries)
         entry.kind = kEntry_Free;
 }

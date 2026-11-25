@@ -39,12 +39,18 @@ public:
     };
     // Parts and definitions with this nav mode block navigation.
     static constexpr uint32_t kNavMode_Obstacle = 0xA970EC1Fu;
+    static constexpr uint32_t kNavMode_None = 0x0024A738u;   // "None"
     // Definition flags (+0x12C).
     enum Flags : uint32_t {
         kDefFlag_CarryOnly      = 1u << 23,  // kind 2 only while a carry slot is free
         kDefFlag_FullNavMask    = 1u << 24,  // obstacles block every agent (mask 0xFFFF)
+        kDefFlag_KeepListeners  = 1u << 27,  // NOTE: deleted bodies keep the actor as contact listener
     };
     ~ActorDef() override;
+    // Slot 6: the nav mode is one of the four modes that make the actor's
+    // parts static obstacles (0x9260C26E "Static", 0x41EB0AA3, 0x29846DDA and
+    // 0x4438A28F "Obstacle"). NOTE: two of the names are unknown.
+    uint32_t DefSlot6() const override;
     ape::ApeTArray<Part>* parts = nullptr;   // 0xC0 allocated on demand
     // Answers to InteractionNeeds by interaction kind. NOTE: the number of
     // kinds is not known (at most 12: the nav mode follows at 0xD0).
@@ -95,6 +101,7 @@ public:
 // NOTE: only the flag its overrides read is modelled.
 class InteractivePropAUseDef : public ActorDef {
 public:
+    ~InteractivePropAUseDef() override;
     uint32_t sharedUse = 0;         // 0x130 non-zero: several users at once
 };
 
@@ -193,18 +200,35 @@ public:
     bool CanBeDamaged() const override;
     // Slot 89: damage scale of projectiles.
     float ProjectileDamageScale() const override;
-    // Slots 98-101 and 103 (empty in the base; the actor classes override
-    // some of them). NOTE: meanings unknown.
-    // @func 0x00747C18 ActorEntity::ActorSlot98
-    virtual void ActorSlot98() {}
+    // Slots 98-103: the Havok listener callbacks the actor overrides (each
+    // also has a this-adjusting thunk in the interface's vtable) and two
+    // empty slots of its own. NOTE: the meanings of 99/103 are unknown.
+    // Primary slot 98 / +0x17C slot 5.
+    // @func 0x00747C18 ActorEntity::Interface17CSlot5
+    // @func 0x00747C1C ActorEntity::Interface17CSlot5 (thunk, +0x17C)
+    void Interface17CSlot5(const void* event) override { (void)event; }
     // @func 0x00747C20 ActorEntity::ActorSlot99
     virtual void ActorSlot99() {}
-    // @func 0x00747C24 ActorEntity::ActorSlot100
-    virtual void ActorSlot100() {}
-    // @func 0x00747C2C ActorEntity::ActorSlot101
-    virtual void ActorSlot101() {}
+    // Primary slot 100 / +0x17C slot 7.
+    // @func 0x00747C24 ActorEntity::Interface17CSlot7
+    // @func 0x00747C28 ActorEntity::Interface17CSlot7 (thunk, +0x17C)
+    void Interface17CSlot7() override {}
+    // Primary slot 101 / +0x17C slot 6.
+    // @func 0x00747C2C ActorEntity::Interface17CSlot6
+    // @func 0x00747C30 ActorEntity::Interface17CSlot6 (thunk, +0x17C)
+    void Interface17CSlot6() override {}
+    // Primary slot 102 / +0x180 slot 6: stops listening to the contacts of a
+    // body being deleted, unless the definition keeps its listeners (flag 27).
+    void Interface180Slot6(void* body) override;
     // @func 0x00747CD0 ActorEntity::ActorSlot103
     virtual void ActorSlot103() {}
+    // Slot 36: the body of a single-part actor, null otherwise. NOTE: see
+    // NOTES on slot 36.
+    ape::world::ApeObj* GetRenderObject() override;
+    // Slots 41/42: the definition's nav mode is not "None" / is the
+    // obstacle mode.
+    int Slot41() override;
+    int Slot42() override;
 
     // Filter consulted before projectile damage (+0x1A0); false ignores the hit.
     using HitFilter = bool (*)(ActorEntity* actor, EntityHitRecord& hit);
@@ -281,6 +305,13 @@ public:
     camera::CameraMode* cameraMode = nullptr;   // 0x1A8 spotlight camera mode
     Entity* user = nullptr;                     // 0x1AC
     ape::world::ApeObj* lightObject = nullptr;  // 0x1B8
+};
+
+// The actor ActorDef itself spawns (vtable 0x00B12A90 + 0x00B12C3C/0x00B12C64;
+// built by ActorDef's Spawn 0x000E4314): adds nothing to the base.
+class PlainActor : public ActorEntity {
+public:
+    ~PlainActor() override;
 };
 
 // Interactive prop driven by an anim script variable (vtable 0x00B18908,
@@ -432,7 +463,9 @@ public:
 // Definition of SoundActorB16B48. NOTE: only the options its timers read.
 class SoundActorB16B48Def : public SoundActorDef {
 public:
-    int32_t* bodyParts = nullptr;      // 0x1A4 part index of each light body
+    ~SoundActorB16B48Def() override;
+    ape::ApeTArray<void*> field_190;   // 0x190 NOTE: element type unknown
+    ape::ApeTArray<int32_t> bodyParts; // 0x1A4 part index of each light body
     bool restartWhenWaiting = false;   // 0x1BC
     bool unlightOnSlot3 = false;       // 0x1BD
     bool unlightOnSlot4 = false;       // 0x1BE
@@ -532,6 +565,7 @@ public:
 // Definition of SoundActorB16DB0. NOTE: only the flag its timer reads.
 class SoundActorB16DB0Def : public SoundActorDef {
 public:
+    ~SoundActorB16DB0Def() override;
     uint32_t options = 0;          // 0x1BC bit 28: close even when occupied
 };
 
@@ -709,16 +743,18 @@ public:
     ape::ApeTArray<void*> field_3A0;          // 0x3A0
 };
 
-// Safe (vtable 0x00B18038; destructor 0x00756A1C outside this range; the
+// Safe (vtable 0x00B18038; destructor 0x00756CD4; the
 // "SafeA_*" animations): the player cracks it in a camera of its own.
 class Safe : public ActorEntity {
 public:
+    ~Safe() override;
     bool Release(bool kill) override;                 // slot 10
     // Leaves the safe camera and shows the user again.
     void InteractionCancel() override;                // slot 63
     // Offers interaction kind 1 again.
     void InteractionEnd(bool completed) override;     // slot 64
 
+    ape::ApeTArray<void*> field_1A8;          // 0x1A8 NOTE: element type unknown
     void* script228 = nullptr;                // 0x228 owned anim script instance
     camera::CameraMode* cameraMode = nullptr; // 0x238
     audio::SoundName* sound248 = nullptr;     // 0x248

@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <new>
 
 namespace ape {
 
@@ -98,6 +99,11 @@ void ApeTHandleList<T>::LinkFreeRange(int32_t first, int32_t end)
     }
 }
 
+// Class element types (the anim set slots, the knowledge library's lists)
+// get one heap-allocated element per node on the console, constructed with
+// the node array and copied by pointer on growth; here the elements are
+// stored in the nodes and value-initialised the same way.
+// @func 0x00788EF4 ApeTHandleList<AnimSetSlot>::Init
 template <class T>
 void ApeTHandleList<T>::Init(int32_t capacity)
 {
@@ -107,6 +113,8 @@ void ApeTHandleList<T>::Init(int32_t capacity)
     m_growable = true;
     if (!capacity)
         return;
+    for (int32_t i = 0; i < capacity; ++i)
+        new (&m_nodes[i].value) T();
     LinkFreeRange(0, capacity);
     m_nodes[0].prev = kNone;
     m_nodes[capacity - 1].next = kNone;
@@ -117,6 +125,11 @@ void ApeTHandleList<T>::Init(int32_t capacity)
     m_freeCount = capacity;
 }
 
+// NOTE: in the class-element instantiations the console copies the old
+// nodes (element pointers included) over the new ones and then deletes the
+// old elements, leaving the copies dangling; both such lists are created
+// non-growable, so it never matters. Here the elements are copied by value.
+// @func 0x007893B0 ApeTHandleList<AnimSetSlot>::Grow
 template <class T>
 void ApeTHandleList<T>::Grow(int32_t capacity)
 {
@@ -127,6 +140,8 @@ void ApeTHandleList<T>::Grow(int32_t capacity)
         std::memcpy(nodes, m_nodes, (size_t)m_capacity * sizeof(Node));
     MemFree(m_nodes, 0);
     m_nodes = nodes;
+    for (int32_t i = m_capacity; i < capacity; ++i)
+        new (&m_nodes[i].value) T();
 
     const int32_t oldCapacity = m_capacity;
     LinkFreeRange(oldCapacity, capacity);

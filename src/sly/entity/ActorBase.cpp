@@ -606,5 +606,58 @@ bool ActorEntity::CanInteractWith(Entity* other, int kind, float* priority)
     return Entity::CanInteractWith(other, kind, priority);
 }
 
+// @func 0x00747C34 ActorEntity::Interface180Slot6
+// @func 0x00747C80 ActorEntity::Interface180Slot6 (thunk, +0x180)
+void ActorEntity::Interface180Slot6(void* body)
+{
+    if (Def()->defFlags & ActorDef::kDefFlag_KeepListeners)
+        return;
+    RigidBodyRemoveContactListener(body, static_cast<EntityInterface17C*>(this));
+}
+
+// @func 0x00747B90 ActorEntity::GetRenderObject
+ape::world::ApeObj* ActorEntity::GetRenderObject()
+{
+    if (!parts || parts->Count() != 1)
+        return nullptr;
+    return static_cast<ape::world::ApeObj*>((*parts)[0].body);
+}
+
+// @func 0x00747B40 ActorEntity::Slot41
+int ActorEntity::Slot41() { return Def()->navMode != ActorDef::kNavMode_None ? 1 : 0; }
+
+// @func 0x00747B68 ActorEntity::Slot42
+int ActorEntity::Slot42() { return Def()->navMode == ActorDef::kNavMode_Obstacle ? 1 : 0; }
+
+// @func 0x00747584 ActorDef::DefSlot6
+uint32_t ActorDef::DefSlot6() const
+{
+    switch (navMode) {
+    case 0x9260C26Eu:   // "Static"
+    case 0x41EB0AA3u:
+    case 0x29846DDAu:
+    case 0x4438A28Fu:   // "Obstacle"
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+// @func 0x00747CD4 PlainActor::~PlainActor
+// @func 0x00747D88 PlainActor::~PlainActor (deleting)
+// @func 0x007480AC PlainActor::~PlainActor (thunk, +0x17C)
+// @func 0x00747F24 PlainActor::~PlainActor (deleting thunk, +0x17C)
+// @func 0x00747FF4 PlainActor::~PlainActor (thunk, +0x180)
+// @func 0x00747E54 PlainActor::~PlainActor (deleting thunk, +0x180)
+PlainActor::~PlainActor() = default;
+
+// @func 0x00756CD4 Safe::~Safe
+// @func 0x00756DCC Safe::~Safe (deleting)
+// @func 0x0075720C Safe::~Safe (thunk, +0x17C)
+// @func 0x00756FF8 Safe::~Safe (deleting thunk, +0x17C)
+// @func 0x00757110 Safe::~Safe (thunk, +0x180)
+// @func 0x00756EE0 Safe::~Safe (deleting thunk, +0x180)
+Safe::~Safe() = default;
+
 } // namespace entity
 } // namespace sly
