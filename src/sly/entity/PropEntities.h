@@ -445,6 +445,11 @@ public:
     using Part = AlterEgoBentleyState;
     // Enters power-ups 0..`level` and records the level (0x00175B60).
     void SetPartLevel(uint32_t level);
+    // Clears `object` from the first Havok pointer array (0x0016DCF0).
+    void ForgetHavokObject(void* object);
+    // Runs the scale pulse (+0x2B8 timer of +0x2BC seconds): the entity
+    // swells and wobbles back to its size (0x00173208).
+    void UpdateScalePulse(float dt);
     // Plays a power-up effect on the character component unless the entity
     // is dead with its death effect showing; remembers the effect (0x0016CDE8).
     void PlayPowerUpFx(uint32_t fx);
@@ -478,6 +483,12 @@ public:
     float speedScale = 1.0f;       // 0x2AC
     float buffRate = 0.0f;         // 0x2B0
     uint32_t lastFx = 0;           // 0x2B4 effect last played (0x03DE9A54 = the death effect)
+    float pulseTimer = 0.0f;       // 0x2B8
+    float pulseTime = 0.0f;        // 0x2BC
+    float pulseBase = 1.0f;        // 0x2C0 eases toward 1
+    float pulseScale = 1.0f;       // 0x2C4
+    float pulseAmplitude = 0.0f;   // 0x2C8
+    float pulseFrequency = 0.0f;   // 0x2CC
     uint32_t skinLevel = 0;        // 0x2D0
     uint32_t skinCount = 0;        // 0x2D8
 };

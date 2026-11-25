@@ -536,6 +536,36 @@ void CompoundEntity::SetPartLevel(uint32_t level)
     partLevel = level;
 }
 
+// @func 0x0016DCF0 CompoundEntity::ForgetHavokObject
+void CompoundEntity::ForgetHavokObject(void* object)
+{
+    if (!object)
+        return;
+    for (int32_t i = 0; i < field_1FC.size; ++i) {
+        if (field_1FC.data[i] == object) {
+            field_1FC.data[i] = nullptr;
+            return;
+        }
+    }
+}
+
+// @func 0x00173208 CompoundEntity::UpdateScalePulse
+void CompoundEntity::UpdateScalePulse(float dt)
+{
+    if (pulseTimer == 0.0f)
+        return;
+    pulseTimer = std::max(pulseTimer - dt, 0.0f);
+    const float progress = 1.0f - pulseTimer / pulseTime;
+    const float remaining = 1.0f - progress;
+    const float base = pulseBase * remaining + progress;
+    // NOTE: the console uses 3.1415 for pi here.
+    const float wave = ape::FastSin(progress * 3.1415f * 2.0f * pulseFrequency);
+    pulseScale = remaining * remaining * wave * wave * pulseAmplitude + base;
+    pulseBase = pulseBase * 0.05f + 0.95f;
+    const ape::Vec3 scale = { pulseScale, pulseScale, pulseScale, 0.0f };
+    SetScale(scale, false);
+}
+
 // @func 0x0016CDE8 CompoundEntity::PlayPowerUpFx
 void CompoundEntity::PlayPowerUpFx(uint32_t fx)
 {
