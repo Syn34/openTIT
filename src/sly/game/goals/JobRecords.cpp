@@ -10,6 +10,7 @@
 #include "sly/game/WorldInterface.h"
 #include "sly/game/goals/Goal.h"
 #include "sly/game/goals/GoalHooks.h"
+#include "sly/game/hud/HudManager.h"
 #include "sly/tuning/GoalTuning.h"
 
 #include <cstring>
@@ -712,6 +713,79 @@ CollectibleRecord* TreasureRecordOf(const entity::Entity* entity) { return Recor
 
 // @func 0x002E69D4 SafeRecordOf
 CollectibleRecord* SafeRecordOf(const entity::Entity* entity) { return RecordOfSpawnPoint(g_safes, entity); }
+
+// @func 0x002E6320 JobManager::OnTreasureCollected
+void JobManager::OnTreasureCollected(Job* job) const
+{
+    constexpr uint32_t kTrophy_Treasures = 0xA2474384u;   // NOTE: award name unknown
+    PlayerProgress& progress = CurrentProgress();
+    auto collectedOf = [&](const Job& j) { return j.bitGroup == 0xFF ? 0 : CountBits(progress.jobBits[j.bitGroup]); };
+    auto countOf = [](const Job& j) { return CountRecordsOf(g_treasures, IndexOfId(j.field_2D4)); };
+
+    int collected = 0;
+    int total = 0;
+    for (uint32_t i = 0; i < jobCount; ++i) {
+        collected += collectedOf(jobs[i]);
+        total += countOf(jobs[i]);
+    }
+    if (job) {
+        const int count = countOf(*job);
+        if (count != 0 && count <= collectedOf(*job))
+            progress.episodes[job->episode].flags |= 0x40;
+    }
+    if (collected >= g_gameEpisodeTreasureAwardNumTreasures)
+        AwardTrophyByName(kTrophy_Treasures);
+    if (total > 0 && total <= collected) {
+        for (uint32_t i = 0; i < jobCount; ++i)
+            progress.episodes[jobs[i].episode].flags |= 0x40;
+    }
+    CheckEpisodeTrophies();
+}
+
+// @func 0x002E6B8C JobManager::MaskSpawnerAvailable
+bool JobManager::MaskSpawnerAvailable(const Spawner* spawner, uint8_t profile) const
+{
+    if (!spawner)
+        return false;
+    const uint32_t key = spawner->spawnPoint ? WorldObjectKey(spawner->spawnPoint) : 0;
+    if (key != 0) {
+        CollectibleRecord** found = g_masks.Find(key);
+        const CollectibleRecord* mask = found ? *found : nullptr;
+        if (mask && (mask->field_08 == 0 || mask->foundIn == 0)) {
+            const Job& job = jobs[mask->episode];
+            if (job.maskSlot == 0xFF)
+                return false;
+            if (job.maskSlot >= PlayerProgress::kEpisodeSlots) {
+                ape::TempFormat("Episode Index is out of bounds '%i'! Range is [0 - %i]! Have an engineer "
+                                "increase the size of the array.",
+                                job.maskSlot, PlayerProgress::kEpisodeSlots);
+                return false;
+            }
+            return (ProfileProgress(profile).maskBits[job.maskSlot] & (1u << (mask->bit & 0x3F))) == 0;
+        }
+    }
+    ape::TempFormat("Couldn't find mask spawner '%s' in the mask info map! Please have an engineer check.",
+                    spawner->spawnPoint ? WorldObjectName(spawner->spawnPoint) : "");
+    return false;
+}
+
+// @func 0x002E6E54 JobManager::SetGoalCountersSuppressed
+void JobManager::SetGoalCountersSuppressed(bool suppressed)
+{
+    constexpr uint32_t kFlag_CountersSuppressed = 1u << 27;
+    if (!suppressed) {
+        for (uint32_t i = 0; i < PlayerGoalCount(); ++i) {
+            Goal* goal = PlayerGoalListAt(i);
+            if ((goals::JobGoalSaveWord(goal->job, goal->saveSlot) >> 28) != goals::kGoal_Active)
+                continue;
+            goals::GoalProgress counter;
+            if (goal->GetProgress(&counter) && counter.name != 0 && hud::Hud().objects.Find(counter.name) &&
+                *hud::Hud().objects.Find(counter.name))
+                hud::ShowByName(counter.name, true, true, false);
+        }
+    }
+    flags = suppressed ? (flags | kFlag_CountersSuppressed) : (flags & ~kFlag_CountersSuppressed);
+}
 
 } // namespace game
 } // namespace sly

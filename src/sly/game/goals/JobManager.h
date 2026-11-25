@@ -375,6 +375,19 @@ public:
     // below the award index) marks the table; the first and the sixth tables
     // marked award trophies (0x002E6A88).
     void RecordArcadeScore(int table, int rank) const;
+    // After a treasure was collected: marks the episode (flag 0x40) once all
+    // its treasures are found, awards the treasure trophy, marks every
+    // episode once all treasures of the game are found, then checks the
+    // episode trophies (0x002E6320).
+    void OnTreasureCollected(Job* job) const;
+    // The mask placed by `spawner` is still to be found by profile
+    // `profile`; false (with a warning) for spawners missing from the mask
+    // table (0x002E6B8C).
+    bool MaskSpawnerAvailable(const Spawner* spawner, uint8_t profile) const;
+    // Flag bit 27 of +0x64; switching it off hands the progress counter of
+    // every active goal to the HUD (0x002E6E54). NOTE: name from use by the
+    // minigame goals.
+    void SetGoalCountersSuppressed(bool suppressed);
     // Ends the running job instance, first updating its episode's flag 0x20
     // (0x002E5060).
     void FinishJobInstance();

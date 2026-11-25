@@ -385,7 +385,7 @@ void JobManager::ClearGoals()
             Goal* goal = list[0];
             goals::GoalProgress progress;
             if (goal->GetStatus() == goals::kGoal_Active && goal->GetProgress(&progress))
-                hud::ShowByName(progress.name, true, true, false);   // hides its counter
+                hud::ShowByName(progress.name, true, true, false);
             goal->ResetHints(true);
             delete goal;
             // The list keeps its order: later goals move up one place.
