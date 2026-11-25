@@ -24,8 +24,10 @@ ape::Vec3 CenterComponentOffset(EntityComponent*) { return { 0.0f, 0.0f, 0.0f, 0
 
 // TODO(world object as script reference)
 ape::ApeRefCounted* EntityWorldObjectRef(Entity*) { return nullptr; }
-// TODO(0x000CE688 bone transforms)
-ape::Matrix34 EntityBoneWorldTransform(Entity* entity, uint32_t) { return entity->transform; }
+ape::Matrix34 EntityBoneWorldTransform(Entity* entity, uint32_t boneHash)
+{
+    return entity->BoneTransformByName(boneHash, true, true);
+}
 void AnimControllerSetRunning(void* controller, bool running)
 {
     auto* ctl = static_cast<anim::AnimController*>(controller);
@@ -133,6 +135,27 @@ void ScriptInstanceSetState(void* instance, uint32_t stateName)
 
 // TODO(0x00490518)
 void PropertySystemForgetDef(EntityDef* def) { (void)def; }
+
+// TODO(0x00443CE0)
+bool VoiceUpdate3D(uint32_t voice, const ape::Vec3& position, const ape::Vec3& velocity)
+{
+    (void)position; (void)velocity;
+    return voice != 0;
+}
+// TODO(0x00298EE4 / 0x00299674)
+void CharacterCompBeginAnim(EntityComponent* character) { (void)character; }
+void CharacterCompEndAnim(EntityComponent* character) { (void)character; }
+// TODO(0x000DC730 Entity::GetRootMotion)
+ape::Matrix34 EntityRootMotionDelta(Entity* entity, float dt)
+{
+    (void)entity; (void)dt;
+    return { { 1.0f, 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 0.0f, 1.0f } };
+}
+
+void MeshSetTint(ape::world::AglMesh* mesh, const uint8_t color[4], float amount)
+{
+    (void)mesh; (void)color; (void)amount;
+}
 
 // TODO(0x000D8C18 QueueObjectFlash)
 void QueueObjectFlash(ape::world::ApeObj* object, const uint8_t color[4], bool additive)

@@ -107,7 +107,6 @@ void SetCountedReference(Entity*& slot, Entity* entity)
 
 const ape::Matrix34 kIdentity = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 0 } };
 // Entity flag 13: the entity follows its root animation.
-constexpr uint32_t kEnt_RootMotion = 0x2000;
 
 float ByteToUnit(uint8_t value) { return float(value) * (1.0f / 255.0f); }
 

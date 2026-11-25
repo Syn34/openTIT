@@ -38,10 +38,9 @@ void EntitySetTransform(Entity* entity, const ape::Matrix34& transform)
 }
 void EntitySetEngaged(Entity*, bool) {}
 void EntityResetAnimMode(Entity*) {}
-// TODO(0x000DAABC / 0x000CE688): bone transforms need the skeleton port.
-ape::Matrix34 EntityBoneTransform(Entity* entity, uint32_t)
+ape::Matrix34 EntityBoneTransform(Entity* entity, uint32_t boneHash)
 {
-    return entity ? entity->transform : ape::Matrix34{};
+    return entity ? entity->BoneTransformByName(boneHash, true, true) : ape::Matrix34{};
 }
 void EntityRootMotion(Entity*, float, ape::Matrix34&) {}
 ape::Vec3 EntityObjectScale(const Entity*) { return {1.0f, 1.0f, 1.0f, 0.0f}; }
