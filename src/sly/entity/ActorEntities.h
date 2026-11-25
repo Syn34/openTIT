@@ -207,8 +207,112 @@ public:
 class SoundActorB16B48 : public SoundActor {
 public:
     ~SoundActorB16B48() override;
+    // Slot 105: slot 1 also clears the lit flag and switches the light on.
+    void PlaySlot(int index, bool force) override;
+    bool AdvanceTo2(float elapsed, float duration) override;   // only while lit
+    bool AdvanceTo3(float elapsed, float duration) override;
+    bool AdvanceTo4(float elapsed, float duration) override;
+    bool AdvanceWrap(float elapsed, float duration) override;
+    // 0x001C3EF0 (not ported). NOTE: name from the flag it pairs with.
+    void SetLight(bool on);
+
     ape::ApeTArray<void*> field_22C;          // 0x22C
     ape::ApeTArray<void*> field_240;          // 0x240
+    uint8_t lightFlags = 0;                   // 0x25C bit 7 lit, bit 5 held
+};
+
+// Definition of SoundActorB16B48. NOTE: only the options its timers read.
+class SoundActorB16B48Def : public SoundActorDef {
+public:
+    bool restartWhenWaiting = false;   // 0x1BC
+    bool unlightOnSlot3 = false;       // 0x1BD
+    bool unlightOnSlot4 = false;       // 0x1BE
+};
+
+// Sound actor with a two-way switch (vtable 0x00B16678; destructor
+// 0x0075420C outside this range).
+class SoundActorB16678 : public SoundActor {
+public:
+    // The class carries its own copy of SoundActor::Release (0x001BF794).
+    bool Release(bool kill) override;
+    bool AdvanceTo2(float elapsed, float duration) override;   // only while armed
+    bool AdvanceTo5(float elapsed, float duration) override;
+    // Slots 1 and 4 use the states of the switch position.
+    void SetSlotState(int index, bool immediate) override;
+
+    int32_t position = 0;          // 0x22C 0 or 1 (indexes the state tables)
+    float field_234 = 0.0f;        // 0x234 NOTE: non-negative resets the position
+    float delay = 0.0f;            // 0x238 slot 5 waits while positive
+    uint8_t switchFlags = 0;       // 0x23C bit 3 armed
+};
+
+// vtable 0x00B168E0 (destructor 0x0075458C outside this range).
+class SoundActorB168E0 : public SoundActor {
+public:
+    bool AdvanceTo2(float elapsed, float duration) override;   // only while armed
+    bool AdvanceTo3(float elapsed, float duration) override;
+    bool AdvanceTo5(float elapsed, float duration) override;   // not while armed
+
+    uint8_t flags240 = 0;          // 0x240 bit 3 armed, bit 7 reached slot 3
+};
+
+// Sound actor with six phantom-tracked entities (vtable 0x00B16DB0;
+// destructor 0x00754B74 outside this range).
+class SoundActorB16DB0 : public SoundActor {
+public:
+    bool Release(bool kill) override;
+    // Both wait while something occupies the actor, depending on flag bit 29.
+    bool AdvanceTo2(float elapsed, float duration) override;
+    bool AdvanceTo5(float elapsed, float duration) override;
+    bool IsOccupied() const;
+    static constexpr uint32_t kOccupancy_Bit29 = 1u << 29;
+
+    struct Tracked {
+        void* phantom = nullptr;   // +0x00 Havok phantom
+        Entity* entity = nullptr;  // +0x04
+        uint8_t pad[0x0C];
+    };
+    Entity* attached = nullptr;    // 0x22C
+    uint32_t field_234 = 0;        // 0x234
+    float holdTime = 0.0f;         // 0x240
+    uint32_t occupancyFlags = 0;   // 0x244 bit 29 (see the timers). NOTE: meaning unknown
+    Tracked tracked[6];            // 0x248
+};
+
+// Definition of SoundActorB16DB0. NOTE: only the flag its timer reads.
+class SoundActorB16DB0Def : public SoundActorDef {
+public:
+    uint32_t options = 0;          // 0x1BC bit 28: close even when occupied
+};
+
+// Like SoundActorB16DB0 with the records at +0x22C (vtable 0x00B17008;
+// destructor 0x00754E18 outside this range).
+class SoundActorB17008 : public SoundActor {
+public:
+    bool Release(bool kill) override;
+    bool AdvanceTo2(float elapsed, float duration) override;
+    bool AdvanceTo5(float elapsed, float duration) override;
+
+    SoundActorB16DB0::Tracked tracked[6];   // 0x22C
+};
+
+// vtable 0x00B17728 (destructor 0x00755374 outside this range): the
+// sequence only advances from slot 6 back to 1.
+class SoundActorB17728 : public SoundActor {
+public:
+    bool Release(bool kill) override;
+    // @func 0x001D4B6C SoundActorB17728::AdvanceTo2
+    bool AdvanceTo2(float, float) override { return true; }
+    // @func 0x001D4B74 SoundActorB17728::AdvanceTo4
+    bool AdvanceTo4(float, float) override { return true; }
+    // @func 0x001D4B7C SoundActorB17728::AdvanceTo5
+    bool AdvanceTo5(float, float) override { return true; }
+    // @func 0x001D4B84 SoundActorB17728::AdvanceTo6
+    bool AdvanceTo6(float, float) override { return true; }
+    bool AdvanceWrap(float elapsed, float duration) override;
+
+    Entity* attached = nullptr;    // 0x22C
+    bool holdWrap = false;         // 0x239
 };
 
 // vtable 0x00B17270 (0x360 bytes).

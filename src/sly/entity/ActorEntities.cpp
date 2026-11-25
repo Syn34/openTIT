@@ -258,6 +258,239 @@ bool SoundActorB174C0::Release(bool kill)
     return SoundActor::Release(kill);
 }
 
+// -- SoundActor subclasses --------------------------------------------------------------
+
+namespace {
+// Timer test shared by the subclasses: false (and the slot played) once the
+// duration ran out; a negative duration runs out at once.
+bool TimerExpired(float elapsed, float duration) { return duration < 0.0f || duration <= elapsed; }
+// State names of the switch positions (0x00F64A18 / 0x00F64A20). NOTE:
+// strings unknown; 0x00F64A10/14 next to them are "Off"/"On".
+constexpr uint32_t kSwitchSlot4States[2] = { 0xDA129A8Fu, 0xD57C789Fu };
+constexpr uint32_t kSwitchSlot1States[2] = { 0x0181FDFFu, 0x39DAE72Fu };
+// Interaction kind mask offered by the switch per position.
+constexpr uint32_t kSwitchInteraction[2] = { 4, 0 };
+} // namespace
+
+// @func 0x001C4280 SoundActorB16B48::PlaySlot
+void SoundActorB16B48::PlaySlot(int index, bool force)
+{
+    SoundActor::PlaySlot(index, force);
+    if (index == 1) {
+        lightFlags &= ~0x80;
+        SetLight(true);
+    }
+}
+
+// TODO(0x001C3EF0 SoundActorB16B48::SetLight)
+void SoundActorB16B48::SetLight(bool on) { lightFlags = on ? (lightFlags | 0x80) : (lightFlags & ~0x80); }
+
+// @func 0x001C42E8 SoundActorB16B48::AdvanceTo2
+bool SoundActorB16B48::AdvanceTo2(float elapsed, float duration)
+{
+    if (!(lightFlags & 0x80))
+        return true;
+    return SoundActor::AdvanceTo2(elapsed, duration);
+}
+
+// @func 0x001C4390 SoundActorB16B48::AdvanceTo3
+// NOTE: the console passes the definition as a fourth argument; it is taken
+// from the actor here.
+bool SoundActorB16B48::AdvanceTo3(float elapsed, float duration)
+{
+    const auto* d = static_cast<const SoundActorB16B48Def*>(def);
+    if ((sequenceFlags & kSeq_Held) || !TimerExpired(elapsed, duration)) {
+        if (d->restartWhenWaiting && !(lightFlags & 0x20))
+            PlaySlot(1, true);
+        return true;
+    }
+    PlaySlot(3, false);
+    if (d->unlightOnSlot3 && (lightFlags & 0x80))
+        SetLight(false);
+    return false;
+}
+
+// @func 0x001C44A8 SoundActorB16B48::AdvanceTo4
+bool SoundActorB16B48::AdvanceTo4(float elapsed, float duration)
+{
+    const auto* d = static_cast<const SoundActorB16B48Def*>(def);
+    if ((sequenceFlags & kSeq_Held) || !TimerExpired(elapsed, duration))
+        return true;
+    PlaySlot(4, true);
+    if (d->unlightOnSlot4 && (lightFlags & 0x80))
+        SetLight(false);
+    return false;
+}
+
+// @func 0x001C4578 SoundActorB16B48::AdvanceWrap
+bool SoundActorB16B48::AdvanceWrap(float elapsed, float duration)
+{
+    if ((sequenceFlags & kSeq_Held) || !TimerExpired(elapsed, duration))
+        return true;
+    PlaySlot(1, false);
+    if (lightFlags & 0x80) {
+        lightFlags &= ~0x80;
+        SetLight(true);
+    }
+    return false;
+}
+
+// @func 0x001BF794 SoundActorB16678::Release
+bool SoundActorB16678::Release(bool kill)
+{
+    return SoundActor::Release(kill);
+}
+
+// @func 0x001BFE38 SoundActorB16678::AdvanceTo2
+bool SoundActorB16678::AdvanceTo2(float elapsed, float duration)
+{
+    if (!(switchFlags & 0x08))
+        return true;
+    return SoundActor::AdvanceTo2(elapsed, duration);
+}
+
+// @func 0x001BFEE0 SoundActorB16678::AdvanceTo5
+// Reaching slot 5 flips the switch: the interaction it offers follows the
+// position and the switch disarms.
+bool SoundActorB16678::AdvanceTo5(float elapsed, float duration)
+{
+    if (delay > 0.0f || (sequenceFlags & kSeq_Held) || duration < 0.0f || elapsed < duration)
+        return true;
+    PlaySlot(5, false);
+    if (field_234 >= 0.0f)
+        position = 0;
+    if (EntityComponent* interaction = EntityInteraction(this))
+        InteractionSetOffer(interaction, kSwitchInteraction[position == 1 ? 1 : 0]);
+    switchFlags &= ~0x08;
+    return false;
+}
+
+// @func 0x001C0010 SoundActorB16678::SetSlotState
+void SoundActorB16678::SetSlotState(int index, bool immediate)
+{
+    if (index == 1 || index == 4) {
+        const uint32_t state = (index == 1 ? kSwitchSlot1States : kSwitchSlot4States)[position];
+        if (immediate)
+            animScript->SetStateAndUpdate(state);
+        else
+            animScript->SetState(state);
+        return;
+    }
+    SoundActor::SetSlotState(index, immediate);
+}
+
+// @func 0x001C1B50 SoundActorB168E0::AdvanceTo2
+bool SoundActorB168E0::AdvanceTo2(float elapsed, float duration)
+{
+    if (!(flags240 & 0x08))
+        return true;
+    return SoundActor::AdvanceTo2(elapsed, duration);
+}
+
+// @func 0x001C1BF8 SoundActorB168E0::AdvanceTo3
+bool SoundActorB168E0::AdvanceTo3(float elapsed, float duration)
+{
+    if ((sequenceFlags & kSeq_Held) || (duration >= 0.0f && elapsed < duration))
+        return true;
+    PlaySlot(3, false);
+    flags240 |= 0x80;
+    return false;
+}
+
+// @func 0x001C1CA0 SoundActorB168E0::AdvanceTo5
+bool SoundActorB168E0::AdvanceTo5(float elapsed, float duration)
+{
+    if (flags240 & 0x08)
+        return true;
+    return SoundActor::AdvanceTo5(elapsed, duration);
+}
+
+namespace {
+// Drops the tracked entities and their phantoms.
+void ReleaseTracked(SoundActorB16DB0::Tracked (&tracked)[6])
+{
+    for (SoundActorB16DB0::Tracked& record : tracked) {
+        if (!record.entity)
+            continue;
+        if (record.entity->IsAlive())
+            record.entity->Release(true);
+        record.entity = nullptr;
+        camera::DestroyPhantom(record.phantom);
+        record.phantom = nullptr;
+    }
+}
+} // namespace
+
+bool SoundActorB16DB0::IsOccupied() const
+{
+    return attached || field_234 || holdTime > 0.0f;
+}
+
+// @func 0x001C70C8 SoundActorB16DB0::Release
+bool SoundActorB16DB0::Release(bool kill)
+{
+    if (kill) {
+        ReleaseTracked(tracked);
+        if (attached) {
+            attached->Release(false);
+            attached = nullptr;
+        }
+    }
+    return SoundActor::Release(kill);
+}
+
+// @func 0x001C7D60 SoundActorB16DB0::AdvanceTo2
+bool SoundActorB16DB0::AdvanceTo2(float elapsed, float duration)
+{
+    if (IsOccupied() && !(occupancyFlags & kOccupancy_Bit29))
+        return true;
+    return SoundActor::AdvanceTo2(elapsed, duration);
+}
+
+// @func 0x001C7E38 SoundActorB16DB0::AdvanceTo5
+bool SoundActorB16DB0::AdvanceTo5(float elapsed, float duration)
+{
+    // NOTE: the flag works the other way round here: an occupant holds
+    // slot 5 only while bit 29 is set (and the definition does not say otherwise).
+    const auto* d = static_cast<const SoundActorB16DB0Def*>(def);
+    if (IsOccupied() && (occupancyFlags & kOccupancy_Bit29) && !(d->options & (1u << 28)))
+        return true;
+    return SoundActor::AdvanceTo5(elapsed, duration);
+}
+
+// @func 0x001C98C4 SoundActorB17008::Release
+bool SoundActorB17008::Release(bool kill)
+{
+    if (kill)
+        ReleaseTracked(tracked);
+    return SoundActor::Release(kill);
+}
+
+// @func 0x001C9D10 SoundActorB17008::AdvanceTo2
+bool SoundActorB17008::AdvanceTo2(float elapsed, float duration) { return SoundActor::AdvanceTo2(elapsed, duration); }
+
+// @func 0x001C9DA0 SoundActorB17008::AdvanceTo5
+bool SoundActorB17008::AdvanceTo5(float elapsed, float duration) { return SoundActor::AdvanceTo5(elapsed, duration); }
+
+// @func 0x001D46E8 SoundActorB17728::Release
+bool SoundActorB17728::Release(bool kill)
+{
+    if (kill && attached) {
+        attached->Release(false);
+        attached = nullptr;
+    }
+    return SoundActor::Release(kill);
+}
+
+// @func 0x001D4B90 SoundActorB17728::AdvanceWrap
+bool SoundActorB17728::AdvanceWrap(float elapsed, float duration)
+{
+    if (holdWrap || (sequenceFlags & kSeq_Held) || (duration >= 0.0f && elapsed < duration))
+        return true;
+    PlaySlot(1, false);
+    return false;
+}
+
 // @func 0x001AF40C SoundActor::SetSlotState
 void SoundActor::SetSlotState(int index, bool immediate)
 {

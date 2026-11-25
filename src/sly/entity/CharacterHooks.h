@@ -182,6 +182,9 @@ void AddPlayerScore(uint32_t player, int points);
 // The active minigame forgets a figure of that model (0x003DE47C).
 void MinigameFigureRemoved(uint32_t model);
 
+// Interaction component: the interaction kinds it offers (0x00266E6C).
+void InteractionSetOffer(EntityComponent* interaction, uint32_t kinds);
+
 // -- entities ---------------------------------------------------------------------
 // Plays a director script on the entity (0x000DCD20 with 0, 1).
 void EntityPlayDirectorScript(Entity* entity, uint32_t script);
