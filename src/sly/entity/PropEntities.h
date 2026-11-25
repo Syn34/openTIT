@@ -164,6 +164,9 @@ public:
     PropDamageSettings damage;         // 0xC8
     uint8_t targetingFlags[6] = {};    // 0xF4
     void* collisionShape = nullptr;    // 0xFC
+    // Bit 29: dies landing hard on static geometry; bit 30: dies touching a
+    // player-side entity (type bits 3 or 74).
+    uint32_t deathFlags = 0;           // 0x100
 };
 
 // Entity of AlterEgoDef (vtable 0x00B14968 + 0x00B14B00/0x00B14B28, 0x1C0 bytes;
@@ -184,6 +187,8 @@ public:
     void SetVelocity(const ape::Vec3& velocity) override;    // slot 34
     ape::Vec3 GetVelocity() override;                 // slot 35
     ape::Vec3 GetAimPoint() override;                 // slot 71
+    // Physics impacts can kill outright (see AlterEgoDef::deathFlags).
+    void OnHitCategory0(EntityHitRecord& hit) override;
     void OnHitCategory1(EntityHitRecord& hit) override;
     void OnHitCategory2(EntityHitRecord& hit) override;
     void OnHitCategory3(EntityHitRecord& hit) override;
@@ -251,6 +256,10 @@ public:
     PropDamageSettings damage;         // 0xE8
     uint8_t targetingFlags[6] = {};    // 0x120
     void* collisionShape = nullptr;    // 0x128
+    // Bit 24: the body collides with layer 0 too; bit 28: dies landing hard on
+    // static geometry; bits 29/30: dies touching a player-side entity other
+    // than the one that threw it (29 only when the entity has class bit 0).
+    uint32_t hitFlags = 0;             // 0x12C
 };
 
 // Push block definition (vtable 0x00B16058, 0x100 bytes; spawns 0x001B4A10).
@@ -325,6 +334,8 @@ public:
     ape::Vec3 GetAimPoint() override;
     // Slot 82: some hit category can hurt the entity.
     virtual bool CanBeDamaged() const;
+    // Physics impacts can kill outright (see TargetableDefC::hitFlags).
+    void OnHitCategory0(EntityHitRecord& hit) override;
     void OnHitCategory2(EntityHitRecord& hit) override;
     void OnHitCategory3(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
@@ -337,8 +348,8 @@ public:
     const TargetableDefC* Def() const { return static_cast<const TargetableDefC*>(def); }
 
     void* rigidBody = nullptr;           // 0x1A0
-    uint32_t field_1AC = 0;              // 0x1AC cleared on release
-    uint16_t targetFlags = 0;            // 0x1B0 bit 10: destroyed
+    Entity* thrower = nullptr;           // 0x1AC NOTE: its touch does not kill
+    uint16_t targetFlags = 0;            // 0x1B0 bits 8-9: NOTE unknown, any kills on impact; bit 10: destroyed
 };
 
 class TargetableA;
@@ -468,6 +479,10 @@ public:
     ape::world::ApeObj* object_530 = nullptr; // 0x530 counted
     ape::ApeTArray<void*> field_678;         // 0x678
     HkArray<void*> field_68C;                // 0x68C
+    ScriptedEntity* healthSource = nullptr;  // 0x6A8 NOTE: health is mirrored from it in mode 1
+    int32_t healthMode = 0;                  // 0x6AC
+    // Slot 79: in mode 1 the health goes to the source entity and is copied back.
+    void AddHealth(float amount) override;
 };
 
 // Definition of CompoundEntity. NOTE: the class is not identified; only its
@@ -540,6 +555,9 @@ public:
     float pulseFrequency = 0.0f;   // 0x2CC
     uint32_t skinLevel = 0;        // 0x2D0
     uint32_t skinCount = 0;        // 0x2D8
+    int32_t playerIndex = 0;       // 0x304 player this Bentley belongs to
+    // Slot 79: the second player's Bentley shares the first player's health.
+    void AddHealth(float amount) override;
 };
 
 } // namespace entity

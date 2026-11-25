@@ -178,6 +178,9 @@ bool ThrownBySelf(Entity* thrown, Entity* entity);
 // whose owner is a rigid body), its motion type (+0xE8 == 4: keyframed) and mass.
 void* HitOtherBody(const struct EntityHitRecord& hit);
 bool RigidBodyIsKeyframed(void* body);
+// Collision layer of the other collidable of a physics impact hit (its
+// filter info +0x1C, bits 0-4).
+uint32_t HitOtherCollisionLayer(const struct EntityHitRecord& hit);
 float RigidBodyMass(void* body);
 // Statistics of a melee hit taken (0x000B2AE0).
 void RecordMeleeHit(Entity* victim, const struct EntityHitRecord& hit);

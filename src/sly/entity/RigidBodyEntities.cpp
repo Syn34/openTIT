@@ -288,6 +288,65 @@ ape::Vec3 AlterEgoEntity::GetVelocity() { return BodyVelocity(); }
 // @func 0x00179F74 AlterEgoEntity::GetAimPoint
 ape::Vec3 AlterEgoEntity::GetAimPoint() { return BodyMassCenter(); }
 
+namespace {
+// NOTE: layer meaning unknown; impacts from it are ignored.
+constexpr uint32_t kLayer_IgnoredImpacts = 16;
+constexpr float kMaxLandingAngle = 1.0471976f;   // 60 degrees
+
+// The impact came from a keyframed or fixed body.
+bool HitByStaticBody(const EntityHitRecord& hit)
+{
+    void* body = HitOtherBody(hit);
+    if (!body)
+        return false;
+    const uint8_t motion = RigidBodyMotionType(body);
+    return motion == 5 || motion == 4;
+}
+
+// Angle between the contact normal and up.
+float ContactAngle(const EntityHitRecord& hit)
+{
+    return std::acos(std::clamp(hit.data.collision.normalUp, -1.0f, 1.0f));
+}
+
+// NOTE: type bits 3 and 74 look like the player characters' (unconfirmed).
+bool IsPlayerSide(const Entity* entity)
+{
+    return entity && (entity->HasTypeBit(3) || entity->HasTypeBit(74));
+}
+
+// Collision damage of the settings for the hit's speed (0 below the threshold).
+float CollisionAmount(const PropDamageSettings& settings, const EntityHitRecord& hit)
+{
+    const float speed = hit.data.collision.speed;
+    if (speed <= settings.collisionThreshold)
+        return 0.0f;
+    return std::min((speed - settings.collisionThreshold) * settings.collisionScale, settings.collisionMax);
+}
+} // namespace
+
+// @func 0x00178990 AlterEgoEntity::OnHitCategory0
+void AlterEgoEntity::OnHitCategory0(EntityHitRecord& hit)
+{
+    if (HitOtherCollisionLayer(hit) == kLayer_IgnoredImpacts || !ReceiveHit(hit))
+        return;
+    const AlterEgoDef* d = Def();
+    const bool hardLanding = (d->deathFlags & (1u << 29)) && HitByStaticBody(hit) &&
+                             ContactAngle(hit) < kMaxLandingAngle &&
+                             d->damage.collisionThreshold <= hit.data.collision.speed;
+    const bool touched = (d->deathFlags & (1u << 30)) && IsPlayerSide(hit.source);
+    if (hardLanding || touched) {
+        Damage(maxHealth, hit.source, kType_PhysicsImpact);
+        hit.flags |= EntityHitRecord::kHit_Fatal;
+        return;
+    }
+    const PropDamageSettings& settings = d->damage;
+    if (settings.collisionScale <= 0.0f || settings.collisionMax <= 0.0f)
+        return;
+    if (hit.data.collision.speed > settings.collisionThreshold)
+        propdamage::SetFatal(hit, Damage(CollisionAmount(settings, hit), hit.source, kType_PhysicsImpact));
+}
+
 // @func 0x00178CA0 AlterEgoEntity::OnHitCategory1
 void AlterEgoEntity::OnHitCategory1(EntityHitRecord& hit) { HitImpact(Def()->damage, hit); }
 
@@ -611,6 +670,44 @@ bool CompoundEntity::Release(bool kill)
 // TODO(0x0016BC0C CompoundEntity::SetPropState)
 void CompoundEntity::SetPropState(int32_t state, uint32_t arg) { (void)arg; propState = state; }
 
+namespace {
+// Health within 0..maxHealth (as ScriptedEntity::AddHealth keeps it).
+float ClampHealth(float value, float maxHealth)
+{
+    const float capped = std::min(value, maxHealth);
+    return capped > 0.0f ? capped : 0.0f;
+}
+} // namespace
+
+// @func 0x0016F350 CompoundEntity::AddHealth
+void CompoundEntity::AddHealth(float amount)
+{
+    if (playerIndex != 1) {
+        health = ClampHealth(health + amount, maxHealth);
+        return;
+    }
+    if (IsSinglePlayerMode())
+        return;
+    auto* lead = static_cast<ScriptedEntity*>(PlayerEntity(1 - playerIndex));
+    if (!lead)
+        return;
+    lead->AddHealth(amount);
+    health = ClampHealth(lead->health, maxHealth);
+}
+
+// @func 0x0018E8E8 TargetableA::AddHealth
+void TargetableA::AddHealth(float amount)
+{
+    if (healthMode != 1) {
+        health = ClampHealth(health + amount, maxHealth);
+        return;
+    }
+    if (!healthSource)
+        return;
+    healthSource->AddHealth(amount);
+    health = ClampHealth(healthSource->health, maxHealth);
+}
+
 // @func 0x0016F04C CompoundEntity::SetFlag80
 void CompoundEntity::SetFlag80(bool on)
 {
@@ -767,7 +864,7 @@ bool TargetableCBase::Release(bool kill)
             HavokRelease(rigidBody);
             rigidBody = nullptr;
         }
-        field_1AC = 0;
+        thrower = nullptr;
     }
     return ScriptedEntity::Release(kill);
 }
@@ -819,6 +916,38 @@ ape::Vec3 TargetableCBase::GetAimPoint()
 
 // @func 0x001FB888 TargetableCBase::CanBeDamaged
 bool TargetableCBase::CanBeDamaged() const { return Def()->damage.CanHurt(); }
+
+// @func 0x001FB910 TargetableCBase::OnHitCategory0
+// Hits queued during the physics step only predict whether they will kill.
+void TargetableCBase::OnHitCategory0(EntityHitRecord& hit)
+{
+    if (HitOtherCollisionLayer(hit) == kLayer_IgnoredImpacts)
+        return;
+    const TargetableDefC* d = Def();
+    Entity* source = hit.source;
+    const bool playerSide = IsPlayerSide(source);
+    bool kill;
+    if ((targetFlags >> 8 & 3) != 0 ||
+        (playerSide && (d->hitFlags & (1u << 29)) && (source->classBits & 1) && source != thrower) ||
+        (playerSide && (d->hitFlags & (1u << 30)) && source != thrower)) {
+        kill = true;
+    } else {
+        kill = (d->hitFlags & (1u << 28)) && HitByStaticBody(hit) && ContactAngle(hit) < kMaxLandingAngle &&
+               d->damage.collisionThreshold <= hit.data.collision.speed;
+    }
+    if (kill)
+        hit.flags |= EntityHitRecord::kHit_Fatal;
+
+    const float amount = CollisionAmount(d->damage, hit);
+    if (!ReceiveHit(hit)) {
+        if (hit.flags & EntityHitRecord::kHit_Deferrable)
+            propdamage::SetFatal(hit, amount < health);
+    } else if (kill) {
+        Damage(maxHealth, source, kType_PhysicsImpact);
+    } else if (amount > 0.0f) {
+        propdamage::SetFatal(hit, Damage(amount, source, kType_PhysicsImpact));
+    }
+}
 
 // @func 0x001FBF80 TargetableCBase::OnHitCategory2
 void TargetableCBase::OnHitCategory2(EntityHitRecord& hit)

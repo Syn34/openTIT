@@ -39,6 +39,7 @@ Entity* HitSourceOwner(Entity* source, HitOwnerKind kind) { (void)source; (void)
 bool ThrownBySelf(Entity* thrown, Entity* entity) { (void)thrown; (void)entity; return false; }
 void* HitOtherBody(const EntityHitRecord& hit) { (void)hit; return nullptr; }
 bool RigidBodyIsKeyframed(void* body) { (void)body; return false; }
+uint32_t HitOtherCollisionLayer(const EntityHitRecord& hit) { (void)hit; return 0; }
 float RigidBodyMass(void* body) { (void)body; return 0.0f; }
 void RecordMeleeHit(Entity* victim, const EntityHitRecord& hit) { (void)victim; (void)hit; }
 bool ListenerIgnoresDamage(EntityListener* listener) { (void)listener; return false; }
