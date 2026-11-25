@@ -647,12 +647,9 @@ void ApeGuiGradient::SetBlendMode(uint32_t mode)
 // @func 0x004E1604 ApeGuiLabel::~ApeGuiLabel
 // @func 0x004E181C ApeGuiLabel::~ApeGuiLabel (thunk)
 // @func 0x004E17D4 ApeGuiLabel::~ApeGuiLabel (deleting)
-ApeGuiLabel::~ApeGuiLabel()
-{
-    text.clear();
-    field_CC.clear();
-    idBuffer.clear();
-}
+// NOTE: the font reference taken by the constructor is not released, as on
+// the console; the text and glyph buffers free themselves.
+ApeGuiLabel::~ApeGuiLabel() = default;
 
 // @func 0x00795E6C ApeGuiLabel::GetType
 int32_t ApeGuiLabel::GetType() const
