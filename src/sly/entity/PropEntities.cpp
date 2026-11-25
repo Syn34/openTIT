@@ -1,8 +1,11 @@
 // openTIT - Entity classes built from a definition's collision object (see PropEntities.h).
 #include "sly/entity/PropEntities.h"
 
+#include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
 #include "sly/camera/CameraHooks.h"
+#include "sly/entity/CharacterHooks.h"
+#include "sly/entity/EntityHooks.h"
 
 namespace sly {
 namespace entity {
@@ -181,6 +184,64 @@ TargetableB::~TargetableB()
         holder->held = nullptr;
         holder = nullptr;
     }
+}
+
+ape::world::ApeObj* TargetableA::s_sharedObjects[TargetableA::kSharedObjects] = {};
+
+namespace {
+// Script message sent when a held entity is let go. NOTE: names unknown.
+constexpr uint32_t kMsgKey_Dropped = 0x0C8B8AB8u;
+constexpr uint32_t kMsg_Dropped = 0x00531BA0u;
+} // namespace
+
+// @func 0x00184280 TargetableA::~TargetableA
+// @func 0x00184700 TargetableA::~TargetableA (deleting)
+// @func 0x00184748 TargetableA::~TargetableA (deleting thunk, +0x180)
+// @func 0x00184794 TargetableA::~TargetableA (deleting thunk, +0x17C)
+// @func 0x001847E0 TargetableA::~TargetableA (thunk, +0x180)
+// @func 0x00184808 TargetableA::~TargetableA (thunk, +0x17C)
+TargetableA::~TargetableA()
+{
+    const bool minigame = MinigameFlag30();
+    if (health > 0.0f && minigame && object && object->GetDef())
+        MinigameFigureRemoved(object->GetDef()->GetAnimHash());
+    UnregisterEntity(kList_B, this);
+    field_68C.size = 0;
+
+    // A held entity is put down where the figure stands, keeping its rotation.
+    if (minigame && held && held->IsAlive()) {
+        ape::Matrix34 placed = held->transform;
+        placed.translation = { Position().x, Position().y, Position().z, placed.translation.pad };
+        EntitySetWorldTransform(held, placed);
+        held->holder = nullptr;
+        held->field_270 = 0;
+        EntityPostScriptMessage(this, kMsgKey_Dropped, kMsg_Dropped, 0);
+    }
+    if (held) {
+        held->holder = nullptr;
+        held = nullptr;
+    }
+
+    // The shared objects are dropped by every instance; the last one (the
+    // first object still had a single reference) forgets them.
+    bool last = false;
+    if (s_sharedObjects[0]) {
+        last = s_sharedObjects[0]->GetRefCount() == 1;
+        s_sharedObjects[0]->Release();
+    }
+    for (int i = 1; i < kSharedObjects; ++i) {
+        if (s_sharedObjects[i])
+            s_sharedObjects[i]->Release();
+    }
+    if (last) {
+        for (ape::world::ApeObj*& shared : s_sharedObjects)
+            shared = nullptr;
+    }
+
+    if (object_530)
+        object_530->Release();
+    if (animScript524)
+        AttachAnimScript(static_cast<ape::ApeAnimScriptInstance*>(animScript524));
 }
 
 // @func 0x0019324C TargetableB::InteractionOffer
