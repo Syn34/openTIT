@@ -72,12 +72,9 @@ public:
     float projectileVelScalar = 0.0f;
 };
 
-// Something that drives a character (AI, player input, scripted control).
-// Only the virtual destructor is used here.
-class CharacterController {
-public:
-    virtual ~CharacterController() = default;
-};
+// Something that drives a character (AI, player input, scripted control):
+// the control components of sly/components (ControlComponent).
+using CharacterController = EntityComponent;
 
 // Something that watches a character (Character +0x530); slot 75 (+0x12C)
 // takes the character off its list.
@@ -296,6 +293,8 @@ public:
     CharacterController* field_17C = nullptr;       // 0x17C
     CharacterController* controller = nullptr;      // 0x180 the one in charge (may alias the others)
     CharacterController* aiController = nullptr;    // 0x184 "ControlAI"
+    // Hands the character to its "ControlAI" component (created on first use).
+    void UseAIController();
     CharacterController* extController = nullptr;   // 0x188 "TmpExtControl"
     uint32_t field_18C[3] = {};                     // 0x18C cleared on release
     void* animScript198 = nullptr;                  // 0x198 orphaned on release

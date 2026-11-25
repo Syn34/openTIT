@@ -310,6 +310,10 @@ public:
     bool CanInteractWith(Entity* other, int kind) override;   // slot 76
     // Killing drops the nav obstacle and the body.
     bool Release(bool kill) override;                 // slot 10
+    // Unless broken (state 4), goes back to state 0 with the lock request in
+    // bits 30 (flag) and 31 (locked) of the state data. NOTE: the class is
+    // inferred from the code address (scripts call it on "lockable" entities).
+    void SetLocked(bool flag, bool locked);
 
     ape::Vec3 savedVelocity{};          // 0x230
     void* rigidBody = nullptr;          // 0x240

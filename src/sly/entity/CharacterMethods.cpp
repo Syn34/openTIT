@@ -1151,6 +1151,17 @@ namespace {
 constexpr uint32_t kState_End = 0x00010CBBu;   // "End"
 }
 
+// @func 0x00128EE0 Character::UseAIController
+void Character::UseAIController()
+{
+    if (!aiController) {
+        components::ControlAIComponentDesc desc(ape::HashNameNoCase("ControlAI"));
+        aiController = AddComponent(&desc, false);
+        aiController->OnOwnerSpawned(this);
+    }
+    field_17C = aiController;
+}
+
 // @func 0x00128C74 Character::PlayCharacterScript
 ape::ApeAnimScriptInstance* Character::PlayCharacterScript(uint32_t scriptName, bool stopCurrent)
 {

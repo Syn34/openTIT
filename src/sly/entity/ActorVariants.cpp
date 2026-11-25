@@ -170,10 +170,22 @@ bool ActorB17990::Release(bool kill)
 // TODO(0x001D81F0 ActorB17990::SetField1D81F0)
 void ActorB17990::SetField1D81F0(bool on) { (void)on; }
 
+// @func 0x001DB978 ActorB17990::SetPoints
+void ActorB17990::SetPoints(float value, bool scaled)
+{
+    if (scaled)
+        value *= maxPoints;
+    shownPoints = value;
+    points = value;
+    const float ratio = maxPoints > 0.0f ? value / maxPoints : 0.0f;
+    if (meter)
+        meter->ratio = ratio;
+}
+
 // @func 0x001DB9C8 ActorB17990::ResetState
 void ActorB17990::ResetState()
 {
-    field_248 = 0;
+    points = 0.0f;
     EntitySetState(this, 0, 1);
     InteractionSetOffer(EntityInteraction(this), 0);
     field_260 = 0;
