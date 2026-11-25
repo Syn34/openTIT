@@ -340,6 +340,7 @@ JobManager::~JobManager()
     g_jobManager = nullptr;
     FreeValues(TreasureTable());
     FreeValues(MaskTable());
+    FreeValues(SafeTable());
     FreeValues(g_entityIndices);
     FreeValues(g_movieEntries);
     for (Unlockable* unlockable : g_unlockables)
@@ -466,6 +467,65 @@ void JobManager::ActivateMaskSpawner(Spawner* spawner, const uint16_t* maskBits)
     }
     ape::TempFormat("Couldn't find mask spawner '%s' in the mask info map! Please have an engineer check.",
                     WorldObjectName(spawner->spawnPoint));
+}
+
+// @func 0x002DFAA0 JobManager::ActivateTreasureSpawner
+void JobManager::ActivateTreasureSpawner(Spawner* spawner, const uint16_t* treasureBits, bool inHideout) const
+{
+    if (!spawner || !treasureBits)
+        return;
+    const uint32_t name = WorldObjectKey(spawner->spawnPoint);
+    const CollectibleRecord* treasure = name != 0 ? *TreasureTable().Find(name) : nullptr;
+    if (!treasure) {
+        ape::TempFormat("Couldn't find treasure spawner '%s' in the treasure info map! Please have an engineer "
+                        "check.",
+                        WorldObjectName(spawner->spawnPoint));
+        return;
+    }
+    const uint8_t slot = jobs[treasure->episode].bitGroup;
+    if (slot == 0xFF)
+        return;
+    if (slot >= PlayerProgress::kEpisodeSlots) {
+        ape::TempFormat("Episode Index is out of bounds '%i'! Range is [0 - %i]! Have an engineer increase the "
+                        "size of the array.",
+                        slot, PlayerProgress::kEpisodeSlots);
+        return;
+    }
+    const bool missing = (treasureBits[slot] & (1u << (treasure->bit & 0x3F))) == 0;
+    const bool activate = inHideout ? !(currentJob && missing) : missing;
+    if (activate)
+        spawner->Activate();
+}
+
+// @func 0x002DFC2C JobManager::SpawnCollectibles
+void JobManager::SpawnCollectibles() const
+{
+    constexpr uint32_t kTreasureGroup = 0xFB673D64u;  // NOTE: group names unknown
+    constexpr uint32_t kSafeGroup = 0x5E69B571u;
+    if (!g_spawnManager)
+        return;
+    const Job* episode = CurrentEpisode();
+    PlayerProgress& progress = CurrentProgress();
+
+    if (SpawnGroup* group = g_spawnManager->FindGroup(kTreasureGroup); group && episode) {
+        const bool inHideout = episode->nameHash != 0 && episode->nameHash == LiveJobId();
+        for (Spawner* spawner = group->firstSpawner; spawner; spawner = spawner->nextInGroup)
+            ActivateTreasureSpawner(spawner, progress.jobBits, inHideout);
+    }
+
+    if (SpawnGroup* group = g_spawnManager->FindGroup(kSafeGroup)) {
+        for (Spawner* spawner = group->firstSpawner; spawner; spawner = spawner->nextInGroup) {
+            const uint32_t name = WorldObjectKey(spawner->spawnPoint);
+            if (name == 0)
+                continue;
+            const CollectibleRecord* safe = *SafeTable().Find(name);
+            if (!safe)
+                continue;
+            const Job& owner = jobs[safe->episode];
+            if (!owner.isDebugEpisode && (progress.episodes[owner.episode].flags & 7) == 3)
+                spawner->Activate();
+        }
+    }
 }
 
 // @func 0x002DFEFC JobManager::PrepareGoalScripts
