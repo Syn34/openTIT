@@ -245,6 +245,12 @@ public:
     // library first.
     void LoadJobScripts();
     void ReloadJobScripts();
+    // Level start: counts the collected bottles and masks, picks the goal
+    // to track, clears the per-level state and, when the tracked goal
+    // belongs to another level, asks for that level (0x002DDDCC).
+    void OnLevelStart();
+    // Links the job library's scripts, then OnLevelStart (0x002DE198).
+    void OnLevelLoaded();
     // Masks collected over every active record (0x002DDC5C).
     int CountCollectedMasks() const;
     // The current record, else the first non-debug record that lists the
@@ -311,9 +317,18 @@ public:
     uint32_t episodeCount = 0;       // +0x20
     Job* currentJob = nullptr;       // +0x24
     Episode* instance = nullptr;     // +0x28 the running job
+    uint32_t streamFlags = 0;        // +0x10 bit 29: a package stream is pending
     uint32_t field_30 = 0;           // +0x30
+    uint32_t collectedBottles = 0;   // +0x38 of the current episode, counted at level start
+    uint32_t collectedMasks = 0;     // +0x3C over every active episode
+    uint32_t field_40 = 0;           // +0x40
+    uint32_t field_44 = 0;           // +0x44
     Goal* trackedGoal = nullptr;     // +0x48
+    uint32_t field_4C = 0;           // +0x4C
+    uint32_t field_50 = 0;           // +0x50
+    uint32_t field_54 = 0;           // +0x54
     uint32_t pendingRequest[2] = {}; // +0x58
+    uint32_t trackedGoalId = 0;      // +0x60 goal to track after loading, 0 = first open goal
     uint32_t flags = 0;              // +0x64 bit 29: a request is pending
 
 private:
@@ -342,6 +357,10 @@ void SetProgressFlag149(bool on);
 void SetProgressField14C(uint32_t value);
 uint32_t ProgressField14C();
 uint32_t CurrentJobValue();
+// The player's goal with id `id` (0x00465F30 on the players block), or null.
+Goal* PlayerFindGoal(uint32_t id);
+// Asks the game world for level `levelName` (0x004674C4).
+void GameWorldRequestLevel(uint32_t levelName);
 // Goal `index` of the player's goal list (game world +0x10C0, count
 // +0x10C8), null for -1 or out of range (0x002E6A3C).
 Goal* PlayerGoalAt(uint32_t index);

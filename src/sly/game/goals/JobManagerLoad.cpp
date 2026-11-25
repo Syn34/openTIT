@@ -5,6 +5,7 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
 #include "ape/xml/ApeXml.h"
+#include "sly/game/goals/Goal.h"
 #include "sly/levels/GameServices.h"
 
 #include <vector>
@@ -366,6 +367,7 @@ void JobManager::LoadJobScripts()
 }
 
 // @func 0x002DDA54 JobManager::ReloadJobScripts
+// @func 0x002DE1F4 JobManager::ReloadJobScripts (copy 2)
 void JobManager::ReloadJobScripts()
 {
     if (!instance)
@@ -374,6 +376,67 @@ void JobManager::ReloadJobScripts()
         library->Clear();
         LoadJobScripts();
     }
+}
+
+// TODO(0x00465F30 / 0x004674C4): the players block and the level request
+// live in the game world.
+Goal* PlayerFindGoal(uint32_t) { return nullptr; }
+void GameWorldRequestLevel(uint32_t) {}
+
+// @func 0x002DDDCC JobManager::OnLevelStart
+void JobManager::OnLevelStart()
+{
+    if (Job* episode = CurrentEpisode()) {
+        collectedBottles = static_cast<uint32_t>(episode->CollectedBottles());
+        collectedMasks = static_cast<uint32_t>(CountCollectedMasks());
+    } else {
+        collectedBottles = 0;
+        collectedMasks = 0;
+    }
+
+    Goal* goal = nullptr;
+    if (trackedGoalId != 0) {
+        goal = PlayerFindGoal(trackedGoalId);
+    } else if (instance) {
+        for (uint32_t i = 0; i < PlayerGoalCount(); ++i) {
+            Goal* candidate = PlayerGoalListAt(i);
+            if (candidate && candidate->status != goals::kGoal_Complete) {
+                goal = candidate;
+                break;
+            }
+        }
+    }
+    trackedGoal = goal;
+    field_4C = 0;
+    field_50 = 0;
+    field_40 = 0;
+    field_44 = 0;
+    pendingRequest[0] = 0;
+    pendingRequest[1] = 0;
+    field_54 = 0;
+    flags &= ~0x30000000u;
+
+    if (streamFlags & (1u << 29)) {
+        // NOTE: the console stops the package stream here (not ported).
+        streamFlags = 0;
+        JobManagerCleanup(this);
+    }
+
+    if (trackedGoal) {
+        const uint32_t level = trackedGoal->Field960();
+        if (level != 0 && level != LiveJobId())
+            GameWorldRequestLevel(level);
+    }
+}
+
+// @func 0x002DE198 JobManager::OnLevelLoaded
+void JobManager::OnLevelLoaded()
+{
+    if (instance) {
+        if (ape::ApeAnimScriptLibrary* library = ape::ApeAnimScriptLibrary::Get(kSharedScriptLibrary))
+            library->LinkAll();
+    }
+    OnLevelStart();
 }
 
 // @func 0x002DDC5C JobManager::CountCollectedMasks
