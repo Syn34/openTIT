@@ -308,10 +308,14 @@ public:
     void OnResume() override;                         // slot 61
     // Kind 0 is refused while the block is locked (+0x248 bit 15), kind 4 always.
     bool CanInteractWith(Entity* other, int kind) override;   // slot 76
+    // Killing drops the nav obstacle and the body.
+    bool Release(bool kill) override;                 // slot 10
 
     ape::Vec3 savedVelocity{};          // 0x230
     void* rigidBody = nullptr;          // 0x240
     int16_t blockFlags = 0;             // 0x248 bit 15: locked
+    void* navObstacle = nullptr;        // 0x24C levels::NavObstacleHandle
+    bool hasNavObstacle = false;        // 0x250
 };
 
 // Chain definition (vtable 0x00B15150, 0xC0 bytes; derives from the plain

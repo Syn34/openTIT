@@ -12,6 +12,7 @@
 #include "sly/entity/EntityHooks.h"
 #include "sly/entity/PhysicalEntity.h"
 #include "sly/levels/ai/AIController.h"
+#include "sly/levels/nav/NavGraph.h"
 #include "sly/gameplay/GameplayWorld.h"
 #include "sly/gameplay/Minigame.h"
 #include "ape/anim/ApeAnimScript.h"
@@ -1178,6 +1179,27 @@ void PushBlock::OnSuspend()
         savedVelocity = { velocity.x, velocity.y, velocity.z, savedVelocity.pad };
         RigidBodySetLinearVelocity(rigidBody, { 0.0f, 0.0f, 0.0f, 0.0f });
     }
+}
+
+// @func 0x001B58BC PushBlock::Release
+bool PushBlock::Release(bool kill)
+{
+    if (kill) {
+        if (hasNavObstacle) {
+            if (levels::NavManager* nav = levels::GetNavManager())
+                levels::RemoveNavObstacle(*nav, navObstacle);
+            hasNavObstacle = false;
+        }
+        if (rigidBody) {
+            if (RigidBodyInWorld(rigidBody)) {
+                RigidBodyClearUserProperties(rigidBody);
+                RigidBodyRemoveFromWorld(rigidBody);
+            }
+            HavokRelease(rigidBody);
+            rigidBody = nullptr;
+        }
+    }
+    return ScriptedEntity::Release(kill);
 }
 
 // @func 0x001B8F20 PushBlock::OnResume
