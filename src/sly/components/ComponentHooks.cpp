@@ -24,6 +24,10 @@ void AnimControllerBuildLayers(anim::AnimController* controller, void* tree)
     controller->BuildLayers(static_cast<const anim::AnimTree*>(tree));
 }
 void* FindAnimBlendMap(uint32_t nameHash) { return anim::FindAnimBlendMap(nameHash); }
+// TODO(0x004A59B4 geometry material lookup)
+agl::AglMaterial* GeomFindMaterial(ape::world::ApeObj*, uint32_t) { return nullptr; }
+// TODO(0x0046B5F8 game world callback lists)
+void QueueWorldCallback(int, void*, void*, entity::Entity*) {}
 
 // TODO(0x00367900 / 0x00362BEC / 0x00257910 / 0x0046B7A4): HUD element
 // instancing and the marker material override need the HUD and GUI ports.
