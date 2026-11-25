@@ -13,6 +13,7 @@
 #include <cstdint>
 
 namespace ape::world { class ApeObj; }
+namespace ape { class ApeAnimScriptInstance; }
 
 namespace sly {
 namespace entity {
@@ -35,6 +36,18 @@ bool GameObjectPostUpdate(Entity* entity, float dt);
 EntityComponent* CreateComponent(ComponentDesc* desc);
 // Offset of the "centre" component (type 0x1F) from the entity origin (0x002BC1E0).
 ape::Vec3 CenterComponentOffset(EntityComponent* component);
+
+// -- release ---------------------------------------------------------------------
+// 0x0046B6CC on the game world: drops the entity from its 13 per-frame event
+// lists.
+void GameWorldForgetEntity(Entity* entity);
+// Watcher virtual slot 74 (+0x128): the watched entity left the world.
+void WatcherEntityReleased(void* watcher, Entity* entity);
+// Spawner (entity +0xDC) virtual slot 8 (+0x20): its spawn left the world.
+void SpawnerEntityReleased(void* spawner, Entity* entity);
+// Clears the entity from the two global target tables (0x01019BE0, count
+// 0x01019BD0, and 0x0101DBF0, count 0x0101DBE0). NOTE: owners unknown.
+void ClearEntityFromTargetTables(Entity* entity);
 
 // -- render ids --------------------------------------------------------------
 // Allocates a fresh render/visibility id (0x004A2560).
@@ -87,6 +100,35 @@ bool ForwardVisibilityToComponents();
 // Bit 7 of byte +0x140 of component 0x20. NOTE: read as "keep hidden".
 bool ComponentHidesRender(EntityComponent* component);
 
+// Animation controller flag word +0x28 bit 14. NOTE: cleared while the
+// entity is suspended.
+void AnimControllerSetRunning(void* controller, bool running);
+// -- damage ------------------------------------------------------------------------
+// 0x004705F8: game event from one entity to another.
+void EntitySendGameEvent(Entity* sender, Entity* receiver, uint32_t event, uint32_t data, bool immediate);
+// 0x00470660: script message to the listeners of `key`.
+void EntityPostScriptMessage(Entity* sender, uint32_t key, uint32_t message, uint32_t argument);
+// GameEvent init (0x00464ED4 kind 0x01, 0x0046582C kind 0x16, 0x00465534
+// kind 0x1B) with the entity as source, posted through 0x00482D14 on the game
+// world for `player` (0xFF = none).
+void GameWorldPostEntityEvent(uint8_t player, uint32_t kind, Entity* source);
+// Spawner (entity +0xDC) virtual slot 9 (+0x24): its spawn was killed.
+void SpawnerEntityKilled(void* spawner, Entity* entity);
+// Placement record of the world object (map 0x01013B1C keyed by object
+// +0xCC): when its flag bit 1 is set, 0x0049FCC0 hands its values (+0xB4) to
+// the anim script.
+void ApplyPlacementToScript(ape::ApeAnimScriptInstance* script, ape::world::ApeObj* object);
+// Listener (+0xF4) slot 31 (+0x7C): the listener is an ally of the player.
+bool ListenerIsAlly(class EntityListener* listener);
+// Object at scripted entity +0x16C: its word +0x14 records the last damage
+// type. NOTE: owner unknown.
+void DamageRecordSetType(void* record, uint32_t type);
+
+// Sender of a message (EntityMessage +0x00, a 32-bit entity pointer on the
+// console that the port's message record cannot hold).
+Entity* MessageSenderEntity(const struct EntityMessage& msg);
+// Global 0x01032148: the physics step is running (hits are deferred).
+bool PhysicsStepInProgress();
 // Animation controllers are deleted through their virtual slot 1.
 void AnimControllerDestroy(void* controller);
 // 0x0048F298 (entity, true): removes the entity from its event listener group.

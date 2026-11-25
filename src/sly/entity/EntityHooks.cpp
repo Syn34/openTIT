@@ -20,6 +20,33 @@ EntityComponent* CreateComponent(ComponentDesc*) { return nullptr; }
 // TODO(0x002BC1E0 CenterComponent::GetOffset)
 ape::Vec3 CenterComponentOffset(EntityComponent*) { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 
+// TODO(anim controller +0x28 bit 14)
+void AnimControllerSetRunning(void*, bool) {}
+// TODO(0x004705F8 / 0x00470660 / 0x00482D14): game events live in sly/game.
+void EntitySendGameEvent(Entity*, Entity*, uint32_t, uint32_t, bool) {}
+void EntityPostScriptMessage(Entity*, uint32_t, uint32_t, uint32_t) {}
+void GameWorldPostEntityEvent(uint8_t, uint32_t, Entity*) {}
+// TODO(spawner slot 9 0x00456258)
+void SpawnerEntityKilled(void*, Entity*) {}
+// TODO(0x01013B1C placement map / 0x0049FCC0)
+void ApplyPlacementToScript(ape::ApeAnimScriptInstance*, ape::world::ApeObj*) {}
+// TODO(listener slot 31)
+bool ListenerIsAlly(EntityListener*) { return false; }
+// TODO(scripted entity +0x16C record)
+void DamageRecordSetType(void*, uint32_t) {}
+// TODO(EntityMessage +0x00): messages carry no sender pointer in the port yet.
+Entity* MessageSenderEntity(const EntityMessage&) { return nullptr; }
+// TODO(0x01032148 physics step flag)
+bool PhysicsStepInProgress() { return false; }
+// TODO(0x0046B6CC GameWorld::ForgetEntity)
+void GameWorldForgetEntity(Entity*) {}
+// TODO(watcher slot 74): the watcher classes are not ported.
+void WatcherEntityReleased(void*, Entity*) {}
+// TODO(spawner slot 8 0x00455F54): sly::Spawner is reached as an opaque pointer here.
+void SpawnerEntityReleased(void*, Entity*) {}
+// TODO(0x01019BE0 / 0x0101DBF0 target tables)
+void ClearEntityFromTargetTables(Entity*) {}
+
 // TODO(0x004A2560 NewRenderId)
 uint32_t NewRenderId()
 {
