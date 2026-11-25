@@ -927,6 +927,9 @@ static void MakeKnowledgeList(KnowledgeList* list, const KListRequest& request)
 // ---------------------------------------------------------------------------
 // Library
 
+// The console library keeps its lists in a handle list whose nodes own a
+// heap-allocated list each; its Init is reproduced by the constructor.
+// @func 0x00773A90 KnowledgeLibrary::InitSlots
 KnowledgeLibrary::KnowledgeLibrary(int capacity_)
     : capacity(capacity_)
 {
@@ -939,6 +942,23 @@ KnowledgeLibrary::KnowledgeLibrary(int capacity_)
 
 KnowledgeLibrary::~KnowledgeLibrary() = default;
 
+// NOTE: the console copies the old nodes over the new ones (list pointers
+// included) and then frees the old nodes' lists, so the copied pointers
+// dangle; it only works because the shipped library is not growable. Here
+// the lists simply move to the larger pool.
+// @func 0x00773E8C KnowledgeLibrary::Grow
+void KnowledgeLibrary::Grow(int newCapacity)
+{
+    if (newCapacity == capacity)
+        return;
+    slots.resize((size_t)newCapacity);
+    for (int i = capacity; i < newCapacity; ++i)
+        slots[(size_t)i].reset(new KnowledgeList());
+    used.resize((size_t)newCapacity, 0);
+    serial.resize((size_t)newCapacity, 0);
+    capacity = newCapacity;
+}
+
 KnowledgeList* KnowledgeLibrary::FindTemplate(uint32_t nameHash) const
 {
     for (const auto& entry : templates)
@@ -950,6 +970,8 @@ KnowledgeList* KnowledgeLibrary::FindTemplate(uint32_t nameHash) const
 // @func 0x00390DC8 KnowledgeLibrary::Add
 KnowledgeList* KnowledgeLibrary::Add(const KListRequest& request, uint32_t* handle)
 {
+    // NOTE: the console also has a "grow when full" branch (Grow) after the
+    // duplicate check, but it is unreachable: a full library is refused here.
     if (count >= capacity)
         return nullptr;
     if (request.element) {

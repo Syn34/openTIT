@@ -356,6 +356,9 @@ struct KnowledgeLibrary {
     // Frees the list of `handle` and releases the handle; stale or empty
     // handles are ignored (0x00398DAC).
     void Remove(uint32_t handle);
+    // Resizes the slot pool to `newCapacity` (the library doubles it when a
+    // growable library is full); existing lists and handles stay valid.
+    void Grow(int newCapacity);
 
     std::vector<std::unique_ptr<KnowledgeList>> slots;   // node values
     std::vector<uint8_t> used;

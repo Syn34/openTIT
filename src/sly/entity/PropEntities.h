@@ -11,6 +11,8 @@
 #include "sly/game/AudioSystem.h"
 #include "ape/memory/ApeTArray.h"
 
+#include <vector>
+
 namespace ape::world { class ApeObj; }
 
 namespace sly {
@@ -90,6 +92,8 @@ public:
     void* rigidBody = nullptr;           // 0x184 Havok rigid body
 
 protected:
+    // A body is being deleted: the entity stops listening to its contacts.
+    void StopListeningTo(void* body);
     // Takes the body out of the world and drops it (and `action`, if any).
     void ReleaseBody(void* action);
     ape::Vec3 BodyVelocity() const;
@@ -171,6 +175,19 @@ public:
     uint32_t InteractionOffer(int kind, Entity* other) override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     const RigidPropDef* Def() const { return static_cast<const RigidPropDef*>(def); }
+    // Slot 36: the rigid body (see NOTES: the slot hands out the physics body).
+    ape::world::ApeObj* GetRenderObject() override;
+    // Slot 72: field_1A0. NOTE: the slot name comes from the characters.
+    ape::Vec3 GetUpVector() override;
+    // Slot 95: empty. NOTE: no caller known.
+    virtual void Slot95();
+    // Empty overrides of the +0x17C interface's slots 6/7 (primary slots 97/96).
+    void Interface17CSlot6() override;
+    void Interface17CSlot7() override;
+    // Primary slot 98 / +0x180 slot 6.
+    void Interface180Slot6(void* body) override;
+
+    ape::Vec3 field_1A0{};               // 0x1A0 returned by slot 72
 };
 
 // Definition of AlterEgoEntity (vtable 0x00B14918).
@@ -233,6 +250,15 @@ public:
     uint8_t flashFade[4] = {};           // 0x1B2 fade record
     // Slot 14: while alive and flashing, blinks four times a second.
     void UpdateFade() override;
+    // Slot 36: the rigid body.
+    ape::world::ApeObj* GetRenderObject() override;
+    // Slot 95: empty. NOTE: no caller known.
+    virtual void Slot95();
+    // Empty overrides of the +0x17C interface's slots 6/7 (primary slots 97/96).
+    void Interface17CSlot6() override;
+    void Interface17CSlot7() override;
+    // Primary slot 98 / +0x180 slot 6.
+    void Interface180Slot6(void* body) override;
 };
 
 // Definition of the Bentley alter ego entity (vtable 0x00B14590, 0x110
@@ -285,6 +311,10 @@ public:
     ape::Vec3 aimOffset{};             // 0xD0 (12 bytes used) NOTE: name from GetAimPoint
     uint8_t field_DC[0x0C] = {};       // 0xDC
     PropDamageSettings damage;         // 0xE8
+    uint32_t field_110[3] = {};        // 0x110
+    // NOTE: navigation type hash: 0x0024A738 "None", 0x4438A28F "Obstacle",
+    // 0x29846DDA and 0xA96FEC1F (names unknown).
+    uint32_t navType = 0;              // 0x11C
     uint8_t targetingFlags[6] = {};    // 0x120
     void* collisionShape = nullptr;    // 0x128
     // Bit 24: the body collides with layer 0 too; bit 28: dies landing hard on
@@ -323,7 +353,23 @@ public:
     // bits 30 (flag) and 31 (locked) of the state data. NOTE: the class is
     // inferred from the code address (scripts call it on "lockable" entities).
     void SetLocked(bool flag, bool locked);
+    // The nav obstacle handle (+0x24C) removes its obstacle when the block goes.
+    ~PushBlock() override;
+    // Slot 36: the rigid body.
+    ape::world::ApeObj* GetRenderObject() override;
+    // Hits of categories 0 and 2-4 are ignored; damage is always accepted
+    // and ignored.
+    void OnHitCategory0(EntityHitRecord& hit) override;
+    void OnHitCategory2(EntityHitRecord& hit) override;
+    void OnHitCategory3(EntityHitRecord& hit) override;
+    void OnHitCategory4(EntityHitRecord& hit) override;
+    bool Damage(float amount, Entity* source, uint32_t type) override;   // slot 88
+    // Primary slot 95 / +0x180 slot 6.
+    void Interface180Slot6(void* body) override;
 
+    // NOTE: element types unknown; both are only freed here.
+    std::vector<uint8_t> field_184;     // 0x184 compact array (elements of field_18A >> 1 bytes)
+    ape::ApeTArray<void*> field_19C;    // 0x19C
     ape::Vec3 savedVelocity{};          // 0x230
     void* rigidBody = nullptr;          // 0x240
     int16_t blockFlags = 0;             // 0x248 bit 15: locked
@@ -364,7 +410,22 @@ public:
 // this range).
 class TargetableCBase : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
+    // The nav obstacle handle (+0x1B4) removes its obstacle.
+    ~TargetableCBase() override;
     bool Release(bool kill) override;                 // slot 10
+    // Slot 36: the rigid body.
+    ape::world::ApeObj* GetRenderObject() override;
+    // Slots 41/42: the definition's navigation type is not "None" / is
+    // 0xA96FEC1F (AddNavObstacle asks slot 42).
+    int Slot41() override;
+    int Slot42() override;
+    // Slot 95: empty. NOTE: no caller known.
+    virtual void Slot95();
+    // Empty overrides of the +0x17C interface's slots 6/7 (primary slots 97/96).
+    void Interface17CSlot6() override;
+    void Interface17CSlot7() override;
+    // Primary slot 98 / +0x180 slot 6: stops listening to the body's contacts.
+    void Interface180Slot6(void* body) override;
     // Slot 27/28: gravity factor of the body (the parent's link's while attached).
     float GetGravityFactor() override;
     void Detached(float gravityFactor) override;
@@ -412,8 +473,16 @@ public:
 
 // Entity of TargetableDefC with a linked entity and a game world update
 // callback (vtable 0x00B18F60; most of its own methods are at 0x00200000+).
+// Entity of TargetableDefC that adds nothing to the base (vtable 0x00B18D30).
+// NOTE: the class is only known by its vtable.
+class TargetableCVariant : public TargetableCBase {
+public:
+    ~TargetableCVariant() override;
+};
+
 class TargetableCLinked : public TargetableCBase {
 public:
+    ~TargetableCLinked() override;
     // Also drops the update callback (list 3) and lets go of the linked entity.
     bool Release(bool kill) override;                 // slot 10
 
@@ -485,6 +554,22 @@ public:
     // Empty override of the +0x17C interface's slot 5.
     void Interface17CSlot5(const void* event) override;
     const TargetableDefB* Def() const { return static_cast<const TargetableDefB*>(def); }
+    // Slot 36: the rigid body.
+    ape::world::ApeObj* GetRenderObject() override;
+    // @func 0x0074F670 TargetableB::Slot56
+    int Slot56() override { return 1; }
+    // Slot 72: field_1A0; slot 73: straight down, 7 units (NOTE: slot names
+    // come from the characters).
+    ape::Vec3 GetUpVector() override;
+    ape::Vec3 GetSideVector() override;
+    // Slot 99: empty. NOTE: no caller known.
+    virtual void Slot99();
+    // Empty overrides of the +0x17C interface's slots 6/7 (primary slots 101/100).
+    void Interface17CSlot6() override;
+    void Interface17CSlot7() override;
+    // Primary slot 103 / +0x180 slot 6.
+    void Interface180Slot6(void* body) override;
+    ape::Vec3 field_1A0{};                   // 0x1A0 returned by slot 72
     // Predicate the minigame uses: not a stackable target (type bit 9), or
     // neither held nor (when stacking) on a parent (0x0018E9FC).
     static bool IsFreeTarget(Entity* entity);
@@ -596,6 +681,23 @@ public:
     int32_t healthMode = 0;                  // 0x6AC
     // Slot 79: in mode 1 the health goes to the source entity and is copied back.
     void AddHealth(float amount) override;
+    // Slot 36: the rigid body.
+    ape::world::ApeObj* GetRenderObject() override;
+    // @func 0x0074F4E4 TargetableA::Slot56
+    int Slot56() override { return 1; }
+    // Slot 72: field_1A0; slot 73: straight down, 7 units.
+    ape::Vec3 GetUpVector() override;
+    ape::Vec3 GetSideVector() override;
+    // Slot 99: empty. NOTE: no caller known.
+    virtual void Slot99();
+    // Empty overrides of the +0x17C interface's slots 5/6/7 (primary slots
+    // 98/101/100).
+    void Interface17CSlot5(const void* event) override;
+    void Interface17CSlot6() override;
+    void Interface17CSlot7() override;
+    // Primary slot 103 / +0x180 slot 6.
+    void Interface180Slot6(void* body) override;
+    ape::Vec3 field_1A0{};                   // 0x1A0 returned by slot 72
 };
 
 // Definition of CompoundEntity. NOTE: the class is not identified; only its
@@ -703,6 +805,14 @@ public:
     int32_t playerIndex = 0;       // 0x304 player this Bentley belongs to
     // Slot 79: the second player's Bentley shares the first player's health.
     void AddHealth(float amount) override;
+    // Slot 36: the rigid body.
+    ape::world::ApeObj* GetRenderObject() override;
+    // Slot 72: (0.5, 0.5, 0.5). NOTE: the slot name comes from the characters.
+    ape::Vec3 GetUpVector() override;
+    // Slot 95: empty. NOTE: no caller known.
+    virtual void Slot95();
+    // Primary slot 98 / +0x180 slot 6.
+    void Interface180Slot6(void* body) override;
 };
 
 } // namespace entity

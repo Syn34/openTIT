@@ -150,6 +150,10 @@ public:
     AnimSet* Owner() const { return m_owner; }
 
 private:
+    // Allocates the entry storage (one block from the default allocator on
+    // the console: a 0x10-byte header, then the 0x4C-byte entries).
+    void AllocateStorage(uint16_t capacity);
+
     std::vector<AnimClipEntry> m_entries;
     uint16_t m_count = 0;
     AnimSet* m_owner;          // +0x10
