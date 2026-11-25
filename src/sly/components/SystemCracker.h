@@ -5,6 +5,7 @@
 // owner's anim script.
 #pragma once
 
+#include "sly/components/ComponentHooks.h"
 #include "sly/components/Components.h"
 
 namespace ape { class ApeAnimScriptInstance; }
@@ -19,7 +20,7 @@ public:
     // Nothing to do per frame (slot 6, 0x002B1A10).
     void Update(float dt) override;
     // Slot 16 (listener interface slot 2): a message of the listener group.
-    virtual void OnListenerMessage(uint32_t message);
+    virtual void OnListenerMessage(const ListenerMessage& msg);
 
     // Listener interface at +0x18 (vtable 0x00B1CC5C).
     struct Listener {

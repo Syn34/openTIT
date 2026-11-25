@@ -65,8 +65,9 @@ void SystemCrackerComponent::Update(float dt)
 
 // @func 0x002B1A14 SystemCrackerComponent::OnListenerMessage
 // @func 0x002B1CE0 SystemCrackerComponent::Listener::OnMessage (thunk)
-void SystemCrackerComponent::OnListenerMessage(uint32_t message)
+void SystemCrackerComponent::OnListenerMessage(const ListenerMessage& msg)
 {
+    const uint32_t message = msg.message;
     if (HasState(script, message)) {
         script->SetStateAndUpdate(message);
         return;

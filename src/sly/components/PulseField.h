@@ -7,6 +7,7 @@
 
 #include "ape/math/ApeMath.h"
 #include "ape/memory/ApeTArray.h"
+#include "sly/components/ComponentHooks.h"
 #include "sly/components/Components.h"
 
 namespace sly {
@@ -17,7 +18,7 @@ public:
     explicit PulseFieldComponent(const PulseFieldComponentDesc* desc);
     ~PulseFieldComponent() override;
     // Slot 16 (listener interface slot 2): messages are ignored.
-    virtual void OnListenerMessage(uint32_t message) { (void)message; }
+    virtual void OnListenerMessage(const ListenerMessage& msg) { (void)msg; }
 
     struct Listener {
         PulseFieldComponent* outer = nullptr;
@@ -41,7 +42,7 @@ class MagNetComponent : public PulseFieldComponent {
 public:
     explicit MagNetComponent(const MagNetComponentDesc* desc);
     ~MagNetComponent() override;
-    void OnListenerMessage(uint32_t message) override;
+    void OnListenerMessage(const ListenerMessage& msg) override;
     // TODO(0x002B31F8 MagNetComponent::Update): pulls bodies in range.
 };
 
@@ -49,7 +50,7 @@ class SpeedBoostComponent : public PulseFieldComponent {
 public:
     explicit SpeedBoostComponent(const SpeedBoostComponentDesc* desc);
     ~SpeedBoostComponent() override;
-    void OnListenerMessage(uint32_t message) override;
+    void OnListenerMessage(const ListenerMessage& msg) override;
     // TODO(0x002B5848 SpeedBoostComponent::Update): boosts characters in range.
 };
 

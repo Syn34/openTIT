@@ -6,7 +6,7 @@
 
 namespace ape { namespace xml { class XmlElement; } }
 namespace sly { namespace entity { struct ComponentDesc; class Entity; class EntityComponent; } }
-namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; }
+namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; class ApeRefCounted; }
 
 namespace sly {
 namespace components {
@@ -48,6 +48,8 @@ void MaterialRelease(void* material);
 // -- entities ------------------------------------------------------------------------
 // 0x000DCA20: runs `script` as a child of the entity's own anim script.
 ape::ApeAnimScriptInstance* EntityStartScript(entity::Entity* entity, ape::ApeAnimScript* script);
+// The entity's world object (+0xA0) as an anim script object reference.
+ape::ApeRefCounted* EntityScriptObject(entity::Entity* entity);
 // Entity virtual slot 24 (+0x60): NOTE: busy / engaged flag (base 0x007377D8).
 void EntitySetBusy(entity::Entity* entity, bool busy);
 // Gadget component (type 0x1A) word +0xF4 bits 20-27: the gadget mode.
@@ -58,6 +60,13 @@ uint32_t GadgetMode(entity::EntityComponent* gadget);
 // destructor 0x0048F6B0): members of a listener group receive the messages
 // posted to it (0x00470660). 0x0048FA54 joins a group, 0x0048F298 leaves all.
 void ListenerJoinGroup(void* listener, uint32_t group);
+// What a listener receives (sender entity, group key, message, argument).
+struct ListenerMessage {
+    entity::Entity* sender = nullptr;   // +0x00
+    uint32_t key = 0;                   // +0x04
+    uint32_t message = 0;               // +0x08
+    uint32_t argument = 0;              // +0x0C
+};
 void ListenerLeaveGroups(void* listener);
 // Entity world object (slot 36) word +0x2C: render layer.
 void EntitySetRenderLayer(entity::Entity* entity, uint32_t layer);

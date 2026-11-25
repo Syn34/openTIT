@@ -33,6 +33,8 @@ void MaterialRelease(void*) {}
 // TODO(0x000DCA20 / slot 24 / gadget +0xF4)
 ape::ApeAnimScriptInstance* EntityStartScript(entity::Entity*, ape::ApeAnimScript*) { return nullptr; }
 void EntitySetBusy(entity::Entity*, bool) {}
+// NOTE: world objects and script object references are separate classes in the port.
+ape::ApeRefCounted* EntityScriptObject(entity::Entity*) { return nullptr; }
 uint32_t GadgetMode(entity::EntityComponent*) { return 0; }
 
 // TODO(0x0048FA54 / 0x0048F298 listener groups, render object +0x2C)

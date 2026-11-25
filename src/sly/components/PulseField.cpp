@@ -34,9 +34,9 @@ MagNetComponent::~MagNetComponent() = default;
 
 // @func 0x002B425C MagNetComponent::OnListenerMessage
 // @func 0x002B4260 MagNetComponent::Listener::OnMessage (thunk)
-void MagNetComponent::OnListenerMessage(uint32_t message)
+void MagNetComponent::OnListenerMessage(const ListenerMessage& msg)
 {
-    (void)message;
+    (void)msg;
 }
 
 // @func 0x00255F18 SpeedBoostComponent::SpeedBoostComponent
@@ -50,9 +50,9 @@ SpeedBoostComponent::~SpeedBoostComponent() = default;
 
 // @func 0x002B6724 SpeedBoostComponent::OnListenerMessage
 // @func 0x002B6728 SpeedBoostComponent::Listener::OnMessage (thunk)
-void SpeedBoostComponent::OnListenerMessage(uint32_t message)
+void SpeedBoostComponent::OnListenerMessage(const ListenerMessage& msg)
 {
-    (void)message;
+    (void)msg;
 }
 
 } // namespace components
