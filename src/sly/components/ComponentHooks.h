@@ -20,6 +20,30 @@ void* FindAnimTree(uint32_t nameHash);
 void* FindAnimBlendMap(uint32_t nameHash);
 // IK component update (0x002934E0) and vortex pull (0x002B0B10) are not ported.
 
+// -- HUD markers ---------------------------------------------------------------------
+// 0x00367900: instance of the HUD template `templateName` registered as
+// `name`; null when the template is missing.
+void* HudCloneObject(uint32_t templateName, uint32_t name);
+// HudObject state (+0xA0 >> 1): 0 while idle.
+uint32_t HudObjectAnimState(void* hudObject);
+// 0x00362BEC: hides the element at once; 0x0036325C: hide/show request;
+// slot 5: (de)activates it.
+void HudObjectHideNow(void* hudObject);
+void HudObjectShow(void* hudObject, bool a, bool intro, bool b);
+void HudObjectSetActive(void* hudObject, bool active);
+// Colour override of a marker (0x00257910): with `enable` the element's
+// highlight material is copied into the record (made on first use) and the
+// record is linked to the element; without, the original is restored.
+struct MarkerColorOverride {
+    void* hudObject = nullptr;   // +0x00 element whose material is overridden (null: none)
+    void* material = nullptr;    // +0x04 private copy of the material
+};
+void MarkerSetColorOverride(void* hudObject, MarkerColorOverride& record, bool enable);
+// 0x0046B7A4 on the game world (list 6, callback 0x00F357E0): forgets a
+// colour override record; the copied material is released by slot 2.
+void GameWorldForgetColorOverride(MarkerColorOverride& record);
+void MaterialRelease(void* material);
+
 // <BossGrizz> component parser (forwards to levels::ai::ParseBossGrizzComponentDesc).
 entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                        uint8_t scope);

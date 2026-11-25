@@ -16,6 +16,20 @@ void AIBrainFillInput(void* brain, uint8_t* input) { (void)brain; (void)input; }
 void* FindAnimTree(uint32_t nameHash) { (void)nameHash; return nullptr; }
 void* FindAnimBlendMap(uint32_t nameHash) { (void)nameHash; return nullptr; }
 
+// TODO(0x00367900 / 0x00362BEC / 0x00257910 / 0x0046B7A4): HUD element
+// instancing and the marker material override need the HUD and GUI ports.
+void* HudCloneObject(uint32_t, uint32_t) { return nullptr; }
+uint32_t HudObjectAnimState(void*) { return 0; }
+void HudObjectHideNow(void*) {}
+void HudObjectShow(void*, bool, bool, bool) {}
+void HudObjectSetActive(void*, bool) {}
+void MarkerSetColorOverride(void* hudObject, MarkerColorOverride& record, bool enable)
+{
+    record.hudObject = enable ? hudObject : nullptr;
+}
+void GameWorldForgetColorOverride(MarkerColorOverride&) {}
+void MaterialRelease(void*) {}
+
 // The parser lives with the AI component (sly/levels/ai/AIBossGrizz.cpp).
 entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                        uint8_t scope)
