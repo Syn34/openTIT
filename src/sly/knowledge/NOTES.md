@@ -26,3 +26,9 @@
   the console). In the container loader the console tests a not-yet-written field; the port
   tests for an unknown result type instead.
 * Untouched here: 0x00398DAC, 0x00398E64, 0x00398ED0 (laser module set-up?).
+
+* Later pass (agent3): RCameraShake, RSetPosition (puts the owner back at its world object's
+  start transform), RStartMeleeAttack::Execute (attack sighting through the hook
+  `AIAddMeleeAttack`, 0x0001B8C0 in sly/levels/ai), RFireProjectile Link/Clone and
+  `KnowledgeLibrary::Remove` (0x00398DAC; the port also drops the list from the template map).
+  RFireProjectile::Execute (0x00398040, bad instruction data) and its field getters stay TODO.

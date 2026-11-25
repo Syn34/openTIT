@@ -988,6 +988,27 @@ void KnowledgeLibrary::Clear()
     templates.clear();
 }
 
+// @func 0x00398DAC KnowledgeLibrary::Remove
+void KnowledgeLibrary::Remove(uint32_t handle)
+{
+    const uint16_t handleSerial = (uint16_t)(handle & 0xFFFF);
+    const int index = (int)(handle >> 16);
+    if (handleSerial == 0 || index >= capacity || serial[(size_t)index] != handleSerial || !used[(size_t)index])
+        return;
+    KnowledgeList* list = slots[(size_t)index].get();
+    if (list->data && (list->data->flags & kList_Template)) {
+        for (auto it = templates.begin(); it != templates.end(); ++it) {
+            if (it->second == list) {
+                templates.erase(it);
+                break;
+            }
+        }
+    }
+    FreeKnowledgeList(list);
+    used[(size_t)index] = 0;
+    --count;
+}
+
 // @func 0x00390C1C KnowledgeLibrary::FreeInstances
 void KnowledgeLibrary::FreeInstances()
 {
