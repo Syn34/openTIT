@@ -25,6 +25,8 @@ Goal* PlayerGoalListAt(uint32_t index) { return index < PlayerGoalCount() ? g_ga
 uint32_t LiveJobId() { return 0; }
 int GameWorldState(int) { return 0; }
 void PlayerResetJobState(int) {}
+// TODO(0x00488D68): the game world state machine is not ported.
+void GameWorldRestartState() {}
 void GameWorldSetState(int, int) {}
 void GameWorldSetStateData(uint32_t, uint32_t) {}
 bool CurrentLevelJobValue(uint32_t*) { return false; }
@@ -398,6 +400,99 @@ void JobManager::ClearGoals()
     }
     flags &= ~kFlag_ClearingGoals;
     trackedGoal = nullptr;
+}
+
+// @func 0x002E12D0 JobManager::StartEpisode
+bool JobManager::StartEpisode(Job* job, bool stayInLevel)
+{
+    if (!job)
+        return false;
+    ResetRunningJob();
+    currentJob = job;
+    job->Start();
+    job->SetFlag80(false);
+    if (job->nameHash != 0 && !stayInLevel)
+        GameWorldRequestLevel(job->nameHash);
+    return true;
+}
+
+// @func 0x002E142C JobManager::StartEpisodeById
+bool JobManager::StartEpisodeById(uint32_t id)
+{
+    Job* job = FindJobById(id);
+    return job ? StartEpisode(job, false) : false;
+}
+
+// @func 0x002E15BC JobManager::RestartEpisodeById
+bool JobManager::RestartEpisodeById(uint32_t id)
+{
+    Job* job = FindJobById(id);
+    if (!job)
+        return false;
+    ResetRunningJob();
+    currentJob = job;
+    GameWorldRestartState();
+    return true;
+}
+
+// @func 0x002E1F44 JobManager::StartJob
+bool JobManager::StartJob(uint32_t index)
+{
+    if (index >= episodeCount)
+        return false;
+    Episode* job = &episodes[index];
+    ResetRunningJob();
+    currentJob = nullptr;
+    if (!job->ParseGoals())
+        return false;
+    if (g_game)
+        job->MoveGoalsTo(g_game->goals);
+    instance = job;
+    currentJob = &jobs[job->episode];
+    return true;
+}
+
+// @func 0x002E20CC JobManager::FindGoalToTrack
+Goal* JobManager::FindGoalToTrack() const
+{
+    return PlayerFindGoal(trackedGoalId);
+}
+
+// @func 0x002E1E98 JobManager::RequestJobStart
+void JobManager::RequestJobStart(entity::Entity* entity, Episode* job, uint32_t value, bool optionA, bool optionB)
+{
+    constexpr uint64_t kClass_JobStarter = 0x20000;   // NOTE: Entity::classBits bit 17
+    if (pendingJob)
+        pendingJob->ReleaseStreams();
+    pendingKind = 1;
+    pendingEntity = entity;
+    pendingJob = job;
+    pendingValue = value;
+    streamFlags = (optionA ? 1u << 31 : 0u) | (optionB ? 1u << 30 : 0u) | (1u << 29);
+    if (entity)
+        entity->classBits |= kClass_JobStarter;
+}
+
+// @func 0x002E4D64 JobManager::CancelPendingStart
+void JobManager::CancelPendingStart()
+{
+    if (!(streamFlags & (1u << 29))) {
+        if (instance) {
+            for (uint32_t i = 0; i < PlayerGoalCount(); ++i)
+                PlayerGoalListAt(i)->ResetHints(true);
+        }
+        return;
+    }
+    if (pendingJob)
+        pendingJob->ReleaseStreams();
+    pendingKind = 0;
+    pendingEntity = nullptr;
+    pendingJob = nullptr;
+    pendingValue = 0;
+    streamFlags = 0;
+    ClearGoals();
+    ResetRunningJob();
+    currentJob = nullptr;
 }
 
 } // namespace game

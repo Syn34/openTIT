@@ -412,6 +412,25 @@ public:
     // every active goal to the HUD (0x002E6E54). NOTE: name from use by the
     // minigame goals.
     void SetGoalCountersSuppressed(bool suppressed);
+    // Ends the running job and starts episode `job`: stage 0, flag 0x80
+    // cleared and (unless `stayInLevel`) a request for its hideout level
+    // (0x002E12D0); 0x002E142C finds the episode by its id first.
+    bool StartEpisode(Job* job, bool stayInLevel);
+    bool StartEpisodeById(uint32_t id);
+    // Ends the running job, makes the episode with id `id` current and
+    // restarts the game world state (0x002E15BC).
+    bool RestartEpisodeById(uint32_t id);
+    // Ends the running job and runs job `index`: its goals are built from
+    // its goal file and handed to the players (0x002E1F44).
+    bool StartJob(uint32_t index);
+    // The player's goal with the id to track after loading (0x002E20CC).
+    Goal* FindGoalToTrack() const;
+    // Queues the start of `job` (its files are streamed meanwhile) for
+    // `entity` (0x002E1E98).
+    void RequestJobStart(entity::Entity* entity, Episode* job, uint32_t value, bool optionA, bool optionB);
+    // Without a pending start, lets every goal reset its hints; with one,
+    // drops it and ends the running job and episode (0x002E4D64).
+    void CancelPendingStart();
     // Ends the running job instance, first updating its episode's flag 0x20
     // (0x002E5060).
     void FinishJobInstance();
@@ -419,13 +438,17 @@ public:
     // flag 0x20; the running level's own job counts as flagged (0x002E2740).
     bool IsJobValueFlagged(uint32_t value) const;
 
+    int32_t pendingKind = 0;         // +0x00 1: a job start is pending
+    entity::Entity* pendingEntity = nullptr;   // +0x04 the entity that asked (class bit 17 set)
+    Episode* pendingJob = nullptr;   // +0x08 job whose files are streamed for the start
+    uint32_t pendingValue = 0;       // +0x0C
     Job* jobs = nullptr;             // +0x14
     uint32_t jobCount = 0;           // +0x18
     Episode* episodes = nullptr;     // +0x1C
     uint32_t episodeCount = 0;       // +0x20
     Job* currentJob = nullptr;       // +0x24
     Episode* instance = nullptr;     // +0x28 the running job
-    uint32_t streamFlags = 0;        // +0x10 bit 29: a package stream is pending
+    uint32_t streamFlags = 0;        // +0x10 bit 29: a start is pending; bits 31/30 its two options
     uint32_t field_30 = 0;           // +0x30
     uint32_t collectedBottles = 0;   // +0x38 of the current episode, counted at level start
     uint32_t collectedMasks = 0;     // +0x3C over every active episode
@@ -471,6 +494,8 @@ uint32_t CurrentJobValue();
 Goal* PlayerFindGoal(uint32_t id);
 // Asks the game world for level `levelName` (0x004674C4).
 void GameWorldRequestLevel(uint32_t levelName);
+// Puts the game world's state machine into state 3 (0x00488D68).
+void GameWorldRestartState();
 // Goal `index` of the player's goal list (game world +0x10C0, count
 // +0x10C8), null for -1 or out of range (0x002E6A3C).
 Goal* PlayerGoalAt(uint32_t index);
