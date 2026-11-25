@@ -2,6 +2,7 @@
 // middleware and not ported: each stub stands for the call named in
 // AnimHavok.h and does what the console would do with no Havok objects.
 #include "sly/anim/AnimHavok.h"
+#include "sly/anim/AnimStream.h"
 
 namespace sly {
 namespace anim {
@@ -41,5 +42,20 @@ void HkRemoveReference(void*) {}
 // TODO(Havok hkaPose destructor and heap free)
 void HkPoseDelete(HkaPose*) {}
 
+} // namespace anim
+} // namespace sly
+
+namespace sly {
+namespace anim {
+// TODO(0x007DFEF8 Havok buffered stream reader): the port reads unbuffered.
+HkStreamReader* HkNewBufferedReader(HkStreamReader* inner, int) { return inner; }
+// TODO(0x007D48C4 hkReferencedObject::addReference)
+void HkAddReference(void*) {}
+// TODO(0x00802E08 hkSerializeUtil::load)
+void* HkLoadResource(HkStreamReader*) { return nullptr; }
+// TODO(0x007FECB8 / 0x00A39858 / 0x00802B08 Havok resource contents)
+void* HkResourceRootContainer(void*) { return nullptr; }
+HkaAnimationContainer* HkResourceAnimationContainer(void*) { return nullptr; }
+HkaAnimationContainer* HkRootFindAnimationContainer(void*) { return nullptr; }
 } // namespace anim
 } // namespace sly
