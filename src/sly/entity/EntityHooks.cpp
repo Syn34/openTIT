@@ -1,6 +1,8 @@
 // openTIT - Entity layer calls into systems that are not ported yet (see EntityHooks.h).
 #include "sly/entity/EntityHooks.h"
 #include "sly/entity/Entity.h"
+#include "sly/anim/AnimController.h"
+#include "sly/anim/AnimLayer.h"
 
 #include "ape/anim/ApeAnimScript.h"
 
@@ -24,8 +26,14 @@ ape::Vec3 CenterComponentOffset(EntityComponent*) { return { 0.0f, 0.0f, 0.0f, 0
 ape::ApeRefCounted* EntityWorldObjectRef(Entity*) { return nullptr; }
 // TODO(0x000CE688 bone transforms)
 ape::Matrix34 EntityBoneWorldTransform(Entity* entity, uint32_t) { return entity->transform; }
-// TODO(anim controller +0x28 bit 14)
-void AnimControllerSetRunning(void*, bool) {}
+void AnimControllerSetRunning(void* controller, bool running)
+{
+    auto* ctl = static_cast<anim::AnimController*>(controller);
+    if (running)
+        ctl->flags |= anim::AnimController::kFlag_Running;
+    else
+        ctl->flags &= ~anim::AnimController::kFlag_Running;
+}
 // TODO(0x004705F8 / 0x00470660 / 0x00482D14): game events live in sly/game.
 void EntitySendGameEvent(Entity*, Entity*, uint32_t, uint32_t, bool) {}
 void EntityPostScriptMessage(Entity*, uint32_t, uint32_t, uint32_t) {}
@@ -68,22 +76,24 @@ bool IsSinglePlayerMode() { return true; }
 // TODO: game world player blocks (+0x1078, stride 0x20C80).
 Entity* PlayerEntity(int) { return nullptr; }
 
-// TODO(0x0034CC34 AnimController::FindPlaying)
-void* AnimFindPlaying(void*, uint32_t) { return nullptr; }
-// TODO(0x00353748 AnimPlaying::GetDuration)
-float AnimDuration(void*) { return 0.0f; }
-// TODO(0x00353780 AnimPlaying::GetTime)
-float AnimElapsed(void*) { return 0.0f; }
-// TODO(0x00354150 AnimPlaying::SetTime)
-void AnimSetElapsed(void*, float) {}
-// TODO(0x003541E0 AnimPlaying::SetWeight)
-void AnimSetWeight(void*, float) {}
-// TODO(0x00353CC0 AnimPlaying::SetPaused)
-void AnimSetPaused(void*, bool) {}
-// TODO: bit 27 of the playing animation's word +0x0C.
-bool AnimIsFinished(void*) { return false; }
-// TODO(0x00353EB0 AnimPlaying::Stop)
-bool AnimStop(void*, bool) { return true; }
+// The "playing animation" handles are animation layers (sly/anim/AnimLayer.h).
+// NOTE: the hook names predate the layer port: AnimSetWeight sets the
+// playback speed (0x003541E0), AnimSetPaused is AnimLayer::Stop
+// (0x00353CC0) and AnimStop is AnimLayer::IsDone (0x00353EB0).
+void* AnimFindPlaying(void* controller, uint32_t anim)
+{
+    return static_cast<anim::AnimController*>(controller)->FindLayer(anim);
+}
+float AnimDuration(void* playing) { return static_cast<anim::AnimLayer*>(playing)->Duration(); }
+float AnimElapsed(void* playing) { return static_cast<anim::AnimLayer*>(playing)->LocalTime(); }
+void AnimSetElapsed(void* playing, float time) { static_cast<anim::AnimLayer*>(playing)->SetLocalTime(time); }
+void AnimSetWeight(void* playing, float value) { static_cast<anim::AnimLayer*>(playing)->SetPlaybackSpeed(value); }
+void AnimSetPaused(void* playing, bool flag) { static_cast<anim::AnimLayer*>(playing)->Stop(flag); }
+bool AnimIsFinished(void* playing)
+{
+    return (static_cast<anim::AnimLayer*>(playing)->flags & anim::AnimLayer::kFlag_Looping) != 0;
+}
+bool AnimStop(void* playing, bool flag) { return static_cast<anim::AnimLayer*>(playing)->IsDone(flag); }
 
 void WorldObjectSetVisible(ape::world::ApeObj* object, bool visible, bool recurse)
 {
@@ -102,8 +112,7 @@ bool ForwardVisibilityToComponents() { return false; }
 // TODO: component 0x20 byte +0x140 bit 7 (component class not modelled).
 bool ComponentHidesRender(EntityComponent*) { return false; }
 
-// TODO(0x0034xxxx) the animation controller is not ported.
-void AnimControllerDestroy(void* controller) { (void)controller; }
+void AnimControllerDestroy(void* controller) { delete static_cast<anim::AnimController*>(controller); }
 // TODO(0x0048F298)
 void EntityLeaveListenerGroup(Entity* entity) { (void)entity; }
 void WorldObjectSetUserData(ape::world::ApeObj* object, uint32_t tag, uint32_t value)
@@ -112,8 +121,7 @@ void WorldObjectSetUserData(ape::world::ApeObj* object, uint32_t tag, uint32_t v
     object->field_118 = reinterpret_cast<void*>(static_cast<uintptr_t>(value));
 }
 
-// TODO(0x0034A398) the clip registry belongs to the animation module.
-void* AnimClipRegistryFind(uint32_t nameHash) { (void)nameHash; return nullptr; }
+void* AnimClipRegistryFind(uint32_t nameHash) { return anim::FindAnimClip(nameHash); }
 
 void Component1DOnMessage(EntityComponent* component) { (void)component; }
 void EntityObjectDCStart(void* object) { (void)object; }
