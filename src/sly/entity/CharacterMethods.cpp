@@ -1151,6 +1151,26 @@ namespace {
 constexpr uint32_t kState_End = 0x00010CBBu;   // "End"
 }
 
+// @func 0x00124034 Character::UpdateFade
+void Character::UpdateFade()
+{
+    Entity::UpdateFade();
+    auto recordVisibility = [this]() {
+        flags3C8 = uint8_t((flags3C8 & ~kFlag3C8_Visible) | ((flags & kEnt_Visible) ? kFlag3C8_Visible : 0));
+        SetVisible(false, true, true, false);
+    };
+    if (flags3C8 & (kFlag3C8_FadeA | kFlag3C8_FadeB)) {
+        if (flags & kEnt_Visible)
+            EntityApplyFade(this, &field_3C9, (flags3C8 & kFlag3C8_FadeB) != 0);
+        recordVisibility();
+    }
+    if (flags3C8 & kFlag3C8_FadeBuffer) {
+        if (flags & kEnt_Visible)
+            ApplyFadeBuffer();
+        recordVisibility();
+    }
+}
+
 // @func 0x00128EE0 Character::UseAIController
 void Character::UseAIController()
 {

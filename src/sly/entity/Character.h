@@ -176,6 +176,9 @@ public:
     void DropCarried(bool release);
     // Pushes the fade buffer to the model and the fading children (0x00123F70).
     void ApplyFadeBuffer();
+    // Slot 14: while fading or with a pending fade buffer, records the
+    // visibility (kFlag3C8_Visible), applies the fade and hides the character.
+    void UpdateFade() override;
     // Back to full opacity after a scripted fade (0x001243D0).
     void ResetFade();
     void SetActive(bool active) override;            // slot 44 (0x00124598)

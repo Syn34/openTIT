@@ -10,6 +10,7 @@
 #pragma once
 
 #include "sly/entity/Entity.h"
+#include "sly/entity/ScriptedEntity.h"
 #include "sly/entity/EntityInterfaces.h"
 #include "sly/game/AudioSystem.h"
 
@@ -22,13 +23,17 @@ public:
     void* collisionShape = nullptr;          // 0x190
 };
 
-class PhysicalEntity : public Entity, public EntityInterface17C, public EntityInterface180 {
+class PhysicalEntity : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
     ~PhysicalEntity() override;
     // Minimal versions of 0x000EC5B8 / 0x000ED35C (entity module).
     bool PostUpdate(float dt) override;
     bool Release(bool kill) override;
+    // Physics state (+0x190): 1 puts the body into the world... (0x000E9BA0,
+    // entity module; minimal version records the state).
+    void SetPhysState(int state, uint32_t arg);
 
+    int32_t physState = 0;                   // 0x190
     // NOTE: entities with type bit 13 keep the one that threw or fired them
     // here (the figures and targets compare it with themselves).
     Entity* owner = nullptr;                 // 0x1B0

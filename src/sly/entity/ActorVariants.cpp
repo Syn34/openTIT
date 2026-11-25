@@ -32,6 +32,8 @@ ape::ApeAnimScriptInstance* ScriptOf(Entity* entity)
 
 // TODO(0x000E5E44 ActorEntity::HandleMessage)
 void ActorHandleMessageBase(ActorEntity* actor, const EntityMessage& msg) { actor->ScriptedEntity::HandleMessage(msg); }
+// TODO(0x000E5EF0 ActorEntity::SetTransform): only the entity transform.
+void ActorSetTransformBase(ActorEntity* actor, const ape::Matrix34& m) { actor->Entity::SetTransform(m); }
 
 // -- ActorGroup --------------------------------------------------------------------------
 

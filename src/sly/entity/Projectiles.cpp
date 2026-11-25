@@ -1,5 +1,6 @@
 // openTIT - Projectiles (see Projectiles.h).
 #include "sly/entity/Projectiles.h"
+#include "sly/entity/EntityHits.h"
 
 namespace sly {
 namespace entity {
@@ -70,6 +71,18 @@ void EntityProjectileMine::SetTargetPoint(const ape::Vec3& point)
 {
     targetPoint = { point.x, point.y, point.z, targetPoint.pad };
     SetState(1);
+}
+
+// @func 0x000F5E68 EntityProjectileMine::OnHitCategory2
+void EntityProjectileMine::OnHitCategory2(EntityHitRecord& hit)
+{
+    constexpr uint32_t kType_Blast = 0x03C599D8u;
+    const float damage = hit.data.blast.damage;
+    if (damage <= 0.0f)
+        return;
+    ScriptedEntity::Damage(damage, hit.source, kType_Blast);
+    if (health <= 0.0f)
+        SetPhysState(4, 0);
 }
 
 } // namespace entity

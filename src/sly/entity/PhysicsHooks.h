@@ -44,11 +44,18 @@ ape::Vec3 RigidBodyCenterOfMass(void* body);
 void RigidBodySetTransform(void* body, const ape::Matrix34& transform);
 // Wakes the body and, through its constraints, every body linked to it (0x003556AC).
 void RigidBodyWakeConnected(void* body);
+// Clears the halfword +0xA6 of a body when it enters the world.
+// NOTE: the Havok field is not identified.
+void RigidBodyClearHalfA6(void* body);
 // Position of the body (its motion state's transform, +0x120).
 ape::Vec3 RigidBodyPosition(void* body);
 // Drops the game's two user properties of a body (0x0093FED8, keys
 // 0xA734004D and 0x91C7CF5B) before it is released.
 void RigidBodyClearUserProperties(void* body);
+// Navigation obstacle shaped like a body's box or transformed shape, with
+// the given bounds, debug name and filter mask (0x00011410); null when the
+// shape does not qualify or the level has no navigation.
+void* NavAddBodyObstacle(void* body, const ape::Aabb& bounds, const char* name, uint32_t mask);
 // Local bounds of a collision shape (shape virtual getAabb at the identity
 // transform, tolerance 0).
 void HavokShapeLocalAabb(void* shape, ape::Aabb& out);

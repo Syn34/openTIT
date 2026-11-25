@@ -36,6 +36,10 @@ void ObjectApplyAlphaBuffer(ape::world::ApeObj* object, const void* buffer, uint
 void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value) { (void)object; (void)value; }
 void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity) { (void)list; (void)fn; (void)owner; (void)entity; }
 void GameWorldDequeueCallbacks(int list, void* owner) { (void)list; (void)owner; }
+void EntityApplyFade(Entity* entity, const uint8_t* fade, bool flag) { (void)entity; (void)fade; (void)flag; }
+// TODO(0x003F2990): minigame code outside the entity module.
+void MinigameTrackRewound() {}
+void ActorPartTransform(Entity* actor, ape::Matrix34& out, int part, const ape::Matrix34& local) { (void)actor; (void)part; out = local; }
 Entity* HitSourceOwner(Entity* source, HitOwnerKind kind) { (void)source; (void)kind; return nullptr; }
 bool ThrownBySelf(Entity* thrown, Entity* entity) { (void)thrown; (void)entity; return false; }
 void* HitOtherBody(const EntityHitRecord& hit) { (void)hit; return nullptr; }

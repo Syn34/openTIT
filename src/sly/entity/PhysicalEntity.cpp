@@ -24,12 +24,19 @@ PhysicalEntity::~PhysicalEntity()
 
 bool PhysicalEntity::PostUpdate(float dt)
 {
-    return Entity::PostUpdate(dt);
+    return ScriptedEntity::PostUpdate(dt);
 }
 
 bool PhysicalEntity::Release(bool kill)
 {
-    return Entity::Release(kill);
+    return ScriptedEntity::Release(kill);
+}
+
+// TODO(0x000E9BA0 PhysicalEntity::SetPhysState)
+void PhysicalEntity::SetPhysState(int state, uint32_t arg)
+{
+    (void)arg;
+    physState = state;
 }
 
 } // namespace entity
