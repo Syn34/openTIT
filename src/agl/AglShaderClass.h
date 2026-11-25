@@ -24,10 +24,40 @@ class AglSubMesh;
 struct AglMaterialAnim;
 
 // Lights affecting a draw.
+// One local (point) light of a light set, as uploaded to the shaders.
+struct AglLocalLight {
+    float position[4];        // NOTE: order of the three vectors from the uploads
+    float color[4];           // multiplied by the material colour when uploaded
+    float attenuation[4];
+};
+
+// Lights affecting a render item (+0x2C).
 struct AglLightSet {
-    // NOTE: used as a 0/1 selector by every shader class (probably "the
-    // main light casts shadows").
+    // Number of local lights (0 or 1 in practice); every lit shader class
+    // picks the technique of a pair with it.
     int32_t variant = 0;
+    uint32_t field_4[3] = {};
+    float ambient[4] = {};            // 0x10
+    float directionalColor[4] = {};   // 0x20
+    float direction[4] = {};          // 0x30
+    AglLocalLight locals[1] = {};     // 0x40, 'variant' entries
+};
+
+// Stencil reference tagging of item draws (0x010DDA60/0x010DDA61): each lit
+// draw writes ((item flag 0x20) ? 0x80 : 0) | material field_65, masked by
+// writeMask, as its stencil reference. The renderer loop sets both bytes.
+struct AglItemStencil {
+    uint8_t ref = 0;
+    uint8_t writeMask = 0;
+};
+AglItemStencil& GetItemStencil();
+
+// Render item light mask bits (+0x45), set by SelectTechnique.
+// NOTE: names inferred from the Draw functions.
+enum AglItemLightBits : uint8_t {
+    kItemLight_Lit      = 0x01,   // light constants are uploaded
+    kItemLight_PerPixel = 0x02,   // as fragment constants (else vertex constants 0x10..)
+    kItemLight_Eye      = 0x04,   // the eye position in object space is needed
 };
 
 // One draw: geometry, material and the per-draw state. The first 0x40
@@ -49,6 +79,8 @@ struct AglRenderItem {
     uint8_t lightMask = 0;                   // 0x45: lights the technique uses (set by SelectTechnique)
     uint8_t field_46 = 0;
     int8_t field_47 = -1;
+    // NOTE: RGB tint bytes read by the unlit Sac skinned draw.
+    uint8_t field_48[4] = { 0xFF, 0xFF, 0xFF, 0xFF };
 };
 
 // Fog of a draw: vertex constant 0x20 gets the layer's start, 1 / (end -
@@ -175,6 +207,8 @@ bool AreSlyShadersDisabled();
 // Registered class with the given name hash, following the aliases of
 // retired class names; null if unknown.
 AglShaderClass* FindShaderClass(uint32_t nameHash);
+// The out-of-line lookup game code calls (same result as FindShaderClass).
+AglShaderClass* GetShaderClass(uint32_t nameHash);
 
 // Static class lists (AglShaderClasses.cpp), each terminated by null.
 AglShaderClass* const* GetUnlistedShaderClasses();

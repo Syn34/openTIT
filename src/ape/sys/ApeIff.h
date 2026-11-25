@@ -134,7 +134,7 @@ void AddLoadedObject(int slot, void* object);
 // list (vtable 0x00B24110): a block of data and its size.
 class ApeLoadedData {
 public:
-    ApeLoadedData() = default;
+    ApeLoadedData();
     virtual ~ApeLoadedData();
     ApeLoadedData(const ApeLoadedData&) = delete;
     ApeLoadedData& operator=(const ApeLoadedData&) = delete;

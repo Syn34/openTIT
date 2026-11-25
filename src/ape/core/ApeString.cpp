@@ -101,6 +101,17 @@ int StrNCaseCompare(const char* a, const char* b, int count)
     return 0;
 }
 
+// @func 0x00551540 StrSPrintf
+// Unbounded sprintf; callers size their buffers for the formatted text.
+int StrSPrintf(char* buffer, const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    const int written = std::vsprintf(buffer, fmt, args);
+    va_end(args);
+    return written;
+}
+
 // @func 0x00555CF4 StrPrintf
 int StrPrintf(char* buffer, size_t size, const char* fmt, ...)
 {
