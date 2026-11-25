@@ -352,7 +352,7 @@ public:
     uint16_t flags2 = 0;                           // 0xB0 EntityFlags2
     int16_t interactionCount = 0;                  // 0xB2
     uint64_t classBits = 0;                        // 0xB8 EntityClassBits
-    uint32_t typeBits[2] = {};                     // 0xC0 bitset of entity types. NOTE: length unknown
+    uint32_t typeBits[3] = {};                     // 0xC0 bitset of entity types (words +0xC0..+0xC8)
     uint32_t renderId = 0;                         // 0xCC
     float cullDistance = 0.0f;                     // 0xD4
     EntityDef* def = nullptr;                      // 0xD8

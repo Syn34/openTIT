@@ -8,11 +8,13 @@
 
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
+#include "ape/memory/ApeMem.h"
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeDefTypes.h"
 #include "ape/world/ApeObj.h"
 #include "sly/components/ComponentDescs.h"
 #include "sly/entity/CharacterHooks.h"
+#include "sly/entity/EntityHooks.h"
 #include "sly/entity/GameEntityHooks.h"
 
 #include <algorithm>
@@ -248,7 +250,7 @@ void Character::ApplyProfileCostume(bool force)
             const int layer1 = EntityGetState(this, 1);
             if (layer1 != 0 && layer1 != 2)
                 break;
-            if (field_1A8 != 0)
+            if (carried)
                 break;
             if (EntityComponent* holder = EntityComponent03(this); holder && Component03Busy(holder))
                 break;
@@ -466,39 +468,369 @@ void Character::SetReference1AC(Entity* entity)
     SetCountedReference(reference1AC, entity);
 }
 
+// -- release and reset ------------------------------------------------------------------
+
+namespace {
+
+// World callback (0x00130430, queued on the game world's list 12 when a
+// character leaves): characters with a fade in progress go back on the
+// fade update list (entity list B) unless they are on it already.
+void RequeueFadingCharacter(void* owner, Entity* entity)
+{
+    (void)owner;
+    auto* character = static_cast<Character*>(entity);
+    if (!character || !(character->flags3C8 & (Character::kFlag3C8_FadeA | Character::kFlag3C8_FadeB |
+                                                Character::kFlag3C8_FadeBuffer)))
+        return;
+    for (uint32_t i = EntityCount(kList_B); i-- > 0;) {
+        if (EntityAt(kList_B, i) == character)
+            return;
+    }
+    RegisterEntity(kList_B, character);
+}
+
+} // namespace
+
+// @func 0x00130430 Character::RequeueFading (world callback)
+void Character::QueueFadeRequeue()
+{
+    GameWorldQueueCallback(12, &RequeueFadingCharacter, this, this);
+}
+
+// @func 0x00122518 Character::Release
+bool Character::Release(bool kill)
+{
+    if (kill) {
+        QueueFadeRequeue();
+        UnregisterEntity(kList_B, this);
+        EntityShutdown(this);
+        SetCarried(nullptr, nullptr, nullptr, nullptr, true);
+        SetCountedReference(reference1AC, nullptr);
+        SetCountedReference(reference1A4, nullptr);
+        field_17C = nullptr;
+        field_18C[0] = field_18C[1] = field_18C[2] = 0;
+
+        // The active controller may be one of the other two; delete each once.
+        if (extController != controller && extController)
+            delete extController;
+        extController = nullptr;
+        if (aiController && aiController != controller)
+            delete aiController;
+        aiController = nullptr;
+        if (controller) {
+            delete controller;
+            controller = nullptr;
+        }
+
+        if (animScript198) {
+            DetachAnimScript(animScript198);
+            animScript198 = nullptr;
+        }
+        if (animScript19C) {
+            DetachAnimScript(animScript19C);
+            animScript19C = nullptr;
+        }
+        for (void*& script : animScripts) {
+            if (script) {
+                DetachAnimScript(script);
+                script = nullptr;
+            }
+        }
+        if (aimArcObject) {
+            aimArcObject->Release();
+            aimArcObject = nullptr;
+        }
+        if (aimEndObject) {
+            aimEndObject->Release();
+            aimEndObject = nullptr;
+        }
+        // Each watcher takes itself off the list.
+        while (watchers530.Count() != 0)
+            watchers530[0]->ForgetCharacter(this);
+        watchers530.Clear();
+    }
+    return ScriptedEntity::Release(kill);
+}
+
+// @func 0x00122830 Character::ResetState
+void Character::ResetState()
+{
+    EntitySetState(this, 0, 0);
+    for (EntityComponent* physics = GetComponent(kComp_00); physics; physics = GetComponent(kComp_00, physics)) {
+        PhysicsCompReset(physics);
+        PhysicsCompResetAfterSwap(physics);
+    }
+    for (EntityComponent* props = GetComponent(kComp_Props); props; props = GetComponent(kComp_Props, props))
+        Component15Reset(props);
+    field_1B4 = 0;
+    field_1B8 = 0;
+    if (aimArcObject)
+        aimArcObject->SetVisible(false, false);
+    if (aimEndObject)
+        aimEndObject->SetVisible(false, false);
+}
+
+// -- carrying ----------------------------------------------------------------------------
+
+namespace {
+
+constexpr uint64_t kClass_Carrying = 0x8000;           // bit 15 (also picks skin variant 4)
+constexpr uint64_t kClass_HeavyCarry = 1ull << 39;     // the carried entity blocks two abilities
+constexpr uint64_t kClass_Carried = 0x20000;           // bit 17, on the carried entity
+// Abilities blocked while carrying something heavy. NOTE: names from the
+// ability table order (indices 2 and 3).
+constexpr int kAbility_BlockedByCarry[] = { 2, 3 };
+
+// Message posted when something is picked up. NOTE: names unknown.
+constexpr uint32_t kMsgKey_PickedUp = 0x600AE700u;
+constexpr uint32_t kMsg_PickedUp = 0x35007D87u;
+
+// Quaternion of Euler angles in degrees (x, y, z), composed as the console's
+// carry setup does.
+ape::Vec4 QuatFromEulerDegrees(const ape::Vec3& angles)
+{
+    constexpr float kDegToRad = 0.017453292f;
+    const float hx = angles.x * kDegToRad * 0.5f;
+    const float hy = angles.y * kDegToRad * 0.5f;
+    const float hz = angles.z * kDegToRad * 0.5f;
+    const float cx = ape::FastCos(hx), cy = ape::FastCos(hy), cz = ape::FastCos(hz);
+    const float sx = ape::FastSin(hx), sy = ape::FastSin(hy), sz = ape::FastSin(hz);
+    return { sy * sz * cx + cy * cz * sx,
+             cz * sy * cx + cy * sz * sx,
+             cy * sz * cx - cz * sy * sx,
+             cy * cz * cx - sy * sz * sx };
+}
+
+} // namespace
+
+// @func 0x00121FA8 Character::SetCarried
+void Character::SetCarried(Entity* entity, const uint32_t* part, const ape::Vec3* offset,
+                           const ape::Vec4* rotation, bool parentRotation)
+{
+    if (entity == carried)
+        return;
+    const CharacterDef* charDef = DefOf(this);
+
+    if (carried) {
+        if (classBits & kClass_HeavyCarry) {
+            for (int index : kAbility_BlockedByCarry)
+                abilities.state[index] &= ~kAbility_Blocked;
+        }
+        carried->SetFlag80(false);
+        carried->SetAlpha(0xFF, true, true, false);
+        DetachChild(carried);
+        carried->Release(false);
+        carried->classBits &= ~kClass_Carried;
+        carried = nullptr;
+    }
+
+    if (entity) {
+        carried = entity;
+        EntityChildLink link;
+        link.child = entity;
+        link.partName = part ? *part : charDef->carryPart;
+        const ape::Vec3& at = offset ? *offset : charDef->carryOffset;
+        link.offset = { at.x, at.y, at.z, link.offset.pad };
+        link.rotation = rotation ? *rotation : QuatFromEulerDegrees(charDef->carryAngles);
+        link.flags = kChild_RestoreState | (parentRotation ? kChild_ParentRotation : 0u);
+        EntityAttachChild(this, link);
+
+        classBits |= kClass_Carrying;
+        EntityPostScriptMessage(this, kMsgKey_PickedUp, kMsg_PickedUp, entity->nameHash);
+        entity->SetFlag80(true);
+        entity->AddRef();
+        entity->classBits |= kClass_Carried;
+        if (entity->listener && ListenerIsHeavy(entity->listener)) {
+            for (int index : kAbility_BlockedByCarry)
+                abilities.state[index] |= kAbility_Blocked;
+            classBits |= kClass_HeavyCarry;
+        }
+    }
+
+    if (!carried) {
+        skinMode = kSkin_Default;
+        classBits &= ~(kClass_Carrying | kClass_HeavyCarry);
+    } else {
+        classBits |= kClass_Carrying;
+        if (carried->listener && ListenerIsHeavy(carried->listener))
+            classBits |= kClass_HeavyCarry;
+    }
+}
+
+// @func 0x001244A4 Character::DropCarried
+void Character::DropCarried(bool release)
+{
+    Entity* held = carried;
+    if (!held)
+        return;
+    EntityListener* listener = held->listener;
+    if (listener)
+        ListenerOnDropped(listener, DefOf(this)->dropSettings);
+    SetCarried(nullptr, nullptr, nullptr, nullptr, true);
+    if (!listener && release)
+        held->Release(true);
+}
+
+// -- opacity -------------------------------------------------------------------------------
+
+namespace {
+
+// Tint amount the opacity path uses. NOTE: what the value means to the
+// material is not known.
+constexpr float kOpacityTintAmount = 7.25f;
+
+// Children that fade with their parent have entity type bit 70 (+0xC8 bit 6).
+bool FadesWithParent(const Entity* child)
+{
+    return child && (child->typeBits[2] & 0x40);
+}
+
+} // namespace
+
+// @func 0x001241A0 Character::SetOpacity
+void Character::SetOpacity(uint8_t alpha)
+{
+    opacity = alpha;
+    flags3C8 &= ~kFlag3C8_FadeBuffer;
+    if (fadeBuffer) {
+        ape::MemFree(fadeBuffer);
+        fadeBuffer = nullptr;
+    }
+    const uint8_t color[4] = { opacityColor[0], opacityColor[1], opacityColor[2], opacity };
+    opacityColor[3] = opacity;
+    SetTint(kOpacityTintAmount, color, true);
+    SetAlpha(opacity, false, false, true);
+    if (object)
+        RenderObjectSetLodField(object, lodField);
+    if (!children)
+        return;
+    for (EntityChildLink& link : *children) {
+        Entity* child = link.child;
+        if (FadesWithParent(child) && child->object) {
+            EntitySetFadeAlpha(child, false, opacity, true);
+            ObjectSetTint(kOpacityTintAmount, child->object, color);
+        }
+    }
+}
+
+// @func 0x00123F70 Character::ApplyFadeBuffer
+void Character::ApplyFadeBuffer()
+{
+    ObjectApplyAlphaBuffer(object, fadeBuffer, opacity);
+    if (!children)
+        return;
+    for (EntityChildLink& link : *children) {
+        if (FadesWithParent(link.child))
+            EntityApplyFadeBuffer(link.child);
+    }
+}
+
+// @func 0x001243D0 Character::ResetFade
+void Character::ResetFade()
+{
+    SetTint(kOpacityTintAmount, opacityColor, true);
+    EntityComponent* driver = GetComponent(kComp_17);
+    if (driver) {
+        // Driver states 2-5 are the scripted fades.
+        const uint32_t state = AnimDriverState(driver);
+        if (state > 1 && state < 6) {
+            AnimDriverStop(driver, false);
+            SetOpacity(0xFF);
+            flags3C8 |= kFlag3C8_Opaque;
+        }
+    }
+    field_1B8 = 0;
+    classBits &= ~uint64_t(0x40);
+}
+
+// -- activity --------------------------------------------------------------------------------
+
+namespace {
+constexpr uint32_t kComp_24 = 0x24;
+// Anim event sent to the character component's controller when the
+// character is deactivated. NOTE: name unknown.
+constexpr uint32_t kAnimEvent_Deactivated = 0x001F3381u;
+} // namespace
+
+// @func 0x00124598 Character::SetActive
+void Character::SetActive(bool active)
+{
+    if (EntityComponent* physics = GetComponent00()) {
+        if (!(classBits & 1)) {
+            PhysicsCompSetDisabled(physics, !active);
+        } else {
+            physics->SetOption(!active);
+            if (!active)
+                PhysicsCompSetDisabled(physics, true);
+            else
+                field_17C = controller;
+        }
+    }
+    for (EntityComponent* weapon = GetComponent(kComp_Weapon); weapon; weapon = GetComponent(kComp_Weapon, weapon))
+        Component10SetHidden(weapon, !active);
+
+    if (active) {
+        DropCarried(true);
+        if (EntityComponent* holder = EntityComponent03(this))
+            holder->OnOwnerSpawned(this);
+        if (EntityComponent* comp25 = EntityComponent25(this))
+            comp25->OnOwnerSpawned(this);
+        if (EntityComponent* comp24 = GetComponent(kComp_24))
+            Component24Reset(comp24);
+        ResetFade();
+        if (EntityComponent* character = GetCharacterComponent())
+            CharacterCompSendAnimEvent(character, kAnimEvent_Deactivated);
+        SetCountedReference(reference1A4, nullptr);
+        classBits &= ~uint64_t(0x80004);
+    }
+    Entity::SetActive(active);
+    ApplyProfileCostume(true);
+}
+
+// @func 0x00124A04 Character::SetRenderId
+void Character::SetRenderId(uint32_t id)
+{
+    if (PhysicsWorldPresent()) {
+        EntityComponent* physics = GetComponent00();
+        if (void* body = physics ? PhysicsCompRigidBody(physics) : nullptr)
+            RigidBodySetCollisionGroup(body, id);
+    }
+    Entity::SetRenderId(id);
+}
+
 // -- entity slot overrides ----------------------------------------------------------------
 
 // @func 0x00124954 Character::GetRenderId
+// NOTE: slots 25/26 are named "render id" on Entity; for characters the value
+// is the collision group of the physics body.
 uint32_t Character::GetRenderId()
 {
-    if (!RenderIdOverrideActive())
+    if (!PhysicsWorldPresent())
         return 0;
-    EntityComponent* component = GetComponent00();
-    return component ? CharacterCompRenderId(component) : 0;
+    EntityComponent* physics = GetComponent00();
+    return physics ? PhysicsCompCollisionGroup(physics) : 0;
 }
 
-// @func 0x00124BC0 Character::GetAttachBlend
-float Character::GetAttachBlend()
+// @func 0x00124BC0 Character::GetGravityFactor
+float Character::GetGravityFactor()
 {
+    // While attached the parent's link keeps the factor to restore.
     if (attachParent) {
         const EntityChildLink* link = attachParent->FindChildLink(this);
         return link ? link->restoreBlend : 0.0f;
     }
-    EntityComponent* component = GetComponent00();
-    if (!component)
-        return 0.0f;
-    ape::world::ApeObj* render = ComponentRenderObject(component);
-    return render ? RenderObjectPackedFade(render) : 0.0f;
+    EntityComponent* physics = GetComponent00();
+    void* body = physics ? PhysicsCompRigidBody(physics) : nullptr;
+    return body ? RigidBodyGravityFactor(body) : 0.0f;
 }
 
 // @func 0x00124C94 Character::Detached
-void Character::Detached(float blend)
+void Character::Detached(float gravityFactor)
 {
-    if (EntityComponent* component = GetComponent00()) {
-        if (ape::world::ApeObj* render = ComponentRenderObject(component))
-            RenderObjectSetPackedFade(render, blend);
-    }
-    Entity::Detached(blend);
+    EntityComponent* physics = GetComponent00();
+    if (void* body = physics ? PhysicsCompRigidBody(physics) : nullptr)
+        RigidBodySetGravityFactor(body, gravityFactor);
+    Entity::Detached(gravityFactor);
 }
 
 // @func 0x0012905C Character::GetAimPosition

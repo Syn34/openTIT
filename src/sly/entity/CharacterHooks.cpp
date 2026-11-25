@@ -11,12 +11,30 @@ uint32_t CharacterCompDefaultModel(EntityComponent* component) { (void)component
 void CharacterCompSetModel(EntityComponent* component, uint32_t model) { (void)component; (void)model; }
 void CharacterCompResetPose(EntityComponent* component) { (void)component; }
 void CharacterCompSetAnimController(EntityComponent* component, void* controller) { (void)component; (void)controller; }
-uint32_t CharacterCompRenderId(EntityComponent* component) { (void)component; return 0; }
+uint32_t PhysicsCompCollisionGroup(EntityComponent* component) { (void)component; return 0; }
+void* PhysicsCompRigidBody(EntityComponent* component) { (void)component; return nullptr; }
+void RigidBodySetCollisionGroup(void* body, uint32_t group) { (void)body; (void)group; }
 ape::Vec3 CharacterCompAimPosition(EntityComponent* component) { (void)component; return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 float CharacterCompTurnRate(EntityComponent* component) { (void)component; return 0.0f; }
-float RenderObjectPackedFade(ape::world::ApeObj* object) { (void)object; return 0.0f; }
-void RenderObjectSetPackedFade(ape::world::ApeObj* object, float value) { (void)object; (void)value; }
+float RigidBodyGravityFactor(void* body) { (void)body; return 0.0f; }
+void RigidBodySetGravityFactor(void* body, float factor) { (void)body; (void)factor; }
 
+void PhysicsCompReset(EntityComponent* component) { (void)component; }
+void PhysicsCompResetAfterSwap(EntityComponent* component) { (void)component; }
+void PhysicsCompSetDisabled(EntityComponent* component, bool disabled) { (void)component; (void)disabled; }
+void CharacterCompSendAnimEvent(EntityComponent* component, uint32_t event) { (void)component; (void)event; }
+void Component10SetHidden(EntityComponent* component, bool hidden) { (void)component; (void)hidden; }
+void Component24Reset(EntityComponent* component) { (void)component; }
+void Component15Reset(EntityComponent* component) { (void)component; }
+void EntityAttachChild(Entity* parent, const EntityChildLink& link) { (void)parent; (void)link; }
+void EntitySetState(Entity* entity, int layer, int state) { (void)entity; (void)layer; (void)state; }
+void EntitySetFadeAlpha(Entity* entity, bool flag, uint8_t alpha, bool immediate) { (void)entity; (void)flag; (void)alpha; (void)immediate; }
+void EntityApplyFadeBuffer(Entity* entity) { (void)entity; }
+bool ListenerIsHeavy(EntityListener* listener) { (void)listener; return false; }
+void ListenerOnDropped(EntityListener* listener, const uint8_t* dropSettings) { (void)listener; (void)dropSettings; }
+void ObjectApplyAlphaBuffer(ape::world::ApeObj* object, const void* buffer, uint8_t alpha) { (void)object; (void)buffer; (void)alpha; }
+void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value) { (void)object; (void)value; }
+void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity) { (void)list; (void)fn; (void)owner; (void)entity; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }
@@ -41,7 +59,7 @@ uint32_t ProfileSelection(uint8_t profile, uint32_t offset) { (void)profile; (vo
 bool LevelPlayerHasAbility(uint32_t player, int ability) { (void)player; (void)ability; return false; }
 uint32_t PurchasedAbilities(uint32_t character, uint32_t* out, uint32_t max) { (void)character; (void)out; (void)max; return 0; }
 bool WorldFlag(uint32_t name) { (void)name; return false; }
-bool RenderIdOverrideActive() { return false; }
+bool PhysicsWorldPresent() { return false; }
 
 void EntityPlayDirectorScript(Entity* entity, uint32_t script) { (void)entity; (void)script; }
 void EntityAttachSpawned(Entity* parent, SpawnParams& params, Entity* child) { (void)parent; (void)params; (void)child; }

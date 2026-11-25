@@ -30,21 +30,39 @@ void CharacterCompSetModel(EntityComponent* component, uint32_t model);
 void CharacterCompResetPose(EntityComponent* component);
 // Hands the entity's animation controller to the component (0x002980AC).
 void CharacterCompSetAnimController(EntityComponent* component, void* controller);
-// Render id kept in the top half of the component's word +0x1AC.
-uint32_t CharacterCompRenderId(EntityComponent* component);
+// Physics component (type 0x00, Entity slot 16): collision group kept in the
+// top half of its filter word +0x1AC, and its Havok rigid body (0x00252940).
+uint32_t PhysicsCompCollisionGroup(EntityComponent* component);
+void* PhysicsCompRigidBody(EntityComponent* component);
+// Collision filter word of a rigid body (+0x2C): the group goes into bits
+// 16-31 and the world re-filters the body (0x00930B70) when it is in one.
+void RigidBodySetCollisionGroup(void* body, uint32_t group);
 // Position the character aims from (+0x250) and its turn rate (+0x280).
 ape::Vec3 CharacterCompAimPosition(EntityComponent* component);
 float CharacterCompTurnRate(EntityComponent* component);
-// Fade value packed in the top 16 bits of a float at +0x1FE of a render object
-// (the component's object, 0x00252940).
-float RenderObjectPackedFade(ape::world::ApeObj* object);
-void RenderObjectSetPackedFade(ape::world::ApeObj* object, float value);
+// Gravity factor of a rigid body's motion (an hkHalf at +0x1FE).
+float RigidBodyGravityFactor(void* body);
+void RigidBodySetGravityFactor(void* body, float factor);
+
+// Resets of the physics component (slot 4, then 0x00261328 with 1) and
+// enabling/disabling its body (0x00260C14).
+void PhysicsCompReset(EntityComponent* component);
+void PhysicsCompResetAfterSwap(EntityComponent* component);
+void PhysicsCompSetDisabled(EntityComponent* component, bool disabled);
+// Sends an animation event to the character component's controller (+0x24, 0x0035327C).
+void CharacterCompSendAnimEvent(EntityComponent* component, uint32_t event);
 
 // -- other components -----------------------------------------------------------
 // Component 0x11: re-reads its setup after the animation controller changed (0x00293264).
 void Component11Refresh(EntityComponent* component);
 // Component 0x10 (weapon attachment): shows the alternate (costume) variant (0x00287318).
 void Component10SetAlternate(EntityComponent* component, bool alternate);
+// Component 0x10: hidden flag (byte +0x20 bit 7).
+void Component10SetHidden(EntityComponent* component, bool hidden);
+// Component 0x24: back to its start (0x002549F8 with 0).
+void Component24Reset(EntityComponent* component);
+// Component 0x15 resets its props (0x0028EE68).
+void Component15Reset(EntityComponent* component);
 // Component 0x15 (attached props): the world objects it owns (+0xB60, count +0xB80).
 uint32_t Component15ObjectCount(EntityComponent* component);
 ape::world::ApeObj* Component15Object(EntityComponent* component, uint32_t index);
@@ -86,9 +104,30 @@ bool LevelPlayerHasAbility(uint32_t player, int ability);
 uint32_t PurchasedAbilities(uint32_t character, uint32_t* out, uint32_t max);
 // World flag lookup by name (0x0048FC68).
 bool WorldFlag(uint32_t name);
-// Global byte array of the debug/"world +0x1281D4" block: true when the
-// render id override block is present. NOTE: meaning unknown.
-bool RenderIdOverrideActive();
+// The game physics world exists (game world +0x1281D4, +0x04).
+bool PhysicsWorldPresent();
+
+// Entities ---------------------------------------------------------------------
+struct EntityChildLink;
+class EntityListener;
+// Entity::AttachChild (0x000D15C0) with a filled link record.
+void EntityAttachChild(Entity* parent, const EntityChildLink& link);
+// Entity virtual slot 7 (+0x1C): state of a layer.
+void EntitySetState(Entity* entity, int layer, int state);
+// Opacity of a child entity (0x000DF3CC) and pushing its fade buffer (0x000DF4CC).
+void EntitySetFadeAlpha(Entity* entity, bool flag, uint8_t alpha, bool immediate);
+void EntityApplyFadeBuffer(Entity* entity);
+// Listener slot 37 (+0x94): the entity is heavy to carry; slot 51 (+0xCC):
+// it was dropped, with the carrier's drop settings.
+bool ListenerIsHeavy(EntityListener* listener);
+void ListenerOnDropped(EntityListener* listener, const uint8_t* dropSettings);
+// Per-part alpha buffer of a geometry instance (0x004A783C) and its LOD
+// field (0x00583E54).
+void ObjectApplyAlphaBuffer(ape::world::ApeObj* object, const void* buffer, uint8_t alpha);
+void RenderObjectSetLodField(ape::world::ApeObj* object, int32_t value);
+// Game world callback lists (0x0046B5F8): `fn(owner, entity)` runs later.
+using WorldCallback = void (*)(void* owner, Entity* entity);
+void GameWorldQueueCallback(int list, WorldCallback fn, void* owner, Entity* entity);
 
 // -- entities ---------------------------------------------------------------------
 // Plays a director script on the entity (0x000DCD20 with 0, 1).
