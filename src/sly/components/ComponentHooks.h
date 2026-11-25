@@ -53,6 +53,15 @@ void EntitySetBusy(entity::Entity* entity, bool busy);
 // Gadget component (type 0x1A) word +0xF4 bits 20-27: the gadget mode.
 uint32_t GadgetMode(entity::EntityComponent* gadget);
 
+// -- event listener groups -------------------------------------------------------------
+// Game-side listener object embedded in components (base 0x0048F27C,
+// destructor 0x0048F6B0): members of a listener group receive the messages
+// posted to it (0x00470660). 0x0048FA54 joins a group, 0x0048F298 leaves all.
+void ListenerJoinGroup(void* listener, uint32_t group);
+void ListenerLeaveGroups(void* listener);
+// Entity world object (slot 36) word +0x2C: render layer.
+void EntitySetRenderLayer(entity::Entity* entity, uint32_t layer);
+
 // <BossGrizz> component parser (forwards to levels::ai::ParseBossGrizzComponentDesc).
 entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                        uint8_t scope);

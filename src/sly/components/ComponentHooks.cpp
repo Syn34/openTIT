@@ -35,6 +35,11 @@ ape::ApeAnimScriptInstance* EntityStartScript(entity::Entity*, ape::ApeAnimScrip
 void EntitySetBusy(entity::Entity*, bool) {}
 uint32_t GadgetMode(entity::EntityComponent*) { return 0; }
 
+// TODO(0x0048FA54 / 0x0048F298 listener groups, render object +0x2C)
+void ListenerJoinGroup(void*, uint32_t) {}
+void ListenerLeaveGroups(void*) {}
+void EntitySetRenderLayer(entity::Entity*, uint32_t) {}
+
 // The parser lives with the AI component (sly/levels/ai/AIBossGrizz.cpp).
 entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                        uint8_t scope)
