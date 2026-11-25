@@ -46,3 +46,28 @@
   manager at 0x00F64C38. `gameplay::StartCameraShake` and the LevelServices camera shake
   stub could forward to `FxManager::AddCameraShake`. Not done: 0x002EF7B8 (argument order
   unclear), the effect classes, effect creation (0x002F0E0C), shake update (0x002F27D0).
+
+## Job manager records and loader (agent3, 0x002D9740-0x002DE1F4)
+* The console's terms are the other way round from the port's type names: the 0x35C-byte
+  records (`Job`) are its episodes (<Episode>: timePeriod, start/end movies, hub and hideout
+  levels, collectible weights) and the 0x218-byte records (`Episode`) its jobs (<Job>:
+  jobScript, movieOnJobComplete). The names were kept to avoid churn; see JobManager.h.
+* `JobRecords.cpp`: per-profile progress accessors (state bits 3-4, completed 0x40, flags
+  0x80/0x100 of unknown meaning, safe state bits 0-2, current stage byte), collectible counts
+  (bottles +0x34 words, masks +0x64, treasures +0x7C, job states +0x1D0 of the profile
+  record), the completion formula (0x002DB040) and stage advancement. `PlayerProgress` was
+  corrected: 12 episode slots (0x1A0..0x1D0), not 0x20.
+* The mask (0x0106819C) and treasure (0x01068184) tables are `ApeTSortedMap<CollectibleRecord*>`;
+  nothing fills them yet (their loader is outside this range). A mask counts when its bit is
+  set in the mask word of the episode named by its `foundIn` field.
+* `JobManagerLoad.cpp`: constructor (12 episode / 144 job records), Scripts/Episodes.xml and
+  episode file parsers, movie unlockables (`Unlockable`, replacing the old stubs), movie
+  entries and the entity index table (element/attribute names marked NOTE where unknown),
+  job script loading into library 0x7719A548, level start. Not ported: the package streaming
+  of a job (0x002D9A14-0x002DA5E0, load state +0x1FC), 0x002DDAB0 ClearGoals (still the
+  `JobManagerCleanup` stub), 0x002DE258 HUD bottle counter, 0x002DE41C-0x002DEA50 goal
+  selection/teleport (game world player block).
+* Job texts: ShowVarText (0x00089048) stores its text in the running job and ShowText
+  (0x0007AE74) reads it back (`Episode::StoreText/LoadText`); the levels services
+  `TextDisplayShow*` now forward there.
+* 0x00F64C24 (30) is the default clue bottle count (`g_defaultBottleCount`).

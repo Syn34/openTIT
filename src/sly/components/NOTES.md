@@ -65,3 +65,20 @@ hashing the executable's strings and word pairs. Hashes with no match keep a
   AeSpline unregisters a game-world listener in its destructor (0x0046B7A4).
 * Description destructors (0x0076xxxx, plus 0x00738DB0/0x0074EC00/0x0074EC44/0x00749668)
   and the inventory slot defaults are in `ComponentDescDtors.cpp`.
+
+## Fifth pass (agent3)
+* New classes: OffscreenMarker, Tracker, SystemCracker, MagNet/SpeedBoost (PulseField.*),
+  DamageSequence, ContextualMarker. Their constructors are built inline by the factory
+  (0x002635E8, still TODO) and tagged at the factory's helper addresses where one exists.
+* Component virtual slot 8 (`EntityComponent::RenderInstance`, default 0x00264D6C) is called
+  for components in the instance render list (kList_C, `entity::AddToInstanceRenderList`,
+  0x000D6614); ContextualMarker's override (0x0027BE38) is TODO.
+* Factory types 5, 7-13 have no XML parser: control components created by code. Types 8, 10
+  and 12 embed a `StateMachine` at +0x50 (vtables 0x00B1C2A8/0x00B1C378/0x00B1C444) whose
+  handlers drive scripted movement (move to point, follow spline); not ported (vector code
+  and Havok character calls).
+* ComponentHooks gained HUD, marker colour, material, listener group and geometry hooks
+  (`MarkerGeometry`, `EntityFindLocator` are stubs).
+* Engine colour table 0x01164CA0: white, transparent, black, red (0xCAC), green (0xCB0),
+  blue (0xCB4), purple (0xCB8), orange (0xCBC), grey (0xCC0), yellow (0xCC4), pink (0xCC8),
+  cyan (0xCCC).
