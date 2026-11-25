@@ -142,7 +142,7 @@ constexpr uint32_t kSlotNames[7] = { 0xB9B6CE5Du, 0xCE7C29A3u, 0x8FA5922Du, 0xDC
 bool SoundActor::Release(bool kill)
 {
     if (kill) {
-        field_218 = nullptr;
+        slotTimer = nullptr;
         for (SoundSlot& slot : sounds) {
             audio::StopVoice(slot.voice, true);
             slot.voice = 0;
@@ -162,10 +162,43 @@ void SoundActor::OnSuspend()
     }
 }
 
-// TODO(0x001AED20 SoundActor::PlaySlot)
+// @func 0x001AED20 SoundActor::PlaySlot
 void SoundActor::PlaySlot(int index, bool force)
 {
-    (void)force;
+    const auto* d = static_cast<const SoundActorDef*>(def);
+    if (!d)
+        return;
+    sequenceFlags &= ~kSeq_Scaled;
+    if (Entity* player = PlayerEntity(0)) {
+        for (EntityComponent* driver = player->GetComponent(kComp_17); driver;
+             driver = player->GetComponent(kComp_17, driver)) {
+            if (AnimDriverState(driver) == 7) {
+                sequenceFlags |= kSeq_Scaled;
+                break;
+            }
+        }
+    }
+    if (currentSlot != -1)
+        audio::StopVoice(sounds[currentSlot].voice, true);
+    const float scale = (sequenceFlags & kSeq_Scaled) ? d->durationScale : 1.0f;
+    SoundSlot& slot = sounds[index];
+    const float duration = slot.duration * scale;
+    if (force || duration > 0.0f) {
+        if (d->slotSounds[index].name != 0) {
+            const ape::Vec3& o = d->soundOffset;
+            const ape::Matrix34& m = transform;
+            const ape::Vec3 at{ m.translation.x + m.xAxis.x * o.x + m.yAxis.x * o.y + m.zAxis.x * o.z,
+                                m.translation.y + m.xAxis.y * o.x + m.yAxis.y * o.y + m.zAxis.y * o.z,
+                                m.translation.z + m.xAxis.z * o.x + m.yAxis.z * o.y + m.zAxis.z * o.z, 0.0f };
+            slot.voice = PlayEntitySound(slot.sound, &at, nullptr);
+        }
+        if (animScript) {
+            if (slotTimer)
+                slotTimer->duration = duration;
+            SetSlotState(index, force);
+        }
+    }
+    EntitySetState(this, 0, index);
     currentSlot = index;
 }
 

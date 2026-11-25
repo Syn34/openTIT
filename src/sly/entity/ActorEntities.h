@@ -48,6 +48,13 @@ public:
 class SoundActorDef : public ActorDef {
 public:
     ~SoundActorDef() override;
+    // Per slot: a sound to play when it starts (non-zero name).
+    struct SlotSound {
+        uint32_t name = 0;
+        uint32_t field_04 = 0;
+    };
+    SlotSound slotSounds[7];        // 0x130
+    ape::Vec3 soundOffset{};        // 0x170 where the sounds play, local to the actor
     float durationScale = 1.0f;     // 0x188 applied with SoundActor::kSeq_Scaled
 };
 
@@ -244,8 +251,8 @@ public:
     // (slot 4, 0x001AEA50).
     bool Update(float dt) override;
 
-    // Slot 105: plays sound slot `index` and switches to its state
-    // (0x001AED20, not ported).
+    // Slot 105: plays sound slot `index` and switches to its state. Durations
+    // are scaled while the player runs a script animation (driver state 7).
     virtual void PlaySlot(int index, bool force);
     // Slots 106-112: timers of the slot sequence. Unless the sequence is held
     // (flag bit 29) each moves on to its next slot once `elapsed` reaches
@@ -286,7 +293,11 @@ public:
         float duration = 0.0f;                      // +0x0C
     };
     SoundSlot sounds[7];                      // 0x1A8
-    void* field_218 = nullptr;                // 0x218 NOTE: its float +0x14 takes the slot duration
+    struct SlotTimer {                        // NOTE: only the duration is known
+        uint8_t field_00[0x14];
+        float duration;                       // +0x14 takes the slot duration
+    };
+    SlotTimer* slotTimer = nullptr;           // 0x218
     int32_t currentSlot = -1;                 // 0x21C
     float savedTime = 0.0f;                   // 0x220
     int32_t savedSlot = 0;                    // 0x224
