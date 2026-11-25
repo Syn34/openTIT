@@ -8,7 +8,7 @@
 
 #include <cstdint>
 
-namespace ape { namespace iff { struct IffReader; } }
+namespace ape { namespace iff { struct IffReader; } namespace file { class File; } }
 
 namespace sly {
 namespace anim {
@@ -42,6 +42,29 @@ public:
 
     ape::iff::IffReader* file = nullptr;   // +0x08
     bool ok = false;                       // +0x0C
+};
+
+// A game file as a stream (vtable 0x00B1F338, 0x20 bytes; built in place
+// by its users).
+class FileStreamReader : public HkStreamReader {
+public:
+    FileStreamReader(ape::file::File* f, bool ownsFile) : file(f), ok(f != nullptr), owns(ownsFile) {}
+    // 0x003431C0 / 0x00347A4C: closes the file when it owns it.
+    ~FileStreamReader() override;
+    bool IsOk() const override;                    // 0x00347B04
+    int Read(void* buffer, int size) override;     // 0x00347B2C
+    int Skip(int size) override;                   // 0x00347BFC
+    bool MarkSupported() const override { return true; }      // slot 7 (0x00770E78)
+    int SetMark(int limit) override;               // 0x00347CB8
+    int RewindToMark() override;                   // 0x00347D38
+    bool SeekTellSupported() const override { return true; }  // slot 10 (0x00770E84)
+    int Seek(int offset, int whence) override;     // 0x00347DE8
+    int Tell() const override;                     // 0x00347EA0
+
+    ape::file::File* file = nullptr;   // +0x08
+    int64_t mark = 0;                  // +0x10
+    bool ok = false;                   // +0x18
+    bool owns = false;                 // +0x19
 };
 
 // Buffered stream over the current IFF chunk (vtable 0x00B1F480, 0x0C
@@ -87,6 +110,12 @@ AnimResourceName& AnimResourceNames(int kind);
 // forget the name and parse the sub-chunks.
 bool AnimSkeletonGroupChunk(ape::iff::IffReader* reader);
 bool AnimSkeletonMapGroupChunk(ape::iff::IffReader* reader);
+// 0x0034B4F4: group chunk of animations kept in a file of their own: after
+// the sub-chunks the named file is loaded (LoadAnimationFile).
+bool AnimAnimationGroupChunk(ape::iff::IffReader* reader);
+// 0x0034B2C8: loads the Havok file `file` and registers its animations
+// under the pending animation name.
+bool LoadAnimationFile(ape::file::File* file);
 // Name chunk handlers (0x0034B884 skeletons, 0x0034B594 animations,
 // 0x0034BB58 skeleton maps): one byte, then two 64 byte names; the second
 // becomes the name, the first is hashed.

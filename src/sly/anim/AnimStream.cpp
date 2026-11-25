@@ -5,6 +5,7 @@
 #include "sly/anim/AnimHavok.h"
 
 #include "ape/core/ApeString.h"
+#include "ape/file/ApeFile.h"
 #include "ape/sys/ApeIff.h"
 
 namespace sly {
@@ -24,6 +25,76 @@ int IffStreamReader::Read(void* buffer, int size)
     // NOTE: the console returns what the IFF reader reports as read.
     file->Read(buffer, uint32_t(count));
     return count;
+}
+
+// @func 0x003431C0 FileStreamReader::~FileStreamReader
+// @func 0x00347A4C FileStreamReader::~FileStreamReader (deleting)
+FileStreamReader::~FileStreamReader()
+{
+    if (file && owns)
+        file->Close();
+    file = nullptr;
+}
+
+// @func 0x00347B04 FileStreamReader::IsOk
+bool FileStreamReader::IsOk() const
+{
+    return file && ok;
+}
+
+// @func 0x00347B2C FileStreamReader::Read
+int FileStreamReader::Read(void* buffer, int size)
+{
+    if (!IsOk() || size <= 0 || !file)
+        return 0;
+    const int count = int(file->Read(buffer, uint64_t(size), nullptr));
+    if (count >= 0)
+        return count;
+    ok = false;
+    return 0;
+}
+
+// @func 0x00347BFC FileStreamReader::Skip
+int FileStreamReader::Skip(int size)
+{
+    if (!IsOk() || size <= 0 || !file)
+        return 0;
+    const int64_t before = int64_t(file->GetPosition());
+    return int(file->Seek(size, ape::file::kSeek_Cur) - before);
+}
+
+// @func 0x00347CB8 FileStreamReader::SetMark
+int FileStreamReader::SetMark(int)
+{
+    if (!IsOk() || !file)
+        return 1;
+    mark = int64_t(file->GetPosition());
+    return 0;
+}
+
+// @func 0x00347D38 FileStreamReader::RewindToMark
+int FileStreamReader::RewindToMark()
+{
+    if (!IsOk() || !file)
+        return 1;
+    return file->Seek(mark, ape::file::kSeek_Set) != mark ? 1 : 0;
+}
+
+// @func 0x00347DE8 FileStreamReader::Seek
+int FileStreamReader::Seek(int offset, int whence)
+{
+    if (!IsOk() || !file)
+        return 1;
+    file->Seek(offset, whence);
+    return 0;
+}
+
+// @func 0x00347EA0 FileStreamReader::Tell
+int FileStreamReader::Tell() const
+{
+    if (!IsOk() || !file)
+        return -1;
+    return int(file->GetPosition());
 }
 
 // @func 0x0034640C AnimStreamReader::AnimStreamReader
@@ -173,6 +244,40 @@ bool AnimSkeletonGroupChunk(ape::iff::IffReader* reader)
 bool AnimSkeletonMapGroupChunk(ape::iff::IffReader* reader)
 {
     return ParseGroup(reader, kAnimRes_SkeletonMaps);
+}
+
+// @func 0x0034B2C8 LoadAnimationFile
+bool LoadAnimationFile(ape::file::File* file)
+{
+    AnimResourceName& state = AnimResourceNames(kAnimRes_Animations);
+    const char* name = state.name;
+    const uint32_t nameHash = state.nameHash;
+    FileStreamReader stream(file, false);
+    if (file)
+        file->Seek(0, ape::file::kSeek_Set);
+    const uint32_t size = uint32_t(file->GetSize());
+    if (void* resource = HkLoadResource(&stream)) {
+        RegisterAnimAnimations(name, nameHash, resource, size, false);
+        HkRemoveReference(resource);
+    }
+    state.name = nullptr;
+    return true;
+}
+
+// @func 0x0034B4F4 AnimAnimationGroupChunk
+bool AnimAnimationGroupChunk(ape::iff::IffReader* reader)
+{
+    AnimResourceName& state = AnimResourceNames(kAnimRes_Animations);
+    state.name = nullptr;
+    state.nameHash = 0;
+    reader->ParseChunks(nullptr);
+    if (state.name) {
+        if (ape::file::File* file = ape::file::OpenFile(state.name, "rb")) {
+            LoadAnimationFile(file);
+            file->Close();
+        }
+    }
+    return true;
 }
 
 // @func 0x0034B884 AnimSkeletonNameChunk
