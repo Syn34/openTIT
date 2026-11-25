@@ -21,6 +21,19 @@ namespace ape {
 // into the SetBlendMode overrides on the console).
 void ApplyGuiBlendMode(agl::AglMaterial* material, uint32_t mode);
 
+// Playback modes of GUI animations.
+enum GuiAnimPlayMode : uint32_t {
+    kGuiAnim_FwdLoop = 0,
+    kGuiAnim_FwdHold = 1,
+    kGuiAnim_PingPong = 2,
+    kGuiAnim_RevLoop = 3,
+    kGuiAnim_RevHold = 4,
+};
+
+// Mode named by 'nameHash' ("fwdloop", "fwdhold", "pingpong", "revloop",
+// "revhold"); unknown names play forward looping.
+GuiAnimPlayMode ParseGuiAnimPlayMode(uint32_t nameHash);
+
 // "frame" (type 0, vtable 0x00B22920, 0xB0 bytes): an empty sized box.
 // TODO(0x004E4BF8 ApeGuiFrame::Clone) TODO(0x004E4E78 ApeGuiFrame::GetLayoutSize)
 // TODO(0x004E4FB0 ApeGuiFrame::VirtualSlot44)
@@ -36,10 +49,15 @@ public:
 };
 
 // "image" (type 1, vtable 0x00B229E8).
-// TODO(0x004E51D4 ApeGuiImage::~ApeGuiImage) releases its texture.
 class ApeGuiImage : public ApeGuiObject {
 public:
     explicit ApeGuiImage(const GuiObjectDesc& desc) : ApeGuiObject(desc) {}
+    ~ApeGuiImage() override;
+    // Shows 'texture' (null: default texture 1) with the texture
+    // coordinates 'uv' (offset) and 'st' (size); null coordinates use the
+    // defaults. The material is shared with the texture resource when it has
+    // one for the current blend mode.
+    void SetTexture(ApeGuiTexture* texture, const float uv[2], const float st[2]);
     int32_t GetType() const override;
     void SetSize(const float size[2]) override;
     bool GetExpand() const override;
@@ -47,15 +65,18 @@ public:
     const GuiProperty* FindProperty(const char* name) const override;
     const GuiProperty* FindProperty(const char* name, const void* type) const override;
 
+    agl::AglMaterial* material = nullptr;   // +0xA8
+    ApeGuiTexture* texture = nullptr;       // +0xAC
     float uv[2] = {};     // +0xB0 "uv"
-    float st[2] = {};     // +0xB8 "st"
-    float size[2] = {};   // +0xC0
+    float st[2] = { 1.0f, 1.0f };   // +0xB8 "st"
+    float size[2] = { -1.0f, -1.0f };   // +0xC0 (-1: the texture's size)
 };
 
 // "gradient" (type 2, vtable 0x00B22AB0).
 class ApeGuiGradient : public ApeGuiObject {
 public:
     explicit ApeGuiGradient(const GuiObjectDesc& desc) : ApeGuiObject(desc) {}
+    ~ApeGuiGradient() override;
     int32_t GetType() const override;
     void GetSize(float out[2]) const override;
     void SetSize(const float size[2]) override;
@@ -98,6 +119,7 @@ public:
 class ApeGuiTile : public ApeGuiObject {
 public:
     explicit ApeGuiTile(const GuiObjectDesc& desc) : ApeGuiObject(desc) {}
+    ~ApeGuiTile() override;
     int32_t GetType() const override;
     void SetScale(const Vec3& scale) override;
     void GetSize(float out[2]) const override;
@@ -132,11 +154,14 @@ public:
     class Target {
     public:
         virtual ~Target() = default;
+        // Console slot 2: drops the reference held by the GUI object.
+        virtual void Release() = 0;
         // NOTE: console slot 10 called with (visible, true).
         virtual void SetVisible(bool visible, bool flag) = 0;
     };
 
     explicit ApeGuiType8(const GuiObjectDesc& desc) : ApeGuiObject(desc) {}
+    ~ApeGuiType8() override;
     int32_t GetType() const override;
     void SetVisible(bool visible) override;
     void Update() override;

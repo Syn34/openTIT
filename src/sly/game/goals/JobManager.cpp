@@ -21,6 +21,7 @@ constexpr uint32_t kNoIndex = 0xFFFFFFFFu;
 JobManager* GetJobManager() { return g_jobManager; }
 void SetJobManager(JobManager* manager) { g_jobManager = manager; }
 PlayerProgress& CurrentProgress() { return g_progressStandIn; }
+PlayerProgress& ProfileProgress(uint8_t) { return g_progressStandIn; }
 uint32_t PlayerGoalCount() { return 0; }
 Goal* PlayerGoalListAt(uint32_t) { return nullptr; }
 uint32_t LiveJobId() { return 0; }

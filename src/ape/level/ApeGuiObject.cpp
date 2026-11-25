@@ -4,6 +4,7 @@
 #include "ape/core/ApeString.h"
 #include "ape/sys/ApeGeometry.h"
 #include "agl/AglResources.h"
+#include "agl/AglTexture.h"
 
 namespace ape {
 
@@ -63,6 +64,35 @@ uint8_t Modulate(uint8_t value, uint8_t by) { return (uint8_t)(((uint32_t)value 
 // "su" select 2, 3 and 4 (tables 0x00AEF7F8 / 0x00AEF990).
 namespace {
 const int kGuiBlendPresets[4] = { 2, 3, 4, 0 };
+}
+
+namespace {
+// Compile-time HashNameNoCase().
+constexpr uint32_t GuiHash(const char* name)
+{
+    uint32_t hash = 0;
+    for (; *name; ++name) {
+        int c = (signed char)*name;
+        if (c >= 'a' && c <= 'z')
+            c -= 'a' - 'A';
+        hash = hash * 31u + (uint32_t)c;
+    }
+    return hash;
+}
+static_assert(GuiHash("pingpong") == 0x152D006Au, "GuiHash must match HashNameNoCase");
+} // namespace
+
+// @func 0x004E2B60 ParseGuiAnimPlayMode
+GuiAnimPlayMode ParseGuiAnimPlayMode(uint32_t nameHash)
+{
+    switch (nameHash) {
+    case GuiHash("revloop"): return kGuiAnim_RevLoop;
+    case GuiHash("revhold"): return kGuiAnim_RevHold;
+    case GuiHash("pingpong"): return kGuiAnim_PingPong;
+    case GuiHash("fwdloop"): return kGuiAnim_FwdLoop;
+    case GuiHash("fwdhold"): return kGuiAnim_FwdHold;
+    default: return kGuiAnim_FwdLoop;
+    }
 }
 
 void ApplyGuiBlendMode(agl::AglMaterial* material, uint32_t mode)
@@ -464,6 +494,72 @@ void ApeGuiFrame::SetSize(const float value[2])
 // Image
 // ---------------------------------------------------------------------------
 
+// @func 0x004E51D4 ApeGuiImage::~ApeGuiImage
+// @func 0x004E53A8 ApeGuiImage::~ApeGuiImage (deleting)
+ApeGuiImage::~ApeGuiImage()
+{
+    if (material)
+        material->Release();
+    if (texture)
+        texture->Release();
+}
+
+// @func 0x004D8A80 ApeGuiImage::SetTexture
+void ApeGuiImage::SetTexture(ApeGuiTexture* newTexture, const float newUv[2], const float newSt[2])
+{
+    if (material) {
+        // Keep the material if it already draws the new texture's image.
+        bool same = false;
+        if (newTexture) {
+            agl::AglTexture* image = newTexture->GetLoadState() == kGuiLoad_Loaded
+                                         ? newTexture->texture
+                                         : agl::GetDefaultTexture(0);
+            same = material->textures[0] == image;
+        }
+        if (!same) {
+            if (texture) {
+                texture->Release();
+                texture = nullptr;
+            }
+            material->Release();
+            material = nullptr;
+        }
+    }
+
+    texture = newTexture;
+    if (newTexture) {
+        uv[0] = newUv[0];
+        uv[1] = newUv[1];
+        st[0] = newSt[0];
+        st[1] = newSt[1];
+    } else {
+        uv[0] = uv[1] = 0.0f;
+        st[0] = st[1] = 1.0f;
+    }
+
+    if (!material) {
+        const uint32_t blend = GetBlendMode();
+        if (!newTexture) {
+            material = agl::CreateSpriteMaterial(agl::GetDefaultTexture(1));
+            SetBlendMode(blend);
+        } else {
+            newTexture->AddRef();
+            newTexture->AddLoadRef();
+            material = newTexture->materials[blend & 3];
+            if (material) {
+                material->AddRef();
+            } else {
+                agl::AglTexture* image = newTexture->GetLoadState() == kGuiLoad_Loaded
+                                             ? newTexture->texture
+                                             : agl::GetDefaultTexture(0);
+                material = agl::CreateSpriteMaterial(image);
+                SetBlendMode(blend);
+            }
+        }
+    }
+    SetFlag(kFlag_Dirty, true);
+}
+
 // @func 0x007962A0 ApeGuiImage::GetType
 int32_t ApeGuiImage::GetType() const
 {
@@ -528,6 +624,14 @@ void ApeGuiGradient::SetColor(xml::Color8 value)
     color = value;
 }
 
+// @func 0x004E6224 ApeGuiGradient::~ApeGuiGradient
+// @func 0x004E63CC ApeGuiGradient::~ApeGuiGradient (deleting)
+ApeGuiGradient::~ApeGuiGradient()
+{
+    if (material)
+        material->Release();
+}
+
 // @func 0x004DD08C ApeGuiGradient::SetBlendMode
 void ApeGuiGradient::SetBlendMode(uint32_t mode)
 {
@@ -541,6 +645,7 @@ void ApeGuiGradient::SetBlendMode(uint32_t mode)
 // ---------------------------------------------------------------------------
 
 // @func 0x004E1604 ApeGuiLabel::~ApeGuiLabel
+// @func 0x004E181C ApeGuiLabel::~ApeGuiLabel (thunk)
 // @func 0x004E17D4 ApeGuiLabel::~ApeGuiLabel (deleting)
 ApeGuiLabel::~ApeGuiLabel()
 {
@@ -574,6 +679,16 @@ int32_t ApeGuiTicker::GetType() const
 // ---------------------------------------------------------------------------
 // Tile
 // ---------------------------------------------------------------------------
+
+// @func 0x004E7B28 ApeGuiTile::~ApeGuiTile
+// @func 0x004E7D10 ApeGuiTile::~ApeGuiTile (deleting)
+ApeGuiTile::~ApeGuiTile()
+{
+    for (ApeGuiObject*& piece : pieces) {
+        delete piece;
+        piece = nullptr;
+    }
+}
 
 // @func 0x00796530 ApeGuiTile::GetType
 int32_t ApeGuiTile::GetType() const
@@ -664,6 +779,14 @@ void ApeGuiGroup::SetSize(const float value[2])
 // ---------------------------------------------------------------------------
 // Types 8 and 9
 // ---------------------------------------------------------------------------
+
+// @func 0x004E8F54 ApeGuiType8::~ApeGuiType8
+// @func 0x004E90FC ApeGuiType8::~ApeGuiType8 (deleting)
+ApeGuiType8::~ApeGuiType8()
+{
+    if (target)
+        target->Release();
+}
 
 // @func 0x00796884 ApeGuiType8::GetType
 int32_t ApeGuiType8::GetType() const

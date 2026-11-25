@@ -16,8 +16,9 @@
   fight (0x003AABBC-0x003B3014): fighter base (clip pairs, damage, range
   checks), Bentley/Penelope overrides, battle object (camera blends,
   message routing) and the 240 "Mechanic.BvP" tuning variables
-  (0x004227F0/0x00421474). `StateMachine.h` is an untagged stand-in for
-  the engine state machine base (vtable 0x00B219D0, 0x00464xxx).
+  (0x004227F0/0x00421474). `StateMachine.*` is the engine state machine
+  base (vtable 0x00B219D0; ctor 0x0045CAA0, members 0x00464A24-0x00464D1C).
+  Slot 9's default (0x007435B8, `return 1`) is a shared stub and not tagged.
 * `DebugNetServer.*`: debug network server 0x00426CE0-0x004285B8.
 * `PenguinMinigames.*`: the six penguin minigame actor-record destructors.
 * `GameplayWorld.*`: every world/engine call the above needs, as free functions
