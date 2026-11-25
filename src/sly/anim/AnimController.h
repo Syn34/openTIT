@@ -65,6 +65,12 @@ public:
     // 0x0035133C: creates a layer for `anim`, binds it to the rig and
     // appends it to the layer list.
     AnimLayer* AddLayer(uint32_t anim);
+    // 0x0034F690 (TODO): binds the controller to a skeleton (bone objects,
+    // per-bone buffers, its own animated skeleton and pose).
+    void BindSkeleton(const HkaSkeleton* bones, bool force);
+    // 0x00350764: binds the controller (and with `layersToo` every layer)
+    // to the skeleton registered as `name`.
+    void SetSkeleton(uint32_t name, bool layersToo, bool force);
     // 0x0034CDB0: the controller animates this frame (running, and drawn,
     // forced, within its cull distance or not a geometry instance).
     bool IsAnimatedThisFrame() const;

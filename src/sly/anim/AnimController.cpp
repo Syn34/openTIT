@@ -139,24 +139,35 @@ AnimLayer* AnimController::FindLayer(uint32_t anim) const
     return nullptr;
 }
 
-// TODO(0x00350178 AnimLayer::Bind): binds a layer to a rig (skeleton,
-// pose, main control); the layer stays unbound until it is ported.
-static void BindLayer(AnimLayer* layer, const HkaSkeleton* skeleton, bool flag)
+// TODO(0x0034F690 AnimController::BindSkeleton)
+void AnimController::BindSkeleton(const HkaSkeleton* bones, bool force)
 {
-    (void)layer;
-    (void)skeleton;
-    (void)flag;
+    (void)bones;
+    (void)force;
 }
 
 // @func 0x0035133C AnimController::AddLayer
 AnimLayer* AnimController::AddLayer(uint32_t anim)
 {
     auto* layer = new AnimLayer(this, anim);
-    BindLayer(layer, rig ? rig->skeleton : nullptr, false);
+    layer->Bind(rig ? rig->skeleton : nullptr, false);
     if (!layers)
         layers = new ape::ApeTArray<AnimLayer*>();
     layers->PushBack(layer);
     return layer;
+}
+
+// @func 0x00350764 AnimController::SetSkeleton
+void AnimController::SetSkeleton(uint32_t name, bool layersToo, bool force)
+{
+    auto* bones = static_cast<const HkaSkeleton*>(FindAnimSkeleton(name));
+    if (!bones)
+        return;   // NOTE: the console formats a (compiled-out) warning with the name
+    BindSkeleton(bones, force);
+    if (layersToo && layers) {
+        for (AnimLayer* layer : *layers)
+            layer->Bind(bones, force);
+    }
 }
 
 // @func 0x0034CDB0 AnimController::IsAnimatedThisFrame

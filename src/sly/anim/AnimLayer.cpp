@@ -75,6 +75,26 @@ AnimLayer::~AnimLayer()
         HkRemoveReference(skeleton);
 }
 
+// @func 0x00350178 AnimLayer::Bind
+void AnimLayer::Bind(const HkaSkeleton* bones, bool force)
+{
+    if ((skeleton && !force) || !bones)
+        return;
+    if (pose) {
+        HkPoseDelete(pose);
+        pose = nullptr;
+    }
+    if (skeleton) {
+        control = nullptr;
+        HkRemoveReference(skeleton);
+    }
+    skeleton = HkNewAnimatedSkeleton(bones);
+    skeleton->referencePoseWeightThreshold = 0.01f;
+    pose = HkNewReferencePose(bones);
+    if (owner)
+        owner->BindSkeleton(bones, false);
+}
+
 // @func 0x003535C4 AnimLayer::AddSecondaryControl
 void AnimLayer::AddSecondaryControl(HkaAnimationBinding* binding, bool loop, float speed, float time,
                                     uint32_t weightList)

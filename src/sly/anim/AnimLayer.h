@@ -64,6 +64,10 @@ public:
     // Slot 3: per-bone weights of the main control (null keeps them).
     virtual void SetBoneWeights(const BoneWeightList* list);
 
+    // 0x00350178: binds the layer to `bones` (unless already bound and not
+    // `force`): a fresh animated skeleton and reference pose, then the owner
+    // binds its own skeleton.
+    void Bind(const HkaSkeleton* bones, bool force);
     // 0x003535C4: adds a secondary control for `binding` playing at `speed`
     // from `time` (looping endlessly when `loop`), then applies the bone
     // weight list named `weightList` (0 = none).
