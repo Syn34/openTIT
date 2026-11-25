@@ -82,3 +82,14 @@ hashing the executable's strings and word pairs. Hashes with no match keep a
 * Engine colour table 0x01164CA0: white, transparent, black, red (0xCAC), green (0xCB0),
   blue (0xCB4), purple (0xCB8), orange (0xCBC), grey (0xCC0), yellow (0xCC4), pink (0xCC8),
   cyan (0xCCC).
+
+## Later pass (agent3)
+* `MonsterCloset.*`: the MonsterCloset component and its spawn slots (mine projectiles fired
+  from the owner's weapon towards a point instance; turret owners aim first). Projectile
+  spawning (0x000EDE30), weapon muzzle (0x00250F40), point instances and turret aiming are hooks.
+* `ControlComponents.*`: control input record (`ControlComponent::Input`: stick, world move,
+  magnitude, two-bit action states), base update 0x0027C290, the action -> pad button tables of
+  the player (type 5), vehicle (9) and radar (11) controllers, the scripted controllers 8/10/12
+  (state machine embedded at +0x50; the per-state handlers are TODO). `ControlSlot16` is now
+  `ButtonForAction`. The pad controllers' Update functions (0x0027C478, 0x0027E508, 0x0027FCB8)
+  are TODO (vector code / bad instruction data).

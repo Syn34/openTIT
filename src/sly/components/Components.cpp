@@ -86,7 +86,7 @@ void ControlAIComponent::Update(float dt)
 {
     (void)dt;
     if (brain)
-        AIBrainFillInput(brain, input);
+        AIBrainFillInput(brain, &input);
 }
 
 // ===========================================================================

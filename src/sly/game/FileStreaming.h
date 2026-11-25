@@ -259,6 +259,8 @@ void CancelNonCharacterGroups();
 bool StartStreamGroup(uint32_t id);
 bool CancelStreamGroup(uint32_t id);
 bool LoadStreamGroupNow(uint32_t id);
+// The group `id`, or null (lookup in the group map 0x010686A8).
+StreamGroup* FindStreamGroup(uint32_t id);
 // Loads at once every group of `type`, except the group `exceptId` (0: all)
 // (0x002E9C54).
 bool LoadStreamGroupsOfType(uint32_t type, uint32_t exceptId);

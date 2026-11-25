@@ -290,6 +290,9 @@ public:
     // 0x00324B08: starts a sequence (returns null) or an anim script instance.
     ape::ApeAnimScriptInstance* LaunchScript(uint32_t name, uint32_t stateName, GoalScript& script,
                                              bool asSequence, int slot);
+    // 0x003265A4: every sequence prepared in script slot `slot` has
+    // finished streaming.
+    bool ScriptSlotStreamed(int slot) const;
     // 0x00325F7C: the failure scripts are done (or there are none).
     bool FailScriptsDone() const;
     // 0x00325E70: index (0-8) of checkpoint `name`, -1 if none.

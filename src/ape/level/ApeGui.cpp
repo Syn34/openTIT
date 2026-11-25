@@ -7,10 +7,12 @@
 #include "agl/AglResources.h"
 #include "agl/AglTexture.h"
 #include "ape/core/ApeString.h"
+#include "ape/file/ApeFile.h"
 #include "ape/level/ApeGuiProperties.h"
 #include "ape/level/ApeGuiTypes.h"
 #include "platform/Platform.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 
@@ -29,8 +31,10 @@ constexpr uint32_t kGlyphMapHash = 0x0001293C;      // "map"
 constexpr uint32_t kScaleHash = 0x04B1112A;         // "scale"
 // NOTE: font set child element; "page" is the only short name matching.
 constexpr uint32_t kFontSetPageHash = 0x00255A8F;
-// NOTE: per-font vertical offset in a font set (name unknown).
-constexpr uint32_t kFontOffsetHash = 0x7A600EB7;
+// Per-font extra letter spacing in a font set (the label attribute of the
+// same hash is "tracking").
+constexpr uint32_t kFontTrackingHash = 0x7A600EB7;   // "tracking"
+
 
 const char* s_languagePath = "";                    // 0x00F668A4
 ApeGuiObject* s_rootObjects = nullptr;              // 0x00F66868
@@ -56,8 +60,12 @@ bool IsIdentifierChar(char c)
 // @func 0x004D573C RefreshGuiText
 void RefreshGuiText(ApeGuiObject* object)
 {
-    if (object->GetType() == kGuiObject_Text && object->textId)
-        object->SetText(TempFormat("%s", object->textId), true);
+    if (object->GetType() == kGuiObject_Text) {
+        // The id is copied first: SetText replaces the label's copy.
+        auto* label = static_cast<ApeGuiLabel*>(object);
+        if (!label->textId.empty())
+            label->SetText(TempFormat("%s", label->textId.c_str()), true);
+    }
     for (ApeGuiObject* child = object->firstChild; child; child = child->nextSibling)
         RefreshGuiText(child);
 }
@@ -275,10 +283,32 @@ ApeGuiBitmapFont::~ApeGuiBitmapFont()
         delete[] charMap;
 }
 
-// TODO(0x004D6768 ApeGuiBitmapFont::Load) the glyph scan of the map bitmap
-// (ReadBitmapPixel, marker pixels with a channel >= 0xF0 outline the glyphs,
-// up to 256 GuiGlyph records, height = smallest row pitch) is not done. The
-// texture load reference and the materials are.
+namespace {
+
+// Little-endian fields of a BMP file.
+uint32_t ReadLE32(const uint8_t* p)
+{
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+uint16_t ReadLE16(const uint8_t* p)
+{
+    return (uint16_t)(p[0] | (p[1] << 8));
+}
+
+constexpr uint8_t kMarkerLevel = 0xF0;   // a channel at least this bright marks a pixel
+constexpr uint32_t kMaxGlyphs = 256;
+
+} // namespace
+
+// @func 0x004D6768 ApeGuiBitmapFont::Load
+// The map bitmap ('path') outlines the glyphs of the font texture:
+//   * a blue pixel starts a row of glyphs; its row is the baseline, and the
+//     distance between such rows (the smallest one) is the line height;
+//   * on a baseline row, a green outline marks each glyph box: its left
+//     edge crosses the row, its top edge and right edge give the size;
+//   * a red run right after a glyph widens it by more cells (animation
+//     frames of the glyph).
+// A baseline row without any glyph ends the scan.
 uint16_t ApeGuiBitmapFont::Load()
 {
     texture->AddLoadRef();
@@ -293,6 +323,103 @@ uint16_t ApeGuiBitmapFont::Load()
             material->depthFunc = ztest ? agl::gpu::CompareFunc::LEqual : agl::gpu::CompareFunc::Always;
             material->depthTest = flag_2E8401A3;
         }
+    }
+
+    uint32_t fileSize = 0;
+    auto* data = static_cast<const uint8_t*>(file::LoadFile(m_path, &fileSize));
+    if (data) {
+        if (data[0] == 'B' && data[1] == 'M') {
+            const uint8_t* pixels = data + ReadLE32(data + 10);
+            const uint8_t* palette = data + 14 + ReadLE32(data + 14);
+            const int32_t width = (int32_t)ReadLE32(data + 18);
+            int32_t height = (int32_t)ReadLE32(data + 22);
+            const bool topDown = height < 0;
+            const int32_t bitsPerPixel = ReadLE16(data + 28);
+            if (topDown)
+                height = -height;
+
+            auto pixel = [&](int32_t x, int32_t y) {
+                uint8_t rgba[4];
+                ReadBitmapPixel(rgba, pixels, palette, (uint32_t)x, y, width, height, bitsPerPixel, topDown);
+                struct { uint8_t r, g, b; } px = { rgba[0], rgba[1], rgba[2] };
+                return px;
+            };
+
+            GuiGlyph found[kMaxGlyphs];
+            uint32_t count = 0;
+            uint16_t lineHeight = (uint16_t)height;
+            int32_t baseline = -height;
+            bool done = false;
+            for (int32_t y = 0; !done && y < height && count < kMaxGlyphs; ++y) {
+                bool markerRow = false;
+                uint32_t rowGlyphs = 0;
+                for (int32_t mx = 0; !done && mx < width && count < kMaxGlyphs; ++mx) {
+                    if (pixel(mx, y).b < kMarkerLevel)
+                        continue;
+                    // A baseline: scan the whole row for glyph boxes.
+                    markerRow = true;
+                    lineHeight = (uint16_t)std::min<int32_t>(lineHeight, y - baseline);
+                    baseline = y;
+                    for (int32_t x = 0; !done && x < width; ++x) {
+                        const auto px = pixel(x, y);
+                        if (px.g < kMarkerLevel) {
+                            if (px.r < kMarkerLevel)
+                                continue;
+                            // Red: more cells of the previous glyph, which
+                            // must end right here.
+                            if (count == 0 || x != found[count - 1].x + found[count - 1].width) {
+                                done = true;
+                                continue;
+                            }
+                            GuiGlyph& previous = found[count - 1];
+                            int32_t top = y;
+                            for (int32_t yy = y; yy >= 0 && pixel(x, yy).r >= kMarkerLevel; --yy)
+                                top = yy;
+                            int32_t right = x;
+                            for (int32_t xx = x; xx < width && pixel(xx, top).r >= kMarkerLevel; ++xx)
+                                right = xx;
+                            previous.cells = (uint8_t)(previous.cells + ((right - x) + previous.width) / previous.width);
+                            x = right;
+                            continue;
+                        }
+                        // Green: a glyph box with its left edge at x.
+                        int32_t top = y;
+                        for (int32_t yy = y; yy >= 0 && pixel(x, yy).g >= kMarkerLevel; --yy)
+                            top = yy;
+                        int32_t right = x;
+                        for (int32_t xx = x; xx < width && pixel(xx, top).g >= kMarkerLevel; ++xx)
+                            right = xx;
+                        int32_t bottom = y;
+                        for (int32_t yy = top; yy < height && pixel(right, yy).g >= kMarkerLevel; ++yy)
+                            bottom = yy;
+                        if (count < kMaxGlyphs) {
+                            GuiGlyph& glyph = found[count++];
+                            glyph.top = (uint8_t)(baseline - top);
+                            glyph.bottom = (uint8_t)(bottom - baseline);
+                            glyph.width = (uint8_t)(right - x + 1);
+                            glyph.cells = 1;
+                            glyph.x = (uint16_t)x;
+                            glyph.y = (uint16_t)top;
+                            ++rowGlyphs;
+                        } else {
+                            done = true;
+                        }
+                        x = right;
+                    }
+                    break;   // the row has been scanned
+                }
+                if (markerRow && rowGlyphs == 0)
+                    done = true;
+            }
+
+            glyphCount = (uint8_t)count;
+            if (glyphCount) {
+                glyphs = new GuiGlyph[glyphCount];
+                this->height = lineHeight;
+                std::copy(found, found + glyphCount, glyphs);
+            }
+        }
+        file::FreeFileData(const_cast<uint8_t*>(data));
     }
     return glyphCount ? kGuiLoad_Loaded : kGuiLoad_Failed;
 }
@@ -456,13 +583,39 @@ void ApeGuiFontSet::Unload()
         fonts[i]->ReleaseLoadRef();
 }
 
-void ApeGuiFontSet::AddFont(ApeGuiBitmapFont* font, float fontScale, float offset)
+bool ApeGuiFontSet::FindGlyph(uint32_t codePoint, uint32_t& fontIndex, uint32_t& glyphIndex) const
+{
+    for (uint32_t i = 0; i < fontCount; ++i) {
+        const ApeGuiBitmapFont* font = fonts[i];
+        if (!font->glyphs)
+            continue;
+        if (!font->charMap) {
+            if (codePoint >= font->firstChar && codePoint < font->firstChar + font->glyphCount) {
+                fontIndex = i;
+                glyphIndex = codePoint - font->firstChar;
+                return true;
+            }
+        } else if (codePoint < 0x10000 && font->charMap[codePoint] != 0xFF) {
+            fontIndex = i;
+            glyphIndex = font->charMap[codePoint];
+            return true;
+        }
+    }
+    return false;
+}
+
+float ApeGuiFontSet::GetLineHeight() const
+{
+    return (fontCount && fonts[0]) ? (float)fonts[0]->GetHeight() * scale[1] : 0.0f;
+}
+
+void ApeGuiFontSet::AddFont(ApeGuiBitmapFont* font, float fontScale, float tracking)
 {
     const uint32_t index = fontCount;
     fonts[index] = font;
     font->AddRef();
     fontScales[index] = fontScale;
-    fontOffsets[index] = offset;
+    fontTracking[index] = tracking;
     if (GetLoadState() != kGuiLoad_None) {
         font->AddLoadRef();
         if (fontCount != 0)
@@ -507,10 +660,10 @@ ApeGuiFontSet* CreateGuiFontSet(xml::XmlDocument* doc, xml::XmlElement* element,
         if (set->fontCount >= ApeGuiFontSet::kMaxFonts)
             break;   // NOTE: the original does not check the limit
         float fontScale = 1.0f;
-        float offset = 0.0f;
+        float tracking = 0.0f;
         page->GetFloat(kScaleHash, &fontScale, 1.0f);
-        page->GetFloat(kFontOffsetHash, &offset, 0.0f);
-        set->AddFont(font, fontScale, offset);
+        page->GetFloat(kFontTrackingHash, &tracking, 0.0f);
+        set->AddFont(font, fontScale, tracking);
     }
     return set;
 }

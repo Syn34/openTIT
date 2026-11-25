@@ -18,7 +18,7 @@ namespace components {
 void* LevelPhysicsWorld();
 
 // AI brain of a ControlAI component fills the control input (0x000250A0).
-void AIBrainFillInput(void* brain, uint8_t* input);
+void AIBrainFillInput(void* brain, void* input);
 // Anim trees and blend maps by name (0x003482B0 / 0x00348650).
 void* FindAnimTree(uint32_t nameHash);
 void* FindAnimBlendMap(uint32_t nameHash);

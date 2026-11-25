@@ -16,7 +16,7 @@ namespace sly {
 class Spawner;
 struct GameEvent;
 namespace goals { class Goal; }
-namespace entity { class Entity; }
+namespace entity { class Entity; class EntityComponent; }
 
 namespace game {
 using goals::Goal;
@@ -522,6 +522,21 @@ public:
     // stage (or the episode itself) unless it is a replay, then ends it.
     // Returns the level to go to next (0x002E5414).
     uint32_t CompleteRunningJob();
+    // Advances a pending job start: streams the job's files (showing the
+    // loading element), starts the job and prepares the scripts of the goal
+    // to play, then plays it once its sequences are streamed (0x002E0C38).
+    void UpdatePendingStart();
+    // Respawns the player for `goal`: in the goal's level the player takes
+    // the goal's character (or associated player), otherwise the level is
+    // asked for; a checkpoint with "teleportToCheckPoint" moves the player
+    // there (0x002E3AEC). NOTE: only the local player's block is modelled.
+    void RespawnForGoal(Goal* goal, int player);
+    // A goal failed: when it has a fail message and no fail screen is up,
+    // either the entity of the last event 3 is told and the message waits
+    // for FlushPendingRequest (the player loses control meanwhile), or the
+    // fail screen state starts right away. The goal's fail scripts then run
+    // every update (0x002E5DD8).
+    void OnGoalFailed(Goal* goal, uint8_t player);
     bool StartJobFromHub(Episode* job, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
                          bool levelRequestFlag, bool skipBookkeeping, bool track);
     // Ends the running job instance, first updating its episode's flag 0x20
@@ -549,10 +564,11 @@ public:
     uint32_t field_40 = 0;           // +0x40
     entity::Entity* field_44 = nullptr;   // +0x44 NOTE: an entity whose script is told when a job ends
     Goal* trackedGoal = nullptr;     // +0x48
-    uint32_t field_4C = 0;           // +0x4C
+    Goal* failingGoal = nullptr;     // +0x4C goal whose fail scripts run every update
     uint32_t field_50 = 0;           // +0x50
-    uint32_t field_54 = 0;           // +0x54
-    uint32_t pendingRequest[2] = {}; // +0x58
+    entity::Entity* lastEventEntity = nullptr;   // +0x54 source of the event 3 being dispatched
+    const char* failMessage = nullptr;   // +0x58 message of a failed goal waiting for the fail screen
+    uint32_t failPlayer = 0;         // +0x5C player that failed it
     uint32_t trackedGoalId = 0;      // +0x60 goal to track after loading, 0 = first open goal
     uint32_t flags = 0;              // +0x64 bit 29: a request is pending, bit 30: goals being cleared
 
@@ -604,7 +620,8 @@ bool PointInstanceWorldTransform(uint32_t name, ape::Matrix34* out);
 // A one-shot respawn point set by scripts (game world +0x128160); taking it
 // clears it. False if none is set or the point is missing.
 bool TakeRespawnOverride(ape::Matrix34* out, bool* wasSet);
-// Character entity snaps to the ground after a teleport (0x0012BF70).
+// Character entity is put on its path after a teleport (0x0012BF70).
+// NOTE: used for the checkpoints' "attachToSpline" option.
 void CharacterSnapToGround(entity::Entity* character);
 // The active game camera resets behind the player (game world +0x1281E0,
 // camera of slot +0x159, virtual slot 7).
@@ -614,10 +631,18 @@ void GameCameraReset();
 // `def` (0x00484BE0), or respawns as it is (0x00488178).
 void GameWorldUseAssociatedPlayer(Goal* goal);
 void GameWorldSwitchPlayerCharacter(uint32_t def);
-void GameWorldRespawnPlayer();
+void GameWorldRespawnPlayer(const ape::Matrix34& transform);
 // Profile byte of player `player`'s block (game world +0x1070 + player *
 // 0x20C80).
 uint8_t PlayerBlockProfile(int player);
+// The entity of local player `player` (game world +0x1078 + player * 0x20C80).
+entity::Entity* PlayerEntityOf(int player);
+// The gadget component lets the player be stopped (0x0029A40C).
+bool GadgetAllowsStop(entity::EntityComponent* gadget);
+// Drops every target of a targeting component (0x0029F26C).
+void TargetingClearTargets(entity::EntityComponent* targeting);
+// Stops the script a type-0x17 component is playing (0x00276558).
+void AnimDriverStopScript(entity::EntityComponent* driver);
 // Per-profile values the game world keeps for the profile record: a
 // pending count (+0x1028 + profile) and a pair of flags (+0x1029 +
 // profile * 2).
@@ -688,7 +713,8 @@ Goal* PlayerGoalListAt(uint32_t index);
 // data word pair of its current state (+0x14 buffer, +0x06 offset).
 int GameWorldState(int layer);
 void GameWorldSetState(int layer, int state);
-void GameWorldSetStateData(uint32_t first, uint32_t second);
+// The state data of the fail screen state: the message and the player.
+void GameWorldSetStateData(const char* message, uint32_t player);
 // Game world +0x128114: id of the job that is running (0 = none).
 uint32_t LiveJobId();
 // 0x0029D838 on a targeting component.

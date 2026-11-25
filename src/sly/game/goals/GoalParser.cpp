@@ -155,7 +155,7 @@ const GoalElement kGoalElements[] = {
     {0x9E69AF49, CreateGoal9E69AF49},
     {0x967EAB30, CreatePenguinMontageGoal},
     {0x8E1A6F4D, GoalCostume::Create},
-    {0xBF16DC69, CreateFishingGoal},
+    {0xBF16DC69, GoalFishingGame::Create},
     {0xAC477985, GoalBentleyVsPenelope::Create},
     {0xAB0D3FB0, GoalPenguinDodgeGame::Create},
     {0xA78D932B, GoalHealthMonitor::Create},
@@ -577,8 +577,6 @@ Goal* CreateGoalSet(XmlElement* xml, const GoalDesc* desc)
 Goal* CreateGoal9E69AF49(XmlElement*, const GoalDesc*) { return nullptr; }
 // TODO(0x003396A8 GoalPenguinMontageGame::Create)
 Goal* CreatePenguinMontageGoal(XmlElement*, const GoalDesc*) { return nullptr; }
-// TODO(0x00330C88 GoalFishingGame::Create)
-Goal* CreateFishingGoal(XmlElement*, const GoalDesc*) { return nullptr; }
 // TODO(0x0032B358 GoalBinocucomPhoto::Create)
 Goal* CreateBinocucomPhotoGoal(XmlElement*, const GoalDesc*) { return nullptr; }
 // TODO(0x0033DC0C GoalShootingGallery::Create)

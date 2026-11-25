@@ -353,6 +353,9 @@ struct KnowledgeLibrary {
     // (0x00390C1C).
     void Clear();
     void FreeInstances();
+    // Frees the list of `handle` and releases the handle; stale or empty
+    // handles are ignored (0x00398DAC).
+    void Remove(uint32_t handle);
 
     std::vector<std::unique_ptr<KnowledgeList>> slots;   // node values
     std::vector<uint8_t> used;

@@ -4,6 +4,7 @@
 #include "sly/entity/Awards.h"
 #include "sly/entity/Entity.h"
 #include "sly/entity/EntityHooks.h"
+#include "sly/entity/GameEntityHooks.h"
 #include "sly/game/GameScripts.h"
 #include "sly/game/SlyGame.h"
 #include "ape/anim/ApeAnimScript.h"
@@ -51,9 +52,15 @@ void CharacterSnapToGround(entity::Entity*) {}
 void GameCameraReset() {}
 void GameWorldUseAssociatedPlayer(Goal*) {}
 void GameWorldSwitchPlayerCharacter(uint32_t) {}
-void GameWorldRespawnPlayer() {}
+void GameWorldRespawnPlayer(const ape::Matrix34&) {}
 uint32_t RunningLevel() { return 0; }
 uint8_t PlayerBlockProfile(int) { return 0; }
+entity::Entity* PlayerEntityOf(int) { return nullptr; }
+// TODO(0x0029A40C / 0x0029F26C / 0x00276558): gadget, targeting and anim
+// driver components live in sly/components.
+bool GadgetAllowsStop(entity::EntityComponent*) { return true; }
+void TargetingClearTargets(entity::EntityComponent*) {}
+void AnimDriverStopScript(entity::EntityComponent*) {}
 uint8_t& ProfilePendingCount(uint8_t profile)
 {
     static uint8_t counts[8] = {};
@@ -66,7 +73,7 @@ uint8_t* ProfileNotifyPair(uint8_t profile)
 }
 void GameWorldReloadLevel() {}
 void GameWorldSetState(int, int) {}
-void GameWorldSetStateData(uint32_t, uint32_t) {}
+void GameWorldSetStateData(const char*, uint32_t) {}
 bool CurrentLevelJobValue(uint32_t*) { return false; }
 void TargetingSetEnabled(void*, bool) {}
 
@@ -234,10 +241,10 @@ void JobManager::FlushPendingRequest()
             GameWorldSetState(1, 10);
             GameWorldSetState(2, 0);
         }
-        GameWorldSetStateData(pendingRequest[0], pendingRequest[1]);
+        GameWorldSetStateData(failMessage, failPlayer);
     }
-    pendingRequest[0] = 0;
-    pendingRequest[1] = 0;
+    failMessage = nullptr;
+    failPlayer = 0;
     flags &= ~kPending;
 }
 
@@ -645,7 +652,7 @@ void JobManager::SelectGoal(Goal* goal, bool keepPlayers, bool requestLevel)
                 }
             }
         }
-        GameWorldRespawnPlayer();
+        GameWorldRespawnPlayer(PlayerSpawnTransform());
         break;
     }
     flags &= ~kManager_ClearingGoals;
@@ -902,6 +909,187 @@ uint32_t JobManager::CompleteRunningJob()
             script->SetStateAndUpdate(kState_JobEnded);
     }
     return nextLevel;
+}
+
+// @func 0x002E0C38 JobManager::UpdatePendingStart
+void JobManager::UpdatePendingStart()
+{
+    constexpr uint32_t kHud_Loading = 0x24D73841u;   // NOTE: element name unknown
+    constexpr uint64_t kClass_JobStarter = 0x20000;
+    auto goalToPlay = [this]() -> Goal* {
+        if (trackedGoal)
+            return trackedGoal;
+        if (field_30 != 0) {
+            for (uint32_t i = 0; i < PlayerGoalCount(); ++i) {
+                if (PlayerGoalListAt(i)->nameHash == field_30)
+                    return PlayerGoalListAt(i);
+            }
+        }
+        return PlayerGoalCount() ? PlayerGoalListAt(0) : nullptr;
+    };
+
+    if (streamFlags & (1u << 29)) {
+        if (pendingKind == 1) {
+            // Streaming the files while the loading element comes up.
+            if (pendingJob->loadState == Episode::kLoad_None)
+                pendingJob->StartLoading();
+            else if (pendingJob->loadState == Episode::kLoad_Loading)
+                pendingJob->UpdateLoading();
+            hud::HudObject* loading = hud::Find(kHud_Loading);
+            if (!loading) {
+                pendingKind = 2;
+            } else if (!loading->gui || !hud::GuiIsPlaying(loading->gui)) {
+                hud::ShowTextByName(-1.0f, kHud_Loading, nullptr, true);
+            } else {
+                const uint32_t state = loading->animState >> 1;
+                if (state == 3 || state == 2)
+                    pendingKind = 2;
+            }
+        } else if (pendingKind == 2) {
+            if (pendingJob->loadState == Episode::kLoad_Loading) {
+                pendingJob->UpdateLoading();
+            } else {
+                StartJobFromHub(pendingJob, pendingValue, (streamFlags & (1u << 31)) != 0,
+                                (streamFlags & (1u << 30)) != 0, false, false, false, false);
+                if (Goal* goal = goalToPlay()) {
+                    for (int slot = 0; slot < goals::kScriptSlotCount; ++slot)
+                        goal->PrepareScriptSlot(slot);
+                }
+                pendingKind = 3;
+            }
+        } else if (pendingKind == 3) {
+            Goal* goal = goalToPlay();
+            bool streamed = true;
+            if (goal) {
+                for (int slot = 0; slot < goals::kScriptSlotCount && streamed; ++slot)
+                    streamed = goal->ScriptSlotStreamed(slot);
+            }
+            if (streamed) {
+                if (goal)
+                    PlayGoal(goal, false, false);
+                field_30 = 0;
+                if (instance) {
+                    for (uint32_t i = 0; i < PlayerGoalCount(); ++i) {
+                        if (Goal* each = PlayerGoalListAt(i)) {
+                            each->PrepareScripts();
+                            each->ReapplyHints(nullptr);
+                        }
+                    }
+                }
+                pendingJob->ReleaseStreams();
+                flags |= 1u << 28;
+                if (pendingEntity) {
+                    if (entity::EntityComponent* targeting = entity::EntityTargeting(pendingEntity)) {
+                        targeting->SetOption(true);
+                        TargetingSetEnabled(targeting, false);
+                    }
+                }
+                hud::ShowByName(kHud_Loading, false, true, false);
+                if (pendingEntity)
+                    pendingEntity->classBits &= ~kClass_JobStarter;
+                if (pendingJob)
+                    pendingJob->ReleaseStreams();
+                pendingKind = 0;
+                pendingEntity = nullptr;
+                pendingJob = nullptr;
+                pendingValue = 0;
+                streamFlags = 0;
+            }
+        }
+    }
+    if (failingGoal)
+        failingGoal->RunScriptSlot(goals::kScripts_Failed);
+}
+
+// @func 0x002E3AEC JobManager::RespawnForGoal
+void JobManager::RespawnForGoal(Goal* goal, int player)
+{
+    (void)player;
+    entity::Entity* playerEntity = PlayerEntity();
+    const uint32_t level = goal->Field960();
+    if (level == 0 || level == RunningLevel()) {
+        const uint32_t character = goal->field_964;
+        bool switched = false;
+        if (character != 0 && playerEntity) {
+            const uint32_t playerDef = playerEntity->def ? playerEntity->def->nameHash : 0;
+            const bool isSly = character == kCharacter_Sly &&
+                               (goals::EntityIsSlyClass(playerEntity) ||
+                                (goals::EntityIsCharacter(playerEntity) &&
+                                 goals::EntityGroupField_C0(playerEntity) == kCharacter_Sly));
+            if (playerDef != character && !isSly) {
+                if (!goal->Field96C())
+                    GameWorldSwitchPlayerCharacter(character);
+                switched = true;
+            }
+        }
+        if (!switched && goal->checkpoints[0] != 0 && (goal->flags & kGoalFlag_HasAssociatedPlayer) &&
+            !goal->Field96C())
+            GameWorldUseAssociatedPlayer(goal);
+    } else {
+        GameWorldRequestLevel(level);
+    }
+
+    int index = goal->CheckpointIndexOf(playerEntity);
+    if (index == -1)
+        index = PlayerCharacterSlot();
+    const uint8_t bit = static_cast<uint8_t>(1u << (index & 7));
+    const goals::GoalBlob& teleport = goal->blobs[2];      // "teleportToCheckPoint"
+    const goals::GoalBlob& attachToPath = goal->blobs[1];  // "attachToSplineAtCheckPoint"
+    if (!teleport.data || !(teleport.data[index >> 3] & bit))
+        return;
+    const uint32_t point = goal->Field8F4(index);
+    ape::Matrix34 transform{};
+    if (!point || !PointInstanceWorldTransform(point, &transform))
+        return;
+    GameWorldRespawnPlayer(transform);
+    if (attachToPath.data && (attachToPath.data[index >> 3] & bit))
+        CharacterSnapToGround(playerEntity);
+}
+
+// @func 0x002E5DD8 JobManager::OnGoalFailed
+void JobManager::OnGoalFailed(Goal* goal, uint8_t player)
+{
+    constexpr uint32_t kFlag_FailPending = 1u << 29;
+    constexpr uint32_t kEvent_GoalFailed = 0x9A986484u;   // NOTE: event name unknown
+    constexpr uint32_t kType_IgnoresFail = 0x400000u;     // Entity::typeBits[0] bit 22
+    constexpr uint64_t kClass_Controllable = 0x100;       // NOTE: Entity::classBits bit 8
+    constexpr int kState_FailScreen = 10;
+    if ((flags & kFlag_FailPending) || !goal || goal->field_49C[0] == '\0')
+        return;
+    const int state = GameWorldState(1);
+    if (state == kState_FailScreen || state == 6 || state == 5)
+        return;
+    const char* message = goal->field_49C;
+    entity::Entity* notified = lastEventEntity;
+    if (goals::GameHudLockCount(g_game) == 0 && notified && !(notified->typeBits[0] & kType_IgnoresFail)) {
+        entity::EntitySendGameEvent(nullptr, notified, kEvent_GoalFailed, 0, true);
+        failMessage = message;
+        failPlayer = player;
+        flags |= kFlag_FailPending;
+        if (entity::Entity* playerEntity = PlayerEntityOf(player)) {
+            entity::EntityComponent* gadget = entity::EntityGadget(playerEntity);
+            if (!gadget || GadgetAllowsStop(gadget))
+                playerEntity->ResetState();
+            playerEntity->classBits &= ~kClass_Controllable;
+            if (entity::EntityComponent* targeting = entity::EntityTargeting(playerEntity)) {
+                targeting->SetOption(false);
+                TargetingClearTargets(targeting);
+            }
+            for (entity::EntityComponent* driver = playerEntity->GetComponent(0x17, nullptr); driver;
+                 driver = playerEntity->GetComponent(0x17, driver)) {
+                if (entity::AnimDriverState(driver) == 7)
+                    AnimDriverStopScript(driver);
+            }
+        }
+    } else if (GameWorldState(0) == 1 && GameWorldState(1) != kState_FailScreen) {
+        if (GameWorldState(1) != 5) {
+            GameWorldSetState(1, kState_FailScreen);
+            GameWorldSetState(2, 0);
+        }
+        GameWorldSetStateData(message, player);
+    }
+    lastEventEntity = nullptr;
+    failingGoal = goal;
 }
 
 } // namespace game

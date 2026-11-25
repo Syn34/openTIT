@@ -85,3 +85,33 @@
 * `goals/GoalTypeIds.cpp`: every goal class's type id (slot 3), GoalSet, the penguin goal
   base and the health monitor / score destructors. The two goal classes with ids 0x22
   (vtable 0x00B1EDE8) and 0x23 (0x00B1EFD0) are not ported.
+
+## Job manager and goal parser (agent3, later pass)
+* `goals/GoalParser.*`: the goal XML parser 0x00322D88 (`ParseGoal`: common attributes, nine
+  checkpoints, hints, `<Script>` children with their text bindings, cycling texts, factory
+  table by element name), group options 0x00321D3C, script slots 0x00322AC0, GoalSet,
+  GoalScore, OperationMousetrap and fishing factories. Still TODO: 0x003373E8 (class of vtable
+  0x00B1EDE8), penguin montage 0x003396A8, binocucom photo 0x0032B358, shooting gallery
+  0x0033DC0C, bartender 0x003292C8, QTE 0x0033A520 (their `Create*` stubs return null).
+  Attribute names were recovered by hashing string pairs; the rest keep their hash.
+* GoalDesc: `field_70` holds checkpoint names [0..8], respawn entities [9..17] and Y offsets
+  [18..26] (floats); `checkpoints` (+0xEC) are the checkpoints' "associatedPlayer"; the four
+  `blobs` are nine-bit sets (respawnAt / attachToSpline / teleportTo / attachToWall).
+  `field_134` is the float "hintChance". Hint element kinds: trigger 0, Interactive 1,
+  Spawner 2, SpawnerGroup 3, laser 4, LaserField 5, laserGroup 6, teleporter 7 (the enum names
+  in Goal.h for 4-6 may be swapped).
+* `goals/JobStreaming.cpp`: streaming of a job's goal file and script files (0x002D9A14-
+  0x002DA718); `JobManager::LoadJobScripts` now reads the streamed copies.
+* JobManager: ClearGoals, goal selection/placement (0x002DE41C-0x002DEDB4), job start
+  bookkeeping and pending start state machine (0x002E0008-0x002E1F44, 0x002E0C38), character
+  and hideout queries, completion percentages, trophies (entity found, penguins, arcade
+  scores, treasures), job completion 0x002E5414, goal failure 0x002E5DD8 (wired to the goal
+  hook), respawn 0x002E3AEC. The game world parts (players block, playable characters, point
+  instances, state machine, level requests) are hook stubs in JobManager.cpp.
+* `SlyGame` gained the player goal list (+0x10C0) and the job state word (+0x1074).
+* `PlayerProgress` grew the fields these use (costume choices +0x160, arcade tables +0x260,
+  unlock entries +0xD60, notification word +0x15C, counters); `Reset` (0x000ADE04) builds a new
+  profile. `jobStates` holds 144 entries (it overlapped the arcade tables before).
+* Not done here: HUD bottle counter 0x002DE258 and the other HUD text users (need the HudObject
+  text fields 0x003632C8 / 0x00363A3C), 0x002DF198, 0x002E4040, 0x002E4750 (end-of-job state),
+  0x002E4AAC, 0x002E58C8, 0x002E5C68, 0x002E70B8, 0x002E74C8, 0x002E7588, 0x002E7694.

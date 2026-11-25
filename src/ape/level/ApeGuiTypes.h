@@ -10,6 +10,7 @@
 #include "ape/level/ApeGui.h"
 
 #include <string>
+#include <vector>
 
 namespace agl {
 class AglMaterial;
@@ -80,6 +81,10 @@ struct GuiClipRegionDesc : GuiObjectDesc {
     // projected by a perspective render target.
     float projectedSize[2] = {};         // +0x88
 };
+
+// Decodes the UTF-8 character at 'cursor'; 'length' (optional) receives
+// its size in bytes and the cursor moves past it when 'advance' is set.
+uint32_t DecodeGuiChar(const char*& cursor, uint32_t* length, bool advance);
 
 // Size the "expand" flag gives an object: its parent's layout size, or the
 // screen for root objects.
@@ -152,29 +157,128 @@ public:
     agl::AglMaterial* material = nullptr;   // +0xC0
 };
 
-// "label" (type 3, vtable 0x00B227D8): text from the string table.
+struct GuiLabelDesc : GuiObjectDesc {
+    ApeGuiFontSet* font = nullptr;       // +0x80 "font"
+    const char* text = "";               // +0x84 "string" (string table id or text)
+    float leading = 1.0f;                // +0x88 "leading"
+    float tracking = 0.0f;               // +0x8C "tracking"
+    uint32_t wrapWidth = 0;              // +0x90 "wrap" (0: no wrapping)
+    uint32_t field_94 = 0;               // +0x94 NOTE: 4 bits kept by the label; not read from XML
+    bool fixedWidth = false;             // +0x98 "fixedwidth" (every character one space wide)
+    uint32_t animMode = kGuiAnim_FwdLoop; // +0x9C "animmode" of animated glyphs
+    float animRate = 3.0f;               // +0xA0 "animrate" (frames per second)
+    bool layoutNow = false;              // +0xA4 lay the text out at once
+};
+
+// One laid out character of a label (0x20 bytes on the console, where the
+// texture rectangle and the animation state are bit fields).
+struct GuiLabelGlyph {
+    float x = 0.0f, y = 0.0f;            // +0x00 position relative to the label origin
+    float width = 0.0f, height = 0.0f;   // +0x08
+    uint16_t texX = 0, texY = 0;         // texels of the first frame
+    uint16_t texWidth = 0, texHeight = 0;
+    bool untinted = false;               // the font keeps its colours (only alpha is applied)
+    uint8_t frames = 0;                  // animation frames (cells to the right of the first)
+    uint8_t frame = 0;                   // current frame
+    bool reverse = false;                // ping-pong direction
+    uint16_t line = 0;                   // text line of the character
+    agl::AglMaterial* material = nullptr; // +0x18 the font material for the blend mode
+    float animTime = 0.0f;               // +0x1C time since the last frame change
+
+    // Advances the frame animation by 'dt' with one frame per 'period'.
+    void Tick(float dt, float period, uint32_t mode);
+};
+
+// "label" (type 3, vtable 0x00B227D8, 0xF0 bytes): text drawn with a font
+// set. The text may reference string table entries ("$Name"), is wrapped
+// at "wrap" pixels and can be revealed character by character.
 class ApeGuiLabel : public ApeGuiObject {
 public:
-    explicit ApeGuiLabel(const GuiObjectDesc& desc) : ApeGuiObject(desc) {}
+    explicit ApeGuiLabel(const GuiLabelDesc& desc);
     ~ApeGuiLabel() override;
+    ApeGuiObject* Clone(const char* name, ApeGuiObject* parent, void* owner, bool recursive) const override;
     int32_t GetType() const override;
-    // The text shown ("" when none was set).
-    const char* GetText() const;
+    void GetLayoutSize(float out[2]) const override;
+    void Invalidate() override;
+    void Tick(float dt) override;
+    void Draw() override;
     const GuiProperty* FindProperty(const char* name) const override;
     const GuiProperty* FindProperty(const char* name, const void* type) const override;
+    // Sets the text (string table references are expanded and the text is
+    // wrapped); with 'layoutNow' the glyphs are built at once.
+    void SetText(const char* text, bool layoutNow) override;
 
-    float tracking = 0.0f;  // +0xB0 "tracking" (letter spacing)
+    // The text shown ("" when none was set).
+    const char* GetText() const;
+    // Advances the glyph animations (and the reveal time) by 'dt'.
+    void TickGlyphs(float dt);
+    // Distance between text lines in screen units.
+    float GetLineSpacing() const;
 
-    // Owned text buffers (capacity/data pairs on the console).
-    std::string text;       // +0xB8/+0xC0 displayed text
-    std::string idBuffer;   // +0xC4/+0xC8 string table id
-    std::string field_CC;   // +0xCC/+0xD0
+    // Copies 'src' into the output, expanding "$Name" references and
+    // inserting line breaks for the wrap width. Used by SetText and by
+    // game classes that set the text in steps.
+    struct FormatState {
+        char* out = nullptr;            // write position
+        size_t capacity = 0;            // size of the output buffer
+        uint32_t bytes = 0;             // bytes written
+        uint32_t chars = 0;             // characters written
+        uint32_t lineChars = 0;         // characters on the current line
+        float lineWidth = 0.0f;         // width of the current line
+        char* lastBreak = nullptr;      // where the line may be broken (a space, or before a character)
+        float widthAtBreak = 0.0f;      // line width at lastBreak
+        uint32_t lastChar = 0;
+    };
+    void FormatText(const char* src, FormatState& state);
+    // Makes room for a text of 'bytes' bytes (0: no text).
+    void ReserveText(uint32_t bytes);
+    // Makes room for 'count' glyphs (0: none); the slots are cleared when
+    // they are reallocated.
+    void ReserveGlyphs(uint32_t count);
+
+protected:
+    // Builds the glyph quads of the text ('force': even when hidden).
+    void Layout(bool force);
+    // Width of a space in screen units.
+    float GetSpaceWidth(const Vec3& worldScale) const;
+    // Horizontal start of each line for the alignment; returns the line count.
+    uint32_t ComputeLineOffsets(float spaceWidth, float* offsets, uint32_t maxLines, const Vec3& worldScale) const;
+    // Lays out one character at (x, y) and advances x; false when no font
+    // has it.
+    bool BuildGlyph(float spaceWidth, GuiLabelGlyph& glyph, uint32_t codePoint, float& x, float y,
+                    const Vec3& worldScale, uint32_t line) const;
+    // Counts the characters that have a glyph.
+    void CountGlyphs();
+    // Number of glyph slots that are drawn (the reveal limit).
+    uint32_t GetVisibleGlyphLimit() const;
+
+public:
+    ApeGuiFontSet* font = nullptr;  // +0xA8 (referenced, load referenced)
+    float leading = 1.0f;           // +0xAC extra line distance in lines
+    float tracking = 0.0f;          // +0xB0 "tracking" (letter spacing in spaces)
+    // Bit fields of +0xB4.
+    bool fixedWidth = false;        // bit 31
+    bool layoutDirty = true;        // bit 30
+    uint8_t field_94 = 0;           // bits 26-29
+    uint8_t animMode = 0;           // bits 22-25 GuiAnimPlayMode of the glyphs
+    uint16_t wrapWidth = 0;         // bits 6-21
+
+    std::string text;               // +0xB8/+0xC0 the formatted text
+    std::string textId;             // +0xC4/+0xC8 the text as set (string table id)
+    std::vector<GuiLabelGlyph> glyphs; // +0xBC/+0xCC/+0xD0 capacity rounded up to 32
+    uint32_t glyphCount = 0;        // +0xD4 characters with a glyph
+    // +0xD8 after layout: glyphs built and lines; after drawing: glyphs
+    // drawn and the last line drawn + 1.
+    float progress[2] = {};
+    float revealInterval = 0.0f;    // +0xE0 seconds per character (0: all shown)
+    float revealTime = 0.0f;        // +0xE4
+    float animPeriod = 0.0f;        // +0xE8 seconds per glyph animation frame
 };
 
 // "ticker" (type 5, vtable 0x00B22B78): a scrolling label.
 class ApeGuiTicker : public ApeGuiLabel {
 public:
-    explicit ApeGuiTicker(const GuiObjectDesc& desc) : ApeGuiLabel(desc) {}
+    explicit ApeGuiTicker(const GuiLabelDesc& desc) : ApeGuiLabel(desc) {}
     ~ApeGuiTicker() override;
     int32_t GetType() const override;
 };

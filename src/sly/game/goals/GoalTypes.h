@@ -255,17 +255,71 @@ public:
     float field_A1C = 4.0f;      // +0xA1C (XML 0x39FB22A9)
 };
 
+// Configuration of the fishing minigame (0x140 bytes), one block per child
+// element of the goal. Names come from the attribute hashes where they were
+// recovered; the rest keep their hash.
+struct FishingConfig {
+    // <General>
+    uint32_t general_9D597CD8 = 0;   // +0x00
+    uint32_t lifetimeScript = 0;     // +0x04 "LifetimeScript"
+    bool general_60FC5D53 = false;   // +0x08
+    int32_t general_E2AB5482 = 0;    // +0x0C
+    // element 0x0001151B
+    char captureStr[0x44] = {};      // +0x10 "captureStr"
+    uint32_t capture_B908B96B = 0;   // +0x54
+    uint32_t capture_521131D6 = 0;   // +0x58
+    // <Input>
+    float inputRangeMin[2] = {};     // +0x5C NOTE: name inferred from "InputRangeMax"
+    float inputRangeMax[2] = {};     // +0x64 "InputRangeMax"
+    float input_2443DEE4[2] = {};    // +0x6C
+    float input_4343FBEC = 2.0f;     // +0x74
+    bool input_D671941C = false;     // +0x78
+    // <Camera>
+    float cameraOffset[3] = {};      // +0x80 "Offset"
+    float camera_84427283[3] = {};   // +0x90
+    uint32_t cameraStartDef = 0;     // +0xA0 NOTE: "STARTdef"?
+    float easeInTime = 1.0f;         // +0xA4 "EaseInTime"
+    float easeOutTime = 0.25f;       // +0xA8 "EaseOutTime"
+    float panInterp = 0.15f;         // +0xAC "PanInterp"
+    float fov = 50.0f;               // +0xB0 "Fov"
+    float fovInterp = 0.4f;          // +0xB4 "FovInterp"
+    float camera_0460BCBD = 25.0f;   // +0xB8
+    // element 0x75181ABA
+    uint32_t entityDef = 0;          // +0xC0 "Entitydef"
+    float speedThreshold = 10.0f;    // +0xC4 "Speedthreshold"
+    uint32_t detectPart = 0;         // +0xC8 "DetectPart"
+    float visualYOffset = 0.0f;      // +0xCC "VisualYOffset"
+    uint32_t fish_BC0FA89F = 0;      // +0xD0
+    uint32_t fish_708ACE28 = 0;      // +0xD4
+    // element 0x0020EE58
+    float move_9B49D0E5[3] = {};     // +0xE0
+    float move_C629C924[3] = {};     // +0xF0
+    float trackDistSq = 3.4028235e38f;   // +0x100 "TrackDist" (stored squared)
+    float moveYOffset = 0.0f;        // +0x104 "MOVEYOffset"
+    float trackSpeedScale = 1.0f;    // +0x108 "TrackSpeedScale"
+    float move_810AA162 = 0.1f;      // +0x10C
+    float move_AE23BF2F = 0.0f;      // +0x110
+    float maxStunTime = 0.0f;        // +0x114 "MaxStunTime"
+    float move_A4C44A18 = 0.0f;      // +0x118
+    uint32_t idleAnim = 0;           // +0x11C "IdleAnim"
+    uint32_t move_72BEA0EF = 0;      // +0x120
+    // <Track>: "thresholdpercent" of the low / mid / high bands (0..1)
+    float trackThresholds[3] = {};   // +0x130
+    float track_E965B9B4 = 0.0f;     // +0x13C
+};
+
 // "GoalFishingGame" (vtable 0x00B1E990).
 class GoalFishingGame : public MinigameGoal {
 public:
     int TypeId() const override;
-    using MinigameGoal::MinigameGoal;
+    // 0x00330958: the minigame goal with the parsed configuration.
+    GoalFishingGame(const GoalDesc* desc, const FishingConfig& config);
     ~GoalFishingGame() override;
+    // 0x00330C88: reads the configuration blocks of the child elements.
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
     void InstallMinigame() override;
 
-    // NOTE: the 0x150-byte configuration built by 0x00330C88/0x00330958
-    // (not ported); kept opaque.
-    uint8_t config[0x150] = {};   // +0xA20
+    FishingConfig config;   // +0xA20
 };
 
 // "GoalQteGame" (vtable 0x00B1EF58).
