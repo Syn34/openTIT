@@ -52,6 +52,10 @@ ape::Vec3 RigidBodyPosition(void* body);
 // Drops the game's two user properties of a body (0x0093FED8, keys
 // 0xA734004D and 0x91C7CF5B) before it is released.
 void RigidBodyClearUserProperties(void* body);
+// Navigation obstacle shaped like a body's box or transformed shape, with
+// the given bounds, debug name and filter mask (0x00011410); null when the
+// shape does not qualify or the level has no navigation.
+void* NavAddBodyObstacle(void* body, const ape::Aabb& bounds, const char* name, uint32_t mask);
 // Local bounds of a collision shape (shape virtual getAabb at the identity
 // transform, tolerance 0).
 void HavokShapeLocalAabb(void* shape, ape::Aabb& out);

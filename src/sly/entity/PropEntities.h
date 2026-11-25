@@ -382,14 +382,23 @@ public:
     bool Damage(float amount, Entity* source, uint32_t type) override;   // slot 88
     // Slot 89: damage scale of projectiles.
     virtual float ProjectileDamageScale() const;
-    // Slot 99: physics state (0x001F9F70, not ported).
+    // The flag takes the body (and its nav obstacle) out of the world;
+    // clearing it puts the body of an active target back in place.
+    void SetFlag80(bool on) override;                 // slot 23
+    // Nav obstacle for the body when slot 42 asks for one.
+    void AddNavObstacle();
+    // Slot 99: target state (bits 12-15 of targetFlags). 1 shows the entity
+    // and puts the body into the world (with a nav obstacle when slot 42
+    // says so); 0 and 4 take it out.
     virtual void SetTargetState(int32_t state, uint32_t arg);
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     const TargetableDefC* Def() const { return static_cast<const TargetableDefC*>(def); }
 
     void* rigidBody = nullptr;           // 0x1A0
+    uint32_t field_1A4 = 0;              // 0x1A4 cleared by states 1 and 3
     Entity* thrower = nullptr;           // 0x1AC NOTE: its touch does not kill
-    uint16_t targetFlags = 0;            // 0x1B0 bits 8-9: NOTE unknown, any kills on impact; bit 10: destroyed
+    uint16_t targetFlags = 0;            // 0x1B0 bits 8-9: NOTE unknown, any kills on impact; bit 10: destroyed; bits 12-15: state
+    void* navObstacle = nullptr;         // 0x1B4 levels::NavObstacleHandle
 };
 
 // Entity of TargetableDefC with a linked entity and a game world update

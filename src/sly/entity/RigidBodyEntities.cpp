@@ -1294,8 +1294,61 @@ bool TargetableCBase::Release(bool kill)
     return ScriptedEntity::Release(kill);
 }
 
-// TODO(0x001F9F70 TargetableCBase::SetTargetState)
-void TargetableCBase::SetTargetState(int32_t state, uint32_t arg) { (void)state; (void)arg; }
+void TargetableCBase::AddNavObstacle()
+{
+    if (!Slot42())
+        return;
+    ape::Aabb bounds;
+    Def()->GetBounds(bounds);
+    const uint32_t mask = (Def()->hitFlags & (1u << 24)) ? 0xFFFFu : 0xFFFEu;
+    navObstacle = NavAddBodyObstacle(rigidBody, bounds, GetDebugName(), mask);
+}
+
+// @func 0x001FAF44 TargetableCBase::SetFlag80
+void TargetableCBase::SetFlag80(bool on)
+{
+    Entity::SetFlag80(on);
+    if (!rigidBody || RigidBodyInWorld(rigidBody) != on)
+        return;
+    if (on) {
+        RigidBodyRemoveFromWorld(rigidBody);
+        if (levels::NavManager* nav = levels::GetNavManager())
+            levels::RemoveNavObstacle(*nav, navObstacle);
+    } else if ((targetFlags >> 12) != 0) {
+        RigidBodyAddToWorld(rigidBody, ~0u);
+        AddNavObstacle();
+        SetTransform(transform);
+    }
+}
+
+// @func 0x001F9F70 TargetableCBase::SetTargetState
+void TargetableCBase::SetTargetState(int32_t state, uint32_t arg)
+{
+    (void)arg;
+    if ((targetFlags >> 12) == uint32_t(state))
+        return;
+    if (state == 0 || state == 4) {
+        if (rigidBody && RigidBodyInWorld(rigidBody)) {
+            RigidBodyRemoveFromWorld(rigidBody);
+            if (levels::NavManager* nav = levels::GetNavManager())
+                levels::RemoveNavObstacle(*nav, navObstacle);
+        }
+    } else if (state == 1) {
+        SetVisible(true, true, true, true);
+        // NOTE: the console also clears filter bits 5-15 here.
+        if (rigidBody) {
+            RigidBodySetFilterGroup(rigidBody, renderId);
+            if (!RigidBodyInWorld(rigidBody)) {
+                RigidBodyAddToWorld(rigidBody, ~0u);
+                AddNavObstacle();
+            }
+        }
+        field_1A4 = 0;
+    } else if (state == 3) {
+        field_1A4 = 0;
+    }
+    targetFlags = uint16_t((uint32_t(state) << 12) | (targetFlags & 0xFFF));
+}
 
 // @func 0x001FF4B0 TargetableCLinked::Release
 bool TargetableCLinked::Release(bool kill)
