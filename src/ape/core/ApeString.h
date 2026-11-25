@@ -26,6 +26,8 @@ int StrCaseCompare(const char* a, const char* b);
 int StrNCaseCompare(const char* a, const char* b, int count);
 
 // More C library wrappers.
+// sprintf with no size limit.
+int StrSPrintf(char* buffer, const char* fmt, ...);
 int StrPrintf(char* buffer, size_t size, const char* fmt, ...);
 int StrVPrintf(char* buffer, size_t size, const char* fmt, va_list args);
 char* StrStr(const char* s, const char* sub);

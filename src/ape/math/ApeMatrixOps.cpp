@@ -222,6 +222,25 @@ void Matrix34ScaleColumns(Matrix34& m, const Vec3& s)
     }
 }
 
+// @func 0x005541F0 Matrix34PreMultiply
+// m = pre * m: the result first applies `pre`, then the original m. The
+// fourth lanes of the stored rows are not meaningful (the console fills
+// them with whatever was on the stack).
+void Matrix34PreMultiply(Matrix34& m, const Matrix34& pre)
+{
+    const Matrix34 a = m;
+    const Vec3* preRows[4] = { &pre.xAxis, &pre.yAxis, &pre.zAxis, &pre.translation };
+    Vec3* outRows[4] = { &m.xAxis, &m.yAxis, &m.zAxis, &m.translation };
+    for (int i = 0; i < 4; ++i) {
+        const Vec3& p = *preRows[i];
+        const float w = (i == 3) ? 1.0f : 0.0f;
+        SetXYZ(*outRows[i],
+               p.x * a.xAxis.x + p.y * a.yAxis.x + p.z * a.zAxis.x + w * a.translation.x,
+               p.x * a.xAxis.y + p.y * a.yAxis.y + p.z * a.zAxis.y + w * a.translation.y,
+               p.x * a.xAxis.z + p.y * a.yAxis.z + p.z * a.zAxis.z + w * a.translation.z);
+    }
+}
+
 // @func 0x00554394 Matrix34ScaleAxes
 void Matrix34ScaleAxes(Matrix34& m, const Vec3& s)
 {

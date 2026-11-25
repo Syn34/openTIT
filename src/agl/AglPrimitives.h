@@ -58,5 +58,9 @@ void UnlockDebugMeshVertices(AglDebugMesh* mesh);
 
 // A unit sphere as one triangle strip of 'rings' x 'segments' quads.
 AglSubMesh* CreateSphereMesh(AglMaterial* material, int rings, int segments);
+// A unit sphere with one vertex per cell centre, drawn as indexed strips.
+AglSubMesh* CreateIndexedSphereMesh(AglMaterial* material, int rings, int segments);
+// A unit cube centred on the origin: twelve edges, or twelve triangles when 'solid'.
+AglSubMesh* CreateBoxMesh(AglMaterial* material, bool solid);
 
 } // namespace agl

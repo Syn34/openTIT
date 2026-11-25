@@ -41,9 +41,7 @@ void ReleaseGoalDesc(GoalDesc& desc);
 // Factories of goal classes that are not ported yet (TODO stubs).
 Goal* CreateGoal9E69AF49(ape::xml::XmlElement* xml, const GoalDesc* desc);   // 0x003373E8
 Goal* CreatePenguinMontageGoal(ape::xml::XmlElement* xml, const GoalDesc* desc);   // 0x003396A8
-Goal* CreateBinocucomPhotoGoal(ape::xml::XmlElement* xml, const GoalDesc* desc);   // 0x0032B358
 Goal* CreateShootingGalleryGoal(ape::xml::XmlElement* xml, const GoalDesc* desc);  // 0x0033DC0C
-Goal* CreateBartenderGoal(ape::xml::XmlElement* xml, const GoalDesc* desc);  // 0x003292C8
 Goal* CreateQteGoal(ape::xml::XmlElement* xml, const GoalDesc* desc);        // 0x0033A520
 // "GoalSet": a group whose children are the goal elements below it (0x00321EC8).
 Goal* CreateGoalSet(ape::xml::XmlElement* xml, const GoalDesc* desc);

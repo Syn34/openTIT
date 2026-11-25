@@ -56,6 +56,8 @@ public:
 
     // Head of the list of live elements (most recently allocated first).
     Node* First() const;
+    // Oldest live element (the tail of the used list); walk with node->prev.
+    Node* Last() const { return m_used.tail; }
     static void* NodeData(Node* node) { return node ? node + 1 : nullptr; }
     static Node* NodeOf(void* element) { return static_cast<Node*>(element) - 1; }
 

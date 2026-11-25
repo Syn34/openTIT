@@ -149,6 +149,12 @@ AglShaderClass* FindShaderClass(uint32_t nameHash)
     return nullptr;
 }
 
+// @func 0x004FEBD0 GetShaderClass
+AglShaderClass* GetShaderClass(uint32_t nameHash)
+{
+    return FindShaderClass(nameHash);
+}
+
 // --- selection helpers ---
 
 bool IsSkinned(const AglRenderItem* item)

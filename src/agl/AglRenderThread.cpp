@@ -1,4 +1,5 @@
 // openTIT - Agl render thread control.
+#include "ape/memory/ApeDebugPrim.h"
 #include "agl/AglRenderThread.h"
 
 #include "agl/AglDeferred.h"
@@ -135,13 +136,13 @@ constexpr int kMaxEndOfFrameReleases = 16;
 AglOcclusionQuery* g_endOfFrameReleases[kMaxEndOfFrameReleases] = {};
 uint32_t g_endOfFrameReleaseCount = 0;
 
-// Engine services called at the end of a frame that live outside Agl
-// (0x0056B4E8, 0x0056E038, 0x0056E1F0, 0x0056B2B8: debug drawing and the
-// SPU job dispatcher). They are not connected yet.
-void FlushDebugDraw() {}
+// Engine services called at the end of a frame that live outside Agl:
+// the debug primitive pools (0x0056B4E8 swap, 0x0056B2B8 free) and the SPU
+// job dispatcher (0x0056E038, 0x0056E1F0, not connected).
+void FlushDebugDraw() { ape::ApeDebug::SwapBuffers(); }
 void KickFrameJobs() {}
 void DispatchJobs() {}
-void ResetDebugDraw() {}
+void ResetDebugDraw() { ape::ApeDebug::FreeCurrent(); }
 
 } // namespace
 

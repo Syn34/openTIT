@@ -153,5 +153,20 @@ void MinigameCollectMarkers(gameplay::Minigame*, GoalMarkerList*) {}
 void GoalAwardTrophy(uint32_t) {}
 gameplay::Minigame* CreateMinigame(MinigameKind, SlyGame*, const void*, Goal*) { return nullptr; }
 
+void* JobOwnerCharacter(const Job*) { return nullptr; }
+void* CharacterBinocucom(void*) { return nullptr; }
+bool BinocucomViewUp(void*) { return false; }
+void BinocucomSetPhotoFilter(void*, void*) {}
+void BinocucomSetPhotoFlag(void*, bool) {}
+void* FindPhotoFilter(uint32_t) { return nullptr; }
+void CharacterSetPhotoFlag(void*, bool) {}
+void CharacterInputMapSetBit(void*, uint32_t) {}
+ape::Matrix34 GoalEntityBoneTransform(void*, uint32_t)
+{
+    ape::Matrix34 m{};
+    m.xAxis.x = m.yAxis.y = m.zAxis.z = 1.0f;
+    return m;
+}
+
 } // namespace goals
 } // namespace sly
