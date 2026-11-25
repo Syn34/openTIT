@@ -35,6 +35,7 @@ enum ProjectorSourceKind : uint32_t {
     kProjectorSource_None  = 3,
 };
 struct ProjectorComponentDesc : ComponentDesc {
+    ~ProjectorComponentDesc() override;
     explicit ProjectorComponentDesc(uint32_t nameHash);
     uint32_t part = 0;                 // 0x14 "Part"
     ape::Vec3 offsetPos = {0.0f, 0.0f, 0.0f, 0.0f};   // 0x20 "OffsetPos"
@@ -101,6 +102,7 @@ struct CustomModelGroup {
     CustomModelOption options[8];      // +0x28
 };
 struct CustomModelComponentDesc : ComponentDesc {
+    ~CustomModelComponentDesc() override;
     explicit CustomModelComponentDesc(uint32_t nameHash);
     static constexpr uint32_t kMaxGroups = 8;
     static constexpr uint32_t kMaxOptions = 8;
@@ -147,6 +149,7 @@ struct WeaponFirePoint {
     bool flattenMatrix;                // "FlattenMatrix"
 };
 struct WeaponComponentDesc : ComponentDesc {
+    ~WeaponComponentDesc() override;
     explicit WeaponComponentDesc(uint32_t nameHash);
     static constexpr uint32_t kMaxFirePoints = 6;
     WeaponFirePoint firePoints[kMaxFirePoints] = {};   // 0x20 (zero-filled by the constructor)
@@ -257,6 +260,7 @@ struct ShootingAnim {
     float value08;                     // +0x08 attribute 0xC7A1516D. NOTE: name unknown
 };
 struct ShootingComponentDesc : ComponentDesc {
+    ~ShootingComponentDesc() override;
     explicit ShootingComponentDesc(uint32_t nameHash);
     uint32_t attackGround = 0;         // 0x14 "AttackGround"
     uint32_t hash18 = 0;               // 0x18 attribute 0xFB929CF6. NOTE: name unknown

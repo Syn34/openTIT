@@ -501,7 +501,8 @@ BinocucomComponentDesc::BinocucomComponentDesc(uint32_t nameHash) : ComponentDes
     }
 }
 
-// NOTE: the console destructor lives at 0x0076xxxx (outside this range).
+// @func 0x00764848 BinocucomComponentDesc::~BinocucomComponentDesc
+// @func 0x00764A60 BinocucomComponentDesc::~BinocucomComponentDesc (deleting)
 BinocucomComponentDesc::~BinocucomComponentDesc()
 {
     char* strings[] = {uiParentGroup, ngReticle, partialReticle, fullReticle, reticleTitle, photoParentGroup,

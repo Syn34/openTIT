@@ -38,14 +38,19 @@ constexpr uint32_t kCompDesc_Inventory = 0x12;
 class InventorySlotDesc {
 public:
     InventorySlotDesc() = default;
-    virtual ~InventorySlotDesc() = default;                                     // slots 0/1 (0x00762AB8/0x00762AC8)
+    virtual ~InventorySlotDesc();                                               // slots 0/1
+    // Slot 2: true for loot tables (several weighted entries).
+    // NOTE: name assumed from the only override.
+    virtual bool IsLootTable() const;
     // Slot 3: entity definition the entry spawns.
     virtual uint32_t GetEntityDefName(int entry) const = 0;
     // Slot 4: attach bone/part of an entry (falls back to the slot's).
-    virtual uint32_t GetAttachName(int entry) const { (void)entry; return attachName; }   // 0x00762B14 (base)
+    virtual uint32_t GetAttachName(int entry) const;
     // Slots 5/6: placement of an entry (falls back to the slot's).
-    virtual ape::Vec3 GetOffset(int entry) const { (void)entry; return offset; }         // 0x00762B1C (base)
-    virtual ape::Vec4 GetRotation(int entry) const { (void)entry; return rotation; }     // 0x00762B38 (base)
+    virtual ape::Vec3 GetOffset(int entry) const;
+    virtual ape::Vec4 GetRotation(int entry) const;
+    // Slot 7: name the spawned entity takes while in a pocket (null: keep).
+    virtual const char* GetInPocketNameOverride() const;
 
     // 0x04..0x0C NOTE: not touched by the parser.
     ape::Vec4 rotation = {0.0f, 0.0f, 0.0f, 1.0f};    // 0x10 from Euler degrees (attribute 0x693D7F03)
@@ -59,7 +64,9 @@ public:
 // A slot holding one entity (vtable 0x00B1BEA0, 0xD0 bytes).
 class InventoryEntitySlotDesc : public InventorySlotDesc {
 public:
-    uint32_t GetEntityDefName(int entry) const override { (void)entry; return entityDefName; }   // 0x00762BB8
+    ~InventoryEntitySlotDesc() override;
+    uint32_t GetEntityDefName(int entry) const override;
+    const char* GetInPocketNameOverride() const override;
 
     char entityNameOverride[0x40] = {};          // 0x3D
     uint32_t entityDefName = 0;                  // 0x80 "EntityDefName"
@@ -79,7 +86,9 @@ struct InventoryLootEntry {
 class InventoryLootSlotDesc : public InventorySlotDesc {
 public:
     InventoryLootSlotDesc() : entries(kMaxEntries) {}
+    ~InventoryLootSlotDesc() override;
 
+    bool IsLootTable() const override;
     uint32_t GetEntityDefName(int entry) const override;
     uint32_t GetAttachName(int entry) const override;
     ape::Vec3 GetOffset(int entry) const override;
@@ -121,6 +130,7 @@ struct InventoryItemDesc {
 
 // <Inventory> (vtable 0x00B1BEF0, 0x2C bytes).
 struct InventoryComponentDesc : ComponentDesc {
+    ~InventoryComponentDesc() override;
     explicit InventoryComponentDesc(uint32_t nameHash) : ComponentDesc(nameHash, kCompDesc_Inventory), items(4) {}
     // Inserts keeping the items ordered by priority (stable for equal ones).
     void InsertItem(InventoryItemDesc* item);
