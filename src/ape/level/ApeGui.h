@@ -384,12 +384,12 @@ struct GuiEvent {
     uint32_t pad;       // +0x04
     void* userData;     // +0x08
     ApeGuiObject* object; // +0x0C
-    uint32_t param;     // +0x10
+    uintptr_t param;    // +0x10 (a script player for script messages)
 };
 using GuiFilter = bool (*)(const GuiEvent* event);
 void SetGuiFilter(GuiFilter filter, void* userData);
 // Sends an event to the handler; true when none is installed.
-bool SendGuiEvent(uint32_t type, uint32_t pad, ApeGuiObject* object, uint32_t param);
+bool SendGuiEvent(uint32_t type, uint32_t pad, ApeGuiObject* object, uintptr_t param);
 
 // Four opaque values the game stores for the GUI system (cleared when the
 // GUI shuts down). NOTE: their meaning is unknown.

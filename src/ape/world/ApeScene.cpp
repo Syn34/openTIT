@@ -82,4 +82,20 @@ ApeScene* GetScene(int index)
     return (index >= 0 && index < ApeScene::kMaxScenes) ? s_scenes[index] : nullptr;
 }
 
+// TODO(0x005904EC LoadSceneFile)
+bool LoadSceneFile(ApeScene*, const char*, bool)
+{
+    return false;
+}
+
+// TODO(0x005964B4 FinishSceneLoad)
+void FinishSceneLoad(ApeScene*)
+{
+}
+
+// TODO(0x00596E3C DestroyScene)
+void DestroyScene(ApeScene*)
+{
+}
+
 } // namespace ape::world

@@ -9,6 +9,7 @@
 #include "ape/core/ApeString.h"
 #include "ape/file/ApeFile.h"
 #include "ape/level/ApeGuiProperties.h"
+#include "ape/level/ApeGuiScript.h"
 #include "ape/level/ApeGuiTypes.h"
 #include "platform/Platform.h"
 
@@ -50,6 +51,8 @@ agl::AglRenderTarget* s_guiTarget = nullptr;        // 0x00F6684C
 agl::AglRenderTarget* s_gui3dTarget = nullptr;      // 0x00F66850
 agl::AglRenderTarget* s_guiDrawTarget = nullptr;    // 0x00F6688C
 agl::AglDrawList* s_drawListOverride = nullptr;     // 0x00F66890
+// NOTE: cleared by ShutdownGui; its use is not known.
+void* s_field_F66884 = nullptr;                     // 0x00F66884
 
 bool IsIdentifierChar(char c)
 {
@@ -865,6 +868,33 @@ bool InitGuiRendering(const int16_t* viewport)
     return true;
 }
 
+// @func 0x004D3798 DestroyGuiObjects
+// Script players and scripts go first, then the object tree and every
+// resource regardless of its references (the console prints the path of
+// each object and the hash of each resource here).
+void DestroyGuiObjects()
+{
+    DestroyGuiScripts();
+    while (ApeGuiObject* object = GuiRootObjects())
+        delete object;
+    while (ApeGuiResource* resource = ApeGuiResource::First())
+        delete resource;
+    for (void*& slot : s_slots)
+        slot = nullptr;
+}
+
+// @func 0x004D39B0 ShutdownGui
+void ShutdownGui()
+{
+    s_field_F66884 = nullptr;
+    DestroyGuiScripts();
+    DestroyGuiObjects();
+    if (s_guiTarget) {
+        s_guiTarget->Release();
+        s_guiTarget = nullptr;
+    }
+}
+
 // @func 0x004D4104 GetGuiScreenSize
 void GetGuiScreenSize(float out[2])
 {
@@ -874,7 +904,7 @@ void GetGuiScreenSize(float out[2])
 }
 
 // @func 0x004D3DA4 SendGuiEvent
-bool SendGuiEvent(uint32_t type, uint32_t pad, ApeGuiObject* object, uint32_t param)
+bool SendGuiEvent(uint32_t type, uint32_t pad, ApeGuiObject* object, uintptr_t param)
 {
     if (!s_filter)
         return true;
