@@ -245,6 +245,22 @@ AglMaterial* GetBuiltinMaterial(int index)
     return material;
 }
 
+// @func 0x00523B7C CreateSpriteMaterial
+AglMaterial* CreateSpriteMaterial(AglTexture* texture)
+{
+    // Same shader classes as the textured / plain built-in materials.
+    constexpr uint32_t kTexturedClass = 0x1808E1E8;
+    constexpr uint32_t kUntexturedClass = 0x38FF7607;
+    AglMaterial* material = AglMaterial::Create();
+    if (!texture) {
+        material->shaderClass = FindShaderClass(kUntexturedClass);
+        return material;
+    }
+    material->shaderClass = FindShaderClass(kTexturedClass);
+    material->AddTexture(texture);
+    return material;
+}
+
 // --- material animation --------------------------------------------------------------
 
 // TODO(0x0050B980 AglMaterialAnim::GetUVMatrix)

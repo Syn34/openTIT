@@ -46,6 +46,7 @@ struct SpawnerSettings {
     const char* triggerName = nullptr;  // 0x010AB2F0 NOTE: hashed into nameHash
     const char* secondName = nullptr;   // 0x010AB308
     const char* linkedObjectName = nullptr; // 0x010AB0C8
+    const char* entityDefName = nullptr;    // 0x010AB310 definition to spawn
 };
 
 // Values of the "Entity Spawn Group Setting" level object.
@@ -81,6 +82,11 @@ public:
     virtual bool IsCharacterSpawner() const;    // slot 5 NOTE: guessed meaning
     virtual bool Activate();                    // slot 6
     virtual void Deactivate(bool immediate);    // slot 7
+    // Slot 10: name of the entity definition to spawn (base 0x004562B8: the
+    // setting's EntityDefName).
+    virtual const char* SpawnDefName() const { return settings ? settings->entityDefName : nullptr; }
+    // Slot 11: name of an object to spawn instead (base 0x0077E8A4: none).
+    virtual const char* SpawnObjectName() const { return nullptr; }
 
     // Object the spawn is placed relative to (null: use the spawn point).
     WorldObject* AltSpawnObject() const;

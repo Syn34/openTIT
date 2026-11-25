@@ -1,9 +1,13 @@
 // openTIT - Ape engine GUI core: resources, the object tree and globals.
 #include "ape/level/ApeGui.h"
 
+#include "agl/AglResources.h"
+#include "agl/AglTexture.h"
 #include "ape/core/ApeString.h"
+#include "ape/level/ApeGuiTypes.h"
 #include "platform/Platform.h"
 
+#include <cstdio>
 #include <cstring>
 
 namespace ape {
@@ -14,8 +18,15 @@ namespace {
 // the variable's spelling is not known.
 constexpr uint32_t kLanguageVarHash = 0x243084BD;
 constexpr uint32_t kPreloadHash = 0x17CFF9E9;      // "preload"
-constexpr uint32_t kTextureFlagAHash = 0x051B7FEC;
+constexpr uint32_t kZTestHash = 0x051B7FEC;         // "ztest"
 constexpr uint32_t kTextureFlagBHash = 0x2E8401A3;
+constexpr uint32_t kFontFlagHash = 0x04704F4C;
+constexpr uint32_t kGlyphMapHash = 0x0001293C;      // "map"
+constexpr uint32_t kScaleHash = 0x04B1112A;         // "scale"
+// NOTE: font set child element; "page" is the only short name matching.
+constexpr uint32_t kFontSetPageHash = 0x00255A8F;
+// NOTE: per-font vertical offset in a font set (name unknown).
+constexpr uint32_t kFontOffsetHash = 0x7A600EB7;
 
 const char* s_languagePath = "";                    // 0x00F668A4
 ApeGuiObject* s_rootObjects = nullptr;              // 0x00F66868
@@ -109,10 +120,7 @@ ApeGuiResource::~ApeGuiResource()
 // @func 0x004D5990 ApeGuiResource::Release
 void ApeGuiResource::Release()
 {
-    if (--m_loadCount < 1 && m_loadState > kGuiLoad_None + 1) {
-        Unload();
-        m_loadState = kGuiLoad_None;
-    }
+    ReleaseLoadRef();
     if (--m_refCount < 1)
         delete this;
 }
@@ -121,6 +129,14 @@ void ApeGuiResource::AddLoadRef()
 {
     if (++m_loadCount > 0 && m_loadState == kGuiLoad_None)
         m_loadState = Load();
+}
+
+void ApeGuiResource::ReleaseLoadRef()
+{
+    if (--m_loadCount < 1 && m_loadState > kGuiLoad_None + 1) {
+        Unload();
+        m_loadState = kGuiLoad_None;
+    }
 }
 
 ApeGuiResource* ApeGuiResource::FindByName(uint32_t nameHash)
@@ -148,21 +164,60 @@ ApeGuiTexture::ApeGuiTexture(const char* name, const char* path, void* owner)
 // @func 0x0079503C ApeGuiTexture::~ApeGuiTexture (deleting)
 ApeGuiTexture::~ApeGuiTexture() = default;
 
-// TODO(0x004D5EAC ApeGuiTexture::Load) needs the render texture manager
-// (find by file name hash, else load m_path) and the sampler setup of
-// 0x004D5C64.
-uint16_t ApeGuiTexture::Load()
+namespace {
+
+// One material per GUI blend mode (alpha, additive, subtractive) drawing
+// 'texture'. GUI materials ignore the depth buffer unless the resource asks
+// for it.
+void CreateGuiMaterials(agl::AglMaterial* (&materials)[3], agl::AglTexture* texture, bool ztest,
+                        bool depthTest)
 {
-    return kGuiLoad_Failed;
+    for (uint32_t i = 0; i < 3; ++i) {
+        agl::AglMaterial* material = agl::CreateSpriteMaterial(texture);
+        materials[i] = material;
+        ApplyGuiBlendMode(material, i);
+        material->depthFunc = ztest ? agl::gpu::CompareFunc::LEqual : agl::gpu::CompareFunc::Always;
+        material->depthTest = depthTest;
+    }
 }
 
-// TODO(0x004D5F38 ApeGuiTexture::Unload) releases the three texture views
-// and the texture.
+} // namespace
+
+// @func 0x004D5C64 ApeGuiTexture::CreateMaterials
+void ApeGuiTexture::CreateMaterials()
+{
+    if (texture)
+        CreateGuiMaterials(materials, texture, ztest, flag_2E8401A3);
+}
+
+// @func 0x004D5EAC ApeGuiTexture::Load
+uint16_t ApeGuiTexture::Load()
+{
+    // Textures already loaded by the renderer are shared by file name.
+    texture = agl::FindTexture(m_fileNameHash);
+    if (texture)
+        texture->AddRef();
+    else
+        texture = agl::TextureLoadFile(m_path, false);
+    if (!texture)
+        return kGuiLoad_Failed;
+    CreateMaterials();
+    return kGuiLoad_Loaded;
+}
+
+// @func 0x004D5F38 ApeGuiTexture::Unload
 void ApeGuiTexture::Unload()
 {
-    texture = nullptr;
-    for (void*& sampler : samplers)
-        sampler = nullptr;
+    for (agl::AglMaterial*& material : materials) {
+        if (material) {
+            material->Release();
+            material = nullptr;
+        }
+    }
+    if (texture) {
+        texture->Release();
+        texture = nullptr;
+    }
 }
 
 // @func 0x004D5A4C CreateGuiTexture
@@ -171,10 +226,10 @@ ApeGuiTexture* CreateGuiTexture(xml::XmlDocument* doc, xml::XmlElement* element,
     const char* name = element->GetString("name");
     const char* fileName = element->GetString("filename");
     bool preload = false;
-    bool flagA = false;
+    bool ztest = false;
     bool flagB = false;
     element->GetBool(kPreloadHash, &preload, false);
-    element->GetBool(kTextureFlagAHash, &flagA, false);
+    element->GetBool(kZTestHash, &ztest, false);
     element->GetBool(kTextureFlagBHash, &flagB, false);
     if (!name || !fileName) {
         plat::Log(plat::LogLevel::Warning, "%s: GUI texture without name or filename\n",
@@ -183,11 +238,271 @@ ApeGuiTexture* CreateGuiTexture(xml::XmlDocument* doc, xml::XmlElement* element,
     }
 
     auto* texture = new ApeGuiTexture(name, fileName, owner);
-    texture->flag_51B7FEC = flagA;
+    texture->ztest = ztest;
     texture->flag_2E8401A3 = flagB;
     if (preload)
         texture->AddLoadRef();
     return texture;
+}
+
+// ---------------------------------------------------------------------------
+// ApeGuiBitmapFont
+// ---------------------------------------------------------------------------
+
+ApeGuiBitmapFont::ApeGuiBitmapFont(const char* name, const char* mapPath, void* owner,
+                                   ApeGuiTexture* fontTexture, uint32_t first)
+    : ApeGuiResource(name, mapPath, owner), texture(fontTexture), firstChar(first)
+{
+    texture->AddRef();
+}
+
+// @func 0x007950DC ApeGuiBitmapFont::~ApeGuiBitmapFont
+// @func 0x007951B8 ApeGuiBitmapFont::~ApeGuiBitmapFont (deleting)
+ApeGuiBitmapFont::~ApeGuiBitmapFont()
+{
+    texture->Release();
+    if (charMap)
+        delete[] charMap;
+}
+
+// TODO(0x004D6768 ApeGuiBitmapFont::Load) the glyph scan of the map bitmap
+// (ReadBitmapPixel, marker pixels with a channel >= 0xF0 outline the glyphs,
+// up to 256 GuiGlyph records, height = smallest row pitch) is not done. The
+// texture load reference and the materials are.
+uint16_t ApeGuiBitmapFont::Load()
+{
+    texture->AddLoadRef();
+    if (texture->GetLoadState() == kGuiLoad_Loaded) {
+        for (uint32_t i = 0; i < 3; ++i) {
+            agl::AglTexture* image = texture->texture;
+            if (!image)
+                image = agl::GetDefaultTexture(0);
+            agl::AglMaterial* material = agl::CreateSpriteMaterial(image);
+            materials[i] = material;
+            ApplyGuiBlendMode(material, i);
+            material->depthFunc = ztest ? agl::gpu::CompareFunc::LEqual : agl::gpu::CompareFunc::Always;
+            material->depthTest = flag_2E8401A3;
+        }
+    }
+    return glyphCount ? kGuiLoad_Loaded : kGuiLoad_Failed;
+}
+
+// @func 0x004D70B0 ApeGuiBitmapFont::Unload
+void ApeGuiBitmapFont::Unload()
+{
+    if (glyphCount) {
+        delete[] glyphs;
+        glyphs = nullptr;
+        glyphCount = 0;
+    }
+    // NOTE: the materials are released but the pointers are kept, as in the
+    // original; Load overwrites them.
+    for (agl::AglMaterial* material : materials)
+        if (material)
+            material->Release();
+    // Drop the load reference taken by Load.
+    texture->ReleaseLoadRef();
+}
+
+// @func 0x004D601C CreateGuiBitmapFont
+ApeGuiBitmapFont* CreateGuiBitmapFont(xml::XmlDocument* doc, xml::XmlElement* element, void* owner)
+{
+    const char* path = doc ? doc->GetDocumentPath() : "";
+    const char* name = element->GetString("name");
+    const char* textureName = element->GetString("texture");
+    const char* mapFileName = element->GetString("mapfilename");
+    const char* firstCharText = element->GetString("firstchar");
+    bool preload = false;
+    bool fontFlag = false;
+    bool ztest = false;
+    bool flagB = false;
+    element->GetBool(kPreloadHash, &preload, false);
+    element->GetBool(kFontFlagHash, &fontFlag, false);
+    element->GetBool(kZTestHash, &ztest, false);
+    element->GetBool(kTextureFlagBHash, &flagB, false);
+    if (!name) {
+        plat::Log(plat::LogLevel::Warning, "%s: GUI font without name\n", path);
+        return nullptr;
+    }
+    if (!textureName) {
+        plat::Log(plat::LogLevel::Warning, "%s: GUI font '%s' without texture\n", path, name);
+        return nullptr;
+    }
+    auto* texture = static_cast<ApeGuiTexture*>(ApeGuiResource::FindByName(HashNameNoCase(textureName)));
+    if (!texture) {
+        plat::Log(plat::LogLevel::Warning, "%s: GUI font '%s': unknown texture '%s'\n", path, name,
+                  textureName);
+        return nullptr;
+    }
+    if (!mapFileName) {
+        plat::Log(plat::LogLevel::Warning, "%s: GUI font '%s' without mapfilename\n", path, name);
+        return nullptr;
+    }
+
+    // First character: "\uXXXX", a plain ASCII character or a single byte.
+    uint32_t firstChar = ' ';
+    if (firstCharText) {
+        const uint8_t c = static_cast<uint8_t>(firstCharText[0]);
+        if (c == '\\' && (firstCharText[1] == 'u' || firstCharText[1] == 'U')) {
+            if (std::sscanf(firstCharText + 2, "%x", &firstChar) != 1) {
+                plat::Log(plat::LogLevel::Warning, "%s: GUI font '%s': bad firstchar\n", path, name);
+                firstChar = ' ';
+            }
+        } else if (c < 0x80 || firstCharText[1] == 0) {
+            firstChar = c;
+        } else {
+            plat::Log(plat::LogLevel::Warning, "%s: GUI font '%s': bad firstchar\n", path, name);
+        }
+    }
+
+    // Optional code point list: glyph i draws the i-th listed code point.
+    uint8_t* charMap = nullptr;
+    xml::XmlElement* mapElement = element->FirstChildElement(kGlyphMapHash);
+    const char* text = mapElement ? mapElement->GetText() : nullptr;
+    if (text) {
+        charMap = new uint8_t[0x10000];
+        std::memset(charMap, 0xFF, 0x10000);
+        char token[40];
+        size_t length = 0;
+        uint32_t glyph = 0;
+        for (const char* p = text; glyph < 0xFF; ++p) {
+            const char c = *p;
+            const bool separator = c == 0 || c == ' ' || c == '\t' || c == '\n' || c == ',';
+            if (!separator) {
+                if (length + 1 < sizeof(token))
+                    token[length++] = c;
+                continue;
+            }
+            if (length) {
+                token[length] = 0;
+                length = 0;
+                // NOTE: the original only accepts "\u" (the 'U' test checks the
+                // backslash again).
+                const char* digits = (token[0] == '\\' && token[1] == 'u') ? token + 2 : token;
+                uint32_t codePoint = 0;
+                std::sscanf(digits, "%x", &codePoint);
+                if (codePoint == 0 || codePoint > 0xFFFF)
+                    plat::Log(plat::LogLevel::Warning, "%s: GUI font '%s': bad map entry '%s'\n", path,
+                              name, token);
+                else
+                    charMap[codePoint] = static_cast<uint8_t>(glyph++);
+            }
+            if (c == 0)
+                break;
+        }
+    }
+
+    auto* font = new ApeGuiBitmapFont(name, mapFileName, owner, texture, firstChar);
+    font->flag_4704F4C = fontFlag;
+    font->ztest = ztest;
+    font->flag_2E8401A3 = flagB;
+    font->charMap = charMap;
+    if (preload)
+        font->AddLoadRef();
+    return font;
+}
+
+// ---------------------------------------------------------------------------
+// ApeGuiFontSet
+// ---------------------------------------------------------------------------
+
+ApeGuiFontSet::ApeGuiFontSet(const char* name, void* owner, const float setScale[2])
+    : ApeGuiResource(name, "", owner)
+{
+    scale[0] = setScale[0];
+    scale[1] = setScale[1];
+    for (float& s : fontScales)
+        s = 1.0f;
+}
+
+// @func 0x007952B0 ApeGuiFontSet::~ApeGuiFontSet
+// @func 0x007953AC ApeGuiFontSet::~ApeGuiFontSet (deleting)
+ApeGuiFontSet::~ApeGuiFontSet()
+{
+    while (fontCount)
+        fonts[--fontCount]->Release();
+}
+
+// @func 0x007954D0 ApeGuiFontSet::Load
+uint16_t ApeGuiFontSet::Load()
+{
+    for (uint32_t i = 0; i < fontCount; ++i)
+        fonts[i]->AddLoadRef();
+    for (uint32_t i = 0; i < fontCount; ++i) {
+        const uint16_t state = fonts[i]->GetLoadState();
+        if (state != kGuiLoad_Loaded)
+            return state;
+        // Fonts after the first are scaled to the first font's line height.
+        if (i != 0)
+            fontScales[i] *= float(fonts[0]->GetHeight()) / float(fonts[i]->GetHeight());
+    }
+    return kGuiLoad_Loaded;
+}
+
+// @func 0x00795650 ApeGuiFontSet::Unload
+void ApeGuiFontSet::Unload()
+{
+    for (uint32_t i = 0; i < fontCount; ++i)
+        fonts[i]->ReleaseLoadRef();
+}
+
+void ApeGuiFontSet::AddFont(ApeGuiBitmapFont* font, float fontScale, float offset)
+{
+    const uint32_t index = fontCount;
+    fonts[index] = font;
+    font->AddRef();
+    fontScales[index] = fontScale;
+    fontOffsets[index] = offset;
+    if (GetLoadState() != kGuiLoad_None) {
+        font->AddLoadRef();
+        if (fontCount != 0)
+            fontScales[index] *= float(fonts[0]->GetHeight()) / float(font->GetHeight());
+    }
+    ++fontCount;
+}
+
+// @func 0x004D71D0 CreateGuiFontSet
+ApeGuiFontSet* CreateGuiFontSet(xml::XmlDocument* doc, xml::XmlElement* element, void* owner)
+{
+    const char* path = doc ? doc->GetDocumentPath() : "";
+    const char* name = element->GetString("name");
+    // NOTE: the original passes an uninitialised default; 1,1 is assumed.
+    const float kUnitScale[2] = { 1.0f, 1.0f };
+    float scale[2] = { 1.0f, 1.0f };
+    element->GetVec2(kScaleHash, scale, kUnitScale);
+    bool preload = false;
+    element->GetBool(kPreloadHash, &preload, false);
+    if (!name) {
+        plat::Log(plat::LogLevel::Warning, "%s: GUI font set without name\n", path);
+        return nullptr;
+    }
+
+    auto* set = new ApeGuiFontSet(name, owner, scale);
+    if (preload)
+        set->AddLoadRef();
+
+    for (xml::XmlElement* page = element->FirstChildElement(kFontSetPageHash); page;
+         page = page->NextSiblingElement(kFontSetPageHash)) {
+        const char* fontName = page->GetString("name");
+        if (!fontName) {
+            plat::Log(plat::LogLevel::Warning, "%s: GUI font set '%s': page without name\n", path, name);
+            continue;
+        }
+        auto* font = static_cast<ApeGuiBitmapFont*>(ApeGuiResource::FindByName(HashNameNoCase(fontName)));
+        if (!font) {
+            plat::Log(plat::LogLevel::Warning, "%s: GUI font set '%s': unknown font '%s'\n", path, name,
+                      fontName);
+            continue;
+        }
+        if (set->fontCount >= ApeGuiFontSet::kMaxFonts)
+            break;   // NOTE: the original does not check the limit
+        float fontScale = 1.0f;
+        float offset = 0.0f;
+        page->GetFloat(kScaleHash, &fontScale, 1.0f);
+        page->GetFloat(kFontOffsetHash, &offset, 0.0f);
+        set->AddFont(font, fontScale, offset);
+    }
+    return set;
 }
 
 // ---------------------------------------------------------------------------

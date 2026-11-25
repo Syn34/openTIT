@@ -2,6 +2,7 @@
 #include "sly/game/AppRuntime.h"
 
 #include "ape/core/ApeSystem.h"
+#include "ape/input/ApeInputDevice.h"
 #include "sly/SlyApp.h"
 
 namespace crt {
@@ -15,6 +16,44 @@ AppRuntime g_appRuntime;
 bool g_shuttingDown = false;      // 0x010C5A45
 bool g_skipCheckEnabled = false;  // 0x00F65C84
 } // namespace
+
+// @func 0x00457100 AppPlayer::~AppPlayer
+// @func 0x004643F8 AppPlayer::~AppPlayer (deleting)
+AppPlayer::~AppPlayer()
+{
+    if (pad) {
+        pad->StopRumble(0);
+        pad = nullptr;
+    }
+}
+
+// @func 0x00464488 AppPlayer::Rumble
+void AppPlayer::Rumble(float intensity, float duration)
+{
+    if (pad && pad->IsRumbleEnabled())
+        pad->StartRumble(intensity, duration, 0);
+}
+
+// @func 0x004644E0 AppPlayer::StopRumble
+void AppPlayer::StopRumble()
+{
+    if (pad)
+        pad->StopRumble(0);
+}
+
+// @func 0x0046452C AppPlayer::SetRumblePaused
+void AppPlayer::SetRumblePaused(bool paused)
+{
+    if (pad)
+        pad->SetRumblePaused(paused);
+}
+
+// @func 0x00464578 AppPlayer::SetField_D0
+void AppPlayer::SetField_D0(const uint32_t value[2])
+{
+    field_D0[0] = value[0];
+    field_D0[1] = value[1];
+}
 
 AppRuntime& GetAppRuntime()
 {

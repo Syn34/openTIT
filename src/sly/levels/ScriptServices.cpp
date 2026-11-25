@@ -3,6 +3,7 @@
 #include "sly/levels/ScriptServices.h"
 
 #include "ape/xml/ApeXml.h"
+#include "sly/game/PlayerAbilities.h"
 #include "sly/game/Upgrades.h"
 
 namespace sly {
@@ -112,7 +113,7 @@ bool EntityHasClassFlag3(const WorldObject* entity, uint32_t mask) { (void)entit
 void MountableAttachPlayer(WorldObject* mount, WorldObject* player) { (void)mount; (void)player; }
 void MountableDetachPlayer(WorldObject* mount, WorldObject* player) { (void)mount; (void)player; }
 
-int ProfileFindAbility(uint32_t abilityName) { (void)abilityName; return 0; }
+int ProfileFindAbility(uint32_t abilityName) { return game::FindAbility(abilityName); }
 void ProfileSetAbilityBlocked(int playerIndex, int ability, bool blocked) { (void)playerIndex; (void)ability; (void)blocked; }
 void ProfileSetAbilityEnabled(int playerIndex, int ability, bool enabled) { (void)playerIndex; (void)ability; (void)enabled; }
 void LockableSetLocked(WorldObject* entity, bool flag, bool value) { (void)entity; (void)flag; (void)value; }

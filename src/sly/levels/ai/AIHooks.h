@@ -289,6 +289,9 @@ void BodyRequestHold(EntityComponent* body);
 // quaternion on the console).
 void BodyRequestStop(EntityComponent* body);
 
+// 0x000DAABC: world transform of the named bone of the entity's skeleton
+// (the entity transform when the bone is missing).
+ape::Matrix34 EntityBoneTransform(Entity* entity, uint32_t boneHash);
 // 0x000DAEC8: switches the entity's anim script (slot 68) to a state.
 void EntitySetScriptState(Entity* entity, uint32_t stateHash);
 // Entity virtual slot 88 (+0x160): damage.

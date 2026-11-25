@@ -197,6 +197,11 @@ public:
 // first use.
 AglMaterial* GetBuiltinMaterial(int index);
 
+// A new unlit material for sprites and screen quads: textured with 'texture',
+// or vertex colored when 'texture' is null. Blend state is left at the
+// material defaults.
+AglMaterial* CreateSpriteMaterial(AglTexture* texture);
+
 // A set of render targets (color and/or depth surface) with its clear
 // settings, optionally exposed as a texture. Not to be confused with
 // AglSurface, the image itself.

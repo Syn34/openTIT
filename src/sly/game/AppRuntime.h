@@ -18,11 +18,27 @@ struct SlyApp;
 
 constexpr int kLocalPlayerCount = 2;
 
+// A local player's input block (vtable 0x00B219C0, app +0xB0, stride
+// 0x2EC0). Offsets below are relative to the app object.
 struct AppPlayer {
+    AppPlayer() = default;
+    virtual ~AppPlayer();
+    AppPlayer(const AppPlayer&) = delete;
+    AppPlayer& operator=(const AppPlayer&) = delete;
+
+    // Rumble on the player's pad (motor 0), if the pad allows rumble.
+    void Rumble(float intensity, float duration);
+    void StopRumble();
+    void SetRumblePaused(bool paused);
+    // NOTE: stores two words at +0xD0/+0xD4 (meaning unknown; the app
+    // constructor initialises them from a global pair).
+    void SetField_D0(const uint32_t value[2]);
+
     uint8_t index = 0;                        // +0xB4 (stride 0x2EC0)
     uint32_t inputFlags = 0;                  // +0xB8
     uint32_t inputMask = 0;                   // +0xBC
     ape::input::ApePadDevice* pad = nullptr;  // +0xCC
+    uint32_t field_D0[2] = {};                // +0xD0
 };
 
 struct AppRuntime {

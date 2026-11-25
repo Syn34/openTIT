@@ -22,6 +22,7 @@ struct EpisodeProgress {
     uint16_t field_02 = 0;
 };
 struct PlayerProgress {
+    uint32_t field_70 = 0;           // +0x070 NOTE: read by 0x00465D5C, meaning unknown
     uint16_t jobBits[0x28] = {};     // +0x07C per job group, one bit per collected item. NOTE: count assumed
     uint32_t field_A0 = 0;           // +0x0A0 value of the running job (job +0x32C)
     uint8_t field_149 = 0;           // +0x149 NOTE: a yes/no option
@@ -30,10 +31,13 @@ struct PlayerProgress {
     uint32_t currentJobValue = 0;    // +0x154 job record +0x2D4 of the running job
     EpisodeProgress episodes[0x20];  // +0x1A0 NOTE: count assumed
     uint32_t unlockBits[2] = {};     // +0xF64 40 unlock flags
+    uint32_t abilityBits[1] = {};    // +0xFB0 two bits per ability (see PlayerAbilities.h)
 };
 // The current profile's record. NOTE: the game world does not model its
 // profile records yet; a stand-in record is used (see JobManager.cpp).
 PlayerProgress& CurrentProgress();
+// The record of profile 'profile' (stand-in, see CurrentProgress).
+PlayerProgress& ProfileProgress(uint8_t profile);
 
 // Job record (0x35C bytes).
 struct Job {
