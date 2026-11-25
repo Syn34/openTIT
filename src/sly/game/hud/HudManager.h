@@ -92,6 +92,16 @@ struct HudObjectDef {
     // kinds keep the members above.
     ape::ApeGuiObject* promptGui[3] = {};
     uint32_t promptObjects[3] = {};
+    // Tracker list definitions (type bit 4) keep 16-byte field records at
+    // +0x94 (count +0x98) and the name of their marker object at +0x9C.
+    struct TrackerFieldDef {
+        uint32_t objectName = 0;                 // +0x00
+        ape::ApeGuiObject* object = nullptr;     // +0x04 shown with the element
+        uint32_t field_08 = 0;
+        uint32_t field_0C = 0;
+    };
+    TrackerFieldDef* trackerFields = nullptr;
+    uint32_t trackerMarkerName = 0;
 };
 
 // Anim script states of the element states (0x00F64F88): "NONE", "Intro",
