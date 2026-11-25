@@ -405,6 +405,11 @@ public:
     static void Register(ApeAnimScriptInstance* instance);
     static void UpdateAll(float dt);
     static std::vector<ApeAnimScriptInstance*>& All();
+    // Deletes every registered instance (not while instances are paused).
+    static void DestroyAllInstances();
+    // Removes a registered instance from the list and deletes it (nothing
+    // happens for an instance that is not registered).
+    static void DestroyInstance(ApeAnimScriptInstance* instance);
     static bool s_paused;
 
 private:
