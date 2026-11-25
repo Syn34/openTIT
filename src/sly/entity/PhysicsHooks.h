@@ -31,6 +31,8 @@ void PhysicsAddAction(void* action);
 uint8_t RigidBodyMotionType(void* body);
 // Wakes the body (0x0091A4C8) and applies a linear impulse (motion slot 21).
 void RigidBodyApplyImpulse(void* body, const ape::Vec3& impulse);
+// Wakes the body and sets its linear velocity (motion slot 17).
+void RigidBodySetLinearVelocity(void* body, const ape::Vec3& velocity);
 // Linear velocity (+0x1B0) and centre of mass (+0x140) of the body's motion.
 ape::Vec3 RigidBodyLinearVelocity(void* body);
 ape::Vec3 RigidBodyCenterOfMass(void* body);

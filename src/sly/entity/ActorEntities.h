@@ -47,12 +47,14 @@ public:
 class SoundActorDef : public ActorDef {
 public:
     ~SoundActorDef() override;
+    float durationScale = 1.0f;     // 0x188 applied with SoundActor::kSeq_Scaled
 };
 
 // Definition of InteractivePropA (vtable 0x00B17DB0, 0x280 bytes).
 class InteractivePropADef : public ActorDef {
 public:
     ~InteractivePropADef() override;
+    uint8_t interactionFlags[6] = {};   // 0x170 per interaction kind (InteractivePropC)
     uint32_t bufferSize = 0;        // 0x254
     void* buffer = nullptr;         // 0x258 owned
 };
@@ -153,6 +155,35 @@ class InteractivePropB : public ActorEntity {
 public:
     ~InteractivePropB() override;
     void SetVisible(bool visible, bool immediate, bool children, bool components) override;
+    bool Release(bool kill) override;                 // slot 10
+    // Takes over the interacting entity's transform and starts state 1.
+    bool InteractionBegin() override;                 // slot 62
+    // NOTE: both only look the interaction component up.
+    void InteractionCancel() override;                // slot 63
+    void InteractionEnd(bool completed) override;     // slot 64
+
+    ape::Matrix34 userTransform{};            // 0x1B0
+    Entity* attached = nullptr;               // 0x1F0
+};
+
+// Interactive prop with two phantoms (vtable 0x00B17DF8; destructor
+// 0x00756758 outside this range). NOTE: its definition is the class at
+// 0x00B17DB0, which ActorEntities.h calls InteractivePropADef.
+class InteractivePropC : public ActorEntity {
+public:
+    bool Release(bool kill) override;                 // slot 10
+    void InteractionEnd(bool completed) override;     // slot 64: cancels
+    // Offers interaction kind 0 to everyone.
+    uint32_t InteractionOffer(int kind, Entity* other) override;
+    uint32_t InteractionNeeds(int kind, Entity* other) override;
+    // Player interaction is refused while a single user holds the prop and
+    // the asking character does not carry its key object.
+    bool CanInteractWith(Entity* other, int kind) override;
+
+    Entity* keyObject = nullptr;              // 0x1B0
+    uint8_t propFlags = 0;                    // 0x1B4 bit 7: anyone may interact
+    void* phantomA = nullptr;                 // 0x270
+    void* phantomB = nullptr;                 // 0x274
 };
 
 // Actor with seven per-instance sounds (vtable 0x00B159B8); base of the
@@ -163,25 +194,172 @@ public:
     // The anim script is paused while the actor is inactive.
     void SetActive(bool active) override;
 
+    bool Release(bool kill) override;                 // slot 10 (0x001AE6AC)
+    void OnSuspend() override;                        // slot 60 (0x001AE768)
+
+    // Slot 105: plays sound slot `index` and switches to its state
+    // (0x001AED20, not ported).
+    virtual void PlaySlot(int index, bool force);
+    // Slots 106-112: timers of the slot sequence. Unless the sequence is held
+    // (flag bit 29) each moves on to its next slot once `elapsed` reaches
+    // `duration` (a negative duration: at once) and returns false; true
+    // keeps waiting. Slot 110 never moves on with a negative duration.
+    virtual bool AdvanceTo1(float elapsed, float duration);    // slot 106
+    virtual bool AdvanceTo2(float elapsed, float duration);    // slot 107
+    virtual bool AdvanceTo3(float elapsed, float duration);    // slot 108
+    virtual bool AdvanceTo4(float elapsed, float duration);    // slot 109 (forced)
+    virtual bool AdvanceTo5(float elapsed, float duration);    // slot 110
+    virtual bool AdvanceTo6(float elapsed, float duration);    // slot 111
+    virtual bool AdvanceWrap(float elapsed, float duration);   // slot 112 (back to 1)
     // Switches the anim script to the state of slot `index`, running it at
     // once when `immediate` (slot 113, 0x001AF40C).
     virtual void SetSlotState(int index, bool immediate);
+    // Slot 114: resumes the sequence at the saved slot and time (0x001AF56C).
+    virtual void ResumeSequence();
+
+    // Plays the slot whose name is `name` (0x001AE9C8).
+    void PlaySlotByName(uint32_t name);
+    // Starts the sequence at `slot`, skipping whole slots `time` covers;
+    // the rest becomes the state time (0x001AF470).
+    void PlayFrom(float time, int slot, bool force);
+    // Duration of a slot, scaled by the definition when flag bit 30 is set.
+    float SlotDuration(int index) const;
+
+    // Sequence flags (+0x228).
+    enum SequenceFlags : uint32_t {
+        kSeq_Held = 1u << 29,          // the timers do not advance
+        kSeq_Scaled = 1u << 30,        // durations scaled by the definition (+0x188)
+    };
 
     struct SoundSlot {
         audio::SoundName* sound = nullptr;
-        uint32_t field_04 = 0;
+        audio::VoiceId voice = 0;                   // +0x04
         ape::ApeAnimScriptState* state = nullptr;   // +0x08
-        uint32_t field_0C = 0;
+        float duration = 0.0f;                      // +0x0C
     };
     SoundSlot sounds[7];                      // 0x1A8
+    void* field_218 = nullptr;                // 0x218 NOTE: its float +0x14 takes the slot duration
+    int32_t currentSlot = -1;                 // 0x21C
+    float savedTime = 0.0f;                   // 0x220
+    int32_t savedSlot = 0;                    // 0x224
+    uint32_t sequenceFlags = 0;               // 0x228 SequenceFlags
 };
 
 // vtable 0x00B16B48 (0x260 bytes).
 class SoundActorB16B48 : public SoundActor {
 public:
     ~SoundActorB16B48() override;
+    // Slot 105: slot 1 also clears the lit flag and switches the light on.
+    void PlaySlot(int index, bool force) override;
+    bool AdvanceTo2(float elapsed, float duration) override;   // only while lit
+    bool AdvanceTo3(float elapsed, float duration) override;
+    bool AdvanceTo4(float elapsed, float duration) override;
+    bool AdvanceWrap(float elapsed, float duration) override;
+    // 0x001C3EF0 (not ported). NOTE: name from the flag it pairs with.
+    void SetLight(bool on);
+
     ape::ApeTArray<void*> field_22C;          // 0x22C
     ape::ApeTArray<void*> field_240;          // 0x240
+    uint8_t lightFlags = 0;                   // 0x25C bit 7 lit, bit 5 held
+};
+
+// Definition of SoundActorB16B48. NOTE: only the options its timers read.
+class SoundActorB16B48Def : public SoundActorDef {
+public:
+    bool restartWhenWaiting = false;   // 0x1BC
+    bool unlightOnSlot3 = false;       // 0x1BD
+    bool unlightOnSlot4 = false;       // 0x1BE
+};
+
+// Sound actor with a two-way switch (vtable 0x00B16678; destructor
+// 0x0075420C outside this range).
+class SoundActorB16678 : public SoundActor {
+public:
+    // The class carries its own copy of SoundActor::Release (0x001BF794).
+    bool Release(bool kill) override;
+    bool AdvanceTo2(float elapsed, float duration) override;   // only while armed
+    bool AdvanceTo5(float elapsed, float duration) override;
+    // Slots 1 and 4 use the states of the switch position.
+    void SetSlotState(int index, bool immediate) override;
+
+    int32_t position = 0;          // 0x22C 0 or 1 (indexes the state tables)
+    float field_234 = 0.0f;        // 0x234 NOTE: non-negative resets the position
+    float delay = 0.0f;            // 0x238 slot 5 waits while positive
+    uint8_t switchFlags = 0;       // 0x23C bit 3 armed
+};
+
+// vtable 0x00B168E0 (destructor 0x0075458C outside this range).
+class SoundActorB168E0 : public SoundActor {
+public:
+    bool AdvanceTo2(float elapsed, float duration) override;   // only while armed
+    bool AdvanceTo3(float elapsed, float duration) override;
+    bool AdvanceTo5(float elapsed, float duration) override;   // not while armed
+
+    uint8_t flags240 = 0;          // 0x240 bit 3 armed, bit 7 reached slot 3
+};
+
+// Sound actor with six phantom-tracked entities (vtable 0x00B16DB0;
+// destructor 0x00754B74 outside this range).
+class SoundActorB16DB0 : public SoundActor {
+public:
+    bool Release(bool kill) override;
+    // Both wait while something occupies the actor, depending on flag bit 29.
+    bool AdvanceTo2(float elapsed, float duration) override;
+    bool AdvanceTo5(float elapsed, float duration) override;
+    bool IsOccupied() const;
+    static constexpr uint32_t kOccupancy_Bit29 = 1u << 29;
+
+    struct Tracked {
+        void* phantom = nullptr;   // +0x00 Havok phantom
+        Entity* entity = nullptr;  // +0x04
+        uint8_t pad[0x0C];
+    };
+    Entity* attached = nullptr;    // 0x22C
+    uint32_t field_234 = 0;        // 0x234
+    float holdTime = 0.0f;         // 0x240
+    uint32_t occupancyFlags = 0;   // 0x244 bit 29 (see the timers). NOTE: meaning unknown
+    Tracked tracked[6];            // 0x248
+};
+
+// Definition of SoundActorB16DB0. NOTE: only the flag its timer reads.
+class SoundActorB16DB0Def : public SoundActorDef {
+public:
+    uint32_t options = 0;          // 0x1BC bit 28: close even when occupied
+};
+
+// Like SoundActorB16DB0 with the records at +0x22C (vtable 0x00B17008;
+// destructor 0x00754E18 outside this range).
+class SoundActorB17008 : public SoundActor {
+public:
+    bool Release(bool kill) override;
+    bool AdvanceTo2(float elapsed, float duration) override;
+    bool AdvanceTo5(float elapsed, float duration) override;
+
+    struct Tracked {               // 0x10-byte records
+        void* phantom = nullptr;   // +0x00 Havok phantom
+        Entity* entity = nullptr;  // +0x04
+        uint8_t pad[0x08];
+    };
+    Tracked tracked[6];            // 0x22C
+};
+
+// vtable 0x00B17728 (destructor 0x00755374 outside this range): the
+// sequence only advances from slot 6 back to 1.
+class SoundActorB17728 : public SoundActor {
+public:
+    bool Release(bool kill) override;
+    // @func 0x001D4B6C SoundActorB17728::AdvanceTo2
+    bool AdvanceTo2(float, float) override { return true; }
+    // @func 0x001D4B74 SoundActorB17728::AdvanceTo4
+    bool AdvanceTo4(float, float) override { return true; }
+    // @func 0x001D4B7C SoundActorB17728::AdvanceTo5
+    bool AdvanceTo5(float, float) override { return true; }
+    // @func 0x001D4B84 SoundActorB17728::AdvanceTo6
+    bool AdvanceTo6(float, float) override { return true; }
+    bool AdvanceWrap(float elapsed, float duration) override;
+
+    Entity* attached = nullptr;    // 0x22C
+    bool holdWrap = false;         // 0x239
 };
 
 // vtable 0x00B17270 (0x360 bytes).
@@ -191,13 +369,34 @@ public:
     // Offers interaction kind 2 (bit value 4).
     // @func 0x001CEC84 SoundActorB17270::InteractionOffer
     uint32_t InteractionOffer(int kind, Entity* other) override { (void)kind; (void)other; return 4; }
+    // The sequence only moves while layer 1 is idle and the actor is engaged
+    // (+0x356); slot 2 never advances on its own.
+    // @func 0x001CF700 SoundActorB17270::AdvanceTo2
+    bool AdvanceTo2(float, float) override { return true; }
+    bool AdvanceTo3(float elapsed, float duration) override;
+    bool AdvanceTo4(float elapsed, float duration) override;
+    bool AdvanceTo5(float elapsed, float duration) override;
+    bool AdvanceTo6(float elapsed, float duration) override;
+    bool AdvanceWrap(float elapsed, float duration) override;
+    // Slots 2 and 6 have alternative states while engaged.
+    void SetSlotState(int index, bool immediate) override;
+    // Also disengages.
+    void ResumeSequence() override;
+
+    float field_2FC = 0.0f;                   // 0x2FC copied into the cool-down by slot 4
+    float coolDown = 0.0f;                    // 0x314 slots 3 and 6 wait while positive
     ape::ApeTArray<void*> field_32C;          // 0x32C emptied before it is freed
+    bool field_355 = false;                   // 0x355 NOTE: selects the alternative states
+    bool engaged = false;                     // 0x356
+    uint8_t flags357 = 0;                     // 0x357 bit 7 set by slot 4, cleared by slot 5
 };
 
 // vtable 0x00B174C0 (0x3D0 bytes).
 class SoundActorB174C0 : public SoundActor {
 public:
     ~SoundActorB174C0() override;
+    // The class carries its own copy of SoundActor::Release (0x001D20D0).
+    bool Release(bool kill) override;
     ape::ApeTArray<void*> field_22C;          // 0x22C
 };
 
@@ -220,8 +419,19 @@ public:
     void ApplyVisibility(bool visible) override;
     // 0x001EE680
     void Reset(bool flag);
+    void HandleMessage(const EntityMessage& msg) override;   // slot 43
+    void SetVisible(bool visible, bool immediate, bool children, bool components) override;   // slot 22
+    bool InteractionBegin() override;                 // slot 62
+    void InteractionCancel() override;                // slot 63: Reset(false)
+    void InteractionEnd(bool completed) override;     // slot 64: Reset(completed)
+    // 0x001EDD84 (not ported): takes the interacting entity.
+    void TakeUser(Entity* user);
 
-    uint32_t field_358 = 0;                   // 0x358 NOTE: non-zero while a reset is pending
+    Entity* field_358 = nullptr;              // 0x358 entity using the actor (non-null while a reset is pending)
+    uint32_t field_1FC = 0;                   // 0x1FC cleared when an interaction begins
+    Entity* field_368 = nullptr;              // 0x368 counted, dropped when hidden
+    uint32_t field_3C8 = 0;                   // 0x3C8 player block value (+0x10D8) of the user
+    uint32_t tweenFlags = 0;                  // 0x3D4 bit 17 user damaged, bit 21, bit 29
     FloatTween tween_220;                     // 0x220
     ape::ApeTArray<void*> field_280;          // 0x280
     IntTween tween_36C;                       // 0x36C

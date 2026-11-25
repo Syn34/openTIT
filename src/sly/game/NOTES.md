@@ -71,3 +71,6 @@
   (0x0007AE74) reads it back (`Episode::StoreText/LoadText`); the levels services
   `TextDisplayShow*` now forward there.
 * 0x00F64C24 (30) is the default clue bottle count (`g_defaultBottleCount`).
+* Collectible spawning (0x002DF010 masks, 0x002DFAA0 / 0x002DFC2C treasures and safes) uses
+  spawn groups 0xFB673D64 (treasures) and 0x5E69B571 (safes); their names are unknown. The
+  safe table is 0x010681B4 (`SafeTable`).
