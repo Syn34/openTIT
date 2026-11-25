@@ -4,6 +4,7 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/xml/ApeXml.h"
+#include "platform/Platform.h"
 #include "sly/game/goals/GoalHooks.h"
 
 #include <cmath>
@@ -366,6 +367,154 @@ uint8_t ClampProgress(uint32_t value, const GoalScore& goal)
     return progress;
 }
 } // namespace
+
+namespace {
+// Comparisons ("op", table 0x00ADBB18), in GoalScore::Compare order.
+constexpr uint32_t kCompareNames[5] = {
+    0x00239999,   // "Less"
+    0xF6F514EE,   // NOTE: name unknown (at most)
+    0x03F26F14,   // "Equal" (within "range")
+    0x3BB2F7DA,   // "greater"
+    0x037AFE6F,   // NOTE: name unknown (at least)
+};
+constexpr uint32_t kAttr_ScoreOp = 0x000009E1;         // "op"
+constexpr uint32_t kAttr_ScoreTarget = 0x93116591;     // "Target"
+constexpr uint32_t kAttr_Range = 0x04A2411D;           // "range"
+constexpr uint32_t kAttr_Min = 0x00012A32;             // "Min"
+constexpr uint32_t kAttr_Max = 0x00012944;             // "Max"
+constexpr uint32_t kAttr_NotifyAdvance = 0x512CF5D9;   // NOTE: name unknown
+constexpr uint32_t kAttr_ReportStat = 0x58FA06CA;      // NOTE: name unknown
+constexpr uint32_t kElem_Value = 0x0027873A;           // "Type": points per event group
+constexpr uint32_t kAttr_Count = 0x03D558EF;           // "Count"
+constexpr uint32_t kAttr_Parent = 0x8C3CFCAA;          // NOTE: name unknown
+constexpr uint32_t kAttr_Data = 0x001FE7AA;            // "Data"
+constexpr uint32_t kAttr_MarkerDef = 0x6E6EDD6B;       // NOTE: "markerDef"
+constexpr uint32_t kAttr_Offset = 0x4A4D4D4D;
+// Source flag attributes, bit 31 downwards (bits 29 and 24 come from
+// 0x3B66FD69 when it is set).
+constexpr uint32_t kAttr_ShowMarker = 0x76E96977;      // "ShowMarker", bit 31
+constexpr uint32_t kAttr_Unmark = 0x0137F514;          // bit 30 (default on)
+constexpr uint32_t kAttr_HideMarker = 0x5D28E3FC;      // "HideMarker", bit 28
+constexpr uint32_t kAttr_Bit27 = 0x9446A097;
+constexpr uint32_t kAttr_Bit26 = 0xD9149FE7;
+constexpr uint32_t kAttr_Bit25 = 0x09DA53D5;
+constexpr uint32_t kAttr_Both = 0x3B66FD69;            // sets bits 29 and 24
+constexpr uint32_t kAttr_Bit29 = 0x04656B91;
+constexpr uint32_t kAttr_Bit24 = 0x310F51B2;
+constexpr uint32_t kAttr_CountMissing = 0x5D1967C0;    // bit 23
+
+int32_t ReadPoints(ape::xml::XmlElement* xml)
+{
+    int32_t points = 1;
+    xml->GetInt(kAttr_Count, &points, 1);
+    return points < -32 ? -32 : (points > 32 ? 32 : points);
+}
+
+float ClampScoreLimit(float value)
+{
+    return value < -128.0f ? -128.0f : (value > 127.0f ? 127.0f : value);
+}
+} // namespace
+
+// Needs a "scoreType", a known "op" and a "Target"; <Type> children give
+// points per event group, <Target> children the scoring objects.
+// @func 0x0033E7D8 GoalScore::Create
+Goal* GoalScore::Create(ape::xml::XmlElement* xml, const GoalDesc* desc)
+{
+    const char* scoreType = xml->GetString("scoreType");
+    const char* customData = xml->GetString("customData");
+    if (!scoreType || !*scoreType) {
+        plat::Log(plat::LogLevel::Warning, "%s: GoalScore without a scoreType\n", xml->GetLocationString());
+        return nullptr;
+    }
+    uint32_t op = 0;
+    if (xml->GetHash(kAttr_ScoreOp, &op, 0) != 0) {
+        plat::Log(plat::LogLevel::Warning, "%s: GoalScore without an op\n", xml->GetLocationString());
+        return nullptr;
+    }
+    uint8_t compare = 0;
+    while (compare < 5 && kCompareNames[compare] != op)
+        ++compare;
+    if (compare >= 5) {
+        plat::Log(plat::LogLevel::Warning, "%s: GoalScore with an unknown op\n", xml->GetLocationString());
+        return nullptr;
+    }
+    float target = 0.0f, range = 0.0f, minScore = 0.0f, maxScore = 0.0f;
+    if (xml->GetFloat(kAttr_ScoreTarget, &target, 0.0f) != 0) {
+        plat::Log(plat::LogLevel::Warning, "%s: GoalScore without a Target\n", xml->GetLocationString());
+        return nullptr;
+    }
+    xml->GetFloat(kAttr_Range, &range, 0.0f);
+    const bool hasMin = xml->GetFloat(kAttr_Min, &minScore, 0.0f) == 0;
+    const bool hasMax = xml->GetFloat(kAttr_Max, &maxScore, 0.0f) == 0;
+    bool notifyAdvance = false;
+    xml->GetBool(kAttr_NotifyAdvance, &notifyAdvance, false);
+
+    auto* goal = new GoalScore(desc);
+    goal->marked.Init(6, nullptr, true);
+    goal->sources.Init(0xC, nullptr, true);
+    goal->values.Init(0x10, nullptr, true);
+    goal->eventName = ape::HashNameNoCase(scoreType);
+    goal->customData = ape::HashNameNoCase(customData);
+    goal->compare = compare;
+    goal->target = target;
+    goal->tolerance = range;
+    goal->minScore = ClampScoreLimit(minScore);
+    goal->maxScore = ClampScoreLimit(maxScore);
+    goal->score = 0.0f;
+    goal->scoreFlags = (notifyAdvance ? kScore_NotifyAdvance : 0u) | (hasMin ? kScore_HasMin : 0u) |
+                       (hasMax ? kScore_HasMax : 0u);
+    bool reportStat = false;
+    xml->GetBool(kAttr_ReportStat, &reportStat, false);
+    if (reportStat)
+        goal->scoreFlags |= kScore_ReportStat;
+
+    for (ape::xml::XmlElement* child = xml->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        if (!child->IsValid())
+            continue;
+        const uint32_t element = child->GetNameHash();
+        if (element == kElem_Value) {
+            Value value;
+            if (child->GetHash(kAttr_Name, &value.group, 0) != 0 || value.group == 0)
+                continue;
+            value.points = ReadPoints(child);
+            goal->values.PushBack(value);
+        } else if (element == kAttr_Target) {
+            Source source;
+            if (child->GetHash(kAttr_Name, &source.name, 0) != 0 || source.name == 0)
+                continue;
+            child->GetHash(kAttr_Parent, &source.parent, 0);
+            child->GetHash(kAttr_Data, &source.group, 0);
+            child->GetHash(kAttr_MarkerDef, &source.markerDef, 0);
+            source.points = ReadPoints(child);
+            float offset[3] = {};
+            child->GetVec3(kAttr_Offset, offset, kZero);
+            SetVec3(source.offset, offset);
+            bool showMarker = false, unmark = true, hideMarker = false, bit27 = false, bit26 = false,
+                 bit25 = false, both = false, bit29 = false, bit24 = false, countMissing = false;
+            child->GetBool(kAttr_ShowMarker, &showMarker, false);
+            child->GetBool(kAttr_Unmark, &unmark, true);
+            child->GetBool(kAttr_HideMarker, &hideMarker, false);
+            child->GetBool(kAttr_Bit27, &bit27, false);
+            child->GetBool(kAttr_Bit26, &bit26, false);
+            child->GetBool(kAttr_Bit25, &bit25, false);
+            child->GetBool(kAttr_Both, &both, false);
+            if (both) {
+                bit29 = bit24 = true;
+            } else {
+                child->GetBool(kAttr_Bit29, &bit29, false);
+                child->GetBool(kAttr_Bit24, &bit24, false);
+            }
+            child->GetBool(kAttr_CountMissing, &countMissing, false);
+            // NOTE: the console leaves the low 23 bits uninitialised.
+            source.flags = (showMarker ? 1u << 31 : 0u) | (unmark ? 1u << 30 : 0u) | (bit29 ? 1u << 29 : 0u) |
+                           (hideMarker ? 1u << 28 : 0u) | (bit27 ? 1u << 27 : 0u) | (bit26 ? 1u << 26 : 0u) |
+                           (bit25 ? 1u << 25 : 0u) | (bit24 ? 1u << 24 : 0u) | (countMissing ? 1u << 23 : 0u);
+            goal->sources.PushBack(source);
+        }
+    }
+    return goal;
+}
 
 // @func 0x0033F0C8 GoalScore::Update
 uint8_t GoalScore::Update(int player, const GameEvent& e)

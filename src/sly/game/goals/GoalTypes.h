@@ -628,9 +628,8 @@ public:
 namespace sly {
 namespace goals {
 
-// "GoalScore" (vtable 0x00B1F048; factory 0x0033E7D8 and destructor not
-// ported): counts events of one type ("scoreType") and compares the score
-// with a target.
+// "GoalScore" (vtable 0x00B1F048): counts events of one type ("scoreType")
+// and compares the score with a target.
 class GoalScore : public Goal {
 public:
     int TypeId() const override;
@@ -650,19 +649,19 @@ public:
         void* entity = nullptr;   // +0x10
         uint8_t pad2[0x0C];
     };
-    // A scoring object (0x30 bytes).
+    // A scoring object (0x30 bytes; <Target> children of the goal).
     struct Source {
-        uint8_t pad[0x10];
+        ape::Vec3 offset{};      // +0x00 (XML 0x4A4D4D4D)
         uint32_t name = 0;       // +0x10 object (or child) name
         uint32_t parent = 0;     // +0x14 parent entity, 0 for none
         uint32_t group = 0;      // +0x18 compared with event arguments
-        uint32_t field_1C = 0;
-        int32_t points = 1;      // +0x20
+        uint32_t markerDef = 0;  // +0x1C NOTE: "markerDef"
+        int32_t points = 1;      // +0x20 "Count", -32..32
         uint32_t flags = 0;      // +0x24 SourceFlags
         uint8_t pad3[0x08];
     };
     enum SourceFlags : uint32_t {
-        kSource_CountMissing = 0x00800000,   // a missing entity counts as scored
+        kSource_CountMissing = 0x00800000,   // a missing entity counts as scored (XML 0x5D1967C0)
         kSource_Unmark       = 0x40000000,   // drop its marker when it scores
         kSource_Marked       = 0x80000000,   // shown with a marker
     };
@@ -674,6 +673,7 @@ public:
 
     using Goal::Goal;
     ~GoalScore() override;
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
     uint8_t Update(int player, const GameEvent& e) override;
     void Reset(bool fromSave, int status) override;
     void ResetHints(bool stopHintScript) override;
