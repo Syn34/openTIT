@@ -510,6 +510,100 @@ void CritterAI::QuickTurn(const Entity& player)
     }
 }
 
+// @func 0x000210F8 CritterAI::UpdateFlightClip
+void CritterAI::UpdateFlightClip()
+{
+    constexpr uint32_t kClip_FlyUp = 0x739C20CAu;       // NOTE: names from use
+    constexpr uint32_t kClip_FlyDown = 0x8797408Au;
+    constexpr uint32_t kClip_BankRight = 0xBFE11843u;
+    constexpr uint32_t kClip_BankLeft = 0x3C985140u;
+    uint32_t clip = moveClip;
+    if (CharacterHasClip(characterComp, kClip_FlyUp))
+        clip = transform.translation.y < homePosition.y ? kClip_FlyUp : kClip_FlyDown;
+    if (CharacterHasClip(characterComp, kClip_BankRight)) {
+        const float ahead = facing.x * transform.zAxis.x + facing.z * transform.zAxis.z;
+        const float side = facing.x * transform.xAxis.x + facing.z * transform.xAxis.z;
+        if (ahead < 0.96f) {
+            if (side > 0.01f)
+                clip = kClip_BankRight;
+            else if (side < -0.01f)
+                clip = kClip_BankLeft;
+        }
+    }
+    if (clip != currentClip && CharacterPlayClip(characterComp, clip))
+        currentClip = clip;
+}
+
+// @func 0x00022A38 CritterAI::UpdateState
+// Facing per state (towards home, the target or the player), the landing
+// glide onto a perch, the charge goal and the wait at a point of interest.
+void CritterAI::UpdateState(float dt)
+{
+    const ape::Vec3& position = transform.translation;
+    auto faceTowards = [this, &position](const ape::Vec3& point) {
+        SetFacing({point.x - position.x, point.y - position.y, point.z - position.z, 0.0f});
+    };
+    switch (state) {
+    case kState_Move:
+    case kState_GoTo:
+    case kState_Approach:
+    case kState_Return:
+    case kState_Flee:
+    case kState_Charge:
+    case kState_Perch: {
+        if (flags0 & kF0_NavMoving)
+            break;
+        const ape::Vec3 toHome = {homePosition.x - position.x, homePosition.y - position.y,
+                                  homePosition.z - position.z, 0.0f};
+        SetFacing(toHome);
+        if (flags1 & kF1_FreeFacing) {
+            // Close to the goal a flyer keeps its heading rather than turning
+            // round to a point behind it.
+            const float lock = FacingLockRadius();
+            const ape::Vec3& forward = transform.zAxis;
+            const float dist2 = toHome.x * toHome.x + toHome.y * toHome.y + toHome.z * toHome.z;
+            if (dist2 < lock * lock && facing.x * forward.x + facing.y * forward.y + facing.z * forward.z < 0.0f &&
+                std::fabs(toHome.y) < lock)
+                SetFacing(forward);
+            if (PropBool(settings, AIProp::Critter_UseFlightAnims))
+                UpdateFlightClip();
+        }
+        break;
+    }
+    case kState_Attack:
+        if (target)
+            faceTowards(target->Position());
+        break;
+    case kState_Notice:
+        if (Entity* player = PlayerCharacter())
+            faceTowards(player->Position());
+        break;
+    default:
+        break;
+    }
+
+    switch (state) {
+    case kState_Land: {
+        const float t = CharacterClipProgress(characterComp) * dt * 10.0f;
+        transform.translation.x += (poiPosition.x - transform.translation.x) * t;
+        transform.translation.y += (poiPosition.y - transform.translation.y) * t;
+        transform.translation.z += (poiPosition.z - transform.translation.z) * t;
+        SetFacing(poiDirection);
+        break;
+    }
+    case kState_Charge:
+        if (target)
+            SetHomePosition(claimSlot ? claimSlot->position : target->Position());
+        break;
+    case kState_Wait:
+        faceTowards(poiPosition);
+        break;
+    default:
+        break;
+    }
+    stateTime += dt;
+}
+
 // TODO(0x00020100 CritterAI::FindPerch): picks a point on a rail spline
 // near the critter and the side to perch on.
 bool CritterAI::FindPerch()

@@ -330,6 +330,8 @@ bool AttackerComponentFlag(Entity* attacker, bool* hasComponent);
 bool CharacterPlayClip(EntityComponent* character, uint32_t clipHash);
 // 0x0029879C(component, 0, 1): true when the current clip is done.
 bool CharacterClipFinished(EntityComponent* character);
+// 0x00298948 (layer 0): playback position of the current clip, 0..1.
+float CharacterClipProgress(EntityComponent* character);
 // 0x00298B44: the character has a clip of that name.
 bool CharacterHasClip(EntityComponent* character, uint32_t clipHash);
 // Character entity +0x15C: health.

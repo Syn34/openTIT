@@ -70,7 +70,11 @@ public:
     void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value) override;
     void ChooseState() override;
     bool Think(float dt) override;
+    void UpdateState(float dt) override;
 
+    // Flight clip for the way the critter is heading: up, banking left or
+    // right, or the move clip (0x000210F8).
+    void UpdateFlightClip();
     // Clip played while moving (0x0001F330).
     void SetMoveClip(uint32_t clipHash);
     // Keeps the critter on the ground. TODO(0x0001D548): the ground probe
