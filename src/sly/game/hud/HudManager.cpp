@@ -10,6 +10,7 @@
 #include "ape/world/ApeObj.h"
 #include "sly/anim/AnimController.h"
 #include "sly/game/hud/HudHooks.h"
+#include "sly/entity/GameEntityHooks.h"
 
 #include <cmath>
 #include <cstring>
@@ -45,6 +46,28 @@ HudManagerState& Hud()
 bool ObjectVisible(const ape::world::ApeObj* object)
 {
     return object->IsVisible();
+}
+
+// @func 0x0036A098 HudObject::~HudObject
+// @func 0x0036A1C0 HudObject::~HudObject (deleting)
+HudObject::~HudObject()
+{
+    if (animScript) {
+        static_cast<ape::ApeAnimScriptInstance*>(animScript)->SetState(0x00010CBBu);   // "END"
+        entity::DetachAnimScript(animScript);
+    }
+    if (object) {
+        if (object->field_114 == reinterpret_cast<void*>(uintptr_t(kObjectTag))) {
+            object->field_114 = nullptr;
+            object->field_118 = nullptr;
+        }
+        object->SetVisible(false, true);
+        object->Release();
+    }
+    if (animController) {
+        delete animController;
+        animController = nullptr;
+    }
 }
 
 // @func 0x0036A2FC HudObject::Update

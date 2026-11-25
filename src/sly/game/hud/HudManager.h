@@ -82,7 +82,13 @@ struct HudTextField {
 // classes are ported.
 class HudObject {
 public:
-    virtual ~HudObject() = default;
+    // User tag the element writes into its object (ApeObj +0x114, with the
+    // element in +0x118).
+    static constexpr uint32_t kObjectTag = 0x7DF841DCu;
+
+    // 0x0036A098 / 0x0036A1C0: ends the anim script, releases the object and
+    // the animation controller.
+    virtual ~HudObject();
     // Slot 2 (0x0036A2FC): animates the element and places its object at
     // its stack offset.
     virtual void Update(float dt);
