@@ -186,7 +186,7 @@ void AnimComponent::RefreshLayerSlot(uint32_t anim)
 }
 
 // @func 0x00298270 AnimComponent::PlayAdditive
-bool AnimComponent::PlayAdditive(uint32_t clip, uint32_t anim, bool loop, uint32_t weightList)
+bool AnimComponent::PlayAdditive(uint32_t clip, uint32_t anim, bool loop, uint32_t /*unused*/)
 {
     auto* binding = controller ? static_cast<anim::HkaAnimationBinding*>(anim::FindAnimClip(clip)) : nullptr;
     if (!binding)
@@ -195,7 +195,9 @@ bool AnimComponent::PlayAdditive(uint32_t clip, uint32_t anim, bool loop, uint32
     if (!layer)
         return true;    // NOTE: warns as well, but reports success
     binding->blendHint = anim::HkaAnimationBinding::kBlend_Additive;
-    layer->AddSecondaryControl(binding, loop, 1.0f, 0.0f, weightList);
+    // NOTE: the caller's fourth argument lands in an unused register; no
+    // bone weight list is applied.
+    layer->AddSecondaryControl(binding, loop, 1.0f, 0.0f, 0);
     layer->SetSecondaryMasterWeight(field_17C);
     return true;
 }
