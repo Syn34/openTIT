@@ -12,7 +12,7 @@
 #include <cstdint>
 
 namespace ape::world { class ApeObj; }
-namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; }
+namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; class ApeRefCounted; }
 
 namespace sly {
 namespace entity {
@@ -196,6 +196,22 @@ void GameWorldSetHudHidden(bool hidden);
 void GameWorldSetPlayerControl(bool enabled);
 // Interaction component flag word +0x7C: clears bit 20.
 void InteractionClearFlag20(EntityComponent* interaction);
+// Effect played on a character component (0x002775A8: effect, length, fade).
+void PlayCharacterFx(EntityComponent* component, uint32_t fx, float length, float fade);
+// Skin component (type 0x13): rate (+0x4D0), the scale pair (+0x4C8/+0x4CC),
+// the rate it derives from them (0x0025DD60), its level (0x002971BC) and
+// variant (0x00296898 / 0x00296840).
+float SkinRate(EntityComponent* skin);
+void SkinSetRate(EntityComponent* skin, float rate);
+void SkinSetScale(EntityComponent* skin, float scale);
+float SkinComputeRate(EntityComponent* skin);
+void SkinSetLevel(EntityComponent* skin, uint32_t level);
+int32_t SkinVariant(EntityComponent* skin);
+void SkinSetVariant(EntityComponent* skin, int32_t variant);
+// Counted reference to a world object for an object variable.
+ape::ApeRefCounted* WorldObjectRef(ape::world::ApeObj* object);
+// Flag 0x400 of an anim script instance (+0x88). NOTE: read as "keep alive".
+void SetAnimScriptKeepAlive(void* script, bool keep);
 // Word +0x14 of an actor group member's record takes the group counter.
 void GroupRecordSetCounter(void* record, uint32_t counter);
 // Interaction component: the entity interacting (+0x40) and the number of

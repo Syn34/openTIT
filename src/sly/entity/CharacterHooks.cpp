@@ -83,6 +83,16 @@ bool EntityPlayClip(Entity* entity, float blend, float speed, float fade, void* 
     (void)entity; (void)blend; (void)speed; (void)fade; (void)layer; (void)loop;
     return clip != nullptr;
 }
+void PlayCharacterFx(EntityComponent* component, uint32_t fx, float length, float fade) { (void)component; (void)fx; (void)length; (void)fade; }
+float SkinRate(EntityComponent* skin) { (void)skin; return 0.0f; }
+void SkinSetRate(EntityComponent* skin, float rate) { (void)skin; (void)rate; }
+void SkinSetScale(EntityComponent* skin, float scale) { (void)skin; (void)scale; }
+float SkinComputeRate(EntityComponent* skin) { (void)skin; return 0.0f; }
+void SkinSetLevel(EntityComponent* skin, uint32_t level) { (void)skin; (void)level; }
+int32_t SkinVariant(EntityComponent* skin) { (void)skin; return 0; }
+void SkinSetVariant(EntityComponent* skin, int32_t variant) { (void)skin; (void)variant; }
+ape::ApeRefCounted* WorldObjectRef(ape::world::ApeObj* object) { (void)object; return nullptr; }
+void SetAnimScriptKeepAlive(void* script, bool keep) { (void)script; (void)keep; }
 void Component11Refresh(EntityComponent* component) { (void)component; }
 void Component10SetAlternate(EntityComponent* component, bool alternate) { (void)component; (void)alternate; }
 uint32_t Component15ObjectCount(EntityComponent* component) { (void)component; return 0; }
