@@ -82,6 +82,9 @@ public:
     virtual void OnOwnerSpawned(Entity* owner) { (void)owner; }    // slot 5 (+0x14)
     virtual void Update(float dt) { (void)dt; }                    // slot 6 (+0x18)
     virtual void PostUpdate(float dt) { (void)dt; }                // slot 7 (+0x1C)
+    // Places the component's geometry before the instance render pass, for
+    // components in the instance render list (slot 8, +0x20).
+    virtual void RenderInstance();
     // NOTE: slot 11 (+0x2C); the flag's meaning depends on the component.
     virtual void SetOption(bool value) { (void)value; }
     virtual void SetVisible(bool visible, bool immediate) { (void)visible; (void)immediate; } // slot 12

@@ -37,6 +37,9 @@ EntityComponent::EntityComponent(const ComponentDesc* desc)
     components::LiveComponents().emplace_back(id, this);
 }
 
+// @func 0x00264D6C EntityComponent::RenderInstance
+void EntityComponent::RenderInstance() {}
+
 // @func 0x00250384 EntityComponent::~EntityComponent
 // @func 0x002505A0 EntityComponent::~EntityComponent (base object copy, called by derived destructors)
 // @func 0x00250480 EntityComponent::~EntityComponent (deleting)
