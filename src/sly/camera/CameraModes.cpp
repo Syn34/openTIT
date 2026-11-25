@@ -1,5 +1,7 @@
 // openTIT - The simpler camera modes (see CameraModes.h).
 #include "sly/camera/CameraModes.h"
+#include "ape/sys/ApeGeometry.h"
+#include "ape/math/ApeMatrixOps.h"
 #include "sly/entity/Entity.h"
 #include "sly/entity/GameEntityHooks.h"
 #include "ape/level/ApeGui.h"
@@ -67,6 +69,52 @@ void LookAlong(const ape::Vec3& forward, ape::Matrix34& out)
     SetXYZ(out.xAxis, x);
     SetXYZ(out.yAxis, Cross(z, x));
     SetXYZ(out.zAxis, z);
+}
+
+// @func 0x001007D0 RotateTowards
+// NOTE: past the opposite-direction case the console's code is AltiVec the
+// reference cannot decode; the general case is written as a rotation about
+// the axis both directions span, which is what the visible parts set up.
+void RotateTowards(float maxAngle, ape::Vec3& out, const ape::Vec3& from, const ape::Vec3& to)
+{
+    ape::Vec3 start = { from.x, from.y, from.z, 0.0f };
+    ape::Vec3Normalize(start);
+    const float toLengthSq = to.x * to.x + to.y * to.y + to.z * to.z;
+    if (std::fabs(toLengthSq) < 1e-05f) {
+        out = { start.x, start.y, start.z, out.pad };
+        return;
+    }
+    const float angle = std::max(std::min(maxAngle, 3.14159274f), 0.0f);
+    ape::Vec3 goal = { to.x, to.y, to.z, 0.0f };
+    ape::Vec3Normalize(goal);
+    if (std::fabs(angle) < 0.001f) {
+        out = { start.x, start.y, start.z, out.pad };
+        return;
+    }
+    const float cosine = goal.x * start.x + goal.y * start.y + goal.z * start.z;
+    // Within reach: arrive.
+    if (ape::FastCos(angle) <= cosine || angle >= 3.14159274f) {
+        out = { goal.x, goal.y, goal.z, out.pad };
+        return;
+    }
+    ape::Vec3 axis;
+    if (cosine <= -0.999f) {
+        // Opposite directions: turn about any axis perpendicular to the start.
+        const ape::Vec3 unitX = { 1.0f, 0.0f, 0.0f, 0.0f };
+        const ape::Vec3 unitY = { 0.0f, 1.0f, 0.0f, 0.0f };
+        ape::Vec3Cross(axis, start, unitX);
+        if (std::fabs(ape::Vec3LengthSq(axis)) < 1e-05f)
+            ape::Vec3Cross(axis, start, unitY);
+    } else {
+        ape::Vec3Cross(axis, start, goal);
+    }
+    ape::Vec3Normalize(axis);
+    ape::Matrix34 rotation;
+    ape::MatrixAxisAngle(angle, rotation, axis);
+    // Row vectors: the start direction through the rotation's axes.
+    out = { start.x * rotation.xAxis.x + start.y * rotation.yAxis.x + start.z * rotation.zAxis.x,
+            start.x * rotation.xAxis.y + start.y * rotation.yAxis.y + start.z * rotation.zAxis.y,
+            start.x * rotation.xAxis.z + start.y * rotation.yAxis.z + start.z * rotation.zAxis.z, out.pad };
 }
 
 // @func 0x000FD1A0 ClosestPointOnSegment

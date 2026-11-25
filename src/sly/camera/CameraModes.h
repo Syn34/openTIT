@@ -14,6 +14,10 @@ namespace camera {
 // world Y axis up unless the direction is (nearly) vertical, where Z is used.
 // The translation of `out` is left alone (0x000FD040).
 void LookAlong(const ape::Vec3& forward, ape::Matrix34& out);
+// Turns the direction `from` toward `to` by at most `maxAngle` radians
+// (clamped to 0..pi); the result is a unit vector (0x001007D0). Used by the
+// cameras, the characters and the vehicles.
+void RotateTowards(float maxAngle, ape::Vec3& out, const ape::Vec3& from, const ape::Vec3& to);
 // Point of the segment [a, b] closest to `point` (0x000FD1A0).
 ape::Vec3 ClosestPointOnSegment(const ape::Vec3& a, const ape::Vec3& b, const ape::Vec3& point);
 
