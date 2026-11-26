@@ -2165,9 +2165,9 @@ public:
 };
 
 class SlyWater2Technique : public AglTechnique {
-    // TODO(0x005D33C8 SlyWater2Technique::BeginMaterial)
     // TODO(0x005D3750 SlyWater2Technique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABE5C SlyWater2Technique::~SlyWater2Technique
     // @func 0x007AFFF0 SlyWater2Technique::~SlyWater2Technique (deleting)
@@ -2175,9 +2175,9 @@ public:
 };
 
 class SlyWater3Technique : public AglTechnique {
-    // TODO(0x005D4C80 SlyWater3Technique::BeginMaterial)
     // TODO(0x005D5220 SlyWater3Technique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABE6C SlyWater3Technique::~SlyWater3Technique
     ~SlyWater3Technique() override = default;
@@ -4468,6 +4468,89 @@ AglTechnique* SelectWaterTechnique(AglMaterial* material, AglRenderItem* item, i
     return Pick(material, index & 0xFF);
 }
 
+// @func 0x005D3180 UploadWaterWaves (SlyWater2 copy)
+// @func 0x005D4A38 UploadWaterWaves (SlyWater3 copy)
+// Two directional waves of the SlyWater2/3 vertex programs. Material
+// constants 0/1 and 3/4 are the x/z directions (normalised unless
+// shorter than 1e-5); from 'first' come amplitude, wavelength and speed of
+// wave A, then of wave B, then one extra value each. Vertex constants
+// reg = (2pi / wavelengthA, amplitudeA, phaseA, extraA), reg+1 likewise
+// for B (phase = 2pi / wavelength * speed * animation time), reg+2 and
+// reg+3 = (direction, 1).
+void UploadWaterWaves(const AglMaterial* material, int first, uint32_t reg)
+{
+    constexpr float kTwoPi = 6.2831855f;
+    constexpr float kEpsilon = 1e-5f;
+    auto direction = [material](int xIndex, int zIndex, float out[4]) {
+        float x = MaterialConstant(material, xIndex);
+        float z = MaterialConstant(material, zIndex);
+        float y = 0.0f;
+        const float length = std::sqrt(y * y + x * x + z * z);
+        if (std::fabs(length) >= kEpsilon) {
+            x /= length;
+            y /= length;
+            z /= length;
+        }
+        out[0] = x;
+        out[1] = y;
+        out[2] = z;
+        out[3] = 1.0f;
+    };
+    float dirA[4], dirB[4];
+    direction(0, 1, dirA);
+    direction(3, 4, dirB);
+    const float time = GetAnimationClock().time;
+    float waves[2][4];
+    for (int i = 0; i < 2; ++i) {
+        const float amplitude = MaterialConstant(material, first + 3 * i);
+        const float waveNumber = kTwoPi / MaterialConstant(material, first + 3 * i + 1);
+        const float speed = MaterialConstant(material, first + 3 * i + 2);
+        waves[i][0] = waveNumber;
+        waves[i][1] = amplitude;
+        waves[i][2] = waveNumber * speed * time;
+        waves[i][3] = MaterialConstant(material, first + 6 + i);
+    }
+    gpu::CommandList& cmd = Cmd();
+    cmd.SetVertexProgramConstants(reg, 4, waves[0]);
+    cmd.SetVertexProgramConstants(reg + 1, 4, waves[1]);
+    cmd.SetVertexProgramConstants(reg + 2, 4, dirA);
+    cmd.SetVertexProgramConstants(reg + 3, 4, dirB);
+}
+
+// BeginMaterial of SlyWater2/3 (separate copies on the console that differ
+// only in register numbers): branch bit 0 from constant 15, constant 16
+// splatted into vertex constant 'splatReg', the UV animation in 0xD, the
+// colour in 0x21, (constants 12, 13, 0, 0) in 0x22, the waves (see
+// UploadWaterWaves), the warp parameters in fragment constant 0,
+// (constant 17, constant 20, 1, 1) in fragment constant 'paramSlot', the
+// two warp transforms in vertex constants rowReg..rowReg+5 and
+// (0, constant 10, constant 11, constant 14) in fragment constant 1.
+void BeginWaterMaterial(AglMaterial* material, uint32_t splatReg, int firstWave, uint32_t waveReg,
+                        uint32_t paramSlot, uint32_t rowReg)
+{
+    SetTransformBranchBit0(MaterialConstantBitsSet(material, 15));
+    gpu::CommandList& cmd = Cmd();
+    const float splat = MaterialConstant(material, 16);
+    const float splat4[4] = { splat, splat, splat, splat };
+    cmd.SetVertexProgramConstants(splatReg, 4, splat4);
+    UploadUVTransform(material->anim, 0xD, 1.0f, 1.0f);
+    cmd.SetVertexProgramConstants(0x21, 4, material->color0);
+    const float scale[4] = { MaterialConstant(material, 12), MaterialConstant(material, 13), 0.0f, 0.0f };
+    cmd.SetVertexProgramConstants(0x22, 4, scale);
+    UploadWaterWaves(material, firstWave, waveReg);
+    ape::Matrix34 a{}, b{};
+    float params[4];
+    BuildWarpMatrices(material, a, b, params);
+    const float extra[4] = { MaterialConstant(material, 17), MaterialConstant(material, 20), 1.0f, 1.0f };
+    SetShaderConstant(paramSlot, extra);
+    SetShaderConstant(0, params);
+    UploadWarpRowsVertex(a, rowReg);
+    UploadWarpRowsVertex(b, rowReg + 3);
+    const float tail[4] = { 0.0f, MaterialConstant(material, 10), MaterialConstant(material, 11),
+                            MaterialConstant(material, 14) };
+    SetShaderConstant(1, tail);
+}
+
 // @func 0x005D47A0 SlyWater2Class::SelectTechnique
 AglTechnique* SlyWater2Class::SelectTechnique(AglMaterial* material, AglRenderItem* item)
 {
@@ -5884,6 +5967,18 @@ void SlyTerrainSnowDecalTechnique::BeginMaterial(AglMaterial* material)
         const float layer[4] = { c * su, -(s * sv), s * su, c * sv };
         Cmd().SetVertexProgramConstants(8 + uint32_t(i), 4, layer);
     }
+}
+
+// @func 0x005D33C8 SlyWater2Technique::BeginMaterial
+void SlyWater2Technique::BeginMaterial(AglMaterial* material)
+{
+    BeginWaterMaterial(material, 0x28, 25, 0x24, 4, 0x29);
+}
+
+// @func 0x005D4C80 SlyWater3Technique::BeginMaterial
+void SlyWater3Technique::BeginMaterial(AglMaterial* material)
+{
+    BeginWaterMaterial(material, 0x27, 27, 0x23, 5, 0x28);
 }
 
 } // namespace agl
