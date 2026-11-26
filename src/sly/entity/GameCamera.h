@@ -93,11 +93,14 @@ public:
     void SetAnimPaused(bool paused);
     // Slots 49-51: plays a clip on the camera rig (directly, by name hash or
     // by name). A started clip releases the anim hold; the hash form also
-    // remembers the clip as lastAnim. NOTE: the entity base (0x000DBE78) is
-    // reached through a hook; `blend`, `speed` and `fade` follow its use.
-    virtual bool PlayClip(float blend, float speed, float fade, void* clip, uint32_t layer, bool loop);
-    virtual bool PlayClipByHash(float blend, float speed, float fade, uint32_t clip, uint32_t layer, bool loop);
-    virtual bool PlayClipByName(float blend, float speed, float fade, const char* clip, uint32_t layer, bool loop);
+    // remembers the clip as lastAnim. The name form ignores the prefix and
+    // does not reach the children.
+    bool PlayClip(float speed, float blend, float duration, void* clip, uint32_t layer, bool loop,
+                  uint32_t listener = 0) override;
+    bool PlayClipByHash(float speed, float blend, float duration, uint32_t clip, uint32_t layer, bool loop,
+                        uint32_t listener = 0) override;
+    bool PlayClipByName(float speed, float blend, float duration, const char* clip, uint32_t layer, bool loop,
+                        const char* prefix = nullptr, uint32_t listener = 0) override;
     // Starts an additive camera animation by name hash (0x000FCE18).
     bool PlayAdditiveAnim(float blend, uint32_t clip, bool loop, bool additive);
 
