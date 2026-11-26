@@ -1,5 +1,6 @@
 // openTIT - Level AI controller base class and AI manager.
 #include "sly/levels/ai/AIController.h"
+#include "sly/physics/PhysicsQuery.h"
 
 #include "ape/anim/ApeAnimClip.h"
 #include "ape/anim/ApeAnimScript.h"
@@ -654,6 +655,38 @@ bool AIController::TargetReachable()
     return true;
 }
 
+// @func 0x00014DA8 AIController::BeginMove
+void AIController::BeginMove()
+{
+    flags0 |= kF0_Leashed;
+    facing = transform.zAxis;
+    if (!(flags1 & kF1_FreeFacing) && ((flags1 & kF1_FlatFacing) || !CanPitch()))
+        facing.y = 0.0f;
+    const float inv = 1.0f / std::sqrt(facing.x * facing.x + facing.y * facing.y + facing.z * facing.z);
+    facing = {facing.x * inv, facing.y * inv, facing.z * inv, 0.0f};
+    if (!navAgent)
+        return;
+    NavManager* nav = GetNavManager();
+    if (!nav || !nav->graphData) {
+        flags0 |= kF0_NavRetry;   // asked again once a graph is loaded
+        return;
+    }
+    flags0 = static_cast<uint8_t>((flags0 & ~kF0_NavRetry) | kF0_NavMoving);
+    const ape::Vec3 position = transform.translation;
+    NavAgentSetPosition(navAgent, position);
+    NavAgentRequestGoal(navAgent, homePosition);
+    homePosition = NavAgentGoal(navAgent);
+    if (IsAlly())
+        return;
+    // A first path point more than 2 m away becomes the steering goal.
+    const ape::Vec3 next = NavAgentNextPoint(navAgent);
+    const float dx = next.x - position.x, dy = next.y - position.y, dz = next.z - position.z;
+    if (dx * dx + dy * dy + dz * dz > 4.0f) {
+        navGoal = next;
+        OnNavGoalChanged();
+    }
+}
+
 // @func 0x00015944 AIController::SetHomePosition
 void AIController::SetHomePosition(const ape::Vec3& position)
 {
@@ -868,8 +901,8 @@ void AIController::SetTarget(Entity* newTarget)
     targetDir = {dx / dist, dy / dist, dz / dist, 0.0f};
 }
 
-// @func 0x0001647C AIController::IsStateInterruptible
-bool AIController::IsStateInterruptible(int s)
+// @func 0x0001647C AIController::IsSeeThroughLayer
+bool AIController::IsSeeThroughLayer(int s)
 {
     if ((s >= 1 && s <= 4) || s == 8 || s == 12 || s == 0x1C)
         return false;
@@ -892,10 +925,27 @@ bool AIController::IsTargetVisible()
     return (flags2 & kF2_TargetVisible) != 0;
 }
 
+// @func 0x000138B0 AIController::TestLineOfSight
+// The ray is blocked by anything except: layers the behaviour sees through,
+// the controlled entity, `other` itself and AI-controlled entities (those
+// with a listener). Entities of class bit 4 are never visible.
 bool AIController::TestLineOfSight(const ape::Vec3& from, const ape::Vec3& to, Entity* other)
 {
-    (void)from; (void)to; (void)other;
-    return false;
+    if (other->classBits & 0x10)
+        return false;
+    physics::RayHit hits[4];
+    const int count = physics::CastRayAll(from, to, hits, 4);
+    for (int i = 0; i < count; ++i) {
+        const physics::RayHit& hit = hits[i];
+        if (IsSeeThroughLayer(int(hit.collisionLayer)))
+            continue;
+        if (!hit.entity)
+            return false;   // level geometry
+        if (hit.entity == entity || hit.entity == other || hit.entity->listener)
+            continue;
+        return false;
+    }
+    return true;
 }
 
 // @func 0x00016A40 AIController::UpdateMovement

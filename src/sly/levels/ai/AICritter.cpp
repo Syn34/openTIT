@@ -905,6 +905,250 @@ bool CritterAI::UsesNavigation()
     return PropBool(settings, AIProp::Critter_UseNavigation);
 }
 
+namespace {
+
+// Clips of the states (NOTE: names unknown except "Idle").
+constexpr uint32_t kClip_GoTo = 0x376E1DE7u;
+constexpr uint32_t kClip_Wait = 0x0001362Au;
+constexpr uint32_t kClip_Return = 0x9C2D2710u;
+constexpr uint32_t kClip_Run = 0x2874B3ADu;
+constexpr uint32_t kClip_Attack = 0x73B1E248u;
+constexpr uint32_t kClip_Notice = 0x04B72EEEu;
+constexpr uint32_t kClip_Dead = 0x03DE9A54u;
+constexpr uint32_t kClip_Land = 0x0487F222u;
+constexpr uint32_t kClip_TakeOff = 0x1C0A21EBu;
+constexpr uint32_t kClip_Hit = 0xE0F679CCu;
+
+// Inverse of a rotation + translation transform.
+ape::Matrix34 InverseRigid(const ape::Matrix34& m)
+{
+    ape::Matrix34 r;
+    r.xAxis = {m.xAxis.x, m.yAxis.x, m.zAxis.x, 0.0f};
+    r.yAxis = {m.xAxis.y, m.yAxis.y, m.zAxis.y, 0.0f};
+    r.zAxis = {m.xAxis.z, m.yAxis.z, m.zAxis.z, 0.0f};
+    const ape::Vec3& t = m.translation;
+    r.translation = {-(t.x * r.xAxis.x + t.y * r.yAxis.x + t.z * r.zAxis.x),
+                     -(t.x * r.xAxis.y + t.y * r.yAxis.y + t.z * r.zAxis.y),
+                     -(t.x * r.xAxis.z + t.y * r.yAxis.z + t.z * r.zAxis.z), 0.0f};
+    return r;
+}
+
+ape::Vec3 Cross(const ape::Vec3& a, const ape::Vec3& b)
+{
+    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x, 0.0f};
+}
+
+} // namespace
+
+// @func 0x000212B8 CritterAI::ClampToWanderArea
+ape::Vec3 CritterAI::ClampToWanderArea(const ape::Vec3& point)
+{
+    ape::Vec3 out = point;
+    ape::world::ApeObj* area = SpawnerAltObject(entity);
+    if (!area || PropBool(settings, AIProp::Critter_AlwaysUseBoundingRadius)) {
+        const ape::Vec3& origin = entity->objectRestoreTransform.translation;
+        const ape::Vec3 toOrigin = {origin.x - point.x, origin.y - point.y, origin.z - point.z, 0.0f};
+        const float radius = PropFloat(settings, AIProp::Critter_BoundingRadius) - wanderMargin;
+        const float dist = std::sqrt(toOrigin.x * toOrigin.x + toOrigin.y * toOrigin.y + toOrigin.z * toOrigin.z);
+        if (dist > radius) {
+            // NOTE: the console steps along the unnormalised offset, so the
+            // point lands on the radius only for unit distances (kept).
+            const float step = dist - radius;
+            out.x += toOrigin.x * step;
+            out.y += toOrigin.y * step;
+            out.z += toOrigin.z * step;
+        }
+        return out;
+    }
+    // Clamp between the two shrunk box corners in world space.
+    const ape::Aabb& box = area->GetDef()->GetBounds();
+    const float m = wanderMargin;
+    const ape::Matrix34& w = area->GetWorld();
+    auto toWorld = [&w](float x, float y, float z) {
+        return ape::Vec3{x * w.xAxis.x + y * w.yAxis.x + z * w.zAxis.x + w.translation.x,
+                         x * w.xAxis.y + y * w.yAxis.y + z * w.zAxis.y + w.translation.y,
+                         x * w.xAxis.z + y * w.yAxis.z + z * w.zAxis.z + w.translation.z, 0.0f};
+    };
+    const ape::Vec3 upper = toWorld(box.max.x - m, box.max.y - m, box.max.z - m);
+    const ape::Vec3 lower = toWorld(box.min.x + m, box.min.y + m, box.min.z + m);
+    out.x = std::max(std::min(out.x, upper.x), lower.x);
+    out.y = std::max(std::min(out.y, upper.y), lower.y);
+    out.z = std::max(std::min(out.z, upper.z), lower.z);
+    return out;
+}
+
+// @func 0x000215D8 CritterAI::EnterState
+void CritterAI::EnterState()
+{
+    AIController::EnterState();
+    // Moving states use the move clip, or the flight clips for flyers that have them.
+    auto playMoveClip = [this](uint32_t clip) {
+        if (PropBool(settings, AIProp::Critter_UseFlightAnims))
+            UpdateFlightClip();
+        else
+            PlayClip(clip);
+    };
+    auto releaseClaim = [this]() {
+        if (claimSlot) {
+            claimSlot->owner = nullptr;
+            claimSlot = nullptr;
+        }
+    };
+
+    switch (state) {
+    case kState_Spawn: {
+        // The critter starts where its spawn clip ends when the spawn point
+        // is the destination: step back by the rest of the clip's motion.
+        PlayClip(PropHash(settings, AIProp::Critter_SpawnAnimClip));
+        ape::Matrix34 start = entity->objectRestoreTransform;
+        if (PropBool(settings, AIProp::Critter_SpawnPosIsDst)) {
+            const float remaining = (1.0f - entity->GetAnimProgress(0)) * entity->GetAnimDuration(0);
+            ape::Matrix34 rest;
+            entity->RootMotionDelta(rest, false, 0, remaining);
+            ape::Matrix34PreMultiply(start, InverseRigid(rest));
+        }
+        SetTransform(start);
+        entity->SetTransform(start);
+        entity->SetLocalTransform(start);
+        break;
+    }
+    case kState_Idle:
+    case kState_ScriptAnim:
+        PlayClip(idleClip);
+        break;
+    case kState_Move:
+        releaseClaim();
+        if (poiDelay <= 0.0f)
+            poiDelay = ape::RandomRange(PropFloat(settings, AIProp::Critter_POIDelayMin),
+                                        PropFloat(settings, AIProp::Critter_POIDelayMax), ape::g_gameRandom);
+        SetHomePosition(RandomWanderPoint());
+        leashRadius = 1.0f;
+        BeginMove();
+        if (PropBool(settings, AIProp::Critter_UseFlightAnims))
+            UpdateFlightClip();
+        else if (currentClip != moveClip)
+            PlayClip(moveClip);
+        break;
+    case kState_GoTo:
+        releaseClaim();
+        leashRadius = 1.0f;
+        BeginMove();
+        playMoveClip(moveClip);
+        break;
+    case kState_Approach: {
+        // A point at POITargetDist from the point of interest, on the side the
+        // critter comes from, spread randomly up to a right angle.
+        const float dist = PropFloat(settings, AIProp::Critter_POITargetDist);
+        leashRadius = dist;
+        const ape::Vec3& position = transform.translation;
+        ape::Vec3 dir = {position.x - poiPosition.x, position.y - poiPosition.y, position.z - poiPosition.z, 0.0f};
+        const float inv = 1.0f / std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+        dir = {dir.x * inv, dir.y * inv, dir.z * inv, 0.0f};
+        const float spread = ape::RandomUnit(ape::g_gameRandom) * 2.0f - 1.0f;
+        const float along = 1.0f - std::fabs(spread);
+        const ape::Vec3 side = Cross(dir, kUp);
+        SetHomePosition({poiPosition.x + (side.x * spread + dir.x * along) * dist,
+                         poiPosition.y + (side.y * spread + dir.y * along) * dist,
+                         poiPosition.z + (side.z * spread + dir.z * along) * dist, 0.0f});
+        BeginMove();
+        playMoveClip(kClip_GoTo);
+        break;
+    }
+    case kState_Wait: {
+        PlayClip(kClip_Wait);
+        poiDelay = RandomBetween(settings, AIProp::Critter_POIDelayMin, AIProp::Critter_POIDelayMax);
+        const ape::Vec3& position = transform.translation;
+        SetFacing({poiPosition.x - position.x, poiPosition.y - position.y, poiPosition.z - position.z, 0.0f});
+        break;
+    }
+    case kState_Return:
+        SetHomePosition(RandomWanderPoint());
+        leashRadius = 1.0f;
+        BeginMove();
+        PlayClip(kClip_Return);
+        break;
+    case kState_Flee:
+        leashRadius = 0.2f;
+        BeginMove();
+        PlayClip(kClip_Run);
+        quickTurnDelay = RandomBetween(settings, AIProp::Critter_QuickTurnDelayMin,
+                                       AIProp::Critter_QuickTurnDelayMax);
+        break;
+    case kState_FleeTurn:
+        leashRadius = 0.2f;
+        BeginMove();
+        PlayClip(kClip_Run);
+        break;
+    case kState_Charge:
+        if (target)
+            SetHomePosition(ClampToWanderArea(target->Position()));
+        leashRadius = 1.0f;
+        BeginMove();
+        PlayClip(kClip_Run);
+        break;
+    case kState_Attack:
+        PlayClip(kClip_Attack);
+        break;
+    case kState_Notice:
+        PlayClip(kClip_Notice);
+        break;
+    case kState_Dead: {
+        PostEntityKilledEvent(entity, attacker, hitArgument);
+        PlayClip(kClip_Dead);
+        if (void* rigidBody = EntityRigidBody(entity)) {
+            if (entity::RigidBodyInWorld(rigidBody))
+                entity::RigidBodyRemoveFromWorld(rigidBody);
+        }
+        flags1 &= static_cast<uint8_t>(~kF1_FreeFacing);
+        if (!(flags1 & kF1_FlatFacing)) {
+            // Stand the body upright, keeping its heading.
+            ape::Matrix34 upright = transform;
+            upright.yAxis = kUp;
+            upright.xAxis = Cross(kUp, transform.zAxis);
+            upright.zAxis = Cross(upright.xAxis, kUp);
+            entity->SetTransform(upright);
+            flags1 |= kF1_FlatFacing;
+        }
+        break;
+    }
+    case kState_Gone:
+        PlayClip(PropHash(settings, AIProp::Critter_FleeAnimClip));
+        facing = HasSpawner(entity) ? SpawnerSpawnForward(entity) : entity->objectRestoreTransform.zAxis;
+        break;
+    case kState_Perch:
+        // Approach the perch point from 5 m out along its direction.
+        flags0 |= kF0_Leashed;
+        leashRadius = 5.0f;
+        SetHomePosition({poiPosition.x - poiDirection.x * 5.0f, poiPosition.y - poiDirection.y * 5.0f,
+                         poiPosition.z - poiDirection.z * 5.0f, 0.0f});
+        playMoveClip(moveClip);
+        break;
+    case kState_Land:
+        PlayClip(kClip_Land);
+        // The landing glide is steered by UpdateState: no root motion.
+        entity->rootMotionScale = {};
+        entity->rootMotionWeight = 0.0f;
+        entity->flags2 |= entity::kEnt2_RootMotionDamped;
+        flags1 |= kF1_FlatFacing;
+        poiDelay = RandomBetween(settings, AIProp::Critter_POIDelayMin, AIProp::Critter_POIDelayMax);
+        SetFacing(poiDirection);
+        break;
+    case kState_Perched:
+        poiDelay = RandomBetween(settings, AIProp::Critter_POIDelayMin, AIProp::Critter_POIDelayMax);
+        PlayClip(kClip_Idle);
+        break;
+    case kState_TakeOff:
+        SetFacing({facing.x, 0.5f, facing.z, 0.0f});
+        PlayClip(kClip_TakeOff);
+        break;
+    case kState_Hit:
+        PlayClip(kClip_Hit);
+        break;
+    default:
+        break;
+    }
+}
+
 } // namespace ai
 } // namespace levels
 } // namespace sly

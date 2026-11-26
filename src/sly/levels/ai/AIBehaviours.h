@@ -74,8 +74,13 @@ public:
     void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value) override;
     void ChooseState() override;
     bool Think(float dt) override;
+    void EnterState() override;
     void UpdateState(float dt) override;
 
+    // `point` kept inside the area the critter may roam: the spawner's
+    // alternative object box (shrunk by the wander margin), else the
+    // bounding radius around the spawn point (0x000212B8).
+    ape::Vec3 ClampToWanderArea(const ape::Vec3& point);
     // Flight clip for the way the critter is heading: up, banking left or
     // right, or the move clip (0x000210F8).
     void UpdateFlightClip();
@@ -363,7 +368,7 @@ public:
     void Detach() override;
     void Update(float dt) override;
     void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
-    bool IsStateInterruptible(int state) override;
+    bool IsSeeThroughLayer(int layer) override;
 
     float actionTimer = 0.0f;          // +0x148 time to the next idle action
     Entity* diggingMachine = nullptr;  // +0x154 ("DiggingMachineInst"; referenced)
