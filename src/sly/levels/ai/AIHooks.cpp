@@ -1,10 +1,14 @@
 // openTIT - Level AI hooks: TODO stubs returning "nothing there".
 #include "sly/levels/ai/AIHooks.h"
 
+#include "sly/game/hud/HudManager.h"
+
 #include "sly/entity/Entity.h"
 #include "sly/game/GameMessages.h"
 #include "sly/game/goals/JobManager.h"
 #include "sly/knowledge/Knowledge.h"
+#include "sly/levels/ai/AIController.h"
+#include "ape/anim/ApeAnimClip.h"
 
 namespace sly {
 namespace levels {
@@ -106,13 +110,25 @@ ape::Vec3 NavAgentGoal(NavAgent*) { return {}; }
 void KnowledgeLevelStart() { knowledge::KnowledgeLevelStart(); }
 void KnowledgeLevelEnd() { knowledge::KnowledgeLevelEnd(); }
 void KnowledgeReset() { knowledge::KnowledgeReset(); }
-void AIObjectPoolLevelStart() {}
-void AIObjectPoolLevelEnd() {}
-void AIObjectPoolReset() {}
+void AIObjectPoolLevelStart()
+{
+    if (ape::anim::AnimClipManager* clips = AIAnimClips())
+        clips->ReleaseAllSlots();
+}
+void AIObjectPoolLevelEnd()
+{
+    if (ape::anim::AnimClipManager* clips = AIAnimClips())
+        clips->OnLevelReset();
+}
+void AIObjectPoolReset()
+{
+    if (ape::anim::AnimClipManager* clips = AIAnimClips())
+        clips->Clear();
+}
 void ReleaseCameraMode(AICameraMode*) {}
 void GameWorldSetBossFlag(bool) {}
-void HudSetContext(Entity*, const char*) {}
-void HudSetContext(Entity*, uint32_t) {}
+void HudSetContext(Entity* entity, const char* name) { hud::SetContextByString(entity, name); }
+void HudSetContext(Entity* entity, uint32_t nameHash) { hud::SetContext(entity, nameHash); }
 bool HudObjectPausesAI(const hud::HudObject*) { return false; }
 
 ape::ApeRefCounted* EntityScriptObject(const Entity*) { return nullptr; }

@@ -16,6 +16,9 @@ namespace entity {
 class ProjectileDef : public PhysicalEntityDef {
 public:
     ~ProjectileDef() override;
+    // 0x1A4 how much of the launch speed is turned upwards into an arc.
+    // NOTE: name from use.
+    float arcFactor = 0.0f;
 };
 
 // Definition of ProjectileB (vtable 0x00B132D8, 0x1B0 bytes).
@@ -35,6 +38,13 @@ public:
 class Projectile : public PhysicalEntity {
 public:
     ~Projectile() override;
+    // Slot 95: lobs the projectile (an upward share of the launch speed and
+    // the matching arc value) before the base launch.
+    void OnLaunched() override;
+    const ProjectileDef* Def() const { return static_cast<const ProjectileDef*>(def); }
+
+    ape::Vec3 launchVelocity{};   // 0x2D0
+    float arc = 0.0f;         // 0x2E0 NOTE: name from use
 };
 
 // Second projectile kind (0x2B0 bytes). NOTE: its role is not known yet.
@@ -43,10 +53,26 @@ public:
     ~ProjectileB() override;
     bool PostUpdate(float dt) override;
     bool Release(bool kill) override;
+    // Slot 94: aims only while field_290 is below field_2A0.
+    void AimAt(Entity* target) override;
+    // Slot 95: the base launch.
+    void OnLaunched() override;
+    // Slot 101: flies along the curve from the launch point to the aim point
+    // (past the end it keeps the last step), facing along it with
+    // definition flag 22.
+    void UpdateFromBody(float dt) override;
+    // Point of the flight curve at `t` (0..1): a quadratic Bezier from the
+    // launch point to the aim point whose control point lies sideScale along
+    // `side` and forwardScale of the distance towards the aim (0x000F4448).
+    ape::Vec3 FlightPoint(float t) const;
     // @func 0x000F43FC ProjectileB::SetField280
     void SetField280(const ape::Vec3& value) { field_280 = { value.x, value.y, value.z, field_280.pad }; }
 
-    ape::Vec3 field_280{};    // 0x280
+    ape::Vec3 field_280{};    // 0x280 side direction of the flight curve
+    float field_290 = 0.0f;   // 0x290 flight time so far
+    float sideScale = 0.0f;   // 0x298
+    float forwardScale = 0.0f;   // 0x29C
+    float field_2A0 = 0.0f;   // 0x2A0 flight duration
 };
 
 // Mine that drifts along a spline path (0x2F0 bytes; constructor 0x000F4A08).

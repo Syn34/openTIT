@@ -16,6 +16,14 @@ uint32_t RigidBodyCollisionGroup(void* body) { (void)body; return 0; }
 uint32_t RigidBodyFilterInfo(void* body) { (void)body; return 0; }
 void RigidBodySetFilterInfo(void* body, uint32_t info) { (void)body; (void)info; }
 float PhysicsWorldGravity() { return 0.0f; }
+// TODO(0x004A41C0 body sweep): Havok linear cast not ported; the way is free.
+bool RigidBodySweep(void* body, const ape::Matrix34& from, const ape::Vec3& to, ape::Matrix34& reached)
+{
+    (void)body;
+    reached = from;
+    reached.translation = {to.x, to.y, to.z, from.translation.pad};
+    return false;
+}
 void PhysicsAddAction(void* action) { (void)action; }
 uint8_t RigidBodyMotionType(void* body) { (void)body; return 0; }
 void RigidBodyActivate(void* body) { (void)body; }
