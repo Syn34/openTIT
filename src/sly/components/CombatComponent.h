@@ -25,6 +25,11 @@ public:
     // Slot 2: the combat state block (+0x18).
     // @func 0x007630BC CombatComponent::DataBlockA
     void* DataBlockA() override { return &state; }
+    // 0x00276978: the attack slot (0-5) of an attack kind (0-7; 0xFF: none).
+    // Characters whose physics component is in movement mode 2 use the
+    // second group of attacks. NOTE: which mode 2 is (water or wall
+    // climbing) is not established.
+    uint8_t AttackSlot(uint32_t kind) const;
     // TODO(0x002766A8 CombatComponent slot 4), TODO(0x002794F0 CombatComponent::Update).
 
     // State word (+0x18): bits 25-29 the current mode, bits 20-24 the
