@@ -55,6 +55,9 @@ public:
     // Deletes the body parts' scripts; the arrays release themselves.
     ~DragonBoss() override;
     bool PostUpdate(float dt) override;                          // slot 5
+    // Slot 10: on a kill the encounter is reset (spawners, objects, heads,
+    // phases), the HUD context dropped and the dragon stops listening.
+    bool Release(bool kill) override;
     // Hits are handled by the body part logic, not the actor base.
     void OnHitCategory0(entity::EntityHitRecord& hit) override;  // slots 83-87
     void OnHitCategory1(entity::EntityHitRecord& hit) override;
@@ -67,9 +70,12 @@ public:
     void* worldObject = nullptr;              // +0xA0 the entity's world object
     int32_t mode = 0;                         // +0x1B0 (1: the head models get states too)
     DragonPhase* currentPhase = nullptr;      // +0x1BC
+    entity::EntityDef* projectileDef = nullptr;     // +0x1CC "ProjectilePhase%i_NumHeads%i"
+    entity::EntityDef* projectileDefAlt = nullptr;  // +0x1D0 definition 0x1AA5830E
     DragonBodyPart* randomPartA = nullptr;    // +0x1C4 part picked for random threads 0x0416F651
     DragonBodyPart* randomPartB = nullptr;    // +0x1C8 part picked for random threads 0x0416F652
     bool field_1F0 = false;                   // +0x1F0
+    void* field_200 = nullptr;                // +0x200 NOTE: while set no phase runs
     DragonBodyPart root;                      // +0x21C
     DragonBodyPart laser;                     // +0x264
     DragonBodyPart headParts[kHeadCount];     // +0x2AC
@@ -78,6 +84,9 @@ public:
     // (+0x394 + i*8, +0x398 + i*8; the first only in mode 1).
     void* headModelA[kHeadCount] = {};
     void* headModelB[kHeadCount] = {};
+    // Per head (+0x3B8): an entity shown while the head is targetable.
+    // NOTE: its class is not identified (transform at +0x160, flag +0x1BC).
+    entity::Entity* headTargets[kHeadCount] = {};
     // Arrays released with the dragon (+0x3C4 .. +0x44C). NOTE: element
     // types partly unknown: +0x3C4/+0x3D8 world objects, +0x3EC bodies,
     // +0x41C spawners.
@@ -88,8 +97,20 @@ public:
     ape::ApeTArray<void*> spawners;           // +0x41C
     ape::ApeTArray<void*> field_430;          // +0x430
     ape::ApeTArray<void*> field_44C;          // +0x44C
+    // +0x400 object owned by the dragon, deleted on release. NOTE: type unknown.
+    class DragonOwnedObject* ownedObject = nullptr;
 
     int HeadIndex(const DragonBodyPart* part) const;
+    // 0x002FEA20: despawns the spawners, hides the objects, switches the
+    // bodies off and puts every head, the laser and the root back to idle.
+    void ResetEncounter();
+    // 0x002F9AC0: shows or hides the target entity of the head `part`; a
+    // shown target is placed at the head's marker object.
+    void SetHeadTargetActive(bool active, DragonBodyPart* part);
+    // 0x002FEFB4: without a phase, picks the one made for the current mode
+    // and number of living heads (and its projectile definitions); then
+    // runs the phase.
+    void UpdatePhase(float dt);
     // Tells the listeners of group 0xA07A77E3 that one of the three head
     // entities (by name) sent message 0x8024237B, with the head's index
     // (0x0FFFFFFF for other entities). False without an entity.
@@ -365,8 +386,8 @@ struct DragonCollection {
 // 0x50 bytes on the console.
 struct DragonPhase {
     char name[0x20] = {};                       // +0x00
-    int32_t field_20 = 0;                       // +0x20 (XML 0x0489115B)
-    int32_t field_24 = 0;                       // +0x24 (XML 0xBE8976CD)
+    int32_t mode = 0;                           // +0x20 dragon mode the phase is for (XML 0x0489115B)
+    int32_t headCount = 0;                      // +0x24 heads alive when it runs (XML 0xBE8976CD)
     uint32_t collectionIndex = 0;               // +0x2C
     DragonCollection* current = nullptr;        // +0x30
     ape::ApeTArray<DragonCollection*> collections;   // +0x34
@@ -385,7 +406,25 @@ struct DragonPhase {
     void Reset(bool rearm);
 };
 
+// Object owned by the dragon (+0x400). NOTE: only its virtual destructor
+// is known.
+class DragonOwnedObject {
+public:
+    virtual ~DragonOwnedObject() = default;
+};
+
+// The dragon definition (vtable 0x00B1D5C8); only the phases are modelled.
+class DragonBossDef : public entity::ActorDef {
+public:
+    ape::ApeTArray<DragonPhase*> phases;   // +0x130
+};
+
 // Hooks into the (unported) dragon entity / projectile code.
+// Head target entity: active flag (+0x1BC bit 31) and, when `placement` is
+// given, its local transform (+0x160).
+void DragonHeadTargetSet(entity::Entity* target, bool active, const ape::Matrix34* placement);
+// A body of the dragon (+0x3EC array) is switched off (its slot 76).
+void DragonBodyDisable(void* body);
 // Head model virtual slot 32 (+0x80): plays a state.
 void DragonModelSetState(void* model, uint32_t state);
 // Sets an object variable of a script instance (reference counted).

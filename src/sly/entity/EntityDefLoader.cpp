@@ -129,7 +129,7 @@ const DefClass kDefClasses[] = {
     {0xDCC028E7u, objects::CreateJumpDirTriggerDef},
     {0xCCFB1F40u, nullptr},                              // 0x0018F8E8
     {0xC475D118u, CreateObjectActorDef},                 // "Teleporter"
-    {0xBC6FA23Bu, nullptr},                              // 0x001C5408
+    {0xBC6FA23Bu, CreateSoundActorB16DB0Def},
     {0xEE9D8477u, CreateSoundActorB174C0Def},            // "SentryLight"
     {0xEBE54755u, nullptr},                              // 0x000C77E4
     {0xEB9EE198u, objects::CreateTriggerDef},            // "Trigger"
@@ -141,7 +141,7 @@ const DefClass kDefClasses[] = {
     {0xF004220Bu, nullptr},                              // 0x0001BFE0
     {0x03D1DEA1u, CreateChainDef},                       // "Chain"
     {0x0353CB09u, nullptr},                              // "Character" 0x0011E2B8
-    {0x0026B78Du, nullptr},                              // 0x001E6B18
+    {0x0026B78Du, CreateSafeDef},
     {0x002678F2u, nullptr},                              // 0x001BB6C4
     {0x109C1EFAu, CreateProjectileBDef},
     {0x0E5B671Du, nullptr},                              // 0x00203BE4

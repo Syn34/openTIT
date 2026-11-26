@@ -416,6 +416,9 @@ struct NavPathStep {
 void NavAgentPathStep(NavAgent* agent, float lookahead, NavPathStep& step);
 ape::Vec3 NavAgentNextPoint(NavAgent* agent);
 
+// Entities with type bit 9: heading (+0x1E4, radians about the up axis)
+// and its weight (+0x224) the movement takes.
+void EntitySetMoveHeading(Entity* entity, float heading, float weight);
 // 0x004705F8: sends a game event from one entity to another.
 void SendGameEvent(Entity* sender, Entity* receiver, uint32_t event, uint32_t data, bool immediate);
 // 0x0048F90C: posts `event` to the members of listener group `group` within

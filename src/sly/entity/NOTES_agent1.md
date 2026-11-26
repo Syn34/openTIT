@@ -136,3 +136,38 @@ requests, anim script/driver bits, Havok frees, minigame flag, game camera looku
   0x80 bytes of state, type bits 0-2, C8/CC from the caller), the spawn definition loader
   0x000D5C00 (Ghidra drops the map inserts), entity sound play 0x000DB348/0x000DBA84 (SoundParams
   layout), the Spline camera constructor 0x00108AF8 (per-spline tag table lookups).
+
+## Fifth pass (agent1)
+* Definition factories (`ActorDefLoaders.cpp`, `PhysicalEntityDefs.cpp`): `ActorDefDesc::Parse`
+  (0x000C85A8; part records are `ActorPartFields` + body name / body), the physical description
+  (0x000C4020 parse, 0x000C30E8 constructor; `PhysicalDefFields` shared by description and
+  definition, `PhysicalEntityDef` now derives from `ScriptedEntityDef`), and the class factories:
+  ActorGroup, HitCounter, Watch, Signal, B15E60, ObjectActor ("Teleporter"), InteractivePropA use
+  definition, InteractivePropB, Searchlight, TweenActor, ScriptObjectActor, SoundActorDef and its
+  B17728 / sentry light (B174C0) / switch (B16678) / B168E0 / trigger-volume (B17008) / light
+  (B16B48) subclasses, Projectile, ProjectileB, EntityProjectileMine. Each class description keeps
+  the class bit in `typeBits` (or `registryFlags`, the second type word) and takes its defaults
+  from a "from" parent of the same class. Not done: B16DB0 (0x001C49E8), InteractivePropA
+  definition 0x00B17DB0 (0x001DD3F8), Safe (0x001E6300), input mover (0x001D62A8), the plain
+  0x000C7104 family, the non-actor classes (chains, ropes, items, laser field...).
+* The initialisers 0x00745D88 / 0x0074FD80 (actor) and 0x0074596C (physical) are the description
+  constructors (outside this range); the physical one takes stack arguments not recovered.
+* `objects::ActorInstanceDesc` (0x000E40E0): four state layers, 0x80 bytes of state; the actor
+  instance descriptions of the placements derive from it. `ActorEntity(desc)` (0x000E38F0) clones
+  the part bodies through `ActorPartCloneBody`; `ActorDef::Spawn` builds `PlainActor`. Class
+  spawns + constructors: ActorGroup (+PostUpdate), HitCounter, Watch, Signal, ScriptObject,
+  InteractivePropA/B, Searchlight (+Update/InteractionCancel), teleporter (`Teleporter.cpp`).
+* TweenActor is the target range (its camera uses Entity.TgtRange.CamPopTime): owned entity
+  release helpers, TakeUser (pose hook through the character controller), Release, Reset,
+  ReleaseCamera.
+* ObjectActor is the teleporter (setting association 0x001EB9CC queues a deferred event whose
+  data word is the callback; the entity module's frame step 0x000D4D30 calls it).
+* AI: nav jump links (`AssociateNavJumpLink`), nav agent creation/snap/path following
+  (`NavAgentPathStep` hook; slot 63 is `OnPlatformLink`), vision cone helper (0x000167F0),
+  `FindEnemyInCone`, Bismarque constructor.
+* Later in the pass: B16DB0 and Safe definitions, the laser field contact callback
+  (0x000C21EC), the breakable chain entity release, RacerAI move heading (0x0002D8C8), Ms Decibel
+  spline stretch (0x0005BA08), Paradox script commands (0x0005FA08). Next candidates: the Safe
+  constructor 0x001E5CD8 (combination from the game RNG 0x01164888), InteractivePropA definition
+  0x001DD3F8 + constructor 0x001DCBA0, the input mover definition 0x001D62A8 and placement
+  0x001D7D98, InteractivePropB::SpawnAttached 0x001F50E4 (needs Entity::Attach 0x000D15C0).
