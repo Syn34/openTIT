@@ -284,6 +284,12 @@ int CompareSortedMapKeys(const void* a, const void* b)
 // @func 0x00786D94 ApeTSortedMap<V>::Remove (copy 35)
 template class ApeTSortedMap<uint32_t>;
 
+// The float-valued maps (the bone weight lists of the animation layers)
+// compiled Find/Remove with a slightly different schedule.
+// @func 0x0076ECC4 ApeTSortedMap<V>::Find (float values)
+// @func 0x0077016C ApeTSortedMap<V>::Remove (float values)
+template class ApeTSortedMap<float>;
+
 // The constructor with an explicit comparator was emitted out of line for
 // fourteen 4-byte-value maps (identical code).
 // @func 0x00761DC0 ApeTSortedMap<V>::ApeTSortedMap (copy 1)
