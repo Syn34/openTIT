@@ -75,6 +75,9 @@ bool InteractivePropA::Update(float dt)
 // @func 0x001EA8EC SearchlightActor::~SearchlightActor (thunk, +0x17C)
 SearchlightActor::~SearchlightActor() = default;
 
+// @func 0x001EB078 SearchlightActor::GetAimPoint
+ape::Vec3 SearchlightActor::GetAimPoint() { return ActorEntity::GetAimPoint(); }
+
 // @func 0x001EA9A8 SearchlightActor::Release
 bool SearchlightActor::Release(bool kill)
 {

@@ -294,6 +294,8 @@ public:
 class SearchlightActor : public ActorEntity {
 public:
     ~SearchlightActor() override;
+    // Slot 71: the actor's own copy of the actor aim point.
+    ape::Vec3 GetAimPoint() override;
     bool Release(bool kill) override;
     // Offers interaction kind 4 (bit value 0x10) to everyone.
     uint32_t InteractionOffer(int kind, Entity* other) override;
