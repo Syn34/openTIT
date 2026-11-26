@@ -620,6 +620,11 @@ public:
     // refreshed and the focus moves to the first focusable object of the
     // event object's parent (0x00472DF8).
     void OnMoviesPageEvent(const ape::GuiEvent& event);
+    // The moves page: the category name in "Category.Msg" and the moves of
+    // the current page of five in "Move01".."Move05" under "Moves"; an
+    // ancestor's moves stay "$STR_UNKNOWN" until the job is started, a
+    // costume's until its costume is unlocked (0x0046DFF0).
+    void RefreshMovesPage(ape::ApeGuiObject* screen);
     void RefreshAudioPage(ape::ApeGuiObject* screen);
     void RefreshDisplayPage(ape::ApeGuiObject* screen);
     // Accept on the controls page: the camera X/Y inversion or vibration
