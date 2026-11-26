@@ -84,6 +84,7 @@ class ScriptObjectActorDef : public ActorDef {
 public:
     explicit ScriptObjectActorDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~ScriptObjectActorDef() override;
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7
     float field_130 = 0.0f;             // 0x130 attribute 0x7DDB32EA
     ape::Vec3 field_140{};              // 0x140 attribute 0x7DDB2524
 };

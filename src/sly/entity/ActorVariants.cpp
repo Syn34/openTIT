@@ -341,6 +341,29 @@ constexpr uint32_t kMsg_Release = 0xCBF1C4F3u;     // also the state it plays. N
 constexpr uint32_t kVar_HeldObject = 0x7A30D7E3u;  // NOTE: name unknown
 } // namespace
 
+ScriptObjectActor::ScriptObjectActor(const objects::ScriptObjectActorInstanceDesc& desc)
+    : ActorEntity(desc), field_1C0(desc.field_E0), field_1C4(desc.field_E4)
+{
+    field_1B0 = {desc.field_D0[0], desc.field_D0[1], desc.field_D0[2], 0.0f};
+    for (int i = 0; i < 3; ++i)
+        field_1C8[i] = desc.field_E8[i];
+    const auto* objectDef = static_cast<const ScriptObjectActorDef*>(def);
+    if (field_1C0 < 0.0f)
+        field_1C0 = objectDef->field_130;
+    if (field_1B0.x == 0.0f && field_1B0.y == 0.0f && field_1B0.z == 0.0f)
+        field_1B0 = objectDef->field_140;
+}
+
+// @func 0x001BDAE8 ScriptObjectActorDef::Spawn
+Entity* ScriptObjectActorDef::Spawn(EntityPlacement* placement)
+{
+    objects::ScriptObjectActorInstanceDesc desc(InstanceName(placement), this);
+    placement->FillInstanceDesc(desc);
+    auto* actor = new ScriptObjectActor(desc);
+    actor->OnSpawn();
+    return actor;
+}
+
 // @func 0x001BE750 ScriptObjectActor::HandleMessage
 void ScriptObjectActor::HandleMessage(const EntityMessage& msg)
 {

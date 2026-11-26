@@ -1,5 +1,6 @@
 // openTIT - Scripted actors (see ActorEntities.h).
 #include "sly/entity/ActorEntities.h"
+#include "sly/objects/EntityPlacements.h"
 #include "ape/world/ApeBase.h"
 #include "sly/entity/PhysicsHooks.h"
 #include <cmath>
@@ -98,6 +99,16 @@ SafeDef::~SafeDef() = default;
 // @func 0x001DC22C InteractivePropA::~InteractivePropA (thunk, +0x180)
 // @func 0x001DC2E8 InteractivePropA::~InteractivePropA (thunk, +0x17C)
 InteractivePropA::~InteractivePropA() = default;
+
+// @func 0x001DBA58 InteractivePropAUseDef::Spawn
+Entity* InteractivePropAUseDef::Spawn(EntityPlacement* placement)
+{
+    objects::ActorInstanceDesc desc(InstanceName(placement), this);
+    placement->FillInstanceDesc(desc);
+    auto* prop = new InteractivePropA(desc);
+    prop->OnSpawn();
+    return prop;
+}
 
 // @func 0x001DC590 InteractivePropA::Update
 bool InteractivePropA::Update(float dt)

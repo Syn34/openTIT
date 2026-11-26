@@ -174,6 +174,7 @@ class InteractivePropAUseDef : public ActorDef {
 public:
     explicit InteractivePropAUseDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~InteractivePropAUseDef() override;
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7: an InteractivePropA
     uint32_t sharedUse = 0;         // 0x130 non-zero: several users at once
 };
 
@@ -353,6 +354,7 @@ private:
 // so (vtable 0x00B17BB8, 0x1B0 bytes; slot 76 0x001DC3A8).
 class InteractivePropA : public ActorEntity {
 public:
+    using ActorEntity::ActorEntity;
     ~InteractivePropA() override;
     bool Update(float dt) override;
     // A player may not use the prop while one user holds it and the player

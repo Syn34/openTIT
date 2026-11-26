@@ -5,7 +5,7 @@
 
 #include "sly/entity/ActorEntities.h"
 
-namespace sly::objects { struct ActorGroupInstanceDesc; struct HitCounterActorInstanceDesc; struct ActorInstanceDesc; struct SignalActorInstanceDesc; }
+namespace sly::objects { struct ActorGroupInstanceDesc; struct HitCounterActorInstanceDesc; struct ActorInstanceDesc; struct SignalActorInstanceDesc; struct ScriptObjectActorInstanceDesc; }
 namespace ape { class ApeAnimScriptVar; }
 
 namespace sly {
@@ -165,8 +165,15 @@ public:
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
     // Only player interaction, and only in mode 1 (+0x188 >> 1).
     bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;  // slot 76
+    // Placement values, the definition's where the placement gives none
+    // (inline in the spawn 0x001BDAE8).
+    explicit ScriptObjectActor(const objects::ScriptObjectActorInstanceDesc& desc);
 
     uint32_t mode = 0;                   // 0x188
+    ape::Vec3 field_1B0{};               // 0x1B0 (zero: ScriptObjectActorDef::field_140)
+    float field_1C0 = -1.0f;             // 0x1C0 (negative: ScriptObjectActorDef::field_130)
+    float field_1C4 = -1.0f;             // 0x1C4
+    bool field_1C8[3] = {};              // 0x1C8
 };
 
 // Input mover (vtable 0x00B17990, destructor 0x00756154; class flag 1 of

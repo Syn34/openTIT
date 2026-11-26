@@ -396,7 +396,8 @@ public:
 struct ScriptObjectActorInstanceDesc : ActorInstanceDesc {
     using ActorInstanceDesc::ActorInstanceDesc;
     float field_D0[3] = {};             // 0xD0..0xD8
-    float field_E0 = 0.0f;              // 0xE0
+    float field_E0 = -1.0f;             // 0xE0 negative: the definition's value
+    float field_E4 = -1.0f;             // 0xE4
     bool field_E8[3] = {};              // 0xE8..0xEA
 };
 
