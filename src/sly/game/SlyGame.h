@@ -189,8 +189,11 @@ struct QueuedCutscene {
     uint32_t flags = 0;                         // +0x30 bit 30: hide player, bit 29: finished
 };
 
+// A speaker of the dialog (12 bytes on the console: name, entity, flags).
 struct DialogSpeakerEntry {
-    uint8_t bytes[12];
+    uint32_t nameHash = 0;
+    void* entity = nullptr;     // NOTE: the sequence entity (WorldObject)
+    uint8_t flags = 0;
 };
 
 // Speaker dialog block (+0x1283C0, initialised by 0x007867FC).
@@ -200,14 +203,14 @@ struct DialogState {
     char sound[0x43] = {};                  // +0x41
     ape::ApeTArray<DialogSpeakerEntry> speakers;   // +0x84 six 12-byte entries
     uint16_t field_8C = 0;                  // +0x8C
-    uint32_t field_98 = 0;                  // +0x98
+    uint32_t field_98 = 0;                  // +0x98 caller's value (HUD screen of the speakers)
     uint32_t screenHash = 0;                // +0x9C
     uint32_t field_A0 = 0;                  // +0xA0
-    uint32_t field_A4 = 0;                  // +0xA4
+    float duration = 0.0f;                  // +0xA4 seconds the dialog stays (0: until answered)
     uint32_t field_A8 = 0;                  // +0xA8
-    uint32_t field_AC = 0;                  // +0xAC
+    float countRate = 0.0f;                 // +0xAC duration / "FreezeScreen.CountDuration"
     uint32_t field_B0 = 0;                  // +0xB0
-    uint32_t flags = 0;                     // +0xB4 bit 30: busy, bit 29/31 options
+    uint32_t flags = 0;                     // +0xB4 bit 30: busy, bit 31: caller's option, bit 29 cleared on start
     const audio::MixState* mixState = nullptr;   // +0xB8 mix state pushed for the dialog
 };
 
@@ -497,6 +500,17 @@ public:
     // The camera follows a player block's character again (0x00484858).
     void AttachCameraTo(GamePlayer& player);
     void AttachCameraToPlayer(uint32_t player);
+    // Modal message box (sub state 0x0C) with one text, or a series of text
+    // pages; both pause the audio. The pages take two colours, two options
+    // and can fade the screen. Only while "Game.MoviesEnabled" is set.
+    void ShowMessageBox(const char* text, const int32_t position[2], const int32_t size[2]);
+    void ShowTextPages(const char (*pages)[0x80], int count, const int32_t position[2], const int32_t size[2],
+                       bool fade, bool optionA, const uint8_t colorA[4], const uint8_t colorB[4], bool optionB);
+    // Starts the speaker dialog (sub state 8, the frozen screen): speakers
+    // (at most six), text and sound keys, the caller's value, how long it
+    // stays and an option bit; its mix state is pushed. False while one runs.
+    bool StartSpeakerDialog(const DialogSpeakerEntry* speakers, uint32_t count, const char* text,
+                            const char* sound, uint32_t value, float duration, bool option);
     // Ends the dialog (the frozen screen with a speaker, +0x1283C0) when one
     // is up: sub state 2 (play), or 0x0B with `toFrontEnd`; its mix state
     // fades out and the block is cleared.

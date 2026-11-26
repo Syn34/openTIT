@@ -11,6 +11,7 @@
 #include "sly/game/AppRuntime.h"
 #include "sly/game/GameShellHooks.h"
 #include "sly/game/LevelParams.h"
+#include "sly/game/SoundZones.h"
 #include "sly/entity/Awards.h"
 #include "sly/game/goals/JobManager.h"
 #include "sly/game/AudioSystem.h"
@@ -568,9 +569,9 @@ void SlyGame::EndDialog(bool toFrontEnd)
     dialog.field_8C = 0;
     dialog.screenHash = 0;
     dialog.field_A0 = 0;
-    dialog.field_A4 = 0;
+    dialog.duration = 0.0f;
     dialog.field_A8 = 0;
-    dialog.field_AC = 0;
+    dialog.countRate = 0.0f;
     dialog.field_B0 = 0;
     dialog.flags &= 0x1FFFFFFFu;
     dialog.mixState = nullptr;
@@ -668,6 +669,144 @@ void SlyGame::RecordLevelVisit()
         ++count;
     if (count >= kTrophyLevelCount)
         AwardTrophyByName(kAward_AllLevels);
+}
+
+} // namespace sly
+
+namespace sly {
+
+namespace {
+
+// Sub state data of the modal box (layer 1).
+// NOTE: the console keeps the page pointers as 32-bit words from +0x04; the
+// rest of the block keeps its offsets here.
+struct ModalBoxData {
+    uint8_t field_00[4];
+    const char* pages[4];         // +0x04 (console: four words)
+    int32_t pageCount;            // +0x14 (in the port after the pointers)
+    int32_t page;                 // +0x18 the page shown
+    uint8_t field_1C[8];
+    int32_t position[2];          // +0x24
+    int32_t size[2];              // +0x2C
+    uint8_t colorA[4];            // +0x34
+    uint8_t colorB[4];            // +0x38
+    // +0x3C: bit 29 opened from sub state 0x0B, bit 27/26 options, bit 25
+    // the headline element was showing (it was refreshed away).
+    uint32_t flags;
+};
+static_assert(sizeof(ModalBoxData) <= 0x80, "fits the state data block");
+
+constexpr uint8_t kSub_SpeakerDialog = 8;
+constexpr uint8_t kSub_FrontEndPause = 0x0B;
+constexpr uint32_t kHeadlineElement = 0x633E5DF3u;   // 0x00F64CEC, see ShowLevelHeadline
+
+// Common start of both boxes: sub state 0x0C, the audio paused.
+ModalBoxData* OpenModalBox(SlyGame& game, bool& fromFrontEnd)
+{
+    fromFrontEnd = game.GetState(1) == kSub_FrontEndPause;
+    game.ChangeState(1, kSub_Modal);
+    game.ChangeState(2, 0);
+    audio::SetPauseAll(true);
+    return reinterpret_cast<ModalBoxData*>(game.StateData(1));
+}
+
+} // namespace
+
+// @func 0x00488DF4 SlyGame::ShowMessageBox
+void SlyGame::ShowMessageBox(const char* text, const int32_t position[2], const int32_t size[2])
+{
+    if (!g_gameMoviesEnabled.Get())
+        return;
+    bool fromFrontEnd = false;
+    ModalBoxData* data = OpenModalBox(*this, fromFrontEnd);
+    if (!data)
+        return;
+    data->pages[0] = text;
+    data->pageCount = 1;
+    data->page = 0;
+    data->position[0] = position[0];
+    data->position[1] = position[1];
+    data->size[0] = size[0];
+    data->size[1] = size[1];
+    const uint8_t black[4] = {0, 0, 0, 0xFF};
+    const uint8_t clear[4] = {0, 0, 0, 0};
+    std::memcpy(data->colorA, black, 4);
+    std::memcpy(data->colorB, clear, 4);
+    data->flags = (data->flags & 0xCFFFFFFFu) | (fromFrontEnd ? 0x20000000u : 0u) | 0x0C000000u;
+    const uint32_t headlineName = (levelParams && levelParams->hash1584) ? levelParams->hash1584 : kHeadlineElement;
+    if (hud::HudObject* headline = hud::Find(headlineName)) {
+        if (ElementObjectVisible(headline))
+            data->flags |= 0x02000000u;
+        headline->Refresh();
+    }
+    // NOTE: the console fades between two colour words of its stack that are
+    // not set up here; the fade keeps the object's colours.
+    const ape::xml::Color8 none{0, 0, 0, 0};
+    screenFade.Start(g_gameFadeTime.Get(), none, none, false, false);
+}
+
+// @func 0x004890A0 SlyGame::ShowTextPages
+void SlyGame::ShowTextPages(const char (*pages)[0x80], int count, const int32_t position[2], const int32_t size[2],
+                            bool fade, bool optionA, const uint8_t colorA[4], const uint8_t colorB[4], bool optionB)
+{
+    if (!g_gameMoviesEnabled.Get())
+        return;
+    bool fromFrontEnd = false;
+    ModalBoxData* data = OpenModalBox(*this, fromFrontEnd);
+    if (!data)
+        return;
+    const int kept = count < 4 ? count : 4;   // NOTE: the console does not check the count
+    for (int i = 0; i < kept; ++i)
+        data->pages[i] = pages[i];
+    data->pageCount = count;
+    data->page = 0;
+    data->position[0] = position[0];
+    data->position[1] = position[1];
+    data->size[0] = size[0];
+    data->size[1] = size[1];
+    std::memcpy(data->colorA, colorA, 4);
+    std::memcpy(data->colorB, colorB, 4);
+    data->flags = (data->flags & 0xC3FFFFFFu) | (fromFrontEnd ? 0x20000000u : 0u) | (optionA ? 0x08000000u : 0u) |
+                  (optionB ? 0x04000000u : 0u);
+    if (fade) {
+        const ape::xml::Color8 none{0, 0, 0, 0};   // NOTE: see ShowMessageBox
+        screenFade.Start(g_gameFadeTime.Get(), none, none, false, false);
+    }
+}
+
+// @func 0x00489328 SlyGame::StartSpeakerDialog
+bool SlyGame::StartSpeakerDialog(const DialogSpeakerEntry* speakers, uint32_t count, const char* text,
+                                 const char* sound, uint32_t value, float duration, bool option)
+{
+    constexpr uint32_t kBusy = 0x40000000u;
+    if (dialog.flags & kBusy)
+        return false;
+    dialog.speakers.Clear();
+    for (uint32_t i = 0; i < count && i < 6; ++i)
+        dialog.speakers.PushBack(speakers[i]);
+    dialog.field_98 = value;
+    if (text && text[0] != '\0')
+        ape::StrCopyBounded(dialog.text, text, 0x40);
+    if (sound && sound[0] != '\0')
+        ape::StrCopyBounded(dialog.sound, sound, 0x40);
+    dialog.duration = duration;
+    dialog.field_A8 = 0;
+    dialog.countRate = 0.0f;
+    dialog.field_B0 = 0;
+    if (duration > 0.0f) {
+        const float countDuration = g_gameMonetaryCollectFreezeScreenCountDuration.Get();
+        dialog.countRate = countDuration > 0.0f ? duration / countDuration : 0.0f;
+    }
+    dialog.flags = (option ? 0x80000000u : 0u) | (dialog.flags & 0x1FFFFFFFu) | kBusy;
+    const bool fromFrontEnd = GetState(1) == kSub_FrontEndPause;
+    ChangeState(1, kSub_SpeakerDialog);
+    ChangeState(2, 0);
+    if (uint8_t* data = StateData(1))
+        data[0] = fromFrontEnd ? 1 : 0;
+    dialog.mixState = audio::FindMixState(g_audioFreezeScreenMixState.Get());
+    if (dialog.mixState)
+        audio::PushMixState(dialog.mixState, g_audioFreezeScreenCrossfadeDuration.Get());
+    return true;
 }
 
 } // namespace sly
