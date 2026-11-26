@@ -90,6 +90,28 @@ public:
     float keys[kMaxKeys] = {};          // +0x10
 };
 
+// Texture animation through the frames of a strip (console class
+// 0x00B23280). NOTE: the per-mode values are named from their formulas.
+class AglTexAnimProperty : public AglParticleProperty {
+public:
+    float speed = 1.0f;                 // +0x08 frames per second
+    float frameWidth = 0.0f;            // +0x0C 1 / frame count
+    float frameCount = 0.0f;            // +0x10
+    uint8_t mode = 0;                   // +0x14 1..4
+    float frameStep = 0.0f;             // +0x18 1 / frame count (modes 1-4)
+    float field_1C = 0.0f;              // +0x1C mode 2: speed / frames; mode 3: speed / span
+    float span = 0.0f;                  // +0x20 mode 3: (frames - 1) * 2 (there and back)
+};
+
+// Collision planes the particles bounce off (console class 0x00B232A0).
+class AglCollisionProperty : public AglParticleProperty {
+public:
+    static constexpr int kMaxPlanes = 6;
+    uint32_t count = 0;                 // +0x08
+    float bounce = 1.0f;                // +0x0C
+    float planes[kMaxPlanes][4] = {};   // +0x10 normal and distance
+};
+
 // Fields of the emitter record chunk ("EMPH").
 struct AglEmitterRecord {
     float ttl = 0.0f;
@@ -145,8 +167,7 @@ public:
     float field_48[4] = {};
     uint8_t field_58 = 0;
     uint16_t field_5A = 0;
-    float field_5C = 1.0f;
-    float field_60 = 1.0f;
+    float aspect[2] = { 1.0f, 1.0f };   // +0x5C particle width / height (normalised to max 1)
     float field_64 = 0.0f;
     float field_68 = 0.0f;
     AglVelocityProperty* velocity = nullptr;   // +0x6C
@@ -154,8 +175,8 @@ public:
     AglSizeProperty* size = nullptr;           // +0x74
     AglForceProperty* force = nullptr;         // +0x78
     AglParticleProperty* rotation = nullptr;   // +0x7C
-    AglParticleProperty* field_80 = nullptr;
-    AglParticleProperty* field_84 = nullptr;
+    AglTexAnimProperty* texAnim = nullptr;     // +0x80
+    AglCollisionProperty* collision = nullptr; // +0x84
     AglParticleProperty* path = nullptr;       // +0x88
 };
 
@@ -172,6 +193,8 @@ int LoadDelayedForceChunk(ape::iff::IffReader* reader, void* arg);
 int LoadColorChunk(ape::iff::IffReader* reader, void* arg);
 int LoadShadedColorChunk(ape::iff::IffReader* reader, void* arg);
 int LoadSizeChunk(ape::iff::IffReader* reader, void* arg);
+int LoadTexAnimChunk(ape::iff::IffReader* reader, void* arg);         // "EPUV"
+int LoadCollisionChunk(ape::iff::IffReader* reader, void* arg);       // "EPCP"
 // Registers the handlers above (part of the particle system start-up 0x0050E614).
 void RegisterParticleChunkHandlers();
 

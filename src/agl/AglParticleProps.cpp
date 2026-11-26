@@ -97,7 +97,7 @@ AglEmitProperties::AglEmitProperties() = default;
 
 AglEmitProperties::~AglEmitProperties()
 {
-    AglParticleProperty* slots[] = { velocity, color, size, force, rotation, field_80, field_84, path };
+    AglParticleProperty* slots[] = { velocity, color, size, force, rotation, texAnim, collision, path };
     for (AglParticleProperty* property : slots)
         if (property)
             property->Release();
@@ -286,6 +286,78 @@ int LoadSizeChunk(ape::iff::IffReader* reader, void* arg)
     return 1;
 }
 
+// @func 0x0052A528 LoadTexAnimChunk
+// Mode 0 leaves the particles unanimated. A strip of N frames narrows the
+// particle's width to one frame, then the aspect is renormalised.
+int LoadTexAnimChunk(ape::iff::IffReader* reader, void* arg)
+{
+    uint8_t version = 0, mode = 0;
+    float frames = 0.0f, speed = 0.0f, variance = 0.0f;
+    reader->ReadU8(&version);
+    reader->ReadU8(&mode);
+    reader->ReadFloat(&frames);
+    reader->ReadFloat(&speed);
+    reader->ReadFloat(&variance);   // NOTE: read but not used
+    if (mode == 0)
+        return 1;
+    auto* props = static_cast<AglEmitProperties*>(arg);
+    AglTexAnimProperty* anim = InstallProperty(props->texAnim, new AglTexAnimProperty());
+    anim->mode = mode;
+    anim->speed = speed;
+    anim->frameCount = frames;
+    const float width = 1.0f / frames;
+    anim->frameWidth = width;
+    switch (mode) {
+    case 1:
+    case 4:
+        anim->frameStep = width;
+        break;
+    case 2:
+        anim->frameStep = width;
+        anim->field_1C = speed / frames;
+        break;
+    case 3:
+        anim->frameStep = width;
+        anim->span = (frames - 1.0f) * 2.0f;
+        anim->field_1C = speed / anim->span;
+        break;
+    default:
+        break;
+    }
+    props->aspect[0] *= width;
+    const float largest = std::max(props->aspect[0], props->aspect[1]);
+    props->aspect[0] *= 1.0f / largest;
+    props->aspect[1] *= 1.0f / largest;
+    return 1;
+}
+
+// @func 0x0052A7C0 LoadCollisionChunk
+// A bounce factor and up to six planes; unused planes have a distance of
+// FLT_MAX.
+// NOTE: when the properties do not have collisions enabled (flags 0x2A bit
+// 7) the console formats a warning whose output was stripped.
+int LoadCollisionChunk(ape::iff::IffReader* reader, void* arg)
+{
+    constexpr float kUnusedPlane = 3.4028235e38f;
+    auto* props = static_cast<AglEmitProperties*>(arg);
+    AglCollisionProperty* collision = InstallProperty(props->collision, new AglCollisionProperty());
+    uint8_t version = 0;
+    float bounce = 0.0f;
+    float planes[AglCollisionProperty::kMaxPlanes][4] = {};
+    reader->ReadU8(&version);
+    reader->ReadFloat(&bounce);
+    for (auto& plane : planes)
+        reader->ReadVec4(plane);
+    for (const auto& plane : planes) {
+        if (plane[3] == kUnusedPlane)
+            continue;
+        std::memcpy(collision->planes[collision->count], plane, sizeof(plane));
+        ++collision->count;
+    }
+    collision->bounce = bounce;
+    return 1;
+}
+
 void RegisterParticleChunkHandlers()
 {
     using ape::iff::MakeId;
@@ -298,9 +370,10 @@ void RegisterParticleChunkHandlers()
     RegisterChunkHandler(MakeId('E', 'P', 'T', 'C'), LoadColorChunk, 0, nullptr, 0);
     RegisterChunkHandler(MakeId('E', 'P', 'C', 'T'), LoadShadedColorChunk, 0, nullptr, 0);
     RegisterChunkHandler(MakeId('E', 'P', 'T', 'S'), LoadSizeChunk, 0, nullptr, 0);
-    // NOTE: "EPSP" (path, 0x0052996C), "EPTR" (rotation, 0x00529FE0), "EPUV"
-    // (0x0052A528) and "EPCP" (0x0052A7C0) are not ported; without a handler
-    // the reader stops at them.
+    RegisterChunkHandler(MakeId('E', 'P', 'U', 'V'), LoadTexAnimChunk, 0, nullptr, 0);
+    RegisterChunkHandler(MakeId('E', 'P', 'C', 'P'), LoadCollisionChunk, 0, nullptr, 0);
+    // NOTE: "EPSP" (path, 0x0052996C) and "EPTR" (rotation, 0x00529FE0) are
+    // not ported; without a handler the reader stops at them.
 }
 
 } // namespace agl
