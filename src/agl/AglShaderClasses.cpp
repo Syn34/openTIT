@@ -1443,6 +1443,23 @@ void UnpackMaterialColor(const AglMaterial* material, uint32_t index, float out[
     out[3] = float(packed >> 24) * (1.0f / 255.0f);
 }
 
+// The engine's parabolic sine approximation (valid in [-pi, pi]) and the
+// cosine taken as the sine of x + pi/2, wrapped once.
+float ParabolicSin(float x)
+{
+    const float y = x * 1.2732395f + x * -0.40528473f * std::fabs(x);
+    return (y * std::fabs(y) - y) * 0.225f + y;
+}
+
+void ParabolicSinCos(float x, float& s, float& c)
+{
+    s = ParabolicSin(x);
+    float shifted = x + 1.5707964f;
+    if (shifted > 3.1415927f)
+        shifted -= 6.2831855f;
+    c = ParabolicSin(shifted);
+}
+
 // The item's RGBA byte colour (render item +0x40) as floats; white when
 // the item has none (the constant at 0x01164BB0).
 void ItemColor(const AglRenderItem* item, float out[4])
@@ -1996,9 +2013,9 @@ public:
 };
 
 class SlyDecal4Technique : public AglTechnique {
-    // TODO(0x005C49C0 SlyDecal4Technique::BeginMaterial)
-    // TODO(0x005C4C3C SlyDecal4Technique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
+    void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABD7C SlyDecal4Technique::~SlyDecal4Technique
     // @func 0x007AF180 SlyDecal4Technique::~SlyDecal4Technique (deleting)
     ~SlyDecal4Technique() override = default;
@@ -5790,6 +5807,41 @@ void SlyCharacterFakeFurTechnique::Draw(AglRenderItem* item)
     ApplyItemStencilRef(item, 0x40);
     DrawItemGeometry(item);
     EndItemAlpha(item);
+}
+
+// @func 0x005C49C0 SlyDecal4Technique::BeginMaterial
+// Three texture layers, each rotated by a material angle (constants 6, 7,
+// 8) and scaled by a pair of constants (0/1, 2/3, 4/5): vertex constants
+// 4..6 = (cos*su, -sin*sv, sin*su, cos*sv). The angles go through the
+// engine's parabolic sine without range reduction.
+void SlyDecal4Technique::BeginMaterial(AglMaterial* material)
+{
+    float layers[3][4];
+    for (int i = 0; i < 3; ++i) {
+        const float angle = MaterialConstant(material, 6 + i);
+        const float su = MaterialConstant(material, 2 * i);
+        const float sv = MaterialConstant(material, 2 * i + 1);
+        float s, c;
+        ParabolicSinCos(angle, s, c);
+        layers[i][0] = c * su;
+        layers[i][1] = -(s * sv);
+        layers[i][2] = s * su;
+        layers[i][3] = c * sv;
+    }
+    for (uint32_t i = 0; i < 3; ++i)
+        Cmd().SetVertexProgramConstants(4 + i, 4, layers[i]);
+}
+
+// @func 0x005C4C3C SlyDecal4Technique::Draw
+// Per-vertex lights for lit items, no item alpha.
+void SlyDecal4Technique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    if (item->lightMask & kItemLight_Lit)
+        UploadLightBlock(item, false, 0);
+    ApplyItemStencilRef(item);
+    item->geometry->Draw(item);
 }
 
 } // namespace agl
