@@ -8,6 +8,11 @@
 #include "ape/memory/ApeBucketAlloc.h"
 #include "ape/memory/ApeTFreeList.h"
 
+#include "ape/math/ApeMath.h"
+#include "ape/sys/ApeGeometry.h"
+#include "ape/world/ApeInstances.h"
+
+#include <cmath>
 #include <cstring>
 
 namespace agl {
@@ -260,17 +265,165 @@ AglMaterial* CreateSpriteMaterial(AglTexture* texture)
 
 // --- material animation --------------------------------------------------------------
 
-// TODO(0x0050B980 AglMaterialAnim::GetUVMatrix)
-// Current 3x4 texture coordinate matrix of a material animation (rows of
-// four floats: u axis, v axis, translation).
-static const float* GetMaterialAnimMatrix(AglMaterialAnim* /*anim*/)
+namespace {
+
+// Value quantised to steps of 1/step (truncated towards zero).
+float Quantise(float value, float step)
 {
-    static const float kIdentity[12] = {
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-    };
-    return kIdentity;
+    return step == 0.0f ? value : float(int64_t(value * step)) / step;
+}
+
+// The engine's parabolic sine (x in [-pi, pi]).
+float ParabolicSin(float x)
+{
+    const float y = x * 1.2732395f + x * -0.40528473f * std::fabs(x);
+    return (y * std::fabs(y) - y) * 0.225f + y;
+}
+
+constexpr float kPi = 3.1415927f;
+constexpr float kTwoPi = 6.2831855f;
+
+} // namespace
+
+// @func 0x00501410 AglMaterialAnim::Channel::SetPhase
+void AglMaterialAnim::Channel::SetPhase(int phase)
+{
+    switch (phase) {
+    case kPhase_Waiting:
+        timer = ape::RandomRange(waitMin, waitMax, ape::g_gameRandom);
+        flags = (flags & ~kPhaseMask) | (uint32_t(kPhase_Waiting) << kPhaseShift);
+        break;
+    case kPhase_Active:
+        timer = activeTime;
+        flags = (flags & ~kPhaseMask) | (uint32_t(kPhase_Active) << kPhaseShift);
+        break;
+    case kPhase_Stopped:
+        flags = (flags & ~kPhaseMask) | (uint32_t(kPhase_Stopped) << kPhaseShift);
+        break;
+    default:
+        break;
+    }
+    sineTime = 0.0f;
+}
+
+// @func 0x00501520 AglMaterialAnim::Channel::Advance
+// A waiting channel only counts its pause down. An active one moves (for
+// activeTime when set, then pauses again): wrapping through [0, range),
+// bouncing between 0 and range, or following a sine of amplitude range
+// whose period is range / speed.
+void AglMaterialAnim::Channel::Advance(float dt)
+{
+    if (Mode() == kMode_Off)
+        return;
+    const uint32_t phase = Phase();
+    if (phase == kPhase_Waiting) {
+        timer -= dt;
+        if (timer <= 0.0f)
+            SetPhase(kPhase_Active);
+        return;
+    }
+    if (phase != kPhase_Active)
+        return;
+    if (activeTime > 0.0f) {
+        timer -= dt;
+        if (timer <= 0.0f) {
+            dt += timer;   // only the part of the step before the burst ended
+            SetPhase(kPhase_Waiting);
+        }
+    }
+    const uint32_t mode = Mode();
+    if (mode == kMode_Wrap) {
+        value += speed * dt;
+        if (value < 0.0f)
+            value += range;
+        if (range <= value)
+            value -= range;
+    } else if (mode == kMode_PingPong) {
+        if (!(flags & kFlag_Sine)) {
+            float velocity = speed;
+            value += velocity * dt;
+            if (value < 0.0f) {
+                velocity = -velocity;
+                value = 0.0f;
+                speed = velocity;
+            }
+            if (range <= value) {
+                speed = -velocity;
+                value = range - 1e-5f;
+            }
+        } else {
+            const float period = range / speed;
+            sineTime += dt;
+            if (period < sineTime)
+                sineTime -= period;
+            // Angle wrapped into [-pi, pi].
+            const float angle = sineTime / period * kTwoPi;
+            const float bias = angle < 0.0f ? -kPi : kPi;
+            const float shifted = bias + angle;
+            const float wrapped = shifted - float(int64_t(shifted / kTwoPi)) * kTwoPi - bias;
+            value = range * ParabolicSin(wrapped);
+        }
+    }
+}
+
+// @func 0x00501780 AglMaterialAnim::Update
+void AglMaterialAnim::Update()
+{
+    if (frameStamp == ape::world::g_renderFrameCounter)
+        return;
+    frameStamp = ape::world::g_renderFrameCounter;
+    const AglAnimationClock& clock = GetAnimationClock();
+    const float dt = clock.lastStep * clock.field_C;
+    u.Advance(dt);
+    v.Advance(dt);
+    rotation.Advance(dt);
+}
+
+// @func 0x0050BF48 AglMaterialAnim::GetOffset
+// With wrapU set, U steps through the fractional part of the V steps
+// (flip book pages laid out in rows).
+void AglMaterialAnim::GetOffset(float out[2]) const
+{
+    float offsetU = Quantise(u.value, u.step);
+    const float offsetV = Quantise(v.value, v.step);
+    if (wrapU) {
+        const float scaled = v.value * v.step;
+        offsetU = float(int64_t((scaled - float(int64_t(scaled))) * u.step)) / u.step;
+    }
+    out[0] = offsetU;
+    out[1] = offsetV;
+}
+
+// @func 0x0050B980 AglMaterialAnim::GetUVMatrix
+// Current texture coordinate matrix of a material animation (rows of four
+// floats: u axis, v axis, translation (z = 1), w row): the rotation about
+// the rotation channel's pivot, then the offset.
+static const float* GetMaterialAnimMatrix(AglMaterialAnim* anim)
+{
+    static float rows[16];   // 0x010C5C40
+    float offset[2];
+    anim->GetOffset(offset);
+    const float turns = Quantise(anim->rotation.value, anim->rotation.step);
+    float ax = 1.0f, ay = 0.0f, bx = 0.0f, by = 1.0f;
+    float tx = offset[0], ty = offset[1];
+    if (turns != 0.0f) {
+        ape::Matrix34 r;
+        ape::MatrixAxisAngle(turns * kTwoPi, r, ape::Vec3{ 0.0f, 0.0f, 1.0f, 0.0f });
+        ax = r.xAxis.x;
+        ay = r.xAxis.y;
+        bx = r.yAxis.x;
+        by = r.yAxis.y;
+        const float px = anim->rotation.pivot[0];
+        const float py = anim->rotation.pivot[1];
+        tx += px - (px * ax + py * bx);
+        ty += py - (px * ay + py * by);
+    }
+    const float m[16] = { ax, ay, 0.0f, 0.0f,
+                          bx, by, 0.0f, 0.0f,
+                          tx, ty, 1.0f, 0.0f,
+                          0.0f, 0.0f, 0.0f, 1.0f };
+    std::memcpy(rows, m, sizeof(rows));
+    return rows;
 }
 
 // @func 0x0050BE5C AglMaterialAnim::BuildUVTransform
@@ -299,6 +452,16 @@ void UploadUVTransform(AglMaterialAnim* anim, uint32_t reg, float scaleU, float 
     }
     const float rows[8] = { scaleU, 0.0f, 0.0f, 0.0f, 0.0f, scaleV, 0.0f, 0.0f };
     Cmd().SetVertexProgramConstants(reg, 8, rows);
+}
+
+// @func 0x0050D1E0 AglMaterialAnim::UploadUVOffset
+// Vertex constant `reg` = (U offset, V offset, 0, 0), zero without an animation.
+void UploadUVOffset(const AglMaterialAnim* anim, uint32_t reg)
+{
+    float value[4] = {};
+    if (anim)
+        anim->GetOffset(value);
+    Cmd().SetVertexProgramConstants(reg, 4, value);
 }
 
 // --- view --------------------------------------------------------------------------
