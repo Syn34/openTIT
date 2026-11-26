@@ -307,3 +307,42 @@ The full link was failing because of files outside `src/agl`: missing
 * `AglMaterial.cpp`: material UV animation channels (0x00501410, 0x00501520, 0x00501780,
   0x0050BF48, 0x0050B980, 0x0050D1E0).
 * `AglDrawListReplay.cpp`: display list replay 0x005159E8 and its packet handlers.
+
+## agent2 pass 4 (start-up, mesh/material records, particles)
+* `AglInit.cpp`: `AglInit` 0x0050F520 (called by `ape::SystemInit` flag 4, `kInit_Agl`) and its
+  steps: texture system 0x0051DF3C (record chunks TXRF/TEXR/TXRH/TINC, default-image chunks
+  DXTN/TDDS/TTGA/TBMP), image chunks 0x00542704, display texture 0x00542804 (display images
+  0x010F0E74/0x010F0E84 come from the display set-up, `SetDisplayImages`), materials/shaders
+  0x0050F308 (mounts the shader archive from `EngineConfig::shaderArchiveStream` (+0x54, main
+  stores the "RamDisk" there) or `shaderArchivePath` (+0x58), unmounts after loading), MEDG
+  0x00548BC0, mesh system 0x0050EF04, draw list 0x0050ECD4 (`CreateMainDrawList`, sizes from
+  EngineConfig +0x150/+0x14C), particle system 0x0050E614 (`AglParticleGeometry`; this is where
+  `RegisterParticleChunkHandlers` is called), stencil shadows 0x0054BF24/0x00527484. TODO stubs:
+  display set-up 0x0053AC38, render scratch 0x0050E410, outlines 0x0050D2E0, MEDG handler
+  0x0054A490. Pool sizes are only recorded (`GetPoolSizes`). PC only: `InstallWorldRenderHooks`
+  fills `ape::world::g_worldRenderHooks` (find/default/release mesh, owner name, shadows, part
+  count/flags, light state create/free).
+* Mesh records: MESH 0x00525E40 (topology + dictionary `RegisterTopology`/`FindTopology`
+  0x004FED94), SMSH 0x00524500, MHDR 0x00524B68 (element list -> `FindOrCreateVertexDecl`
+  0x005246A8 / `ConvertVertexElement` 0x0054A930; the element byte the console keeps in the
+  stream entry's last byte is the vertex buffer index, the port's `AglVertexStream::skip` stays
+  false), packed buffers in the MBLK block 0x00538950, VTXD 0x00525A1C. `AglTopology` got its
+  constructor 0x00508690, destructor 0x005087EC, `AddMesh` 0x00508B94 (4 inline entries, then a
+  block) and `GetDefaultMesh` 0x00526300. Still open: mesh batch chunks 0x00523C98.. (they
+  write the topology's +0x5C batch data, created by 0x004FD8D4), topology clone 0x005095C0,
+  LOD release 0x005084CC.
+* Material records: MATL 0x0051C640, MTLH 0x0051C704 (versions 2-4), `AglMaterial::Setup`
+  0x0050C3D8 (blend/cull/wrap/depth/sort decode, class fallback loop to 0x03DE9E33), MTLC
+  0x0051CD48 + `AglMaterialAnim::Configure` 0x0050B6D8, `AglMaterialAnim::CopyFrom` 0x00508FBC.
+  `AglMaterialDesc` got the header field names (the texture slot names stay as the shader
+  classes use them; see the NOTE there). `FindLiveMaterial` (inline on the console) also backs
+  `sly::levels::FindLiveMaterial`.
+* Particles: `AglEmitProperties::ApplyRecord` 0x004FF4C0, `SetMaterial` 0x004FEDD0, `AddMesh`
+  0x004FEBF0 (the console pre-records a draw command per mesh; not needed here). The emit
+  property fields are named. Still open: the emitter object (vtable 0x00B232D8) and its update/
+  draw functions 0x00500548.., 0x005019B8.. (the 2 KB functions are per-alignment builders).
+* Common post-process shaders 0x00546F6C (Copy, Fill, RenderTxr, ..., Guassian blurs, CopyScale)
+  with the blur kernel uploads 0x0053CFD0/0x0053CE00; thermal object class CreateTechniques
+  0x0054D4C0 / SelectTechnique 0x0054DAB4 (its technique BeginMaterial/Draw 0x0054CE80/
+  0x0054D23C are TODO). `UploadViewSpaceMatrix` 0x004FCC34 (particles), `AglLight`
+  (0x00526494 create, 0x0050CAE8 free).

@@ -132,6 +132,13 @@ ApeGeomInstance::~ApeGeomInstance()
 
 uint32_t g_lightChangeStamp = 0;
 uint32_t g_localLightsChanged = 0;
+uint32_t g_allLightsChanged = 0;
+
+// @func 0x005913E0 MarkAllLightsChanged
+void MarkAllLightsChanged()
+{
+    g_allLightsChanged = g_lightChangeStamp;
+}
 uint32_t g_globalLightsChanged = 0;
 
 ApeLightTable& GetLightTable()
