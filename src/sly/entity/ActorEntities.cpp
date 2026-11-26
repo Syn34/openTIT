@@ -1,6 +1,7 @@
 // openTIT - Scripted actors (see ActorEntities.h).
 #include "sly/entity/ActorEntities.h"
 #include "sly/entity/PhysicalEntity.h"
+#include "sly/tuning/TargetRangeTuning.h"
 #include "sly/objects/EntityPlacements.h"
 #include "ape/world/ApeBase.h"
 #include "sly/entity/PhysicsHooks.h"
@@ -1189,6 +1190,19 @@ void TweenActor::TakeUser(Entity* user)
             userBones[i] = field_358->FindBone(kBones[i]);
         CharacterCompSetPoseHook(character, &TweenActor::UserPoseHook, this);
     }
+}
+
+// @func 0x001EE4D8 TweenActor::ReleaseCamera
+void TweenActor::ReleaseCamera()
+{
+    if (camera && cameraMode) {
+        const float blend = (tweenFlags & (1u << 20)) ? -1.0f : float(g_tgtRangeCamPopTime);
+        if (camera->HasMode(cameraMode))
+            camera->RemoveMode(blend, cameraMode);
+        delete cameraMode;
+    }
+    cameraMode = nullptr;
+    camera = nullptr;
 }
 
 // @func 0x001F4440 TweenActor::UserPoseHook

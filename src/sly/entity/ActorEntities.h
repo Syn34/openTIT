@@ -16,6 +16,7 @@ namespace sly::objects { struct ActorInstanceDesc; struct InteractivePropBInstan
 
 namespace sly {
 namespace entity {
+class GameCamera;
 
 // The fields an actor definition part shares with its description (the
 // 0xA0-byte records of ActorDef::Part / ActorPartDesc around the word at
@@ -887,6 +888,8 @@ public:
     void PoseUser() {}
     bool Release(bool kill) override;                 // slot 10
 
+    GameCamera* camera = nullptr;             // 0x1F0 game camera the mode was pushed on
+    camera::CameraMode* cameraMode = nullptr; // 0x1F4
     Entity* field_358 = nullptr;              // 0x358 entity using the actor (non-null while a reset is pending)
     uint32_t field_1FC = 0;                   // 0x1FC cleared when an interaction begins
     Entity* field_368 = nullptr;              // 0x368 counted, dropped when hidden
@@ -911,6 +914,10 @@ public:
     void ReleaseEntities334();                        // 0x001EDC2C
     // Hides and kills the user's descendant 0x366FD481 (0x001EDCD4).
     void ReleaseUserProp();
+    // Takes the actor's camera mode off its game camera (at once with
+    // tweenFlags bit 20, else over Entity.TgtRange.CamPopTime) and deletes
+    // it (0x001EE4D8).
+    void ReleaseCamera();
 
     FloatTween tween_220;                     // 0x220
     ape::ApeTArray<OwnedPair> field_280;      // 0x280
