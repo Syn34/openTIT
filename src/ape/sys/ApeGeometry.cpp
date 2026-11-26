@@ -20,6 +20,28 @@ Xyz Cross(const Plane& a, const Plane& b)
 }
 }
 
+// @func 0x0055E940 PlaneTransformRigid
+// Rigid version for planes stored as (normal, w) with dot(normal, p) + w == 0:
+// the normal is rotated, a point of the plane (-w * normal) is moved, and w
+// is recomputed from them. Only valid for matrices without scale.
+Plane& PlaneTransformRigid(Plane& plane, const Matrix34& m)
+{
+    const auto rotate = [&m](float x, float y, float z) {
+        return Vec3{x * m.xAxis.x + y * m.yAxis.x + z * m.zAxis.x, x * m.xAxis.y + y * m.yAxis.y + z * m.zAxis.y,
+                    x * m.xAxis.z + y * m.yAxis.z + z * m.zAxis.z, 0.0f};
+    };
+    const Vec3 normal = rotate(plane.x, plane.y, plane.z);
+    Vec3 point = rotate(-plane.w * plane.x, -plane.w * plane.y, -plane.w * plane.z);
+    point.x += m.translation.x;
+    point.y += m.translation.y;
+    point.z += m.translation.z;
+    plane.x = normal.x;
+    plane.y = normal.y;
+    plane.z = normal.z;
+    plane.w = -(normal.x * point.x + normal.y * point.y + normal.z * point.z);
+    return plane;
+}
+
 // @func 0x0055EA6C PlaneTransform
 Plane& PlaneTransform(Plane& plane, const Matrix44& m)
 {

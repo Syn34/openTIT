@@ -15,6 +15,8 @@ using Plane = Vec4;
 // Transforms a plane in place by m (row vectors): the plane is multiplied by
 // the inverse of m's transpose. Returns `plane`.
 Plane& PlaneTransform(Plane& plane, const Matrix44& m);
+// Transforms a plane (dot(normal, p) + w == 0) in place by a rigid matrix.
+Plane& PlaneTransformRigid(Plane& plane, const Matrix34& m);
 
 // Point where three planes meet. Returns false (leaving `out` untouched)
 // when the normals are linearly dependent.
