@@ -63,8 +63,177 @@ bool ParseAnimGroup(ape::xml::XmlDocument&, XmlElement*, LevelParams::AnimGroup&
     return false;
 }
 
-// TODO(0x00480E68 ParseHideoutMechanic): the hideout's mechanic block.
-void ParseHideoutMechanic(ape::xml::XmlDocument&, XmlElement*, LevelParams::Mechanic&) {}
+void ReadView(XmlElement* element, LevelParams::StationView& view)
+{
+    element->GetHash(0xD86FA37Cu, &view.field_00, 0);
+    element->GetHash(0x6BDF55EFu, &view.field_04, 0);
+    element->GetHash(0x9C990F5Du, &view.field_08, 0);
+    element->GetHash(0x815D083Cu, &view.field_0C, 0);
+}
+
+void CopyString(char* out, size_t size, const char* text)
+{
+    if (text && text[0] != '\0')
+        ape::StrNCopy(out, text, size - 1);
+}
+
+// @func 0x00480AE8 ParseHideoutStation
+// A station without a "Def" is dropped.
+void ParseHideoutStation(XmlElement* element, LevelParams::HideoutMechanic& out)
+{
+    LevelParams::HideoutStation station;
+    element->GetHash(0x000107E5u, &station.def, 0);   // "Def"
+    if (station.def == 0)
+        return;
+    CopyString(station.field_04, sizeof(station.field_04), element->GetString(0xA9CD8AAAu));
+    CopyString(station.field_86, sizeof(station.field_86), element->GetString(0xE9BDFD43u));
+    CopyString(station.field_45, sizeof(station.field_45), element->GetString(0x41FA331Eu));
+    element->GetHash(0x3295FD03u, &station.field_C8, 0);
+    element->GetHash(0x5745BCC6u, &station.field_CC, 0);
+    element->GetHash(0x3B2EA066u, &station.field_D0, 0);
+    element->GetHash(0xC1168D61u, &station.field_D4, 0);
+    element->GetHash(0xC12B4394u, &station.field_D8, 0);
+    element->GetHash(0xEF8AB98Au, &station.field_DC, 0);
+    element->GetHash(0xEC96E888u, &station.field_E0, 0);
+    element->GetHash(0x4319F4EFu, &station.field_E8, 0);
+    element->GetHash(0x82BF101Au, &station.field_EC, 0);
+    element->GetHash(0xBF4244BFu, &station.field_F0, 0);
+    element->GetHash(0x39B44A1Du, &station.field_F4, 0);
+    element->GetBool(0x047D4CDDu, &station.field_F8, false);
+    element->GetBool(0xF9B989D5u, &station.field_F9, false);
+    element->GetBool(0xAE14078Bu, &station.field_FA, false);
+    element->GetBool(0x092E4909u, &station.field_FB, true);
+    element->GetBool(0x3B757A97u, &station.field_FC, false);
+    // NOTE: the console does not bound the count (ten records fit).
+    if (out.stationCount < static_cast<uint32_t>(LevelParams::HideoutMechanic::kMaxStations))
+        out.stations[out.stationCount++] = station;
+}
+
+// @func 0x00480740 ParseCostumeStation
+// Up to eight "Costume" children; each keeps its old values as defaults.
+void ParseCostumeStation(XmlElement* element, LevelParams::HideoutMechanic& out)
+{
+    auto& block = out.costumeSelect;
+    ReadView(element, block.view);
+    for (XmlElement* child = element->FirstChildElement(0x63C971C0u); child;   // "Costume"
+         child = child->NextSiblingElement(0x63C971C0u)) {
+        LevelParams::CostumeEntry& entry = block.costumes[block.count];
+        child->GetHash(0x4FBC8495u, &entry.instance, entry.instance);   // "instance"
+        child->GetHash(0x5A07A589u, &entry.field_04, entry.field_04);
+        child->GetHash(0xE6ED234Au, &entry.field_08, entry.field_08);
+        child->GetHash(0xBB8E19CAu, &entry.field_0C, entry.field_0C);
+        child->GetHash(0xBB8D028Au, &entry.field_10, entry.field_10);
+        if (const char* title = child->GetString("uiTitle"))
+            ape::StrCopyBounded(entry.uiTitle, title, sizeof(entry.uiTitle));
+        if (const char* desc = child->GetString("uiDesc"))
+            ape::StrCopyBounded(entry.uiDesc, desc, sizeof(entry.uiDesc));
+        child->GetHash(0x79F40122u, &entry.field_114, entry.field_114);
+        child->GetHash(0x38E6FC55u, &entry.lockedScript, entry.lockedScript);       // "lockedScript"
+        child->GetHash(0xE376E96Eu, &entry.unlockedScript, entry.unlockedScript);   // "unlockedScript"
+        if (++block.count >= LevelParams::HideoutMechanic::kMaxCostumes)
+            break;
+    }
+}
+
+// @func 0x00480574 ParseTreasureStation
+// Up to four groups of "treasure" spawners.
+void ParseTreasureStation(XmlElement* element, LevelParams::HideoutMechanic& out)
+{
+    auto& block = out.treasures;
+    ReadView(element, block.view);
+    int group = 0;
+    for (XmlElement* child = element->FirstChildElement(0x2D8478ABu);
+         child && group < LevelParams::HideoutMechanic::kTreasureGroups;
+         child = child->NextSiblingElement(0x2D8478ABu), ++group) {
+        // NOTE: the console bounds the group index here instead of the
+        // treasure index, so a group of more than twenty treasures overruns.
+        int i = 0;
+        for (XmlElement* treasure = child->FirstChildElement(0x811B12AFu);   // "treasure"
+             treasure && i < LevelParams::HideoutMechanic::kTreasuresPerGroup;
+             treasure = treasure->NextSiblingElement(0x811B12AFu), ++i) {
+            uint32_t& spawner = block.spawners[group][i];
+            treasure->GetHash(0xB2E59948u, &spawner, spawner);   // "spawner"
+        }
+    }
+}
+
+// @func 0x00480E68 ParseHideoutMechanic
+void ParseHideoutMechanic(ape::xml::XmlDocument&, XmlElement* element, LevelParams::Mechanic& mechanic)
+{
+    constexpr uint32_t kElem_LevelSelect = 0x204AB160u;
+    constexpr uint32_t kElem_CharacterSelect = 0xF7B9C945u;
+    constexpr uint32_t kElem_StationBCAA = 0xBCAAEE0Fu;
+    constexpr uint32_t kElem_Station = 0xBA3BD856u;
+    constexpr uint32_t kElem_Station9AF3 = 0x9AF323B5u;
+    constexpr uint32_t kElem_CostumeSelect = 0x9A62C465u;
+    constexpr uint32_t kElem_Treasures = 0x8FFEC609u;
+    constexpr uint32_t kSly = 0x00014120u;       // "Sly"
+    constexpr uint32_t kBentley = 0x1D8C2817u;   // "Bentley"
+
+    LevelParams::HideoutMechanic& out = mechanic.hideout;
+    element->GetFloat(0x52265A94u, &out.field_00, 0.0f);
+    element->GetHash(0x49E23F80u, &out.field_04, 0);
+    element->GetHash(0xC3905B44u, &out.field_08, 0);
+    element->GetHash(0x907E07E3u, &out.field_0C, 0);
+    out.stationCount = 0;
+
+    for (XmlElement* child = element->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        if (!child->IsValid())
+            continue;
+        switch (child->GetNameHash()) {
+        case kElem_LevelSelect: {
+            ReadView(child, out.levelSelect.view);
+            static constexpr uint32_t kAttrs[10] = {0x93248323u, 0x0E942BDAu, 0xDB81D879u, 0x85470B15u,
+                                                   0x03EC0451u, 0xD0D9B0F0u, 0x5EF64B3Eu, 0xC5A01613u,
+                                                   0x928DC2B2u, 0xD8D4CA3Cu};
+            for (int i = 0; i < 10; ++i)
+                child->GetHash(kAttrs[i], &out.levelSelect.field_10[i], 0);
+            break;
+        }
+        case kElem_CharacterSelect: {
+            ReadView(child, out.characterSelect.view);
+            static constexpr uint32_t kAttrs[6] = {0x7BB427C9u, 0x48A1D468u, 0x824DD4C6u,
+                                                  0x76CC881Fu, 0x43BA34BEu, 0xBC008CB0u};
+            for (int i = 0; i < 6; ++i)
+                child->GetHash(kAttrs[i], &out.characterSelect.field_10[i], 0);
+            break;
+        }
+        case kElem_StationBCAA: {
+            auto& s = out.stationBCAA;
+            ReadView(child, s.view);
+            child->GetHash(0x0D604D70u, &s.player1, kSly);       // "Player1"
+            child->GetHash(0x0D604D71u, &s.player2, kBentley);   // "Player2"
+            child->GetFloat(0x7546CE83u, &s.field_18, 0.0f);
+            child->GetFloat(0xB1073168u, &s.field_1C, 0.0f);
+            child->GetInt(0x480B47AEu, &s.field_20, 3);
+            break;
+        }
+        case kElem_Station:
+            ParseHideoutStation(child, out);
+            break;
+        case kElem_Station9AF3: {
+            auto& s = out.station9AF3;
+            ReadView(child, s.view);
+            child->GetHash(0x5E32A4A0u, &s.field_10, s.field_10);
+            child->GetHash(0x0F43FA2Bu, &s.field_1C, 0);
+            child->GetHash(0x10B312D6u, &s.field_20, 0);
+            child->GetHash(0xCCD3652Eu, &s.field_18, 0);
+            child->GetHash(0xD72DF2D3u, &s.field_14, 0);
+            break;
+        }
+        case kElem_CostumeSelect:
+            ParseCostumeStation(child, out);
+            break;
+        case kElem_Treasures:
+            ParseTreasureStation(child, out);
+            break;
+        default:
+            break;
+        }
+    }
+    element->GetHash(0x76522CB5u, &out.field_1520, 0);
+    element->GetHash(0x5449CB0Eu, &out.field_1524, 0);
+}
 
 // TODO(0x003F0990 ParseAlterEgoMechanic): the rest of the alter ego block
 // (outside this range).

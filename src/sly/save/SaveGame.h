@@ -46,6 +46,8 @@ int32_t LoadSettings(void* out);
 
 SaveFailReason GetLastSaveFailReason();
 bool IsSaveInProgress();           // drives the "saving" icon
+// The operation state (SaveResult; console global 0x00F9D1A8).
+int32_t SaveSystemState();
 bool HasSavedThisSession();
 const char* GetCurrentSaveFolder();
 

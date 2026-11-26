@@ -18,6 +18,10 @@ void AwardTrophy(int32_t trophyId);          // -1 is ignored
 void AwardTrophyByName(uint32_t awardName);  // unknown names are ignored
 
 int CountUnlockedTrophies();
+// Number of trophies. NOTE: the console asks the trophy manager for its
+// registered count (0x000B28F0, not ported); the award table has one slot
+// per trophy.
+int TrophyTotal();
 int TotalTrophyPoints();
 int EarnedTrophyPoints();
 

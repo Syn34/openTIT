@@ -26,6 +26,7 @@
 #include <vector>
 
 namespace ape::file { class File; }
+namespace ape { struct ApeLevelWorld; }
 namespace ape { struct GuiEvent; class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeAnimScript; class ApeGuiObject; }
 namespace agl { class AglRenderTarget; }
 
@@ -421,6 +422,34 @@ public:
     // point asked for, or the first job), and the "Audio.PostSaveDataLoadMusic"
     // track starts.
     void ResumeSavedGame();
+    // Notes in the save data where play would resume: inside a job its
+    // episode and the episode's hideout; otherwise the running job and the
+    // tracked goal too, unless this is the game's last goal (0x00475E20).
+    void RecordResumePoint();
+    // The running episode is the last active one, it has at most one job
+    // left, and the player's goals are all complete but at most one, which
+    // does not hold back the next scripts (0x00475C28).
+    bool OnFinalGoal() const;
+    // Autosave at the end of a job. After the game's last goal the episode
+    // is marked finished, its job complete, play resumes in its hideout and
+    // its end movies unlock (the third only with every trophy) (0x0048888C).
+    void AutoSaveAfterJob();
+    // Frees the level's parameters unless the level stays loaded (+0x1C
+    // bits 6-7) (0x0047E1D4).
+    void ReleaseLevelParams();
+    // Back to play from the pause menu: the "resume" message goes to its
+    // listeners, the minigame's slot 10 runs, the HUD comes back, the menu
+    // closes, the audio groups and binocucoms resume and rumble follows the
+    // vibration option again (0x0047DFC8).
+    void ResumeFromPause();
+    // Follows the audio rate ramp: every voice plays at its rate, and while
+    // it is slowed the music's low-pass cut-off fades down to
+    // "Audio.SlowTimeMusicLPFFrequency" (back up to 23999 Hz at normal
+    // speed) over "Audio.SlowTimeMusicLPFCrossfadeDuration" (0x00468A38).
+    void UpdateSlowTimeAudio(float dt);
+    // Walks the levels `level` includes, recursively. NOTE: nothing is done
+    // with them on the console (the work was compiled out) (0x0047C68C).
+    void VisitIncludedLevels(const ape::ApeLevelDef* level);
     // A player is down: meter B snaps and a running return-treasure
     // microgame loses the treasure if the player carried it.
     void OnPlayerDown(uint32_t player);
@@ -538,6 +567,15 @@ public:
     // empty, the deferred game events go to the job manager and play
     // resumes (0x0048B810).
     void UpdateCutsceneQueue(float dt);
+    // One step of the level world (only while it exists; a zero step counts
+    // as 1/60 s): file streaming, the HUD, callback list 0 (emptied before
+    // and after), the instance render lists, callback list 12 and the
+    // world's own update (0x0047C2B8).
+    void UpdateWorld(float dt);
+    // Drops every queued cutscene (a modal box over one is told it ended,
+    // the main view gets its near plane back) and clears the queue flags
+    // (0x0047E3CC).
+    void ClearCutsceneQueue();
     // Queues script `script` of library `library` as a cutscene (at most
     // four; only while "Game.CutSceneEnable" is set) with its variable
     // bindings and their source instance. `resume` (or a failing goal)
@@ -561,6 +599,11 @@ public:
     // Option menu pages: the labels and sliders of a page's "Menu" object
     // show the current settings (SlyGameOptionPages.cpp).
     void RefreshControlsPage(ape::ApeGuiObject* screen);
+    // The movies page: labels "Move01".."Move08" under "Moves" show the
+    // movies of the current page ("$STR_UNKNOWN" for a locked one); the
+    // front end's extras (and menu 0x0E) list the cinematics, the pause menu
+    // the other group (0x0046E438).
+    void RefreshMoviesPage(ape::ApeGuiObject* screen);
     void RefreshAudioPage(ape::ApeGuiObject* screen);
     void RefreshDisplayPage(ape::ApeGuiObject* screen);
     // Accept on the controls page: the camera X/Y inversion or vibration
@@ -638,7 +681,8 @@ public:
     uint32_t field_1281A4 = 0;                  // +0x1281A4
     ape::Vec3 hudCameraPos = {0.0f, 0.0f, 0.0f, 0.0f}; // +0x1281B0 UI.3D.CameraPos
     ape::ApeLevelDef* levelDef = nullptr;       // +0x1281C0 the running level
-    uint32_t field_1281C4[4] = {};              // +0x1281C4
+    ape::ApeLevelWorld* levelWorld = nullptr;   // +0x1281C4 the level's scene and cameras
+    uint32_t field_1281C8[3] = {};              // +0x1281C8
     entity::GameCamera* camera = nullptr;       // +0x1281E0 the game camera
     uint32_t splitViewOwners[kSplitViews] = {}; // +0x1281E4
     gameplay::Minigame* minigame = nullptr;     // +0x1281F4 the level's game mode
@@ -703,7 +747,8 @@ public:
     uint8_t movesCategory = 0;                  // +0x1285C5 moves page: category (0..3)
     uint8_t movesPage = 0;                      // +0x1285C6 moves page: page of five moves
     uint8_t field_1285C7 = 0;                   // +0x1285C7
-    uint8_t field_1285C8[2] = {};               // +0x1285C8
+    uint8_t moviesPage = 0;                     // +0x1285C8 movies page: page of eight movies
+    uint8_t field_1285C9 = 0;                   // +0x1285C9
     uint32_t field_1285CC[6] = {};              // +0x1285CC
     void* field_1285E4 = nullptr;               // +0x1285E4
     uint32_t field_1285EC = 0;                  // +0x1285EC
