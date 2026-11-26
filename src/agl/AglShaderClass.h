@@ -237,6 +237,8 @@ void SetViewEyePosition(const float position[3]);
 // Uploads the 2x4 texture coordinate transform of a material animation
 // (or a plain scale when there is none) to vertex constant register 'reg'.
 void UploadUVTransform(AglMaterialAnim* anim, uint32_t reg, float scaleU, float scaleV);
+// Vertex constant `reg` = the animation's quantised UV offset (0 without one).
+void UploadUVOffset(const AglMaterialAnim* anim, uint32_t reg);
 // UV transform rows for 'anim' scaled by (scaleU, scaleV).
 const float* BuildUVTransform(AglMaterialAnim* anim, float scaleU, float scaleV);
 

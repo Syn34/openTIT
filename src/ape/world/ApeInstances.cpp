@@ -534,13 +534,13 @@ void ApeGeomInstance::SetBoundingRadius(float radius)
     OnBoundsChanged();
 }
 
-namespace {
-// TODO(0x00584160 DumpSkeleton) debug dump of a posed skeleton (its output
-// was compiled out).
-void DumpSkeleton(ApeSkeleton* /*skeleton*/, int /*depth*/)
+// @func 0x005842E4 ApeRenderObj::VirtualSlot15
+void ApeRenderObj::VirtualSlot15(int count, int arg)
 {
+    ApeObj::VirtualSlot15(count, arg | 1);
+    if (count > 0 && GetSkeleton())
+        DumpSkeleton(GetSkeleton(), count - 1);
 }
-} // namespace
 
 // @func 0x005A0BCC ApeGeomInstance::VirtualSlot15
 void ApeGeomInstance::VirtualSlot15(int count, int arg)

@@ -126,29 +126,57 @@ class AglShaderClass;
 // rotation, each a channel whose value either advances on its own or is set
 // by game code (the HUD meters drive their fill this way).
 struct AglMaterialAnim {
+    // One animated value (U offset, V offset or rotation in turns).
     struct Channel {                       // 0x30 bytes
-        float speed = 0.0f;                // +0x00 NOTE: cleared before a channel is driven by hand
+        float speed = 0.0f;                // +0x00 units per second (period length for the sine)
         float step = 0.0f;                 // +0x04 value is quantised to 1/step when non-zero
-        uint8_t field_08[0x18] = {};
-        uint32_t flags = 0;                // +0x20 bits 20-27: mode (2: driven by game code). NOTE: other modes not decoded
+        float range = 0.0f;                // +0x08 wrap length / ping-pong range / sine amplitude
+        float waitMin = 0.0f;              // +0x0C random pause between bursts
+        float waitMax = 0.0f;              // +0x10
+        float activeTime = 0.0f;           // +0x14 length of a burst (0: always moving)
+        float pivot[2] = {};               // +0x18 rotation centre (rotation channel)
+        uint32_t flags = 0;                // +0x20 bits 12-19: phase, 20-27: motion, 28: sine
         float value = 0.0f;                // +0x24 current offset (turns for the rotation)
-        uint8_t field_28[8] = {};
+        float timer = 0.0f;                // +0x28 time left in the current phase
+        float sineTime = 0.0f;             // +0x2C
+        static constexpr uint32_t kPhaseShift = 12;
+        static constexpr uint32_t kPhaseMask = 0xFFu << kPhaseShift;
         static constexpr uint32_t kModeShift = 20;
         static constexpr uint32_t kModeMask = 0xFFu << kModeShift;
-        static constexpr uint32_t kMode_Manual = 2;
+        static constexpr uint32_t kFlag_Sine = 1u << 28;
+        // Motion modes.
+        static constexpr uint32_t kMode_Wrap = 0;       // value runs through [0, range) and wraps
+        static constexpr uint32_t kMode_PingPong = 1;   // bounces between 0 and range (or a sine)
+        static constexpr uint32_t kMode_Manual = 2;     // set by game code
+        static constexpr uint32_t kMode_Off = 3;
+        // Phases.
+        static constexpr int kPhase_Waiting = 0;        // paused for a random time
+        static constexpr int kPhase_Active = 1;         // moving (for activeTime when set)
+        static constexpr int kPhase_Stopped = 2;
+        uint32_t Mode() const { return (flags & kModeMask) >> kModeShift; }
+        uint32_t Phase() const { return (flags & kPhaseMask) >> kPhaseShift; }
         // Stops the channel's own motion; game code sets `value` from now on.
         void SetManual()
         {
             speed = 0.0f;
             flags = (flags & ~kModeMask) | (kMode_Manual << kModeShift);
         }
+        // Enters a phase: waiting picks a random pause in [waitMin, waitMax].
+        void SetPhase(int phase);
+        // Advances the channel by `dt` seconds.
+        void Advance(float dt);
     };
-    uint8_t field_00[4] = {};
-    uint8_t wrapU = 0;                     // +0x04 NOTE: U follows the fractional part of V when set
+    uint32_t frameStamp = 0;               // +0x00 render frame of the last update
+    uint8_t wrapU = 0;                     // +0x04 U follows the fractional part of V (flip books)
     uint8_t field_05[3] = {};
     Channel u;                             // +0x08
     Channel v;                             // +0x38
     Channel rotation;                      // +0x68
+
+    // Advances the three channels once per rendered frame.
+    void Update();
+    // The quantised U and V offsets.
+    void GetOffset(float out[2]) const;
 };
 static_assert(sizeof(AglMaterialAnim) == 0x98, "AglMaterialAnim is 0x98 bytes");
 

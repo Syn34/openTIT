@@ -403,8 +403,10 @@ public:
     // current target); none by default.
     // @func 0x007374C8 Entity::GetTrackedTarget
     virtual Entity* GetTrackedTarget() { return nullptr; }
+    // Slot 70 (+0x118): one of the entity's physics bodies by name hash
+    // (the vehicles answer for their body); none by default.
     // @func 0x007374D0 Entity::Slot70
-    virtual int Slot70() { return 0; }
+    virtual void* Slot70(uint32_t nameHash) { (void)nameHash; return nullptr; }
     // Slot 71 (+0x11C): centre of mass (the position by default).
     // @func 0x00743754 Entity::GetAimPoint
     virtual ape::Vec3 GetAimPoint() { return transform.translation; }

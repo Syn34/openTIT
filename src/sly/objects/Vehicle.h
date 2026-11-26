@@ -49,7 +49,7 @@ public:
     enum VehicleFlags : uint32_t {
         kVehicle_Flag20000000 = 0x20000000u,   // NOTE: set by the constructor, meaning unknown
         kVehicle_FlashPending = 0x40000000u,   // play the hit reaction on the next update
-        kVehicle_Flag80000000 = 0x80000000u,   // NOTE: set by the constructor, meaning unknown
+        kVehicle_Enabled = 0x80000000u,        // input and physics run (NOTE: name from how the kinds use it)
     };
 
     // 0x00228AC0
@@ -70,17 +70,21 @@ public:
     void OnHitCategory4(entity::EntityHitRecord& hit) override;
     bool Damage(float amount, entity::Entity* source, uint32_t type) override;   // slot 88
     float ProjectileDamageScale() const override;                       // slot 89
-    // Slots 94-99 (NOTE: meanings unknown; the vehicle kinds override some).
-    // Slot 94: the local position of the world object.
-    virtual ape::Vec3 Slot94();
-    // Slot 95: zero.
-    virtual ape::Vec3 Slot95();
-    virtual void Slot96();
-    virtual void Slot97();
-    // Slot 98: zero.
-    virtual float Slot98();
-    // Slot 99: sets or clears kVehicle_Flag80000000.
-    virtual void SetFlag80000000(bool on);
+    // Slots 94-99: the physics body interface the vehicle kinds implement
+    // (names from the kinds' overrides).
+    // Slot 94: centre of mass; the local position of the world object here.
+    virtual ape::Vec3 GetCenterOfMass();
+    // Slot 95: angular velocity (zero here).
+    virtual ape::Vec3 GetAngularVelocity();
+    // Slot 96: sets the angular velocity (nothing here).
+    virtual void SetAngularVelocity(const ape::Vec3& velocity);
+    // Slot 97: applies an impulse at a world point (nothing here).
+    virtual void ApplyPointImpulse(const ape::Vec3& impulse, const ape::Vec3& point);
+    // Slot 98: mass of the body (zero here).
+    virtual float GetMass();
+    // Slot 99: sets or clears kVehicle_Enabled (the kinds also stop the
+    // body when the state changes).
+    virtual void SetEnabled(bool on);
     // Slot 100 (+0x190): the destruction starts.
     virtual void OnDestroyed();
     // Slot 101 (+0x194): reaction to a hit that did not destroy the vehicle.
