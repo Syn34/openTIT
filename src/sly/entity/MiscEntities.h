@@ -17,6 +17,9 @@ namespace entity {
 class RigidEntityB19198 : public RigidBodyEntity {
 public:
     ~RigidEntityB19198() override;
+    // Slot 10: with `kill` the two linked entities are let go and the body
+    // leaves the world with its constraints.
+    bool Release(bool kill) override;
     // Slots 25/26: collision group of the body (kept in `groupBits` while
     // the body is out of the world).
     uint32_t GetRenderId() override;
@@ -46,6 +49,8 @@ public:
     // Primary slot 98 / +0x180 slot 6.
     void Interface180Slot6(void* body) override;
 
+    Entity* linkedA = nullptr;   // +0x188 NOTE: entities held by the object (roles unknown)
+    Entity* linkedB = nullptr;   // +0x18C
     uint32_t groupBits = 0;   // +0x190 bits 0-23: collision group
 };
 

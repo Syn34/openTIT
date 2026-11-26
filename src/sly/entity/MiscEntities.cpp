@@ -11,6 +11,26 @@
 namespace sly {
 namespace entity {
 
+// @func 0x00204B74 RigidEntityB19198::Release
+bool RigidEntityB19198::Release(bool kill)
+{
+    if (kill) {
+        if (linkedB)
+            linkedB->Release(false);
+        linkedB = nullptr;
+        if (linkedA)
+            linkedA->Release(false);
+        linkedA = nullptr;
+        if (RigidBodyInWorld(rigidBody))
+            RigidBodyRemoveFromWorld(rigidBody);
+        for (int i = 0; i < RigidBodyConstraintCount(rigidBody); ++i)
+            HavokRelease(RigidBodyConstraint(rigidBody, i));
+        RigidBodyClearUserProperties(rigidBody);
+        HavokRelease(rigidBody);
+    }
+    return ScriptedEntity::Release(kill);
+}
+
 // @func 0x00208AE8 RigidEntityB19198::CanInteractWith
 bool RigidEntityB19198::CanInteractWith(Entity* other, int kind, float* priority)
 {
