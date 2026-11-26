@@ -15,8 +15,8 @@ void MKAddTargetMarker(entity::Entity*, entity::Entity*, const ape::Vec3&) {}
 void MKRemoveTargetMarker(entity::Entity*, entity::Entity*) {}
 ape::ApeRefCounted* MKEntityScriptObject(entity::Entity*) { return nullptr; }
 void MKCameraControllerSet(void*, const void*, float) {}
-void MKPlatformReset(void*, bool) {}
-ape::Vec3 MKPlatformPosition(const void*) { return {0.0f, 0.0f, 0.0f, 0.0f}; }
+ape::world::ApeObj* MKGeometryObject(uint32_t) { return nullptr; }
+ape::ApeRefCounted* MKObjectScriptRef(ape::world::ApeObj*) { return nullptr; }
 
 } // namespace gameplay
 } // namespace sly
@@ -34,7 +34,6 @@ namespace sly {
 namespace gameplay {
 void MKDeleteCameraController(void*) {}
 void MKDeleteStampManager(void*) {}
-void MKDeletePlatform(void*) {}
 void MKClearPlayerTargetingFlag(entity::Entity*) {}
 void MKClearCharacterHooks(entity::Entity*) {}
 void MKStopListening(entity::Entity*) {}

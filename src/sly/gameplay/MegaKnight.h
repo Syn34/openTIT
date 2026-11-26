@@ -23,6 +23,7 @@
 #include <cstdint>
 
 namespace ape { class ApeAnimScriptInstance; }
+namespace ape::world { class ApeObj; }
 namespace sly { class Spawner; }
 
 namespace sly {
@@ -61,6 +62,33 @@ struct MegaKnightObjectPair {
 
 private:
     void Apply(int index, bool on);
+};
+
+// The platform object of the fight (0x70 bytes, boss +0x368): a geometry
+// object with two anim scripts.
+struct MegaKnightPlatform {
+    // 0x00303D38: takes (or instantiates) geometry 0x6F3D51EA and starts the
+    // scripts.
+    explicit MegaKnightPlatform(MegaKnight* owner);
+    ~MegaKnightPlatform();
+    // 0x00308F5C: stops the scripts and switches the boss's platform script
+    // state; `full` also shows the object and resets the motion values.
+    void Reset(bool full);
+
+    ape::world::ApeObj* object = nullptr;            // +0x00
+    MegaKnight* boss = nullptr;                      // +0x04
+    ape::Vec3 field_10{};                            // +0x10
+    ape::Vec3 position{};                            // +0x20 (starts at console global 0x01164B30)
+    ape::Vec3 field_30{};                            // +0x30
+    float field_40 = 0.0f;                           // +0x40
+    float height = 1.0f;                             // +0x44 height of the object's world box
+    float field_48 = 0.0f;                           // +0x48
+    float field_4C = 0.0f;                           // +0x4C
+    ape::Vec3 up{0.0f, 1.0f, 0.0f, 0.0f};            // +0x50
+    ape::ApeAnimScriptInstance* scriptB = nullptr;   // +0x60 script 0x048D2280
+    ape::ApeAnimScriptInstance* scriptA = nullptr;   // +0x64 script 0x454F68A7
+    bool field_68 = false;                           // +0x68
+    bool field_69 = false;                           // +0x69
 };
 
 // Tracking block at +0x1B0 (built by 0x00768298, outside this module): the
@@ -157,7 +185,7 @@ public:
     MegaKnightObjectPair pair338;                      // 0x338
     entity::Entity* heartTarget = nullptr;             // 0x344 NOTE: name from the marker offset it gets
     ape::ApeTArray<void*> field_350;                   // 0x350 (capacity 32)
-    void* platform = nullptr;                          // 0x368 (0x70 bytes; not ported)
+    MegaKnightPlatform* platform = nullptr;            // 0x368
     ape::ApeTArray<entity::Entity*> spawned;           // 0x36C entities the boss spawned (capacity 64)
     entity::Entity* armObject = nullptr;               // 0x380
     ape::ApeTArray<entity::Entity*> retiredArmObjects; // 0x384 (capacity 8)

@@ -271,7 +271,7 @@ void MKPhaseLaser::OnExit(uint32_t next)
 {
     (void)next;
     duration = g_megaKnightLaserDefaultDuration.Get();
-    MKPlatformReset(boss->platform, false);
+    boss->platform->Reset(false);
 }
 
 // @func 0x00313268 MKPhaseLaser::OnEventA
@@ -281,7 +281,7 @@ void MKPhaseLaser::OnEventA() { interrupted = true; }
 // The boss looks at the platform.
 void MKPhaseLaser::UpdateFocus()
 {
-    const ape::Vec3 p = MKPlatformPosition(boss->platform);
+    const ape::Vec3& p = boss->platform->position;
     boss->focus.x = p.x;
     boss->focus.y = p.y;
     boss->focus.z = p.z;
@@ -322,7 +322,7 @@ void MKPhaseLaserQuick::OnEnter()
 void MKPhaseLaserQuick::OnExit(uint32_t next)
 {
     (void)next;
-    MKPlatformReset(boss->platform, false);
+    boss->platform->Reset(false);
 }
 
 // @func 0x003141F4 MKPhaseLaserQuick::OnEventA
@@ -331,7 +331,7 @@ void MKPhaseLaserQuick::OnEventA() { interrupted = true; }
 // @func 0x00314200 MKPhaseLaserQuick::UpdateFocus
 void MKPhaseLaserQuick::UpdateFocus()
 {
-    const ape::Vec3 p = MKPlatformPosition(boss->platform);
+    const ape::Vec3& p = boss->platform->position;
     boss->focus.x = p.x;
     boss->focus.y = p.y;
     boss->focus.z = p.z;
@@ -523,7 +523,7 @@ void MKPhaseShootPlatform::OnEnter()
     anims[1] = 0x67DC7D75u;
     anims[2] = 0x7883E3B1u;
     boss->PlayAnim(anims[0], g_megaKnightStateValuesShootPlatformStartupSpeed.Get(), false);
-    MKPlatformReset(boss->platform, false);
+    boss->platform->Reset(false);
     SetState(0, 1);
 }
 
@@ -531,7 +531,7 @@ void MKPhaseShootPlatform::OnEnter()
 void MKPhaseShootPlatform::OnExit(uint32_t next)
 {
     (void)next;
-    MKPlatformReset(boss->platform, false);
+    boss->platform->Reset(false);
 }
 
 // @func 0x00316548 MKPhaseShootPlatform::OnEventA
@@ -547,7 +547,7 @@ void MKPhaseShootPlatform::OnEventC() {}
 // @func 0x00316524 MKPhaseShootPlatform::UpdateFocus
 void MKPhaseShootPlatform::UpdateFocus()
 {
-    const ape::Vec3 p = MKPlatformPosition(boss->platform);
+    const ape::Vec3& p = boss->platform->position;
     boss->focus.x = p.x;
     boss->focus.y = p.y;
     boss->focus.z = p.z;
@@ -593,7 +593,7 @@ void MKPhaseRopeAttached::OnEnter()
 void MKPhaseRopeAttached::OnExit(uint32_t next)
 {
     (void)next;
-    MKPlatformReset(boss->platform, false);
+    boss->platform->Reset(false);
     boss->ResetRopes();
     for (entity::Entity* rope : boss->ropes)
         if (rope)

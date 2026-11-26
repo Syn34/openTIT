@@ -2,6 +2,10 @@
 #include "sly/gameplay/MegaKnight.h"
 
 #include "ape/anim/ApeAnimScript.h"
+#include "ape/anim/ApeAnimScriptVars.h"
+#include "ape/math/ApeBounds.h"
+#include "ape/world/ApeObj.h"
+#include "ape/world/ApeRegions.h"
 #include "sly/game/SpawnManager.h"
 #include "sly/gameplay/GameplayWorld.h"
 #include "sly/gameplay/MegaKnightHooks.h"
@@ -48,6 +52,107 @@ void MegaKnightObjectPair::Show(bool on, bool first)
     Apply(first ? 0 : 1, true);
 }
 
+
+// ===========================================================================
+// Platform
+
+namespace {
+constexpr uint32_t kGeom_Platform = 0x6F3D51EAu;
+constexpr uint32_t kScript_PlatformA = 0x454F68A7u;
+constexpr uint32_t kScript_PlatformB = 0x048D2280u;
+constexpr uint32_t kScriptVar_Object = 0x0027469Eu;
+constexpr uint32_t kScriptState_Spawn = 0x04B6FB5Bu;     // "Spawn"
+constexpr uint32_t kScriptState_PlatformOff = 0x4A5CA6A4u;
+// States of the boss's platform script (+0x3AC).
+constexpr uint32_t kBossPlatform_Idle = 0x0590D9BBu;
+constexpr uint32_t kBossPlatform_Full = 0xD6E3A3F3u;
+
+// A script instance bound to `object` through the object variable 0x0027469E.
+ape::ApeAnimScriptInstance* StartObjectScript(uint32_t scriptName, ape::world::ApeObj* object)
+{
+    ape::ApeAnimScript* found = ape::ApeAnimScriptLibrary::FindScriptAnywhere(scriptName, 0, true);
+    if (!found)
+        return nullptr;
+    // NOTE: the console also clears bit 9 of the instance's flag word.
+    auto* instance = new ape::ApeAnimScriptInstance(found);
+    if (ape::ApeAnimScriptVar* var = instance->FindVar(kScriptVar_Object)) {
+        if (var->GetType() == ape::AnimScriptVarType::Object)
+            static_cast<ape::ApeAnimScriptObjectVar*>(var)->SetObject(MKObjectScriptRef(object));
+    }
+    instance->SetStateAndUpdate(kScriptState_Spawn);
+    return instance;
+}
+
+void SetScriptStateOnce(ape::ApeAnimScriptInstance* instance, uint32_t state)
+{
+    if (!instance)
+        return;
+    const uint32_t current = instance->GetState() ? instance->GetState()->GetNameHash() : 0;
+    if (current != state)
+        instance->SetStateAndUpdate(state);
+}
+} // namespace
+
+// @func 0x00303D38 MegaKnightPlatform::MegaKnightPlatform
+MegaKnightPlatform::MegaKnightPlatform(MegaKnight* owner)
+    : boss(owner)
+{
+    const ape::Vec3 one = {1.0f, 1.0f, 1.0f, 0.0f};   // console global 0x01164B30, NOTE: assumed (1,1,1)
+    position = one;
+    field_30 = one;
+    object = MKGeometryObject(kGeom_Platform);
+    if (object) {
+        object->SetVisible(true, true);
+        ape::Aabb box;
+        box.min = {3.4028235e38f, 3.4028235e38f, 3.4028235e38f, 0.0f};
+        box.max = {-3.4028235e38f, -3.4028235e38f, -3.4028235e38f, 0.0f};
+        ape::world::GetObjectWorldBounds(*object, box);
+        height = std::fabs(box.min.y) + std::fabs(box.max.y);
+        if (height <= 0.0f)
+            height = 1.0f;
+    }
+    scriptA = StartObjectScript(kScript_PlatformA, object);
+    scriptB = StartObjectScript(kScript_PlatformB, object);
+}
+
+MegaKnightPlatform::~MegaKnightPlatform()
+{
+    if (object) {
+        object->Release();
+        object = nullptr;
+    }
+    delete scriptB;
+    scriptB = nullptr;
+    delete scriptA;
+    scriptA = nullptr;
+}
+
+// @func 0x00308F5C MegaKnightPlatform::Reset
+void MegaKnightPlatform::Reset(bool full)
+{
+    field_40 = 0.0f;
+    if (scriptB)
+        scriptB->SetStateAndUpdate(kScriptState_PlatformOff);
+    if (scriptA)
+        scriptA->SetStateAndUpdate(kScriptState_PlatformOff);
+    SetScriptStateOnce(boss->script3AC, full ? kBossPlatform_Full : kBossPlatform_Idle);
+    if (full) {
+        field_68 = false;
+        up = {0.0f, 1.0f, 0.0f, 0.0f};   // console global 0x01164B60
+        field_4C = 0.0f;
+    }
+    if (object) {
+        object->SetVisible(full, true);
+        if (!full) {
+            if (scriptB)
+                scriptB->SetStateAndUpdate(kScriptState_PlatformOff);
+            if (scriptA)
+                scriptA->SetStateAndUpdate(kScriptState_PlatformOff);
+        }
+    }
+    field_69 = false;
+}
+
 // ===========================================================================
 // The boss
 
@@ -77,10 +182,8 @@ bool MegaKnight::Release(bool kill)
             MKDeleteStampManager(stampManager);
             stampManager = nullptr;
         }
-        if (platform) {
-            MKDeletePlatform(platform);
-            platform = nullptr;
-        }
+        delete platform;
+        platform = nullptr;
         for (uint32_t i = 0; i < spawned.Count(); ++i) {
             entity::Entity* e = spawned[i];
             e->Release(false);

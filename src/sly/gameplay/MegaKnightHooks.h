@@ -8,6 +8,7 @@
 #include <cstdint>
 
 namespace ape { class ApeRefCounted; }
+namespace ape::world { class ApeObj; }
 
 namespace sly {
 namespace entity { class Entity; }
@@ -38,10 +39,12 @@ void MKRemoveTargetMarker(entity::Entity* player, entity::Entity* target);
 ape::ApeRefCounted* MKEntityScriptObject(entity::Entity* entity);
 // Camera controller (boss +0x290, 0x003055E8): blends to a camera record.
 void MKCameraControllerSet(void* controller, const void* cameraDef, float ease);
-// Platform object (boss +0x368, 0x00308F5C): reset, optionally `full`.
-void MKPlatformReset(void* platform, bool full);
-// Position of the platform object (+0x20).
-ape::Vec3 MKPlatformPosition(const void* platform);
+// The geometry the platform shows: the placed instance of that name (made
+// visible and asked for its type-7 object, virtual slot 14), else a new
+// instance of the geometry definition (0x005A05E8).
+ape::world::ApeObj* MKGeometryObject(uint32_t geomName);
+// Reference-counted view of a world object for script object variables.
+ape::ApeRefCounted* MKObjectScriptRef(ape::world::ApeObj* object);
 
 } // namespace gameplay
 } // namespace sly
@@ -64,10 +67,9 @@ namespace sly {
 namespace gameplay {
 // Release of the boss's helper objects (camera controller +0x290: camera
 // mode handed back to the game camera; stamp manager +0x294 0x0030B4AC;
-// platform +0x368 with its two scripts).
+// the platform is deleted by the boss itself).
 void MKDeleteCameraController(void* controller);
 void MKDeleteStampManager(void* stampManager);
-void MKDeletePlatform(void* platform);
 // Player targeting gadget byte +0x922 bit 3 (cleared when the boss goes).
 void MKClearPlayerTargetingFlag(entity::Entity* player);
 // Character component +0x24 -> words +0x34/+0x38 cleared on release.
