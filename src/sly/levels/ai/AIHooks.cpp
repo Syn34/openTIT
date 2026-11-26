@@ -54,6 +54,7 @@ void* EntityRigidBody(Entity*) { return nullptr; }
 void* FindSpawnerByName(uint32_t) { return nullptr; }
 bool CrittersMayNotCharge() { return false; }
 ape::world::ApeObj* SpawnerAltObject(const Entity*) { return nullptr; }
+ape::Vec3 SpawnerSpawnPosition(const Entity*) { return {0.0f, 0.0f, 0.0f, 0.0f}; }
 float CharacterClipProgress(EntityComponent*) { return 0.0f; }
 ape::Vec3 EntityObjectScale(const Entity*) { return {1.0f, 1.0f, 1.0f, 0.0f}; }
 // TODO(physics ray cast: hkpWorld::castRay 0x0092E510 with an all-hits

@@ -227,6 +227,9 @@ bool SpawnerIsSpawnField(const Entity* entity);
 // The spawner's alternative spawn object itself (0x00451E08), or null.
 ape::world::ApeObj* SpawnerAltObject(const Entity* entity);
 bool HasSpawner(const Entity* entity);
+// Where the entity's spawner places its spawns (translation of the spawn
+// transform, 0x00452024 +0x30).
+ape::Vec3 SpawnerSpawnPosition(const Entity* entity);
 // The spawner that created an entity (entity +0xDC), opaque here, and its
 // list of live spawned objects (spawner +0x14/+0x18).
 struct SpawnerRef;

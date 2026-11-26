@@ -169,10 +169,56 @@ bool CritterAI::GroundProbe(const ape::Vec3& top, const ape::Vec3& bottom, ape::
     return true;
 }
 
-// TODO(0x0001E420 CritterAI::FleePoint)
-ape::Vec3 CritterAI::FleePoint(const ape::Vec3& away)
+// @func 0x0001E420 CritterAI::FleePoint
+// `toThreat` points from the critter to what it flees from. The point lies
+// StopFleeingPlayerDist the other way (level unless the critter flies);
+// a point that leaves the critter's area (or, with navigation, a nav mesh
+// point too close to the threat) is replaced by a random wander point.
+ape::Vec3 CritterAI::FleePoint(const ape::Vec3& toThreat)
 {
-    return {transform.translation.x - away.x, transform.translation.y, transform.translation.z - away.z, 0.0f};
+    const ape::Vec3& position = transform.translation;
+    ape::Vec3 away = {-toThreat.x, -toThreat.y, -toThreat.z, 0.0f};
+    if (!(flags1 & kF1_FreeFacing))
+        away.y = 0.0f;
+    const float inv = 1.0f / std::sqrt(away.y * away.y + away.x * away.x + away.z * away.z);
+    const float distance = PropFloat(settings, AIProp::Critter_StopFleeingPlayerDist);
+    ape::Vec3 point = {away.x * inv * distance + position.x, away.y * inv * distance + position.y,
+                       away.z * inv * distance + position.z, 0.0f};
+
+    if (PropBool(settings, AIProp::Critter_UseNavigation)) {
+        const ape::Vec3 onMesh = NavSnapPoint(point);
+        const ape::Vec3 threat = {position.x + toThreat.x, position.y + toThreat.y, position.z + toThreat.z, 0.0f};
+        const float keep = PropFloat(settings, AIProp::Critter_FleePlayerDist) + 0.4f;
+        if (DistanceSq(onMesh, threat) < keep * keep)
+            return RandomWanderPoint();
+        return onMesh;
+    }
+
+    if (!HasSpawner(entity))
+        return point;
+    ape::world::ApeObj* area = SpawnerAltObject(entity);
+    if (area && !PropBool(settings, AIProp::Critter_AlwaysUseBoundingRadius)) {
+        // NOTE: the console takes the point through the area's world matrix
+        // (not its inverse) before testing it against the area's box.
+        const ape::Matrix34& w = area->GetWorld();
+        const ape::Vec3 inArea = {point.x * w.xAxis.x + point.y * w.yAxis.x + point.z * w.zAxis.x + w.translation.x,
+                                  point.x * w.xAxis.y + point.y * w.yAxis.y + point.z * w.zAxis.y + w.translation.y,
+                                  point.x * w.xAxis.z + point.y * w.yAxis.z + point.z * w.zAxis.z + w.translation.z,
+                                  0.0f};
+        if (!ape::AabbContainsPoint(area->GetDef()->GetBounds(), inArea))
+            return RandomWanderPoint();
+        return point;
+    }
+    // Within the bounding radius of the spawn point (horizontally unless
+    // the critter flies).
+    const ape::Vec3 home = SpawnerSpawnPosition(entity);
+    const float dx = home.x - point.x;
+    const float dy = (flags1 & kF1_FreeFacing) ? home.y - point.y : 0.0f;
+    const float dz = home.z - point.z;
+    const float radius = PropFloat(settings, AIProp::Critter_BoundingRadius);
+    if (dx * dx + dy * dy + dz * dz > radius * radius)
+        return RandomWanderPoint();
+    return point;
 }
 
 // @func 0x0001DE74 CritterAI::TickEntity
