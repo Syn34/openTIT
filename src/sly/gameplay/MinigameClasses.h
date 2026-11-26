@@ -106,7 +106,7 @@ class MinigameB206A8 : public Minigame {
 public:
     ~MinigameB206A8() override;
     // Slot 17: true unless the byte at +0x917 is set.
-    bool Slot17() override;
+    bool AllowsPause(bool forPrompt) override;
     uint8_t field_917 = 0;             // +0x917
     ape::ApeTArray<void*> field_924;   // +0x924
 };

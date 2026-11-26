@@ -48,8 +48,9 @@ public:
 };
 
 // Element of definition type bit 0x20000 (vtable 0x00B1FA48, 0x1B0 bytes),
-// built inline by the element factory. NOTE: looked up by the AR server's
-// target view, hence the name; its own fields are only initialised here.
+// built inline by the element factory. The game world's yes/no prompt
+// (SlyGame::ShowPrompt) fills the answer callbacks. NOTE: also looked up
+// by the AR server's target view, hence the name.
 class HudArElement : public HudElement {
 public:
     explicit HudArElement(HudObjectDef* def) : HudElement(def) { typeFlags |= kHud_Type20000; }
@@ -59,8 +60,13 @@ public:
     // Slot 3 (0x00389C3C): the common element's reset.
     void Refresh() override;
 
-    uint32_t field_190[5] = {};   // +0x190
-    bool field_1A4 = true;        // +0x1A4
+    using AnswerCallback = void (*)(void* user);
+    AnswerCallback onYes = nullptr;   // +0x190
+    AnswerCallback onNo = nullptr;    // +0x194
+    void* yesUser = nullptr;          // +0x198
+    void* noUser = nullptr;           // +0x19C
+    entity::Entity* player = nullptr; // +0x1A0 the player the prompt is for
+    bool field_1A4 = true;        // +0x1A4 NOTE: prompt options, meaning unknown
     bool field_1A5 = true;        // +0x1A5
 };
 

@@ -1,6 +1,7 @@
 // openTIT - Job manager construction and the episode list loader
 // (0x002DB968-0x002DDD24).
 #include "sly/game/goals/JobManager.h"
+#include "sly/game/SlyGame.h"
 
 #include "ape/file/ApeFile.h"
 #include "sly/game/FileStreaming.h"
@@ -408,7 +409,11 @@ void JobManager::ReloadJobScripts()
 // TODO(0x00465F30 / 0x004674C4): the players block and the level request
 // live in the game world.
 Goal* PlayerFindGoal(uint32_t) { return nullptr; }
-void GameWorldRequestLevel(uint32_t) {}
+void GameWorldRequestLevel(uint32_t level)
+{
+    if (g_game)
+        g_game->RequestLevel(level, false);
+}
 
 // @func 0x002DDDCC JobManager::OnLevelStart
 void JobManager::OnLevelStart()
