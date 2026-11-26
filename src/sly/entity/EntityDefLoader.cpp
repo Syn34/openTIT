@@ -141,7 +141,7 @@ const DefClass kDefClasses[] = {
     {0xF004220Bu, nullptr},                              // 0x0001BFE0
     {0x03D1DEA1u, CreateChainDef},                       // "Chain"
     {0x0353CB09u, nullptr},                              // "Character" 0x0011E2B8
-    {0x0026B78Du, nullptr},                              // 0x001E6B18
+    {0x0026B78Du, CreateSafeDef},
     {0x002678F2u, nullptr},                              // 0x001BB6C4
     {0x109C1EFAu, CreateProjectileBDef},
     {0x0E5B671Du, nullptr},                              // 0x00203BE4

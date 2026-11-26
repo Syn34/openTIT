@@ -184,11 +184,22 @@ public:
 // around 0x001E5398 plays "SafeA_*" animations).
 class SafeDef : public ActorDef {
 public:
+    explicit SafeDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~SafeDef() override;
-    // Placement defaults. NOTE: the definition parser is not ported.
+    // NOTE: the meanings are not known; each field gives its attribute hash
+    // in SafeDefDesc (ActorDefLoaders.cpp).
+    uint32_t hashes130[10] = {};    // 0x130..0x154
+    float field_158 = 0.0f;         // 0x158
+    ape::Vec3 field_160{};          // 0x160
+    float floats170[7] = {55.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};   // 0x170..0x188
+    uint32_t hashes18C[9] = {};     // 0x18C..0x1AC
+    // Placement defaults.
     uint32_t field_1B0 = 0;         // 0x1B0
     float field_1C0[3] = {};        // 0x1C0
     uint32_t field_1D0 = 0;         // 0x1D0
+    uint32_t field_1D4 = 0;         // 0x1D4
+    uint32_t field_1D8 = 0;         // 0x1D8
+    float field_1DC = 4.0f;         // 0x1DC
 };
 
 // Actor base (0x00B12898 + 0x00B12A44/0x00B12A6C at +0x17C/+0x180).

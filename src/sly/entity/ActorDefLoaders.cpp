@@ -398,6 +398,67 @@ void InteractivePropBDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlEle
 }
 
 
+// -- Safe --------------------------------------------------------------------------
+constexpr uint32_t kType_Safe = 0x10000000;
+
+struct SafeDefDesc : ClassDefDesc {
+    explicit SafeDefDesc(const EntityDefDesc& loader) : ClassDefDesc(loader, kType_Safe) {}
+    uint32_t hashes[10] = {};           // 0xE0..0x104
+    float field_108 = 0.0f;             // 0x108
+    ape::Vec3 field_110{};              // 0x110
+    float floats[7] = {55.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};   // 0x120..0x138
+    uint32_t hashes13C[10] = {};        // 0x13C..0x160
+    ape::Vec3 field_170{};              // 0x170
+    uint32_t hashes180[3] = {};         // 0x180..0x188
+    float field_18C = 4.0f;             // 0x18C
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001E6300 SafeDefDesc::Parse
+// A safe parent passes on everything but the two vectors.
+void SafeDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                        const EntityDef* parent)
+{
+    ActorDefDesc::Parse(root, elem, loader, parent);
+    SafeDefDesc defaults(loader);
+    if (const auto* safe = SameClassParent<SafeDef>(parent, kType_Safe)) {
+        for (int i = 0; i < 10; ++i)
+            defaults.hashes[i] = safe->hashes130[i];
+        defaults.field_108 = safe->field_158;
+        for (int i = 0; i < 7; ++i)
+            defaults.floats[i] = safe->floats170[i];
+        for (int i = 0; i < 9; ++i)
+            defaults.hashes13C[i] = safe->hashes18C[i];
+        defaults.hashes13C[9] = safe->field_1B0;
+        defaults.hashes180[0] = safe->field_1D0;
+        defaults.hashes180[1] = safe->field_1D4;
+        defaults.hashes180[2] = safe->field_1D8;
+        defaults.field_18C = safe->field_1DC;
+    }
+    static constexpr uint32_t kHashAttrs[10] = {0xCA9B378Eu, 0x07AB8180u, 0xCAF309B3u, 0x00F161A9u, 0xDA59999Bu,
+                                                0x4B3B3ECEu, 0xA4C980A9u, 0xF86846F7u, 0xA3BB4824u, 0x1F114A8Au};
+    static constexpr uint32_t kFloatAttrs[7] = {0x91B5CB68u, 0x462137C5u, 0xCA7EA426u, 0x4A3F3DB5u,
+                                                0x19C09DDEu, 0xC55EF4EBu, 0x6AF36019u};
+    static constexpr uint32_t kHash13CAttrs[10] = {0x3A15BFABu, 0xDB732E22u, 0x5977F5AFu, 0xDB1B5BFDu,
+                                                   0xCD553C2Au, 0x3B15E5B7u, 0xCCFD6A05u, 0x098591A0u,
+                                                   0x3A1BDFB9u, 0x06556689u};
+    static constexpr uint32_t kHash180Attrs[3] = {0x675C8395u, 0x8DAC3405u, 0x07E04656u};
+    for (int i = 0; i < 10; ++i)
+        elem->GetHash(kHashAttrs[i], &hashes[i], defaults.hashes[i]);
+    elem->GetFloat(0x16DD189Au, &field_108, defaults.field_108);
+    elem->GetVec3(0x81785FF8u, &field_110.x, &defaults.field_110.x);
+    for (int i = 0; i < 7; ++i)
+        elem->GetFloat(kFloatAttrs[i], &floats[i], defaults.floats[i]);
+    for (int i = 0; i < 10; ++i)
+        elem->GetHash(kHash13CAttrs[i], &hashes13C[i], defaults.hashes13C[i]);
+    elem->GetVec3(0xC88E4511u, &field_170.x, &defaults.field_170.x);
+    for (int i = 0; i < 3; ++i)
+        elem->GetHash(kHash180Attrs[i], &hashes180[i], defaults.hashes180[i]);
+    elem->GetFloat(0x3EF33B23u, &field_18C, defaults.field_18C);
+}
+
 } // namespace
 
 // -- SoundActor (and the base of the sound actor classes) --------------------------
@@ -1258,6 +1319,34 @@ EntityDef* CreateSoundActorB16DB0Def(ape::xml::XmlElement* root, ape::xml::XmlEl
     SoundActorB16DB0DefDesc desc(loader);
     desc.Parse(root, elem, loader, parent);
     auto* def = new SoundActorB16DB0Def(desc);
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001E6B18 CreateSafeDef
+// The definition constructor (0x001E5170) copies the class fields in place.
+EntityDef* CreateSafeDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                         const EntityDef* parent)
+{
+    SafeDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new SafeDef(desc);
+    for (int i = 0; i < 10; ++i)
+        def->hashes130[i] = desc.hashes[i];
+    def->field_158 = desc.field_108;
+    def->field_160 = desc.field_110;
+    for (int i = 0; i < 7; ++i)
+        def->floats170[i] = desc.floats[i];
+    for (int i = 0; i < 9; ++i)
+        def->hashes18C[i] = desc.hashes13C[i];
+    def->field_1B0 = desc.hashes13C[9];
+    def->field_1C0[0] = desc.field_170.x;
+    def->field_1C0[1] = desc.field_170.y;
+    def->field_1C0[2] = desc.field_170.z;
+    def->field_1D0 = desc.hashes180[0];
+    def->field_1D4 = desc.hashes180[1];
+    def->field_1D8 = desc.hashes180[2];
+    def->field_1DC = desc.field_18C;
     delete desc.parts;
     return def;
 }
