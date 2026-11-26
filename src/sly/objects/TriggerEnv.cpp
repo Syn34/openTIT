@@ -492,9 +492,7 @@ bool WindTrigger::Update(float dt)
 // @func 0x00224D50 WindTrigger::SetTransform
 void WindTrigger::SetTransform(const ape::Matrix34& m)
 {
-    // NOTE: the trigger base part (0x0020D7E8, which also moves the phantom)
-    // is not ported; the entity transform is set instead.
-    Entity::SetTransform(m);
+    TriggerBase::SetTransform(m);
     if (m_wind)
         WindFieldSetTransform(m_wind, VolumeTransform());
 }
