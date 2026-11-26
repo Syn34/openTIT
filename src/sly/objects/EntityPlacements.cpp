@@ -823,5 +823,27 @@ EntityPlacement* ParseInteractivePropAPlacement(ape::xml::XmlElement* root, ape:
     return placement;
 }
 
+// @func 0x001E6D78 ParseSafePlacement
+EntityPlacement* ParseSafePlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
+                                    EntityDef* def)
+{
+    (void)root;
+    auto* placement = new SafePlacement(name, def);
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    if (def) {
+        const auto* safeDef = static_cast<const entity::SafeDef*>(def);
+        placement->field_F0 = safeDef->field_1B0;
+        for (int i = 0; i < 3; ++i)
+            placement->field_100[i] = safeDef->field_1C0[i];
+        placement->field_110 = safeDef->field_1D0;
+    }
+    placement->typeBits |= 0x10000000;
+    placement->Parse(elem);
+    elem->GetHash(0x06556689u, &placement->field_F0, placement->field_F0);
+    elem->GetVec3(0xC88E4511u, placement->field_100, placement->field_100);
+    elem->GetHash(0x675C8395u, &placement->field_110, placement->field_110);
+    return placement;
+}
+
 } // namespace objects
 } // namespace sly

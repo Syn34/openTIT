@@ -149,6 +149,10 @@ public:
 class SafeDef : public ActorDef {
 public:
     ~SafeDef() override;
+    // Placement defaults. NOTE: the definition parser is not ported.
+    uint32_t field_1B0 = 0;         // 0x1B0
+    float field_1C0[3] = {};        // 0x1C0
+    uint32_t field_1D0 = 0;         // 0x1D0
 };
 
 // Actor base (0x00B12898 + 0x00B12A44/0x00B12A6C at +0x17C/+0x180).

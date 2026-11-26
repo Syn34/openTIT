@@ -510,14 +510,14 @@ public:
     using ActorPlacement::ActorPlacement;
     ~SafePlacement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001E6F3C
-    uint32_t field_F0 = 0;              // +0xF0
-    uint32_t field_100[3] = {};         // +0x100..+0x108
-    uint32_t field_110 = 0;             // +0x110
+    uint32_t field_F0 = 0;              // +0xF0 attribute 0x06556689 (hash)
+    float field_100[3] = {};            // +0x100..+0x108 attribute 0xC88E4511
+    uint32_t field_110 = 0;             // +0x110 attribute 0x675C8395 (hash)
 };
 struct SafeInstanceDesc : ScriptedInstanceDesc {
     using ScriptedInstanceDesc::ScriptedInstanceDesc;
     uint32_t field_D0 = 0;              // 0xD0
-    uint32_t field_E0[3] = {};          // 0xE0..0xE8
+    float field_E0[3] = {};             // 0xE0..0xE8
     uint32_t field_F0 = 0;              // 0xF0
 };
 
@@ -714,6 +714,9 @@ EntityPlacement* ParseSoundActorB17728Placement(ape::xml::XmlElement* root, ape:
                                                 const char* name, EntityDef* def);
 EntityPlacement* ParseInteractivePropAPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                 const char* name, EntityDef* def);
+// Safe placement loader (0x001E6D78).
+EntityPlacement* ParseSafePlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
+                                    EntityDef* def);
 // Placement loaders of the rigid-body scripted classes (0x00167F58,
 // 0x0016CBE0, 0x00177D78, 0x0017F1A0, 0x00190EA0).
 EntityPlacement* ParseRigidPropPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
