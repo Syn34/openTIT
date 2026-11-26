@@ -64,6 +64,16 @@ public:
     void EndMinigame();
     // Shows or hides the HUD through the running minigame (if any).
     void SetMinigameHudVisible(bool visible);
+    // Player meter of the HUD. NOTE: the console passes the player index;
+    // the HUD keeps a single player meter, so it is unused.
+    void SnapPlayerMeter(uint32_t player);
+    void SetPlayerMeterState(uint32_t player, bool on);
+    // Snaps the HUD meter that follows 'owner' to its current value.
+    void SnapMeterOf(const entity::Entity* owner);
+    // Requests a reload of the running level at the next update (state bit
+    // 0x40); 'flag' goes to state bit 0x20. NOTE: the flag's meaning is not
+    // known (the job manager and the level script command pass false).
+    void RequestLevelRestart(bool flag);
     // Name of the running level ("" before a level is loaded).
     const char* CurrentLevelName() const;
 
@@ -147,5 +157,12 @@ public:
 
 // The single game world (0x00F65CA0).
 extern SlyGame* g_game;
+
+// Requests a plain reload of the running level.
+void RequestLevelRestart();
+// Level of detail weight of height differences (EngineConfig +0x3C): set
+// directly, or from the running level's "lodYInfluence" (1 without a level).
+void SetLodYInfluence(float influence);
+void ApplyLevelLodYInfluence(const SlyGame& game);
 
 } // namespace sly

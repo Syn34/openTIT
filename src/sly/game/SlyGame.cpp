@@ -1,8 +1,10 @@
 // openTIT - Game world object: the parts owned by the game shell.
 #include "sly/game/SlyGame.h"
 
+#include "ape/core/ApeSystem.h"
 #include "ape/level/ApeLevelDef.h"
 #include "sly/gameplay/Minigame.h"
+#include "sly/game/hud/HudManager.h"
 
 namespace sly {
 
@@ -33,6 +35,48 @@ void SlyGame::SetMinigameHudVisible(bool visible)
 {
     if (minigame)
         minigame->SetHudHidden(!visible);
+}
+
+// @func 0x0047BC40 SlyGame::SnapPlayerMeter
+void SlyGame::SnapPlayerMeter(uint32_t /*player*/)
+{
+    hud::SnapMeterB();
+}
+
+// @func 0x0047BE60 SlyGame::SetPlayerMeterState
+void SlyGame::SetPlayerMeterState(uint32_t /*player*/, bool on)
+{
+    hud::SetMeterBState(on);
+}
+
+// @func 0x0047C1F0 SlyGame::SnapMeterOf
+void SlyGame::SnapMeterOf(const entity::Entity* owner)
+{
+    hud::SnapMeterOf(owner);
+}
+
+// @func 0x004896F8 SlyGame::RequestLevelRestart
+void SlyGame::RequestLevelRestart(bool flag)
+{
+    stateFlags = uint8_t((stateFlags & ~0x20) | (flag ? 0x20 : 0) | 0x40);
+}
+
+// @func 0x0048A4C0 RequestLevelRestart
+void RequestLevelRestart()
+{
+    g_game->RequestLevelRestart(false);
+}
+
+// @func 0x0048C82C SetLodYInfluence
+void SetLodYInfluence(float influence)
+{
+    ape::g_engineConfig.lodYInfluence = influence;
+}
+
+// @func 0x0048C840 ApplyLevelLodYInfluence
+void ApplyLevelLodYInfluence(const SlyGame& game)
+{
+    ape::g_engineConfig.lodYInfluence = game.levelDef ? game.levelDef->lodYInfluence : 1.0f;
 }
 
 // @func 0x0047C46C SlyGame::CurrentLevelName

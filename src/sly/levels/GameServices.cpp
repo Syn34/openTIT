@@ -1,6 +1,8 @@
 // openTIT - TODO stubs for the game systems used by the level and script code.
 // Each returns what the original returns for a missing object.
 #include "sly/levels/GameServices.h"
+
+#include "sly/game/SlyGame.h"
 #include "sly/game/goals/JobManager.h"
 
 #include "sly/game/AudioSystem.h"
@@ -94,7 +96,7 @@ bool PlayerNotifyFlagIsSet(int playerIndex, uint32_t flag)
 void CameraBlendWeight(float weight, float duration, float exponent) { (void)weight; (void)duration; (void)exponent; }
 void KillSequence(uint32_t name) { (void)name; }
 uint32_t CurrentLevelName() { return 0; }
-void RestartLevel() {}
+void RestartLevel() { sly::RequestLevelRestart(); }
 void ChangeLevel(uint32_t levelName) { (void)levelName; }
 // World objects here are entities (opaque to this module).
 void SendGameEvent(WorldObject* sender, WorldObject* receiver, uint32_t event, uintptr_t data, bool immediate)
