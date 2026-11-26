@@ -24,8 +24,6 @@ ape::ApeRefCounted* MKObjectScriptRef(ape::world::ApeObj*) { return nullptr; }
 namespace sly {
 namespace gameplay {
 void* MKFindSplineDef(uint32_t) { return nullptr; }
-bool MKStampsSettled(const void*, uint32_t) { return true; }
-void MKStampsClearPending(void*) {}
 void MKQueueSequence(uint32_t) {}
 } // namespace gameplay
 } // namespace sly
@@ -33,7 +31,6 @@ void MKQueueSequence(uint32_t) {}
 namespace sly {
 namespace gameplay {
 void MKDeleteCameraController(void*) {}
-void MKDeleteStampManager(void*) {}
 void MKClearPlayerTargetingFlag(entity::Entity*) {}
 void MKClearCharacterHooks(entity::Entity*) {}
 void MKStopListening(entity::Entity*) {}
@@ -42,6 +39,5 @@ void MKStopListening(entity::Entity*) {}
 
 namespace sly {
 namespace gameplay {
-void MKStampsReset(void*) {}
 } // namespace gameplay
 } // namespace sly

@@ -91,6 +91,64 @@ struct MegaKnightPlatform {
     bool field_69 = false;                           // +0x69
 };
 
+// A stamp that landed (0x90 bytes): the stamp entity and its shadow /
+// effect entity. NOTE: only the two entity slots are decoded.
+struct MegaKnightStampRecord {
+    uint8_t data_00[0x60] = {};
+    entity::Entity* entity = nullptr;      // +0x60
+    entity::Entity* effect = nullptr;      // +0x64
+    uint8_t data_68[0x28] = {};
+};
+
+// A stamp waiting to come down (0x70 bytes).
+struct MegaKnightPendingStamp {
+    struct MegaKnightStampManager* owner = nullptr;   // +0x00
+    uint32_t kind = 0;                     // +0x04
+    ape::Matrix34 transform{};             // +0x10 where it comes down
+    float timer = 0.0f;                    // +0x50
+    float delay = 1.0f;                    // +0x54 (1 when not positive)
+    float duration = 1.0f;                 // +0x58 (1 when not positive)
+    float field_5C = 0.0f;                 // +0x5C
+    uint32_t field_60 = 0;                 // +0x60
+    bool flag = false;                     // +0x64
+};
+
+// The stamp manager (0xC0 bytes, boss +0x294): the knight's feet coming down
+// (stamp sets from the definition) and the stamps on the ground.
+struct MegaKnightStampManager {
+    // 0x00304D94
+    explicit MegaKnightStampManager(MegaKnight* owner);
+    ~MegaKnightStampManager();
+    // 0x0030B4AC: releases the landed stamps' entities and forgets every
+    // stamp.
+    void Clear();
+    // Clear() after resetting the counters (inline at its users).
+    void Reset();
+    // 0x0030BE48: queues a stamp.
+    void QueueStamp(float delay, float duration, uint32_t kind, const ape::Matrix34& transform,
+                    uint32_t field60, bool flag);
+    // Idle phase test: nothing falling, at most `count` stamps landed, none
+    // queued.
+    bool Settled(uint32_t count) const;
+    void ClearPending();
+
+    MegaKnight* boss = nullptr;                          // +0x00
+    ape::Vec3 field_10{};                                // +0x10
+    ape::Vec3 field_20{};                                // +0x20
+    int32_t field_30 = 0;                                // +0x30
+    ape::ApeTArray<MegaKnightStampRecord*> landed;       // +0x34
+    ape::ApeTArray<MegaKnightPendingStamp*> pending;     // +0x48
+    int32_t falling = 0;                                 // +0x5C
+    int32_t field_60 = 0;                                // +0x60
+    ape::Vec3 field_70{};                                // +0x70
+    ape::Vec3 field_80{};                                // +0x80
+    uint32_t field_90[5] = {};                           // +0x90
+    float leadDist = 0.0f;                               // +0xA4 "Missile.LeadDist"
+    entity::EntityDef* stampDef = nullptr;               // +0xB0 definition 0xD4A3F67A
+    entity::EntityDef* stampDefB = nullptr;              // +0xB4 definition 0xB267EAFB
+    entity::EntityDef* effectDef = nullptr;              // +0xB8 definition 0x8F7C1D39
+};
+
 // Tracking block at +0x1B0 (built by 0x00768298, outside this module): the
 // player's position history and debounced player state flags.
 struct MegaKnightTracking {
@@ -159,7 +217,7 @@ public:
     // -- members (offsets on the console) ---------------------------------
     MegaKnightTracking tracking;                       // 0x1B0..0x28B
     void* cameraController = nullptr;                  // 0x290 (0xCC bytes, 0x00305828; not ported)
-    void* stampManager = nullptr;                      // 0x294 (0xC0 bytes, 0x00304D94; not ported)
+    MegaKnightStampManager* stampManager = nullptr;    // 0x294
     // State block (built by 0x00768478).
     bool field_298 = false;                            // 0x298
     bool secondHalf = false;                           // 0x299 NOTE: switches the clip and value sets

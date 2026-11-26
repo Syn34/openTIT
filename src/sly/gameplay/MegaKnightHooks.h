@@ -53,11 +53,6 @@ namespace sly {
 namespace gameplay {
 // Spline definition by name (ApeTDefList<ApeSplineDef>::Find on 0x00F8F158).
 void* MKFindSplineDef(uint32_t nameHash);
-// Stamp manager (boss +0x294): no stamp is still falling (+0x5C), at least
-// `count` stamps landed (+0x3C) and none is queued (+0x50).
-bool MKStampsSettled(const void* stampManager, uint32_t count);
-// Stamp manager: frees the pending stamp records (+0x48, 0x70 bytes each).
-void MKStampsClearPending(void* stampManager);
 // 0x0046C3B8 on the game world: queues the cut-scene sequence `name`.
 void MKQueueSequence(uint32_t name);
 } // namespace gameplay
@@ -69,7 +64,6 @@ namespace gameplay {
 // mode handed back to the game camera; stamp manager +0x294 0x0030B4AC;
 // the platform is deleted by the boss itself).
 void MKDeleteCameraController(void* controller);
-void MKDeleteStampManager(void* stampManager);
 // Player targeting gadget byte +0x922 bit 3 (cleared when the boss goes).
 void MKClearPlayerTargetingFlag(entity::Entity* player);
 // Character component +0x24 -> words +0x34/+0x38 cleared on release.
@@ -81,7 +75,5 @@ void MKStopListening(entity::Entity* boss);
 
 namespace sly {
 namespace gameplay {
-// Stamp manager reset (words +0x30/+0x5C/+0x60 cleared, then 0x0030B4AC).
-void MKStampsReset(void* stampManager);
 } // namespace gameplay
 } // namespace sly

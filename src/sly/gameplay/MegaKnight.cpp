@@ -54,6 +54,86 @@ void MegaKnightObjectPair::Show(bool on, bool first)
 
 
 // ===========================================================================
+// Stamp manager
+
+// @func 0x00304D94 MegaKnightStampManager::MegaKnightStampManager
+MegaKnightStampManager::MegaKnightStampManager(MegaKnight* owner)
+    : boss(owner), landed(0x200), pending(0)
+{
+    leadDist = g_megaKnightMissileLeadDist.Get();
+    entity::EntityDef* def = entity::FindEntityDef(0xD4A3F67Au);
+    if (def && (def->optionFlags & 0x2000))
+        stampDef = def;
+    def = entity::FindEntityDef(0xB267EAFBu);
+    if (def && (def->optionFlags & 0x2000))
+        stampDefB = def;
+    effectDef = entity::FindEntityDef(0x8F7C1D39u);
+}
+
+MegaKnightStampManager::~MegaKnightStampManager() = default;
+
+// @func 0x0030B4AC MegaKnightStampManager::Clear
+void MegaKnightStampManager::Clear()
+{
+    for (uint32_t i = 0; i < landed.Count(); ++i) {
+        MegaKnightStampRecord* stamp = landed[i];
+        if (!stamp)
+            continue;
+        if (entity::Entity* e = stamp->entity) {
+            e->Release(false);
+            if (e->IsAlive())
+                e->Release(true);
+            stamp->entity = nullptr;
+        }
+        if (entity::Entity* e = stamp->effect) {
+            e->Release(false);
+            e->Release(true);
+            stamp->effect = nullptr;
+        }
+        delete stamp;
+    }
+    ClearPending();
+    landed.Clear();
+}
+
+void MegaKnightStampManager::Reset()
+{
+    field_30 = 0;
+    falling = 0;
+    field_60 = 0;
+    Clear();
+}
+
+void MegaKnightStampManager::ClearPending()
+{
+    for (uint32_t i = 0; i < pending.Count(); ++i)
+        delete pending[i];
+    pending.Clear();
+}
+
+bool MegaKnightStampManager::Settled(uint32_t count) const
+{
+    return falling == 0 && count >= landed.Count() && pending.Count() == 0;
+}
+
+// @func 0x0030BE48 MegaKnightStampManager::QueueStamp
+void MegaKnightStampManager::QueueStamp(float delay, float duration, uint32_t kind, const ape::Matrix34& transform,
+                                        uint32_t field60, bool flag)
+{
+    MegaKnightPendingStamp* p = new MegaKnightPendingStamp();
+    p->owner = this;
+    p->kind = kind;
+    p->transform = transform;
+    p->timer = 0.0f;
+    p->delay = delay <= 0.0f ? 1.0f : delay;
+    p->duration = duration <= 0.0f ? 1.0f : duration;
+    p->field_5C = 0.0f;
+    p->field_60 = field60;
+    p->flag = flag;
+    pending.PushBack(p);
+}
+
+// ===========================================================================
 // Platform
 
 namespace {
@@ -179,7 +259,8 @@ bool MegaKnight::Release(bool kill)
         }
         ClearMarkedTargets();
         if (stampManager) {
-            MKDeleteStampManager(stampManager);
+            stampManager->Clear();
+            delete stampManager;
             stampManager = nullptr;
         }
         delete platform;

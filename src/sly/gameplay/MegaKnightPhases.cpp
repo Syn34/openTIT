@@ -224,7 +224,7 @@ bool MKPhaseIdle::UpdatePhase(float dt)
         return false;
     }
     if (waitForStamps) {
-        if (!MKStampsSettled(boss->stampManager, stampCount))
+        if (!boss->stampManager->Settled(stampCount))
             return true;
         waitForStamps = false;
     }
@@ -467,7 +467,7 @@ void MKPhaseMonitorPlatform::OnEnter()
             b->AddMarkedTarget(b->secondHalf ? b->pair338.objects[0] : b->pair338.objects[1], shoulder);
     }
     eventC = false;
-    MKStampsClearPending(b->stampManager);
+    b->stampManager->ClearPending();
     b->restartBehavior = true;
     b->SetArmMarker(uint32_t(arm), true);
     b->SetCamera(-1.0f, kCamera_Default, true);
@@ -721,7 +721,7 @@ void MKPhaseShoulderHit::OnEnter()
 {
     MegaKnightPhase::OnEnter();
     MegaKnight* b = boss;
-    MKStampsReset(b->stampManager);
+    b->stampManager->Reset();
     b->currentAnim = 0;
     if (side == 0)
         sequence = b->secondHalf ? 0x7BF6902Fu : 0xFC4CE686u;
@@ -895,7 +895,7 @@ void MKPhaseTowerShake::OnEnter()
 {
     MegaKnightPhase::OnEnter();
     MegaKnight* b = boss;
-    MKStampsReset(b->stampManager);
+    b->stampManager->Reset();
     b->currentAnim = 0;
     if (b->tracking.onArm[0].Get()) {
         startAnim = 0x96F8E23Bu; endAnim = 0x99104CF4u; igcAnim = 0x60E4DF46u;
