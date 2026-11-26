@@ -16,17 +16,34 @@ namespace sly::camera { class CameraMode; }
 namespace sly {
 namespace entity {
 
+// The fields an actor definition part shares with its description (the
+// 0xA0-byte records of ActorDef::Part / ActorPartDesc around the word at
+// +0x20). NOTE: names follow use where known; the attribute names of the
+// rest are not in the executable.
+struct ActorPartFields {
+    ape::Vec3 offset{};             // +0x00 attribute 0x63662D61
+    ape::Vec3 field_10{};           // +0x10 attribute 0x1B89D5F3
+    uint32_t field_24 = 0;          // +0x24 hash 0x75849CFE
+    ape::Vec3 field_30{};           // +0x30 (with partFlags bit 28)
+    // +0x40 with partFlags bit 28: attributes 0x46206B53, 0xE3E14C49,
+    // 0x471281EF, 0x9538DE99, 0x9533AB5A, 0x040C1D75, 0x69FE7274.
+    float field_40[7] = {1.0f, 0.0f, -1.0f, -1.0f, -1.0f, 1.0f, -1.0f};
+    // +0x60 attributes 0x29F45D46, 0xA1FDE21D, 0xE2154ADB, 0x8933D0E0,
+    // 0x0023FEF4 (default: a global set at start-up), 0xB89310FD.
+    float field_60[6] = {-1.0f, -1.0f, -1.0f, -1.0f, 0.0f, 1.0f};
+    uint32_t field_78 = 0;          // +0x78 hash 0x725B9AF2
+    uint32_t partFlags = 0;         // +0x7C bits 28-31 (ActorDef::PartFlags)
+    ape::Vec3 aimOffset{};          // +0x80 attribute 0xCC0D6864
+    uint32_t navMode = 0;           // +0x90 hash 0x5B1E4A49 (0 = the definition's mode)
+};
+
 // One part of an actor definition as the loader describes it (0xA0 bytes):
-// the same record as ActorDef::Part with the name of the Havok body
-// template where the part keeps its body.
-struct ActorPartDesc {
-    uint8_t field_00[0x20];
-    const char* bodyName;       // +0x20 Havok rigid body of the level's physics data
-    uint8_t field_24[0x58];
-    uint32_t partFlags;         // +0x7C
-    ape::Vec3 aimOffset;        // +0x80
-    uint32_t navMode;           // +0x90
-    uint8_t field_94[0xC];
+// the part's fields with the name of the Havok body template where the
+// part keeps its body.
+struct ActorPartDesc : ActorPartFields {
+    const char* bodyName = nullptr; // +0x20 "colObjName": rigid body of the level's physics data
+    // A part is described by a body name or an offset.
+    bool IsDescribed() const;
 };
 
 // Description of actor definitions (ScriptedEntityDefDesc + 0x64 bytes).
@@ -55,17 +72,8 @@ struct ActorDefDesc : ScriptedEntityDefDesc {
 // records, each holding a Havok rigid body at +0x20.
 class ActorDef : public ScriptedEntityDef {
 public:
-    struct Part {
-        uint8_t field_00[0x20];
-        void* havokObject;          // +0x20
-        uint8_t field_24[0x58];
-        uint32_t partFlags;         // +0x7C PartFlags
-        // +0x80 the first part's offset is where the actor is aimed at
-        // (slot 71). NOTE: role for the other parts unknown.
-        ape::Vec3 aimOffset;
-        // Nav obstacle mode of the part (0 = the definition's mode).
-        uint32_t navMode;           // +0x90
-        uint8_t field_94[0xC];
+    struct Part : ActorPartFields {
+        void* havokObject = nullptr;    // +0x20 Havok rigid body
     };
     // Copies the description and builds a Havok body for every part
     // (0x000C79C0, thunk 0x000E27FC).

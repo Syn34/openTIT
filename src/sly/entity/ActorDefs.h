@@ -24,6 +24,7 @@ namespace entity {
 // placements (the definition parser is not ported).
 class ActorGroupDef : public ActorDef {
 public:
+    explicit ActorGroupDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~ActorGroupDef() override;
     float field_130[4] = {};            // 0x130
     bool field_140 = false;             // 0x140
@@ -31,25 +32,47 @@ public:
 // 0x00B15508, spawns HitCounterActor. NOTE: as above.
 class HitCounterActorDef : public ActorDef {
 public:
+    explicit HitCounterActorDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~HitCounterActorDef() override;
     float field_130[5] = {};            // 0x130
-    uint32_t field_144 = 0;             // 0x144
+    int32_t field_144 = -1;             // 0x144 zero-based index (-1: none)
     uint32_t flags_148 = 0x80000000u;   // 0x148 bits 30/31: placement defaults
 };
-SLY_ACTOR_DEF(WatchActorDef, ActorDef);         // 0x00B15748, spawns WatchActor
-// 0x00B15BD8, spawns SignalActor. NOTE: only the placement defaults.
+// 0x00B15748, spawns WatchActor. NOTE: the fields are placement defaults.
+class WatchActorDef : public ActorDef {
+public:
+    explicit WatchActorDef(const ActorDefDesc& desc) : ActorDef(desc) {}
+    ~WatchActorDef() override;
+    uint32_t field_130 = 0;             // 0x130 hash
+    uint32_t field_134 = 0;             // 0x134 hash
+    float field_138 = 0.0f;             // 0x138
+    uint32_t flags_13C = 0;             // 0x13C bits 30/31
+};
+// 0x00B15BD8, spawns SignalActor (0x180 bytes). NOTE: the fields are
+// placement defaults; names unknown.
 class SignalActorDef : public ActorDef {
 public:
+    // Copies the class fields of the description (0x001AF598).
+    explicit SignalActorDef(const struct SignalActorDefDesc& desc);
     ~SignalActorDef() override;
+    ape::Vec3 direction{0.0f, 0.0f, 1.0f, 0.0f};   // 0x130 unit vector
+    float field_140[7] = {1.0f, 6.0f, 3.5f, 2.0f, 0.5f, 6.0f, 3.5f};   // 0x140..0x158
     float field_15C = 18.849556f;       // 0x15C radians
     float field_160 = 0.08726646f;      // 0x160 radians
+    float field_164 = 0.1f;             // 0x164
     float field_168 = 0.0f;             // 0x168
-    uint32_t flags_174 = 0x00800000u;   // 0x174 bits 22/23: placement defaults
+    float field_16C = 0.0f;             // 0x16C
+    float field_170 = 0.0f;             // 0x170
+    // 0x174 top byte: zero-based index (0xFF none); bits 20-23 placement
+    // default flags.
+    uint32_t flags_174 = 0xFF900000u;
 };
 // 0x00B15E18, spawns ActorB15E60. NOTE: only the placement defaults.
 class ActorB15E60Def : public ActorDef {
 public:
+    explicit ActorB15E60Def(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~ActorB15E60Def() override;
+    uint32_t field_130[3] = {};         // 0x130 hashes
     float field_13C[5] = {1.0f, 2.0f, 1.0f, 1.0f, 0.0f};   // 0x13C..0x14C
 };
 // 0x00B163F0, spawns ScriptObjectActor. NOTE: only the placement defaults.

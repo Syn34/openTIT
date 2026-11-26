@@ -22,6 +22,8 @@ struct ActorPartDesc;
 // 0x4438A28F add property 0x67E6342B. Null when the part names no body or
 // the body is not found.
 void* ActorPartCreateBody(const ActorPartDesc& part, uint32_t navMode);
+// Name of a Havok rigid body (hkpWorldObject name, +0x78 without its low bit).
+const char* HavokBodyName(void* body);
 
 // The body is in a physics world (hkpWorldObject::m_world, +0x08).
 bool RigidBodyInWorld(void* body);
