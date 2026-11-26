@@ -1286,14 +1286,62 @@ bool StrafeCameraMode::Tick(float dt, CameraViewState& view)
     return true;
 }
 
-// TODO(0x00115FB0 StrafeCameraMode::Update)
+// @func 0x00115FB0 StrafeCameraMode::Update
+// Looks from the subject towards the opponent across the ground: an upright
+// frame at the subject (at the mode's height), tilted down by angleHome,
+// placed at the subject's focus point plus the position adjustment and
+// pulled back by the gimbal radius.
 void StrafeCameraMode::Update(float /*dt*/, CameraViewState& view)
 {
-    // Without both entities alive the stored transform is shown.
-    SetXYZ(view.transform.xAxis, transform.xAxis);
-    SetXYZ(view.transform.yAxis, transform.yAxis);
-    SetXYZ(view.transform.zAxis, transform.zAxis);
-    SetXYZ(view.transform.translation, transform.translation);
+    const bool bothAlive = subject && subject->IsAlive() && opponent && opponent->IsAlive();
+    if (!bothAlive) {
+        // Without both entities alive the stored transform is shown.
+        SetXYZ(view.transform.xAxis, transform.xAxis);
+        SetXYZ(view.transform.yAxis, transform.yAxis);
+        SetXYZ(view.transform.zAxis, transform.zAxis);
+        SetXYZ(view.transform.translation, transform.translation);
+        return;
+    }
+    const ape::Vec3& from = subject->Position();
+    const ape::Vec3& to = opponent->Position();
+    // Level direction to the opponent; the current view direction (or +z)
+    // when they stand on top of each other.
+    ape::Vec3 forward = {to.x - from.x, 0.0f, to.z - from.z, 0.0f};
+    auto tiny = [](const ape::Vec3& v) { return std::fabs(v.x * v.x + v.z * v.z + v.y * v.y) < 1e-05f; };
+    if (tiny(forward))
+        forward = {view.transform.zAxis.x, 0.0f, view.transform.zAxis.z, 0.0f};
+    if (tiny(forward))
+        forward = {0.0f, 0.0f, 1.0f, 0.0f};
+    const float inv = 1.0f / std::sqrt(forward.y * forward.y + forward.x * forward.x + forward.z * forward.z);
+    forward = {forward.x * inv, forward.y * inv, forward.z * inv, 0.0f};
+    const ape::Vec3 up = {0.0f, 1.0f, 0.0f, 0.0f};
+    const ape::Vec3 side = {up.y * forward.z - up.z * forward.y, up.z * forward.x - up.x * forward.z,
+                            up.x * forward.y - up.y * forward.x, 0.0f};
+    ape::Matrix34 frame;
+    frame.xAxis = side;
+    frame.yAxis = up;
+    frame.zAxis = forward;
+    frame.translation = {from.x, current.height, from.z, 0.0f};
+
+    SetXYZ(view.transform.xAxis, frame.xAxis);
+    SetXYZ(view.transform.yAxis, frame.yAxis);
+    SetXYZ(view.transform.zAxis, frame.zAxis);
+    SetXYZ(view.transform.translation, frame.translation);
+    ape::Matrix34 tilt;
+    ape::Matrix34RotationX(current.angleHome * 0.01745329238474369f, tilt);
+    ape::Matrix34PreMultiply(view.transform, tilt);
+
+    const ape::Vec3 focus = subject->GetLocatorPosition(&frame);
+    const ape::Vec3& adjust = current.posAdjust;
+    const ape::Vec3 offset = {adjust.x * side.x + adjust.y * up.x + adjust.z * forward.x,
+                              adjust.x * side.y + adjust.y * up.y + adjust.z * forward.y,
+                              adjust.x * side.z + adjust.y * up.z + adjust.z * forward.z, 0.0f};
+    const ape::Vec3& back = view.transform.zAxis;
+    const float radius = current.gimbalRadius;
+    view.transform.translation.x = focus.x + offset.x - back.x * radius;
+    view.transform.translation.y = focus.y + offset.y - back.y * radius;
+    view.transform.translation.z = focus.z + offset.z - back.z * radius;
+    view.fov = current.fov;
 }
 
 } // namespace camera
