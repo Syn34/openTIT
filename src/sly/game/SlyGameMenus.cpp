@@ -481,3 +481,67 @@ bool SlyGame::HoldsFrame()
 }
 
 } // namespace sly
+
+namespace sly {
+
+namespace {
+
+// A GUI popup over the game (system notices): the object shown and what it
+// replaced while it is up (0x010BB9E4..0x010BB9F5; the object is the app's
+// word +0x04 on the console).
+struct GuiPopup {
+    ape::GuiPadFilter savedPadFilter = nullptr;   // 0x010BB9E4
+    void* savedPadUser = nullptr;                 // 0x010BB9E8
+    ape::GuiFilter savedFilter = nullptr;         // 0x010BB9EC
+    void* savedFilterUser = nullptr;              // 0x010BB9F0
+    bool fadeWasVisible = false;                  // 0x010BB9F4
+    bool loadingWasVisible = false;               // 0x010BB9F5
+    ape::ApeGuiObject* object = nullptr;          // app +0x04
+};
+GuiPopup g_guiPopup;
+
+// GUI event sent to the popup when it closes. NOTE: name unknown.
+constexpr uint32_t kGuiEvent_PopupClosed = 0x0E;
+// GUI event of the accept button.
+constexpr uint32_t kGuiEvent_Accept = 5;
+
+void SetGuiObjectVisible(const char* path, bool visible)
+{
+    if (ape::ApeGuiObject* object = ape::FindGuiObject(path, nullptr))
+        object->SetVisible(visible);
+}
+
+} // namespace
+
+// @func 0x004645AC CloseGuiPopup
+// Takes the popup down: the front end and in-game screens come back, the
+// fade and loading screens get their earlier visibility, the audio pause
+// follows the pause menu again and the GUI handlers are restored.
+void CloseGuiPopup()
+{
+    GuiPopup& popup = g_guiPopup;
+    SetGuiObjectVisible("FrontEnd", true);
+    SetGuiObjectVisible("InGame", true);
+    SetGuiObjectVisible("Common.Fade", popup.fadeWasVisible);
+    SetGuiObjectVisible("Common.Loading", popup.loadingWasVisible);
+    if (popup.object)
+        popup.object->SetVisible(false);
+    audio::SetPauseAll(g_game && g_game->menu != 0);
+    // NOTE: the console also clears the word 0x010BA024 here (its readers
+    // are not ported).
+    ape::SendGuiEvent(kGuiEvent_PopupClosed, 0xFFFFFFFFu, popup.object, 0);
+    ape::SetGuiFilter(popup.savedFilter, popup.savedFilterUser);
+    ape::SetGuiPadFilter(popup.savedPadFilter, popup.savedPadUser);
+    popup.object = nullptr;
+}
+
+// @func 0x00464804 GuiPopupEventFilter
+// GUI handler while a popup is up: accepting on any object closes it.
+bool GuiPopupEventFilter(const ape::GuiEvent* event)
+{
+    if (g_guiPopup.object && event->type == kGuiEvent_Accept && event->object)
+        CloseGuiPopup();
+    return true;
+}
+
+} // namespace sly
