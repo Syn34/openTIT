@@ -3,6 +3,7 @@
 #include "sly/levels/GameServices.h"
 
 #include "sly/game/SlyGame.h"
+#include "sly/game/Upgrades.h"
 #include "sly/game/goals/JobManager.h"
 
 #include "sly/game/AudioSystem.h"
@@ -66,8 +67,7 @@ void GameStateNotifyEntity(uint32_t entityName) { (void)entityName; }
 void ClearGameCounter() {}
 uint8_t GameWorldFlags2C() { return 0; }
 uint8_t GameWorldFlags2D() { return 0; }
-// TODO(0x0049EC08 TextFieldParse)
-bool TextFieldParse(ape::xml::XmlElement* element, TextField* text) { (void)element; (void)text; return false; }
+bool TextFieldParse(ape::xml::XmlElement* element, TextField* text) { return ParseScriptBinding(element, text); }
 bool TextDisplayAvailable()
 {
     game::JobManager* manager = game::GetJobManager();

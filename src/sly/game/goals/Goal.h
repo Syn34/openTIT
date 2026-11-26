@@ -67,7 +67,9 @@ enum GoalScriptSlot : int {
 // One variable binding handed to a started anim script (0x4C bytes on the
 // console, consumed by AnimScriptBindVariables 0x0049FCC0). Opaque here.
 struct GoalScriptBinding {
-    uint8_t data[0x4C];
+    // NOTE: 0x4C bytes on the console; sized for the port's TextField
+    // (whose entity binding keeps a native pointer).
+    alignas(8) uint8_t data[0x50];
 };
 
 // GoalScript::flags.
