@@ -30,6 +30,17 @@ public:
     // second group of attacks. NOTE: which mode 2 is (water or wall
     // climbing) is not established.
     uint8_t AttackSlot(uint32_t kind) const;
+    // 0x00276558: requests combat mode `mode` (0-31). The switch happens at
+    // once, or (while deferred switching is on and either mode is in
+    // modeMask) when the component sync list runs. Characters entering
+    // modes 2 and 4 are made opaque.
+    void SetMode(uint32_t mode);
+    // TODO(0x00275110 CombatComponent::ApplyMode): the switch itself
+    // (effects, time scale, sounds per mode).
+    void ApplyMode();
+    uint32_t CurrentMode() const { return (state >> 25) & 0x1F; }
+    uint32_t RequestedMode() const { return (state >> 20) & 0x1F; }
+    static constexpr uint32_t kState_Pending = 0x00080000u;
     // TODO(0x002766A8 CombatComponent slot 4), TODO(0x002794F0 CombatComponent::Update).
 
     // State word (+0x18): bits 25-29 the current mode, bits 20-24 the
