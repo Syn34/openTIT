@@ -172,3 +172,14 @@ ape::Matrix34 GoalEntityBoneTransform(void*, uint32_t)
 
 } // namespace goals
 } // namespace sly
+
+namespace sly {
+namespace goals {
+// TODO(0x00F8F154 +0x10 named object table)
+void* FindLevelTableObject(uint32_t name) { (void)name; return nullptr; }
+// TODO(0x0029F428 on the player's targeting component)
+void PlayerTargeting29F428(bool value) { (void)value; }
+// TODO(entity slot 16 / 0x00260C14)
+void EntityComponent16Set(void* entity, bool value) { (void)entity; (void)value; }
+} // namespace goals
+} // namespace sly

@@ -436,7 +436,7 @@ void JobManager::OnLevelStart()
     trackedGoal = goal;
     failingGoal = nullptr;
     field_50 = 0;
-    field_40 = 0;
+    safeSource = nullptr;
     field_44 = nullptr;
     failMessage = nullptr;
     failPlayer = 0;

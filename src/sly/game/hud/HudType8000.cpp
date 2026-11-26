@@ -1,8 +1,16 @@
 // openTIT - HUD element of type 0x8000, see HudType8000.h.
 #include "sly/game/hud/HudType8000.h"
 
+#include "sly/game/hud/HudHooks.h"
+
 #include "ape/anim/ApeAnimScript.h"
+#include "ape/core/ApeString.h"
+#include "ape/world/ApeBase.h"
+#include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
+#include "ape/world/ApeSceneSetup.h"
+
+#include <cstdio>
 
 namespace sly {
 namespace hud {
@@ -11,7 +19,100 @@ namespace {
 uint32_t AnimStateOf(uint32_t animState) { return animState >> 1; }
 uint32_t WithAnimState(uint32_t animState, uint32_t state) { return (animState & 1u) | (state << 1); }
 uint32_t SetBit(uint32_t word, uint32_t bit, bool on) { return on ? (word | bit) : (word & ~bit); }
+
+uint32_t ClipName(const char* prefix, const char* suffix)
+{
+    char clip[0x60];
+    std::snprintf(clip, sizeof clip, "%s_%s", prefix, suffix);
+    return ape::HashNameNoCase(clip);
+}
+
+// The geometry instance named `name` (hidden: the radar shows copies).
+ape::world::ApeObj* FindBlipTemplate(uint32_t name)
+{
+    if (name == 0)
+        return nullptr;
+    ape::world::ApeObj* found = ape::world::FindInstance(name, 0);
+    if (!found || found->GetType() != ape::world::kObjType_GeomInstance)
+        return nullptr;
+    found->SetVisible(false, true);
+    return found;
+}
+
+// A copy of a blip template (clone flags `flags`), lit and renamed.
+ape::world::ApeObj* MakeBlip(ape::world::ApeObj* source, uint32_t flags, const char* name)
+{
+    ape::world::ApeObj* blip = source->Clone(flags);
+    if (!blip)
+        return nullptr;
+    ape::world::AddToDynamicObjects(blip, true);
+    blip->SetName(name, true);
+    return blip;
+}
+
+void MakeBlips(uint32_t templateName, ape::world::ApeObj** out, int count, const char* format, uint32_t flags,
+               bool lod)
+{
+    ape::world::ApeObj* source = FindBlipTemplate(templateName);
+    if (!source)
+        return;
+    for (int i = 0; i < count; ++i) {
+        char name[0x40];
+        std::snprintf(name, sizeof name, format, i + 1);
+        out[i] = MakeBlip(source, flags, name);
+        if (lod && out[i])
+            HudSetObjectLod(out[i], 13);
+    }
+}
+
 } // namespace
+
+// @func 0x00357DC4 HudType8000::HudType8000
+HudType8000::HudType8000(HudObjectDef* def_) : HudObject(0, def_)
+{
+    const HudObjectDef::RadarDef& info = def->radar;
+    const bool persistent = (info.flags & 1) != 0;
+    stateWord = (stateWord & 0x0007FFFFu) | (persistent ? (kF_Persistent | kF_Shown) : 0u);
+    defaultFade8000 = info.defaultFade;
+    fadeTime8000 = -1.0f;
+    holdTime8000 = 0.0f;
+    linked8000 = nullptr;
+    background = nullptr;
+    part188 = nullptr;
+    part18C = nullptr;
+    typeFlags |= kHud_Type8000;
+    for (uint32_t& clip : clips)
+        clip = 0;
+    const char* prefix = def->animPrefix[0] ? def->animPrefix : def->defName;
+    if (prefix[0]) {
+        clips[1] = ClipName(prefix, "Intro");
+        clips[2] = ClipName(prefix, "OnUpdate");
+        clips[3] = ClipName(prefix, "Idle");
+        clips[4] = ClipName(prefix, "Outro");
+        alertClips[0] = ClipName(prefix, "AlertIntro");
+        alertClips[1] = ClipName(prefix, "AlertOutro");
+    }
+    MakeBlips(info.playerBlip, markers, 9, "RadarBlipPlayer_%02d", 7, false);
+    if (info.background) {
+        ape::world::ApeObj* found = ape::world::FindInstance(info.background, 0);
+        if (found && found->GetType() == ape::world::kObjType_GeomInstance)
+            background = found;
+    }
+    MakeBlips(info.enemyBlip, rowA, 12, "RadarBlipEnemy_%02d", 7, false);
+    MakeBlips(info.goalBlip, rowB, 12, "RadarBlipGoal_%02d", 7, false);
+    MakeBlips(info.goalEdgeBlip, rowC, 12, "RadarBlipGoalEdge_%02d", 7, false);
+    if (ape::world::ApeObj* source = FindBlipTemplate(info.hideoutBlip))
+        part188 = MakeBlip(source, 7, "RadarBlipHideout");
+    if (ape::world::ApeObj* source = FindBlipTemplate(info.followBlip))
+        part18C = MakeBlip(source, 7, "RadarBlipFollow");
+    MakeBlips(info.bottleBlip, slots, 32, "RadarBlipBottle_%02d", 5, true);
+    part210 = nullptr;
+    if (ape::world::ApeObj* source = FindBlipTemplate(info.safeBlip)) {
+        part210 = MakeBlip(source, 5, "RadarBlipSafe_01");
+        if (part210)
+            HudSetObjectLod(part210, 13);
+    }
+}
 
 // @func 0x00381AA8 HudType8000::~HudType8000
 // @func 0x00381DF8 HudType8000::~HudType8000 (deleting)

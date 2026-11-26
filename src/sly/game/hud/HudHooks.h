@@ -68,3 +68,24 @@ bool HudFrameTimeFrozen();
 bool GameWorldInLoadingState();
 } // namespace hud
 } // namespace sly
+
+namespace sly {
+namespace hud {
+// Wheel element hooks (type bit 0x400).
+// 0x0049E628: upgrade `item` of character/kind `kind` is bought and enabled
+// (game world flags +0xFBC bits 0 and 1 of the upgrade table entry); true
+// while no job runs.
+bool UpgradeUnlocked(uint32_t kind, uint32_t item);
+// The upgrade a character currently uses (game world +0x178 Murray, +0x17C
+// Bentley, +0x180 for kind 0xDF0611F9); 0 for other kinds.
+uint32_t EquippedUpgrade(uint32_t kind);
+// The running job does not tie the player to its costume: no level object
+// (game world +0x128164) or its flag +0x15C4 bit 27 is set.
+bool CostumeChoiceFree();
+// Word +0xB4 bit 15 of the first local player's block (0x010B1A94): input
+// held by a modal HUD element. NOTE: meaning inferred from the wheel, which
+// sets it while shown and restores the previous value when it hides.
+bool AppInputHeld();
+void SetAppInputHeld(bool held);
+} // namespace hud
+} // namespace sly
