@@ -20,9 +20,9 @@ class PolledTrigger : public TriggerBase {
 public:
     explicit PolledTrigger(const TriggerInstanceDesc& desc);
 
-    void Update(float dt) override;
-    void OnEnter(ObjEntity* entity) override;
-    void OnExit(ObjEntity* entity) override;
+    bool Update(float dt) override;
+    void OnEnter(Entity* entity) override;
+    void OnExit(Entity* entity) override;
     void SetEnabled(bool enabled) override;
     // Slot 78: rebuilds the phantom shape from the cached bounds (empty here).
     virtual void RebuildVolume();
@@ -54,7 +54,7 @@ class AmbientSoundTriggerDef : public TriggerDef {
 public:
     AmbientSoundTriggerDef(const TriggerDefDesc& desc, uint32_t bankHash, uint32_t soundHash);
     ~AmbientSoundTriggerDef() override;
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // Re-resolves the sound reference if the banks were (re)loaded.
     void ResolveSound();
 
@@ -70,10 +70,10 @@ public:
     // directly on the console).
     ~AmbientSoundTrigger() override;
     void RebuildVolume() override;
-    void OnCreated() override;
-    void Update(float dt) override;
-    void OnEnter(ObjEntity* entity) override;
-    void OnExit(ObjEntity* entity) override;
+    void OnSpawn() override;
+    bool Update(float dt) override;
+    void OnEnter(Entity* entity) override;
+    void OnExit(Entity* entity) override;
     bool IsDebugDisplayed() const override;
 
 private:
@@ -110,7 +110,7 @@ constexpr uint32_t kAttr_MixFade   = 0x48AD591B;
 class SoundZoneTriggerDef : public TriggerDef {
 public:
     SoundZoneTriggerDef(const TriggerDefDesc& desc, uint32_t zoneHash, uint32_t mixHash, float fade);
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
     // tagged there); the deleting variant returns the block to the bucket
     // allocator.
@@ -130,10 +130,10 @@ public:
     // Like AmbientSoundTrigger's destructor.
     ~SoundZoneTrigger() override;
     void RebuildVolume() override;
-    void OnCreated() override;
-    void Update(float dt) override;
-    void OnEnter(ObjEntity* entity) override;
-    void OnExit(ObjEntity* entity) override;
+    void OnSpawn() override;
+    bool Update(float dt) override;
+    void OnEnter(Entity* entity) override;
+    void OnExit(Entity* entity) override;
     bool IsDebugDisplayed() const override;
     bool IsInside(const ape::Vec3& point) const override;
 

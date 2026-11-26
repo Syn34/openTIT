@@ -45,9 +45,9 @@ InteractivePropAUseDef::~InteractivePropAUseDef() = default;
 ObjectActorDef::~ObjectActorDef() = default;
 
 // @func 0x00757418 ObjectActorDef::Spawn
-Entity* ObjectActorDef::Spawn(SpawnParams& params)
+Entity* ObjectActorDef::Spawn(EntityPlacement* placement)
 {
-    (void)params;
+    (void)placement;
     return nullptr;
 }
 

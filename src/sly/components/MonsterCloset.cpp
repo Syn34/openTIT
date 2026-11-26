@@ -11,14 +11,14 @@ namespace components {
 
 namespace {
 constexpr uint32_t kState_Fire = 0x0020EE36u;          // "Fire"
-constexpr uint32_t kDefFlag_Projectile = 0x2000u;      // EntityDef::optionFlags
+constexpr uint32_t kDefFlag_Projectile = 0x2000u;      // EntityDef::classBits
 constexpr uint32_t kTypeBit_Scripted = 0x2u;           // Entity::typeBits[0]
 constexpr uint32_t kTypeBit_Mine = 0x20000u;           // Entity::typeBits[0] (EntityProjectileMine)
 constexpr uint32_t kTypeBit_Turret = 0x2000000u;       // Entity::typeBits[1]
 
 entity::EntityDef* ProjectileDef(entity::EntityDef* def)
 {
-    return def && (def->optionFlags & kDefFlag_Projectile) ? def : nullptr;
+    return def && (def->classBits & kDefFlag_Projectile) ? def : nullptr;
 }
 } // namespace
 

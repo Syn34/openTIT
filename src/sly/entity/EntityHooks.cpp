@@ -19,6 +19,12 @@ void GameObjectSpawn(Entity*) {}
 bool GameObjectUpdate(Entity*, float) { return true; }
 // TODO(0x00464CBC GameObject::PostUpdate)
 bool GameObjectPostUpdate(Entity*, float) { return true; }
+// NOTE: the port's Entity does not derive from gameplay::StateMachine yet.
+void GameObjectInit(Entity*, uint32_t, uint32_t) {}
+// TODO(0x000D2F04 EntitySetUpObject)
+void EntitySetUpObject(Entity*, const EntityInstanceDesc&) {}
+// TODO(0x000D1B10 EntityApplyAttachments)
+void EntityApplyAttachments(Entity*, const EntityInstanceDesc&) {}
 
 // CreateComponent (0x002635E8) lives in sly/components/ComponentFactory.cpp.
 // TODO(0x002BC1E0 CenterComponent::GetOffset)
@@ -148,6 +154,8 @@ void ScriptInstanceSetState(void* instance, uint32_t stateName)
 
 // TODO(0x00490518)
 void PropertySystemForgetDef(EntityDef* def) { (void)def; }
+// TODO(0x00490360)
+void PropertySystemRegisterDef(EntityDef* def, uint32_t type) { (void)def; (void)type; }
 
 // TODO(0x00443CE0)
 bool VoiceUpdate3D(uint32_t voice, const ape::Vec3& position, const ape::Vec3& velocity)

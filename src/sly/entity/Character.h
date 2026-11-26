@@ -377,8 +377,8 @@ public:
 
     // Character bounds from the physics component description, else the
     // entity default (slot 3, 0x0011F010; also AI characters' slot 3).
-    // NOTE: the slot is not declared on EntityDef yet.
-    void GetBounds(ape::Aabb& out) const;
+    //
+    void GetBounds(ape::Aabb& out) const override;
     // Alternate model of a skin mode (variants 1-5), 0 for the default.
     uint32_t SkinModel(int mode) const;
 

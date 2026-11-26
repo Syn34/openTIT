@@ -2,6 +2,9 @@
 #include "sly/objects/Trigger.h"
 
 #include "sly/objects/TriggerTuning.h"
+#include "sly/entity/CharacterHooks.h"
+#include "sly/entity/GameEntityHooks.h"
+#include "sly/entity/ScriptedEntity.h"
 
 #include "ape/core/ApeString.h"
 #include "ape/world/ApeBase.h"
@@ -21,9 +24,14 @@ constexpr uint32_t kMsg_Enable  = 0x7A281983;   // "Enable"
 constexpr uint8_t kColFlagsFilter[6] = { 0x11, 0x12, 0x13, 0x14, 0x15, 0x16 };
 } // namespace
 
-uint32_t EntityId(const ObjEntity* entity)
+bool EntityIsDead(Entity* entity)
 {
-    return entity->id;
+    return entity->HasTypeBit(kType_Scripted) && static_cast<entity::ScriptedEntity*>(entity)->IsDead();
+}
+
+uint32_t EntityId(const Entity* entity)
+{
+    return entity->nameHash;
 }
 
 // ===========================================================================
@@ -116,12 +124,12 @@ bool TriggerPlacementSkips(const EntityPlacement* placement, bool typeMatches)
 }
 
 // @func 0x0020CEA0 TriggerDef::Create
-ObjEntity* TriggerDef::Create(EntityPlacement* placement)
+Entity* TriggerDef::Spawn(EntityPlacement* placement)
 {
-    TriggerInstanceDesc desc(GetInstanceName(placement), this);
+    TriggerInstanceDesc desc(InstanceName(placement), this);
     placement->FillInstanceDesc(desc);
     Trigger* trigger = new Trigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -191,19 +199,19 @@ void TriggerPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
 // ===========================================================================
 
 // @func 0x0020DB54 CollidableOwner
-ObjEntity* CollidableOwner(const void* collidable)
+Entity* CollidableOwner(const void* collidable)
 {
     int type = 0;
     TriggerVolume* object = CollidableWorldObject(collidable, &type);
     if ((type != 1 && type != 2) || !object)
         return nullptr;
-    return reinterpret_cast<ObjEntity*>(
+    return reinterpret_cast<Entity*>(
         (uintptr_t)VolumeGetProperty(object, kVolumeProp_OwnerPtr, 0));
 }
 
 // @func 0x0020C868 TriggerBase::TriggerBase
 TriggerBase::TriggerBase(const TriggerInstanceDesc& desc, uint16_t capacity, bool applyColFlags)
-    : ObjEntity(desc)
+    : Entity(desc)
 {
     m_occupants.reserve(capacity);
     m_enabled = true;   // so that the start state below is applied as a change
@@ -262,23 +270,23 @@ TriggerBase::~TriggerBase()
     NavRemoveObstacle(m_navHandle);
 }
 
-int TriggerBase::FindOccupant(const ObjEntity* entity) const
+int TriggerBase::FindOccupant(const Entity* entity) const
 {
     auto it = std::find(m_occupants.begin(), m_occupants.end(), entity);
     return it == m_occupants.end() ? -1 : (int)(it - m_occupants.begin());
 }
 
-void TriggerBase::QueueEnter(ObjEntity* entity)
+void TriggerBase::QueueEnter(Entity* entity)
 {
     if (!entity->IsAlive() || m_enterQueue.count(EntityId(entity)))
         return;
     entity->AddRef();
-    if (!m_enabled && (entity->flags2 & 8))
+    if (!m_enabled && entity->HasTypeBit(kType_Character))
         EntityTrackTrigger(entity, this);
     m_enterQueue[EntityId(entity)] = entity;
 }
 
-void TriggerBase::QueueExit(ObjEntity* entity)
+void TriggerBase::QueueExit(Entity* entity)
 {
     if (!entity->IsAlive() || m_exitQueue.count(EntityId(entity)))
         return;
@@ -309,7 +317,7 @@ void TriggerBase::RegisterNavObstacle()
         size = { half.x * 2.0f, half.y * 2.0f, half.z * 2.0f, 0.0f };
     }
     NavRemoveObstacle(m_navHandle);
-    m_navHandle = NavAddObstacle(frame, size, GetName());
+    m_navHandle = NavAddObstacle(frame, size, GetDebugName());
 }
 
 void TriggerBase::ChangeEnabled(bool enabled)
@@ -324,7 +332,7 @@ void TriggerBase::ChangeEnabled(bool enabled)
     if (!enabled) {
         if (!m_processing)
             ExitAll();
-        SetBusy(false);
+        SetBusyFlag(false);
     }
 }
 
@@ -340,11 +348,11 @@ void TriggerBase::ExitAll()
     // Occupants that are still alive are queued to enter again, so that they
     // are reported once the trigger is enabled again.
     while (!m_occupants.empty()) {
-        ObjEntity* entity = m_occupants.front();
+        Entity* entity = m_occupants.front();
         OnExit(entity);
         if (entity->IsAlive() && !m_enterQueue.count(EntityId(entity))) {
             entity->AddRef();
-            if (!m_enabled && (entity->flags2 & 8))
+            if (!m_enabled && entity->HasTypeBit(kType_Character))
                 EntityTrackTrigger(entity, this);
             m_enterQueue[EntityId(entity)] = entity;
         }
@@ -356,7 +364,7 @@ void TriggerBase::ExitAll()
 }
 
 // @func 0x0020D5D4 TriggerBase::Release
-void TriggerBase::Release(bool immediate)
+bool TriggerBase::Release(bool immediate)
 {
     if (immediate) {
         // Pending reports are dropped without their references (the entities
@@ -364,7 +372,7 @@ void TriggerBase::Release(bool immediate)
         m_exitQueue.clear();
         m_enterQueue.clear();
         while (!m_occupants.empty()) {
-            ObjEntity* entity = m_occupants.front();
+            Entity* entity = m_occupants.front();
             OnExit(entity);
             if (!m_occupants.empty() && m_occupants.front() == entity)
                 m_occupants.erase(m_occupants.begin());
@@ -381,7 +389,7 @@ void TriggerBase::Release(bool immediate)
         }
         VolumeRelease(m_volume);
     }
-    ObjEntity::Release(immediate);
+    return Entity::Release(immediate);
 }
 
 // @func 0x0020DC6C TriggerBase::ProcessEnterQueue
@@ -391,17 +399,17 @@ void TriggerBase::ProcessEnterQueue()
         return;
     m_processing = true;
     // Work on a copy: the callbacks may queue new reports.
-    std::vector<ObjEntity*> pending;
+    std::vector<Entity*> pending;
     pending.reserve(m_enterQueue.size());
     for (auto& entry : m_enterQueue)
         pending.push_back(entry.second);
     m_enterQueue.clear();
 
-    for (ObjEntity* entity : pending) {
+    for (Entity* entity : pending) {
         entity->Release(false);
         if (FindOccupant(entity) != -1)
             OnExit(entity);
-        if (!m_playersOnly || entity->IsPlayer())
+        if (!m_playersOnly || EntityIsPlayer(entity))
             OnEnter(entity);
     }
     m_processing = false;
@@ -416,13 +424,13 @@ void TriggerBase::ProcessExitQueue()
         return;
     bool wasEnabled = m_enabled;
     m_processing = true;
-    std::vector<ObjEntity*> pending;
+    std::vector<Entity*> pending;
     pending.reserve(m_exitQueue.size());
     for (auto& entry : m_exitQueue)
         pending.push_back(entry.second);
     m_exitQueue.clear();
 
-    for (ObjEntity* entity : pending) {
+    for (Entity* entity : pending) {
         entity->Release(false);
         if (FindOccupant(entity) != -1)
             OnExit(entity);
@@ -441,7 +449,7 @@ void TriggerBase::PruneQueues()
 }
 
 // @func 0x0020DFD8 TriggerBase::Update
-void TriggerBase::Update(float dt)
+bool TriggerBase::Update(float dt)
 {
     if (m_aabbVolume) {
         PruneQueues();
@@ -460,7 +468,7 @@ void TriggerBase::Update(float dt)
             // NOTE: the console walks the occupants by index while OnExit removes
             // entries (swap with last), so an occupant can be skipped for a frame.
             for (int i = 0; i < (int)m_occupants.size(); ++i) {
-                ObjEntity* occupant = m_occupants[(size_t)i];
+                Entity* occupant = m_occupants[(size_t)i];
                 bool found = false;
                 for (int j = 0; j < count && !found; ++j)
                     found = CollidableOwner(overlaps[j]) == occupant;
@@ -468,29 +476,29 @@ void TriggerBase::Update(float dt)
                     OnExit(occupant);
             }
             for (int j = 0; j < count; ++j) {
-                ObjEntity* owner = CollidableOwner(overlaps[j]);
+                Entity* owner = CollidableOwner(overlaps[j]);
                 if (!owner || FindOccupant(owner) >= 0)
                     continue;
-                if (!m_playersOnly || owner->IsPlayer())
+                if (!m_playersOnly || EntityIsPlayer(owner))
                     OnEnter(owner);
             }
         } else {
             ProcessEnterQueue();
         }
     }
-    ObjEntity::Update(dt);
+    return Entity::Update(dt);
 }
 
 // Name of the trigger: the phantom's name (a Havok string pointer whose
 // low bit is a flag; VolumeGetName returns it with the bit cleared).
 // @func 0x00759E30 TriggerBase::GetName
-const char* TriggerBase::GetName() const
+const char* TriggerBase::GetDebugName()
 {
     return VolumeGetName(m_volume);
 }
 
 // @func 0x0020E560 TriggerBase::GetBounds
-ape::Aabb TriggerBase::GetBounds(bool world) const
+ape::Aabb TriggerBase::GetBounds(bool world)
 {
     ape::Aabb box;
     ape::AabbFromPoint(box, ape::world::kWorldZero);
@@ -509,17 +517,17 @@ ape::Aabb TriggerBase::GetBounds(bool world) const
 }
 
 // @func 0x0020E6DC TriggerBase::HandleMessage
-void TriggerBase::HandleMessage(uint32_t id, const void* data)
+void TriggerBase::HandleMessage(const entity::EntityMessage& msg)
 {
-    if (id == kMsg_Disable) {
+    if (msg.id == kMsg_Disable) {
         SetEnabled(false);
         return;
     }
-    if (id == kMsg_Enable) {
+    if (msg.id == kMsg_Enable) {
         SetEnabled(true);
         return;
     }
-    ObjEntity::HandleMessage(id, data);
+    Entity::HandleMessage(msg);
 }
 
 // @func 0x0020FA20 TriggerBase::ApplyVisibility
@@ -534,19 +542,19 @@ bool TriggerBase::IsDebugDisplayed() const
     return g_debugDisplayTrigger_All.Get();
 }
 
-void TriggerBase::DropPendingReports(ObjEntity* entity)
+void TriggerBase::DropPendingReports(Entity* entity)
 {
     if (g_debugDisplayTriggerLog.Get()) {
         // The console formats both names for a log line (stripped).
-        (void)GetName();
-        (void)entity->GetName();
+        (void)GetDebugName();
+        (void)entity->GetDebugName();
     }
     if (!m_enterQueue.empty()) {
         auto it = m_enterQueue.find(EntityId(entity));
         if (it != m_enterQueue.end()) {
-            ObjEntity* queued = it->second;
+            Entity* queued = it->second;
             if (queued) {
-                if (queued->flags2 & 8)
+                if (queued->HasTypeBit(kType_Character))
                     EntityUntrackTrigger(queued, this);
                 queued->Release(false);
             }
@@ -564,62 +572,62 @@ void TriggerBase::DropPendingReports(ObjEntity* entity)
 }
 
 // @func 0x0020E7A4 TriggerBase::OnEnter
-void TriggerBase::OnEnter(ObjEntity* entity)
+void TriggerBase::OnEnter(Entity* entity)
 {
     DropPendingReports(entity);
 
     m_occupants.push_back(entity);
-    SetBusy(true);
+    SetBusyFlag(true);
     entity->AddRef();
-    SetState(0, GetState(0) + 1);
+    entity::EntitySetState(this, 0, entity::EntityGetState(this, 0) + 1);
 
-    if (m_allEvents || entity->IsPlayer()) {
-        bool suppressed = entity->IsPlayer() && (entity->flags2 & 2) && entity->IsEventSuppressed() != 0;
+    if (m_allEvents || EntityIsPlayer(entity)) {
+        bool suppressed = EntityIsPlayer(entity) && EntityIsDead(entity);
         if (!suppressed) {
-            uint8_t player = m_allEvents ? 0 : entity->playerIndex;
+            uint8_t player = m_allEvents ? 0 : EntityPlayerIndex(entity);
             PostTriggerEvent(kTriggerEvent_Entered, this, player);
             if ((int)m_occupants.size() == GetPlayerCount())
-                PostTriggerEvent(kTriggerEvent_AllPlayersEntered, this, entity->playerIndex);
+                PostTriggerEvent(kTriggerEvent_AllPlayersEntered, this, EntityPlayerIndex(entity));
         }
     }
-    entity->OnEnteredTrigger(this);
+    entity->AddWatcher(this);
 }
 
-bool TriggerBase::RemoveFromList(ObjEntity* entity, bool notifyEntity)
+bool TriggerBase::RemoveFromList(Entity* entity, bool notifyEntity)
 {
     int index = FindOccupant(entity);
     if (index < 0)
         return false;
     if (notifyEntity)
-        entity->OnLeftTrigger(this);
+        entity->RemoveWatcher(this);
     entity->Release(false);
     m_occupants[(size_t)index] = m_occupants.back();
     m_occupants.pop_back();
-    SetBusy(!m_occupants.empty());
-    SetState(0, GetState(0) - 1);
+    SetBusyFlag(!m_occupants.empty());
+    entity::EntitySetState(this, 0, entity::EntityGetState(this, 0) - 1);
     return true;
 }
 
 // @func 0x0020EBC8 TriggerBase::OnExit
-void TriggerBase::OnExit(ObjEntity* entity)
+void TriggerBase::OnExit(Entity* entity)
 {
     DropPendingReports(entity);
     if (!RemoveFromList(entity, true))
         return;
-    if (!m_allEvents && !entity->IsPlayer())
+    if (!m_allEvents && !EntityIsPlayer(entity))
         return;
-    PostTriggerEvent(kTriggerEvent_Left, this, m_allEvents ? 0 : entity->playerIndex);
+    PostTriggerEvent(kTriggerEvent_Left, this, m_allEvents ? 0 : EntityPlayerIndex(entity));
 }
 
 // @func 0x0020EF60 TriggerBase::RemoveOccupant
-void TriggerBase::RemoveOccupant(ObjEntity* entity)
+void TriggerBase::RemoveOccupant(Entity* entity)
 {
     DropPendingReports(entity);
     RemoveFromList(entity, false);
 }
 
 // @func 0x0020F240 TriggerBase::ForgetEntity
-void TriggerBase::ForgetEntity(ObjEntity* entity)
+void TriggerBase::ForgetEntity(Entity* entity)
 {
     DropPendingReports(entity);
     EntityUntrackTrigger(entity, this);

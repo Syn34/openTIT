@@ -52,3 +52,22 @@ requests, anim script/driver bits, Havok frees, minigame flag, game camera looku
 * Not done: LaunchProjectile 0x000EDE30 (needs a PhysicalEntityPlacement on the stack),
   Projectile slot 101 0x000F30B8, the SPU-filtered entity update drivers 0x000CE5D4..
   0x000CFF4C (the filter runs in an SPU program), the Track/Orbit/Shoulder/Spline updates.
+
+## Third pass (agent1): one definition model
+* `EntityDef.h`: the single `EntityDef` (0x8C bytes, vtable 0x00B12230: slot 3 GetBounds,
+  7 Spawn(placement), 8 InstanceName(placement)), its description `EntityDefDesc`, the placement
+  base `EntityPlacement` (vtable 0x00B12260; the old `SpawnParams` was the same record) and the
+  instance description `EntityInstanceDesc` (full constructor 0x000CDD28). The real definition
+  constructor (0x000C26D8) resolves the geometry/template object, builds the component list from
+  the named templates, the Havok bone map, and registers the definition.
+* The real entity base (vtable 0x00B12278, 71 slots, constructor 0x000D3578, destructor
+  0x000D7024) is what triggers derive from; 0x00B12550 (79 slots, destructor 0x000DF8B4) is a
+  derived class that adds the interaction slots 71-78. The port keeps one `Entity` class.
+  `Entity(const EntityInstanceDesc&)` is ported; world object set-up 0x000D2F04 and the
+  attachment records 0x000D1B10 are hooks.
+* Definition flag word +0x20: desc flag i is bit 31-i; bit 26 (kDefFlag_Desc5) becomes placement
+  bit 29 and hides new entities, bit 25 the highlight flag, bit 27 "sleeps away", bit 30 the
+  instance description's bit 14. Placement bits84 bits 21-28 are the player slot (0xFF none);
+  placement +0x60 / description +0x70 is the instance scale; +0x70 the source object.
+* Entity type bits as the triggers test them: 1 scripted (ScriptedEntity::IsDead is slot 80),
+  3 character, 4 excluded from update-enable tracking, 49 pushable.

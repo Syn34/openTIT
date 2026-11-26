@@ -1,13 +1,11 @@
 # sly/objects notes (range 0x00180000-0x00260000: world entity classes)
 
 ## Layout
-* `ObjectsBase.h/.cpp`: local stand-ins for the entity framework (the entity module,
-  0x000B0000-0x00180000, is being ported in parallel): `EntityDefDesc` (0x4C-byte def
-  description), `EntityDef` (vtable 0x00B12230), `EntityPlacement` ("settings", vtable
-  0x00B12260), `EntityInstanceDesc` (0x90-byte instance description) and `ObjEntity`
-  (entity base, vtable 0x00B12550). Only the fields/slots used here are modelled; the
-  functions in ObjectsBase.cpp are untagged minimal versions of 0x000C26D8, 0x000C2DA0,
-  0x000C387C, 0x000CBA88, 0x000CDD28, 0x000CDB28.
+* `ObjectsBase.h`: brings the entity module's `EntityDef`, `EntityDefDesc`, `EntityPlacement`
+  and `EntityInstanceDesc` (sly/entity/EntityDef.h) and `entity::Entity` into this namespace,
+  plus the entity type bits the objects test (`kType_*`) and small helpers (`EntityIsDead`,
+  `EntityIsPlayer`, `EntityPlayerIndex`). The former stand-ins (`ObjEntity` etc.) are gone:
+  triggers derive from `entity::Entity` and their definitions override `EntityDef::Spawn`.
 * `ObjectsHooks.h/.cpp`: every call out of this directory (Havok phantoms, nav obstacles,
   game events, audio, job manager, spline lookup, ...) as TODO stubs naming the console
   function/member.

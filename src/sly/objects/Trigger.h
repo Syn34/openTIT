@@ -55,7 +55,7 @@ class TriggerDef : public EntityDef {
 public:
     explicit TriggerDef(const TriggerDefDesc& desc);
     ~TriggerDef() override;
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
 
     char objPrefix[0x20] = {};     // 0x8C
     bool startEnabled = true;      // 0xAC
@@ -122,39 +122,39 @@ struct TriggerInstanceDesc : EntityInstanceDesc {
 // ---------------------------------------------------------------------------
 // Entity
 // ---------------------------------------------------------------------------
-class TriggerBase : public ObjEntity {
+class TriggerBase : public Entity {
 public:
     // `capacity` sizes the occupant list; `applyColFlags` takes the collision
     // layer from the volume's "ColFlags" property (0x0020C868).
     TriggerBase(const TriggerInstanceDesc& desc, uint16_t capacity, bool applyColFlags);
     ~TriggerBase() override;
 
-    void Update(float dt) override;
-    void Release(bool immediate) override;
-    const char* GetName() const override;
-    ape::Aabb GetBounds(bool world) const override;
-    void HandleMessage(uint32_t id, const void* data) override;
+    bool Update(float dt) override;
+    bool Release(bool immediate) override;
+    const char* GetDebugName() override;
+    ape::Aabb GetBounds(bool world) override;
+    void HandleMessage(const entity::EntityMessage& msg) override;
     void ApplyVisibility(bool visible) override;
 
     // -- trigger virtual interface (slots 71..77) ---------------------------
-    virtual void OnEnter(ObjEntity* entity);
-    virtual void OnExit(ObjEntity* entity);
+    virtual void OnEnter(Entity* entity);
+    virtual void OnExit(Entity* entity);
     // @func 0x00759E40 TriggerBase::OnStay
-    virtual void OnStay(ObjEntity* entity) { (void)entity; }
+    virtual void OnStay(Entity* entity) { (void)entity; }
     // Removes an occupant without the leave notifications.
-    virtual void RemoveOccupant(ObjEntity* entity);
+    virtual void RemoveOccupant(Entity* entity);
     // Drops pending enter/leave reports and the entity's nav registration.
-    virtual void ForgetEntity(ObjEntity* entity);
+    virtual void ForgetEntity(Entity* entity);
     virtual void SetEnabled(bool enabled);
     virtual bool IsDebugDisplayed() const;
 
     // Reports queued by the phantom listener (console code 0x0075A6xx).
-    void QueueEnter(ObjEntity* entity);
-    void QueueExit(ObjEntity* entity);
+    void QueueEnter(Entity* entity);
+    void QueueExit(Entity* entity);
 
     bool IsEnabled() const { return m_enabled; }
     int OccupantCount() const { return (int)m_occupants.size(); }
-    ObjEntity* Occupant(int index) const { return m_occupants[(size_t)index]; }
+    Entity* Occupant(int index) const { return m_occupants[(size_t)index]; }
     TriggerVolume* Volume() const { return m_volume; }
 
 protected:
@@ -168,16 +168,16 @@ protected:
     // Drops queued reports of entities that died meanwhile.
     void PruneQueues();
     // Leaves the trigger slot: OnExit's bookkeeping shared by RemoveOccupant.
-    bool RemoveFromList(ObjEntity* entity, bool notifyEntity);
+    bool RemoveFromList(Entity* entity, bool notifyEntity);
     // Shared start of OnEnter/OnExit/RemoveOccupant/ForgetEntity.
-    void DropPendingReports(ObjEntity* entity);
+    void DropPendingReports(Entity* entity);
     // Applies a new enabled state (shared by the constructor and SetEnabled).
     void ChangeEnabled(bool enabled);
-    int FindOccupant(const ObjEntity* entity) const;
+    int FindOccupant(const Entity* entity) const;
 
-    std::vector<ObjEntity*> m_occupants;        // 0x158
-    std::map<uint32_t, ObjEntity*> m_enterQueue; // 0x16C keyed by entity id (+0xA8)
-    std::map<uint32_t, ObjEntity*> m_exitQueue;  // 0x184
+    std::vector<Entity*> m_occupants;        // 0x158
+    std::map<uint32_t, Entity*> m_enterQueue; // 0x16C keyed by entity id (+0xA8)
+    std::map<uint32_t, Entity*> m_exitQueue;  // 0x184
     bool m_enabled = false;          // 0x19C bit 31
     bool m_playersOnly = false;      // bit 30
     bool m_allEvents = false;        // bit 29
@@ -203,10 +203,10 @@ public:
 bool TriggerPlacementSkips(const EntityPlacement* placement, bool typeMatches);
 
 // Entity id used to key the report queues (+0xA8).
-uint32_t EntityId(const ObjEntity* entity);
+uint32_t EntityId(const Entity* entity);
 
 // Owner entity of a collidable overlapping a volume (0x0020DB54).
-ObjEntity* CollidableOwner(const void* collidable);
+Entity* CollidableOwner(const void* collidable);
 
 } // namespace objects
 } // namespace sly

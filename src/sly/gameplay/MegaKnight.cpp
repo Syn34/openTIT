@@ -219,10 +219,10 @@ MegaKnightStampManager::MegaKnightStampManager(MegaKnight* owner)
 {
     leadDist = g_megaKnightMissileLeadDist.Get();
     entity::EntityDef* def = entity::FindEntityDef(0xD4A3F67Au);
-    if (def && (def->optionFlags & 0x2000))
+    if (def && (def->classBits & 0x2000))
         stampDef = def;
     def = entity::FindEntityDef(0xB267EAFBu);
-    if (def && (def->optionFlags & 0x2000))
+    if (def && (def->classBits & 0x2000))
         stampDefB = def;
     effectDef = entity::FindEntityDef(0x8F7C1D39u);
 }

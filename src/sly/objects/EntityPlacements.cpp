@@ -116,10 +116,10 @@ PlacementB16088::~PlacementB16088() = default;
 // NOTE: the console reads the definition's pieces without a null check.
 // @func 0x0074F680 BreakableChainPlacement::BreakableChainPlacement
 BreakableChainPlacement::BreakableChainPlacement(const char* placementName, BreakableChainDef* ownerDef,
-                                                 uint32_t field70, const ape::Matrix34& placementTransform,
-                                                 const ape::Vec3& offset, bool bit31, bool bit30,
+                                                 ape::world::ApeObj* source, const ape::Matrix34& placementTransform,
+                                                 const ape::Vec3& scale, bool bit31, bool bit30,
                                                  uint32_t field74)
-    : EntityPlacement(placementName, ownerDef, field70, placementTransform, offset, bit31, bit30, field74)
+    : EntityPlacement(placementName, ownerDef, source, placementTransform, scale, bit31, bit30, field74)
 {
     typeBits |= 0x400;
     if (!ownerDef)
@@ -133,21 +133,21 @@ BreakableChainPlacement::BreakableChainPlacement(const char* placementName, Brea
 BreakableChainPlacement::~BreakableChainPlacement() = default;
 
 // @func 0x0074FA80 ChainPlacement::ChainPlacement
-ChainPlacement::ChainPlacement(const char* placementName, EntityDef* ownerDef, uint32_t field70,
-                               const ape::Matrix34& placementTransform, const ape::Vec3& offset, bool bit31,
+ChainPlacement::ChainPlacement(const char* placementName, EntityDef* ownerDef, ape::world::ApeObj* source,
+                               const ape::Matrix34& placementTransform, const ape::Vec3& scale, bool bit31,
                                bool bit30, uint32_t field74, uint32_t valueB4)
-    : EntityPlacement(placementName, ownerDef, field70, placementTransform, offset, bit31, bit30, field74),
+    : EntityPlacement(placementName, ownerDef, source, placementTransform, scale, bit31, bit30, field74),
       field_B4(valueB4)
 {
     typeBits |= 0x800;
 }
 
 // @func 0x00750680 RopePlacement::RopePlacement
-RopePlacement::RopePlacement(const char* placementName, EntityDef* ownerDef, uint32_t field70,
-                             const ape::Matrix34& placementTransform, const ape::Vec3& offset, bool bit31,
+RopePlacement::RopePlacement(const char* placementName, EntityDef* ownerDef, ape::world::ApeObj* source,
+                             const ape::Matrix34& placementTransform, const ape::Vec3& scale, bool bit31,
                              bool bit30, uint32_t field74, uint32_t valueE0, const ape::Vec3& pointC0,
                              const ape::Vec3& pointD0, uint32_t valueE4, bool flagE8)
-    : EntityPlacement(placementName, ownerDef, field70, placementTransform, offset, bit31, bit30, field74),
+    : EntityPlacement(placementName, ownerDef, source, placementTransform, scale, bit31, bit30, field74),
       field_C0(pointC0), field_D0(pointD0), field_E0(valueE0), field_E4(valueE4), field_E8(flagE8)
 {
     typeBits |= 0x1000;
@@ -157,7 +157,7 @@ RopePlacement::RopePlacement(const char* placementName, EntityDef* ownerDef, uin
 PlacementB193A8::PlacementB193A8(const char* placementName, EntityDef* ownerDef,
                                  const ape::Matrix34& placementTransform, bool bit31, uint32_t valueB4,
                                  bool flagB8)
-    : EntityPlacement(placementName, ownerDef, 0, placementTransform, ape::Vec3{}, bit31, false, 0),
+    : EntityPlacement(placementName, ownerDef, nullptr, placementTransform, ape::Vec3{}, bit31, false, 0),
       field_B4(valueB4), field_B8(flagB8)
 {
     field_0C |= 0x80;

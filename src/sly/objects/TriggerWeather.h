@@ -28,7 +28,7 @@ struct WeatherTriggerDefDesc : TriggerDefDesc {
 class WeatherTriggerDef : public TriggerDef {
 public:
     explicit WeatherTriggerDef(const WeatherTriggerDefDesc& desc);
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
     // tagged there); the deleting variant returns the block to the bucket
     // allocator.
@@ -45,7 +45,7 @@ public:
     // Nothing of its own to release (the base destructor does the work).
     // @func 0x0075BC54 WeatherTrigger::~WeatherTrigger (deleting)
     ~WeatherTrigger() override = default;
-    void Release(bool immediate) override;
+    bool Release(bool immediate) override;
     bool IsDebugDisplayed() const override;
     // TODO(0x00222B18 Update, 0x00223890 OnEnter, 0x00223A7C OnExit and the
     // helpers 0x00222654 / 0x002228C8 / 0x00223640): the per-player weather
