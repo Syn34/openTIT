@@ -3,8 +3,15 @@
 #include "agl/AglRenderThread.h"
 
 #include "agl/AglDeferred.h"
+#include "agl/AglDisplay.h"
+#include "agl/AglDrawList.h"
 #include "agl/AglOcclusion.h"
 #include "agl/AglRenderTarget.h"
+#include "agl/AglResources.h"
+#include "agl/AglShaderClass.h"
+#include "agl/AglState.h"
+
+#include "ape/sys/ApeFrameClock.h"
 
 #include "ape/core/ApeThread.h"
 
@@ -221,6 +228,81 @@ void EndFrame(int phase)
         FlushDebugDraw();
         ResetDebugDraw();
     }
+}
+
+namespace {
+float g_renderTime = 0.0f;       // 0x010DD9E0
+bool g_frameStarted = false;     // 0x010C5A70
+} // namespace
+
+float GetRenderTime()
+{
+    return g_renderTime;
+}
+
+// @func 0x005325D8 BeginGpuFrame
+void BeginGpuFrame(bool clearBackBuffer)
+{
+    // NOTE: the console first waits for the previous flip, recycles the
+    // command ring and the shader constant patch buffer (reporting its free
+    // space); the PC device does that itself.
+
+    // Gamma may have been set out of range; re-applying clamps and sends it.
+    SetDisplayGamma(GetDisplayGamma());
+    ResetRenderState();
+    SetStereoMode(GetDisplaySettings().stereoOutput ? kAglStereo_Left : kAglStereo_Off);
+
+    AglRenderSurface* backBuffer = GetBackBuffer();
+    if (!backBuffer)
+        return;
+    backBuffer->field_88 = 0;
+    if (!clearBackBuffer)
+        return;
+    const uint16_t* viewport = nullptr;
+    const uint16_t* scissor = nullptr;
+    backBuffer->GetDefaultRects(&viewport, &scissor);
+    SetViewportRect(viewport);
+    SetRenderTargets(backBuffer->depth, backBuffer->color, 0);
+    gpu::CommandList& cmd = Cmd();
+    cmd.SetClearColor(0);
+    cmd.SetClearDepthStencil(0xFFFFFF00u);   // depth 1, stencil 0
+    cmd.SetStencilMask(0xFF);
+    cmd.ClearSurface(gpu::kClear_All);
+    cmd.SetStencilMask(GetRenderState().stencilFront.writeMask);
+}
+
+// @func 0x0053BBE0 BeginBackBufferFrame
+void BeginBackBufferFrame()
+{
+    BeginGpuFrame(false);
+    BindRenderSurface(GetBackBuffer(), true);
+}
+
+// @func 0x0051008C BeginRenderFrame
+void BeginRenderFrame()
+{
+    g_renderTime += ape::GetFrameClock().deltaTime;
+
+    // The animated materials advance by the step queued during the frame.
+    AglAnimationClock& clock = GetAnimationClock();
+    clock.lastStep = clock.pendingStep;
+    clock.time += clock.pendingStep;
+    clock.field_C = 1.0f;
+    clock.pendingStep = 0.0f;
+    g_frameStarted = true;
+
+    BeginBackBufferFrame();
+    gpu::CommandList& cmd = Cmd();
+    cmd.SetCullFaceEnable(true);
+    cmd.SetFrontFace(gpu::FrontFace::CCW);
+
+    // NOTE: the console also flips the buffers of the optional profiler
+    // object (0x011DE300), resets the per-frame scratch allocators of the
+    // render thread (0x010DD600 / 0x010DD700) and the double buffered GPU
+    // blocks of the draw list (0x0050FE10); those are console memory
+    // management with no PC counterpart.
+    GetDrawList().BeginFrame();
+    RefreshOcclusionQueryState();
 }
 
 } // namespace agl
