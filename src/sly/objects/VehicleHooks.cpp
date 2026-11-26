@@ -28,6 +28,11 @@ entity::Entity* Component01Next(entity::EntityComponent* component, entity::Enti
     return nullptr;
 }
 
+void ObjectSetTechniqueConstant(ape::world::ApeObj* object, uint32_t technique, int constant, uint32_t value)
+{
+    (void)object; (void)technique; (void)constant; (void)value;
+}
+
 bool MainViewWorldToScreen(const ape::Vec3& position, float out[2])
 {
     (void)position;

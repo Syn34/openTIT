@@ -9,6 +9,9 @@
 
 namespace sly {
 namespace entity { class Entity; class EntityComponent; }
+}
+namespace ape::world { class ApeObj; }
+namespace sly {
 namespace objects {
 
 // Word +0x28 bit 12 of the entity's component of type 3. NOTE: the
@@ -60,6 +63,11 @@ entity::Entity* Component01Next(entity::EntityComponent* component, entity::Enti
 
 // Character component: pauses an animation layer (0x00254814).
 void CharacterPauseLayer(entity::EntityComponent* character, uint32_t layer);
+
+// Sets material constant `constant` to `value` on every material of the
+// world object's geometry that uses technique `technique` (the geometry
+// instance +0xD0, its meshes and their material lists; 0x0050C018).
+void ObjectSetTechniqueConstant(ape::world::ApeObj* object, uint32_t technique, int constant, uint32_t value);
 
 // -- view -----------------------------------------------------------------------
 // Screen position (0..1) of a world point on the main render target (game
