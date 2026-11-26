@@ -421,6 +421,14 @@ public:
     // point asked for, or the first job), and the "Audio.PostSaveDataLoadMusic"
     // track starts.
     void ResumeSavedGame();
+    // Notes in the save data where play would resume: inside a job its
+    // episode and the episode's hideout; otherwise the running job and the
+    // tracked goal too, unless this is the game's last goal (0x00475E20).
+    void RecordResumePoint();
+    // The running episode is the last active one, it has at most one job
+    // left, and the player's goals are all complete but at most one, which
+    // does not hold back the next scripts (0x00475C28).
+    bool OnFinalGoal() const;
     // A player is down: meter B snaps and a running return-treasure
     // microgame loses the treasure if the player carried it.
     void OnPlayerDown(uint32_t player);

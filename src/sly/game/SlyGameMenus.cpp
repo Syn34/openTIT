@@ -23,6 +23,8 @@
 #include "sly/game/SoundZones.h"
 #include "sly/entity/Awards.h"
 #include "sly/game/goals/JobManager.h"
+#include "sly/game/goals/Goal.h"
+#include <cstring>
 #include "sly/game/AudioSystem.h"
 #include "sly/game/hud/HudElement.h"
 #include "sly/game/hud/HudHideoutMenu.h"
@@ -1273,6 +1275,76 @@ ape::ApeGuiObject* ActiveHideoutMenuGui()
     // The active type-0x200 element is always a hideout menu.
     auto* menu = static_cast<hud::HudHideoutMenu*>(hud::FindActiveType200());
     return menu ? menu->gui : nullptr;
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x00475C28 SlyGame::OnFinalGoal
+bool SlyGame::OnFinalGoal() const
+{
+    game::JobManager* jobs = game::GetJobManager();
+    game::Job* job = jobs ? jobs->currentJob : nullptr;
+    if (!job)
+        return false;
+    for (uint32_t i = job->episode + 1u; i < jobs->jobCount; ++i) {
+        if (jobs->jobs[i].active)
+            return false;
+    }
+
+    (void)job->CurrentStage();    // NOTE: result unused on the console
+    uint32_t stagesDone = 0;
+    for (uint32_t i = 0; i < job->stageCount; ++i) {
+        if (job->stages[i].State() == 2)
+            ++stagesDone;
+    }
+    if (job->stageCount > stagesDone + 1)
+        return false;
+
+    const GamePlayer& player = players[0];
+    const uint32_t goalCount = player.goals.Count();
+    uint32_t goalsDone = 0;
+    goals::Goal* open = nullptr;
+    for (uint32_t i = 0; i < goalCount; ++i) {
+        goals::Goal* goal = player.goals[i];
+        uint32_t word = 0;
+        std::memcpy(&word, &player.field_20074[goal->saveSlot * 4], sizeof(word));
+        if ((word >> 28) == goals::kGoal_Complete)
+            ++goalsDone;
+        else
+            open = goal;
+    }
+    if (goalCount > goalsDone + 1)
+        return false;
+    if (goalsDone + 1 != goalCount || !open)
+        return true;
+    return !open->BlocksNextScripts();
+}
+
+// @func 0x00475E20 SlyGame::RecordResumePoint
+void SlyGame::RecordResumePoint()
+{
+    game::JobManager* jobs = game::GetJobManager();
+    if (!jobs)
+        return;
+    if (game::IsInJob()) {
+        if (game::Job* job = jobs->FindJobById(progress.currentJobValue)) {
+            progress.lastJobId = progress.currentJobValue;
+            progress.lastLevel = job->nameHash;
+        } else {
+            progress.lastJobId = 0;
+            progress.lastLevel = 0;
+        }
+        progress.lastEpisodeName = 0;
+        progress.lastGoalName = 0;
+        return;
+    }
+    progress.lastJobId = jobs->currentJob ? jobs->currentJob->field_2D4 : 0;
+    progress.lastLevel = jobs->currentJob ? jobs->currentJob->nameHash : 0;
+    const bool final = OnFinalGoal();
+    progress.lastEpisodeName = (!final && jobs->instance) ? jobs->instance->nameHash : 0;
+    progress.lastGoalName = (!final && jobs->trackedGoal) ? jobs->trackedGoal->nameHash : 0;
 }
 
 } // namespace sly
