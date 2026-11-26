@@ -249,12 +249,13 @@ public:
     using ActorPlacement::ActorPlacement;
     ~ActorGroupPlacement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001AA57C
-    uint32_t field_F0[4] = {};          // +0xF0..+0xFC
-    bool field_100 = false;             // +0x100
+    // Attributes 0x4E14723F, 0x6A96C7DB, 0xEAEDFCE1, 0x0A924DA2.
+    float field_F0[4] = {};             // +0xF0..+0xFC
+    bool field_100 = false;             // +0x100 attribute 0x317F6BB4
 };
 struct ActorGroupInstanceDesc : ScriptedInstanceDesc {
     using ScriptedInstanceDesc::ScriptedInstanceDesc;
-    uint32_t field_D0[4] = {};          // 0xD0..0xDC
+    float field_D0[4] = {};             // 0xD0..0xDC
     bool field_E0 = false;              // 0xE0
 };
 
@@ -263,12 +264,14 @@ public:
     using ActorPlacement::ActorPlacement;
     ~HitCounterActorPlacement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001ABA70
-    uint32_t field_F0[5] = {};          // +0xF0..+0x100
-    uint32_t flags_104 = 0;             // +0x104 bits 30/31 are handed on
+    // Attributes 0x8722570B, 0x1E6104E5, 0x08B6A993, 0x14EE18CD, 0x4E14723F.
+    float field_F0[5] = {};             // +0xF0..+0x100
+    // +0x104 bits 30/31 are handed on (attributes 0x994327AD / 0x609A61B6).
+    uint32_t flags_104 = 0;
 };
 struct HitCounterActorInstanceDesc : ScriptedInstanceDesc {
     using ScriptedInstanceDesc::ScriptedInstanceDesc;
-    uint32_t field_D0[5] = {};          // 0xD0..0xE0
+    float field_D0[5] = {};             // 0xD0..0xE0
     uint32_t flags_E4 = 0;              // 0xE4
 };
 
@@ -621,6 +624,16 @@ EntityPlacement* ParseActorPlacement(ape::xml::XmlElement* root, ape::xml::XmlEl
                                      EntityDef* def);
 EntityPlacement* ParsePhysicalEntityPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                               const char* name, EntityDef* def);
+// Placement loaders of the actor group / hit counter, chain and rope
+// elements (0x001AA360, 0x001AB7A0, 0x001A7C70, 0x001BB830).
+EntityPlacement* ParseActorGroupPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                          const char* name, EntityDef* def);
+EntityPlacement* ParseHitCounterActorPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                               const char* name, EntityDef* def);
+EntityPlacement* ParseChainPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
+                                     EntityDef* def);
+EntityPlacement* ParseRopePlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
+                                    EntityDef* def);
 // Placement loaders of the rigid-body scripted classes (0x00167F58,
 // 0x0016CBE0, 0x00177D78, 0x0017F1A0, 0x00190EA0).
 EntityPlacement* ParseRigidPropPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,

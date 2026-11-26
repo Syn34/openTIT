@@ -20,8 +20,22 @@ namespace entity {
     }
 
 // Plain actor definitions (base ActorDef).
-SLY_ACTOR_DEF(ActorGroupDef, ActorDef);         // 0x00B152C8, spawns ActorGroup
-SLY_ACTOR_DEF(HitCounterActorDef, ActorDef);    // 0x00B15508, spawns HitCounterActor
+// 0x00B152C8, spawns ActorGroup. NOTE: the fields are the defaults of its
+// placements (the definition parser is not ported).
+class ActorGroupDef : public ActorDef {
+public:
+    ~ActorGroupDef() override;
+    float field_130[4] = {};            // 0x130
+    bool field_140 = false;             // 0x140
+};
+// 0x00B15508, spawns HitCounterActor. NOTE: as above.
+class HitCounterActorDef : public ActorDef {
+public:
+    ~HitCounterActorDef() override;
+    float field_130[5] = {};            // 0x130
+    uint32_t field_144 = 0;             // 0x144
+    uint32_t flags_148 = 0x80000000u;   // 0x148 bits 30/31: placement defaults
+};
 SLY_ACTOR_DEF(WatchActorDef, ActorDef);         // 0x00B15748, spawns WatchActor
 SLY_ACTOR_DEF(SignalActorDef, ActorDef);        // 0x00B15BD8, spawns SignalActor
 SLY_ACTOR_DEF(ActorB15E60Def, ActorDef);        // 0x00B15E18, spawns ActorB15E60

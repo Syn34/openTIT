@@ -3,6 +3,7 @@
 #include "sly/objects/EntityPlacements.h"
 #include "sly/entity/ScriptedEntity.h"
 #include "sly/entity/PropEntities.h"
+#include "sly/entity/ActorDefs.h"
 #include "ape/xml/ApeXml.h"
 
 namespace sly {
@@ -406,6 +407,87 @@ EntityPlacement* ParseTargetableBPlacement(ape::xml::XmlElement* root, ape::xml:
     auto* placement = new TargetableBPlacement(name, def);
     placement->flags |= 0x200;
     placement->Parse(elem);
+    return placement;
+}
+
+// @func 0x001AA360 ParseActorGroupPlacement
+EntityPlacement* ParseActorGroupPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                          const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new ActorGroupPlacement(name, def);
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    if (def) {
+        const auto* groupDef = static_cast<const entity::ActorGroupDef*>(def);
+        for (int i = 0; i < 4; ++i)
+            placement->field_F0[i] = groupDef->field_130[i];
+        placement->field_100 = groupDef->field_140;
+    }
+    placement->field_0C |= 1;
+    placement->Parse(elem);
+    elem->GetFloat(0x4E14723Fu, &placement->field_F0[0], placement->field_F0[0]);
+    elem->GetFloat(0x6A96C7DBu, &placement->field_F0[1], placement->field_F0[1]);
+    elem->GetFloat(0xEAEDFCE1u, &placement->field_F0[2], placement->field_F0[2]);
+    elem->GetFloat(0x0A924DA2u, &placement->field_F0[3], placement->field_F0[3]);
+    elem->GetBool(0x317F6BB4u, &placement->field_100, placement->field_100);
+    return placement;
+}
+
+// @func 0x001AB7A0 ParseHitCounterActorPlacement
+EntityPlacement* ParseHitCounterActorPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                               const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new HitCounterActorPlacement(name, def);
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    uint32_t defFlags = 0x80000000u;
+    if (def) {
+        const auto* counterDef = static_cast<const entity::HitCounterActorDef*>(def);
+        for (int i = 0; i < 5; ++i)
+            placement->field_F0[i] = counterDef->field_130[i];
+        defFlags = counterDef->flags_148;
+    }
+    placement->flags_104 = (placement->flags_104 & 0x3FFFFFFFu) | (defFlags & 0xC0000000u);
+    placement->field_0C |= 1;
+    placement->Parse(elem);
+    elem->GetFloat(0x8722570Bu, &placement->field_F0[0], placement->field_F0[0]);
+    elem->GetFloat(0x1E6104E5u, &placement->field_F0[1], placement->field_F0[1]);
+    elem->GetFloat(0x08B6A993u, &placement->field_F0[2], placement->field_F0[2]);
+    elem->GetFloat(0x14EE18CDu, &placement->field_F0[3], placement->field_F0[3]);
+    elem->GetFloat(0x4E14723Fu, &placement->field_F0[4], placement->field_F0[4]);
+    bool bit31 = (placement->flags_104 & 0x80000000u) != 0;
+    bool bit30 = (placement->flags_104 & 0x40000000u) != 0;
+    elem->GetBool(0x609A61B6u, &bit31, bit31);
+    elem->GetBool(0x994327ADu, &bit30, bit30);
+    placement->flags_104 = (placement->flags_104 & 0x3FFFFFFFu) | (bit31 ? 0x80000000u : 0u) |
+                           (bit30 ? 0x40000000u : 0u);
+    return placement;
+}
+
+// @func 0x001A7C70 ParseChainPlacement
+EntityPlacement* ParseChainPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
+                                     EntityDef* def)
+{
+    (void)root;
+    auto* placement = new ChainPlacement(name, def, nullptr, ape::world::kWorldIdentity,
+                                         ape::world::kWorldUnitScale, true, false, 0, 0xFFFFFFFFu);
+    int32_t value = int32_t(placement->field_B4);
+    elem->GetInt(0xBEC3D7F3u, &value, value);
+    placement->field_B4 = uint32_t(value);
+    return placement;
+}
+
+// @func 0x001BB830 ParseRopePlacement
+EntityPlacement* ParseRopePlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
+                                    EntityDef* def)
+{
+    (void)root;
+    auto* placement = new RopePlacement(name, def, nullptr, ape::world::kWorldIdentity, ape::world::kWorldUnitScale,
+                                        true, false, 0, 0, ape::world::kWorldZero, ape::world::kWorldZero,
+                                        0xFFFFFFFFu, false);
+    int32_t value = int32_t(placement->field_E4);
+    elem->GetInt(0x803BA106u, &value, value);
+    placement->field_E4 = uint32_t(value);
     return placement;
 }
 
