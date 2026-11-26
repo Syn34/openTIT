@@ -84,6 +84,13 @@ void RigidEntityB19198::Detached(float gravityFactor)
     Entity::Detached(gravityFactor);
 }
 
+// @func 0x00208BB0 RigidEntityB19198::SetTransform
+void RigidEntityB19198::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    RigidBodySetTransform(rigidBody, m);
+}
+
 // @func 0x00206E80 RigidEntityB19198::SetVelocity
 void RigidEntityB19198::SetVelocity(const ape::Vec3& velocity)
 {

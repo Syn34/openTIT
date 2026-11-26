@@ -27,6 +27,8 @@ public:
     // Slots 27/28: gravity factor of the body (the attach link's while attached).
     float GetGravityFactor() override;
     void Detached(float gravityFactor) override;
+    // Slot 21: the entity and its body are placed at `m`.
+    void SetTransform(const ape::Matrix34& m) override;
     // Slot 34: sets the body's linear velocity (bodies in the world that
     // are neither fixed nor keyframed).
     void SetVelocity(const ape::Vec3& velocity) override;
