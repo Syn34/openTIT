@@ -5,6 +5,8 @@
 #include "ape/core/ApeString.h"
 #include "ape/math/ApeMatrixOps.h"
 #include "ape/xml/ApeXml.h"
+#include "ape/input/ApeInputDevice.h"
+#include "ape/world/ApeRegions.h"
 
 namespace ape {
 
@@ -312,7 +314,18 @@ ApeAnimScriptCommand* ApeAnimScriptOcclusionPlaneCommand::Create(xml::XmlElement
     return command;
 }
 
-// TODO(0x004C4684 ApeAnimScriptOcclusionPlaneCommand::Execute) toggles a render occluder.
+// @func 0x004C4684 ApeAnimScriptOcclusionPlaneCommand::Execute
+// Switches the named occluder quad on or off (quad flag bit 0).
+void ApeAnimScriptOcclusionPlaneCommand::Execute(ApeAnimScriptInstance* /*instance*/, ApeAnimScriptState* /*state*/)
+{
+    world::ApeQuad* quad = world::FindQuad(m_plane);
+    if (!quad)
+        return;
+    if (m_active)
+        quad->flags |= 1;
+    else
+        quad->flags &= uint16_t(~1u);
+}
 
 // @func 0x004C46EC ApeAnimScriptOcclusionPlaneCommand::CreateDebugElement
 xml::XmlElement* ApeAnimScriptOcclusionPlaneCommand::CreateDebugElement() const
@@ -415,7 +428,18 @@ ApeAnimScriptCommand* ApeAnimScriptRumbleCommand::Create(xml::XmlElement* elemen
     return command;
 }
 
-// TODO(0x004C5D38 ApeAnimScriptRumbleCommand::Execute) starts pad vibration.
+// @func 0x004C5D38 ApeAnimScriptRumbleCommand::Execute
+// Vibrates the pad of the controller variable (or the default pad when the
+// operand is not a controller variable).
+void ApeAnimScriptRumbleCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* /*state*/)
+{
+    ApeInputDevice* device = g_objectHooks.defaultRumbleDevice;
+    ApeAnimScriptVar* var = instance->FindVar(m_controller);
+    if (var && var->GetType() == AnimScriptVarType::Controller)
+        device = static_cast<ApeAnimScriptControllerVar*>(var)->GetDevice();
+    if (device)
+        device->StartRumble(m_amplitude, m_decay, 0);
+}
 
 // @func 0x004C5DDC ApeAnimScriptRumbleCommand::CreateDebugElement
 xml::XmlElement* ApeAnimScriptRumbleCommand::CreateDebugElement() const

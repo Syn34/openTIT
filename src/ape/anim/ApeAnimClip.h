@@ -19,6 +19,7 @@
 // the game passes in, and a handle list of "set slots" that characters acquire.
 #pragma once
 
+#include "ape/container/ApeTFixedArray.h"
 #include "ape/container/ApeTHandleList.h"
 #include "ape/container/ApeTSortedMap.h"
 #include "ape/sys/ApeStringPool.h"
@@ -150,11 +151,7 @@ public:
     AnimSet* Owner() const { return m_owner; }
 
 private:
-    // Allocates the entry storage (one block from the default allocator on
-    // the console: a 0x10-byte header, then the 0x4C-byte entries).
-    void AllocateStorage(uint16_t capacity);
-
-    std::vector<AnimClipEntry> m_entries;
+    ApeTFixedArray<AnimClipEntry> m_entries;   // +0x00 (default allocator, no index table)
     uint16_t m_count = 0;
     AnimSet* m_owner;          // +0x10
 };

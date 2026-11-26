@@ -241,6 +241,7 @@ void NetClose(int) {}
 const char* CurrentLevelName() { return ""; }
 uint8_t GoalOwnerState(const WorldObject*) { return 0; }
 void EntityMarkForRemoval(WorldObject*) {}
+void ListenerLeaveAllGroups(void*) {}
 uint32_t PlaySound2D(audio::SoundName*, const audio::SoundParams&) { return 0; }
 uint32_t EntityPlaySound(WorldObject*, audio::SoundName*, const audio::SoundParams&,
                          audio::AudioBus*)

@@ -74,3 +74,12 @@ game layer can fill in:
   sibling is read as a set.
 * 0x00789BC0/0x00789E00 (AnimSet::FindBlendInfo/FindBlendClassInfo) are tagged here
   although they sit in the helper range.
+
+## agent2
+* OcclusionPlane (0x004C4684) and Rumble (0x004C5D38) Execute done. The controller variable's
+  +0x14 field is the pad (`ApeAnimScriptControllerVar::GetDevice`, never set from data); the
+  default rumble pad (console global 0x00F65FF8, writer not found) is
+  `AnimScriptObjectHooks::defaultRumbleDevice`.
+* The other object commands still need a bridge from the anim-script object handle
+  (`ApeRefCounted*`) to the world objects (`ape::world::ApeObj`); the sly/levels services use
+  the same opaque handle with stubs, so that bridge is a cross-module decision.

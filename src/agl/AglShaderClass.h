@@ -52,6 +52,18 @@ struct AglItemStencil {
 };
 AglItemStencil& GetItemStencil();
 
+// Animation clock of the renderer (0x010DD5A8): the step queued for the
+// next frame, the last step and the accumulated time that animated
+// materials (texture warps, water) use. NOTE: advanced by the frame start
+// function 0x0051008C, which is not ported yet.
+struct AglAnimationClock {
+    float pendingStep = 0.0f;
+    float lastStep = 0.0f;
+    float time = 0.0f;
+    float field_C = 1.0f;
+};
+AglAnimationClock& GetAnimationClock();
+
 // Render item light mask bits (+0x45), set by SelectTechnique.
 // NOTE: names inferred from the Draw functions.
 enum AglItemLightBits : uint8_t {

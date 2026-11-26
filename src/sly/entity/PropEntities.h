@@ -315,6 +315,9 @@ public:
     // NOTE: navigation type hash: 0x0024A738 "None", 0x4438A28F "Obstacle",
     // 0x29846DDA and 0xA970EC1F (names unknown).
     uint32_t navType = 0;              // 0x11C
+    // Slot 6: the navigation type makes the target a static obstacle (same
+    // four types as ActorDef::DefSlot6).
+    uint32_t DefSlot6() const override;
     uint8_t targetingFlags[6] = {};    // 0x120
     void* collisionShape = nullptr;    // 0x128
     // Bit 24: the body collides with layer 0 too; bit 28: dies landing hard on

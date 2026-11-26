@@ -335,10 +335,10 @@ GoalShootingGallery::~GoalShootingGallery()
     GoalStopListening(this);
 }
 
+// @func 0x0076BAC0 GoalShootingGallery::TypeId
 int GoalShootingGallery::TypeId() const
 {
-    // Console 0x0076BAC0 (outside this module's range, not tagged here).
-    return 0x22;
+    return 0x23;
 }
 
 void GoalShootingGallery::ClearPopups()

@@ -34,5 +34,9 @@ void RigidEntityB19198::Interface180Slot6(void* body) { StopListeningTo(body); }
 // @func 0x00759468 ScriptedObjectB193C8::~ScriptedObjectB193C8 (deleting)
 ScriptedObjectB193C8::~ScriptedObjectB193C8() = default;
 
+// @func 0x00751048 EntityB15028::~EntityB15028
+// @func 0x007510B0 EntityB15028::~EntityB15028 (deleting)
+EntityB15028::~EntityB15028() = default;
+
 } // namespace entity
 } // namespace sly

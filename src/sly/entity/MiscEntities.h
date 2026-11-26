@@ -37,5 +37,13 @@ public:
     void* animScript = nullptr;   // 0x1AC
 };
 
+// Entity spawned by EntityDefB14FD8 (vtable 0x00B15028, constructor
+// 0x001A4680; plain entity base) with one array (+0x158).
+class EntityB15028 : public Entity {
+public:
+    ~EntityB15028() override;
+    ape::ApeTArray<void*> field_158;   // +0x158 NOTE: element type unknown
+};
+
 } // namespace entity
 } // namespace sly

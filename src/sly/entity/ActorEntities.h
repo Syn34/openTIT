@@ -443,6 +443,8 @@ public:
 class SoundActorB16B48 : public SoundActor {
 public:
     ~SoundActorB16B48() override;
+    // Slot 65: only while layer 0 is in state 1.
+    bool Slot65() override;
     // Slot 105: slot 1 also clears the lit flag and switches the light on.
     void PlaySlot(int index, bool force) override;
     bool AdvanceTo2(float elapsed, float duration) override;   // only while lit
@@ -478,6 +480,9 @@ class SoundActorB16678 : public SoundActor {
 public:
     // @func 0x0075420C SoundActorB16678::~SoundActorB16678
     // @func 0x0075424C SoundActorB16678::~SoundActorB16678 (deleting)
+    // Slot 75: the switch always takes part in interactions.
+    // @func 0x00754428 SoundActorB16678::InteractionNeeds
+    uint32_t InteractionNeeds(int kind, Entity* other) override { (void)kind; (void)other; return 1; }
     // @func 0x007543E0 SoundActorB16678::~SoundActorB16678 (thunk, +0x17C)
     // @func 0x00754328 SoundActorB16678::~SoundActorB16678 (deleting thunk, +0x17C)
     // @func 0x00754398 SoundActorB16678::~SoundActorB16678 (thunk, +0x180)

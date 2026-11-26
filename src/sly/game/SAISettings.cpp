@@ -1,6 +1,8 @@
 // openTIT - Sly setting definitions and the game's setting manager (0x0043B450-0x0043EB48).
 #include "sly/game/SAISettings.h"
 
+#include "sly/levels/ai/AISettingClasses.h"
+
 #include "ape/core/ApeString.h"
 
 #include <algorithm>
@@ -23,7 +25,6 @@ using ape::setting::SettingInt;
 using ape::setting::SettingString;
 
 SAIAssociationHooks g_saiAssociationHooks;
-SAIExternalDefs g_saiExternalDefs;
 SAISettingManager* g_saiSettingManager = nullptr;
 
 namespace {
@@ -913,6 +914,10 @@ static_assert(NameHash("Sly_SentryLight") == 0xE51273D8, "type hash");
 // @func 0x00782D88 CreateDef<T> (copy 12, Sly_LaserSpline)
 // @func 0x00782EC0 CreateDef<T> (copy 13, Sly_LaserField)
 // @func 0x00783268 CreateDef<T> (copy 14, Sly_SentryLight)
+// @func 0x007833F0 CreateDef<T> (copy 15, EnemySetting)
+// @func 0x00783384 CreateDef<T> (copy 16, CritterSetting)
+// @func 0x007834C8 CreateDef<T> (copy 17, ScriptedPathSetting)
+// @func 0x0078345C CreateDef<T> (copy 18, PlayerSetting)
 template <class T>
 SettingDef* CreateDef()
 {
@@ -920,6 +925,14 @@ SettingDef* CreateDef()
 }
 
 } // namespace
+
+// The level AI's character setting definitions.
+SAIExternalDefs g_saiExternalDefs = {
+    &CreateDef<levels::ai::EnemySettingClass>,
+    &CreateDef<levels::ai::CritterSettingClass>,
+    &CreateDef<levels::ai::SentrySettingClass>,
+    &CreateDef<levels::ai::BuddySettingClass>,
+};
 
 // ---------------------------------------------------------------------------
 // SAISettingManager

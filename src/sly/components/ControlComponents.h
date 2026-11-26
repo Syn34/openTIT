@@ -10,9 +10,19 @@
 namespace sly {
 namespace components {
 
-// Description of the code-built controllers that take a value (+0x14).
+// Description of the code-built controllers that take a value (+0x14,
+// 0x18 bytes). The modules that build one on the stack each carry their own
+// copy of its destructor (character 0x00B1431C, vehicles 0x00B1B990 and
+// 0x00B1BBF0).
 struct ControlComponentDesc : entity::ComponentDesc {
+    ~ControlComponentDesc() override;
     uint32_t value = 0;              // +0x14 NOTE: the pad / player index for the pad controllers
+};
+
+// A description built by code without parameters of its own (0x14 bytes;
+// character 0x00B1433C, vehicles 0x00B1B9A0).
+struct CodeComponentDesc : entity::ComponentDesc {
+    ~CodeComponentDesc() override;
 };
 
 // Action name -> pad button bindings of a controller.

@@ -63,7 +63,7 @@ uint32_t ClipHash(const char* format, const char* prefix, const char* move)
 
 // @func 0x003B04F8 BvpBattle::BvpBattle
 BvpBattle::BvpBattle(WorldObject* ownerIn)
-    : StateMachine(1), owner(ownerIn), controlPenelope(g_bvpControlPenelope)
+    : owner(ownerIn), controlPenelope(g_bvpControlPenelope)
 {
     enemies.reserve(0x20);
     SetState(0, kPhase_Intro);

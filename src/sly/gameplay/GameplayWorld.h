@@ -460,6 +460,9 @@ int NetSendTo(int socket, const void* buffer, size_t size, const NetAddress& to)
 void NetClose(int socket);
 // +0xB0 bit 12: asks the world to remove the entity at the end of the frame.
 void EntityMarkForRemoval(WorldObject* entity);
+// 0x0048F6B0 (event listener base destructor): takes a listener out of
+// every listener group it joined.
+void ListenerLeaveAllGroups(void* listener);
 // Sound playback helpers of the sequencer (audio module, not modelled yet).
 // The VoiceId results are audio::VoiceId values.
 uint32_t PlaySound2D(audio::SoundName* sound, const audio::SoundParams& params);   // 0x0044A374

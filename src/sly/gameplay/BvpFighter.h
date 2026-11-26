@@ -13,6 +13,7 @@
 #pragma once
 
 #include "sly/game/Tween.h"
+#include "sly/gameplay/Minigame.h"
 #include "sly/gameplay/StateMachine.h"
 
 #include "ape/math/ApeMath.h"
@@ -27,10 +28,8 @@ class WorldObject;
 namespace gameplay {
 
 // The battle object both fighters belong to (fighter +0x5C, vtable
-// 0x00B20338, 0x1E0 bytes). NOTE: its real base is the game's goal class
-// (constructor 0x0047C5D8, destructor 0x00490B34), modelled here by the
-// StateMachine stand-in.
-class BvpBattle : public StateMachine {
+// 0x00B20338, 0x1E0 bytes): the Bentley vs Penelope minigame.
+class BvpBattle : public Minigame {
 public:
     // Number of camera parameters blended between the default and the
     // super attack camera.
@@ -47,7 +46,7 @@ public:
     // stopped.
     bool OnMessage(const Message& message) override;
     // Slot 20: back to the intro.
-    void Reset();
+    void Reset() override;
 
     // Blends the camera to the default framing (snap: jump straight there).
     void SetDefaultCamera(bool snap);

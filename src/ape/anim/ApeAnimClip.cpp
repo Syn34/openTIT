@@ -1,6 +1,8 @@
 // openTIT - Anim sets and anim clips (0x004B0850-0x004B6760).
 #include "ape/anim/ApeAnimClip.h"
 
+#include <new>
+
 #include "ape/core/ApeString.h"
 #include "ape/file/ApeFile.h"
 #include "ape/level/ApeDTD.h"
@@ -235,25 +237,19 @@ char g_animClipFileNameBuffer[0x41];   // 0x010C2708
 // AnimClipPool
 // ---------------------------------------------------------------------------
 
-// @func 0x00789280 AnimClipPool::AllocateStorage
-void AnimClipPool::AllocateStorage(uint16_t capacity)
-{
-    if (capacity == 0)
-        return;
-    m_entries.assign(capacity, AnimClipEntry{});
-}
-
 AnimClipPool::AnimClipPool(uint16_t capacity, AnimSet* owner)
     : m_owner(owner)
 {
-    AllocateStorage(capacity);
-    for (AnimClipEntry& entry : m_entries)
-        entry.kind = kEntry_Free;
+    m_entries.Init(capacity, false, GetDefaultAllocator());
+    for (uint16_t i = 0; i < m_entries.Count(); ++i) {
+        new (&m_entries[i]) AnimClipEntry{};
+        m_entries[i].kind = kEntry_Free;
+    }
 }
 
 int16_t AnimClipPool::Alloc(int32_t kind)
 {
-    if (m_count >= m_entries.size())
+    if (m_count >= m_entries.Count())
         return -1;
     const int16_t index = (int16_t)m_count++;
     m_entries[index].kind = kind;
