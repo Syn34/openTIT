@@ -18,6 +18,12 @@ struct AglShaderPair {
 constexpr int kDeferredShadowVariants = 15;
 
 struct AglPassShaders {
+    // Shared post-process passes (0x01164080..0x011640CC, 0x011640DC,
+    // 0x01164110): copy, fill, textured quads, 4x down/up sampling, the two
+    // separable Gaussian blurs (11 and 3 taps), depth down sampling and a
+    // scaled copy.
+    AglShaderPair copy, fill, renderTxr, renderAlphaTxr, downSample4x, upSample4x;
+    AglShaderPair blur11H, blur11V, blur3H, blur3V, downSampleDepth, copyScale;
     // MSAA resolve (0x010F0FF4..0x010F1018).
     AglShaderPair resolve2x, resolve4x, resolveDepth2x, resolveDepth4x, restoreZCull;
     // God rays / motion trail (0x010F0B40..0x010F0B4C).
@@ -58,6 +64,11 @@ AglPassShaders& GetPassShaders();
 // Raises a fragment program's register count to at least 'count'.
 void EnsureFragmentRegisters(AglFragmentProgram* fp, uint8_t count);
 
+// Loads the shared post-process shaders and sets up the blur kernels.
+void LoadCommonPostProcShaders();
+// Texel offsets of the 11-tap blurs for the quarter resolution buffers.
+void UploadBlurKernelH();
+void UploadBlurKernelV();
 void LoadResolveShaders();
 void LoadGodRaysShaders();
 void InitGodRaysShaders();

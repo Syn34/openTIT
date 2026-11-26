@@ -24,6 +24,13 @@ bool g_enabled = false;      // 0x010DDC90
 
 } // namespace
 
+void StartDeferredDestruction()
+{
+    DeferredAllocator::GetAllocator();
+    g_enabled = true;
+    g_frame = 1;
+}
+
 void SetDeferredDestructionEnabled(bool enabled)
 {
     g_enabled = enabled;

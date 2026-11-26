@@ -21,6 +21,7 @@ struct FrameClock {
     // parsing) run, so that the loading screen keeps updating.
     void (*progressCallback)(void* arg) = nullptr;
     void* progressArg = nullptr;
+    class ApeMemStack* scratchStack = nullptr;   // +0x1C created by SystemInit (EngineConfig +0x1A4 bytes)
 };
 
 FrameClock& GetFrameClock();

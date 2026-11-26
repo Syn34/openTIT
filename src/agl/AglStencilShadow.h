@@ -7,6 +7,7 @@
 #include "ape/math/ApeMath.h"
 
 #include <cstdint>
+#include <vector>
 
 namespace agl {
 
@@ -26,6 +27,26 @@ void SetStencilShadowIntensity(float intensity);
 void BuildStencilShadowCircle();
 // Creates the full-screen quad used to darken the stencilled pixels.
 void InitStencilShadowQuad();
+
+// A group of stencil shadow casters (0x14 bytes on the console, kept in the
+// array 0x010DFA24). NOTE: only the start-up creates one; the field meanings
+// are guesses from their initial values.
+struct AglStencilShadowEdges {
+    uint32_t field_0 = 0;
+    uint16_t count = 0;            // +0x04
+    uint8_t field_6 = 0;
+    void* data = nullptr;          // +0x08
+};
+struct AglStencilShadowGroup {
+    uint16_t field_0 = 1;
+    uint32_t field_4 = 0;
+    AglStencilShadowEdges* edges = nullptr;   // +0x08
+    bool active = false;                      // +0x0C
+    float field_10 = 5.0f;                    // +0x10 NOTE: probably an extrusion distance
+};
+// Shared geometry plus the default caster group.
+void InitStencilShadowSystem();
+std::vector<AglStencilShadowGroup*>& GetStencilShadowGroups();
 
 // Renderer settings set together with the shadow settings (0x00F66FC8, 0x00F66FCC).
 void SetRenderSettingInt(int32_t value);
