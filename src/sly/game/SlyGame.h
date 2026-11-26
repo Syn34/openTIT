@@ -437,6 +437,11 @@ public:
     // Frees the level's parameters unless the level stays loaded (+0x1C
     // bits 6-7) (0x0047E1D4).
     void ReleaseLevelParams();
+    // Back to play from the pause menu: the "resume" message goes to its
+    // listeners, the minigame's slot 10 runs, the HUD comes back, the menu
+    // closes, the audio groups and binocucoms resume and rumble follows the
+    // vibration option again (0x0047DFC8).
+    void ResumeFromPause();
     // A player is down: meter B snaps and a running return-treasure
     // microgame loses the treasure if the player carried it.
     void OnPlayerDown(uint32_t player);

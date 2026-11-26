@@ -59,6 +59,10 @@ void SetAiEntitiesVisible(bool visible);
 // HUD per-frame steps around the world update (0x00365F28 before the
 // first callback list runs, 0x00366710 after the entities). Not ported.
 void HudFrameBegin(float dt);
+// 0x00599024: stores `mask` in three engine bytes (0x01194550, 0x01194570,
+// 0x010DDA70) read by the world's emitter and light updates and the
+// renderer. NOTE: meaning unknown; the game shell sets 0xFF.
+void SetEngineUpdateMasks(uint8_t mask);
 void HudFrameEnd(float dt);
 
 } // namespace sly

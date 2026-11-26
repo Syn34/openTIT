@@ -19,6 +19,7 @@ void Component24Restart(entity::EntityComponent*, bool) {}
 int VehicleDefCameraKind(const void*) { return 1; }
 float VehicleDefCameraFov(const void*) { return 55.0f; }
 void HudFrameBegin(float) {}
+void SetEngineUpdateMasks(uint8_t) {}
 void HudFrameEnd(float) {}
 
 } // namespace sly

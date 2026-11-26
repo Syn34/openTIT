@@ -26,6 +26,7 @@
 #include "sly/game/goals/Goal.h"
 #include "sly/game/FileStreaming.h"
 #include "sly/save/SaveGame.h"
+#include "sly/game/GameMessages.h"
 #include "ape/level/ApeLevelScene.h"
 #include <cstring>
 #include "sly/game/AudioSystem.h"
@@ -1441,6 +1442,34 @@ void SlyGame::ReleaseLevelParams()
         return;
     delete levelParams;
     levelParams = nullptr;
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x0047DFC8 SlyGame::ResumeFromPause
+void SlyGame::ResumeFromPause()
+{
+    // NOTE: key and message names unknown.
+    constexpr uint32_t kResumeKey = 0x846AF162u;
+    constexpr uint32_t kResumeMessage = 0x560A2252u;
+    constexpr uint32_t kResumeAllGroupsButMenu = 0xFFBFFFFFu;
+
+    SetEngineUpdateMasks(0xFF);
+    PostToListeners(nullptr, kResumeKey, kResumeMessage, 0);
+    if (minigame)
+        minigame->Slot10();
+    hud::ResumeHud();
+    if (SaveSystemState() != kSave_Busy)
+        hud::HideBusyElement();
+    flags2D |= 0x08;
+    OpenMenu(0, 0);
+    audio::ResumeGroups(kResumeAllGroupsButMenu);
+    SetGadgetsPaused(false);
+    const bool vibration = (settings.flags & GameSettings::kFlag_Vibration) != 0;
+    for (AppPlayer& player : GetAppRuntime().players)
+        player.SetRumblePaused(!vibration);
 }
 
 } // namespace sly
