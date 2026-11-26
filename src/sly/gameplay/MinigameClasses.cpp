@@ -78,6 +78,14 @@ bool MinigameB206A8::Slot17() { return field_917 == 0; }
 // @func 0x0077EDD8 MinigameB20748::~MinigameB20748 (deleting)
 MinigameB20748::~MinigameB20748() = default;
 
+// @func 0x0041F1FC PenguinMontageMinigame::PenguinMontageMinigame
+// NOTE: the meaning of flags1C bit 15 is unknown.
+PenguinMontageMinigame::PenguinMontageMinigame(SlyGame* gameIn, const Desc* descIn, uint32_t scriptLibrary, void* ownerIn)
+    : Minigame(gameIn, scriptLibrary, descIn->scriptName, ownerIn), desc(descIn)
+{
+    flags1C |= 0x8000u;
+}
+
 // @func 0x0077D75C PenguinMontageMinigame::~PenguinMontageMinigame
 // @func 0x0077F4E8 PenguinMontageMinigame::~PenguinMontageMinigame (deleting)
 PenguinMontageMinigame::~PenguinMontageMinigame() = default;

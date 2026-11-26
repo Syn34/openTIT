@@ -123,11 +123,26 @@ public:
 // The penguin montage (vtable 0x00B20C30, constructor 0x0041F1FC).
 class PenguinMontageMinigame : public Minigame {
 public:
+    // The montage's description; it starts with the director script name.
+    // NOTE: the rest of the record is not decoded.
+    struct Desc {
+        uint32_t scriptName;
+    };
+    PenguinMontageMinigame(SlyGame* game, const Desc* desc, uint32_t scriptLibrary, void* owner);
     ~PenguinMontageMinigame() override;
     // Slot 12 does nothing for this game; slot 15 is the base behaviour.
     void Slot12() override;
     void SetHudHidden(bool hidden) override;
+    const Desc* desc = nullptr;        // +0x38
+    uint32_t field_3C = 0;             // +0x3C
+    bool field_40 = false;             // +0x40 top bit of a flag word
+    uint8_t field_41 = 0;              // +0x41
+    uint8_t field_42 = 0;              // +0x42
+    uint32_t field_44 = 0;             // +0x44
     ape::ApeTArray<void*> field_48;    // +0x48
+    uint32_t field_60 = 0;             // +0x60
+    uint32_t field_64 = 0;             // +0x64
+    uint32_t field_70 = 0;             // +0x70
 };
 
 // Base of the six penguin minigames ("Getting Stronger", vtable
