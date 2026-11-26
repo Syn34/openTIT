@@ -263,6 +263,7 @@ int32_t InteractionUsers(EntityComponent* interaction);
 Entity* CharacterCarried(Entity* character);
 // Player block value +0x10D8 (game world +0x1070 + player * 0x20C80). NOTE: meaning unknown.
 uint32_t PlayerBlockValue10D8(uint32_t player);
+void PlayerBlockSetValue10D8(uint32_t player, uint32_t value);
 // First free slot of a carry component, -1 when all are taken (0x002B92A0).
 int CarryCompFreeSlot(EntityComponent* carry);
 // Interaction component: the interaction kinds it offers (0x00266E6C).

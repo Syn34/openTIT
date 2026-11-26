@@ -860,7 +860,9 @@ public:
     ape::world::ApeObj* object_1F4 = nullptr; // 0x1F4 counted reference
 };
 
-// Actor with two tweens and two arrays (vtable 0x00B186C8).
+// Actor with two tweens and two arrays (vtable 0x00B186C8). NOTE: it is the
+// target range ("Entity.TgtRange.*" tuning: its camera leaves over
+// CamPopTime).
 class TweenActor : public ActorEntity {
 public:
     ~TweenActor() override;
@@ -871,7 +873,9 @@ public:
     // Hiding the actor also triggers its reset while one is pending.
     void ApplyVisibility(bool visible) override;
     // 0x001EE680
-    void Reset(bool flag);
+    void Reset(bool completed);
+    // Shows or hides the user's script object 0x03BA7BE9 (0x001EE5A4).
+    void SetUserObjectVisible(bool visible);
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
     void SetVisible(bool visible, bool immediate, bool children, bool components) override;   // slot 22
     bool InteractionBegin(Entity* user) override;                 // slot 62

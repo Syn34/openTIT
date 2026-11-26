@@ -1585,10 +1585,44 @@ void Safe::InteractionEnd(bool completed)
     InteractionSetOffer(interaction, 2);
 }
 
-// TODO(0x001EE680 TweenActor::Reset)
-void TweenActor::Reset(bool flag)
+// @func 0x001EE680 TweenActor::Reset
+// Ends the use: the user's settings and player block value go back, the
+// script hears it; a completed use also shows the user again, hides its
+// object 0x03BA7BE9, releases the camera and lets go of the user. The actor
+// enters state 10.
+void TweenActor::Reset(bool completed)
 {
-    (void)flag;
+    EntityComponent* interaction = EntityInteraction(this);
+    Entity* user = InteractionUser(interaction);
+    if (!user)
+        return;
+    user->SetTimeScale(0x002237D4u, false);   // NOTE: slot 32 with these arguments
+    InteractionClearFlag20(interaction);
+    EntityPostScriptMessage(this, 0x55B67D7Cu, 0xEE3E52C5u, 0);
+    PlayerBlockSetValue10D8(user->PlayerSlot(), field_3C8);
+    if (completed) {
+        if (field_358) {
+            field_358->SetVisible(true, true, true, true);
+            SetUserObjectVisible(false);
+        }
+        ReleaseCamera();
+        TakeUser(nullptr);
+    }
+    EntitySetState(this, 0, 10);
+}
+
+// @func 0x001EE5A4 TweenActor::SetUserObjectVisible
+void TweenActor::SetUserObjectVisible(bool visible)
+{
+    if (!field_358)
+        return;
+    auto* script = static_cast<ape::ApeAnimScriptInstance*>(field_358->GetAnimScript());
+    if (!script)
+        return;
+    // NOTE: the script variable holds a world object (the script layer hands
+    // objects out as reference-counted handles).
+    if (auto* object = reinterpret_cast<ape::world::ApeObj*>(script->ResolveObject(0x03BA7BE9u, false)))
+        object->SetVisible(visible, false);
 }
 
 // @func 0x001F7128 InteractivePropB::SetVisible
