@@ -111,8 +111,8 @@ void MsDecibelAI::OnDamaged(float amount, uint32_t kind, const AIDamageInfo* inf
     flags1 |= 0x80;
     dodgeSide = (ape::g_gameRandom.seed & 1u) != 0;
     ape::RandomUnit(ape::g_gameRandom);
-    if (info->attack) {
-        const uint32_t side = info->attack->flags48 >> 30;
+    if (info->hitSource) {
+        const uint32_t side = info->hitSource->flags48 >> 30;
         if (side == 2)
             dodgeSide = true;
         else if (side == 1)
