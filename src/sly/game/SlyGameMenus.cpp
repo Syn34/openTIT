@@ -1158,3 +1158,40 @@ void DefaultSpawnTransform(int slot, ape::Matrix34* out)
 }
 
 } // namespace sly
+
+namespace sly {
+
+// @func 0x0046C3B8 SlyGame::QueueCutscene
+void SlyGame::QueueCutscene(uint32_t script, uint32_t library, bool flag, const TextField* bindings, size_t count,
+                            int32_t value, ape::ApeAnimScriptInstance* source, bool resume, bool becomeSly,
+                            bool playing)
+{
+    constexpr size_t kMaxQueued = 4;
+    if (!g_gameCutSceneEnable.Get() || script == 0)
+        return;
+    ape::ApeAnimScript* found = ape::ApeAnimScriptLibrary::FindScriptAnywhere(script, library, true);
+    if (!found) {
+        (void)ape::TempHexString(script);    // compiled-out warning
+        (void)ape::TempHexString(library);
+        return;
+    }
+    if (cutsceneQueue.Count() >= kMaxQueued)
+        return;
+    if (cutsceneQueue.Count() == 0)
+        cutsceneSkipRequested = true;
+    game::JobManager* jobs = game::GetJobManager();
+    resumeAfterCutscenes = resumeAfterCutscenes || resume || (jobs && jobs->failingGoal);
+    cutscenePlaying = cutscenePlaying || playing;
+
+    auto* cutscene = new QueuedCutscene();
+    cutscene->sequence = script;
+    cutscene->script = found;
+    cutscene->field_2C = value;
+    cutscene->source = source;
+    cutscene->flags = (flag ? 0x80000000u : 0u) | (becomeSly ? 0x40000000u : 0u);
+    if (bindings)
+        cutscene->bindings.assign(bindings, bindings + count);
+    cutsceneQueue.PushBack(cutscene);
+}
+
+} // namespace sly

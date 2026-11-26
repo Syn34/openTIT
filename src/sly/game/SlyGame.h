@@ -187,10 +187,11 @@ struct QueuedCutscene {
     ape::ApeAnimScript* script = nullptr;       // +0x18
     ape::ApeAnimScriptInstance* instance = nullptr; // +0x1C
     float time = 0.0f;                          // +0x20
-    float savedNearClip = 0.0f;                 // +0x24 main view near plane while it plays
-    uint32_t sequence = 0;                      // +0x28
-    uint32_t field_2C = 0;                      // +0x2C
-    uint32_t flags = 0;                         // +0x30 bit 30: player back to Sly, bit 29: finished
+    float savedNearClip = 1.0f;                 // +0x24 main view near plane while it plays
+    uint32_t sequence = 0;                      // +0x28 the script's name (its sequence has it too)
+    int32_t field_2C = 0;                       // +0x2C caller's value. NOTE: a spawn point index for scripts
+    // +0x30: bit 31 caller's flag, bit 30 player back to Sly, bit 29 finished.
+    uint32_t flags = 0x80000000u;
 };
 
 // A speaker of the dialog (12 bytes on the console: name, entity, flags).
@@ -532,6 +533,13 @@ public:
     // empty, the deferred game events go to the job manager and play
     // resumes (0x0048B810).
     void UpdateCutsceneQueue(float dt);
+    // Queues script `script` of library `library` as a cutscene (at most
+    // four; only while "Game.CutSceneEnable" is set) with its variable
+    // bindings and their source instance. `resume` (or a failing goal)
+    // resumes play when the queue empties; `playing` marks a cutscene as
+    // playing at once (0x0046C3B8).
+    void QueueCutscene(uint32_t script, uint32_t library, bool flag, const TextField* bindings, size_t count,
+                       int32_t value, ape::ApeAnimScriptInstance* source, bool resume, bool becomeSly, bool playing);
     // Pops every camera mode (followed targets dropped), deleting the
     // player camera mode (0x004845F0). NOTE: the console passes a player
     // block it does not use.
@@ -637,7 +645,7 @@ public:
     ape::ApeTArray<QueuedCutscene*> cutsceneQueue; // +0x12820C queued cutscenes (count +0x128214)
     bool resumeAfterCutscenes = false;          // +0x128220
     bool cutscenePlaying = false;               // +0x128221
-    bool cutsceneSkipRequested = false;         // +0x128222
+    bool cutsceneSkipRequested = false;         // +0x128222 NOTE: set when the first cutscene is queued (the HUD switches over)
     // +0x128224 NOTE: an object that overrides the frame time (+0x3C) and
     // tracks an entity (+0x158..+0x160); class unknown.
     struct TimeSource {

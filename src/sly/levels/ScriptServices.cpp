@@ -33,7 +33,10 @@ void GameWorldQueueCutscene(uint32_t script, uint32_t library, bool flag,
                             const std::vector<TextField>& texts, int32_t spawnPoint,
                             ape::ApeAnimScriptInstance* instance)
 {
-    (void)script; (void)library; (void)flag; (void)texts; (void)spawnPoint; (void)instance;
+    // The console passes no resume, become-Sly or playing flags here.
+    if (g_game)
+        g_game->QueueCutscene(script, library, flag, texts.empty() ? nullptr : texts.data(), texts.size(),
+                              spawnPoint, instance, false, false, false);
 }
 void EntityShowMessages(WorldObject* entity, const std::vector<TextField>& texts,
                         ape::ApeAnimScriptInstance* instance)
