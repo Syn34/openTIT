@@ -32,6 +32,8 @@ void SetMinigameLinePending(bool pending);
 audio::SoundName* FindHudSound(uint32_t sound);
 // Starts a HUD sound (0x0044C474 without position).
 void PlayHudSound(audio::SoundName* sound);
+// Coins of a profile (profile record +0x70, read by 0x00465D5C).
+int ProfileCoinCount(uint8_t profile);
 // The active player's confirm button (pad bit 0x80) went down this frame
 // (application player block 0x010B1A98 + player * 0x2EC0, world byte +0x1071).
 bool ConfirmButtonPressed();

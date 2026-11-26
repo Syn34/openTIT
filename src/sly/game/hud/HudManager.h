@@ -341,14 +341,26 @@ void SetAllEnabled(bool enabled, bool flag);
 
 // A temporary restyling of an element's first label (0x0106C330).
 struct HudTextOverride {
-    ape::Matrix34 transform{};          // +0x00
+    // Phases of the count-up (+0x78).
+    enum Phase : int32_t {
+        kPhase_FlyIn = 0,     // `owner`'s object flies along the curve to the counter
+        kPhase_CountUp = 1,   // the counter label counts up, restyled
+        kPhase_Show = 2,      // the label is back to normal; the counter shows a while
+    };
+    // +0x00 control points of the fly-in curve (cubic Bezier, rows 0-3).
+    ape::Matrix34 transform{};
     uint8_t savedColor[4] = {};         // +0x40 label colour to restore
     ape::Vec3 savedScale{};             // +0x50 label scale to restore (zero: nothing saved)
-    uint32_t field_60 = 0;
-    HudObject* owner = nullptr;         // +0x64 refreshed when the override ends
+    const uint8_t* profileIndex = nullptr;   // +0x60 profile whose coin count the counter reaches
+    HudObject* owner = nullptr;         // +0x64 flies in; refreshed when the override ends
     HudObject* element = nullptr;       // +0x68 element whose label is restyled
-    uint32_t field_6C[5] = {};
-    bool field_84 = false;
+    float value = 0.0f;                 // +0x6C value shown
+    float target = 0.0f;                // +0x70 value to count to (at least the profile's coins)
+    float rate = 0.0f;                  // +0x74 count per second
+    int32_t phase = kPhase_FlyIn;       // +0x78
+    float timer = 0.0f;                 // +0x7C time left in the phase
+    float showDelay = 0.0f;             // +0x80 the counter shows `value` when it runs out
+    bool active = false;                // +0x84
 };
 HudTextOverride& TextOverride();
 // 0x0035B470: restores the label and clears the override.

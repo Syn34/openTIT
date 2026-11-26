@@ -15,7 +15,10 @@
 #include "sly/game/hud/HudElement.h"
 #include "sly/game/hud/HudMeter.h"
 #include "sly/entity/GameEntityHooks.h"
+#include "sly/game/AudioSystem.h"
+#include "sly/tuning/HudTuning.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -130,9 +133,137 @@ void StartLifetimeScripts()
         objects.Data()[i].value->StartLifetimeScript();
 }
 
-// TODO(0x00363B78 hud::UpdateTextOverride): the restyled label's
-// transform/colour/scale animation is not ported.
-void UpdateTextOverride(float, HudTextOverride&) {}
+namespace {
+
+ape::ApeGuiObject* CounterLabel(HudObject* element)
+{
+    if (!element || !element->def || element->def->textFieldCount == 0)
+        return nullptr;
+    return element->textFields[0].label;
+}
+
+void PlayCounterSound(uint32_t sound)
+{
+    if (audio::SoundName* name = FindHudSound(sound)) {
+        PlayHudSound(name);
+        audio::SoundNameRelease(name);
+    }
+}
+
+} // namespace
+
+// @func 0x00363B78 hud::UpdateTextOverride
+// The coin counter's count-up: the collected coin flies to the counter
+// along a curve (shrinking and fading), the counter label counts up in the
+// count-up colour and scale, then goes back to normal and shows for a while.
+void UpdateTextOverride(float dt, HudTextOverride& state)
+{
+    constexpr uint32_t kSound_CountStart = 0x281AB10Cu;   // NOTE: sound names unknown
+    constexpr uint32_t kSound_CountEnd = 0x27B8586Fu;
+    constexpr uint32_t kScript_CountEnd = 0x14CE2A3Cu;
+    if (!state.active)
+        return;
+    HudObject* element = state.element;
+    if (state.timer > 0.0f)
+        state.timer = std::max(state.timer - dt, 0.0f);
+    if (state.showDelay > 0.0f) {
+        state.showDelay -= dt;
+        if (state.showDelay < 0.0f) {
+            state.showDelay = 0.0f;
+            char text[16];
+            std::snprintf(text, sizeof text, "%i", int(state.value));
+            if (element)
+                element->ShowText(0.0f, text, true);
+        }
+    }
+
+    switch (state.phase) {
+    case HudTextOverride::kPhase_FlyIn: {
+        HudObject* owner = state.owner;
+        if (owner) {
+            const float duration = g_gameMonetaryCollectCoinCounterMovementTimeMax.Get();
+            const float t = duration > 0.0f ? state.timer / duration : 0.0f;
+            // Eased 0 -> 1 as the timer runs out.
+            const float e = (std::cos(t * 3.1415927f) + 1.0f) * 0.5f;
+            const float u = 1.0f - e;
+            const float scale = (g_gameMonetaryCollectCoinCounterMinScale.Get() - 1.0f) * e + 1.0f;
+            const float alpha = (g_gameMonetaryCollectCoinCounterMinAlpha.Get() - 1.0f) * e + 1.0f;
+            const ape::Vec3* p = &state.transform.xAxis;
+            const float w0 = u * u * u, w1 = 3.0f * u * u * e, w2 = 3.0f * u * e * e, w3 = e * e * e;
+            if (ape::world::ApeObj* object = owner->object) {
+                object->SetScale({scale, scale, scale, 0.0f}, false);
+                object->VirtualSlot13(uint8_t(int(alpha * 255.0f)), false);   // opacity
+                ape::Matrix34 local = object->GetLocal();
+                local.translation.x = w0 * p[0].x + w1 * p[1].x + w2 * p[2].x + w3 * p[3].x;
+                local.translation.y = w0 * p[0].y + w1 * p[1].y + w2 * p[2].y + w3 * p[3].y;
+                local.translation.z = w0 * p[0].z + w1 * p[1].z + w2 * p[2].z + w3 * p[3].z;
+                object->SetLocal(local);
+                object->MarkDirty();
+            }
+        }
+        if (state.timer <= 0.0f) {
+            state.phase = HudTextOverride::kPhase_CountUp;
+            state.timer = g_gameMonetaryCollectCoinCounterCountUpTimeMax.Get();
+            if (owner)
+                owner->Refresh();
+            if (element) {
+                // Keep the label's look, then restyle it for the count-up.
+                std::fill(std::begin(state.savedColor), std::end(state.savedColor), uint8_t(0xFF));
+                state.savedScale = ape::world::kWorldZero;
+                if (ape::ApeGuiObject* label = CounterLabel(element)) {
+                    const ape::xml::Color8 c = label->GetColor();
+                    state.savedColor[0] = c.r;
+                    state.savedColor[1] = c.g;
+                    state.savedColor[2] = c.b;
+                    state.savedColor[3] = c.a;
+                    label->SetColor(g_gameMonetaryCollectCoinCounterCountUpTextColor.Get());
+                    state.savedScale = label->GetScale();
+                    const float* s = g_gameMonetaryCollectCoinCounterCountUpTextScale.Get();
+                    label->SetScale({s[0], s[1], s[2], 0.0f});
+                }
+            }
+            PlayCounterSound(kSound_CountStart);
+        }
+        break;
+    }
+    case HudTextOverride::kPhase_CountUp: {
+        const float coins = state.profileIndex ? float(ProfileCoinCount(*state.profileIndex)) : 0.0f;
+        const float goal = std::max(state.target, coins);
+        state.value = std::min(state.rate * dt + state.value, goal);
+        if (element) {
+            char text[16];
+            std::snprintf(text, sizeof text, "%i", int(state.value));
+            if (ape::ApeGuiObject* label = CounterLabel(element)) {
+                label->SetText(text, false);
+                label->Invalidate();
+            }
+        }
+        if (goal <= state.value) {
+            state.phase = HudTextOverride::kPhase_Show;
+            state.timer = g_gameMonetaryCollectCoinCounterShowTimeMax.Get();
+            if (element) {
+                if (ape::ApeGuiObject* label = CounterLabel(element)) {
+                    label->SetColor({state.savedColor[0], state.savedColor[1], state.savedColor[2], state.savedColor[3]});
+                    label->SetScale(state.savedScale);
+                }
+                if (element->animScript)
+                    static_cast<ape::ApeAnimScriptInstance*>(element->animScript)->SetStateAndUpdate(kScript_CountEnd);
+            }
+            PlayCounterSound(kSound_CountEnd);
+        }
+        break;
+    }
+    case HudTextOverride::kPhase_Show:
+        if (state.timer <= 0.0f) {
+            ResetTextOverride(state);
+            if (state.element && !state.element->Suppressed())
+                state.element->PlayIntro(false, false);
+        }
+        break;
+    default:
+        break;
+    }
+}
 
 // @func 0x003655D0 hud::UpdateHud
 void UpdateHud(float dt)
