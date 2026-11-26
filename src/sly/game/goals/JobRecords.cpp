@@ -71,6 +71,9 @@ bool ValidBottleSlot(uint8_t slot)
 } // namespace
 
 int g_defaultBottleCount = 30;
+// Masks counted for the mask counter's total (0x010682A4). NOTE: written by
+// code that is not ported yet; 0 shows the count alone.
+int g_maskCounterTotal = 0;
 
 ape::ApeTSortedMap<CollectibleRecord*>& MaskTable() { return g_masks; }
 ape::ApeTSortedMap<CollectibleRecord*>& TreasureTable() { return g_treasures; }
@@ -944,6 +947,29 @@ void JobManager::UpdateBottleHud(bool pickup)
         std::snprintf(text, sizeof text, "%d", int(collectedBottles));
         counter->ShowText(-1.0f, text, true);
         std::snprintf(text, sizeof text, "%d", int(total));
+        counter->SetFieldText(text, 1);
+    }
+}
+
+// @func 0x002E5C68 JobManager::ShowMaskCount
+void JobManager::ShowMaskCount(hud::HudObject* counter) const
+{
+    if (!counter)
+        return;
+    // NOTE: the console also passes an uninitialised register as the
+    // ShowText flag; the default is used here.
+    char text[32];
+    const int total = g_maskCounterTotal;
+    if (total == 0) {
+        std::snprintf(text, sizeof text, "%d", int(collectedMasks));
+        counter->ShowText(-1.0f, text, true);
+    } else if (!counter->def || counter->def->textFieldCount < 2) {
+        std::snprintf(text, sizeof text, "%d/%d", int(collectedMasks), total);
+        counter->ShowText(-1.0f, text, true);
+    } else {
+        std::snprintf(text, sizeof text, "%d", int(collectedMasks));
+        counter->ShowText(-1.0f, text, true);
+        std::snprintf(text, sizeof text, "%d", total);
         counter->SetFieldText(text, 1);
     }
 }

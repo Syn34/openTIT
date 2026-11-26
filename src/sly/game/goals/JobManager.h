@@ -12,6 +12,7 @@
 
 namespace ape { class ApeAllocator; struct Matrix34; }
 
+namespace sly { namespace hud { class HudObject; } }
 namespace sly {
 class Spawner;
 struct GameEvent;
@@ -569,6 +570,10 @@ public:
     // HUD element (state "all found" once the default count is reached;
     // `pickup` selects the pickup flavour of that state).
     void UpdateBottleHud(bool pickup);
+    // Shows the collected masks on a counter element: "n" without a total,
+    // "n/total" on a one-field element, else the total in the second field
+    // (0x002E5C68).
+    void ShowMaskCount(hud::HudObject* counter) const;
 
     int32_t pendingKind = 0;         // +0x00 1: a job start is pending
     entity::Entity* pendingEntity = nullptr;   // +0x04 the entity that asked (class bit 17 set)
