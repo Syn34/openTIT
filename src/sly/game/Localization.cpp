@@ -3,6 +3,7 @@
 
 #include "ape/core/ApeString.h"
 #include "ape/level/ApeGui.h"
+#include "ape/sys/ApePlatform.h"
 #include "ape/xml/ApeStringTable.h"
 #include "sly/game/AudioSystem.h"
 
@@ -53,7 +54,6 @@ constexpr int kSupportedCount = (int)(sizeof(kSupportedLanguages) / sizeof(kSupp
 
 int32_t g_currentLanguage = kLang_English;   // 0x010C5A48
 bool g_forceLanguage = false;                // 0x010B8A64
-int32_t g_systemLanguage = kLang_English;
 
 ape::StringTable* CreateStringTable(int32_t language)
 {
@@ -108,15 +108,17 @@ bool IsLanguageSupported(int32_t language)
     return false;
 }
 
-// TODO: system language comes from the platform's system-utility layer.
+// The game's entry points into the platform language services.
+// @func 0x005DBC60 GetSystemLanguage
 int32_t GetSystemLanguage()
 {
-    return g_systemLanguage;
+    return ape::GetGameLanguage();
 }
 
+// @func 0x005DBC84 ApplySystemLanguage
 void ApplySystemLanguage(int32_t language)
 {
-    g_systemLanguage = language;
+    ape::OnGameLanguageChanged(language);
 }
 
 void SetForceLanguage(bool force)

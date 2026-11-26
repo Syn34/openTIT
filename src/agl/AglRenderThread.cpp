@@ -240,6 +240,29 @@ float GetRenderTime()
     return g_renderTime;
 }
 
+namespace {
+uint32_t g_aglUpdateCount = 0;   // 0x010C5A68
+} // namespace
+
+uint32_t GetAglUpdateCount()
+{
+    return g_aglUpdateCount;
+}
+
+// @func 0x0053B650 AglPlatformUpdate
+bool AglPlatformUpdate()
+{
+    return true;
+}
+
+// @func 0x0050FDC8 AglUpdate
+bool AglUpdate()
+{
+    ++g_aglUpdateCount;
+    AglPlatformUpdate();
+    return true;
+}
+
 // @func 0x005325D8 BeginGpuFrame
 void BeginGpuFrame(bool clearBackBuffer)
 {
