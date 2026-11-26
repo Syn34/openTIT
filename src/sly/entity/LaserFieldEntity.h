@@ -20,6 +20,7 @@ public:
     ~LaserFieldDef() override;
 
     void* collisionShape = nullptr;   // 0xF0 Havok shape (counted reference)
+    bool playersTrip = false;         // 0x106 players touching the field trip it
 };
 
 class LaserFieldEntity : public ScriptedEntity, public EntityInterface17C {
@@ -33,6 +34,10 @@ public:
     void OnHitCategory2(EntityHitRecord& hit) override;
     void OnHitCategory3(EntityHitRecord& hit) override;
     void OnHitCategory4(EntityHitRecord& hit) override;
+    // Contact callback (+0x17C slot 5, 0x000C21EC, thunk 0x000C23D4): the
+    // contact is disabled; a player touching the field's body trips it from
+    // its idle states when the definition says so.
+    void Interface17CSlot5(const void* event) override;
 
     void* body = nullptr;          // 0x1B0 NOTE: cleared by the constructor, set later
     uint32_t field_1B4 = 0;        // 0x1B4 from the definition (+0xF0)
