@@ -1,7 +1,9 @@
 // openTIT - Game helpers for world objects.
 #include "sly/game/ObjectHelpers.h"
 
+#include "agl/AglRenderTarget.h"
 #include "agl/AglResources.h"
+#include "sly/game/SlyGame.h"
 #include "ape/core/ApeString.h"
 #include "ape/world/ApeDefTypes.h"
 #include "ape/world/ApeInstances.h"
@@ -127,6 +129,30 @@ ape::world::ApeObj* FindInHierarchy(ape::world::ApeObj* object, uint32_t nameHas
     NameSearch search{ nameHash, nullptr };
     object->ForEachInHierarchy(FindByNameVisitor, &search, false);
     return search.found;
+}
+
+// @func 0x004A5854 WorldToScreenPoint
+ape::Vec3 WorldToScreenPoint(const ape::Vec3& position)
+{
+    float screen[4];
+    g_game->mainView->WorldToScreen(screen, position);
+    return ape::Vec3{screen[0], screen[1], 0.0f, 0.0f};
+}
+
+// @func 0x004A58C0 ScreenToWorldPoint
+ape::Vec3 ScreenToWorldPoint(const float screen[2], float distance)
+{
+    agl::AglRenderTarget* view = g_game->mainView;
+    // The point under the screen position on a near plane one unit away...
+    const float savedNear = view->zNear;
+    view->SetNear(1.0f);
+    float onPlane[3];
+    view->ClipToCamera(onPlane, ape::Vec4{screen[0], screen[1], 0.0f, 0.0f});
+    view->SetNear(savedNear);
+    // ...gives the direction from the camera; scale it to `distance`.
+    const ape::Vec3& eye = view->camera.translation;
+    return ape::Vec3{eye.x + (onPlane[0] - eye.x) * distance, eye.y + (onPlane[1] - eye.y) * distance,
+                     eye.z + (onPlane[2] - eye.z) * distance, 0.0f};
 }
 
 } // namespace sly
