@@ -69,6 +69,11 @@ void MoveLightRecord(uint16_t index, uint16_t from);
 extern uint32_t g_lightChangeStamp;
 extern uint32_t g_localLightsChanged;
 extern uint32_t g_globalLightsChanged;
+// Stamp of the last request to re-evaluate every object's lights
+// (0x010C5A8C). NOTE: its readers are not ported.
+extern uint32_t g_allLightsChanged;
+// Marks all lights as changed now.
+void MarkAllLightsChanged();
 
 // Gives a geometry or emitter instance its record (other types get none).
 void AllocVisRecord(ApeRenderObj& obj);
