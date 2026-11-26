@@ -16,6 +16,8 @@
 
 namespace ape::world { class ApeObj; class ApeSplineInstance; }
 namespace sly::hud { class HudObject; }
+namespace sly::entity { class GameCamera; }
+namespace sly::camera { class CameraMode; class StrafeCameraMode; }
 
 namespace sly {
 namespace levels {
@@ -640,8 +642,19 @@ public:
     // TODO(0x0005E990 ParadoxAI::PlayCamera): pushes camera `name` with the
     // given interpolation.
     void PlayCamera(uint32_t name, float interp) { (void)name; (void)interp; }
+    // Slot 3: leaves the listener groups and the boss state, takes the fight
+    // camera off the player and its two modes off it, sends the player's
+    // script state 0xBC1BA9E7 and deactivates the player, then the base.
+    void Detach() override;
+    // In states 0 and 1 a strafe camera keeps the player and Paradox in view
+    // (created on the fight camera when missing, following the player's
+    // height); in any other state it is removed (0x0005C848).
+    void UpdateStrafeCamera();
 
     int32_t phase = 0;            // +0x134
+    entity::GameCamera* fightCamera = nullptr;          // +0x1A0 attached to the player during the fight
+    camera::StrafeCameraMode* strafeMode = nullptr;    // +0x1A4
+    camera::CameraMode* cameraMode = nullptr;          // +0x1A8 the phase camera (PlayCamera)
     uint32_t pendingCommand = 0;  // +0x1B0
     float pendingValue = 0.0f;    // +0x1B4
     bool hasPendingCommand = false;   // +0x1B8

@@ -1,5 +1,8 @@
 // openTIT - Paradox boss behaviour (vtable 0x00B0EC30), partial.
 #include "sly/levels/ai/AIBehaviours.h"
+#include "sly/camera/CameraModes.h"
+#include "sly/entity/GameCamera.h"
+#include "sly/game/GameMessages.h"
 #include "sly/levels/ai/AITuning.h"
 
 namespace sly {
@@ -47,6 +50,56 @@ void ParadoxAI::OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, 
     pendingCommand = command;
     pendingValue = value;
     hasPendingCommand = true;
+}
+
+// @func 0x0005BDC0 ParadoxAI::Detach
+void ParadoxAI::Detach()
+{
+    UnregisterListener(entity, true);
+    GameWorldSetBossFlag(false);
+    Entity* player = PlayerCharacter();
+    if (player && fightCamera) {
+        player->DetachChild(fightCamera);
+        fightCamera->SetActiveVisual(false);
+        fightCamera->flags &= ~0x8000u;
+    }
+    if (strafeMode) {
+        fightCamera->RemoveMode(1.0f, strafeMode);
+        delete strafeMode;
+        strafeMode = nullptr;
+    }
+    if (cameraMode) {
+        fightCamera->RemoveMode(1.0f, cameraMode);
+        delete cameraMode;
+        cameraMode = nullptr;
+    }
+    if (player) {
+        player->SetScriptState(0xBC1BA9E7u);
+        player->SetActive(false);
+    }
+    AIController::Detach();
+}
+
+// @func 0x0005C848 ParadoxAI::UpdateStrafeCamera
+// NOTE: the console reads the player without checking that there is one.
+void ParadoxAI::UpdateStrafeCamera()
+{
+    Entity* player = PlayerCharacter();
+    const bool wanted = state == 0 || state == 1;
+    if (!strafeMode) {
+        if (!wanted)
+            return;
+        strafeMode = new camera::StrafeCameraMode(player->transform.translation.y, fightCamera, player, entity);
+        fightCamera->PushMode(0.0f, strafeMode, false);
+        return;
+    }
+    strafeMode->SetSubject(player);
+    strafeMode->current.height = strafeMode->target.height = player->transform.translation.y;
+    if (!wanted) {
+        fightCamera->RemoveMode(0.0f, strafeMode);
+        delete strafeMode;
+        strafeMode = nullptr;
+    }
 }
 
 } // namespace ai
