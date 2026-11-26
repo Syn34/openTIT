@@ -10,8 +10,10 @@
 namespace sly {
 
 struct GameSettings {
-    // flags bits. NOTE: named from the menu pages that restore them; which
-    // option each bit stands for is not decoded.
+    // flags bits. NOTE: the display bits are not decoded.
+    static constexpr uint32_t kFlag_InvertCameraX = 0x40000000u;   // bit 30
+    static constexpr uint32_t kFlag_InvertCameraY = 0x20000000u;   // bit 29
+    static constexpr uint32_t kFlag_Vibration = 0x10000000u;       // bit 28
     static constexpr uint32_t kControlFlagsMask = 0x70000000u;   // bits 28-30
     static constexpr uint32_t kControlDefaults = 0x10000000u;    // bit 28 on, 29/30 off
     static constexpr uint32_t kDisplayFlagsMask = 0x0F000000u;   // bits 24-27
@@ -30,8 +32,13 @@ struct GameSettings {
 
     uint32_t flags = 0;                // +0x00
     float brightness = 0.5f;           // +0x04
-    uint32_t field_08 = 0;             // +0x08
-    float volumes[4] = {};             // +0x0C NOTE: +0x0C and +0x10 feed the music / effect volume globals
+    // +0x08: the audio page's choices (indices into their option texts).
+    uint8_t audioFormat = 0;           // +0x08 default, SS, SH, DPRII, 5.1, 7.1
+    uint8_t centerSpeaker = 0;         // +0x09 default, small, large
+    uint8_t dynamicRange = 0;          // +0x0A default, max, wide, normal, narrow, midnight
+    uint8_t field_0B = 0;              // +0x0B
+    // +0x0C: sound effects, music, voice, movie volumes (0..1).
+    float volumes[4] = {};
     float screenScale = 1.0f;          // +0x1C NOTE: name guessed (reset with the display page)
     uint8_t language = 0;              // +0x20 game world +0x1050
 };

@@ -545,6 +545,10 @@ public:
     void EndDialog(bool toFrontEnd);
     // The screen shows a held picture instead of the running game.
     bool HoldsFrame();
+    // Option menu pages: the labels and sliders of a page's "Menu" object
+    // show the current settings (SlyGameOptionPages.cpp).
+    void RefreshControlsPage(ape::ApeGuiObject* screen);
+    void RefreshAudioPage(ape::ApeGuiObject* screen);
     // Shows the running level's headline (see SlyGameMenus.cpp).
     void ShowLevelHeadline(bool force);
     // Marks the running level visited for the all-levels trophy.
