@@ -13,6 +13,10 @@
 #include "sly/game/GameShellHooks.h"
 #include "sly/game/LevelParams.h"
 #include "sly/game/Subtitles.h"
+#include "sly/entity/Character.h"
+#include "sly/gameplay/Sequencer.h"
+#include "agl/AglRenderTarget.h"
+#include "ape/anim/ApeAnimScript.h"
 #include "sly/gameplay/ReturnTreasure.h"
 #include "sly/entity/GameEntityHooks.h"
 #include "sly/game/SoundZones.h"
@@ -585,10 +589,6 @@ void SlyGame::EndDialog(bool toFrontEnd)
 
 namespace sly {
 
-// Debug switch: the level headline shows on every visit (0x010B9CD8).
-// NOTE: its tuning name is not known; it stays off.
-bool g_debugRepeatHeadlines = false;
-
 // @func 0x00482B20 SlyGame::ShowLevelHeadline
 // The running level's headline (the running job's override when there is
 // one), once per profile and level unless forced; the profile's unlock
@@ -609,7 +609,7 @@ void SlyGame::ShowLevelHeadline(bool force)
         return;
     // The first byte of the entry's state word: headline shown.
     uint8_t shown = uint8_t(entry->state >> 24);
-    if (shown != 0 && !g_debugRepeatHeadlines && !force)
+    if (shown != 0 && !g_gameAlwaysShowLevelHeadline.Get() && !force)
         return;
     shown = 1;
     entry->state = (entry->state & 0x00FFFFFFu) | (uint32_t(shown) << 24);
@@ -935,6 +935,118 @@ void SlyGame::ReturnToHideout()
             jobs->EndJob(true);
         game->RequestLevel(hideout, false);
     }
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x0048B810 SlyGame::UpdateCutsceneQueue
+void SlyGame::UpdateCutsceneQueue(float dt)
+{
+    // HUD screen that freezes the cutscenes while it is busy. NOTE: name
+    // unknown (console global 0x00F64CFC).
+    constexpr uint32_t kCutscenePauseScreen = 0xC2AB44C8u;
+    constexpr uint32_t kFinished = 0x20000000u;
+    constexpr uint32_t kBecomeSly = 0x40000000u;
+    constexpr uint32_t kModalSkip = 0x40000000u;   // modal box data +0x3C bit 30
+
+    if (menu != 0)
+        return;
+    if (cutsceneSkipRequested) {
+        cutsceneSkipRequested = false;
+        SetCutsceneHud(true);
+    }
+
+    // The modal box (sub state 0x0C) is told that the cutscene under it ended.
+    auto noteModalBox = [this]() {
+        if (GetState(1) != kSub_Modal)
+            return;
+        if (auto* data = reinterpret_cast<ModalBoxData*>(StateData(1)))
+            data->flags |= kModalSkip;
+    };
+
+    for (size_t i = 0; i < cutsceneQueue.Count(); ++i) {
+        QueuedCutscene* cutscene = cutsceneQueue[i];
+        if (hud::HudObject* blocker = hud::FindType2(kCutscenePauseScreen); blocker && (blocker->animState >> 1) != 0)
+            dt = 0.0f;
+        if (!cutscene->instance) {
+            entity::Entity* player = players[0].character;
+            if ((cutscene->flags & kBecomeSly) && player && player->HasTypeBit(3) && (player->classBits & 0x20))
+                static_cast<entity::Character*>(player)->BecomeSly();
+            cutscene->instance = new ape::ApeAnimScriptInstance(cutscene->script);
+            ApplyScriptBindings(cutscene->instance, cutscene->bindings.data(), cutscene->bindings.size(),
+                                cutscene->source, false, false);
+            if (mainView) {
+                cutscene->savedNearClip = mainView->zNear;
+                mainView->SetNear(g_gameCutSceneNearZClip.Get());
+            }
+        }
+        if (!cutscene->instance || (cutscene->flags & kFinished))
+            continue;
+        cutscene->time += dt;
+        cutscene->instance->Update(dt);
+        if (!cutscene->instance->IsFinished(false) || gameplay::IsSequenceRunning(cutscene->sequence))
+            break;   // later cutscenes wait for this one
+        noteModalBox();
+        if (mainView)
+            mainView->SetNear(cutscene->savedNearClip);
+        if (!g_debugIGCLoop.Get()) {
+            cutscene->flags |= kFinished;
+        } else {
+            // Debug loop: the cutscene starts over at once.
+            delete cutscene->instance;
+            cutscene->instance = nullptr;
+            --i;
+        }
+    }
+
+    for (size_t i = 0; i < cutsceneQueue.Count(); ++i) {
+        QueuedCutscene* cutscene = cutsceneQueue[i];
+        if (!(cutscene->flags & kFinished))
+            continue;
+        cutscene->flags &= ~kFinished;
+        delete cutscene->instance;
+        cutscene->instance = nullptr;
+        delete cutscene;
+        cutsceneQueue.RemoveAt(i);
+        if (cutsceneQueue.Count() == 0) {
+            // The game events that came in during the cutscenes reach the
+            // job manager now. NOTE: the console leaves the log's read index
+            // where it was.
+            if (game::JobManager* jobs = game::GetJobManager()) {
+                GameEventRing<64>& log = players[0].deferredEvents;
+                for (uint16_t e = log.read; e != log.write; e = uint16_t((e + 1) % 64))
+                    jobs->OnGameEvent(0, log.events[e]);
+            }
+            cutscenePlaying = false;
+            flags2D |= 0x20;
+            if (!resumeAfterCutscenes) {
+                SetCutsceneHud(false);
+                return;
+            }
+            resumeAfterCutscenes = false;
+            RestorePlayerView(players[0]);
+            field_128584 = nullptr;
+            if (camera) {
+                camera->SetVisibilityDeferred(false, false);
+                camera->SetRenderEnabled(false);
+            }
+            for (entity::Entity* entity : pausedEntities) {
+                if (entity)
+                    entity->SetActive(true);
+            }
+            return;
+        }
+        --i;
+    }
+}
+
+// TODO(0x004845F0 SlyGame::RestorePlayerView): the camera and HUD go back
+// to the player block's character after the cutscenes.
+void SlyGame::RestorePlayerView(GamePlayer& player)
+{
+    (void)player;
 }
 
 } // namespace sly

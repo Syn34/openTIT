@@ -16,15 +16,17 @@
 #include "ape/memory/ApeTArray.h"
 #include "ape/xml/ApeXml.h"
 #include "sly/game/GamePlayer.h"
+#include "sly/game/Upgrades.h"
 #include "sly/game/goals/JobManager.h"
 #include "sly/save/GameSettings.h"
 #include "sly/gameplay/StateMachine.h"
 
 #include <cstdint>
 #include <cstring>
+#include <vector>
 
 namespace ape::file { class File; }
-namespace ape { class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeGuiObject; }
+namespace ape { class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeAnimScript; class ApeGuiObject; }
 namespace agl { class AglRenderTarget; }
 
 namespace sly {
@@ -175,18 +177,19 @@ struct BlurAnimation {
     bool active = false;         // +0x14 bit 30
 };
 
-// A cutscene waiting in the game's queue (+0x12820C). NOTE: only the
-// fields the game shell reads are named.
+// A cutscene waiting in the game's queue (+0x12820C): its script, the
+// variable bindings handed to the script instance and the sequence that
+// must end with it.
 struct QueuedCutscene {
-    uint32_t field_00[5] = {};                  // +0x00
-    uint32_t scriptName = 0;                    // +0x14
-    void* script = nullptr;                     // +0x18
+    std::vector<TextField> bindings;            // +0x00 (an ApeTArray on the console)
+    ape::ApeAnimScriptInstance* source = nullptr; // +0x14 instance `var` bindings copy from
+    ape::ApeAnimScript* script = nullptr;       // +0x18
     ape::ApeAnimScriptInstance* instance = nullptr; // +0x1C
     float time = 0.0f;                          // +0x20
     float savedNearClip = 0.0f;                 // +0x24 main view near plane while it plays
     uint32_t sequence = 0;                      // +0x28
     uint32_t field_2C = 0;                      // +0x2C
-    uint32_t flags = 0;                         // +0x30 bit 30: hide player, bit 29: finished
+    uint32_t flags = 0;                         // +0x30 bit 30: player back to Sly, bit 29: finished
 };
 
 // A speaker of the dialog (12 bytes on the console: name, entity, flags).
@@ -520,6 +523,13 @@ public:
     // microgame paused, the HUD reset (start) or re-enabled with the
     // letterbox shut down (end).
     void SetCutsceneHud(bool on);
+    // Runs the queued cutscenes in order (each waits for the one before it
+    // and for its sequence); finished ones leave the queue and, once it is
+    // empty, the deferred game events go to the job manager and play
+    // resumes (0x0048B810).
+    void UpdateCutsceneQueue(float dt);
+    // The camera and HUD go back to a player block's character (0x004845F0).
+    void RestorePlayerView(GamePlayer& player);
     // Leaves for the hideout of the current episode (ending the running
     // job), or for the level's default hideout outside episodes.
     static void ReturnToHideout();
