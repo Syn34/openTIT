@@ -3,6 +3,7 @@
 #include "sly/entity/TunableBlocks.h"
 
 #include "sly/objects/CharacterMoveTuning.h"
+#include "sly/tuning/CameraTuning.h"
 
 namespace sly {
 namespace entity {
@@ -192,8 +193,48 @@ bool DisguiseSettingsBlock::Reload()
 // @func 0x0074EB78 SettingsBlockB14120::~SettingsBlockB14120 (deleting)
 SettingsBlockB14120::~SettingsBlockB14120() = default;
 
-// TODO(0x00119D8C SettingsBlockB14120::LoadDefaults): 39 tuning values.
-void SettingsBlockB14120::LoadDefaults() {}
+// @func 0x00119D8C SettingsBlockB14120::LoadDefaults
+void SettingsBlockB14120::LoadDefaults()
+{
+    stepTimeMax = g_cameraFollowStepTimeMax;
+    fOV = g_cameraFollowFOV;
+    offsetZ = g_cameraFollowOffsetZ;
+    offsetY = g_cameraFollowOffsetY;
+    nearClip = g_cameraFollowNearClip;
+    colRadius = g_cameraFollowColRadius;
+    colFractHS = g_cameraFollowColFractHS;
+    colInterp = g_cameraFollowColInterp;
+    colConeMin = g_cameraFollowColConeMin;
+    colMomentMax = g_cameraFollowColMomentMax;
+    colRetract = g_cameraFollowColRetract;
+    spring = g_cameraFollowSpring;
+    damping = g_cameraFollowDamping;
+    springEnd = g_cameraFollowSpringEnd;
+    targetXZ = g_cameraFollowTargetXZ;
+    targetYUp = g_cameraFollowTargetYUp;
+    targetYDown = g_cameraFollowTargetYDown;
+    targetYMinSoft = g_cameraFollowTargetYMinSoft;
+    targetYMaxSoft = g_cameraFollowTargetYMaxSoft;
+    targetYMinHard = g_cameraFollowTargetYMinHard;
+    targetYMaxHard = g_cameraFollowTargetYMaxHard;
+    targetYMode = g_cameraFollowTargetYMode;
+    yShift = g_cameraFollowYShift;
+    lookAheadXZ = g_cameraFollowLookAheadXZ;
+    lookAheadY = g_cameraFollowLookAheadY;
+    rotateScalar = g_cameraFollowRotateScalar;
+    rotateInterp = g_cameraFollowRotateInterp;
+    gimbalRadius = g_cameraFollowGimbalRadius;
+    gimbalMin = g_cameraFollowGimbalMin;
+    gimbalMax = g_cameraFollowGimbalMax;
+    gimbalShift = g_cameraFollowGimbalShift;
+    gimbalOffsetY = g_cameraFollowGimbalOffsetY;
+    gimbalOffsetZ = g_cameraFollowGimbalOffsetZ;
+    gimbalScalar = g_cameraFollowGimbalScalar;
+    gimbalInterpV = g_cameraFollowGimbalInterpV;
+    gimbalInterpD = g_cameraFollowGimbalInterpD;
+    gimbalInterpReturn = g_cameraFollowGimbalInterpReturn;
+    gimbalReturn = g_cameraFollowGimbalReturn;
+}
 
 // @func 0x0074EB38 SettingsBlockB14120::Reload
 bool SettingsBlockB14120::Reload()

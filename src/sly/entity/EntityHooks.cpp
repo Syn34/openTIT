@@ -157,7 +157,7 @@ bool VoiceUpdate3D(uint32_t voice, const ape::Vec3& position, const ape::Vec3& v
 // TODO(0x00298EE4 / 0x00299674)
 void CharacterCompBeginAnim(EntityComponent* character) { (void)character; }
 void CharacterCompEndAnim(EntityComponent* character) { (void)character; }
-// TODO(0x000DC730 Entity::GetRootMotion)
+// Entity slot 52 (Entity::RootMotionDelta, 0x000DC730).
 ape::Matrix34 EntityRootMotionDelta(Entity* entity, float dt)
 {
     ape::Matrix34 delta = { { 1.0f, 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f, 0.0f },
