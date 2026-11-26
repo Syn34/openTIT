@@ -30,6 +30,11 @@ ape::Vec3 Cross(const ape::Vec3& a, const ape::Vec3& b)
     return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x, 0.0f };
 }
 
+ape::Vec3 ScaledVec(const ape::Vec3& v, float s)
+{
+    return {v.x * s, v.y * s, v.z * s, 0.0f};
+}
+
 ape::Vec3 Normalized(const ape::Vec3& v)
 {
     const float inv = 1.0f / std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
@@ -1161,8 +1166,85 @@ void TrackCameraMode::SetTarget(Entity* entity)
     AssignEntity(target, entity);
 }
 
-// TODO(0x001139C0 TrackCameraMode::Update)
-void TrackCameraMode::Update(float /*dt*/, CameraViewState& /*view*/) {}
+// @func 0x001139C0 TrackCameraMode::Update
+// NOTE: the console passes the frame time where the approach helpers take
+// their rate and Camera.Track.Interp where they take the frame time; kept.
+void TrackCameraMode::Update(float dt, CameraViewState& view)
+{
+    if (!target || !target->IsAlive())
+        return;
+
+    const float interp = g_cameraTrackInterp;
+    ApproachExp3(offsetPos, dt, interp, offsetPos, targetOffsetPos);
+    ApproachExp2(offsetRot, dt, interp, offsetRot, targetOffsetRot);
+    fov = ApproachExp(fov, targetFov, dt, interp);
+
+    // The tracked frame: at the target, along its spline when it climbs one.
+    ape::Matrix34 base = frame;
+    base.translation = {target->Position().x, target->Position().y, target->Position().z, base.translation.pad};
+    float t = 0.0f;
+    if (target->HasTypeBit(3)) {
+        if (ape::world::ApeSplineInstance* spline = CharacterAttachedSpline(target, &t)) {
+            spline->Evaluate(t, base.translation, base.zAxis, false);
+            if (invertDir)
+                base.zAxis = {-base.zAxis.x, -base.zAxis.y, -base.zAxis.z, base.zAxis.pad};
+        }
+    }
+
+    // Square the frame up around its z axis: x level with the world's up,
+    // else perpendicular to the old x axis, else to the old z axis.
+    constexpr float kEpsilon = 1e-5f;
+    const ape::Vec3 z = base.zAxis;
+    const ape::Vec3 up = {0.0f, 1.0f, 0.0f, 0.0f};
+    ape::Vec3 x = Cross(up, z);
+    ape::Vec3 y;
+    float length = ape::Vec3Length(x);
+    if (length >= kEpsilon) {
+        x = ScaledVec(x, 1.0f / length);
+        y = Cross(z, x);
+    } else {
+        y = Cross(z, frame.xAxis);
+        length = ape::Vec3Length(y);
+        if (length >= kEpsilon) {
+            y = ScaledVec(y, 1.0f / length);
+            x = Cross(y, z);
+        } else {
+            const ape::Vec3 back = {-frame.zAxis.x, -frame.zAxis.y, -frame.zAxis.z, 0.0f};
+            x = Cross(back, z);
+            x = ScaledVec(x, 1.0f / ape::Vec3Length(x));
+            y = Cross(z, x);
+        }
+    }
+    base.xAxis = {x.x, x.y, x.z, base.xAxis.pad};
+    base.yAxis = {y.x, y.y, y.z, base.yAxis.pad};
+
+    // The camera: the offset carried into the frame, the extra offsets, then
+    // the offset rotations.
+    const ape::Vec3 offset = {x.x * offsetPos.x + y.x * offsetPos.y + z.x * offsetPos.z,
+                              x.y * offsetPos.x + y.y * offsetPos.y + z.y * offsetPos.z,
+                              x.z * offsetPos.x + y.z * offsetPos.y + z.z * offsetPos.z, 0.0f};
+    ape::Matrix34 camera = base;
+    camera.translation.x = base.translation.x + x.x * sideOffset + offset.x;
+    camera.translation.y = base.translation.y + x.y * sideOffset + upOffset + offset.y;
+    camera.translation.z = base.translation.z + x.z * sideOffset + offset.z;
+    ape::Matrix34 rotation;
+    ape::Matrix34RotationY(offsetRot[1], rotation);
+    ape::Matrix34PreMultiply(camera, rotation);
+    ape::Matrix34RotationX(offsetRot[0], rotation);
+    ape::Matrix34PreMultiply(camera, rotation);
+
+    view.transform.xAxis = {camera.xAxis.x, camera.xAxis.y, camera.xAxis.z, view.transform.xAxis.pad};
+    view.transform.yAxis = {camera.yAxis.x, camera.yAxis.y, camera.yAxis.z, view.transform.yAxis.pad};
+    view.transform.zAxis = {camera.zAxis.x, camera.zAxis.y, camera.zAxis.z, view.transform.zAxis.pad};
+    view.transform.translation = {camera.translation.x, camera.translation.y, camera.translation.z,
+                                  view.transform.translation.pad};
+    view.fov = fov;
+    view.focusDistance = ape::Vec3Length(offset);
+
+    sideOffset = DampedApproach(sideOffset, 0.0f, dt, g_cameraTrackOffsetXDamping.Get(), nullptr);
+    upOffset = DampedApproach(upOffset, 0.0f, dt, g_cameraTrackOffsetYDamping.Get(), nullptr);
+    frame = base;
+}
 
 // @func 0x00114130 TrackCameraMode::GetDebugText
 const char* TrackCameraMode::GetDebugText()
@@ -1170,7 +1252,7 @@ const char* TrackCameraMode::GetDebugText()
     constexpr float kRadToDeg = 57.295776f;
     return ape::TempFormat("Target: %s\nOffsetPos: {%5.2f,%5.2f,%5.2f}\nOffsetRot: {%5.2f,%5.2f}\nInvertDir: %d",
                            target ? EntityName(target) : "<none>", offsetPos.x, offsetPos.y, offsetPos.z,
-                           offsetYaw * kRadToDeg, offsetPitch * kRadToDeg, invertDir ? 1 : 0);
+                           offsetRot[0] * kRadToDeg, offsetRot[1] * kRadToDeg, invertDir ? 1 : 0);
 }
 
 // ===========================================================================

@@ -95,7 +95,7 @@ CameraTriggerInstanceDesc::CameraTriggerInstanceDesc(const char* instanceName, C
     }
 }
 
-// @func 0x00215128 CameraTriggerDef::Create
+// @func 0x00215128 CameraTriggerDef::Spawn
 Entity* CameraTriggerDef::Spawn(EntityPlacement* placement)
 {
     bool typed = (placement->flags & kPlace_Camera) != 0;

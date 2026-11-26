@@ -24,7 +24,7 @@ CameraBehaviorTriggerDef::~CameraBehaviorTriggerDef()
     }
 }
 
-// @func 0x00218980 CameraBehaviorTriggerDef::Create
+// @func 0x00218980 CameraBehaviorTriggerDef::Spawn
 Entity* CameraBehaviorTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kDefClass_CameraBehaviorTrigger) != 0))

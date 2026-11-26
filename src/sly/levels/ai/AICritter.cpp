@@ -12,6 +12,8 @@
 #include "ape/world/ApeBase.h"
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
+#include "ape/world/ApeInstances.h"
+#include "ape/math/ApeMath.h"
 #include "ape/world/ApeSkeleton.h"
 #include "ape/math/ApeMatrixOps.h"
 #include "sly/entity/EntityHits.h"
@@ -717,11 +719,59 @@ ape::Vec3 CritterAI::RandomWanderPoint()
     return point;
 }
 
-// TODO(0x00020100 CritterAI::FindPerch): picks a point on a rail spline
-// near the critter and the side to perch on.
+namespace {
+
+// @func 0x000239E4 IsPerchSpline
+// Splines a critter may perch on: visible ones of kinds 2, 3,
+// 7, 10 and 12; a spline hanging under a hidden object or under another
+// spline only counts with its property flag 6.
+bool IsPerchSpline(ape::world::ApeSplineInstance* spline, void* /*user*/)
+{
+    switch (spline->GetKind()) {
+    case 2: case 3: case 7: case 10: case 12:
+        break;
+    default:
+        return false;
+    }
+    if (!spline->IsVisible())
+        return false;
+    const ape::world::ApeObj* parent = spline->GetParent();
+    if (parent && !spline->GetPropertyFlag6() &&
+        (!parent->IsVisible() || parent->GetType() == ape::world::kObjType_SplineInstance))
+        return false;
+    return true;
+}
+
+} // namespace
+
+// @func 0x00020100 CritterAI::FindPerch
+// Looks for the perch spline closest to a point 20 units ahead, picks a
+// random point on it and the side facing away from the critter.
 bool CritterAI::FindPerch()
 {
-    return false;
+    constexpr float kLookAhead = 20.0f;
+    const ape::Vec3 ahead = {transform.translation.x + transform.zAxis.x * kLookAhead,
+                             transform.translation.y + transform.zAxis.y * kLookAhead,
+                             transform.translation.z + transform.zAxis.z * kLookAhead, 0.0f};
+    float param = 0.0f;
+    float distance = 0.0f;
+    ape::world::ApeSplineInstance* rail = ape::world::FindClosestSpline(ahead, &param, &distance, IsPerchSpline, nullptr);
+    if (!rail)
+        return false;
+
+    param = ape::RandomUnit(ape::g_gameRandom);
+    ape::Vec3 tangent{};
+    rail->Evaluate(param, poiPosition, tangent, false);
+    // Across the rail (tangent x world up), on the far side from the critter.
+    const ape::Vec3 up = {0.0f, 1.0f, 0.0f, 0.0f};
+    poiDirection = {tangent.y * up.z - tangent.z * up.y, tangent.z * up.x - tangent.x * up.z,
+                    tangent.x * up.y - tangent.y * up.x, poiDirection.pad};
+    const float side = (poiPosition.x - transform.translation.x) * poiDirection.x +
+                       (poiPosition.y - transform.translation.y) * poiDirection.y +
+                       (poiPosition.z - transform.translation.z) * poiDirection.z;
+    if (side < 0.0f)
+        poiDirection = {-poiDirection.x, -poiDirection.y, -poiDirection.z, poiDirection.pad};
+    return true;
 }
 
 // @func 0x0001E7F0 CritterAI::OnMessage

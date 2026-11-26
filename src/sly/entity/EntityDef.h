@@ -299,6 +299,10 @@ public:
     char name[0x28] = {};              // 0x8C requested instance name (may be empty)
 };
 
+// Placements loaded from the level files, by name hash (0x01013B1C).
+void RegisterEntityPlacement(uint32_t nameHash, EntityPlacement* placement);
+EntityPlacement* FindEntityPlacement(uint32_t nameHash);
+
 // Spawns through the definition's slot 7 (0x000D6CC0); null without one.
 Entity* SpawnFromDef(EntityDef* def, EntityPlacement& placement);
 // Completes the placement from the named definition and spawns (0x000D6D28).

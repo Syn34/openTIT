@@ -78,7 +78,7 @@ EntityDef* CreateAlertTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElemen
     return new AlertTriggerDef(desc);
 }
 
-// @func 0x00212828 AlertTriggerDef::Create
+// @func 0x00212828 AlertTriggerDef::Spawn
 Entity* AlertTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->typeBits & kTrigType_Alert) != 0))
@@ -132,7 +132,7 @@ EntityDef* CreateCrawlTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElemen
     return new CrawlTriggerDef(desc);
 }
 
-// @func 0x00219A10 CrawlTriggerDef::Create
+// @func 0x00219A10 CrawlTriggerDef::Spawn
 Entity* CrawlTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->typeBits & kTrigType_Crawl) != 0))
@@ -197,7 +197,7 @@ EntityDef* CreateFilteredTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlEle
     return new FilteredTriggerDef(desc, PhysicsStateIndex(stateHash));
 }
 
-// @func 0x0021D5B0 FilteredTriggerDef::Create
+// @func 0x0021D5B0 FilteredTriggerDef::Spawn
 Entity* FilteredTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->typeBits & kTrigType_Filtered) != 0))
@@ -307,7 +307,7 @@ EntityDef* CreateJobTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElement*
     return new JobTriggerDef(desc);
 }
 
-// @func 0x00220560 JobTriggerDef::Create
+// @func 0x00220560 JobTriggerDef::Spawn
 Entity* JobTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kPlace_Job) != 0))
@@ -476,7 +476,7 @@ EntityDef* CreateJumpDirTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElem
     return new JumpDirTriggerDef(desc);
 }
 
-// @func 0x00221238 JumpDirTriggerDef::Create
+// @func 0x00221238 JumpDirTriggerDef::Spawn
 Entity* JumpDirTriggerDef::Spawn(EntityPlacement* placement)
 {
     bool typed = (placement->typeBits & kTrigType_JumpDir) != 0;
@@ -543,7 +543,7 @@ EntityDef* CreateUpdateEnableTriggerDef(ape::xml::XmlElement* root, ape::xml::Xm
     return new UpdateEnableTriggerDef(desc);
 }
 
-// @func 0x00225348 UpdateEnableTriggerDef::Create
+// @func 0x00225348 UpdateEnableTriggerDef::Spawn
 Entity* UpdateEnableTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->typeBits & kTrigType_UpdateEnable) != 0))

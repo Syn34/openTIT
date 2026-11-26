@@ -27,10 +27,27 @@ ape::ApeTSortedMap<EntityDef*>& DefMap()
     return s_defs;
 }
 
+// Placements by name hash (0x01013B1C).
+ape::ApeTSortedMap<EntityPlacement*>& PlacementMap()
+{
+    static ape::ApeTSortedMap<EntityPlacement*> s_placements(0, nullptr, nullptr);
+    return s_placements;
+}
+
 // 0x01013B84 (12-byte entries, peak count kept by the array).
 std::vector<DeferredEntityEvent> g_deferred;
 
 } // namespace
+
+void RegisterEntityPlacement(uint32_t nameHash, EntityPlacement* placement)
+{
+    PlacementMap().Add(nameHash, placement);
+}
+
+EntityPlacement* FindEntityPlacement(uint32_t nameHash)
+{
+    return nameHash ? *PlacementMap().Find(nameHash) : nullptr;
+}
 
 void RegisterEntityDef(EntityDef* def)
 {

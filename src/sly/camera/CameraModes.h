@@ -498,11 +498,22 @@ public:
     // 0x001138D8
     void SetTarget(Entity* entity);
 
-    ape::Vec3 offsetPos{};          // 0x60
-    float offsetYaw = 0.0f;         // 0x78 radians
-    float offsetPitch = 0.0f;       // 0x7C radians
+    // 0x10 frame the camera tracks along (the target's position, facing
+    // along the spline the target climbs, if any).
+    ape::Matrix34 frame = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+    ape::Vec3 targetOffsetPos{};    // 0x50 offsetPos eases towards it
+    ape::Vec3 offsetPos{};          // 0x60 camera position in the frame
+    float targetOffsetRot[2] = {};  // 0x70
+    // 0x78 radians: [0] about the frame's x axis, [1] about its y axis.
+    float offsetRot[2] = {};
+    float targetFov = 0.0f;         // 0x80
+    float fov = 0.0f;               // 0x84
     Entity* target = nullptr;       // 0x88
-    bool invertDir = false;         // 0x94 bit 31
+    // 0x8C/0x90 extra side / up offsets, sprung back to zero
+    // (Camera.Track.OffsetXDamping / OffsetYDamping).
+    float sideOffset = 0.0f;
+    float upOffset = 0.0f;
+    bool invertDir = false;         // 0x94 bit 31: look against the spline's direction
 };
 
 // Orbit camera styles (tuning "Camera.Orbit.Mode.<style>.*").

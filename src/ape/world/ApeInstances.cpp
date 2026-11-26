@@ -701,6 +701,57 @@ ApeSplineDef* ApeSplineInstance::GetSplineDef() const
     return static_cast<ApeSplineDef*>(m_def);
 }
 
+ApeTArray<ApeSplineProperty>& GetSplinePropertyTable()
+{
+    static ApeTArray<ApeSplineProperty> s_table;
+    return s_table;
+}
+
+// @func 0x005A8BA8 ApeSplineInstance::GetKind
+uint8_t ApeSplineInstance::GetKind() const
+{
+    if (m_propertyIndex == -1)
+        return 0;
+    return GetSplinePropertyTable()[size_t(m_propertyIndex)].kind;
+}
+
+// @func 0x005A8BE4 ApeSplineInstance::GetPropertyFlag6
+bool ApeSplineInstance::GetPropertyFlag6() const
+{
+    if (m_propertyIndex == -1)
+        return false;
+    return (GetSplinePropertyTable()[size_t(m_propertyIndex)].flags & 0x40) != 0;
+}
+
+// @func 0x005A8CF8 FindClosestSpline
+// Every spline instance alive in the pool is considered, newest first; ties
+// keep the earlier one.
+ApeSplineInstance* FindClosestSpline(const Vec3& point, float* outParam, float* outDistance,
+                                     bool (*filter)(ApeSplineInstance* spline, void* user), void* user)
+{
+    ApeTFreeList<ApeSplineInstance>& pool = ApeTListAllocator<ApeSplineInstance>::GetAllocator();
+    ApeSplineInstance* best = nullptr;
+    float bestDistance = 3.4028235e38f;
+    float bestParam = 0.0f;
+    for (ApeFreeList::Node* node = pool.First(); node; node = node->next) {
+        auto* spline = static_cast<ApeSplineInstance*>(ApeFreeList::NodeData(node));
+        if (filter && !filter(spline, user))
+            continue;
+        float distance = 0.0f;
+        const float param = spline->FindClosestParam(point, nullptr, &distance);
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            bestParam = param;
+            best = spline;
+        }
+    }
+    if (outParam)
+        *outParam = bestParam;
+    if (outDistance)
+        *outDistance = bestDistance;
+    return best;
+}
+
 // @func 0x005A81CC ApeSplineInstance::EvaluatePosition
 int ApeSplineInstance::EvaluatePosition(float t, Vec3& outPos, uint32_t startSegment, bool reverse)
 {

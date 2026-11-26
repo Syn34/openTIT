@@ -54,7 +54,7 @@ EntityDef* CreateWeatherTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElem
     return new WeatherTriggerDef(desc);
 }
 
-// @func 0x002222F0 WeatherTriggerDef::Create
+// @func 0x002222F0 WeatherTriggerDef::Spawn
 Entity* WeatherTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kDefClass_WeatherTrigger) != 0))

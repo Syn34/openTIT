@@ -214,7 +214,7 @@ EntityDef* CreateAmbientSoundTriggerDef(ape::xml::XmlElement* root, ape::xml::Xm
     return new AmbientSoundTriggerDef(desc, bankHash, soundHash);
 }
 
-// @func 0x002105F8 AmbientSoundTriggerDef::Create
+// @func 0x002105F8 AmbientSoundTriggerDef::Spawn
 Entity* AmbientSoundTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kPlace_ForceCreate) != 0))
@@ -380,7 +380,7 @@ EntityDef* CreateSoundZoneTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlEl
     return new SoundZoneTriggerDef(desc, zoneHash, mixHash, fade);
 }
 
-// @func 0x002130D0 SoundZoneTriggerDef::Create
+// @func 0x002130D0 SoundZoneTriggerDef::Spawn
 Entity* SoundZoneTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & 0x04000000u) != 0))
