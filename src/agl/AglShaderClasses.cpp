@@ -1594,8 +1594,8 @@ void SimpleColorTxrUVTechnique::Draw(AglRenderItem* item)
 }
 
 class TextureWarpTechnique : public AglTechnique {
-    // TODO(0x005AEB00 TextureWarpTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     // @func 0x005AF07C TextureWarpTechnique::End
     void End(AglMaterial* /*material*/) override {}
@@ -6002,6 +6002,19 @@ void ShoTextureWarpTechnique::Draw(AglRenderItem* item)
 {
     UploadWorldViewProj(item, 0);
     ApplyItemFogCached(item, 0x20);
+    UploadMaterialVertexLights(item);
+    BeginItemAlpha(item, 8);
+    item->geometry->Draw(item);
+    EndItemAlpha(item);
+}
+
+// @func 0x005AEB00 TextureWarpTechnique::Draw
+// Per-vertex lights for lit materials and the item alpha in fragment
+// constant 8; no stencil tag.
+void TextureWarpTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFog(item, 0x20);
     UploadMaterialVertexLights(item);
     BeginItemAlpha(item, 8);
     item->geometry->Draw(item);
