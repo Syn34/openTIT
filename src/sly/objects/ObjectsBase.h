@@ -146,6 +146,12 @@ struct EntityInstanceDesc {
 // ---------------------------------------------------------------------------
 class EntityPlacement {
 public:
+    // The full base constructor (inlined into every placement constructor).
+    // NOTE: the meanings of `field70`, `offset`, the two bits and `field74`
+    // are unknown; most placements pass 0, a zero vector, true and false.
+    EntityPlacement(const char* placementName, EntityDef* ownerDef, uint32_t field70,
+                    const ape::Matrix34& placementTransform, const ape::Vec3& offset, bool bit31,
+                    bool bit30, uint32_t field74);
     EntityPlacement(const char* placementName, EntityDef* ownerDef);
     // Releases the optional array at 0x10 (see below).
     virtual ~EntityPlacement();
@@ -162,14 +168,14 @@ public:
     // (created on the first one) and freed with the placement.
     ape::ApeTArray<DefAttachment>* ownedArray = nullptr;
     ape::Matrix34 transform{};         // 0x20
-    ape::Vec3 field_60{};              // 0x60
+    ape::Vec3 field_60{};              // 0x60 (`offset`)
     uint32_t field_70 = 0;             // 0x70
     uint32_t field_74 = 0;             // 0x74
     EntityDef* def = nullptr;          // 0x78
     float field_7C = -1.0f;            // 0x7C (from the def, overridable)
     float field_80 = -1.0f;            // 0x80
-    // 0x84 bit field: bit 31 set, bit 30 clear, bit 29 the definition's
-    // option bit 1, bits 21-28 all set. NOTE: meanings unknown.
+    // 0x84 bit field: bits 31/30 from the constructor, bit 29 the
+    // definition's option bit 1, bits 21-28 all set. NOTE: meanings unknown.
     uint32_t bits84 = 0;
     uint32_t field_88 = 0;             // 0x88
     char name[0x28] = {};              // 0x8C

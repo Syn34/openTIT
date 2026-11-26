@@ -62,14 +62,16 @@ EntityInstanceDesc::EntityInstanceDesc(const char* instanceName, EntityDef* owne
 // The placement base constructor (entity module; inlined into every
 // placement constructor, e.g. TriggerPlacement 0x00746148): identity
 // transform, the definition's defaults and a copy of its attachment records.
-EntityPlacement::EntityPlacement(const char* placementName, EntityDef* ownerDef)
-    : transform(ape::world::kWorldIdentity), def(ownerDef)
+EntityPlacement::EntityPlacement(const char* placementName, EntityDef* ownerDef, uint32_t field70,
+                                 const ape::Matrix34& placementTransform, const ape::Vec3& offset,
+                                 bool bit31, bool bit30, uint32_t field74)
+    : transform(placementTransform), field_60(offset), field_70(field70), field_74(field74), def(ownerDef)
 {
     if (def) {
         field_7C = def->field_24;
         field_80 = def->field_28;
     }
-    bits84 = 0x80000000u | 0x1FE00000u;
+    bits84 = 0x1FE00000u | (bit31 ? 0x80000000u : 0u) | (bit30 ? 0x40000000u : 0u);
     if (def && (def->options & 0x02))
         bits84 |= 0x20000000u;
     if (placementName)
@@ -81,6 +83,11 @@ EntityPlacement::EntityPlacement(const char* placementName, EntityDef* ownerDef)
             ownedArray->Add(attachment);
         }
     }
+}
+
+EntityPlacement::EntityPlacement(const char* placementName, EntityDef* ownerDef)
+    : EntityPlacement(placementName, ownerDef, 0, ape::world::kWorldIdentity, ape::Vec3{}, true, false, 0)
+{
 }
 
 // Stand-in for 0x000CDB28 (entity module): the transform and name.

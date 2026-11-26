@@ -1,9 +1,10 @@
 // openTIT - The placement ("settings") classes of the scripted entity
 // definitions: one per definition class, each built by its definition's
 // parser. The scripted entity placement adds two arrays to the base
-// placement; the others add nothing their destructors see. Only the
-// destructors (0x00739C5C-0x00758F1C) are ported; the placement copies
-// (slot 2, 0x000DFBFC and the classes' own) are not.
+// placement; the others add nothing their destructors see. The destructors
+// (0x00739C5C-0x00758F1C) and the constructors of the three placements built
+// straight on the base are ported; the placement copies (slot 2, 0x000DFBFC
+// and the classes' own) are not.
 #pragma once
 
 #include "sly/objects/ObjectsBase.h"
@@ -58,12 +59,48 @@ SLY_PLACEMENT(SafePlacement, ActorPlacement);                       // 0x00B1802
 SLY_PLACEMENT(TweenActorPlacement, ActorPlacement);                 // 0x00B186B0
 SLY_PLACEMENT(InteractivePropBPlacement, ActorPlacement);           // 0x00B188F0
 
-// Placements of the plain entity definitions (no members of their own).
-SLY_PLACEMENT(ChainPlacement, EntityPlacement);                     // 0x00B15180 (constructor 0x0074FA80)
-SLY_PLACEMENT(RopePlacement, EntityPlacement);                      // 0x00B162B0 (constructor 0x00750680)
-SLY_PLACEMENT(PlacementB193A8, EntityPlacement);                    // 0x00B193A8 (constructor 0x00760088)
-
 #undef SLY_PLACEMENT
+
+// Placements built straight on the base placement. NOTE: the meanings of
+// their own fields are not known; their parsers are not ported.
+
+// Vtable 0x00B15180; type bit 0x800.
+class ChainPlacement : public EntityPlacement {
+public:
+    ChainPlacement(const char* placementName, EntityDef* ownerDef, uint32_t field70,
+                   const ape::Matrix34& placementTransform, const ape::Vec3& offset, bool bit31, bool bit30,
+                   uint32_t field74, uint32_t valueB4);
+    ~ChainPlacement() override;
+
+    uint32_t field_B4 = 0;             // +0xB4
+};
+
+// Vtable 0x00B162B0; type bit 0x1000.
+class RopePlacement : public EntityPlacement {
+public:
+    RopePlacement(const char* placementName, EntityDef* ownerDef, uint32_t field70,
+                  const ape::Matrix34& placementTransform, const ape::Vec3& offset, bool bit31, bool bit30,
+                  uint32_t field74, uint32_t valueE0, const ape::Vec3& pointC0, const ape::Vec3& pointD0,
+                  uint32_t valueE4, bool flagE8);
+    ~RopePlacement() override;
+
+    ape::Vec3 field_C0{};              // +0xC0
+    ape::Vec3 field_D0{};              // +0xD0
+    uint32_t field_E0 = 0;             // +0xE0
+    uint32_t field_E4 = 0;             // +0xE4
+    bool field_E8 = false;             // +0xE8
+};
+
+// Vtable 0x00B193A8; sets bit 7 of the word at +0x0C.
+class PlacementB193A8 : public EntityPlacement {
+public:
+    PlacementB193A8(const char* placementName, EntityDef* ownerDef, const ape::Matrix34& placementTransform,
+                    bool bit31, uint32_t valueB4, bool flagB8);
+    ~PlacementB193A8() override;
+
+    uint32_t field_B4 = 0;             // +0xB4
+    bool field_B8 = false;             // +0xB8
+};
 
 } // namespace objects
 } // namespace sly
