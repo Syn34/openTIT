@@ -512,6 +512,7 @@ public:
     ~SoundActorB16B48Def() override;
     ape::ApeTArray<void*> field_190;   // 0x190 NOTE: element type unknown
     ape::ApeTArray<int32_t> bodyParts; // 0x1A4 part index of each light body
+    float field_1B8 = 0.0f;            // 0x1B8 placement default
     bool restartWhenWaiting = false;   // 0x1BC
     bool unlightOnSlot3 = false;       // 0x1BD
     bool unlightOnSlot4 = false;       // 0x1BE
@@ -620,7 +621,13 @@ class SoundActorB16DB0Def : public SoundActorDef {
 public:
     ~SoundActorB16DB0Def() override;
     float triggerDelay = 0.0f;     // 0x1A4 time in state 4 before the triggers report
-    uint32_t options = 0;          // 0x1BC bit 28: close even when occupied
+    // Placement defaults (SoundActorB16DB0Placement +0x110..+0x11C).
+    uint32_t field_1AC = 0;        // 0x1AC
+    uint32_t field_1B0 = 0;        // 0x1B0
+    float field_1B4 = -1.0f;       // 0x1B4
+    float field_1B8 = -1.0f;       // 0x1B8
+    // 0x1BC bit 28: close even when occupied; bit 22: placement default.
+    uint32_t options = 0;
 };
 
 // Like SoundActorB16DB0 with the records at +0x22C (vtable 0x00B17008;

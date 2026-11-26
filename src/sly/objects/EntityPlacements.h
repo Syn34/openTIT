@@ -385,29 +385,50 @@ public:
     using SoundActorPlacement::SoundActorPlacement;
     ~SoundActorB16B48Placement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001C3308
-    uint32_t field_110 = 0;             // +0x110
+    float field_110 = 0.0f;             // +0x110 attribute 0x2DF33CE3
 };
 struct SoundActorB16B48InstanceDesc : SoundActorInstanceDesc {
     using SoundActorInstanceDesc::SoundActorInstanceDesc;
-    uint32_t field_F0 = 0;              // 0xF0
+    float field_F0 = 0.0f;              // 0xF0
 };
 
-// Six phantom-tracked records (0x1E0 bytes copied as a block).
+// One of the six tracked triggers of SoundActorB16DB0 (0x50 bytes; child
+// elements 0xEB9EE198).
+struct SoundActorB16DB0Record {
+    uint32_t name = 0;                  // +0x00 attribute 0x75849CFE
+    ape::Vec3 field_10{};               // +0x10 attribute 0x2B7B3EB4
+    ape::Vec3 field_20{};               // +0x20 attribute 0x313AB0C1
+    // +0x30 orientation (attribute 0x313AB844, Euler angles in degrees).
+    ape::Vec4 rotation{0.0f, 0.0f, 0.0f, 1.0f};
+    uint32_t field_40 = 0;              // +0x40 attribute 0x632DA119
+    bool field_44 = true;               // +0x44 attribute 0x8141EC8A
+    bool field_45 = false;              // +0x45 attribute 0xF8E455AC
+};
 struct SoundActorB16DB0Records {
-    uint8_t data[0x1E0];
+    SoundActorB16DB0Record records[6];
 };
 class SoundActorB16DB0Placement : public SoundActorPlacement {   // 0x00B16D98
 public:
     using SoundActorPlacement::SoundActorPlacement;
     ~SoundActorB16DB0Placement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001C6FB0
-    uint32_t field_110[4] = {};         // +0x110..+0x11C
+    // The sound actor attributes and the tracked triggers (0x001C6838).
+    void Parse(ape::xml::XmlElement* elem);
+    uint32_t field_110 = 0;             // +0x110 attribute 0x2DF2E2B5 (hash)
+    uint32_t field_114 = 0;             // +0x114 attribute 0x53FFAFC2 (hash)
+    float field_118 = -1.0f;            // +0x118 attribute 0x667AB4F5
+    float field_11C = -1.0f;            // +0x11C attribute 0x7A392528
     SoundActorB16DB0Records records{};  // +0x120
-    uint32_t flags_300 = 0;             // +0x300 bits 30/31 are handed on
+    // +0x300 bits 30/31 are handed on: 31 set when records were given, 30
+    // attribute 0xA8DB95B1.
+    uint32_t flags_300 = 0;
 };
 struct SoundActorB16DB0InstanceDesc : SoundActorInstanceDesc {
     using SoundActorInstanceDesc::SoundActorInstanceDesc;
-    uint32_t field_F0[4] = {};          // 0xF0..0xFC
+    uint32_t field_F0 = 0;              // 0xF0
+    uint32_t field_F4 = 0;              // 0xF4
+    float field_F8 = -1.0f;             // 0xF8
+    float field_FC = -1.0f;             // 0xFC
     SoundActorB16DB0Records records{};  // 0x100
     uint32_t flags_2E0 = 0;             // 0x2E0
 };
@@ -417,12 +438,20 @@ public:
     using SoundActorPlacement::SoundActorPlacement;
     ~SoundActorB17270Placement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001CBD04
-    uint32_t field_110[9] = {};         // +0x110..+0x130
-    bool field_134[2] = {};             // +0x134, +0x135
+    // The sound actor attributes and the turret's own (0x001CB740).
+    void Parse(ape::xml::XmlElement* elem);
+    uint32_t field_110 = 0;             // +0x110 attribute 0x53FFAFC2 (hash)
+    // +0x114..+0x12C attributes 0x09198A77, 0x58E70C1B, 0x0B109E97,
+    // 0x0B10795B, 0x0B13D227 (those three not negative), 0x667AB4F5, 0xDBA26CDA.
+    float field_114[7] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f};
+    int32_t field_130 = -1;             // +0x130 attribute 0x9F5A4080
+    bool field_134[2] = {true, true};   // +0x134, +0x135 attributes 0x3EFBF433, 0x4128CDCD
 };
 struct SoundActorB17270InstanceDesc : SoundActorInstanceDesc {
     using SoundActorInstanceDesc::SoundActorInstanceDesc;
-    uint32_t field_F0[9] = {};          // 0xF0..0x110
+    uint32_t field_F0 = 0;              // 0xF0
+    float field_F4[7] = {};             // 0xF4..0x10C
+    int32_t field_110 = -1;             // 0x110
     bool field_114[2] = {};             // 0x114, 0x115
 };
 
@@ -668,6 +697,14 @@ EntityPlacement* ParseScriptObjectActorPlacement(ape::xml::XmlElement* root, ape
 EntityPlacement* ParseSoundActorB16678Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                 const char* name, EntityDef* def);
 EntityPlacement* ParseSoundActorB168E0Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def);
+// Light, tracked-trigger and turret sound actor placement loaders
+// (0x001C3040, 0x001C6D30, 0x001CBA90).
+EntityPlacement* ParseSoundActorB16B48Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def);
+EntityPlacement* ParseSoundActorB16DB0Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def);
+EntityPlacement* ParseSoundActorB17270Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                 const char* name, EntityDef* def);
 // Placement loaders of the rigid-body scripted classes (0x00167F58,
 // 0x0016CBE0, 0x00177D78, 0x0017F1A0, 0x00190EA0).

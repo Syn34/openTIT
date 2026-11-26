@@ -277,8 +277,10 @@ void SoundActorB16DB0Placement::FillInstanceDesc(EntityInstanceDesc& baseDesc) c
 {
     SoundActorPlacement::FillInstanceDesc(baseDesc);
     auto& desc = static_cast<SoundActorB16DB0InstanceDesc&>(baseDesc);
-    for (int i = 0; i < 4; ++i)
-        desc.field_F0[i] = field_110[i];
+    desc.field_F0 = field_110;
+    desc.field_F4 = field_114;
+    desc.field_F8 = field_118;
+    desc.field_FC = field_11C;
     desc.flags_2E0 = TakeTopBits(desc.flags_2E0, flags_300);
     desc.records = records;
 }
@@ -288,8 +290,10 @@ void SoundActorB17270Placement::FillInstanceDesc(EntityInstanceDesc& baseDesc) c
 {
     SoundActorPlacement::FillInstanceDesc(baseDesc);
     auto& desc = static_cast<SoundActorB17270InstanceDesc&>(baseDesc);
-    for (int i = 0; i < 9; ++i)
-        desc.field_F0[i] = field_110[i];
+    desc.field_F0 = field_110;
+    for (int i = 0; i < 7; ++i)
+        desc.field_F4[i] = field_114[i];
+    desc.field_110 = field_130;
     desc.field_114[0] = field_134[0];
     desc.field_114[1] = field_134[1];
 }

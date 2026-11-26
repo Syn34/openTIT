@@ -81,7 +81,16 @@ public:
     uint32_t flags_19C = 0x40000000u;   // 0x19C bits 30/31: placement defaults
 };
 SLY_ACTOR_DEF(SoundActorB17008Def, SoundActorDef);   // 0x00B16FD0
-SLY_ACTOR_DEF(SoundActorB17270Def, SoundActorDef);   // 0x00B17228
+// 0x00B17228. NOTE: only the placement defaults.
+class SoundActorB17270Def : public SoundActorDef {
+public:
+    ~SoundActorB17270Def() override;
+    uint32_t field_1B4 = 0;             // 0x1B4
+    float field_1B8[7] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f};   // 0x1B8..0x1D0
+    int32_t field_1E0 = -1;             // 0x1E0
+    bool field_1E4 = true;              // 0x1E4
+    bool field_1E5 = true;              // 0x1E5
+};
 SLY_ACTOR_DEF(SoundActorB174C0Def, SoundActorDef);   // 0x00B17490
 // 0x00B176E0
 class SoundActorB17728Def : public SoundActorDef {

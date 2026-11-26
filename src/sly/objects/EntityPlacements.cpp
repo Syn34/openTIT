@@ -659,5 +659,128 @@ EntityPlacement* ParseSoundActorB168E0Placement(ape::xml::XmlElement* root, ape:
     return placement;
 }
 
+// @func 0x001C3040 ParseSoundActorB16B48Placement
+EntityPlacement* ParseSoundActorB16B48Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new SoundActorB16B48Placement(name, def);
+    placement->typeBits |= 0x80000;
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    placement->field_110 = def ? static_cast<const entity::SoundActorB16B48Def*>(def)->field_1B8 : 0.0f;
+    placement->typeBits |= 0x1000000;
+    placement->Parse(elem);
+    elem->GetFloat(0x2DF33CE3u, &placement->field_110, placement->field_110);
+    return placement;
+}
+
+// @func 0x001C6838 SoundActorB16DB0Placement::Parse
+// At most six records are read; the orientation is built from Euler angles
+// in degrees (half angles through FastCos/FastSin).
+void SoundActorB16DB0Placement::Parse(ape::xml::XmlElement* elem)
+{
+    constexpr uint32_t kElem_Record = 0xEB9EE198u;
+    SoundActorPlacement::Parse(elem);
+    elem->GetHash(0x2DF2E2B5u, &field_110, field_110);
+    elem->GetHash(0x53FFAFC2u, &field_114, field_114);
+    elem->GetFloat(0x667AB4F5u, &field_118, field_118);
+    elem->GetFloat(0x7A392528u, &field_11C, field_11C);
+    bool bit30 = (flags_300 & 0x40000000u) != 0;
+    elem->GetBool(0xA8DB95B1u, &bit30, bit30);
+    flags_300 = (flags_300 & 0xBFFFFFFFu) | (bit30 ? 0x40000000u : 0u);
+
+    uint32_t count = 0;
+    for (ape::xml::XmlElement* child = elem->FirstChildElement(kElem_Record); child;
+         child = child->NextSiblingElement(kElem_Record), ++count) {
+        if (count >= 6)
+            continue;
+        SoundActorB16DB0Record& record = records.records[count];
+        child->GetHash(0x75849CFEu, &record.name, record.name);
+        child->GetVec3(0x2B7B3EB4u, &record.field_10.x, &record.field_10.x);
+        child->GetVec3(0x313AB0C1u, &record.field_20.x, &record.field_20.x);
+        ape::Vec3 euler{};
+        if (child->GetVec3(0x313AB844u, &euler.x, &ape::world::kWorldZero.x) == ape::xml::kQuery_Ok) {
+            const float hx = euler.x * kDegToRad * 0.5f;
+            const float hy = euler.y * kDegToRad * 0.5f;
+            const float hz = euler.z * kDegToRad * 0.5f;
+            const float cx = ape::FastCos(hx), cy = ape::FastCos(hy), cz = ape::FastCos(hz);
+            const float sx = ape::FastSin(hx), sy = ape::FastSin(hy), sz = ape::FastSin(hz);
+            record.rotation.x = sy * sz * cx + cy * cz * sx;
+            record.rotation.y = cz * sy * cx + cy * sz * sx;
+            record.rotation.z = cy * sz * cx - cz * sy * sx;
+            record.rotation.w = cy * cz * cx - sy * sz * sx;
+        }
+        child->GetHash(0x632DA119u, &record.field_40, record.field_40);
+        child->GetBool(0x8141EC8Au, &record.field_44, record.field_44);
+        child->GetBool(0xF8E455ACu, &record.field_45, record.field_45);
+    }
+    flags_300 = (flags_300 & 0x7FFFFFFFu) | (count != 0 ? 0x80000000u : 0u);
+}
+
+// @func 0x001C6D30 ParseSoundActorB16DB0Placement
+EntityPlacement* ParseSoundActorB16DB0Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new SoundActorB16DB0Placement(name, def);
+    placement->typeBits |= 0x80000;
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    if (def) {
+        const auto* trackDef = static_cast<const entity::SoundActorB16DB0Def*>(def);
+        placement->field_110 = trackDef->field_1AC;
+        placement->field_114 = trackDef->field_1B0;
+        placement->field_118 = trackDef->field_1B4;
+        placement->field_11C = trackDef->field_1B8;
+        placement->flags_300 = (placement->flags_300 & 0x3FFFFFFFu) | ((trackDef->options & 0x00400000u) << 8);
+    } else {
+        placement->flags_300 &= 0x3FFFFFFFu;
+    }
+    placement->typeBits |= 0x400000;
+    placement->Parse(elem);
+    return placement;
+}
+
+// @func 0x001CB740 SoundActorB17270Placement::Parse
+void SoundActorB17270Placement::Parse(ape::xml::XmlElement* elem)
+{
+    SoundActorPlacement::Parse(elem);
+    elem->GetHash(0x53FFAFC2u, &field_110, field_110);
+    elem->GetFloat(0x09198A77u, &field_114[0], field_114[0]);
+    elem->GetFloat(0x58E70C1Bu, &field_114[1], field_114[1]);
+    static const uint32_t kClamped[3] = {0x0B109E97u, 0x0B10795Bu, 0x0B13D227u};
+    for (int i = 0; i < 3; ++i) {
+        float& value = field_114[2 + i];
+        if (elem->GetFloat(kClamped[i], &value, value) == ape::xml::kQuery_Ok)
+            value = std::max(value, 0.0f);
+    }
+    elem->GetFloat(0x667AB4F5u, &field_114[5], field_114[5]);
+    elem->GetFloat(0xDBA26CDAu, &field_114[6], field_114[6]);
+    elem->GetInt(0x9F5A4080u, &field_130, field_130);
+    elem->GetBool(0x3EFBF433u, &field_134[0], field_134[0]);
+    elem->GetBool(0x4128CDCDu, &field_134[1], field_134[1]);
+}
+
+// @func 0x001CBA90 ParseSoundActorB17270Placement
+EntityPlacement* ParseSoundActorB17270Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new SoundActorB17270Placement(name, def);
+    placement->typeBits |= 0x80000;
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    if (def) {
+        const auto* turretDef = static_cast<const entity::SoundActorB17270Def*>(def);
+        placement->field_110 = turretDef->field_1B4;
+        for (int i = 0; i < 7; ++i)
+            placement->field_114[i] = turretDef->field_1B8[i];
+        placement->field_130 = turretDef->field_1E0;
+        placement->field_134[0] = turretDef->field_1E4;
+        placement->field_134[1] = turretDef->field_1E5;
+    }
+    placement->typeBits |= 0x2000000;
+    placement->Parse(elem);
+    return placement;
+}
+
 } // namespace objects
 } // namespace sly
