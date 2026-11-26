@@ -66,6 +66,9 @@ struct GamePlayer {
     // the maximum +0x64. Skipped once while kFlag_MeterHold is set; the flag
     // is cleared either way.
     void UpdateMeter(float dt);
+    // The running job's goal named `name` (Goal::nameHash), or null
+    // (0x00465F30).
+    goals::Goal* FindGoal(uint32_t name) const;
 
     uint8_t index = 0xFF;                   // +0x00 NOTE: game player slot
     uint8_t padIndex = 0xFF;                // +0x01 app player (pad) driving it

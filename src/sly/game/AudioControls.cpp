@@ -254,6 +254,34 @@ float RequestDuration(const SoundRequest* request)
     return longest;
 }
 
+namespace {
+uint8_t g_dynamicRange = 0;   // 0x010B0100
+} // namespace
+
+// @func 0x0044D9B8 SetSpeakerFormat
+void SetSpeakerFormat(uint8_t /*format*/)
+{
+    // NOTE: empty in the shipping build; the output format comes from the
+    // system settings.
+}
+
+// @func 0x0044D9BC SetCenterSpeakerSize
+void SetCenterSpeakerSize(uint8_t /*size*/)
+{
+    // NOTE: empty in the shipping build.
+}
+
+// @func 0x0044D9C0 SetDynamicRange
+void SetDynamicRange(uint8_t range)
+{
+    g_dynamicRange = range;
+}
+
+uint8_t DynamicRange()
+{
+    return g_dynamicRange;
+}
+
 // @func 0x004440E8 SoundNameDebugString
 const char* SoundNameDebugString(const SoundName*)
 {
