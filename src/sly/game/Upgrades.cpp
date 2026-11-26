@@ -1,6 +1,7 @@
 // openTIT - Upgrade shop tuning and the table of upgrade records.
 #include "sly/game/Upgrades.h"
 
+#include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
 #include "ape/xml/ApeXml.h"
 
@@ -144,6 +145,54 @@ void AddUIntBinding(std::vector<TextField>& list, uint32_t varName, uint32_t val
     binding.uintValue = value;
     binding.flagA = kBinding_UInt;
     list.push_back(binding);
+}
+
+// Stores the current value of a script variable in a binding record:
+// floats, ints and hashes in the first word, a vector in the first three
+// floats, a matrix as four rows of (x, y, z, -). Other variable types are
+// left alone.
+// @func 0x0049E8E4 CopyScriptVarToBinding
+void CopyScriptVarToBinding(TextField& out, const ape::ApeAnimScriptVar* var)
+{
+    if (!var)
+        return;
+    switch (var->GetType()) {
+    case ape::AnimScriptVarType::Hash:
+        out.hash = var->GetHash();
+        break;
+    case ape::AnimScriptVarType::Matrix: {
+        const ape::Matrix34& m = static_cast<const ape::ApeAnimScriptMatrixVar*>(var)->GetMatrix();
+        const ape::Vec3* rows[4] = {&m.xAxis, &m.yAxis, &m.zAxis, &m.translation};
+        for (int r = 0; r < 4; ++r) {
+            out.matrix[r * 4 + 0] = rows[r]->x;
+            out.matrix[r * 4 + 1] = rows[r]->y;
+            out.matrix[r * 4 + 2] = rows[r]->z;
+        }
+        break;
+    }
+    case ape::AnimScriptVarType::Vec3: {
+        const ape::Vec3& v = static_cast<const ape::ApeAnimScriptVec3Var*>(var)->GetVec3();
+        out.vec3[0] = v.x;
+        out.vec3[1] = v.y;
+        out.vec3[2] = v.z;
+        break;
+    }
+    case ape::AnimScriptVarType::Int:
+        out.uintValue = uint32_t(var->GetInt());
+        break;
+    case ape::AnimScriptVarType::Float:
+        out.floatValue = var->GetFloat();
+        break;
+    default:
+        break;
+    }
+}
+
+// qsort comparator of string pointers, case-insensitive.
+// @func 0x0049B4E0 CompareStringPointers
+int CompareStringPointers(const void* a, const void* b)
+{
+    return ape::StrCaseCompare(*static_cast<const char* const*>(a), *static_cast<const char* const*>(b));
 }
 
 } // namespace sly

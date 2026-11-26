@@ -389,6 +389,10 @@ public:
     void PauseReturnTreasure(bool paused);
     void RefreshReturnTreasureHud();
     void SetReturnTreasureHudActive(bool active);
+    // The running job ended: the job manager records it, then the game
+    // restarts the episode, shows the job-complete screen (sub state 7, the
+    // completion in sub state data +0x48) or returns to play (sub state 2).
+    bool OnJobFinished();
     // The level starts over: main state 3 with fresh main state data.
     void RestartLevelState();
     // Ends the running job and goes back to the front end (main state 0,
@@ -515,7 +519,8 @@ public:
     uint8_t field_12859C = 0;                   // +0x12859C
     uint32_t hudScreenHash = 0;                 // +0x1285A0 HUD screen of the current sub state
     uint8_t field_1285A4 = 0;                   // +0x1285A4
-    uint32_t field_1285A8[3] = {};              // +0x1285A8
+    uint32_t finishedJobName = 0;               // +0x1285A8 name of the job that ended last
+    uint32_t field_1285AC[2] = {};              // +0x1285AC
     uint32_t field_1285B0[4] = {};              // +0x1285B0
     int32_t field_1285C0 = -1;                  // +0x1285C0
     uint8_t field_1285C4[6] = {};               // +0x1285C4

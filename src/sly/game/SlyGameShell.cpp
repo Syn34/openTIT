@@ -302,6 +302,38 @@ void SlyGame::RestartLevelState()
         std::memset(data, 0, 0x34);
 }
 
+// Sub state data of the job-complete screen (sub state 7).
+struct JobCompleteData {
+    uint8_t field_00[0x44];
+    uint32_t field_44;
+    uint32_t completion;    // +0x48 what CompleteRunningJob returned
+};
+static_assert(sizeof(JobCompleteData) <= 0x80, "fits the state data block");
+
+// @func 0x0048EC44 SlyGame::OnJobFinished
+bool SlyGame::OnJobFinished()
+{
+    SetLetterbox(false);
+    game::JobManager* jobs = game::GetJobManager();
+    finishedJobName = (jobs && jobs->instance) ? jobs->instance->nameHash : 0;
+    const uint32_t completion = jobs ? jobs->CompleteRunningJob() : 0;
+    progress.AddPendingCount(pendingCounts[players[0].index & 7]);
+
+    if (jobs && !game::ProgressFlag149() && !game::IsInJob() && jobs->currentJob &&
+        jobs->currentJob->ProgressState() == 2) {
+        jobs->RestartEpisodeById(jobs->currentJob->field_2D4);
+    } else if (completion == 0) {
+        RequestSubState(2);
+    } else {
+        RequestSubState(7);
+        if (auto* data = reinterpret_cast<JobCompleteData*>(StateData(1))) {
+            data->field_44 = 0;
+            data->completion = completion;
+        }
+    }
+    return false;
+}
+
 // @func 0x0048A57C SlyGame::QuitToFrontEnd
 void SlyGame::QuitToFrontEnd()
 {
