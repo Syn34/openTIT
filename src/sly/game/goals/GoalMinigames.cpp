@@ -752,6 +752,67 @@ bool GoalPenguinMontageGame::s_roundLost = false;
 // @func 0x003392D0 GoalPenguinMontageGame::~GoalPenguinMontageGame (deleting)
 GoalPenguinMontageGame::~GoalPenguinMontageGame() = default;
 
+// @func 0x00339388 GoalPenguinMontageGame::ParseRound
+void GoalPenguinMontageGame::ParseRound(ape::xml::XmlElement* first, Round& round, const GoalDesc* desc)
+{
+    for (ape::xml::XmlElement* child = first; child; child = child->NextSiblingElement()) {
+        if (!child->IsValid())
+            continue;
+        Goal* goal = nullptr;
+        switch (child->GetNameHash()) {
+        case 0x618B173Du: goal = GoalPenguinWhackGame::Create(child, desc); break;
+        case 0x17DEB587u: goal = GoalPenguinPunchGame::Create(child, desc); break;
+        case 0xF54BD90Fu: goal = GoalPenguinSumoGame::Create(child, desc); break;
+        case 0xD4D8DBBCu: goal = GoalPenguinSlingshotGame::Create(child, desc); break;
+        case 0xAB0D3FB0u: goal = GoalPenguinDodgeGame::Create(child, desc); break;
+        case 0x9F453A75u: goal = GoalPenguinBalanceGame::Create(child, desc); break;
+        case 0x001F9B50u: {
+            RoundEntry entry;
+            child->GetHash(0x0024728Bu, &entry.name, 0);        // "Name"
+            child->GetFloat(0x98643678u, &entry.weight, 0.0f);  // "Weight"
+            round.entries.PushBack(entry);
+            continue;
+        }
+        default:
+            continue;
+        }
+        if (!goal)
+            continue;
+        SubGame* game = new SubGame();
+        game->goal = goal;
+        child->GetHash(0x46C3D78Du, &game->field_04, 0);
+        child->GetHash(0x3BAE1946u, &game->field_08, 0);
+        // NOTE: the console does not bound the count; six fit.
+        if (round.gameCount < kMaxSubGames)
+            round.games[round.gameCount++] = game;
+        else
+            delete game;
+    }
+}
+
+// @func 0x003396A8 GoalPenguinMontageGame::Create
+Goal* GoalPenguinMontageGame::Create(ape::xml::XmlElement* xml, const GoalDesc* desc)
+{
+    uint32_t lifetimeScript = 0;
+    xml->GetHash(0xCF4A1DD4u, &lifetimeScript, 0);   // "LifetimeScript"
+    GoalPenguinMontageGame* goal = new GoalPenguinMontageGame(desc);
+    goal->minigame = nullptr;
+    goal->result &= ~(kResult_Won | kResult_Lost);
+    goal->field_A14 = lifetimeScript;
+    for (ape::xml::XmlElement* child = xml->FirstChildElement(0xF09E81B8u); child;
+         child = child->NextSiblingElement(0xF09E81B8u)) {
+        // NOTE: the console does not bound the round count either.
+        if (goal->roundCount >= kRoundCount)
+            break;
+        Round& round = goal->rounds[goal->roundCount];
+        child->GetFloat(0xA9597E7Du, &round.field_34, 1.0f);
+        child->GetInt(0x00012F66u, &round.field_38, 0);
+        ParseRound(child->FirstChildElement(), round, desc);
+        ++goal->roundCount;
+    }
+    return goal;
+}
+
 // @func 0x00339998 GoalPenguinMontageGame::SetStatus
 void GoalPenguinMontageGame::SetStatus(uint8_t newStatus, bool force)
 {
