@@ -2,6 +2,7 @@
 // own copy of the scripted entity placement's destructor body on the console.
 #include "sly/objects/EntityPlacements.h"
 #include "sly/entity/ScriptedEntity.h"
+#include "sly/entity/PropEntities.h"
 #include "ape/xml/ApeXml.h"
 
 namespace sly {
@@ -210,6 +211,21 @@ void ParseBindings(ape::xml::XmlElement* elem, ape::ApeTArray<ScriptPropertyOver
     }
 }
 
+// Rotation attributes are given in degrees.
+void ToRadians(ape::Vec3& angles)
+{
+    angles.x *= kDegToRad;
+    angles.y *= kDegToRad;
+    angles.z *= kDegToRad;
+}
+
+// The two vectors every physical placement reads.
+void ParsePhysicalSettings(ape::xml::XmlElement* elem, PhysicalSettings& settings)
+{
+    elem->GetVec3(kAttr_PhysicalVecA, &settings.field_00.x, &settings.field_00.x);
+    elem->GetVec3(kAttr_PhysicalVecB, &settings.rotation.x, &settings.rotation.x);
+}
+
 } // namespace
 
 // @func 0x000CC188 ScriptedEntityPlacement::ScriptedEntityPlacement
@@ -249,10 +265,8 @@ void PhysicalEntityPlacement::Parse(ape::xml::XmlElement* elem)
 {
     ScriptedEntityPlacement::Parse(elem);
     elem->GetVec3(kAttr_PhysicalVecA, &settings.field_00.x, &settings.field_00.x);
-    elem->GetVec3(kAttr_PhysicalVecB, &settings.field_10.x, &settings.field_10.x);
-    settings.field_10.x *= kDegToRad;
-    settings.field_10.y *= kDegToRad;
-    settings.field_10.z *= kDegToRad;
+    elem->GetVec3(kAttr_PhysicalVecB, &settings.rotation.x, &settings.rotation.x);
+    ToRadians(settings.rotation);
 }
 
 // @func 0x000CC728 ParseScriptedEntityPlacement
@@ -283,6 +297,114 @@ EntityPlacement* ParsePhysicalEntityPlacement(ape::xml::XmlElement* root, ape::x
     (void)root;
     auto* placement = new PhysicalEntityPlacement(name, def);
     placement->flags |= EntityPlacement::kPlace_Physical;
+    placement->Parse(elem);
+    return placement;
+}
+
+// @func 0x00167F58 ParseRigidPropPlacement
+EntityPlacement* ParseRigidPropPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
+                                         EntityDef* def)
+{
+    (void)root;
+    auto* placement = new RigidPropPlacement(name, def);
+    placement->flags |= 0x80;
+    placement->Parse(elem);
+    ParsePhysicalSettings(elem, placement->settings);
+    ToRadians(placement->settings.rotation);
+    return placement;
+}
+
+// @func 0x0016CBE0 ParseCompoundEntityPlacement
+EntityPlacement* ParseCompoundEntityPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                              const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new CompoundEntityPlacement(name, def);
+    placement->flags |= 0x400;
+    placement->Parse(elem);
+    return placement;
+}
+
+// @func 0x00177D78 ParseAlterEgoPlacement
+// The definition's flag word (+0x100) bit 31 gives the placement's bit 30.
+EntityPlacement* ParseAlterEgoPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
+                                        EntityDef* def)
+{
+    (void)root;
+    auto* placement = new AlterEgoPlacement(name, def);
+    if (def) {
+        const bool bit = (static_cast<const entity::AlterEgoDef*>(def)->deathFlags & 0x80000000u) != 0;
+        placement->bits84 = (placement->bits84 & ~0x40000000u) | (bit ? 0x40000000u : 0u);
+    }
+    placement->flags |= 0x800;
+    placement->Parse(elem);
+    ParsePhysicalSettings(elem, placement->settings);
+    elem->GetFloat(0x0023FEF4u, &placement->field_118, placement->field_118);
+    elem->GetFloat(0xCEDD379Au, &placement->field_11C, placement->field_11C);
+    ToRadians(placement->settings.rotation);
+    return placement;
+}
+
+// @func 0x0017EF48 TargetableAPlacement::Parse
+void TargetableAPlacement::Parse(ape::xml::XmlElement* elem)
+{
+    ScriptedEntityPlacement::Parse(elem);
+    ParsePhysicalSettings(elem, settings);
+    elem->GetFloat(0xCEDD379Au, &settings.field_20, settings.field_20);
+    elem->GetFloat(0x04B70827u, &field_114, field_114);
+    elem->GetFloat(0x001FE6E0u, &field_118, field_118);
+    elem->GetFloat(0x94E315E2u, &field_11C, field_11C);
+    elem->GetFloat(0x53CAD6F8u, &field_124, field_124);
+    elem->GetFloat(0x7D4D7117u, &field_120, field_120);
+    elem->GetHash(0x6C3F4814u, &field_128, field_128);
+    elem->GetFloat(0xD1A77009u, &field_12C, field_12C);
+    elem->GetBool(0x07248538u, &field_130, field_130);
+    elem->GetHash(0x7DFA87B7u, &field_134, field_134);
+    elem->GetHash(0xD49CCAAEu, &field_138, field_138);
+    elem->GetBool(0xB8A0F299u, &field_13C, field_13C);
+    ToRadians(settings.rotation);
+}
+
+// @func 0x0017F1A0 ParseTargetableAPlacement
+EntityPlacement* ParseTargetableAPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                           const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new TargetableAPlacement(name, def);
+    placement->flags |= 0x100;
+    placement->Parse(elem);
+    return placement;
+}
+
+// @func 0x00190C28 TargetableBPlacement::Parse
+// NOTE: the console reads attribute 0x7ECB8527 with field_130 as the default.
+void TargetableBPlacement::Parse(ape::xml::XmlElement* elem)
+{
+    ScriptedEntityPlacement::Parse(elem);
+    ParsePhysicalSettings(elem, settings);
+    elem->GetFloat(0xCEDD379Au, &settings.field_20, settings.field_20);
+    elem->GetFloat(0x04B70827u, &field_114, field_114);
+    elem->GetFloat(0x9FC855CAu, &field_118, field_118);
+    elem->GetFloat(0xB595B151u, &field_11C, field_11C);
+    elem->GetBool(0x7883C439u, &field_120, field_120);
+    elem->GetHash(0x4578545Fu, &field_124, field_124);
+    elem->GetHash(0x00241C53u, &field_128, field_128);
+    elem->GetFloat(0x5161B474u, &field_12C, field_12C);
+    elem->GetFloat(0x8FA16092u, &field_130, field_130);
+    elem->GetFloat(0x7ECB8527u, &field_134, field_130);
+    elem->GetFloat(0xDBAF7E49u, &field_138, field_138);
+    elem->GetFloat(0x00DE534Eu, &field_13C, field_13C);
+    elem->GetBool(0x641217B3u, &field_140, field_140);
+    ToRadians(settings.rotation);
+}
+
+// @func 0x00190EA0 ParseTargetableBPlacement
+EntityPlacement* ParseTargetableBPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                           const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new TargetableBPlacement(name, def);
+    placement->flags |= 0x200;
     placement->Parse(elem);
     return placement;
 }

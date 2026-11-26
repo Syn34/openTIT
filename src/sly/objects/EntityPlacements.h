@@ -78,9 +78,9 @@ public:
 // Physical entity: two vectors and two words (also the rigid-body classes'
 // common block).
 struct PhysicalSettings {
-    ape::Vec3 field_00{};               // placement +0xF0, description +0xD0
-    ape::Vec3 field_10{};               // +0x100 / +0xE0
-    uint32_t field_20 = 0;              // +0x110 / +0xF0
+    ape::Vec3 field_00{};               // placement +0xF0, description +0xD0 (attribute 0xADDC2CDD)
+    ape::Vec3 rotation{};               // +0x100 / +0xE0 radians (attribute 0x0948D097, in degrees)
+    float field_20 = 0.0f;              // +0x110 / +0xF0
 };
 
 class PhysicalEntityPlacement : public ScriptedEntityPlacement {
@@ -133,12 +133,18 @@ public:
     ~AlterEgoPlacement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x00177FB4
     PhysicalSettings settings;          // +0xF0
-    uint32_t field_114[5] = {};         // +0x114..+0x124
+    uint32_t field_114 = 0;             // +0x114
+    float field_118 = -1.0f;            // +0x118 attribute 0x0023FEF4
+    float field_11C = 3.4028235e38f;    // +0x11C attribute 0xCEDD379A
+    uint32_t field_120[2] = {};         // +0x120, +0x124
 };
 struct AlterEgoInstanceDesc : ScriptedInstanceDesc {
     using ScriptedInstanceDesc::ScriptedInstanceDesc;
     PhysicalSettings settings;          // 0xD0
-    uint32_t field_F4[5] = {};          // 0xF4..0x104
+    uint32_t field_F4 = 0;              // 0xF4
+    float field_F8 = -1.0f;             // 0xF8
+    float field_FC = 3.4028235e38f;     // 0xFC
+    uint32_t field_100[2] = {};         // 0x100, 0x104
 };
 
 // Placement of TargetableA's definition (vtable 0x00B14B80).
@@ -146,13 +152,20 @@ class TargetableAPlacement : public ScriptedEntityPlacement {
 public:
     using ScriptedEntityPlacement::ScriptedEntityPlacement;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x0017F318
-    PhysicalSettings settings;          // +0xF0
-    uint32_t field_114[4] = {};         // +0x114..+0x120 NOTE: +0x110 is settings.field_20
-    uint32_t field_124[3] = {};         // +0x124..+0x12C
-    uint8_t field_130 = 0;              // +0x130
-    uint32_t field_134 = 0;             // +0x134
-    uint32_t field_138 = 0;             // +0x138
-    uint8_t field_13C = 0;              // +0x13C
+    // The physical attributes and the target's own (0x0017EF48).
+    void Parse(ape::xml::XmlElement* elem);
+    PhysicalSettings settings{{}, {}, 1.0f};   // +0xF0 (field_20: attribute 0xCEDD379A)
+    float field_114 = 0.0f;             // +0x114 attribute 0x04B70827
+    float field_118 = 0.5f;             // +0x118 attribute 0x001FE6E0
+    float field_11C = 0.5f;             // +0x11C attribute 0x94E315E2
+    float field_120 = 0.0f;             // +0x120 attribute 0x7D4D7117
+    float field_124 = 0.0f;             // +0x124 attribute 0x53CAD6F8
+    uint32_t field_128 = 0;             // +0x128 attribute 0x6C3F4814 (hash)
+    float field_12C = 0.0f;             // +0x12C attribute 0xD1A77009
+    bool field_130 = false;             // +0x130 attribute 0x07248538
+    uint32_t field_134 = 0;             // +0x134 attribute 0x7DFA87B7 (hash)
+    uint32_t field_138 = 0;             // +0x138 attribute 0xD49CCAAE (hash)
+    bool field_13C = false;             // +0x13C attribute 0xB8A0F299
     uint32_t field_140 = 0;             // +0x140
     uint32_t field_144 = 0;             // +0x144
 };
@@ -160,12 +173,17 @@ struct TargetableAInstanceDesc : ScriptedInstanceDesc {
     using ScriptedInstanceDesc::ScriptedInstanceDesc;
     uint32_t field_C8 = 0;              // 0xC8
     PhysicalSettings settings;          // 0xD0
-    uint32_t field_F4[4] = {};          // 0xF4..0x100
-    uint32_t field_104[3] = {};         // 0x104..0x10C
-    uint8_t field_110 = 0;              // 0x110
+    float field_F4 = 0.0f;              // 0xF4
+    float field_F8 = 0.0f;              // 0xF8
+    float field_FC = 0.0f;              // 0xFC
+    float field_100 = 0.0f;             // 0x100
+    float field_104 = 0.0f;             // 0x104
+    uint32_t field_108 = 0;             // 0x108
+    float field_10C = 0.0f;             // 0x10C
+    bool field_110 = false;             // 0x110
     uint32_t field_114 = 0;             // 0x114
     uint32_t field_118 = 0;             // 0x118
-    uint8_t field_11C = 0;              // 0x11C
+    bool field_11C = false;             // 0x11C
     uint32_t field_120 = 0;             // 0x120
 };
 
@@ -174,12 +192,21 @@ public:
     using ScriptedEntityPlacement::ScriptedEntityPlacement;
     ~TargetableBPlacement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x00191024
-    PhysicalSettings settings;          // +0xF0
-    uint32_t field_114[3] = {};         // +0x114..+0x11C
-    uint8_t field_120 = 0;              // +0x120
-    uint32_t field_124[6] = {};         // +0x124..+0x138
-    uint32_t field_13C = 0;             // +0x13C
-    uint8_t field_140 = 0;              // +0x140
+    // The physical attributes and the target's own (0x00190C28).
+    void Parse(ape::xml::XmlElement* elem);
+    PhysicalSettings settings{{}, {}, 1.0f};   // +0xF0 (field_20: attribute 0xCEDD379A)
+    float field_114 = 10.0f;            // +0x114 attribute 0x04B70827
+    float field_118 = 1.0f;             // +0x118 attribute 0x9FC855CA
+    float field_11C = 40.0f;            // +0x11C attribute 0xB595B151
+    bool field_120 = false;             // +0x120 attribute 0x7883C439
+    uint32_t field_124 = 0;             // +0x124 attribute 0x4578545F (hash)
+    uint32_t field_128 = 0;             // +0x128 attribute 0x00241C53 (hash)
+    float field_12C = 0.0f;             // +0x12C attribute 0x5161B474
+    float field_130 = 1.0f;             // +0x130 attribute 0x8FA16092
+    float field_134 = 0.0f;             // +0x134 attribute 0x7ECB8527
+    float field_138 = 0.0f;             // +0x138 attribute 0xDBAF7E49
+    float field_13C = 0.0f;             // +0x13C attribute 0x00DE534E
+    bool field_140 = true;              // +0x140 attribute 0x641217B3
     uint32_t field_144 = 0;             // +0x144
     uint32_t field_148 = 0;             // +0x148
 };
@@ -187,11 +214,18 @@ struct TargetableBInstanceDesc : ScriptedInstanceDesc {
     using ScriptedInstanceDesc::ScriptedInstanceDesc;
     uint32_t field_C8 = 0;              // 0xC8
     PhysicalSettings settings;          // 0xD0
-    uint32_t field_F4[3] = {};          // 0xF4..0xFC
-    uint8_t field_100 = 0;              // 0x100
-    uint32_t field_104[6] = {};         // 0x104..0x118
-    uint32_t field_11C = 0;             // 0x11C
-    uint8_t field_120 = 0;              // 0x120
+    float field_F4 = 0.0f;              // 0xF4
+    float field_F8 = 0.0f;              // 0xF8
+    float field_FC = 0.0f;              // 0xFC
+    bool field_100 = false;             // 0x100
+    uint32_t field_104 = 0;             // 0x104
+    uint32_t field_108 = 0;             // 0x108
+    float field_10C = 0.0f;             // 0x10C
+    float field_110 = 0.0f;             // 0x110
+    float field_114 = 0.0f;             // 0x114
+    float field_118 = 0.0f;             // 0x118
+    float field_11C = 0.0f;             // 0x11C
+    bool field_120 = false;             // 0x120
     uint32_t field_124 = 0;             // 0x124
 };
 
@@ -587,5 +621,17 @@ EntityPlacement* ParseActorPlacement(ape::xml::XmlElement* root, ape::xml::XmlEl
                                      EntityDef* def);
 EntityPlacement* ParsePhysicalEntityPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                               const char* name, EntityDef* def);
+// Placement loaders of the rigid-body scripted classes (0x00167F58,
+// 0x0016CBE0, 0x00177D78, 0x0017F1A0, 0x00190EA0).
+EntityPlacement* ParseRigidPropPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
+                                         EntityDef* def);
+EntityPlacement* ParseCompoundEntityPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                              const char* name, EntityDef* def);
+EntityPlacement* ParseAlterEgoPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
+                                        EntityDef* def);
+EntityPlacement* ParseTargetableAPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                           const char* name, EntityDef* def);
+EntityPlacement* ParseTargetableBPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                           const char* name, EntityDef* def);
 } // namespace objects
 } // namespace sly

@@ -24,7 +24,7 @@ void CopyXYZ(ape::Vec3& to, const ape::Vec3& from)
 void CopyPhysical(PhysicalSettings& to, const PhysicalSettings& from)
 {
     CopyXYZ(to.field_00, from.field_00);
-    CopyXYZ(to.field_10, from.field_10);
+    CopyXYZ(to.rotation, from.rotation);
     to.field_20 = from.field_20;
 }
 
@@ -87,8 +87,11 @@ void AlterEgoPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
     ScriptedEntityPlacement::FillInstanceDesc(baseDesc);
     auto& desc = static_cast<AlterEgoInstanceDesc&>(baseDesc);
     CopyPhysical(desc.settings, settings);
-    for (int i = 0; i < 5; ++i)
-        desc.field_F4[i] = field_114[i];
+    desc.field_F4 = field_114;
+    desc.field_F8 = field_118;
+    desc.field_FC = field_11C;
+    desc.field_100[0] = field_120[0];
+    desc.field_100[1] = field_120[1];
     // Placement bit 30 decides description flag 12 again.
     desc.flags = (desc.flags & ~EntityInstanceDesc::kDesc_PlacementBit30) |
                  ((bits84 >> 18) & EntityInstanceDesc::kDesc_PlacementBit30);
@@ -100,10 +103,13 @@ void TargetableAPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
     ScriptedEntityPlacement::FillInstanceDesc(baseDesc);
     auto& desc = static_cast<TargetableAInstanceDesc&>(baseDesc);
     CopyPhysical(desc.settings, settings);
-    for (int i = 0; i < 4; ++i)
-        desc.field_F4[i] = field_114[i];
-    for (int i = 0; i < 3; ++i)
-        desc.field_104[i] = field_124[i];
+    desc.field_F4 = field_114;
+    desc.field_F8 = field_118;
+    desc.field_FC = field_11C;
+    desc.field_100 = field_120;
+    desc.field_104 = field_124;
+    desc.field_108 = field_128;
+    desc.field_10C = field_12C;
     desc.field_110 = field_130;
     desc.field_114 = field_134;
     desc.field_118 = field_138;
@@ -118,11 +124,16 @@ void TargetableBPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
     ScriptedEntityPlacement::FillInstanceDesc(baseDesc);
     auto& desc = static_cast<TargetableBInstanceDesc&>(baseDesc);
     CopyPhysical(desc.settings, settings);
-    for (int i = 0; i < 3; ++i)
-        desc.field_F4[i] = field_114[i];
+    desc.field_F4 = field_114;
+    desc.field_F8 = field_118;
+    desc.field_FC = field_11C;
     desc.field_100 = field_120;
-    for (int i = 0; i < 6; ++i)
-        desc.field_104[i] = field_124[i];
+    desc.field_104 = field_124;
+    desc.field_108 = field_128;
+    desc.field_10C = field_12C;
+    desc.field_110 = field_130;
+    desc.field_114 = field_134;
+    desc.field_118 = field_138;
     desc.field_11C = field_13C;
     desc.field_120 = field_140;
     desc.field_124 = field_144;
