@@ -175,8 +175,8 @@ void SentryAIVariant::OnDamaged(float amount, uint32_t kind, const AIDamageInfo*
     }
 }
 
-// @func 0x000627BC SentryAIVariant::IsStateInterruptible
-bool SentryAIVariant::IsStateInterruptible(int s)
+// @func 0x000627BC SentryAIVariant::IsSeeThroughLayer
+bool SentryAIVariant::IsSeeThroughLayer(int s)
 {
     switch (s) {
     case 1: case 2: case 3: case 4:

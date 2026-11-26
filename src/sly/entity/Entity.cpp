@@ -145,6 +145,13 @@ void UnregisterObject(EntityList list, const void* object)
 
 uint32_t EntityCount(EntityList list) { return uint32_t(List(list).size()); }
 Entity* EntityAt(EntityList list, uint32_t index) { return List(list)[index]; }
+void ClearEntityList(EntityList list) { List(list).clear(); }
+void RemoveEntityAt(EntityList list, uint32_t index)
+{
+    std::vector<Entity*>& entries = List(list);
+    entries[index] = entries.back();
+    entries.pop_back();
+}
 
 // @func 0x000D6A28 FindEntity
 Entity* FindEntity(uint32_t nameHash)

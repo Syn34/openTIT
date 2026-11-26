@@ -38,6 +38,8 @@ uint8_t g_nextLoadScope = 1;
 
 } // namespace
 
+void ResetEntityLoadScopes() { g_nextLoadScope = 1; }
+
 // @func 0x000D5F58 LoadEntityDocument
 uint8_t LoadEntityDocument(ape::xml::XmlElement* root, const char* path, uint8_t scope)
 {

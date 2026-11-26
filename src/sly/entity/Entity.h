@@ -584,6 +584,12 @@ void AddToInstanceRenderList(EntityComponent* component);
 void AddToInstanceRenderList(Entity* entity);
 uint32_t EntityCount(EntityList list);
 Entity* EntityAt(EntityList list, uint32_t index);
+// Drops entry `index` by moving the last entry into its place.
+void RemoveEntityAt(EntityList list, uint32_t index);
+void ClearEntityList(EntityList list);
+// Starts an anim script owned by no entity, its matrix variable set to
+// `transform` (registered to run when `autoRun`) (0x000DCECC).
+ape::ApeAnimScriptInstance* StartScriptAt(ape::ApeAnimScript* script, const ape::Matrix34& transform, bool autoRun);
 
 // Listener the entities install on their animation controller: forwards
 // an event to the entity (`user`) (0x000DD4A0).

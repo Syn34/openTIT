@@ -56,6 +56,8 @@ void* FindSpawnerByName(uint32_t) { return nullptr; }
 bool CrittersMayNotCharge() { return false; }
 ape::world::ApeObj* SpawnerAltObject(const Entity*) { return nullptr; }
 ape::Vec3 SpawnerSpawnPosition(const Entity*) { return {0.0f, 0.0f, 0.0f, 0.0f}; }
+ape::Vec3 SpawnerSpawnForward(const Entity*) { return {0.0f, 0.0f, 1.0f, 0.0f}; }
+void PostEntityKilledEvent(Entity*, Entity*, uint32_t) {}
 float CharacterClipProgress(EntityComponent*) { return 0.0f; }
 ape::Vec3 EntityObjectScale(const Entity*) { return {1.0f, 1.0f, 1.0f, 0.0f}; }
 // TODO(physics ray cast: hkpWorld::castRay 0x0092E510 with an all-hits
@@ -116,6 +118,8 @@ void NavPointRelease(void*) {}
 void NavAgentDestroy(NavAgent*) {}
 void NavAgentRequestGoal(NavAgent*, const ape::Vec3&) {}
 ape::Vec3 NavAgentGoal(NavAgent*) { return {}; }
+void NavAgentSetPosition(NavAgent*, const ape::Vec3&) {}
+ape::Vec3 NavAgentNextPoint(NavAgent*) { return {}; }
 
 void KnowledgeLevelStart() { knowledge::KnowledgeLevelStart(); }
 void KnowledgeLevelEnd() { knowledge::KnowledgeLevelEnd(); }

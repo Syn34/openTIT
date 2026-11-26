@@ -168,6 +168,17 @@ void ActorEntity::SetRenderId(uint32_t id)
     Entity::SetRenderId(id);
 }
 
+// @func 0x000E9728 ActorEntity::SetCollisionFilterLow
+void ActorEntity::SetCollisionFilterLow(uint32_t low)
+{
+    if (!PhysicsWorldPresent() || !parts)
+        return;
+    for (Part& part : *parts) {
+        if (part.body)
+            RigidBodySetFilterInfo(part.body, (RigidBodyFilterInfo(part.body) & 0xFFFF0000u) | (low & 0xFFFFu));
+    }
+}
+
 // @func 0x000E6558 ActorEntity::GetGravityFactor
 // The first body's factor.
 float ActorEntity::GetGravityFactor()

@@ -69,6 +69,8 @@ public:
     // 0x003689D8 / 0x00368D78: show / hide a possibly missing element.
     static void ShowElement(HudType8000* element);
     static void HideElement(HudType8000* element);
+    // 0x00381E48: plays the alert intro (`intro`) or outro clip.
+    void PlayAlert(bool intro);
 
     bool Blocked() const { return (stateWord & (kF_Blocked | kF_Suppressed)) != 0; }
 
