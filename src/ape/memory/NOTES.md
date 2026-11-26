@@ -36,7 +36,7 @@ Suggest moving them (the lead decides):
   size, initialised by 0x00558F38, outside the range).
 - 0x005541F0: AltiVec Matrix34 multiply (in-place, uses Cell lvlx loads plus
   stack reads I could not account for) - not done.
-- 0x00557A90: AltiVec sphere/frustum style test, no callers - not done.
+- 0x00557A90: sphere screen rectangle (light scissor), done as ape::SphereScreenRect (ApeSphereRect.cpp).
 - 0x00557C80 / 0x00557CFC: ref-counted packed parameter block (create/release);
   the type alignment table at 0x00F88714 belongs to the renderer.
 
