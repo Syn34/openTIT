@@ -66,6 +66,10 @@ namespace gameplay {
 // Player character: its +0x17C interface, slot 3 (called when it reaches a
 // shoulder from a rope). NOTE: meaning assumed.
 void MKPlayerBeginFinishingMove(entity::Entity* player);
+// Game world +0x128214: frame time is frozen.
+bool MKFrameFrozen();
+// 0x0046C750 on the game world: sequence `name` is queued or running.
+bool MKSequenceQueued(uint32_t name);
 // The game camera entity (game world +0x1281E0).
 entity::GameCamera* MKGameCamera();
 // Floor ripple: entities of class bit 0x20 caught by a raised ring (0x001FB640

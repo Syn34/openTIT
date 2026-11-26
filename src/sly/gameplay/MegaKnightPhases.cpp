@@ -5,6 +5,7 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
+#include "sly/entity/GameCamera.h"
 #include "sly/gameplay/MegaKnightHooks.h"
 #include "sly/gameplay/Sequencer.h"
 #include "sly/tuning/MegaKnightDragonTuning.h"
@@ -788,11 +789,43 @@ void MKPhaseShoulderHit::OnEventD()
 // @func 0x003198B0 MKPhaseShoulderHit::IsDone
 bool MKPhaseShoulderHit::IsDone() { return GetState(0) == 3; }
 
-// TODO(0x00319AB8 MKPhaseShoulderHit::UpdatePhase)
+// @func 0x00319AB8 MKPhaseShoulderHit::UpdatePhase
+// Once the cut scene (hit or failure) is over: control goes back, the arm
+// falls (hit) or its shoulder targets come back (failure), and the boss
+// idles.
 bool MKPhaseShoulderHit::UpdatePhase(float dt)
 {
     (void)dt;
-    return true;
+    const int state = GetState(0);
+    if (state != 1 && state != 2)
+        return true;
+    if (TimeInState(0) == 0.0f || MKFrameFrozen() || MKSequenceQueued(sequence))
+        return true;
+    if (entity::GameCamera* camera = MKGameCamera())
+        camera->SetActive(false);
+    MKPlayerCharacter()->SetActive(false);
+    MegaKnight* b = boss;
+    if (state == 1) {
+        b->OnArmDestroyed(uint32_t(side));
+    } else {
+        MegaKnightObjectPair& pair = side == 0 ? b->pair32C : b->pair338;
+        pair.Show(true, b->secondHalf);
+    }
+    b->SetCamera(0.0f, 0x001EFED1u, true);
+    MegaKnightTracking& t = b->tracking;
+    t.state220.Force(1);
+    t.fightActive.Force(0);
+    t.state250.Force(0);
+    t.onArm[0].Force(0);
+    t.onArm[1].Force(0);
+    t.onArm[2].Force(0);
+    if (MegaKnightPhase* idle = b->phases[kMKPhase_Idle]) {
+        b->SwitchPhase(kMKPhase_Idle);
+        static_cast<MKPhaseIdle*>(idle)->duration = g_megaKnightStateValuesShoulderHitIdleDuration.Get();
+        b->SetCamera(1.0f, 0, false);
+    }
+    SetState(0, 3);
+    return false;
 }
 
 // ===========================================================================
