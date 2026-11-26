@@ -527,10 +527,19 @@ public:
 
     // Starts the fight (called by a level script command) (0x0005BB08).
     void Start();
+    // The stretch of the fight spline between the point instances `from`
+    // and `to` (their closest spline parameters; 0 and 1 without them)
+    // (0x0005BA08, set by a level script command).
+    void SetSplineStretch(uint32_t from, uint32_t to);
     // Switches the fight phase. TODO(0x00053A80): not ported.
     void SetPhase(int phase);
 
     int32_t phase = 0;         // +0x134
+    ape::world::ApeSplineInstance* spline = nullptr;   // +0x185C
+    ape::world::ApeObj* stretchFrom = nullptr;          // +0x1860
+    ape::world::ApeObj* stretchTo = nullptr;            // +0x1864
+    float stretchStart = 0.0f;                          // +0x1868
+    float stretchEnd = 1.0f;                            // +0x186C
     bool started = false;      // +0x1870
 };
 class ParadoxAI : public AIController {
@@ -544,7 +553,18 @@ public:
     void OnTauntChance() override;
     void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
     float GravitySpeed() override;
+    // Slot 41: command 0xCC65890A also switches to the camera of the
+    // current phase; every command is kept with its value for the next
+    // think (0x0005FA08).
+    void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value) override;
+    // TODO(0x0005E990 ParadoxAI::PlayCamera): pushes camera `name` with the
+    // given interpolation.
+    void PlayCamera(uint32_t name, float interp) { (void)name; (void)interp; }
 
+    int32_t phase = 0;            // +0x134
+    uint32_t pendingCommand = 0;  // +0x1B0
+    float pendingValue = 0.0f;    // +0x1B4
+    bool hasPendingCommand = false;   // +0x1B8
     uint8_t settled = 0;       // +0x201
 };
 

@@ -1,5 +1,7 @@
 // openTIT - Ms Decibel boss behaviour (vtable 0x00B0EAF8), partial.
 #include "sly/levels/ai/AIBehaviours.h"
+#include "ape/world/ApeObj.h"
+#include "ape/world/ApeInstances.h"
 
 #include "sly/levels/ai/AIHooks.h"
 
@@ -51,6 +53,17 @@ void MsDecibelAI::OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2
 void MsDecibelAI::Start()
 {
     started = true;
+}
+
+// @func 0x0005BA08 MsDecibelAI::SetSplineStretch
+void MsDecibelAI::SetSplineStretch(uint32_t from, uint32_t to)
+{
+    stretchFrom = ape::world::FindObject(from, ape::world::kObjType_PointInstance);
+    stretchTo = ape::world::FindObject(to, ape::world::kObjType_PointInstance);
+    if (!spline)
+        return;
+    stretchStart = stretchFrom ? spline->FindClosestParam(stretchFrom->GetLocal().translation, nullptr, nullptr) : 0.0f;
+    stretchEnd = stretchTo ? spline->FindClosestParam(stretchTo->GetLocal().translation, nullptr, nullptr) : 1.0f;
 }
 
 // TODO(0x00053A80 MsDecibelAI::SetPhase)
