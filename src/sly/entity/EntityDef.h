@@ -23,6 +23,7 @@
 
 namespace ape::world { class ApeDef; class ApeObj; }
 namespace ape::xml { class XmlElement; }
+namespace ape::file { class File; }
 
 namespace sly {
 namespace entity {
@@ -322,6 +323,16 @@ public:
 // Placements loaded from the level files, by name hash (0x01013B1C).
 void RegisterEntityPlacement(uint32_t nameHash, EntityPlacement* placement);
 EntityPlacement* FindEntityPlacement(uint32_t nameHash);
+
+// -- entity files ---------------------------------------------------------------
+// Scope value that asks for a new load scope.
+constexpr uint8_t kLoadScopeNew = 0xFE;
+// Loads the "Entities" content of a document / file / stream (definitions,
+// placements, component templates, game tables, included files) under
+// `scope` (a new one for kLoadScopeNew); returns the scope used.
+uint8_t LoadEntityDocument(ape::xml::XmlElement* root, const char* path, uint8_t scope);
+uint8_t LoadEntityFile(const char* path, uint8_t scope);
+uint8_t LoadEntityFileFromStream(ape::file::File& file, uint8_t scope);
 
 // Spawns through the definition's slot 7 (0x000D6CC0); null without one.
 Entity* SpawnFromDef(EntityDef* def, EntityPlacement& placement);
