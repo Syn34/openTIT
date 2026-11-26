@@ -4,6 +4,8 @@
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
 #include "ape/xml/ApeXml.h"
+#include "sly/entity/Awards.h"
+#include "sly/game/goals/JobManager.h"
 
 #include <cstring>
 
@@ -193,6 +195,179 @@ void CopyScriptVarToBinding(TextField& out, const ape::ApeAnimScriptVar* var)
 int CompareStringPointers(const void* a, const void* b)
 {
     return ape::StrCaseCompare(*static_cast<const char* const*>(a), *static_cast<const char* const*>(b));
+}
+
+// ---------------------------------------------------------------------------
+// Upgrade shop
+// ---------------------------------------------------------------------------
+namespace {
+
+uint32_t s_upgradeCount = 0;   // 0x010C1A9C
+
+constexpr uint32_t kElem_Upgrades = 0x838099D7u;   // "Upgrades"
+constexpr uint32_t kElem_Upgrade = 0x1D0425FCu;    // "Upgrade"
+constexpr uint32_t kAttr_Id = 0x0000091Bu;         // "id"
+constexpr uint32_t kAttr_Item = 0x08F12FA5u;       // NOTE: name unknown
+constexpr uint32_t kAttr_Type = 0x0027873Au;       // "type"
+constexpr uint32_t kAttr_Cost = 0x001FA7CDu;       // "cost"
+constexpr uint32_t kAttr_UnlockJob = 0xC87D4DFCu;  // NOTE: name unknown
+constexpr uint32_t kAttr_Name = 0xDCE08553u;       // NOTE: name unknown
+constexpr uint32_t kAttr_Desc = 0x77FC9F6Cu;       // NOTE: name unknown
+constexpr uint32_t kAttr_NotAbility = 0xC5E921C2u; // NOTE: name unknown
+
+// Trophies of the shop. NOTE: award names unknown.
+constexpr uint32_t kAward_FirstUpgrade = 0xE5FEEEF1u;
+constexpr uint32_t kAward_AllUpgrades = 0x4E8EB622u;
+
+// Notification bit raised when an upgrade becomes new.
+constexpr uint32_t kNotify_NewUpgrade = 0x80;
+
+uint8_t& StateOf(uint32_t index)
+{
+    return game::CurrentProgress().upgradeStates[index];
+}
+
+// Outside an episode the shop is unrestricted.
+bool InEpisode()
+{
+    game::JobManager* jobs = game::GetJobManager();
+    return jobs && jobs->currentJob != nullptr;
+}
+
+// Index of the upgrade with `id`, or -1.
+int FindUpgrade(uint32_t id)
+{
+    for (uint32_t i = 0; i < s_upgradeCount; ++i)
+        if (s_upgrades[i].id == id)
+            return int(i);
+    return -1;
+}
+
+bool Affordable(uint32_t index)
+{
+    if (!(StateOf(index) & kUpgrade_Unlocked) && InEpisode())
+        return false;
+    return int32_t(game::CurrentProgress().coins) >= s_upgrades[index].cost;
+}
+
+} // namespace
+
+// @func 0x0049DC70 LoadUpgrades
+bool LoadUpgrades(const char* path)
+{
+    s_upgradeCount = 0;
+    ape::xml::XmlDocument doc(path);
+    if (!doc.LoadFile(0))
+        return false;
+    ape::xml::XmlElement* root = doc.FirstChildElement(kElem_Upgrades);
+    if (!root)
+        return true;
+    for (ape::xml::XmlElement* e = root->FirstChildElement(kElem_Upgrade); e && s_upgradeCount + 1 < kUpgradeCount;
+         e = e->NextSiblingElement(kElem_Upgrade)) {
+        UpgradeEntry& entry = s_upgrades[s_upgradeCount];
+        e->GetHash(kAttr_Id, &entry.id, entry.id);
+        e->GetHash(kAttr_Item, &entry.item, entry.item);
+        e->GetHash(kAttr_Type, &entry.type, entry.type);
+        e->GetInt(kAttr_Cost, &entry.cost, entry.cost);
+        e->GetHash(kAttr_UnlockJob, &entry.unlockJob, entry.unlockJob);
+        if (const char* name = e->GetString(kAttr_Name))
+            ape::StrCopyBounded(entry.name, name, sizeof entry.name);
+        if (const char* desc = e->GetString(kAttr_Desc))
+            ape::StrCopyBounded(entry.desc, desc, sizeof entry.desc);
+        e->GetBool(kAttr_NotAbility, &entry.notAbility, entry.notAbility);
+        StateOf(s_upgradeCount) &= uint8_t(~(kUpgrade_Unlocked | kUpgrade_Bought));
+        ++s_upgradeCount;
+    }
+    return true;
+}
+
+// @func 0x0049E038 UnlockUpgradesOfJob
+void UnlockUpgradesOfJob(uint32_t jobId)
+{
+    for (uint32_t i = 0; i < s_upgradeCount; ++i) {
+        if (s_upgrades[i].unlockJob != jobId)
+            continue;
+        uint8_t& state = StateOf(i);
+        if (!(state & kUpgrade_Unlocked)) {
+            state |= kUpgrade_Unlocked | kUpgrade_New;
+            game::CurrentProgress().notifyBits |= kNotify_NewUpgrade;
+        }
+    }
+}
+
+// @func 0x0049E0DC BuyUpgrade
+bool BuyUpgrade(uint32_t id)
+{
+    const int index = FindUpgrade(id);
+    if (index < 0 || !Affordable(uint32_t(index)))
+        return false;
+    uint8_t& state = StateOf(uint32_t(index));
+    if (state & kUpgrade_Bought)
+        return false;
+    state |= kUpgrade_Unlocked | kUpgrade_Bought;
+    game::CurrentProgress().coins -= uint32_t(s_upgrades[index].cost);
+
+    uint32_t bought = 0;
+    for (uint32_t i = 0; i < s_upgradeCount; ++i)
+        if (StateOf(i) & kUpgrade_Bought)
+            ++bought;
+    if (s_upgradeCount != 0 && bought != 0)
+        AwardTrophyByName(kAward_FirstUpgrade);
+    if (bought >= s_upgradeCount)
+        AwardTrophyByName(kAward_AllUpgrades);
+    return true;
+}
+
+// @func 0x0049E268 CanBuyUpgrade
+bool CanBuyUpgrade(uint32_t id)
+{
+    const int index = FindUpgrade(id);
+    return index >= 0 && Affordable(uint32_t(index));
+}
+
+// @func 0x0049E330 CollectUnlockedUpgrades
+void CollectUnlockedUpgrades(std::vector<uint32_t>& out)
+{
+    for (uint32_t i = 0; i < s_upgradeCount; ++i)
+        if (s_upgrades[i].id != 0 && (StateOf(i) & kUpgrade_Unlocked))
+            out.push_back(i);
+}
+
+// @func 0x0049E43C CollectBoughtItems
+void CollectBoughtItems(uint32_t type, std::vector<uint32_t>& out)
+{
+    for (uint32_t i = 0; i < s_upgradeCount; ++i) {
+        const UpgradeEntry& entry = s_upgrades[i];
+        const uint8_t state = StateOf(i);
+        if (entry.type == type && entry.item != 0 && entry.id != 0 && !entry.notAbility &&
+            (state & kUpgrade_Unlocked) && (state & kUpgrade_Bought))
+            out.push_back(entry.item);
+    }
+}
+
+// @func 0x0049E5AC AnyNewUpgrade
+bool AnyNewUpgrade()
+{
+    for (uint32_t i = 0; i < s_upgradeCount; ++i)
+        if (s_upgrades[i].id != 0 && (StateOf(i) & kUpgrade_New))
+            return true;
+    return false;
+}
+
+// @func 0x0049E628 UpgradeOwned
+bool UpgradeOwned(uint32_t type, uint32_t item)
+{
+    if (!InEpisode())
+        return true;
+    if (type == 0 || item == 0)
+        return false;
+    for (uint32_t i = 0; i < s_upgradeCount; ++i) {
+        if (s_upgrades[i].type == type && s_upgrades[i].item == item) {
+            const uint8_t state = StateOf(i);
+            return (state & kUpgrade_Unlocked) && (state & kUpgrade_Bought);
+        }
+    }
+    return false;
 }
 
 } // namespace sly

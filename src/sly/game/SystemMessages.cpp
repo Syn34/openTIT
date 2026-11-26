@@ -4,6 +4,8 @@
 #include "sly/game/SystemMessages.h"
 
 #include "ape/core/ApeSysUtil.h"
+#include "ape/sys/ApeGameContent.h"
+#include "sly/save/SaveGame.h"
 #include "platform/Platform.h"
 
 namespace sly {
@@ -82,6 +84,19 @@ int PollSystemMessage()
     const int answer = g_systemMessageState;
     g_systemMessageState = kSystemMessage_None;
     return answer;
+}
+
+// @func 0x0049AF80 QuerySaveSpace
+// Space the save data needs (waiting for the save worker to measure it)
+// and the free space of the hard disk, in kilobytes.
+bool QuerySaveSpace(int64_t* required, int64_t* freeKB)
+{
+    int32_t needed = RequiredSpace();
+    while (needed < 0)
+        needed = RequiredSpace();
+    *required = needed;
+    *freeKB = ape::GetHddFreeSizeKB();
+    return true;
 }
 
 } // namespace sly

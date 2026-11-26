@@ -1,5 +1,6 @@
 // openTIT - The job manager's 0x35C-byte records: per-profile progress,
 // collectible counts and the completion formula (0x002DA734-0x002DB8B0).
+#include "sly/game/Upgrades.h"
 #include "sly/game/goals/JobManager.h"
 
 #include "ape/core/ApeString.h"
@@ -79,8 +80,7 @@ ape::ApeTSortedMap<CollectibleRecord*>& MaskTable() { return g_masks; }
 ape::ApeTSortedMap<CollectibleRecord*>& TreasureTable() { return g_treasures; }
 ape::ApeTSortedMap<CollectibleRecord*>& SafeTable() { return g_safes; }
 
-// TODO(0x0049E038): sets the profile's unlock flags of the job's rewards.
-void UnlockJobRewards(uint32_t) {}
+void UnlockJobRewards(uint32_t jobId) { UnlockUpgradesOfJob(jobId); }
 
 // @func 0x002D9740 Episode::Episode
 Episode::Episode()

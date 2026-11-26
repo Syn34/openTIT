@@ -1,4 +1,5 @@
 // openTIT - HUD module hooks (stubs).
+#include "sly/game/Upgrades.h"
 #include "sly/game/hud/HudHooks.h"
 #include "sly/game/ObjectHelpers.h"
 #include "sly/game/SlyGame.h"
@@ -50,15 +51,14 @@ ape::ApeRefCounted* GameCameraScriptRef() { return nullptr; }
 bool HudFrameTimeFrozen() { return false; }
 bool GameWorldInLoadingState() { return game::GameWorldState(1) == 12; }
 
-int ProfileCoinCount(uint8_t profile) { (void)profile; return 0; }
+int ProfileCoinCount(uint8_t profile) { return int(game::ProfileProgress(profile).coins); }
 
 } // namespace hud
 } // namespace sly
 
 namespace sly {
 namespace hud {
-// TODO(0x0049E628 upgrade table query)
-bool UpgradeUnlocked(uint32_t kind, uint32_t item) { (void)kind; (void)item; return true; }
+bool UpgradeUnlocked(uint32_t kind, uint32_t item) { return UpgradeOwned(kind, item); }
 // TODO(game world +0x178/+0x17C/+0x180)
 uint32_t EquippedUpgrade(uint32_t kind) { (void)kind; return 0; }
 // TODO(game world +0x128164 object, +0x15C4 bit 27)

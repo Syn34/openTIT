@@ -29,6 +29,9 @@ bool ShowSystemMessage(const char* text, SystemMessageKind kind);
 bool ShowSystemErrorMessage(uint32_t errorCode);
 // The state of the dialog; an answered dialog is closed and forgotten.
 int PollSystemMessage();
+// Save space check: the space the save data needs and the free disk space
+// (kilobytes).
+bool QuerySaveSpace(int64_t* required, int64_t* freeKB);
 // Answer callback of the dialogs.
 void OnSystemMessageAnswer(int result, void* userdata);
 
