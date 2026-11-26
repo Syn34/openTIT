@@ -9,6 +9,7 @@
 #pragma once
 
 #include "agl/AglRenderTarget.h"
+#include "agl/gpu/GpuTypes.h"
 
 #include <cstdint>
 #include <vector>
@@ -18,6 +19,7 @@ namespace agl {
 class AglMaterial;
 class AglTechnique;
 struct AglRenderItem;
+struct AglShader;
 
 struct AglBucketEntry {
     uint32_t key;
@@ -69,6 +71,19 @@ AglItemDrawState& GetItemDrawState();
 // 0x010DD5A0); anything that changes that state behind the material code
 // resets them.
 void InvalidateMaterialStateCache();
+// Sets the blend / depth / cull state directly and records it in that cache
+// (the draw list replay does this for its state packets).
+void SetBlendStateCached(bool enable, gpu::BlendFactor src, gpu::BlendFactor dst, gpu::BlendEquation equation);
+void SetDepthStateCached(gpu::CompareFunc func, bool write);
+// 'cullFrontFace' is the culled face (0 = no culling), as in AglMaterial.
+void SetCullStateCached(uint16_t cullFrontFace);
+// Binds a technique's vertex program (when it changes) and marks its
+// fragment program for the next draw.
+void BindTechniquePrograms(const AglShader* technique);
+// Applies a material's fixed-function state (skipped when it matches the
+// cache) and begins 'technique' with it (the class's first technique when
+// null).
+void ApplyMaterial(AglMaterial* material, AglTechnique* technique);
 
 // Draws one render item with the technique its material selects (or the
 // render target's override technique).

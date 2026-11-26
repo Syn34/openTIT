@@ -55,6 +55,7 @@ struct CullFaceEnable    { bool enable; };
 struct CullFaceCmd       { CullFace face; };
 struct FrontFaceCmd      { FrontFace face; };
 struct PolygonOffset     { bool enable; float factor, units; };
+struct LineWidth         { float width; };            // pixels
 struct RestartIndexEnable { bool enable; };
 struct RestartIndex      { uint32_t index; };
 struct UserClipPlaneControl { UserClipMode plane[kMaxUserClipPlanes]; };
@@ -115,7 +116,7 @@ using Command = std::variant<
     cmd::BlendEquationCmd, cmd::BlendColor, cmd::ColorMaskCmd, cmd::ColorMaskMrt,
     cmd::DepthTestEnable, cmd::DepthFunc, cmd::DepthMask, cmd::DepthBoundsTestEnable, cmd::DepthBounds,
     cmd::StencilTestEnable, cmd::StencilMask, cmd::StencilFunc, cmd::StencilOpCmd,
-    cmd::CullFaceEnable, cmd::CullFaceCmd, cmd::FrontFaceCmd, cmd::PolygonOffset,
+    cmd::CullFaceEnable, cmd::CullFaceCmd, cmd::FrontFaceCmd, cmd::PolygonOffset, cmd::LineWidth,
     cmd::RestartIndexEnable, cmd::RestartIndex, cmd::UserClipPlaneControl, cmd::AntiAliasingControl,
     cmd::ViewportCmd, cmd::Scissor, cmd::Surface, cmd::ClearColor, cmd::ClearDepthStencil, cmd::ClearSurface,
     cmd::Texture, cmd::TextureControl, cmd::TextureAddress, cmd::TextureFilter, cmd::TextureBorderColor,
@@ -175,6 +176,7 @@ public:
     void SetCullFace(CullFace face);
     void SetFrontFace(FrontFace face);
     void SetPolygonOffset(bool enable, float factor, float units);
+    void SetLineWidth(float width);
     void SetRestartIndexEnable(bool enable);
     void SetRestartIndex(uint32_t index);
     void SetUserClipPlaneControl(UserClipMode p0, UserClipMode p1, UserClipMode p2,

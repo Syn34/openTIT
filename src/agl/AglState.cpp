@@ -3,6 +3,7 @@
 
 #include "agl/AglDisplay.h"
 #include "agl/AglDrawList.h"
+#include "agl/AglPrimitives.h"
 #include "agl/AglResources.h"
 #include "agl/AglShader.h"
 
@@ -270,6 +271,42 @@ void CommitFragmentProgram()
         }
     } else if (fp && fp->dirtyMask != 0) {
         UploadFragmentConstants(fp);
+    }
+}
+
+// NOTE: the vertex array binding shared by mesh and draw list draws
+// (0x0079E0C0 on the console, outside this range): the streams of 'decl'
+// that the bound vertex program reads are pointed at 'base'; attributes the
+// previous binding enabled and this one does not use are disabled.
+void BindVertexArrays(const AglVertexDecl* decl, gpu::GpuPtr base)
+{
+    AglRenderState& state = GetRenderState();
+    if (state.boundVertexDecl != decl)
+        state.boundVertexBuffer = nullptr;
+    state.boundVertexDecl = decl;
+    if (!decl || state.boundVertexBuffer == base.data)
+        return;
+    gpu::CommandList& cmd = Cmd();
+    state.boundVertexBuffer = base.data;
+    // Only the attributes both the layout and the bound program use.
+    const uint16_t programInputs = state.vertexProgram ? state.vertexProgram->attributeInputMask : 0xFFFF;
+    const uint16_t used = uint16_t(programInputs & decl->attributeMask);
+    for (const AglVertexStream* stream = decl->streams; stream->size != 0; ++stream) {
+        const uint32_t attribute = stream->attribute + stream->attributeOffset;
+        if (stream->skip || !(used & (1u << attribute)))
+            continue;
+        gpu::GpuPtr at = base;
+        at.data = static_cast<const uint8_t*>(base.data) + stream->offset;
+        cmd.SetVertexAttribute(uint8_t(attribute), 0, uint8_t(decl->stride), stream->size,
+                               static_cast<gpu::VertexAttribType>(stream->type), at);
+    }
+    uint16_t stale = uint16_t((state.meshAttributes | used) ^ used);
+    state.meshAttributes = used;
+    for (int attribute = gpu::kMaxVertexAttributes - 1; stale != 0 && attribute >= 0; --attribute) {
+        if (stale & (1u << attribute)) {
+            stale = uint16_t(stale & ~(1u << attribute));
+            cmd.DisableVertexAttribute(uint8_t(attribute));
+        }
     }
 }
 
