@@ -3,6 +3,7 @@
 #include "sly/game/SlyGame.h"
 
 #include "agl/AglDisplay.h"
+#include "ape/anim/ApeAnimScript.h"
 #include "ape/input/ApeInputDevice.h"
 #include "ape/level/ApeGui.h"
 #include "ape/sys/ApeFrameClock.h"
@@ -213,6 +214,23 @@ void SlyGame::LoadLevelParams(ape::file::File& file)
 bool SlyGame::LevelParamsMode1() const
 {
     return levelParams && levelParams->field_1544 == 1;
+}
+
+// Runs a script of the default library once on its own: the instance is
+// registered (and dropped when finished) and given its first frame.
+// @func 0x00491000 RunGlobalScript
+void RunGlobalScript(uint32_t scriptHash)
+{
+    ape::ApeAnimScriptLibrary* library = ape::ApeAnimScriptLibrary::Get(0);
+    if (!library)
+        return;
+    ape::ApeAnimScript* script = library->FindScript(scriptHash);
+    if (!script)
+        return;
+    auto* instance = new ape::ApeAnimScriptInstance(script);
+    ape::ApeAnimScriptInstance::Register(instance);
+    instance->Update(1.0f / 60.0f);
+    instance->SetRemoveWhenFinished(true);
 }
 
 } // namespace sly
