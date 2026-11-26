@@ -264,6 +264,6 @@
   DrawFields 0x00379960, PlaceRows 0x00379B90 and their callbacks, comparator 0x00389C5C. The
   icon table 0x00F64D68 maps the upgrade's character (Sly, Bentley, Murray, one unknown) to an
   icon object. Upgrade state bits (game world +0xFBC + index: 1 available, 2 purchased, 4 new)
-  live in a stand-in table (`UpgradeState`); purchase/afford (0x0049E0DC/0x0049E268) and the
-  coin count (game world +0x70) are HudHooks stubs.
+  are agent2's `UpgradeStateOf` (sly/game/Upgrades.*, kUpgrade_Bought / kUpgrade_New);
+  purchase/afford (0x0049E0DC/0x0049E268) and the coin count (game world +0x70) are HudHooks stubs.
 * Penguin minigame base: Reset 0x003F61DC, Slot21 0x003F606C (slot 9 0x003F63D8 is TODO).
