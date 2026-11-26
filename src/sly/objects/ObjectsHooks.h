@@ -63,8 +63,11 @@ void VolumeRemoveListener(TriggerVolume* volume, Entity* trigger);
 ape::Aabb VolumeGetAabb(const TriggerVolume* volume);
 // hkpAabbPhantom::setAabb (0x00924B90).
 void VolumeSetAabb(TriggerVolume* volume, const ape::Aabb& box);
-// Phantom type (virtual +0x1C): 0..2 are AABB-style phantoms, others shape phantoms.
+// Phantom type (virtual +0x1C): 0 an AABB phantom, 1/2 shape phantoms (simple,
+// caching), others unknown.
 int VolumeGetType(const TriggerVolume* volume);
+// hkpShapePhantom::setTransform (0x00929E98).
+void VolumeSetTransform(TriggerVolume* volume, const ape::Matrix34& m);
 // Shape of a shape phantom (+0x10): its kind (+0x08), sphere radius (+0x10) and box
 // half extents (+0x20).
 VolumeShapeKind VolumeGetShapeKind(const TriggerVolume* volume);

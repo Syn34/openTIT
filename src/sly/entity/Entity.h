@@ -130,6 +130,12 @@ public:
 // Interaction component (type kComp_Interaction).
 class InteractionComponent : public EntityComponent {
 public:
+    // 0x002B7704: ends the current use: the owner is told (slot 63), a
+    // character user leaves its interaction state and is let go, and nothing
+    // is offered any more. Always true.
+    bool Stop();
+
+    Entity* user = nullptr;     // 0x40 the entity using the owner (holds a reference)
     int32_t users = 0;          // 0x44 NOTE: interactions in progress
     uint32_t playerMask = 0;    // 0x58 bit per player slot currently interacting
 };
@@ -580,6 +586,8 @@ void UnregisterEntity(EntityList list, Entity* entity);
 // Adds a component to the instance render list (list C, "s_instRenderList");
 // a second add is refused with a warning (0x000D6614).
 void AddToInstanceRenderList(EntityComponent* component);
+// Components whose sync slot runs at the end of the frame (0x000D6770).
+void AddToComponentSyncList(EntityComponent* component);
 // The same for an entity (list B, 0x000D64F4).
 void AddToInstanceRenderList(Entity* entity);
 uint32_t EntityCount(EntityList list);
