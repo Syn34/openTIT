@@ -38,6 +38,13 @@ public:
     // 0x0036AFA8: pulls the object towards springTarget; queues the element
     // to hide once it has settled there.
     void TickSpring(float dt);
+    // 0x0036C160: draws the field frames at their scene objects (world
+    // callback 0x0036C33C).
+    void DrawFields();
+    static void DrawFieldsCallback(void* unused, void* context);
+    // 0x0036C36C (world callback): queues a shown element's object and its
+    // visible children for drawing.
+    static void DrawObjectCallback(void* unused, void* context);
 };
 
 // Element of definition type bit 0x20000 (vtable 0x00B1FA48, 0x1B0 bytes),

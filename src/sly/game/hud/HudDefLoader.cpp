@@ -850,6 +850,24 @@ void ReadColorStyle(XmlElement* e)
 
 } // namespace
 
+// @func 0x0036AA04 hud::ColorStyleColorA
+ape::xml::Color8 ColorStyleColorA(HudColorStyle* const* found)
+{
+    const HudColorStyle* style = found ? *found : nullptr;
+    if (!style)
+        return ape::xml::Color8(0, 0, 0, 0xFF);   // 0x01164CA8
+    return ape::xml::Color8(style->colors[0][0], style->colors[0][1], style->colors[0][2], style->colors[0][3]);
+}
+
+// @func 0x0036AA68 hud::ColorStyleColorB
+ape::xml::Color8 ColorStyleColorB(HudColorStyle* const* found)
+{
+    const HudColorStyle* style = found ? *found : nullptr;
+    if (!style)
+        return ape::xml::Color8(0, 0, 0, 0xFF);   // 0x01164CA8
+    return ape::xml::Color8(style->colors[1][0], style->colors[1][1], style->colors[1][2], style->colors[1][3]);
+}
+
 // @func 0x0036196C hud::LoadHudDefinitions
 void LoadHudDefinitions(XmlElement* root)
 {

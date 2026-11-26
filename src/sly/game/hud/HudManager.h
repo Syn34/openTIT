@@ -10,6 +10,7 @@
 #include "ape/container/ApeTSortedMap.h"
 #include "ape/memory/ApeTArray.h"
 #include "sly/game/Tween.h"
+#include "ape/xml/ApeXml.h"
 
 namespace ape::world { class ApeObj; }
 namespace ape { class ApeGuiObject; }
@@ -603,6 +604,10 @@ struct HudColorStyle {
     uint8_t colors[3][4] = {};       // +0x0C attributes 0xEAB9B1D2, 0xEAB9B1D3, 0x68762E36
     uint32_t field_18 = 0;           // +0x18 attribute 0x31F8E7E5
 };
+// The first / second colour of a style (`found` as returned by the style
+// map's Find; opaque black without a style). 0x0036AA04 / 0x0036AA68.
+ape::xml::Color8 ColorStyleColorA(HudColorStyle* const* found);
+ape::xml::Color8 ColorStyleColorB(HudColorStyle* const* found);
 // 0x0036196C: reads the element definitions and colour styles of a HUD
 // definition file into the definition map.
 void LoadHudDefinitions(ape::xml::XmlElement* root);

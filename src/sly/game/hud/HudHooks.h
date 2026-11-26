@@ -107,3 +107,13 @@ namespace hud {
 void HudQueueObjectDraw(ape::world::ApeObj* object, bool recurse);
 } // namespace hud
 } // namespace sly
+
+namespace sly {
+namespace hud {
+// 0x004A6DF0: the second draw queue of the game world (+0x1285E8):
+// geometry objects whose byte +0xA8 is set and type-10 objects, optionally
+// with their children. NOTE: differs from HudQueueObjectDraw only in the
+// call descriptors it pushes.
+void HudQueueObjectDraw2(ape::world::ApeObj* object, bool recurse);
+} // namespace hud
+} // namespace sly
