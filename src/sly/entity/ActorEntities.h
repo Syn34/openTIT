@@ -12,6 +12,7 @@
 
 namespace ape::world { class ApeObj; }
 namespace sly::camera { class CameraMode; }
+namespace sly::objects { struct ActorInstanceDesc; }
 
 namespace sly {
 namespace entity {
@@ -78,6 +79,8 @@ public:
     // Copies the description and builds a Havok body for every part
     // (0x000C79C0, thunk 0x000E27FC).
     explicit ActorDef(const ActorDefDesc& desc);
+    // Slot 7: a PlainActor for the placement (0x000E4314).
+    Entity* Spawn(EntityPlacement* placement) override;
     enum PartFlags : uint32_t {
         // The part's body is held at its bone by a constraint (0x000E2AB0).
         kPartFlag_BoneConstraint = 0x10000000,
@@ -89,8 +92,10 @@ public:
     static constexpr uint32_t kNavMode_None = 0x0024A738u;   // "None"
     // Definition flags (+0x12C).
     enum Flags : uint32_t {
+        kDefFlag_FollowObject   = 1u << 22,  // NOTE: actors always follow their object
         kDefFlag_CarryOnly      = 1u << 23,  // kind 2 only while a carry slot is free
         kDefFlag_FullNavMask    = 1u << 24,  // obstacles block every agent (mask 0xFFFF)
+        kDefFlag_Field26        = 1u << 26,  // new actors refuse interactions (ActorEntity::kActorFlag_NoInteraction)
         kDefFlag_KeepListeners  = 1u << 27,  // NOTE: deleted bodies keep the actor as contact listener
     };
     ~ActorDef() override;
@@ -186,6 +191,10 @@ public:
 // Actor base (0x00B12898 + 0x00B12A44/0x00B12A6C at +0x17C/+0x180).
 class ActorEntity : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
 public:
+    // Builds the actor and a copy of every definition part's rigid body,
+    // placed at its bone, locator or offset (0x000E38F0, thunk 0x000E40B4).
+    explicit ActorEntity(const objects::ActorInstanceDesc& desc);
+    ActorEntity() = default;
     // Derived classes inline it.
     // @func 0x007476B0 ActorEntity::~ActorEntity
     // @func 0x00747764 ActorEntity::~ActorEntity (deleting)
@@ -399,6 +408,7 @@ public:
 // built by ActorDef's Spawn 0x000E4314): adds nothing to the base.
 class PlainActor : public ActorEntity {
 public:
+    using ActorEntity::ActorEntity;
     ~PlainActor() override;
 };
 

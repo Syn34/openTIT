@@ -1,6 +1,7 @@
 // openTIT - Placement destructors (see EntityPlacements.h). Each class has its
 // own copy of the scripted entity placement's destructor body on the console.
 #include "sly/objects/EntityPlacements.h"
+#include "sly/entity/ActorEntities.h"
 #include "sly/entity/ScriptedEntity.h"
 #include "sly/entity/PropEntities.h"
 #include "sly/entity/ActorDefs.h"
@@ -1096,6 +1097,27 @@ ScriptedInstanceDesc::ScriptedInstanceDesc(const char* instanceName, EntityDef* 
     : ScriptedInstanceDesc(1, 0, instanceName, ownerDef, nullptr, nullptr, ape::world::kWorldIdentity,
                            ape::world::kWorldUnitScale, false, false, true, false, false, true, false, false, 0,
                            0xFF, 0)
+{
+}
+
+// @func 0x000E40E0 ActorInstanceDesc::ActorInstanceDesc
+// @func 0x000E44E0 ActorInstanceDesc::ActorInstanceDesc (thunk)
+ActorInstanceDesc::ActorInstanceDesc(const char* instanceName, EntityDef* ownerDef, ape::world::ApeObj* source,
+                                     const ape::Matrix34& initialTransform, const ape::Vec3& initialScale,
+                                     bool startVisible, bool bit12, bool notListed, uint32_t field80,
+                                     uint32_t group, entity::Entity* cc)
+    : ScriptedInstanceDesc(4, 0x80, instanceName, ownerDef, source, "", initialTransform, initialScale,
+                           (static_cast<const entity::ActorDef*>(ownerDef)->defFlags >> 31) & 1,
+                           (static_cast<const entity::ActorDef*>(ownerDef)->defFlags >> 29) & 1, false,
+                           startVisible, bit12, false, false, notListed, field80, 0xFF, 0),
+      collisionGroup(group), field_CC(cc)
+{
+    typeBits[0] |= 6u;
+}
+
+ActorInstanceDesc::ActorInstanceDesc(const char* instanceName, EntityDef* ownerDef)
+    : ActorInstanceDesc(instanceName, ownerDef, nullptr, ape::world::kWorldIdentity, ape::world::kWorldUnitScale,
+                        true, false)
 {
 }
 

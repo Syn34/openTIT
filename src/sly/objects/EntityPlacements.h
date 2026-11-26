@@ -40,6 +40,23 @@ struct ScriptedInstanceDesc : EntityInstanceDesc {
     bool field_C4 = false;              // 0xC4
 };
 
+// Instance description of actors (scripted description + 8 bytes); the
+// classes' own parts follow from +0xD0.
+struct ActorInstanceDesc : ScriptedInstanceDesc {
+    // 0x000E40E0 (thunk 0x000E44E0): four state layers with 0x80 bytes of
+    // state, flags 16/15 of the description from the actor definition's
+    // flags 31/29, type bits 0-2.
+    ActorInstanceDesc(const char* instanceName, EntityDef* ownerDef, ape::world::ApeObj* source,
+                      const ape::Matrix34& initialTransform, const ape::Vec3& initialScale, bool startVisible,
+                      bool bit12, bool notListed = false, uint32_t field80 = 0, uint32_t collisionGroup = 0,
+                      entity::Entity* field_CC = nullptr);
+    // What the actor spawns pass: no source object, identity transform,
+    // unit scale, visible.
+    ActorInstanceDesc(const char* instanceName, EntityDef* ownerDef);
+    uint32_t collisionGroup = 0;        // 0xC8 ActorEntity::collisionGroup
+    entity::Entity* field_CC = nullptr; // 0xCC ActorEntity::field_190
+};
+
 // Placement of scripted entities (vtable 0x00B12868). NOTE: the class names
 // follow the definitions whose parsers build them; the two base names are
 // guesses.

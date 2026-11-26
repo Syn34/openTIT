@@ -82,6 +82,13 @@ uint8_t RigidBodyMotionType(void* body);
 // hkpKeyFrameUtility::applyHardKeyFrame (0x009DD41C): velocities that take
 // the body to `position`/`rotation` in 1/invDt seconds.
 void RigidBodyApplyHardKeyFrame(void* body, const ape::Vec3& position, const ape::Vec4& rotation, float invDt);
+// A new body cloned from an actor definition part's template body (the
+// template's slot 8, hkpWorldObject naming 0x007CE950 with `name`, and
+// properties 0xA734004D = 0x7A30D7E3 and 0x91C7CF5B = the owning actor,
+// 0x0093FE00) (inline in the actor constructor 0x000E38F0).
+void* ActorPartCloneBody(void* templateBody, const char* name, void* owner);
+// hkpEntity::addEntityListener (0x0091A5F8).
+void RigidBodyAddEntityListener(void* body, void* listener);
 // hkpEntity::addContactListener (0x0091A82C).
 void RigidBodyAddContactListener(void* body, void* listener);
 // hkpEntity::removeContactListener (0x0091A228).

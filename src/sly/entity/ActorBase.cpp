@@ -10,6 +10,9 @@
 #include "sly/levels/nav/NavGraph.h"
 
 #include "ape/math/ApeMatrixOps.h"
+#include "ape/sys/ApeGeometry.h"
+#include "ape/world/ApeRenderNode.h"
+#include "sly/objects/EntityPlacements.h"
 #include "ape/world/ApeBase.h"
 #include "ape/world/ApeObj.h"
 #include "ape/world/ApeSkeleton.h"
@@ -37,6 +40,76 @@ bool SameTransform(const ape::Matrix34& a, const ape::Matrix34& b)
            same(a.translation, b.translation);
 }
 } // namespace
+
+// -- construction ------------------------------------------------------------------------
+
+// @func 0x000E38F0 ActorEntity::ActorEntity
+// @func 0x000E40B4 ActorEntity::ActorEntity (thunk)
+// The lifetime comes from the definition; an actor whose definition sets
+// flag 26 refuses interactions. Every definition part with a body gets its
+// own copy of it, named after the actor's object and listened to (unless the
+// definition keeps its listeners off, flag 27). A part follows the bone its
+// name hash (+0x24) names, else the object of that name below the actor's.
+ActorEntity::ActorEntity(const objects::ActorInstanceDesc& desc)
+    : ScriptedEntity(desc), collisionGroup(desc.collisionGroup)
+{
+    const ActorDef* actorDef = Def();
+    field_18C &= 0x7FFFFFFF;
+    lifetime = actorDef->field_CC;
+    actorFlags = (actorFlags & 0x3FFFFFFFu) | ((actorDef->defFlags & ActorDef::kDefFlag_Field26) << 4);
+    if (object)
+        object->UpdateWorld(false, false);
+
+    if (actorDef->parts) {
+        for (const ActorDef::Part& defPart : *actorDef->parts) {
+            if (!defPart.havokObject)
+                continue;
+            const char* name = object ? object->GetName() : "<unknown>";
+            void* body = ActorPartCloneBody(defPart.havokObject, name, this);
+            if (!(actorDef->defFlags & ActorDef::kDefFlag_KeepListeners)) {
+                RigidBodyAddContactListener(body, static_cast<EntityInterface17C*>(this));
+                RigidBodyAddEntityListener(body, static_cast<EntityInterface180*>(this));
+            }
+            Part part;
+            part.offset = defPart.field_10;
+            if (defPart.field_24 != 0) {
+                part.bone = object ? FindBone(defPart.field_24) : -1;
+                if (part.bone == -1)
+                    part.locator = EntityFindObject(this, defPart.field_24);
+            }
+            ape::Matrix34 placed;
+            PlacePart(placed, part, object ? object->GetWorld() : ape::world::kWorldIdentity);
+            ape::Matrix34NormalizeAxes(placed);
+            RigidBodySetTransform(body, placed);
+            part.body = body;
+            part.motionType = RigidBodyMotionType(body);
+            if (!parts)
+                parts = new ape::ApeTArray<Part>();
+            parts->PushBack(part);
+        }
+    }
+
+    field_190 = desc.field_CC;
+    SetPhysState((actorDef->defFlags & 0x80000000u) ? kActorPhys_Active : kActorPhys_Enter, 0);
+    // Bit 0: the actor follows its object (when the object is drawn through a
+    // render node with a skin).
+    if (actorDef->defFlags & ActorDef::kDefFlag_FollowObject) {
+        physWord |= 1;
+    } else if (object) {
+        if (const ape::world::ApeRenderNode* node = object->GetRenderNode())
+            physWord = (physWord & ~1u) | (node->field_88 != nullptr ? 1u : 0u);
+    }
+}
+
+// @func 0x000E4314 ActorDef::Spawn
+Entity* ActorDef::Spawn(EntityPlacement* placement)
+{
+    objects::ActorInstanceDesc desc(InstanceName(placement), this);
+    placement->FillInstanceDesc(desc);
+    PlainActor* actor = new PlainActor(desc);
+    actor->OnSpawn();
+    return actor;
+}
 
 // -- parts -------------------------------------------------------------------------------
 
