@@ -7,6 +7,7 @@
 // and the classes' own) are not.
 #pragma once
 
+#include "sly/entity/InputMoverControl.h"
 #include "sly/objects/ObjectsBase.h"
 #include "ape/memory/ApeTArray.h"
 #include "sly/game/Upgrades.h"
@@ -549,10 +550,8 @@ struct SoundActorB17728InstanceDesc : SoundActorInstanceDesc {
     float field_F4 = 0.0f;              // 0xF4
 };
 
-// Input mover: two vectors, four words and a 0x44-byte block.
-struct ActorB17990Block {
-    uint32_t words[0x11];
-};
+// Input mover: two vectors, four values and the control block.
+using ActorB17990Block = entity::InputMoverControl;
 class ActorB17990Placement : public ActorPlacement {   // 0x00B17978
 public:
     using ActorPlacement::ActorPlacement;
@@ -560,7 +559,7 @@ public:
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001D80C4
     ape::Vec3 field_F0{};               // +0xF0
     ape::Vec3 field_100{};              // +0x100
-    uint32_t field_110[4] = {};         // +0x110..+0x11C
+    float field_110[4] = {};            // +0x110..+0x11C (ActorB17990Def +0x190..+0x19C)
     ActorB17990Block block{};           // +0x120
     uint32_t flags_164 = 0;             // +0x164 bits 30/31 are handed on
 };
@@ -568,7 +567,7 @@ struct ActorB17990InstanceDesc : ActorInstanceDesc {
     using ActorInstanceDesc::ActorInstanceDesc;
     ape::Vec3 field_D0{};               // 0xD0
     ape::Vec3 field_E0{};               // 0xE0
-    uint32_t field_F0[4] = {};          // 0xF0..0xFC
+    float field_F0[4] = {};             // 0xF0..0xFC
     ActorB17990Block block{};           // 0x100
     uint32_t flags_144 = 0;             // 0x144
 };

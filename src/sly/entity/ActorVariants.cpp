@@ -3,6 +3,8 @@
 
 #include <cstring>
 
+#include <cstring>
+
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "sly/entity/CharacterHooks.h"
@@ -402,10 +404,10 @@ void ActorB17990::SetField1D81F0(bool on) { (void)on; }
 void ActorB17990::SetPoints(float value, bool scaled)
 {
     if (scaled)
-        value *= maxPoints;
+        value *= MaxPoints();
     shownPoints = value;
     points = value;
-    const float ratio = maxPoints > 0.0f ? value / maxPoints : 0.0f;
+    const float ratio = MaxPoints() > 0.0f ? value / MaxPoints() : 0.0f;
     if (meter)
         meter->ratio = ratio;
 }
@@ -417,6 +419,37 @@ void ActorB17990::ResetState()
     EntitySetState(this, 0, 1);
     InteractionSetOffer(EntityInteraction(this), 0);
     field_260 = 0;
+}
+
+// @func 0x001D5C14 ActorB17990::ActorB17990
+ActorB17990::ActorB17990(const objects::ActorB17990InstanceDesc& desc)
+    : ActorEntity(desc), field_1C0(desc.field_D0), field_1D0(desc.field_E0)
+{
+    for (int i = 0; i < 4; ++i)
+        field_1E0[i] = desc.field_F0[i];
+    control = desc.block;
+    flags25C = (flags25C & 0x07FFFFFFu) | (desc.flags_144 & 0xC0000000u);
+    EntitySetState(this, 0, 0);
+}
+
+// @func 0x001D5DC8 ActorB17990Def::Spawn
+// NOTE: without a definition the console starts from zero vectors, 50, 0.5,
+// 0.5, 0.5 and an empty button control.
+Entity* ActorB17990Def::Spawn(EntityPlacement* placement)
+{
+    objects::ActorB17990InstanceDesc desc(InstanceName(placement), this);
+    desc.field_D0 = field_170;
+    desc.field_E0 = field_180;
+    const float values[4] = {field_190, field_194, field_198, field_19C};
+    for (int i = 0; i < 4; ++i)
+        desc.field_F0[i] = values[i];
+    desc.block = control;
+    desc.flags_144 = (desc.flags_144 & 0x3FFFFFFFu) | (((moverFlags >> 27) & 3u) << 30);
+    desc.typeBits[2] |= 1u;
+    placement->FillInstanceDesc(desc);
+    auto* mover = new ActorB17990(desc);
+    mover->OnSpawn();
+    return mover;
 }
 
 } // namespace entity

@@ -4,6 +4,9 @@
 #pragma once
 
 #include "sly/entity/ActorEntities.h"
+#include "sly/entity/ActorDefs.h"
+
+namespace sly::objects { struct ActorB17990InstanceDesc; }
 
 namespace sly::objects { struct ActorGroupInstanceDesc; struct HitCounterActorInstanceDesc; struct ActorInstanceDesc; struct SignalActorInstanceDesc; struct ScriptObjectActorInstanceDesc; }
 namespace ape { class ApeAnimScriptVar; }
@@ -180,6 +183,9 @@ public:
 // +0xC8). NOTE: identified from the input mover hooks of the level scripts.
 class ActorB17990 : public ActorEntity {
 public:
+    // The placement's vectors, values and control block; 2 pi, nothing else
+    // yet; state 0 (0x001D5C14).
+    explicit ActorB17990(const objects::ActorB17990InstanceDesc& desc);
     // @func 0x00756154 ActorB17990::~ActorB17990
     // @func 0x0075620C ActorB17990::~ActorB17990 (deleting)
     // @func 0x00756540 ActorB17990::~ActorB17990 (thunk, +0x17C)
@@ -196,7 +202,14 @@ public:
     // shows the fill ratio on the meter.
     void SetPoints(float points, bool scaled);
 
-    float maxPoints = 0.0f;              // 0x1F0
+    // The control's first value is the maximum of input points.
+    float MaxPoints() const { return control.field_00; }
+
+    uint32_t field_1A8[4] = {};          // 0x1A8
+    ape::Vec3 field_1C0{};               // 0x1C0 placement vector
+    ape::Vec3 field_1D0{};               // 0x1D0 placement vector
+    float field_1E0[4] = {};             // 0x1E0 placement values
+    InputMoverControl control;           // 0x1F0
     struct Meter {                       // NOTE: only the ratio is known
         uint8_t field_00[0x14];
         float ratio;                     // +0x14
@@ -204,6 +217,9 @@ public:
     Meter* meter = nullptr;              // 0x240
     float points = 0.0f;                 // 0x248
     float shownPoints = 0.0f;            // 0x24C
+    float field_254 = 6.2831855f;        // 0x254 2 pi
+    uint32_t field_258 = 0;              // 0x258
+    uint32_t flags25C = 0;               // 0x25C bits 30/31 from the placement
     uint32_t field_260 = 0;              // 0x260
 };
 
