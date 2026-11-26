@@ -79,6 +79,7 @@ void VolumeSetAabb(TriggerVolume* volume, const ape::Aabb& box)
     (void)box;
 }
 int VolumeGetType(const TriggerVolume* volume) { (void)volume; return -1; }
+void VolumeSetTransform(TriggerVolume* volume, const ape::Matrix34& m) { (void)volume; (void)m; }
 VolumeShapeKind VolumeGetShapeKind(const TriggerVolume* volume)
 {
     (void)volume;

@@ -26,7 +26,7 @@ namespace ape { class ApeAnimScriptInstance; class ApeAnimScriptObjectVar; class
 namespace ape::setting { class Setting; }
 namespace ape::world { class ApeObj; class ApeSplineInstance; }
 namespace sly::audio { struct SoundName; }
-namespace sly::entity { class Entity; }
+namespace sly::entity { class Entity; class EntityDef; }
 
 namespace sly {
 
@@ -36,9 +36,9 @@ struct LaserGroup;
 // Kinds of laser settings (their definition's type hash).
 enum LaserSettingType : uint32_t {
     kLaserSetting_Group  = 0xA2A8CB13u,   // "Sly_LaserGroup"
-    kLaserSetting_Fixed  = 0xC6CD059Du,   // NOTE: by elimination "Sly_LaserFixed"
-    kLaserSetting_Anchor = 0xA7F58081u,   // NOTE: by elimination "Sly_LaserAnchor"
-    kLaserSetting_Spline = 0xA296BC08u,   // NOTE: by elimination "Sly_LaserSpline"
+    kLaserSetting_Fixed  = 0xA296BC08u,   // "Sly_LaserFixed"
+    kLaserSetting_Anchor = 0xA7F58081u,   // "Sly_LaserAnchor"
+    kLaserSetting_Spline = 0xC6CD059Du,   // "Sly_LaserSpline"
     kLaserSetting_Field  = 0xA296758Eu,   // "Sly_LaserField"
 };
 
@@ -57,7 +57,7 @@ struct LaserEndpoint {
     ape::Matrix34 transform{};            // +0x00 the point's frame (translation = position)
     ape::world::ApeSplineInstance* spline = nullptr;   // +0x40 spline the point follows
     int32_t splineSegment = 0;            // +0x44 last evaluated segment
-    uint32_t field_48 = 0;                // +0x48
+    ape::world::ApeObj* object = nullptr; // +0x48 moveable object the point follows
     ape::ApeAnimScriptInstance* script = nullptr;      // +0x4C direction script
     ape::ApeAnimScriptObjectVar* scriptObject = nullptr;   // +0x50 its object variable 0x0027469E
     float speed = 1.0f;                   // +0x54 movement speed along the spline
@@ -187,8 +187,12 @@ struct LaserField {
     // 0x0039D32C: enables or disables the field; `applyNow` also applies
     // the state when the field waits for its activation trigger.
     void SetEnabled(bool enabled, bool force, bool applyNow);
-    // 0x0039FEE0: triangulates the field outline.
+    // 0x0039FEE0: replaces the drawn shape by the triangulated `polygon`
+    // (none: back to the outline spline's).
     void SetOutline(const ape::ApeTArray<ape::Vec3>* polygon);
+    // 0x0039D620: a joint entity of definition `def` at `position`, its
+    // script started on or off.
+    void SpawnJoint(entity::EntityDef* def, const ape::Vec3& position);
     // 0x0039FF34: a state of the lifetime script and of every joint's script.
     void SetScriptState(uint32_t state);
     // 0x0039FEBC: the name of the field's point instance.
@@ -196,8 +200,8 @@ struct LaserField {
 
     ape::ApeTArray<ape::world::ApeObj*> outlines{0x10};   // +0x00 outline geometry
     ape::ApeTArray<entity::Entity*> joints{0x10};         // +0x14 joint entities at the corners
-    ape::ApeTArray<ape::Vec3> polygon{0x10};              // +0x28 outline points
-    ape::ApeTArray<ape::Vec3> triangles{0x10};            // +0x3C triangulated outline
+    ape::ApeTArray<ape::Vec3> triangles{0x10};            // +0x28 the outline spline, triangulated
+    ape::ApeTArray<ape::Vec3> altTriangles{0x10};         // +0x3C an outline set at run time, triangulated
     MaterialSet materialSets[3];          // +0x50
     uint8_t color[4] = {};                // +0x134 vertex colour
     ape::setting::Setting* setting = nullptr;   // +0x138
@@ -210,7 +214,7 @@ struct LaserField {
     ape::ApeAnimScriptInstance* lifetimeScript = nullptr;   // +0x154
     float flickerDelay = 0.0f;            // +0x158
     float flickerTime = 0.0f;             // +0x15C
-    float field_160 = 0.0f;               // +0x160
+    float field_160 = 0.0f;               // +0x160 time to the next flicker toggle
     uint32_t flags = kFlag_Shown;         // +0x164 Flags
 };
 
@@ -262,7 +266,18 @@ public:
     ape::ApeTFixedArray<LaserField> fields;       // +0x20
     ape::ApeTArray<Laser*> updated{0x100};        // +0x30 lasers that moved this frame
     ape::ApeTSortedMap<int16_t> groupNames{kMaxGroups, nullptr, int16_t(-1)};   // +0x44 name -> group index
-    ape::ApeTArray<void*> field_5C{8};            // +0x5C NOTE: element type unknown
+    // One-frame beam query: `callback(user, start, end)` for every live
+    // beam (8-byte records; the list is emptied by DispatchBeamQueries).
+    struct BeamQuery {
+        void* user;
+        void (*callback)(void* user, const ape::Vec3& start, const ape::Vec3& end);
+    };
+    ape::ApeTArray<BeamQuery> beamQueries{8};     // +0x5C
+
+    // 0x003A11A8: tests the local players against the beams, then answers
+    // the queued beam queries with every enabled beam of the enabled groups
+    // in view (every beam with Entity.Laser.AlwaysUpdate).
+    void DispatchBeamQueries();
 };
 
 // The level's laser manager (0x00F657FC), null without one.
@@ -283,22 +298,31 @@ void AssociateLaserField(ape::setting::Setting* setting, const char* objectName,
 // Hooks into modules that are not ported yet.
 // Phantom of a laser field (+0x148 / +0x14C): its slot 76 switches it.
 void LaserPhantomSetEnabled(void* phantom, bool enabled);
-// 0x0039C1C8 (TODO): moves a laser's end points and checks its beam for
-// hits; true when the beam must be placed again this frame.
+// 0x0039C1C8: flicker of a flickering laser and movement of its end points
+// (along their splines or with their objects); true when the beam must be
+// placed again this frame.
 bool LaserUpdate(Laser& laser, float dt);
-// 0x0039FBD8 (TODO): the per-frame part of a field (flicker, damage, FX).
+// 0x0039FBD8: the flicker of a field.
 void LaserFieldUpdate(LaserField& field, float dt);
 // 0x0039F840 (TODO): vertex colours of a field material set over the
 // outline (or its triangles).
 void LaserFieldColorMaterials(const ape::ApeTArray<ape::Vec3>& points, const uint8_t color[4],
                               LaserField::MaterialSet& set);
-// Set-up of a laser from its setting by kind (0x0039A2B8 fixed, 0x0039AD48
-// anchor, 0x0039B5A0 spline; TODO).
+// 0x003A09C0 (TODO): a player character against the beams (vector code
+// past the decompiler).
+void LaserTestCharacter(LaserManager& manager, entity::Entity* character);
+// Set-up of a laser from its setting by kind (0x0039B5A0 fixed, 0x0039AD48
+// anchor, 0x0039A2B8 spline): end points, movement, geometry, scripts,
+// sound.
 void LaserSetupFixed(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point);
 void LaserSetupAnchor(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point);
 void LaserSetupSpline(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point);
-// 0x0039F3D8 (TODO): builds a field from its setting (outline, joints,
-// materials, phantoms, scripts).
+// 0x0039F3D8: builds a field from its setting (trigger, outline, init type,
+// lifetime script, phantoms, visuals) and applies the start state.
 void LaserFieldSetup(LaserField& field);
+// 0x0039E6F8 (TODO): the field's damage and FX phantoms (Havok).
+void LaserFieldBuildPhantoms(LaserField& field);
+// 0x0039DA30 (TODO): materials, outline geometry and joints along `outline`.
+void LaserFieldBuildVisuals(LaserField& field, const ape::ApeTArray<ape::Vec3>& outline);
 
 } // namespace sly

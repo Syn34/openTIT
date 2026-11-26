@@ -437,8 +437,8 @@ void SafeDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, 
         }
         defaults.hashes[9] = safe->openObjectName;
         defaults.field_108 = safe->tolerance;
-        defaults.floats[0] = safe->field_170;
-        defaults.floats[1] = safe->field_174;
+        defaults.floats[0] = safe->cameraFov;
+        defaults.floats[1] = safe->cameraBlend;
         defaults.floats[2] = safe->timeLimit;
         defaults.floats[3] = safe->openDelay;
         defaults.hashes13C[0] = safe->soundBank;
@@ -482,9 +482,9 @@ SafeDef::SafeDef(const SafeDefDesc& desc) : ActorDef(desc)
     }
     openObjectName = desc.hashes[9];
     tolerance = desc.field_108;
-    field_160 = desc.field_110;
-    field_170 = desc.floats[0];
-    field_174 = desc.floats[1];
+    cameraOffset = desc.field_110;
+    cameraFov = desc.floats[0];
+    cameraBlend = desc.floats[1];
     timeLimit = desc.floats[2];
     openDelay = desc.floats[3];
     for (int i = 0; i < 3; ++i)

@@ -188,8 +188,17 @@ public:
 
     // Starts or stops the looping effect script (0x00027E98).
     void SetLoopScript(bool on);
+    // Moves the pattern cursor on (wrapping) and enters the state of the
+    // pattern step `step` that was due: "Shoot" 4, 0x040A726F 3, "Idle" 2,
+    // 0xFB4F8FFE 7, 0xFB497E59 10, anything else "Idle" (0x000296BC).
+    void RunPatternStep(uint32_t step);
 
     ape::ApeAnimScriptInstance* loopScript = nullptr;   // +0x164
+    // The attack pattern: step names (hashes) run in turn. NOTE: filled by
+    // code not ported yet.
+    uint32_t patternCount = 0;                         // +0x168
+    const uint32_t* pattern = nullptr;                 // +0x16C
+    uint32_t patternCursor = 0;                        // +0x170
 };
 
 // Racer (vtable 0x00B0E428, 0x170 bytes): spawned by a spawner that keeps
@@ -471,7 +480,17 @@ public:
     ape::ApeTArray<Record<4>> list148{0x40, nullptr, true};   // +0x148
     ape::ApeTArray<Record<4>> list15C{0x40, nullptr, true};   // +0x15C
     ape::ApeTArray<Record<0x30>> list170{0x40, nullptr, true}; // +0x170
-    ape::ApeTArray<Record<8>> list184{8};                // +0x184
+    // +0x184 the points Bismarque retreats to (each a world object and a
+    // word not read here).
+    struct RetreatPoint {
+        ape::world::ApeObj* object;
+        uint32_t field_04;
+    };
+    ape::ApeTArray<RetreatPoint> retreatPoints{8};      // +0x184
+    // The retreat point farthest from the player and Bismarque together (on
+    // the ground plane) that lies ahead of Bismarque; a random one when none
+    // does; null without points (0x000447E8).
+    RetreatPoint* PickRetreatPoint();
     ape::ApeTArray<Record<0x20>> list198{4};             // +0x198
     // +0x1AC pool of ten 16-byte records (begin/end/cursor, capacity +0x1BC).
     std::vector<std::array<uint8_t, 16>> pool1AC;
@@ -514,6 +533,9 @@ public:
     Entity* spawned[kMaxSpawned] = {};  // +0x71C entities the fight spawned
     AICameraMode* camera = nullptr;     // +0x91C
 };
+// Switches off the two trigger volumes of El Jefe's arena (0x000496CC).
+void ElJefeDisableArenaTriggers();
+
 class MsDecibelAI : public AIController {
 public:
     ~MsDecibelAI() override;
@@ -533,8 +555,14 @@ public:
     void SetSplineStretch(uint32_t from, uint32_t to);
     // Switches the fight phase. TODO(0x00053A80): not ported.
     void SetPhase(int phase);
+    // A player that comes within Entity.MsDecibel.Platform.CounterAttackDist
+    // (on the ground plane) while Ms Decibel is not in states 5, 9, 11 or 12
+    // triggers the counter attack (state 9), using up one of the counted
+    // ones (0x000544B8).
+    void CheckCounterAttack();
 
     int32_t phase = 0;         // +0x134
+    int32_t counterAttacks = 0;   // +0x138 NOTE: counted down by CheckCounterAttack, never below 0
     ape::world::ApeSplineInstance* spline = nullptr;   // +0x185C
     ape::world::ApeObj* stretchFrom = nullptr;          // +0x1860
     ape::world::ApeObj* stretchTo = nullptr;            // +0x1864

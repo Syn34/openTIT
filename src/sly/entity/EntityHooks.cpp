@@ -1,4 +1,5 @@
 // openTIT - Entity layer calls into systems that are not ported yet (see EntityHooks.h).
+#include "sly/components/SimplePhysics.h"
 #include "sly/entity/EntityHooks.h"
 #include "sly/entity/Entity.h"
 #include "sly/game/GameMessages.h"
@@ -28,8 +29,10 @@ void EntitySetUpObject(Entity*, const EntityInstanceDesc&) {}
 void EntityApplyAttachments(Entity*, const EntityInstanceDesc&) {}
 
 // CreateComponent (0x002635E8) lives in sly/components/ComponentFactory.cpp.
-// TODO(0x002BC1E0 CenterComponent::GetOffset)
-ape::Vec3 CenterComponentOffset(EntityComponent*) { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
+ape::Vec3 CenterComponentOffset(EntityComponent* component)
+{
+    return static_cast<components::SimplePhysicsComponent*>(component)->CenterOffset();
+}
 
 // TODO(world object as script reference)
 ape::ApeRefCounted* EntityWorldObjectRef(Entity*) { return nullptr; }

@@ -105,6 +105,31 @@ void PatternBossAI::ExitState()
         HudSetContext(entity, "CPU");
 }
 
+// @func 0x000296BC PatternBossAI::RunPatternStep
+void PatternBossAI::RunPatternStep(uint32_t step)
+{
+    if (++patternCursor >= patternCount)
+        patternCursor = 0;
+    switch (step) {
+    case 0x04B38BFFu:   // "Shoot"
+        SetState(4);
+        break;
+    case 0x040A726Fu:
+        SetState(3);
+        break;
+    case 0xFB4F8FFEu:
+        SetState(7);
+        break;
+    case 0xFB497E59u:
+        SetState(10);
+        break;
+    case 0x002237D4u:   // "Idle"
+    default:
+        SetState(2);
+        break;
+    }
+}
+
 } // namespace ai
 } // namespace levels
 } // namespace sly

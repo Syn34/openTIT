@@ -118,3 +118,27 @@
   and the vector-heavy phase updates (laser, monitor/shoot platform, rope attached).
 * `secondHalf` (+0x299) selects the "Phase1ArmN" behaviour lists, so its name may be
   backwards. `lookAt` (+0x3D0) is an ApproachVec3 whose target is the boss's focus point.
+
+## Lasers (agent3, sixth pass)
+* `Lasers.*`: the laser manager (0x00F657FC, pools of 32 groups / 256 lasers / 16 fields),
+  the setting associations (`Sly_LaserGroup/Fixed/Anchor/Spline/Field`, installed into
+  `g_saiAssociationHooks` by a static installer in Lasers.cpp), group/laser/field enable,
+  flicker, end point movement along splines, beam frames, the fixed/anchor/spline set-ups,
+  field set-up and joints, level start/update/unload. `LevelServices` and the goal hint hooks
+  now forward to it.
+* The goal hint kinds 4/5/6 were mislabelled: 4 is a laser, 5 a laser field, 6 a laser group
+  (GoalHint::Apply calls 0x003992AC / 0x0039D32C / 0x00399758 for them).
+* The setting type hashes: 0xA296BC08 Sly_LaserFixed, 0xA7F58081 Sly_LaserAnchor,
+  0xC6CD059D Sly_LaserSpline.
+* Not ported: field visuals 0x0039DA30 (materials from the 0x00F8F114 material list, outline
+  segments, joints), phantoms 0x0039E6F8 (Havok + DamageTrigger), the field draw 0x0039F840,
+  the player-vs-beam test 0x003A09C0 (vector code), RFireProjectile::Execute 0x00398040.
+* The direction scripts' object variable holds a scene object on the console; the port's
+  object variables hold engine references, so `ScriptVarObject` returns null for now.
+* Both end points default to Entity.Laser.DefaultDirScriptPt1 (Pt2 is never read).
+
+## Dragon boss (agent3, sixth pass)
+* Release 0x002FEEA0, encounter reset 0x002FEA20, head targets 0x002F9AC0, phase selection
+  0x002FEFB4. The head target entities (+0x3B8) are of an unidentified class (transform at
+  +0x160, active bit +0x1BC); `DragonHeadTargetSet` is a hook. `DragonBossDef` models only
+  the phase list (+0x130).
