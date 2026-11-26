@@ -20,6 +20,7 @@ class HudType8000 : public HudObject {
 public:
     // Flag word (+0x214).
     enum Flags8000 : uint32_t {
+        kF_Alert       = 0x00080000,   // bit 19: the alert clip is showing (SetAlert)
         kF_OutroB      = 0x00100000,   // bit 20: handed to Hide as `b` when the hold time ends
         kF_OutroA      = 0x00200000,   // bit 21: handed to Hide as `a` when the hold time ends
         kF_ScriptOk    = 0x00400000,   // bit 22: the anim script took the last state
@@ -71,6 +72,14 @@ public:
     static void HideElement(HudType8000* element);
     // 0x00381E48: plays the alert intro (`intro`) or outro clip.
     void PlayAlert(bool intro);
+    // 0x00384750: switches the alert on or off; the alert clip only plays
+    // while the element is idle or updating.
+    void SetAlert(bool on);
+    // 0x0029F428: blocks the follow element (name 0x00F64D3C), hiding it,
+    // or unblocks it and shows it again.
+    static void SetFollowElementBlocked(bool blocked);
+    // The follow element itself (null when missing).
+    static HudType8000* FollowElement();
 
     bool Blocked() const { return (stateWord & (kF_Blocked | kF_Suppressed)) != 0; }
 

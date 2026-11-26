@@ -1,6 +1,8 @@
 // openTIT - Stubs for GameEntityHooks.h.
 #include "sly/entity/GameEntityHooks.h"
 
+#include "sly/components/DeferredReleases.h"
+
 #include "sly/game/SlyGame.h"
 #include "sly/objects/Trigger.h"
 #include "sly/gameplay/Minigame.h"
@@ -73,10 +75,11 @@ void EntityJobSelectForUpdate(std::vector<Entity*>& out)
 void EntityJobSelectForPostUpdate(std::vector<Entity*>& out) { EntityJobSelectForUpdate(out); }
 // TODO(0x0020F400)
 void FlushTriggerReports() {}
-// TODO(0x0026F798)
-void EntityPostUpdateDone() {}
-// TODO(0x0028BDB0)
-void EntityModuleLevelStartHooks() {}
+void EntityPostUpdateDone() { components::FlushDeferredReleases(); }
+// TODO(0x0028BDB0): the targeting render callback (0x0028CF58 on the render
+// callback list 0x0119582C) and two linear allocators (0x8A0 / 0x1600 bytes,
+// 0x00F64A50 / 0x00F64A54).
+void EntityModuleLevelStartHooks() { components::ResetDeferredReleases(); }
 
 // TODO(0x0028D7B0)
 void InstanceRenderPassDone(void* renderContext) { (void)renderContext; }
