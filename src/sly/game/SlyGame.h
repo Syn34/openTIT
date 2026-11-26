@@ -31,7 +31,7 @@ namespace sly {
 class WorldObject;   // world entities, reconstructed by the world module
 class SpawnManager;
 namespace goals { class Goal; }
-namespace gameplay { class Minigame; }
+namespace gameplay { class Minigame; class ReturnTreasureMicrogame; }
 namespace entity { class Entity; class GameCamera; }
 struct LevelParams;
 
@@ -377,6 +377,17 @@ public:
     void LoadLevelParams(ape::file::File& file);
     // The level parameters select the special mode 1.
     bool LevelParamsMode1() const;
+    // The return-treasure microgame (each call does nothing without the
+    // microgame object, the later ones also while it is not running).
+    void StartReturnTreasure(float timeLimit, entity::Entity* carrier, entity::Entity* treasure,
+                             uint32_t carrierBone, const ape::Vec3& offset);
+    bool ReturnTreasureActive() const;
+    void CompleteReturnTreasure();
+    void UpdateReturnTreasurePlacement();
+    void StopReturnTreasure(bool lost);
+    void PauseReturnTreasure(bool paused);
+    void RefreshReturnTreasureHud();
+    void SetReturnTreasureHudActive(bool active);
     // The power meter of a player on the HUD (second bar of meter B).
     void ShowPlayerPower(uint32_t player) const;
 
@@ -471,7 +482,7 @@ public:
     DesaturationQueue desaturation;             // +0x128334
     BlurAnimation blur;                         // +0x1283A8
     DialogState dialog;                         // +0x1283C0
-    void* sequencer = nullptr;                  // +0x12847C NOTE: debug net server (flag +0xA4 bit 31)
+    gameplay::ReturnTreasureMicrogame* returnTreasure = nullptr; // +0x12847C
     ape::ApeTArray<WorldCallback> callbackLists[kCallbackListCount]; // +0x128480
     uint32_t field_128584 = 0;                  // +0x128584
     float timeScaleA = 1.0f;                    // +0x128588

@@ -5,6 +5,7 @@
 #include "ape/level/ApeLevelDef.h"
 #include "ape/world/ApeBase.h"
 #include "sly/entity/Entity.h"
+#include "sly/gameplay/ReturnTreasure.h"
 #include "sly/gameplay/Minigame.h"
 #include "sly/game/hud/HudManager.h"
 
@@ -32,6 +33,12 @@ SlyGame::SlyGame(uint8_t initialState)
 // ends the dialog, destroys the managers, the scene and the render targets.
 SlyGame::~SlyGame()
 {
+    if (returnTreasure) {
+        returnTreasure->Stop(false);
+        returnTreasure->Shutdown();
+        delete returnTreasure;
+        returnTreasure = nullptr;
+    }
     for (GamePlayer& player : players)
         player.ReleaseCharacter();
 }
