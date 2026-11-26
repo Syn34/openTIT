@@ -363,3 +363,159 @@ void SlyGame::RefreshMoviesPage(ape::ApeGuiObject* screen)
 }
 
 } // namespace sly
+
+namespace sly {
+
+// @func 0x00472DF8 SlyGame::OnMoviesPageEvent
+void SlyGame::OnMoviesPageEvent(const ape::GuiEvent& event)
+{
+    constexpr uint32_t kGuiEvent_FocusGained = 1;
+    constexpr uint32_t kGuiEvent_FocusLost = 2;
+    constexpr uint32_t kGuiEvent_Right = 10;
+    constexpr uint32_t kGuiEvent_Left = 11;
+    constexpr uint32_t kGuiEvent_Refresh = 0x10;
+    // NOTE: both directions do the same on the console.
+    if (!event.object || (event.type != kGuiEvent_Right && event.type != kGuiEvent_Left))
+        return;
+    moviesPage = 0;
+    field_1285C9 = 0;
+
+    const uint8_t pad = players[activePlayer % kMaxPlayers].padIndex;
+    if (menuFocus)
+        ape::SendGuiEvent(kGuiEvent_FocusLost, pad, menuFocus, 0);
+    ape::ApeGuiObject* menuGui = nullptr;
+    if (auto* hideout = static_cast<hud::HudHideoutMenu*>(hud::FindActiveType200()))
+        menuGui = hideout->gui;
+    ape::SendGuiEvent(kGuiEvent_Refresh, event.pad, menuGui, 0);
+
+    menuFocus = FindFocusableGuiObject(event.object->parent);
+    if (!menuFocus)
+        return;
+    const ape::Vec3 centre = menuFocus->GetCenter();
+    for (AppPlayer& player : GetAppRuntime().players) {
+        float screen[2];
+        ape::GetGuiScreenSize(screen);
+        const float x = centre.x * 2.0f / screen[0] - 1.0f;
+        const float y = centre.y * 2.0f / screen[1] - 1.0f;
+        std::memcpy(&player.field_D0[0], &x, sizeof x);
+        std::memcpy(&player.field_D0[1], &y, sizeof y);
+        menuFocusPad = pad;
+        ape::SendGuiEvent(kGuiEvent_FocusGained, pad, menuFocus, 0);
+        ape::SetGuiSlot(pad, menuFocus);
+    }
+}
+
+} // namespace sly
+
+namespace sly {
+
+namespace {
+
+// A move of the moves page (title and description string keys).
+struct MoveText {
+    const char* title;
+    const char* desc;
+};
+#define MOVE(id) {"$MOVE_" id "_TITLE", "$MOVE_" id "_DESC"}
+// Tables 0x00AE7164, 0x00AE7468, 0x00AE7C9C and 0x00AE8058.
+const MoveText kGeneralMoves[] = {
+    MOVE("ALL_GROUNDMOVEMENT"), MOVE("ALL_JUMP"), MOVE("ALL_INTERACT"), MOVE("ALL_SPRINT"),
+    MOVE("ALL_PRIMARYATTACK"), MOVE("ALL_CAMERAMOVEMENT"), MOVE("ALL_BINOCUCOM"), MOVE("ALL_COMPASS"),
+};
+const MoveText kCooperMoves[] = {
+    MOVE("COOPER_JUMPATTACK"), MOVE("COOPER_KNOCKOUTDIVE"), MOVE("COOPER_STEALTHSLAM"),
+    MOVE("COOPER_CANECHARGE"), MOVE("COOPER_PICKPOCKET"), MOVE("COOPER_ATTACHRAIL"),
+    MOVE("COOPER_ATTACHSPIRE"), MOVE("COOPER_ATTACHPOLE"), MOVE("COOPER_ATTACHHOOK"),
+    MOVE("COOPER_ATTACHSPRING"), MOVE("COOPER_ATTACHSIDLE"),
+};
+const MoveText kAncestorMoves[] = {
+    MOVE("ANCESTOR_RIOICHI_COMBO"), MOVE("ANCESTOR_RIOICHI_MEGACHARGE"), MOVE("ANCESTOR_RIOICHI_TAKEDOWN"),
+    MOVE("ANCESTOR_RIOICHI_SUPERSPIRE"), MOVE("ANCESTOR_RIOICHI_SILENTSPRINT"),
+    MOVE("ANCESTOR_KIDCOOPER_COMBO"), MOVE("ANCESTOR_KIDCOOPER_MEGACHARGE"),
+    MOVE("ANCESTOR_KIDCOOPER_TAKEDOWN"), MOVE("ANCESTOR_KIDCOOPER_CRACKSHOT"),
+    MOVE("ANCESTOR_CAVEMAN_COMBO"), MOVE("ANCESTOR_CAVEMAN_MEGACHARGE"), MOVE("ANCESTOR_CAVEMAN_TAKEDOWN"),
+    MOVE("ANCESTOR_CAVEMAN_ROAR"), MOVE("ANCESTOR_CAVEMAN_WALLCLIMB"),
+    MOVE("ANCESTOR_SIRGALLETH_COMBO"), MOVE("ANCESTOR_SIRGALLETH_MEGACHARGE"),
+    MOVE("ANCESTOR_SIRGALLETH_TAKEDOWN"), MOVE("ANCESTOR_SIRGALLETH_SUPERSPRING"),
+    MOVE("ANCESTOR_SIRGALLETH_SHIELDCHARGE"),
+    MOVE("ANCESTOR_SALIM_COMBO"), MOVE("ANCESTOR_SALIM_MEGACHARGE"), MOVE("ANCESTOR_SALIM_TAKEDOWN"),
+    MOVE("ANCESTOR_SALIM_SUPERPOLE"), MOVE("ANCESTOR_SALIM_MAGICCARPET"),
+};
+const MoveText kCostumeMoves[] = {
+    MOVE("COSTUME_SAMURAISHIELD"), MOVE("COSTUME_SAMURAIFIRERESIST"), MOVE("COSTUME_JAILBIRDBALL"),
+    MOVE("COSTUME_JAILBIRDBALLTHROW"), MOVE("COSTUME_NEANDERTHALPLAYDEAD"), MOVE("COSTUME_NEANDERTHALPOUNCE"),
+    MOVE("COSTUME_ARCHERSHOOT"), MOVE("COSTUME_THIEFSWORD"), MOVE("COSTUME_THIEFTIME"),
+};
+#undef MOVE
+
+// The job each ancestor move comes with (table 0x00AE7D5C). NOTE: the job
+// names are unknown.
+constexpr uint32_t kAncestorJobs[] = {
+    0x1E4E5AE4u, 0x1E4E5AE4u, 0x1E4E5AE4u, 0x1E4E5AE4u, 0x1E4E5AE4u,
+    0x1FE86318u, 0x1FE86318u, 0x1FE86318u, 0x1FE86318u,
+    0x78E08CFDu, 0x78E08CFDu, 0x78E08CFDu, 0x78E08CFDu, 0x78E08CFDu,
+    0x54066C8Fu, 0x54066C8Fu, 0x54066C8Fu, 0x54066C8Fu, 0x54066C8Fu,
+    0x28FE05F8u, 0x28FE05F8u, 0x28FE05F8u, 0x28FE05F8u, 0x28FE05F8u,
+};
+// The costume each costume move comes with (table 0x00AE80A0).
+constexpr uint32_t kCostumeKeys[] = {
+    0x0E84789Au, 0x0E84789Au,   // "Sly_SamuraiArmor"
+    0xAD5E51BAu, 0xAD5E51BAu,   // "SlyJail"
+    0xD4B7F507u, 0xD4B7F507u,   // "SlySabertooth"
+    0xFEE2E46Au,                // "SlyRobin"
+    0xDEDF4D4Du, 0xDEDF4D4Du,   // "SlySinbad"
+};
+
+// Category names (table 0x00F65DD4).
+const char* const kMoveCategories[] = {
+    "$MOVE_CATEGORY_GENERAL", "$MOVE_CATEGORY_COOPER", "$MOVE_CATEGORY_ANCESTORS", "$MOVE_CATEGORY_COSTUME",
+};
+
+} // namespace
+
+// @func 0x0046DFF0 SlyGame::RefreshMovesPage
+// NOTE: the console passes the menu page record (its GUI screen at +0x0C).
+void SlyGame::RefreshMovesPage(ape::ApeGuiObject* screen)
+{
+    constexpr uint32_t kMovesPerPage = 5;
+    enum : uint8_t { kGeneral, kCooper, kAncestors, kCostume };
+    if (ape::ApeGuiObject* label = ape::FindGuiObject("Category.Msg", screen);
+        label && label->GetType() == kGuiType_Label)
+        label->SetText(kMoveCategories[movesCategory & 3], false);
+
+    ape::ApeGuiObject* list = ape::FindGuiObject("Moves", screen);
+    if (!list)
+        return;
+    game::JobManager* jobs = game::GetJobManager();
+    for (uint32_t i = 0; i < kMovesPerPage; ++i) {
+        ape::ApeGuiObject* label = ape::FindGuiObject(ape::TempFormat("Move%02d", i + 1), list);
+        if (!label || label->GetType() != kGuiType_Label)
+            continue;
+        const MoveText* moves = nullptr;
+        uint32_t count = 0;
+        switch (movesCategory) {
+        case kGeneral: moves = kGeneralMoves; count = 8; break;
+        case kCooper: moves = kCooperMoves; count = 11; break;
+        case kAncestors: moves = kAncestorMoves; count = 24; break;
+        case kCostume: moves = kCostumeMoves; count = 9; break;
+        default: break;
+        }
+        const uint32_t index = movesPage * kMovesPerPage + i;
+        if (index >= count) {
+            label->SetText("", false);
+            label->SetFlag30(false);
+            continue;
+        }
+        bool known = true;
+        if (movesCategory == kCostume) {
+            known = jobs && jobs->IsJobValueFlagged(kCostumeKeys[index]);
+        } else if (movesCategory == kAncestors) {
+            const game::Episode* job = jobs ? jobs->FindEpisode(kAncestorJobs[index]) : nullptr;
+            known = job && job->State() >= 1;
+        }
+        label->SetText(known ? moves[index].title : "$STR_UNKNOWN", false);
+        label->SetFlag30(true);
+    }
+}
+
+} // namespace sly
