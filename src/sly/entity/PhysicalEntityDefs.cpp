@@ -190,6 +190,134 @@ PhysicalEntityDef::PhysicalEntityDef(const PhysicalEntityDefDesc& desc)
                                            (defFlags & kDefFlag_HighQuality) != 0);
 }
 
+// -- Projectile and ProjectileB ---------------------------------------------------
+namespace {
+
+constexpr uint32_t kClass_Projectile = 0x4000;
+constexpr uint32_t kClass_ProjectileB = 0x10000;
+
+struct ProjectileDefDesc : PhysicalEntityDefDesc {
+    explicit ProjectileDefDesc(const EntityDefDesc& loader) : PhysicalEntityDefDesc(loader)
+    {
+        classBits |= kClass_Projectile;
+    }
+    float field_158[5] = {0.0f, 0.0f, -1.0f, 0.0f, 0.0f};   // 0x158
+    uint32_t field_16C = 0;                                 // 0x16C
+    float field_170 = 0.0f;                                 // 0x170
+    float field_174 = 0.0f;                                 // 0x174
+    bool field_178 = false;                                 // 0x178
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x000C5FF0 ProjectileDefDesc::Parse
+// NOTE: the two angles are converted from degrees even when they come from
+// a parent (whose values are radians already), as on the console.
+void ProjectileDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                              const EntityDefDesc& loader, const EntityDef* parent)
+{
+    PhysicalEntityDefDesc::Parse(root, elem, loader, parent);
+    float defaults[5] = {0.0f, 0.0f, -1.0f, 0.0f, 0.0f};
+    float minAngle = -90.0f, maxAngle = 270.0f;
+    bool defaultFlag = false;
+    if (parent && (parent->classBits & kClass_Projectile)) {
+        const auto* projectile = static_cast<const ProjectileDef*>(parent);
+        defaults[0] = projectile->field_194;
+        defaults[1] = projectile->field_198;
+        defaults[2] = projectile->field_19C;
+        defaults[3] = projectile->field_1A0;
+        defaults[4] = projectile->arcFactor;
+        minAngle = projectile->field_1AC;
+        maxAngle = projectile->field_1B0;
+        defaultFlag = projectile->field_1B4;
+    }
+    static constexpr uint32_t kAttrs[5] = {0xB81F0E21u, 0xB81F0D33u, 0x4BC4DED1u, 0x4BA728F9u, 0x04F32F5Cu};
+    for (int i = 0; i < 5; ++i)
+        elem->GetFloat(kAttrs[i], &field_158[i], defaults[i]);
+    static constexpr uint32_t kValues[2] = {0x85D98325u, 0x3619362Du};
+    uint32_t value = 0;
+    if (elem->GetHash(0xE8DB4898u, &value, 0) == ape::xml::kQuery_Ok) {
+        for (uint32_t i = 0; i < 2; ++i) {
+            if (kValues[i] == value) {
+                field_16C = i;
+                break;
+            }
+        }
+    }
+    elem->GetFloat(0x39F5434Cu, &field_170, minAngle);
+    elem->GetFloat(0xA3D3DF7Au, &field_174, maxAngle);
+    field_170 *= kDegToRad;
+    field_174 *= kDegToRad;
+    elem->GetBool(0x99A462A8u, &field_178, defaultFlag);
+}
+
+struct ProjectileBDefDesc : PhysicalEntityDefDesc {
+    explicit ProjectileBDefDesc(const EntityDefDesc& loader) : PhysicalEntityDefDesc(loader)
+    {
+        classBits |= kClass_ProjectileB;
+    }
+    float field_158[4] = {1.0f, 0.5f, 1.0f, 0.0f};   // 0x158
+    float field_168 = 1.0f;                          // 0x168
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x000C5B30 ProjectileBDefDesc::Parse
+void ProjectileBDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                               const EntityDefDesc& loader, const EntityDef* parent)
+{
+    PhysicalEntityDefDesc::Parse(root, elem, loader, parent);
+    float defaults[4] = {1.0f, 0.5f, 1.0f, 0.0f};
+    if (parent && (parent->classBits & kClass_ProjectileB)) {
+        const auto* projectile = static_cast<const ProjectileBDef*>(parent);
+        defaults[0] = projectile->field_194;
+        defaults[1] = projectile->field_198;
+        defaults[2] = projectile->field_19C;
+        defaults[3] = projectile->field_1A0;
+    }
+    static constexpr uint32_t kAttrs[4] = {0x7ECB8527u, 0xCCF74C48u, 0x9E8B1865u, 0x21684859u};
+    for (int i = 0; i < 4; ++i)
+        elem->GetFloat(kAttrs[i], &field_158[i], defaults[i]);
+}
+
+} // namespace
+
+// @func 0x000C63B0 CreateProjectileDef
+EntityDef* CreateProjectileDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                               const EntityDef* parent)
+{
+    ProjectileDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new ProjectileDef(desc);
+    def->field_194 = desc.field_158[0];
+    def->field_198 = desc.field_158[1];
+    def->field_19C = desc.field_158[2];
+    def->field_1A0 = desc.field_158[3];
+    def->arcFactor = desc.field_158[4];
+    def->field_1A8 = desc.field_16C;
+    def->field_1AC = desc.field_170;
+    def->field_1B0 = desc.field_174;
+    def->field_1B4 = desc.field_178;
+    return def;
+}
+
+// @func 0x000C5DC8 CreateProjectileBDef
+EntityDef* CreateProjectileBDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                                const EntityDef* parent)
+{
+    ProjectileBDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new ProjectileBDef(desc);
+    def->field_194 = desc.field_158[0];
+    def->field_198 = desc.field_158[1];
+    def->field_19C = desc.field_158[2];
+    def->field_1A0 = desc.field_158[3];
+    def->field_1A4 = desc.field_168;
+    return def;
+}
+
 // -- EntityProjectileMine ---------------------------------------------------------
 namespace {
 

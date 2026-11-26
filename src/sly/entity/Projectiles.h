@@ -15,16 +15,31 @@ namespace entity {
 // Definition of Projectile (vtable 0x00B130B8, 0x1C0 bytes).
 class ProjectileDef : public PhysicalEntityDef {
 public:
+    explicit ProjectileDef(const PhysicalEntityDefDesc& desc) : PhysicalEntityDef(desc) {}
     ~ProjectileDef() override;
-    // 0x1A4 how much of the launch speed is turned upwards into an arc.
-    // NOTE: name from use.
+    float field_194 = 0.0f;       // 0x194 attribute 0xB81F0E21
+    float field_198 = 0.0f;       // 0x198 attribute 0xB81F0D33
+    float field_19C = -1.0f;      // 0x19C attribute 0x4BC4DED1
+    float field_1A0 = 0.0f;       // 0x1A0 attribute 0x4BA728F9
+    // 0x1A4 how much of the launch speed is turned upwards into an arc
+    // (attribute 0x04F32F5C). NOTE: name from use.
     float arcFactor = 0.0f;
+    uint32_t field_1A8 = 0;       // 0x1A8 index of the value of attribute 0xE8DB4898 (two known)
+    float field_1AC = 0.0f;       // 0x1AC attribute 0x39F5434C (degrees in the file)
+    float field_1B0 = 0.0f;       // 0x1B0 attribute 0xA3D3DF7A (degrees in the file)
+    bool field_1B4 = false;       // 0x1B4 attribute 0x99A462A8
 };
 
 // Definition of ProjectileB (vtable 0x00B132D8, 0x1B0 bytes).
 class ProjectileBDef : public PhysicalEntityDef {
 public:
+    explicit ProjectileBDef(const PhysicalEntityDefDesc& desc) : PhysicalEntityDef(desc) {}
     ~ProjectileBDef() override;
+    float field_194 = 1.0f;       // 0x194 attribute 0x7ECB8527
+    float field_198 = 0.5f;       // 0x198 attribute 0xCCF74C48
+    float field_19C = 1.0f;       // 0x19C attribute 0x9E8B1865
+    float field_1A0 = 0.0f;       // 0x1A0 attribute 0x21684859
+    float field_1A4 = 1.0f;       // 0x1A4 NOTE: not read by the parser
 };
 
 // Definition of EntityProjectileMine (vtable 0x00B134F8, 0x1C0 bytes).

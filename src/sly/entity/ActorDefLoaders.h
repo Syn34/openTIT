@@ -34,6 +34,8 @@ SLY_DECLARE_DEF_FACTORY(CreateSoundActorB16B48Def);  // 0x2190D8D7
 SLY_DECLARE_DEF_FACTORY(CreateScriptObjectActorDef); // 0x554FC0D9
 // Physical classes (PhysicalEntityDefs.cpp).
 SLY_DECLARE_DEF_FACTORY(CreateProjectileMineDef);    // 0xBC13B5BC
+SLY_DECLARE_DEF_FACTORY(CreateProjectileDef);        // 0xB9F78EFD
+SLY_DECLARE_DEF_FACTORY(CreateProjectileBDef);       // 0x109C1EFA
 
 } // namespace entity
 } // namespace sly

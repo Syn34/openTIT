@@ -123,7 +123,7 @@ const DefClass kDefClasses[] = {
     {0xA8F71270u, nullptr},                              // 0x0023FA28
     {0xA7CFB837u, nullptr},                              // 0x0016ADC4
     {0xBC13B5BCu, CreateProjectileMineDef},
-    {0xB9F78EFDu, nullptr},                              // 0x000C63B0
+    {0xB9F78EFDu, CreateProjectileDef},
     {0xB47D3A95u, CreateWatchActorDef},
     {0xB3748711u, nullptr},                              // 0x001DE610
     {0xDCC028E7u, objects::CreateJumpDirTriggerDef},
@@ -143,7 +143,7 @@ const DefClass kDefClasses[] = {
     {0x0353CB09u, nullptr},                              // "Character" 0x0011E2B8
     {0x0026B78Du, nullptr},                              // 0x001E6B18
     {0x002678F2u, nullptr},                              // 0x001BB6C4
-    {0x109C1EFAu, nullptr},                              // 0x000C5DC8
+    {0x109C1EFAu, CreateProjectileBDef},
     {0x0E5B671Du, nullptr},                              // 0x00203BE4
     {0x04B6FABDu, nullptr},                              // 0x00167080
     {0x044344C9u, CreateInteractivePropAUseDef},
