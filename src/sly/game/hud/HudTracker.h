@@ -35,6 +35,11 @@ public:
     void SetActive(bool active) override;
     // Slot 6 (0x00370934): nothing.
     void SetEnabled(bool enabled, bool flag) override;
+    // 0x00370938: shows or hides the scene object of field `index`.
+    void SetTrackerFieldVisible(bool visible, uint32_t index);
+    // 0x003709A0: world position of field `index`'s scene object (zero
+    // without one).
+    ape::Vec3 TrackerFieldPosition(uint32_t index) const;
 
     ape::ApeTArray<Entry> entries;            // +0xA4
     uint32_t field_B8 = 0;                    // +0xB8
