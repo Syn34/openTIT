@@ -6,12 +6,15 @@
 #include "ape/math/ApeBounds.h"
 #include "ape/world/ApeObj.h"
 #include "ape/world/ApeRegions.h"
+#include "sly/camera/CameraModes.h"
+#include "sly/entity/GameCamera.h"
 #include "sly/game/SpawnManager.h"
 #include "sly/gameplay/GameplayWorld.h"
 #include "sly/gameplay/MegaKnightHooks.h"
 #include "sly/tuning/MegaKnightDragonTuning.h"
 
 #include <cmath>
+#include <cstring>
 
 namespace sly {
 namespace gameplay {
@@ -52,6 +55,75 @@ void MegaKnightObjectPair::Show(bool on, bool first)
     Apply(first ? 0 : 1, true);
 }
 
+
+// ===========================================================================
+// Camera controller
+
+// @func 0x00305828 MegaKnightCamera::MegaKnightCamera
+MegaKnightCamera::MegaKnightCamera(MegaKnight* owner, entity::GameCamera* camera,
+                                   const MegaKnightCameraDef* defaultDef)
+    : boss(owner), gameCamera(camera), defaultCamera(defaultDef)
+{
+    hitFraction.Set(1.0f, 1.0f, g_megaKnightCameraHitFractionSpeed.Get());
+    SetCamera(0.0f, nullptr, true);
+    auto* fixed = new camera::FixedCameraMode(camera);
+    fixed->transform = camera->transform;
+    fixed->fov = camera->fov;
+    fixed->dofEnabled = false;
+    fixed->dofIterations = 1;
+    mode = fixed;
+}
+
+MegaKnightCamera::~MegaKnightCamera()
+{
+    if (mode) {
+        MKCameraRemoveMode(gameCamera, mode);
+        delete mode;
+        mode = nullptr;
+    }
+}
+
+// @func 0x003055E8 MegaKnightCamera::SetCamera
+void MegaKnightCamera::SetCamera(float ease, const MegaKnightCameraDef* def, bool immediate)
+{
+    if (!def)
+        def = defaultCamera;
+    if (ease < 0.0f)
+        ease = 0.0f;
+    if (def) {
+        std::strncpy(cameraName, def->nameText, sizeof(cameraName) - 1);
+        cameraName[sizeof(cameraName) - 1] = '\0';
+        const float targets[4] = {def->values[0], def->values[1], def->values[2], 0.0f};
+        for (int i = 0; i < 4; ++i) {
+            FloatTween& t = blends[i];
+            if (!immediate && ease != 0.0f) {
+                t.from = t.value;
+                t.to = targets[i];
+                t.elapsed = 0.0f;
+                t.SetDuration(ease);
+            } else {
+                // Value 3 starts at the camera's fourth value and decays.
+                t.from = i == 3 ? def->values[3] : targets[i];
+                t.to = targets[i];
+                t.elapsed = 0.0f;
+                t.SetDuration(0.0f);
+            }
+            t.easing = kEase_Cosine;
+        }
+    } else {
+        cameraName[0] = '\0';
+    }
+    Update(0.0f);
+}
+
+// TODO(0x00304FD0 MegaKnightCamera::Update): blends the four values and
+// frames the boss and the player (vector code the disassembler cannot
+// follow).
+void MegaKnightCamera::Update(float dt)
+{
+    for (FloatTween& t : blends)
+        t.Update(dt);
+}
 
 // ===========================================================================
 // Stamp manager
@@ -249,10 +321,8 @@ MegaKnight::~MegaKnight() = default;
 bool MegaKnight::Release(bool kill)
 {
     if (kill) {
-        if (cameraController) {
-            MKDeleteCameraController(cameraController);
-            cameraController = nullptr;
-        }
+        delete cameraController;
+        cameraController = nullptr;
         for (MegaKnightPhase*& phase : phases) {
             delete phase;
             phase = nullptr;
@@ -385,7 +455,7 @@ void MegaKnight::SetCamera(float ease, uint32_t name, bool force)
     if (ease < 0.0f && camera)
         ease = camera->easeTime;
     if (cameraController) {
-        MKCameraControllerSet(cameraController, camera, ease);
+        cameraController->SetCamera(ease, camera, false);
         currentCamera = name;
     }
 }

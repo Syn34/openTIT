@@ -152,7 +152,7 @@ struct MegaKnightStampSet {
 // A camera of the boss fight (records allocated by the definition loader
 // 0x0030743C, not ported, and freed with MemFree).
 struct MegaKnightCameraDef {
-    uint8_t data_00[0x20] = {};
+    char nameText[0x20] = {};   // +0x00
     uint32_t name = 0;          // +0x20
     float values[4] = {};       // +0x24 blended to by the camera controller
     float easeTime = 0.0f;      // +0x34 used when no ease time is given

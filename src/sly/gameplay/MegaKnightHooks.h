@@ -11,7 +11,7 @@ namespace ape { class ApeRefCounted; }
 namespace ape::world { class ApeObj; }
 
 namespace sly {
-namespace entity { class Entity; }
+namespace entity { class Entity; class GameCamera; }
 namespace gameplay {
 
 // Plays `clip` through the entity's character component (slot 15 +
@@ -37,8 +37,6 @@ void MKRemoveTargetMarker(entity::Entity* player, entity::Entity* target);
 // The script object of an entity (bound to the phase scripts' object
 // variable 0x0027469E).
 ape::ApeRefCounted* MKEntityScriptObject(entity::Entity* entity);
-// Camera controller (boss +0x290, 0x003055E8): blends to a camera record.
-void MKCameraControllerSet(void* controller, const void* cameraDef, float ease);
 // The geometry the platform shows: the placed instance of that name (made
 // visible and asked for its type-7 object, virtual slot 14), else a new
 // instance of the geometry definition (0x005A05E8).
@@ -63,7 +61,9 @@ namespace gameplay {
 // Release of the boss's helper objects (camera controller +0x290: camera
 // mode handed back to the game camera; stamp manager +0x294 0x0030B4AC;
 // the platform is deleted by the boss itself).
-void MKDeleteCameraController(void* controller);
+// The game camera stops using a mode it holds (GameCamera::HasTarget 0x000FC5DC
+// then 0x000FBB88 with -1).
+void MKCameraRemoveMode(entity::GameCamera* camera, void* mode);
 // Player targeting gadget byte +0x922 bit 3 (cleared when the boss goes).
 void MKClearPlayerTargetingFlag(entity::Entity* player);
 // Character component +0x24 -> words +0x34/+0x38 cleared on release.

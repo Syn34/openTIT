@@ -25,6 +25,8 @@
 namespace ape { class ApeAnimScriptInstance; }
 namespace ape::world { class ApeObj; }
 namespace sly { class Spawner; }
+namespace sly::camera { class FixedCameraMode; }
+namespace sly::entity { class GameCamera; }
 
 namespace sly {
 namespace gameplay {
@@ -89,6 +91,29 @@ struct MegaKnightPlatform {
     ape::ApeAnimScriptInstance* scriptA = nullptr;   // +0x64 script 0x454F68A7
     bool field_68 = false;                           // +0x68
     bool field_69 = false;                           // +0x69
+};
+
+// Camera controller of the fight (0xCC bytes, boss +0x290): a fixed camera
+// mode on the game camera whose framing values blend between the
+// definition's cameras.
+struct MegaKnightCamera {
+    // 0x00305828: starts on `defaultCamera` and builds the fixed mode from the
+    // game camera's current view.
+    MegaKnightCamera(MegaKnight* owner, entity::GameCamera* gameCamera, const MegaKnightCameraDef* defaultCamera);
+    ~MegaKnightCamera();
+    // 0x003055E8: blends the framing values to `def` (the default camera
+    // when null) over `ease` seconds, or jumps there when `immediate`.
+    void SetCamera(float ease, const MegaKnightCameraDef* def, bool immediate);
+    // 0x00304FD0: advances the blends and updates the mode. TODO.
+    void Update(float dt);
+
+    camera::FixedCameraMode* mode = nullptr;            // +0x00
+    MegaKnight* boss = nullptr;                         // +0x04
+    entity::GameCamera* gameCamera = nullptr;           // +0x08
+    const MegaKnightCameraDef* defaultCamera = nullptr; // +0x0C
+    char cameraName[0x20] = {};                         // +0x10
+    FloatTween blends[4];                               // +0x30 values 0..3 (value 3 decays to 0)
+    ApproachFloat hitFraction;                          // +0xC0
 };
 
 // A stamp that landed (0x90 bytes): the stamp entity and its shadow /
@@ -216,7 +241,7 @@ public:
 
     // -- members (offsets on the console) ---------------------------------
     MegaKnightTracking tracking;                       // 0x1B0..0x28B
-    void* cameraController = nullptr;                  // 0x290 (0xCC bytes, 0x00305828; not ported)
+    MegaKnightCamera* cameraController = nullptr;      // 0x290
     MegaKnightStampManager* stampManager = nullptr;    // 0x294
     // State block (built by 0x00768478).
     bool field_298 = false;                            // 0x298
