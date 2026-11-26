@@ -23,7 +23,7 @@
 #include <cstdint>
 
 namespace ape { class ApeAnimScriptInstance; }
-namespace ape::world { class ApeObj; }
+namespace ape::world { class ApeObj; class ApeSplineInstance; }
 namespace sly { class Spawner; }
 namespace sly::camera { class FixedCameraMode; }
 namespace sly::entity { class GameCamera; }
@@ -66,6 +66,24 @@ private:
     void Apply(int index, bool on);
 };
 
+// The floor ripple (0x20 bytes, boss +0x348): rings of a level object rise
+// in turn; whatever stands on a raised ring is knocked away.
+struct MegaKnightFloorRipple {
+    // 0x0030419C: binds the ring object chain of the entity named `entityName`.
+    void Init(MegaKnight* owner, uint32_t entityName);
+    // 0x0030C5C8: height of the ring under `target` (0 when it stands on no
+    // raised ring).
+    float HeightAt(const entity::Entity* target) const;
+    // 0x0030C6F8: kills the boss's spawned entities on a raised ring and
+    // throws the player up, at most once per HitCooldown.
+    void Update(float dt);
+
+    MegaKnight* boss = nullptr;                    // +0x00
+    entity::Entity* entity = nullptr;              // +0x04
+    ape::ApeTArray<ape::world::ApeObj*> rings;     // +0x08 innermost first (capacity 32)
+    float cooldown = 0.0f;                         // +0x1C
+};
+
 // The platform object of the fight (0x70 bytes, boss +0x368): a geometry
 // object with two anim scripts.
 struct MegaKnightPlatform {
@@ -76,6 +94,8 @@ struct MegaKnightPlatform {
     // 0x00308F5C: stops the scripts and switches the boss's platform script
     // state; `full` also shows the object and resets the motion values.
     void Reset(bool full);
+    // 0x0030A53C: per-frame motion of the platform. TODO.
+    void Update(float dt);
 
     ape::world::ApeObj* object = nullptr;            // +0x00
     MegaKnight* boss = nullptr;                      // +0x04
@@ -155,6 +175,9 @@ struct MegaKnightStampManager {
     // Idle phase test: nothing falling, at most `count` stamps landed, none
     // queued.
     bool Settled(uint32_t count) const;
+    // 0x0030B6D8: drops the queued stamps when due and lands the falling
+    // ones. TODO.
+    void Update(float dt);
     void ClearPending();
 
     MegaKnight* boss = nullptr;                          // +0x00
@@ -181,7 +204,7 @@ struct MegaKnightTracking {
     ape::Vec3 field_1C0{};              // +0x1C0
     ape::Vec3 field_1D0{};              // +0x1D0
     int32_t bone = 0;                   // +0x1E0 boss bone 0x0021C5E0
-    void* camera = nullptr;             // +0x1E4 the game camera
+    entity::GameCamera* camera = nullptr;   // +0x1E4 the game camera
     int32_t field_1E8 = -1;             // +0x1E8
     uint8_t history[0x24] = {};         // +0x1EC ring of 16-byte records (capacity 16)
     ape::Vec3 field_210{};              // +0x210
@@ -198,6 +221,8 @@ struct MegaKnightTracking {
 class MegaKnight : public entity::ActorEntity {
 public:
     ~MegaKnight() override;
+    bool Update(float dt) override;                         // slot 4
+    bool PostUpdate(float dt) override;                     // slot 5
     bool Release(bool kill) override;                       // slot 10
     // The boss takes no hits through the hit categories.
     void OnHitCategory0(entity::EntityHitRecord& hit) override;
@@ -236,6 +261,36 @@ public:
     uint32_t ChooseNextPhase();
     // 0x00304298: stops the arm marker spawners and releases the marker objects.
     void ClearArmMarkers();
+    // 0x0030EEE0: follows the player (tracking block, arm/rope states). TODO.
+    void UpdateTracking(float dt);
+    // 0x003117E0: arm `arm` was destroyed (outer arms count hits and play
+    // voice lines; in the second half their physics part leaves the world).
+    void OnArmDestroyed(uint32_t arm);
+    // 0x0030D5C0: a player hanging on rope 0 or 2 close enough to the
+    // boss's matching bone starts the shoulder hit.
+    void CheckShoulderReach();
+    // 0x0030EBF0: runs the current phase (switching to the next one when it
+    // is done) and the scripts of finished phases; false once the fight was
+    // reset.
+    bool UpdatePhases(float dt);
+    // 0x0030D8E0 / 0x0030DD50: put the arena back (stamps, spawns, ropes,
+    // markers, camera) and tell the level (event 0x58516C64 / 0x5850F805).
+    // The second also hides five level entities and restarts in the idle
+    // phase. NOTE: which reset is which half of the fight is not known.
+    void ResetFight();
+    void RestartFight();
+    // 0x003059EC: the tracking block follows the game camera and the
+    // tracking bone.
+    void BindTracking();
+    // 0x0030D434: world transform of skeleton bone `bone` (left unchanged
+    // without the bone).
+    void BoneWorldTransform(int bone, ape::Matrix34& out) const;
+    // 0x0030FC90: picks the behaviour list for the current half and the
+    // number of arms down, from its first action.
+    void SelectBehavior();
+    // 0x00309440: hurts and throws the player. TODO.
+    void HurtPlayer(entity::Entity* source, uint32_t flags, float damage, float dt,
+                    const ape::Vec3& direction, float impulse);
     // 0x00311590: swaps the marker object of arm `arm`. TODO.
     void SetArmMarker(uint32_t arm, bool on);
 
@@ -245,11 +300,14 @@ public:
     MegaKnightStampManager* stampManager = nullptr;    // 0x294
     // State block (built by 0x00768478).
     bool field_298 = false;                            // 0x298
-    bool secondHalf = false;                           // 0x299 NOTE: switches the clip and value sets
+    // NOTE: switches the clip and value sets; while it is set the behaviour
+    // lists "Phase1ArmN" are used (else "Phase2ArmN"), so the name may be
+    // backwards.
+    bool secondHalf = false;                           // 0x299
     uint32_t currentAnim = 0;                          // 0x29C
     uint32_t currentCamera = 0;                        // 0x2A0
     bool armIntact[3] = {true, true, true};            // 0x2A4 arms 0..2
-    bool field_2A7 = false;                            // 0x2A7
+    bool resetRequested = false;                       // 0x2A7 NOTE: name from UpdatePhases
     int32_t field_2A8 = 0;                             // 0x2A8
     int32_t hitCount = 0;                              // 0x2AC
     bool field_2B0 = false;                            // 0x2B0
@@ -267,7 +325,7 @@ public:
     MegaKnightObjectPair pair32C;                      // 0x32C
     MegaKnightObjectPair pair338;                      // 0x338
     entity::Entity* heartTarget = nullptr;             // 0x344 NOTE: name from the marker offset it gets
-    ape::ApeTArray<void*> field_350;                   // 0x350 (capacity 32)
+    MegaKnightFloorRipple floorRipple;                 // 0x348
     MegaKnightPlatform* platform = nullptr;            // 0x368
     ape::ApeTArray<entity::Entity*> spawned;           // 0x36C entities the boss spawned (capacity 64)
     entity::Entity* armObject = nullptr;               // 0x380
@@ -275,13 +333,15 @@ public:
     ape::ApeTArray<entity::Entity*> markedTargets;     // 0x398
     ape::ApeAnimScriptInstance* script3AC = nullptr;   // 0x3AC
     ape::ApeAnimScriptInstance* scripts3B0[3] = {};    // 0x3B0
-    int32_t field_3BC = -1;                            // 0x3BC
-    int32_t field_3C0 = -1;                            // 0x3C0
-    ApproachVec3 lookAt;                               // 0x3D0 (current at +0x3D0)
-    ape::Vec3 focus{};                                 // 0x3E0 point the boss looks at
+    int32_t field_3BC = -1;                            // 0x3BC bone the player reaches from rope 0
+    int32_t field_3C0 = -1;                            // 0x3C0 bone the player reaches from rope 2
+    ApproachVec3 lookAt;                               // 0x3D0 target (+0x3E0): point the boss looks at; rate (+0x3F0) IKBlend
     FloatTween glow;                                   // 0x400 NOTE: name assumed (0..1 blend)
     int32_t targetArm = 0;                             // 0x424
     bool field_428 = false;                            // 0x428
+    bool tooCloseLinePlayed = false;                   // 0x42C
+    bool fightLinePlayed = false;                      // 0x42D
+    float offPlatformTimer = 0.0f;                     // 0x430 counts down to the "off the platform" line
 
     // Placeholder for the layer 0 state of the console's state machine base
     // (the entity port does not model it).
@@ -473,7 +533,7 @@ public:
     bool UpdatePhase(float dt) override;
 
     int32_t rope = -1;            // +0x40 rope the player holds (0 or 2)
-    void* spline = nullptr;       // +0x44 the laser's path
+    ape::world::ApeSplineInstance* spline = nullptr;   // +0x44 the laser's path
     ape::Vec3 laserPoint{};       // +0x50
     bool reversed = false;        // +0x60
     bool field_61 = false;        // +0x61
@@ -589,7 +649,7 @@ public:
     bool UpdatePhase(float dt) override;
 
     uint32_t field_40 = 0;        // +0x40
-    uint32_t igcAnim = 0;         // +0x44 NOTE: played in the "IGC" state (assumed)
+    uint32_t igcSequence = 0;     // +0x44 cut scene of the "IGC" state
     uint32_t field_48 = 0;        // +0x48
     uint32_t startAnim = 0;       // +0x4C
     uint32_t field_50 = 0;        // +0x50

@@ -106,3 +106,15 @@
   from XML, and the definition's destructor. The loader that calls the parsers (0x0030743C),
   the boss entity and the action runtime (0x00305A44.., 0x003081C8..) are not ported. Two
   start-up defaults (0x01069B38, 0x01069EF8) are assumed 0.
+
+## Mega knight boss (agent3)
+* `MegaKnight.*`, `MegaKnightPhases.cpp`: the boss entity (no constructor yet: 0x00305A44),
+  its camera controller, platform, stamp manager, floor ripple, the twelve phase classes and
+  the per-frame update. Calls into unported systems go through `MegaKnightHooks.*`.
+* Still TODO: the constructor and the def's Spawn (0x003072A8), the action runtime
+  (0x003081C8..0x0030B6D8), ChooseNextPhase (0x0030E1E0), UpdateTracking (0x0030EEE0),
+  camera update (0x00304FD0), HurtPlayer (0x00309440), SetArmMarker (0x00311590), the aim IK
+  callback (0x00311A60), fight start (0x0030FD68/0x003104D0), message handler (0x00310980)
+  and the vector-heavy phase updates (laser, monitor/shoot platform, rope attached).
+* `secondHalf` (+0x299) selects the "Phase1ArmN" behaviour lists, so its name may be
+  backwards. `lookAt` (+0x3D0) is an ApproachVec3 whose target is the boss's focus point.

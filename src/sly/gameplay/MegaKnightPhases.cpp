@@ -5,10 +5,15 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
+#include "ape/world/ApeBase.h"
+#include "ape/world/ApeInstances.h"
+#include "sly/entity/GameCamera.h"
+#include "sly/game/GameScripts.h"
 #include "sly/gameplay/MegaKnightHooks.h"
 #include "sly/gameplay/Sequencer.h"
 #include "sly/tuning/MegaKnightDragonTuning.h"
 
+#include <cmath>
 #include <cstring>
 
 namespace sly {
@@ -153,9 +158,9 @@ void MegaKnightPhase::OnEventD() {}
 // The boss looks at its tracking anchor.
 void MegaKnightPhase::UpdateFocus()
 {
-    boss->focus.x = boss->tracking.anchor.x;
-    boss->focus.y = boss->tracking.anchor.y;
-    boss->focus.z = boss->tracking.anchor.z;
+    boss->lookAt.target.x = boss->tracking.anchor.x;
+    boss->lookAt.target.y = boss->tracking.anchor.y;
+    boss->lookAt.target.z = boss->tracking.anchor.z;
 }
 
 // ===========================================================================
@@ -284,9 +289,9 @@ void MKPhaseLaser::OnEventA() { interrupted = true; }
 void MKPhaseLaser::UpdateFocus()
 {
     const ape::Vec3& p = boss->platform->position;
-    boss->focus.x = p.x;
-    boss->focus.y = p.y;
-    boss->focus.z = p.z;
+    boss->lookAt.target.x = p.x;
+    boss->lookAt.target.y = p.y;
+    boss->lookAt.target.z = p.z;
 }
 
 // @func 0x0031321C MKPhaseLaser::IsDone
@@ -345,9 +350,9 @@ void MKPhaseLaserQuick::OnEventA() { interrupted = true; }
 void MKPhaseLaserQuick::UpdateFocus()
 {
     const ape::Vec3& p = boss->platform->position;
-    boss->focus.x = p.x;
-    boss->focus.y = p.y;
-    boss->focus.z = p.z;
+    boss->lookAt.target.x = p.x;
+    boss->lookAt.target.y = p.y;
+    boss->lookAt.target.z = p.z;
 }
 
 // @func 0x003141A8 MKPhaseLaserQuick::IsDone
@@ -498,9 +503,9 @@ void MKPhaseMonitorPlatform::OnEventC() { eventC = true; }
 // @func 0x00315788 MKPhaseMonitorPlatform::UpdateFocus
 void MKPhaseMonitorPlatform::UpdateFocus()
 {
-    boss->focus.x = boss->tracking.anchor.x;
-    boss->focus.y = boss->tracking.anchor.y;
-    boss->focus.z = boss->tracking.anchor.z;
+    boss->lookAt.target.x = boss->tracking.anchor.x;
+    boss->lookAt.target.y = boss->tracking.anchor.y;
+    boss->lookAt.target.z = boss->tracking.anchor.z;
 }
 
 // @func 0x003157C0 MKPhaseMonitorPlatform::Query17
@@ -564,9 +569,9 @@ void MKPhaseShootPlatform::OnEventC() {}
 void MKPhaseShootPlatform::UpdateFocus()
 {
     const ape::Vec3& p = boss->platform->position;
-    boss->focus.x = p.x;
-    boss->focus.y = p.y;
-    boss->focus.z = p.z;
+    boss->lookAt.target.x = p.x;
+    boss->lookAt.target.y = p.y;
+    boss->lookAt.target.z = p.z;
 }
 
 // @func 0x00316618 MKPhaseShootPlatform::Query17
@@ -589,7 +594,7 @@ bool MKPhaseShootPlatform::UpdatePhase(float dt)
 MKPhaseRopeAttached::MKPhaseRopeAttached(MegaKnight* owner)
     : MegaKnightPhase(owner, kScript_RopeAttached, kRopeStates, 6)
 {
-    spline = MKFindSplineDef(kSpline_RopeLaser);
+    spline = MKFindSplineInstance(kSpline_RopeLaser);
 }
 
 // @func 0x003170C0 MKPhaseRopeAttached::~MKPhaseRopeAttached
@@ -599,11 +604,60 @@ MKPhaseRopeAttached::~MKPhaseRopeAttached() = default;
 // @func 0x00768A00 MKPhaseRopeAttached::StateName
 const char* MKPhaseRopeAttached::StateName(int state) const { return TableName(kRopeStates, state); }
 
-// TODO(0x00317228 MKPhaseRopeAttached::OnEnter): picks the held rope and
-// the laser path (spline evaluation and the boss's laser point 0x0030D434).
+// @func 0x00317228 MKPhaseRopeAttached::OnEnter
+// Picks the held rope, measures the player's distance to the matching
+// bone, starts the laser at the rope's end of its path and charges up.
 void MKPhaseRopeAttached::OnEnter()
 {
     MegaKnightPhase::OnEnter();
+    MegaKnight* b = boss;
+    if (b->ropes[0] && MKRopeHeld(b->ropes[0]))
+        rope = 0;
+    else if (b->ropes[2] && MKRopeHeld(b->ropes[2]))
+        rope = 2;
+    else
+        rope = 0;
+    for (uint32_t arm = 0; arm < 3; ++arm)
+        b->SetArmMarker(arm, false);
+    field_74 = rope == 0 ? b->field_3BC : (rope == 2 ? b->field_3C0 : -1);
+    if (field_74 != -1) {
+        ape::Matrix34 m = ape::world::kWorldIdentity;
+        b->BoneWorldTransform(field_74, m);
+        const ape::Vec3& a = b->tracking.anchor;
+        const float dx = a.x - m.translation.x, dy = a.y - m.translation.y, dz = a.z - m.translation.z;
+        distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+    }
+    // The current camera framing values.
+    field_9C = b->cameraController->blends[0].value;
+    field_A0 = b->cameraController->blends[1].value;
+    field_A4 = b->cameraController->blends[2].value;
+    eventB = false;
+    field_61 = false;
+    field_68 = 0.0f;
+    reversed = rope == 2;
+    if (spline)
+        spline->EvaluatePosition(rope == 2 ? 1.0f : 0.0f, laserPoint, false);
+    // Cutting speed by fight half and number of outer arms standing.
+    const float speeds[3] = {
+        b->secondHalf ? g_megaKnightStateValuesLaserCutterPhase1Arm0.Get() : g_megaKnightStateValuesLaserCutterPhase2Arm0.Get(),
+        b->secondHalf ? g_megaKnightStateValuesLaserCutterPhase1Arm1.Get() : g_megaKnightStateValuesLaserCutterPhase2Arm1.Get(),
+        b->secondHalf ? g_megaKnightStateValuesLaserCutterPhase1Arm2.Get() : g_megaKnightStateValuesLaserCutterPhase2Arm2.Get(),
+    };
+    const uint32_t standing = (b->armIntact[0] ? 1u : 0u) + (b->armIntact[2] ? 1u : 0u);
+    field_6C = speeds[standing];
+    b->glow.to = 1.0f;
+    b->glow.from = b->glow.value;
+    b->glow.elapsed = 0.0f;
+    b->glow.SetDuration((1.0f - b->glow.value) * 0.5f);
+    b->lookAt.target = {laserPoint.x, laserPoint.y, laserPoint.z, b->lookAt.target.pad};
+    b->lookAt.current = {laserPoint.x, laserPoint.y, laserPoint.z, b->lookAt.current.pad};
+    field_B0 = false;
+    field_B4 = 0.0f;
+    b->PlayAnim(rope == 0 ? 0xAB00CE2Eu : 0x87E1289Bu, 1.0f, false);
+    for (entity::Entity* r : b->ropes)
+        if (r)
+            MKSetInteractionState(r, 4);
+    SetState(0, 1);
 }
 
 // @func 0x0031771C MKPhaseRopeAttached::OnExit
@@ -631,13 +685,13 @@ void MKPhaseRopeAttached::UpdateFocus()
 {
     const uint32_t state = GetState(0);
     if (state > 0 && state < 5) {
-        boss->focus.x = laserPoint.x;
-        boss->focus.y = laserPoint.y;
-        boss->focus.z = laserPoint.z;
+        boss->lookAt.target.x = laserPoint.x;
+        boss->lookAt.target.y = laserPoint.y;
+        boss->lookAt.target.z = laserPoint.z;
     } else {
-        boss->focus.x = boss->tracking.anchor.x;
-        boss->focus.y = boss->tracking.anchor.y;
-        boss->focus.z = boss->tracking.anchor.z;
+        boss->lookAt.target.x = boss->tracking.anchor.x;
+        boss->lookAt.target.y = boss->tracking.anchor.y;
+        boss->lookAt.target.z = boss->tracking.anchor.z;
     }
 }
 
@@ -711,11 +765,67 @@ void MKPhaseGroundSmash::OnExit(uint32_t next) { (void)next; }
 // @func 0x00318BD8 MKPhaseGroundSmash::IsDone
 bool MKPhaseGroundSmash::IsDone() { return GetState(0) == 4; }
 
-// TODO(0x00318C30 MKPhaseGroundSmash::UpdatePhase)
+// @func 0x00318C30 MKPhaseGroundSmash::UpdatePhase
+// State 1: the first smash; 2: the next smashes of the pattern ('F' plays
+// the far variant); 3: the recovery clip. A player who reaches the fight
+// area sends the boss to watch the platform.
 bool MKPhaseGroundSmash::UpdatePhase(float dt)
 {
     (void)dt;
-    return true;
+    const bool playerInFight = DelayedStateGet(boss->tracking.fightActive) != 0;
+    MegaKnight* b = boss;
+    auto checkSmash = [&]() {
+        if (playerInFight) {
+            field_58 = false;
+            b->SwitchPhase(kMKPhase_MonitorPlatform);
+            SetState(0, 4);
+            return false;
+        }
+        if (!MKClipDone(b))
+            return true;
+        SetState(0, 2);
+        return false;
+    };
+    switch (GetState(0)) {
+    case 1:
+        if (TimeInState(0) == 0.0f)
+            sly::StartObjectScript(0xE594F012u, nullptr, 0, true);
+        return checkSmash();
+    case 2:
+        if (TimeInState(0) != 0.0f)
+            return checkSmash();
+        ++patternIndex;
+        if (uint32_t(patternIndex) < pattern.Count()) {
+            if (!field_59) {
+                const bool far = pattern[uint32_t(patternIndex)] == 'F';
+                field_5B = far;
+                const uint32_t clip = far ? (mirrored ? 0x57EA75C5u : 0x76D24A8Cu)
+                                          : (mirrored ? 0xECD237EAu : 0x7EE2CD07u);
+                b->currentAnim = 0;
+                b->PlayAnim(clip, 1.0f, false);
+                return checkSmash();
+            }
+        } else {
+            field_59 = true;
+        }
+        SetState(0, 3);
+        return false;
+    case 3: {
+        if (TimeInState(0) == 0.0f) {
+            const uint32_t clip = field_5B ? (mirrored ? 0xB3A038D1u : 0xF962F16Au)
+                                           : (mirrored ? 0xAE3330CCu : 0x512EF8CFu);
+            b->PlayAnim(clip, 1.0f, false);
+        }
+        if (!MKClipDone(b))
+            return true;
+        if (enterCount == 0 && field_58)
+            sly::StartObjectScript(0xB99A192Du, nullptr, 0, true);
+        SetState(0, 4);
+        return false;
+    }
+    default:
+        return true;
+    }
 }
 
 // ===========================================================================
@@ -797,11 +907,43 @@ void MKPhaseShoulderHit::OnEventD()
 // @func 0x003198B0 MKPhaseShoulderHit::IsDone
 bool MKPhaseShoulderHit::IsDone() { return GetState(0) == 3; }
 
-// TODO(0x00319AB8 MKPhaseShoulderHit::UpdatePhase)
+// @func 0x00319AB8 MKPhaseShoulderHit::UpdatePhase
+// Once the cut scene (hit or failure) is over: control goes back, the arm
+// falls (hit) or its shoulder targets come back (failure), and the boss
+// idles.
 bool MKPhaseShoulderHit::UpdatePhase(float dt)
 {
     (void)dt;
-    return true;
+    const int state = GetState(0);
+    if (state != 1 && state != 2)
+        return true;
+    if (TimeInState(0) == 0.0f || MKFrameFrozen() || MKSequenceQueued(sequence))
+        return true;
+    if (entity::GameCamera* camera = MKGameCamera())
+        camera->SetActive(false);
+    MKPlayerCharacter()->SetActive(false);
+    MegaKnight* b = boss;
+    if (state == 1) {
+        b->OnArmDestroyed(uint32_t(side));
+    } else {
+        MegaKnightObjectPair& pair = side == 0 ? b->pair32C : b->pair338;
+        pair.Show(true, b->secondHalf);
+    }
+    b->SetCamera(0.0f, 0x001EFED1u, true);
+    MegaKnightTracking& t = b->tracking;
+    t.state220.Force(1);
+    t.fightActive.Force(0);
+    t.state250.Force(0);
+    t.onArm[0].Force(0);
+    t.onArm[1].Force(0);
+    t.onArm[2].Force(0);
+    if (MegaKnightPhase* idle = b->phases[kMKPhase_Idle]) {
+        b->SwitchPhase(kMKPhase_Idle);
+        static_cast<MKPhaseIdle*>(idle)->duration = g_megaKnightStateValuesShoulderHitIdleDuration.Get();
+        b->SetCamera(1.0f, 0, false);
+    }
+    SetState(0, 3);
+    return false;
 }
 
 // ===========================================================================
@@ -930,11 +1072,11 @@ void MKPhaseTowerShake::OnEnter()
     b->stampManager->Reset();
     b->currentAnim = 0;
     if (b->tracking.onArm[0].Get()) {
-        startAnim = 0x96F8E23Bu; endAnim = 0x99104CF4u; igcAnim = 0x60E4DF46u;
+        startAnim = 0x96F8E23Bu; endAnim = 0x99104CF4u; igcSequence = 0x60E4DF46u;
     } else if (b->tracking.onArm[1].Get()) {
-        startAnim = 0x1AEB962Eu; endAnim = 0xC1F561A7u; igcAnim = 0xBC0D6A9Du;
+        startAnim = 0x1AEB962Eu; endAnim = 0xC1F561A7u; igcSequence = 0xBC0D6A9Du;
     } else {
-        startAnim = 0x6B54CFC9u; endAnim = 0x13064602u; igcAnim = 0xABD233D4u;
+        startAnim = 0x6B54CFC9u; endAnim = 0x13064602u; igcSequence = 0xABD233D4u;
     }
     b->BlendGlowTo(0.0f);
     b->SetCamera(0.0f, kCamera_Default, false);
@@ -961,11 +1103,74 @@ bool MKPhaseTowerShake::Query17() const { return GetState(0) == 1; }
 // @func 0x0031AEA4 MKPhaseTowerShake::IsDone
 bool MKPhaseTowerShake::IsDone() { return GetState(0) == 4; }
 
-// TODO(0x0031AF50 MKPhaseTowerShake::UpdatePhase)
+// @func 0x0031AF50 MKPhaseTowerShake::UpdatePhase
+// State 1: the start clip (a player leaving the fight area cancels to the
+// idle phase); 2: the shake cut scene, then idle; 3: the end clip.
 bool MKPhaseTowerShake::UpdatePhase(float dt)
 {
     (void)dt;
-    return true;
+    MegaKnight* b = boss;
+    const bool playerInFight = DelayedStateGet(b->tracking.fightActive) != 0;
+    auto toIdle = [&]() {
+        if (MegaKnightPhase* idle = b->phases[kMKPhase_Idle]) {
+            b->SwitchPhase(kMKPhase_Idle);
+            static_cast<MKPhaseIdle*>(idle)->duration = 0.5f;
+            b->SetCamera(1.0f, 0, false);
+        }
+        SetState(0, 4);
+        return false;
+    };
+    switch (GetState(0)) {
+    case 1:
+        if (!MKClipDone(b)) {
+            if (playerInFight)
+                return true;
+            return toIdle();
+        }
+        SetState(0, 2);
+        return false;
+    case 2:
+        if (TimeInState(0) == 0.0f) {
+            // The cut scene casts the player's character variant.
+            const entity::Entity* player = MKPlayerCharacter();
+            const bool variant = (player->classBits & entity::kClass_20) != 0;
+            const MKSequenceBinding bindings[2] = {
+                {0x91FAB2C5u, variant ? 0xFEE2E46Au : 0x00014120u},
+                {0xAA90B7DDu, variant ? 0x7411A023u : 0u},
+            };
+            const uint32_t sequence = igcSequence;
+            b->ClearArmMarkers();
+            b->ResetRopes();
+            for (entity::Entity* r : b->ropes)
+                if (r)
+                    MKRopeRelease(r);
+            MKQueueSequenceBound(sequence, bindings, 2);
+            return true;
+        }
+        if (MKFrameFrozen() || MKSequenceQueued(igcSequence))
+            return true;
+        b->ResetRopes();
+        b->SetCamera(0.0f, 0x001EFED1u, true);
+        {
+            MegaKnightTracking& t = b->tracking;
+            t.state220.Force(1);
+            t.fightActive.Force(0);
+            t.state250.Force(0);
+            t.onArm[0].Force(0);
+            t.onArm[1].Force(0);
+            t.onArm[2].Force(0);
+        }
+        return toIdle();
+    case 3:
+        if (TimeInState(0) == 0.0f)
+            b->PlayAnim(endAnim, 1.0f, false);
+        if (!MKClipDone(b))
+            return true;
+        SetState(0, 4);
+        return false;
+    default:
+        return true;
+    }
 }
 
 } // namespace gameplay

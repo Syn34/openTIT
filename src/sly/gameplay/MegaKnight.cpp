@@ -6,9 +6,16 @@
 #include "ape/math/ApeBounds.h"
 #include "ape/world/ApeObj.h"
 #include "ape/world/ApeRegions.h"
+#include "ape/world/ApeSkeleton.h"
+#include "sly/entity/ScriptedEntity.h"
 #include "sly/camera/CameraModes.h"
 #include "sly/entity/GameCamera.h"
+#include "sly/game/GameEvent.h"
+#include "sly/game/GameScripts.h"
+#include "sly/game/hud/HudManager.h"
+#include "sly/entity/PhysicsHooks.h"
 #include "sly/game/SpawnManager.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/gameplay/GameplayWorld.h"
 #include "sly/gameplay/MegaKnightHooks.h"
 #include "sly/tuning/MegaKnightDragonTuning.h"
@@ -55,6 +62,84 @@ void MegaKnightObjectPair::Show(bool on, bool first)
     Apply(first ? 0 : 1, true);
 }
 
+
+// ===========================================================================
+// Floor ripple
+
+// @func 0x0030419C MegaKnightFloorRipple::Init
+void MegaKnightFloorRipple::Init(MegaKnight* owner, uint32_t entityName)
+{
+    boss = owner;
+    if (entity::Entity* found = entity::FindEntity(entityName))
+        entity = (found->classBits & 0x4) ? found : nullptr;
+    if (!entity || !entity->object)
+        return;
+    for (ape::world::ApeObj* ring = entity->object->GetFirstChild(); ring; ring = ring->GetNextSibling())
+        rings.PushBack(ring);
+}
+
+// @func 0x0030C5C8 MegaKnightFloorRipple::HeightAt
+// The rings are sorted outwards: the first one within 1.5 units of the
+// target's distance from the centre decides.
+float MegaKnightFloorRipple::HeightAt(const entity::Entity* target) const
+{
+    if (!target)
+        return 0.0f;
+    const ape::Vec3& p = target->transform.translation;
+    if (p.x == 0.0f && p.y == 0.0f && p.z == 0.0f)
+        return 0.0f;
+    const float radius = std::sqrt(p.x * p.x + p.z * p.z);
+    for (uint32_t i = 0; i < rings.Count(); ++i) {
+        const ape::Vec3& r = rings[i]->GetWorld().translation;
+        const float ringRadius = std::sqrt(r.x * r.x + r.y * r.y + r.z * r.z);
+        if (std::fabs(ringRadius - radius) <= 1.5f)
+            return r.y < p.y ? 0.0f : r.y;
+        if (radius < ringRadius)
+            return 0.0f;
+    }
+    return 0.0f;
+}
+
+// @func 0x0030C6F8 MegaKnightFloorRipple::Update
+void MegaKnightFloorRipple::Update(float dt)
+{
+    static const ape::Vec3 kUp = {0.0f, 1.0f, 0.0f, 0.0f};   // console global 0x01164B60
+    if (!boss || !entity)
+        return;
+    cooldown -= dt;
+    if (cooldown < 0.0f)
+        cooldown = 0.0f;
+
+    ape::ApeTArray<entity::Entity*>& spawned = boss->spawned;
+    for (int i = 0; i < int(spawned.Count()); ++i) {
+        entity::Entity* e = spawned[uint32_t(i)];
+        if (HeightAt(e) <= 0.0f)
+            continue;
+        e->Release(false);
+        if (e && (e->classBits & entity::kClass_20))
+            MKRippleKnock(e);
+        auto* scripted = (e->classBits & 0x2) ? static_cast<entity::ScriptedEntity*>(e) : nullptr;
+        scripted->Damage(scripted->maxHealth, nullptr, 0);
+        spawned.RemoveAtSwap(uint32_t(i));
+        --i;
+    }
+
+    entity::Entity* player = MKPlayerCharacter();
+    const float height = HeightAt(player);
+    if (height <= 0.0f || cooldown != 0.0f)
+        return;
+    float t = height / g_megaKnightFloorRippleMaxHeight.Get();
+    if (1.0f - t < 0.0f)
+        t = 1.0f;
+    if (t < 0.0f)
+        t = 0.0f;
+    const float impulse = g_megaKnightFloorRippleImpulseStr.Get() * t;
+    if (player && player->IsAlive() && !static_cast<entity::ScriptedEntity*>(player)->IsDead() &&
+        g_megaKnightFloorRippleDamageEnabled.Get()) {
+        boss->HurtPlayer(boss, 0, g_megaKnightFloorRippleDamage.Get(), dt, kUp, impulse);
+        cooldown = g_megaKnightFloorRippleHitCooldown.Get();
+    }
+}
 
 // ===========================================================================
 // Camera controller
@@ -176,6 +261,9 @@ void MegaKnightStampManager::Reset()
     Clear();
 }
 
+// TODO(0x0030B6D8 MegaKnightStampManager::Update)
+void MegaKnightStampManager::Update(float dt) { (void)dt; }
+
 void MegaKnightStampManager::ClearPending()
 {
     for (uint32_t i = 0; i < pending.Count(); ++i)
@@ -220,7 +308,7 @@ constexpr uint32_t kBossPlatform_Idle = 0x0590D9BBu;
 constexpr uint32_t kBossPlatform_Full = 0xD6E3A3F3u;
 
 // A script instance bound to `object` through the object variable 0x0027469E.
-ape::ApeAnimScriptInstance* StartObjectScript(uint32_t scriptName, ape::world::ApeObj* object)
+ape::ApeAnimScriptInstance* StartPlatformScript(uint32_t scriptName, ape::world::ApeObj* object)
 {
     ape::ApeAnimScript* found = ape::ApeAnimScriptLibrary::FindScriptAnywhere(scriptName, 0, true);
     if (!found)
@@ -263,8 +351,8 @@ MegaKnightPlatform::MegaKnightPlatform(MegaKnight* owner)
         if (height <= 0.0f)
             height = 1.0f;
     }
-    scriptA = StartObjectScript(kScript_PlatformA, object);
-    scriptB = StartObjectScript(kScript_PlatformB, object);
+    scriptA = StartPlatformScript(kScript_PlatformA, object);
+    scriptB = StartPlatformScript(kScript_PlatformB, object);
 }
 
 MegaKnightPlatform::~MegaKnightPlatform()
@@ -280,6 +368,10 @@ MegaKnightPlatform::~MegaKnightPlatform()
 }
 
 // @func 0x00308F5C MegaKnightPlatform::Reset
+// TODO(0x0030A53C MegaKnightPlatform::Update): moves the platform along the
+// arms and runs the laser hits (vector code).
+void MegaKnightPlatform::Update(float dt) { (void)dt; }
+
 void MegaKnightPlatform::Reset(bool full)
 {
     field_40 = 0.0f;
@@ -398,7 +490,7 @@ void MegaKnight::PhaseEventA()
 {
     if (MegaKnightPhase* current = CurrentPhase())
         current->OnEventA();
-    gameplay::ShowButtonHint(0xEB4F48A0u);
+    sly::StartObjectScript(0xEB4F48A0u, nullptr, 0, true);
 }
 
 // @func 0x0030C3F0 MegaKnight::AddMarkedTarget
@@ -508,6 +600,286 @@ void MegaKnight::ClearArmMarkers()
             object->Release(true);
         retiredArmObjects.PopBack();
     }
+}
+
+// @func 0x0030F798 MegaKnight::Update
+bool MegaKnight::Update(float dt)
+{
+    if (!ActorEntity::Update(dt))
+        return false;
+    if (!field_298)
+        return true;
+    if (script3AC)
+        script3AC->Update(dt);
+    for (ape::ApeAnimScriptInstance* script : scripts3B0)
+        if (script)
+            script->Update(dt);
+    UpdateTracking(dt);
+    if (!UpdatePhases(dt))
+        return true;
+    CheckShoulderReach();
+
+    // Voice lines: off the platform for a while, the fight is on, standing
+    // too close to the boss.
+    if (!DelayedStateGet(tracking.state220)) {
+        offPlatformTimer = g_megaKnightTimeOffPlatformVODelay.Get();
+    } else {
+        offPlatformTimer -= dt;
+        if (offPlatformTimer < 0.0f) {
+            sly::StartObjectScript(0x9B7C880Au, nullptr, 0, true);
+            offPlatformTimer = g_megaKnightTimeOffPlatformVODelay.Get();
+        }
+    }
+    if (DelayedStateGet(tracking.fightActive) && !fightLinePlayed) {
+        sly::StartObjectScript(0x5B7849AFu, nullptr, 0, true);
+        fightLinePlayed = true;
+    }
+    const entity::Entity* player = MKPlayerCharacter();
+    const ape::Vec3& p = player->transform.translation;
+    if (p.x * p.x + p.z * p.z + 0.0f <= g_megaKnightTooClosetoBossVODistSqr.Get() && !tooCloseLinePlayed) {
+        sly::StartObjectScript(0xBE8FED4Cu, nullptr, 0, true);
+        tooCloseLinePlayed = true;
+    }
+
+    // The shoulder targets of fallen arms go; the heart shows once both
+    // outer arms are down. NOTE: while an arm stands the console shows a
+    // hidden heart and hides a visible one (as compiled).
+    if (!armIntact[0])
+        pair32C.Show(false, secondHalf);
+    if (!armIntact[2])
+        pair338.Show(false, secondHalf);
+    const bool heartVisible = (heartTarget->flags & entity::kEnt_Visible) != 0;
+    if ((!armIntact[0] && !armIntact[2]) || !heartVisible) {
+        if (!heartVisible)
+            heartTarget->SetVisible(true, true, true, true);
+    } else {
+        heartTarget->SetVisible(false, true, true, true);
+    }
+
+    platform->Update(dt);
+    if (lookAt.rate != g_megaKnightIKBlend.Get())
+        lookAt.rate = g_megaKnightIKBlend.Get();
+    lookAt.Update(dt);
+    glow.Update(dt);
+    floorRipple.Update(dt);
+    if (stampManager)
+        stampManager->Update(dt);
+    if (cameraController)
+        cameraController->Update(dt);
+    return true;
+}
+
+// TODO(0x0030EEE0 MegaKnight::UpdateTracking)
+void MegaKnight::UpdateTracking(float dt) { (void)dt; }
+
+// @func 0x003117E0 MegaKnight::OnArmDestroyed
+void MegaKnight::OnArmDestroyed(uint32_t arm)
+{
+    if (arm < 3)
+        armIntact[arm] = false;
+    if (arm == 1)
+        RemoveMarkedTarget(heartTarget);
+    if (arm == 0 || arm == 2) {
+        ++hitCount;
+        if (!secondHalf) {
+            if (hitCount == 1)
+                sly::StartObjectScript(0x533075E0u, nullptr, 0, true);
+            else if (hitCount == 2)
+                sly::StartObjectScript(0x533075E1u, nullptr, 0, true);
+        } else {
+            if (parts && parts->Count() > 1) {
+                void* body = (*parts)[arm == 2 ? 0u : 1u].body;
+                if (body && entity::RigidBodyInWorld(body))
+                    entity::RigidBodyRemoveFromWorld(body);
+            }
+            if (hitCount == 1)
+                sly::StartObjectScript(0x4B7ED081u, nullptr, 0, true);
+            else if (hitCount == 2)
+                sly::StartObjectScript(0x4B7ED082u, nullptr, 0, true);
+        }
+    }
+    if (entity::Entity* e = field_314[arm])
+        hud::PlayHudClip(static_cast<anim::AnimController*>(e->animController), 0x451F0E5Bu, 1.0f, false);
+    if (!armIntact[0] && !armIntact[2] && field_314[1])
+        hud::PlayHudClip(static_cast<anim::AnimController*>(field_314[1]->animController), 0x798D3062u, 1.0f, false);
+    SelectBehavior();
+}
+
+// @func 0x0030D5C0 MegaKnight::CheckShoulderReach
+void MegaKnight::CheckShoulderReach()
+{
+    const float reachSq = g_megaKnightFinishingMoveRadius.Get() * g_megaKnightFinishingMoveRadius.Get();
+    auto inReach = [&](int bone) {
+        ape::Matrix34 m = ape::world::kWorldIdentity;
+        BoneWorldTransform(bone, m);
+        const ape::Vec3& a = tracking.anchor;
+        const float dx = a.x - m.translation.x, dy = a.y - m.translation.y, dz = a.z - m.translation.z;
+        return dx * dx + dy * dy + dz * dz <= reachSq;
+    };
+    int side = -1;
+    bool found = false;
+    if (ropes[0] && MKRopeHeld(ropes[0]) && inReach(field_3BC)) {
+        side = 0;
+        found = true;
+    }
+    if (ropes[2] && MKRopeHeld(ropes[2]) && inReach(field_3C0))
+        side = 2;
+    else if (side == -1 || !found)
+        return;
+
+    MKPlayerBeginFinishingMove(MKPlayerCharacter());
+    if (phases[kMKPhase_ShoulderHit])
+        static_cast<MKPhaseShoulderHit*>(phases[kMKPhase_ShoulderHit])->side = side;
+    const MegaKnightObjectPair& pair = side == 0 ? pair32C : pair338;
+    RemoveMarkedTarget(pair.objects[0]);
+    RemoveMarkedTarget(pair.objects[1]);
+    ResetRopes();
+    SwitchPhase(kMKPhase_ShoulderHit);
+}
+
+// @func 0x0030FB94 MegaKnight::PostUpdate
+bool MegaKnight::PostUpdate(float dt)
+{
+    return ActorEntity::PostUpdate(dt);
+}
+
+// @func 0x0030EBF0 MegaKnight::UpdatePhases
+bool MegaKnight::UpdatePhases(float dt)
+{
+    if (CurrentPhaseIndex() != kMKPhase_None) {
+        if (MegaKnightPhase* phase = CurrentPhase()) {
+            phase->Update(dt);
+            if (phase == CurrentPhase() && phase->IsDone()) {
+                skipBlend = true;
+                SwitchPhase(ChooseNextPhase());
+            }
+        }
+    }
+    // Phases that are not running keep playing their "Done" / "Spawn" states.
+    for (uint32_t i = 0; i < kMKPhase_Count; ++i) {
+        MegaKnightPhase* phase = phases[i];
+        if (!phase || int(i) == CurrentPhaseIndex())
+            continue;
+        ape::ApeAnimScriptInstance* script = phase->script;
+        if (script && script->GetState()) {
+            const uint32_t state = script->GetState()->GetNameHash();
+            if (state == 0x00201B82u /* "Done" */ || state == 0x04B6FB5Bu /* "Spawn" */)
+                script->Update(dt);
+        }
+    }
+    if (!resetRequested)
+        return true;
+    if (!secondHalf)
+        ResetFight();
+    else
+        RestartFight();
+    return false;
+}
+
+namespace {
+
+// The arena part both resets share (inline twice on the console).
+void ResetArena(MegaKnight* boss, uint32_t eventName)
+{
+    MegaKnightPlatform* platform = boss->platform;
+    platform->field_40 = 0.0f;
+    platform->Reset(false);
+    boss->stampManager->Reset();
+    for (uint32_t i = 0; i < boss->spawned.Count(); ++i) {
+        entity::Entity* e = boss->spawned[i];
+        e->Release(false);
+        if (e->IsAlive())
+            e->Release(true);
+    }
+    boss->spawned.Clear();
+    boss->ResetRopes();
+    for (entity::Entity* rope : boss->ropes)
+        if (rope)
+            MKRopeRelease(rope);
+    boss->ClearArmMarkers();
+    if (eventName == 0x5850F805u) {
+        for (entity::Entity* rope : boss->ropes)
+            if (rope)
+                MKSetInteractionState(rope, 4);
+    }
+    boss->field_298 = false;
+    while (boss->markedTargets.Count() != 0)
+        boss->RemoveMarkedTarget(boss->markedTargets[0]);
+    boss->heartTarget->SetVisible(false, true, true, true);
+    if (MegaKnightCamera* camera = boss->cameraController) {
+        camera->SetCamera(0.0f, nullptr, true);
+        MKCameraRemoveMode(camera->gameCamera, camera->mode);
+    }
+    GameEvent event;
+    InitEvent1C(event, eventName, 0, 0);
+    levels::GameWorldPostEvent(0, event);
+}
+
+} // namespace
+
+// @func 0x0030D8E0 MegaKnight::ResetFight
+void MegaKnight::ResetFight()
+{
+    ResetArena(this, 0x58516C64u);
+}
+
+// @func 0x0030DD50 MegaKnight::RestartFight
+void MegaKnight::RestartFight()
+{
+    for (uint32_t i = 0; i < 5; ++i) {
+        if (entity::Entity* e = entity::FindEntity(0x7001C018u + i)) {
+            e->SetVisible(false, true, true, true);
+            e->Release(true);
+        }
+    }
+    if (MegaKnightPhase* idle = phases[kMKPhase_Idle]) {
+        SwitchPhase(kMKPhase_Idle);
+        static_cast<MKPhaseIdle*>(idle)->duration = g_megaKnightStartIdle.Get();
+        SetCamera(1.0f, 0, false);
+    }
+    ResetArena(this, 0x5850F805u);
+}
+
+// @func 0x003059EC MegaKnight::BindTracking
+void MegaKnight::BindTracking()
+{
+    tracking.camera = MKGameCamera();
+    tracking.bone = FindBone(0x0021C5E0u);
+}
+
+// @func 0x0030D434 MegaKnight::BoneWorldTransform
+void MegaKnight::BoneWorldTransform(int bone, ape::Matrix34& out) const
+{
+    const ape::world::ApeSkeletonBone* b = GetBone(bone);
+    if (!b)
+        return;
+    ape::Matrix34 model = *b->model;
+    ape::world::Matrix34Mul(out, model, object->GetWorld());
+}
+
+// @func 0x0030FC90 MegaKnight::SelectBehavior
+void MegaKnight::SelectBehavior()
+{
+    const uint32_t base = secondHalf ? 0x0993D8AAu    // "Phase1Arm0"
+                                     : 0x09A1F02Bu;   // "Phase2Arm0"
+    const uint32_t armsDown = (armIntact[0] ? 1u : 0u) + (armIntact[2] ? 1u : 0u);
+    behavior = nullptr;
+    const ape::ApeTArray<MegaKnightBehavior*>& list = static_cast<const MegaKnightDef*>(def)->behaviors;
+    for (uint32_t i = 0; i < list.Count(); ++i) {
+        if (list[i]->nameHash == base + armsDown) {
+            behavior = list[i];
+            break;
+        }
+    }
+    behaviorAction = 0;
+}
+
+// TODO(0x00309440 MegaKnight::HurtPlayer): damage, knock-back and hit
+// reaction of the player (vector code).
+void MegaKnight::HurtPlayer(entity::Entity* source, uint32_t flags, float damage, float dt,
+                            const ape::Vec3& direction, float impulse)
+{
+    (void)source; (void)flags; (void)damage; (void)dt; (void)direction; (void)impulse;
 }
 
 // TODO(0x0030E1E0 MegaKnight::ChooseNextPhase): runs the behaviour lists

@@ -22,13 +22,19 @@ ape::ApeRefCounted* MKObjectScriptRef(ape::world::ApeObj*) { return nullptr; }
 
 namespace sly {
 namespace gameplay {
-void* MKFindSplineDef(uint32_t) { return nullptr; }
+ape::world::ApeSplineInstance* MKFindSplineInstance(uint32_t) { return nullptr; }
 void MKQueueSequence(uint32_t) {}
 } // namespace gameplay
 } // namespace sly
 
 namespace sly {
 namespace gameplay {
+void MKPlayerBeginFinishingMove(entity::Entity*) {}
+void MKQueueSequenceBound(uint32_t, const MKSequenceBinding*, size_t) {}
+bool MKFrameFrozen() { return false; }
+bool MKSequenceQueued(uint32_t) { return false; }
+entity::GameCamera* MKGameCamera() { return nullptr; }
+void MKRippleKnock(entity::Entity*) {}
 void MKCameraRemoveMode(entity::GameCamera*, void*) {}
 void MKClearPlayerTargetingFlag(entity::Entity*) {}
 void MKClearCharacterHooks(entity::Entity*) {}

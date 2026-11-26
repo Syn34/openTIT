@@ -5,11 +5,13 @@
 
 #include "ape/math/ApeMath.h"
 
+#include <cstddef>
 #include <cstdint>
 
 namespace ape { class ApeRefCounted; }
 namespace ape::world { class ApeObj; }
 
+namespace ape::world { class ApeSplineInstance; }
 namespace sly {
 namespace entity { class Entity; class GameCamera; }
 namespace gameplay {
@@ -49,10 +51,16 @@ ape::ApeRefCounted* MKObjectScriptRef(ape::world::ApeObj* object);
 
 namespace sly {
 namespace gameplay {
-// Spline definition by name (ApeTDefList<ApeSplineDef>::Find on 0x00F8F158).
-void* MKFindSplineDef(uint32_t nameHash);
+// Spline instance of the level by name (instance list 0x00F8F158).
+ape::world::ApeSplineInstance* MKFindSplineInstance(uint32_t nameHash);
 // 0x0046C3B8 on the game world: queues the cut-scene sequence `name`.
 void MKQueueSequence(uint32_t name);
+// Same with variable bindings (built through 0x0049FE90).
+struct MKSequenceBinding {
+    uint32_t variable;
+    uint32_t value;
+};
+void MKQueueSequenceBound(uint32_t name, const MKSequenceBinding* bindings, size_t count);
 } // namespace gameplay
 } // namespace sly
 
@@ -63,6 +71,18 @@ namespace gameplay {
 // the platform is deleted by the boss itself).
 // The game camera stops using a mode it holds (GameCamera::HasTarget 0x000FC5DC
 // then 0x000FBB88 with -1).
+// Player character: its +0x17C interface, slot 3 (called when it reaches a
+// shoulder from a rope). NOTE: meaning assumed.
+void MKPlayerBeginFinishingMove(entity::Entity* player);
+// Game world +0x128214: frame time is frozen.
+bool MKFrameFrozen();
+// 0x0046C750 on the game world: sequence `name` is queued or running.
+bool MKSequenceQueued(uint32_t name);
+// The game camera entity (game world +0x1281E0).
+entity::GameCamera* MKGameCamera();
+// Floor ripple: entities of class bit 0x20 caught by a raised ring (0x001FB640
+// with their position).
+void MKRippleKnock(entity::Entity* entity);
 void MKCameraRemoveMode(entity::GameCamera* camera, void* mode);
 // Player targeting gadget byte +0x922 bit 3 (cleared when the boss goes).
 void MKClearPlayerTargetingFlag(entity::Entity* player);
