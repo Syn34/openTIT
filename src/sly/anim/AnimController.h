@@ -18,6 +18,7 @@
 #include <cstdint>
 
 namespace ape::world { class ApeObj; }
+namespace ape::xml { class XmlElement; }
 
 namespace sly {
 namespace anim {
@@ -157,16 +158,39 @@ struct AnimTreeLayer {
         kKind_Plain = 0xFF45EF93,   // NOTE: name unknown
         kKind_Blend = 0x19A18BC2,   // NOTE: name unknown
     };
-    uint32_t anim = 0;            // +0x00
-    uint32_t kind = 0;            // +0x04 Kind
-    uint32_t field_08 = 0;
-    uint32_t weightList = 0;      // +0x0C bone weight list name (blend layers)
-    bool holdLastFrame = false;   // +0x10
+    uint32_t anim = 0;            // +0x00 "name"
+    uint32_t kind = 0;            // +0x04 Kind (the element's name)
+    float alpha = 0.0f;           // +0x08 "Alpha"
+    uint32_t weightList = 0;      // +0x0C "ChannelMap": bone weight list name (blend layers)
+    bool holdLastFrame = false;   // +0x10 attribute 0xEDD6EBDF (blend layers)
 };
 struct AnimTree {
     uint32_t count = 0;
     AnimTreeLayer* layers = nullptr;
 };
+
+// A blend map (registry 0x0106BBB4): cross-fade settings between pairs of
+// clips (<transition from= to= blend= BlendType=>).
+struct AnimBlendTransition {
+    enum Curve : uint32_t { kCurve_Smooth = 0, kCurve_Linear = 1, kCurve_Slow = 2 };
+    uint32_t from = 0;            // +0x00 "from"
+    uint32_t to = 0;              // +0x04 "to"
+    float blend = 0.0f;           // +0x08 "blend" (seconds)
+    uint32_t curve = 0;           // +0x0C "BlendType" (Curve)
+};
+struct AnimBlendMap {
+    uint32_t count = 0;
+    AnimBlendTransition* transitions = nullptr;
+};
+
+// Parsers of the <Animation> block of the entity files (0x00347F20,
+// 0x003482F8, 0x00348698): each builds a record with one entry per child
+// element and registers it under the element's "name". Null without a name
+// or without children.
+AnimTree* ParseAnimTree(ape::xml::XmlElement* root, ape::xml::XmlElement* element);
+AnimBlendMap* ParseAnimBlendMap(ape::xml::XmlElement* root, ape::xml::XmlElement* element);
+struct BoneWeightList;
+BoneWeightList* ParseBoneWeightList(ape::xml::XmlElement* root, ape::xml::XmlElement* element);
 
 // -- module state ---------------------------------------------------------------
 

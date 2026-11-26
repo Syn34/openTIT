@@ -156,16 +156,15 @@ void ScriptInstanceSetState(void* instance, uint32_t stateName)
 
 // TODO(0x0036196C LoadHudDefs)
 void LoadHudDefs(ape::xml::XmlElement*, ape::xml::XmlElement*) {}
-// TODO(0x00288728 LoadAnimationDefs)
-void LoadAnimationDefs(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) {}
-// TODO(0x002AD4F4 LoadDefsE452FC60)
+// LoadAnimationDefs (0x00288728) lives in sly/anim/AnimDefs.cpp.
+// The loaders of elements 0xE452FC60 and 0x1F7B9E20 read nothing (each
+// returns the scope it is given).
+// @func 0x002AD4F4 LoadDefsE452FC60
 void LoadDefsE452FC60(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) {}
-// TODO(0x00274CDC LoadCombatDefs)
-void LoadCombatDefs(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) {}
-// TODO(0x002AF5F0 LoadDefs1F7B9E20)
+// LoadCombatDefs (0x00274CDC) lives in sly/components/CombatDefs.cpp.
+// @func 0x002AF5F0 LoadDefs1F7B9E20
 void LoadDefs1F7B9E20(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) {}
-// TODO(0x002C9D0C LoadShootingDefs)
-void LoadShootingDefs(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) {}
+// LoadShootingDefs (0x002C9D0C) lives in sly/components/CombatDefs.cpp.
 // TODO(0x000D5C00 LoadSpawnDefs)
 void LoadSpawnDefs(ape::xml::XmlElement*, ape::xml::XmlElement*) {}
 

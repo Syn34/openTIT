@@ -16,17 +16,34 @@ namespace sly::camera { class CameraMode; }
 namespace sly {
 namespace entity {
 
+// The fields an actor definition part shares with its description (the
+// 0xA0-byte records of ActorDef::Part / ActorPartDesc around the word at
+// +0x20). NOTE: names follow use where known; the attribute names of the
+// rest are not in the executable.
+struct ActorPartFields {
+    ape::Vec3 offset{};             // +0x00 attribute 0x63662D61
+    ape::Vec3 field_10{};           // +0x10 attribute 0x1B89D5F3
+    uint32_t field_24 = 0;          // +0x24 hash 0x75849CFE
+    ape::Vec3 field_30{};           // +0x30 (with partFlags bit 28)
+    // +0x40 with partFlags bit 28: attributes 0x46206B53, 0xE3E14C49,
+    // 0x471281EF, 0x9538DE99, 0x9533AB5A, 0x040C1D75, 0x69FE7274.
+    float field_40[7] = {1.0f, 0.0f, -1.0f, -1.0f, -1.0f, 1.0f, -1.0f};
+    // +0x60 attributes 0x29F45D46, 0xA1FDE21D, 0xE2154ADB, 0x8933D0E0,
+    // 0x0023FEF4 (default: a global set at start-up), 0xB89310FD.
+    float field_60[6] = {-1.0f, -1.0f, -1.0f, -1.0f, 0.0f, 1.0f};
+    uint32_t field_78 = 0;          // +0x78 hash 0x725B9AF2
+    uint32_t partFlags = 0;         // +0x7C bits 28-31 (ActorDef::PartFlags)
+    ape::Vec3 aimOffset{};          // +0x80 attribute 0xCC0D6864
+    uint32_t navMode = 0;           // +0x90 hash 0x5B1E4A49 (0 = the definition's mode)
+};
+
 // One part of an actor definition as the loader describes it (0xA0 bytes):
-// the same record as ActorDef::Part with the name of the Havok body
-// template where the part keeps its body.
-struct ActorPartDesc {
-    uint8_t field_00[0x20];
-    const char* bodyName;       // +0x20 Havok rigid body of the level's physics data
-    uint8_t field_24[0x58];
-    uint32_t partFlags;         // +0x7C
-    ape::Vec3 aimOffset;        // +0x80
-    uint32_t navMode;           // +0x90
-    uint8_t field_94[0xC];
+// the part's fields with the name of the Havok body template where the
+// part keeps its body.
+struct ActorPartDesc : ActorPartFields {
+    const char* bodyName = nullptr; // +0x20 "colObjName": rigid body of the level's physics data
+    // A part is described by a body name or an offset.
+    bool IsDescribed() const;
 };
 
 // Description of actor definitions (ScriptedEntityDefDesc + 0x64 bytes).
@@ -55,17 +72,8 @@ struct ActorDefDesc : ScriptedEntityDefDesc {
 // records, each holding a Havok rigid body at +0x20.
 class ActorDef : public ScriptedEntityDef {
 public:
-    struct Part {
-        uint8_t field_00[0x20];
-        void* havokObject;          // +0x20
-        uint8_t field_24[0x58];
-        uint32_t partFlags;         // +0x7C PartFlags
-        // +0x80 the first part's offset is where the actor is aimed at
-        // (slot 71). NOTE: role for the other parts unknown.
-        ape::Vec3 aimOffset;
-        // Nav obstacle mode of the part (0 = the definition's mode).
-        uint32_t navMode;           // +0x90
-        uint8_t field_94[0xC];
+    struct Part : ActorPartFields {
+        void* havokObject = nullptr;    // +0x20 Havok rigid body
     };
     // Copies the description and builds a Havok body for every part
     // (0x000C79C0, thunk 0x000E27FC).
@@ -124,15 +132,24 @@ public:
 // (vtable 0x00B15970; constructor 0x001AD7F0).
 class SoundActorDef : public ActorDef {
 public:
+    explicit SoundActorDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~SoundActorDef() override;
-    // Per slot: a sound to play when it starts (non-zero name).
+    // Per slot: a sound to play when it starts (non-zero name) and the
+    // slot's default duration (negative: none).
     struct SlotSound {
         uint32_t name = 0;
-        uint32_t field_04 = 0;
+        float duration = -1.0f;
     };
     SlotSound slotSounds[7];        // 0x130
     ape::Vec3 soundOffset{};        // 0x170 where the sounds play, local to the actor
+    uint32_t field_180 = 0;         // 0x180 hash 0x3A15BFAB
+    uint32_t field_184 = 0;         // 0x184 hash 0xC03F596F
     float durationScale = 1.0f;     // 0x188 applied with SoundActor::kSeq_Scaled
+    uint8_t soundFlags = 0;         // 0x18C bit 7: attribute 0xBD75D672
+
+protected:
+    // NOTE: for subclasses whose console constructors are not ported yet.
+    SoundActorDef() = default;
 };
 
 // Definition of InteractivePropA (vtable 0x00B17DB0, 0x280 bytes).
@@ -150,6 +167,7 @@ public:
 // NOTE: only the flag its overrides read is modelled.
 class InteractivePropAUseDef : public ActorDef {
 public:
+    explicit InteractivePropAUseDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~InteractivePropAUseDef() override;
     uint32_t sharedUse = 0;         // 0x130 non-zero: several users at once
 };
@@ -338,12 +356,17 @@ public:
 // Definition of SearchlightActor (vtable 0x00B18230; stand-in).
 class SearchlightDef : public ActorDef {
 public:
+    explicit SearchlightDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     // @func 0x00757308 SearchlightDef::~SearchlightDef
     // @func 0x00757338 SearchlightDef::~SearchlightDef (deleting)
     ~SearchlightDef() override = default;
     uint8_t interactionNeeds[6] = {};   // 0x12E per interaction kind
     ape::Vec3 cameraOffset{};           // 0x140 camera position relative to the light
-    ape::Vec4 field_150{};              // 0x150 NOTE: read by the spotlight camera constructor
+    // 0x150 rotation (quaternion) from the Euler angles of attribute
+    // 0x91B5F872. NOTE: read by the spotlight camera constructor.
+    ape::Vec4 field_150{0.0f, 0.0f, 0.0f, 1.0f};
+    uint32_t field_160[4] = {};         // 0x160 hashes 0xC8168A44, 0x942EEC95, 0x7D68F822, 0x4C4DB3D0
+    float field_170 = 1.0f;             // 0x170 attribute 0x35F1E76E
 };
 
 // Player-steered searchlight (vtable 0x00B18260, 0x1D0 bytes); the spotlight
@@ -530,14 +553,16 @@ public:
 // Definition of SoundActorB16B48. NOTE: only the options its timers read.
 class SoundActorB16B48Def : public SoundActorDef {
 public:
+    // The sound actor fields, then the two lists and the options (0x001C1D4C).
+    explicit SoundActorB16B48Def(const struct SoundActorB16B48DefDesc& desc);
     ~SoundActorB16B48Def() override;
-    ape::ApeTArray<void*> field_190;   // 0x190 NOTE: element type unknown
+    ape::ApeTArray<uint32_t> lightNames; // 0x190 names of the light objects
     ape::ApeTArray<int32_t> bodyParts; // 0x1A4 part index of each light body
-    float field_1B8 = 0.0f;            // 0x1B8 placement default
-    bool restartWhenWaiting = false;   // 0x1BC
-    bool unlightOnSlot3 = false;       // 0x1BD
-    bool unlightOnSlot4 = false;       // 0x1BE
-    bool lightHasBodies = false;       // 0x1BF
+    float field_1B8 = -1.0f;           // 0x1B8 placement default (attribute 0x2DF33CE3)
+    bool restartWhenWaiting = false;   // 0x1BC attribute 0x45703A61
+    bool unlightOnSlot3 = true;        // 0x1BD attribute 0xB10A3CDE
+    bool unlightOnSlot4 = false;       // 0x1BE attribute 0x89D243B8
+    bool lightHasBodies = true;        // 0x1BF attribute 0x428E4540
 };
 
 // Sound actor with a two-way switch (vtable 0x00B16678; destructor

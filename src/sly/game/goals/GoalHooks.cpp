@@ -1,6 +1,8 @@
 // openTIT - TODO stubs for the goal module's outside calls (see GoalHooks.h).
 #include "sly/game/goals/GoalHooks.h"
 
+#include "sly/game/hud/HudType8000.h"
+
 #include "sly/game/goals/JobManager.h"
 #include "sly/game/SlyGame.h"
 #include "sly/gameplay/Minigame.h"
@@ -115,7 +117,11 @@ void* SpawnMousetrapHelper() { return nullptr; }
 void* GoalEntityParent(const void*) { return nullptr; }
 bool GoalEntityMarkerSuppressed(const void*) { return false; }
 bool GoalEntityAllowsMarker(const void*) { return false; }
-void HudSetFollowWarning(bool) {}
+void HudSetFollowWarning(bool on)
+{
+    if (hud::HudType8000* element = hud::HudType8000::FollowElement())
+        element->SetAlert(on);
+}
 bool GoalEntityPhotographable(const void*) { return false; }
 void GoalEntityAddRef(void*) {}
 void GoalEntityRelease(void*) {}
@@ -177,8 +183,7 @@ namespace sly {
 namespace goals {
 // TODO(0x00F8F154 +0x10 named object table)
 void* FindLevelTableObject(uint32_t name) { (void)name; return nullptr; }
-// TODO(0x0029F428 on the player's targeting component)
-void PlayerTargeting29F428(bool value) { (void)value; }
+void PlayerTargeting29F428(bool value) { hud::HudType8000::SetFollowElementBlocked(value); }
 // TODO(entity slot 16 / 0x00260C14)
 void EntityComponent16Set(void* entity, bool value) { (void)entity; (void)value; }
 } // namespace goals
