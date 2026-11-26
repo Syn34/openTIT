@@ -187,9 +187,9 @@ void InitSplineInstances()
 bool InitWorld()
 {
     // NOTE: the console also sizes the dirty root list (0x800 entries) and
-    // allocates the visibility table (0x01193004, EngineConfig +0x154
+    // allocates the draw record table (0x01193004, EngineConfig +0x154
     // entries of 0x80 bytes, default 0x1000); the port's containers grow on
-    // demand and the visibility table is not ported.
+    // demand and the record table is created on first use (ApeVisTable.h).
     InitLightDefs();
     InitGeomDefs();
     InitEmitterDefs();

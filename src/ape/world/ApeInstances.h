@@ -92,6 +92,8 @@ public:
     // @func 0x007A99F8 ApeRenderObj::SetFrameStamp
     void SetFrameStamp(uint32_t stamp) override { m_frameStamp[g_renderWriteBuffer & 1] = stamp; }
     void RemoveFromDynamicList();
+    // Copies the world transform into the draw record (ApeVisTable.h).
+    void SyncVisRecord();
     bool IsDynamic() const { return (m_flags141 & 0x02) != 0; }
     uint8_t GetDrawMode() const { return m_drawMode; }
 
@@ -187,6 +189,8 @@ class ApeGeomInstance : public ApeRenderObj {
 public:
     static constexpr uint32_t kInstanceType = kObjType_GeomInstance;
     ApeGeomInstance() : ApeRenderObj(kInstanceType) {}
+    // Gives the draw record back (ApeVisTable.h).
+    ~ApeGeomInstance() override;
     void Release() override;
     void SetDef(ApeDef* def) override;
     ApeObj* Clone(uint32_t flags) override;
@@ -222,6 +226,7 @@ class ApeEmitterInstance : public ApeRenderObj {
 public:
     static constexpr uint32_t kInstanceType = kObjType_EmitterInstance;
     ApeEmitterInstance() : ApeRenderObj(kInstanceType) {}
+    ~ApeEmitterInstance() override;
     void Release() override;
 };
 
