@@ -3,6 +3,13 @@
 
 #include "sly/gameplay/GameplayWorld.h"
 
+#include "sly/entity/Character.h"
+#include "sly/entity/Entity.h"
+#include "sly/game/SlyGame.h"
+#include "sly/game/goals/GoalHooks.h"
+#include "sly/game/hud/HudManager.h"
+#include "sly/game/hud/HudMeter.h"
+
 namespace sly {
 namespace gameplay {
 
@@ -99,6 +106,52 @@ void PenguinMontageMinigame::SetHudHidden(bool hidden) { Minigame::SetHudHidden(
 // @func 0x0077D220 PenguinMinigame::~PenguinMinigame
 // @func 0x0077EEE8 PenguinMinigame::~PenguinMinigame (deleting)
 PenguinMinigame::~PenguinMinigame() = default;
+
+namespace {
+// The interactable stands the penguin games share. NOTE: names unknown.
+constexpr uint32_t kPenguinStands[3] = {0xB225C998u, 0x928F4335u, 0xBA681640u};
+} // namespace
+
+// @func 0x003F61DC PenguinMinigame::Reset
+void PenguinMinigame::Reset()
+{
+    for (int i = 0; i < 3; ++i) {
+        standDisabled[i] = false;
+        entity::Entity* stand = entity::FindEntity(kPenguinStands[i]);
+        if (!stand || !usesStand[i])
+            continue;
+        entity::EntityComponent* interaction = entity::EntityInteraction(stand);
+        if (interaction && interaction->enabled) {
+            goals::HintInteractableSetEnabled(stand, false);
+            standDisabled[i] = true;
+        }
+    }
+    SlyGame* world = GetGame();
+    entity::Entity* player = world ? world->PlayerCharacter() : nullptr;
+    if (player && (player->classBits & entity::kClass_Character)) {
+        auto* character = static_cast<entity::Character*>(player);
+        character->ReleaseCullHandle();
+        character->EndScript19C();
+    }
+}
+
+// @func 0x003F606C PenguinMinigame::Slot21
+void PenguinMinigame::Slot21()
+{
+    for (int i = 0; i < 3; ++i) {
+        if (!standDisabled[i])
+            continue;
+        if (entity::Entity* stand = entity::FindEntity(kPenguinStands[i]))
+            goals::HintInteractableSetEnabled(stand, true);
+    }
+    if (keepMeterHidden)
+        return;
+    if (auto* meter = static_cast<hud::HudMeter*>(hud::Hud().meterB)) {
+        meter->SetActive(true);
+        meter->Refresh();
+        meter->Show();
+    }
+}
 
 // @func 0x0077EE98 PenguinMinigame::Slot22
 bool PenguinMinigame::Slot22() { return false; }
