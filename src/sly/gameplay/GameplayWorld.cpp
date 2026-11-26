@@ -52,7 +52,7 @@ ape::Vec3 EntityPosition(const WorldObject* entity) { return CharacterPosition(e
 WorldObject* FindWorldEntity(uint32_t nameHash) { return FindLevelInstance(nameHash); }
 int WorldEntityCount() { return 0; }
 WorldObject* WorldEntityAt(int) { return nullptr; }
-WorldObject* PlayerCharacter(int player) { return player == 0 && g_game ? g_game->playerObject : nullptr; }
+WorldObject* PlayerCharacter(int player) { return g_game ? reinterpret_cast<WorldObject*>(g_game->PlayerCharacter(player)) : nullptr; }
 int PlayerPadIndex(int player) { return player; }
 
 // -- game world ----------------------------------------------------------------
