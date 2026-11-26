@@ -11,6 +11,7 @@
 #include "sly/entity/EntityHooks.h"
 
 #include "ape/anim/ApeAnimScript.h"
+#include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/memory/ApeMem.h"
 #include "ape/world/ApeObj.h"
 #include "sly/camera/CameraHooks.h"
@@ -21,6 +22,8 @@
 #include "sly/entity/Character.h"
 #include "sly/entity/ActorVariants.h"
 #include "sly/entity/EntityHits.h"
+#include "sly/game/GameShellHooks.h"
+#include "sly/game/SlyGame.h"
 
 #include <cstring>
 
@@ -212,11 +215,6 @@ void SoundActor::SetActive(bool active)
     ActorEntity::SetActive(active);
 }
 
-namespace {
-// Slot names (0x00AD139C). NOTE: the strings are not known.
-constexpr uint32_t kSlotNames[7] = { 0xB9B6CE5Du, 0xCE7C29A3u, 0x8FA5922Du, 0xDCDF15C3u,
-                                     0x8B3C3A33u, 0x047DC27Cu, 0x3C8207B4u };
-} // namespace
 
 // @func 0x001AE6AC SoundActor::Release
 bool SoundActor::Release(bool kill)
@@ -274,7 +272,7 @@ void SoundActor::PlaySlot(int index, bool force)
         }
         if (animScript) {
             if (slotTimer)
-                slotTimer->duration = duration;
+                slotTimer->SetFloat(duration);
             SetSlotState(index, force);
         }
     }
@@ -1600,21 +1598,20 @@ bool Safe::Release(bool kill)
 {
     if (kill) {
         GameWorldDequeueSafeCallback(this);
-        audio::SoundNameRelease(sound248);
-        audio::SoundNameRelease(sound24C);
+        audio::SoundNameRelease(failSound);
+        audio::SoundNameRelease(openSound);
         for (int i = 0; i < 3; ++i) {
-            audio::SoundNameRelease(sounds250[i]);
-            audio::SoundNameRelease(sounds25C[i]);
+            audio::SoundNameRelease(tickSounds[i]);
+            audio::SoundNameRelease(solvedSounds[i]);
         }
-        if (script228) {
-            delete static_cast<ape::ApeAnimScriptInstance*>(script228);
-            script228 = nullptr;
-        }
+        delete script;
+        script = nullptr;
     }
     return ActorEntity::Release(kill);
 }
 
 // @func 0x001E9050 Safe::InteractionCancel
+// The return-treasure microgame resumes and the AI entities show again.
 void Safe::InteractionCancel()
 {
     Entity* user = InteractionUser(EntityInteraction(this));
@@ -1626,8 +1623,8 @@ void Safe::InteractionCancel()
     }
     if (user)
         user->SetVisible(true, true, true, true);
-    GameWorldSetHudHidden(false);
-    GameWorldSetPlayerControl(true);
+    g_game->PauseReturnTreasure(false);
+    SetAiEntitiesVisible(true);
 }
 
 // @func 0x001E9164 Safe::InteractionEnd

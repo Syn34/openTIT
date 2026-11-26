@@ -397,9 +397,12 @@ void InteractivePropBDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlEle
     elem->GetHash(0x6AA4B8C7u, &field_11C, field_11C);
 }
 
+} // namespace
 
 // -- Safe --------------------------------------------------------------------------
+namespace {
 constexpr uint32_t kType_Safe = 0x10000000;
+} // namespace
 
 struct SafeDefDesc : ClassDefDesc {
     explicit SafeDefDesc(const EntityDefDesc& loader) : ClassDefDesc(loader, kType_Safe) {}
@@ -424,18 +427,28 @@ void SafeDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, 
     ActorDefDesc::Parse(root, elem, loader, parent);
     SafeDefDesc defaults(loader);
     if (const auto* safe = SameClassParent<SafeDef>(parent, kType_Safe)) {
-        for (int i = 0; i < 10; ++i)
-            defaults.hashes[i] = safe->hashes130[i];
-        defaults.field_108 = safe->field_158;
-        for (int i = 0; i < 7; ++i)
-            defaults.floats[i] = safe->floats170[i];
-        for (int i = 0; i < 9; ++i)
-            defaults.hashes13C[i] = safe->hashes18C[i];
-        defaults.hashes13C[9] = safe->field_1B0;
-        defaults.hashes180[0] = safe->field_1D0;
-        defaults.hashes180[1] = safe->field_1D4;
-        defaults.hashes180[2] = safe->field_1D8;
-        defaults.field_18C = safe->field_1DC;
+        for (int i = 0; i < 3; ++i) {
+            defaults.hashes[i] = safe->dialNames[i];
+            defaults.hashes[3 + i] = safe->highlightNames[i];
+            defaults.hashes[6 + i] = safe->solvedNames[i];
+            defaults.floats[4 + i] = safe->dialSmoothing[i];
+            defaults.hashes13C[1 + i] = safe->tickSounds[i];
+            defaults.hashes13C[4 + i] = safe->solvedSounds[i];
+        }
+        defaults.hashes[9] = safe->openObjectName;
+        defaults.field_108 = safe->tolerance;
+        defaults.floats[0] = safe->field_170;
+        defaults.floats[1] = safe->field_174;
+        defaults.floats[2] = safe->timeLimit;
+        defaults.floats[3] = safe->openDelay;
+        defaults.hashes13C[0] = safe->soundBank;
+        defaults.hashes13C[7] = safe->failSound;
+        defaults.hashes13C[8] = safe->openSound;
+        defaults.hashes13C[9] = safe->rewardDefName;
+        defaults.hashes180[0] = safe->openScript;
+        defaults.hashes180[1] = safe->timerHudName;
+        defaults.hashes180[2] = safe->promptHudName;
+        defaults.field_18C = safe->turnSpeed;
     }
     static constexpr uint32_t kHashAttrs[10] = {0xCA9B378Eu, 0x07AB8180u, 0xCAF309B3u, 0x00F161A9u, 0xDA59999Bu,
                                                 0x4B3B3ECEu, 0xA4C980A9u, 0xF86846F7u, 0xA3BB4824u, 0x1F114A8Au};
@@ -459,7 +472,38 @@ void SafeDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, 
     elem->GetFloat(0x3EF33B23u, &field_18C, defaults.field_18C);
 }
 
-} // namespace
+// @func 0x001E5170 SafeDef::SafeDef
+SafeDef::SafeDef(const SafeDefDesc& desc) : ActorDef(desc)
+{
+    for (int i = 0; i < 3; ++i) {
+        dialNames[i] = desc.hashes[i];
+        highlightNames[i] = desc.hashes[3 + i];
+        solvedNames[i] = desc.hashes[6 + i];
+    }
+    openObjectName = desc.hashes[9];
+    tolerance = desc.field_108;
+    field_160 = desc.field_110;
+    field_170 = desc.floats[0];
+    field_174 = desc.floats[1];
+    timeLimit = desc.floats[2];
+    openDelay = desc.floats[3];
+    for (int i = 0; i < 3; ++i)
+        dialSmoothing[i] = desc.floats[4 + i];
+    soundBank = desc.hashes13C[0];
+    for (int i = 0; i < 3; ++i) {
+        tickSounds[i] = desc.hashes13C[1 + i];
+        solvedSounds[i] = desc.hashes13C[4 + i];
+    }
+    failSound = desc.hashes13C[7];
+    openSound = desc.hashes13C[8];
+    rewardDefName = desc.hashes13C[9];
+    for (int i = 0; i < 3; ++i)
+        rewardOffset[i] = (&desc.field_170.x)[i];
+    openScript = desc.hashes180[0];
+    timerHudName = desc.hashes180[1];
+    promptHudName = desc.hashes180[2];
+    turnSpeed = desc.field_18C;
+}
 
 // -- SoundActor (and the base of the sound actor classes) --------------------------
 
@@ -480,8 +524,8 @@ struct SoundActorDefDesc : ClassDefDesc {
         for (int i = 0; i < 7; ++i)
             def.slotSounds[i] = slots[i];
         def.soundOffset = soundOffset;
-        def.field_180 = field_130;
-        def.field_184 = field_134;
+        def.soundBank = field_130;
+        def.startSlot = field_134;
         def.durationScale = durationScale;
         def.soundFlags = uint8_t((def.soundFlags & 0x7F) | (soundFlags & 0x80));
     }
@@ -499,8 +543,8 @@ void SoundActorDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* 
         for (int i = 0; i < 7; ++i)
             defaults.slots[i].duration = sound->slotSounds[i].duration;
         defaults.soundOffset = sound->soundOffset;
-        defaults.field_130 = sound->field_180;
-        defaults.field_134 = sound->field_184;
+        defaults.field_130 = sound->soundBank;
+        defaults.field_134 = sound->startSlot;
         defaults.durationScale = sound->durationScale;
         defaults.soundFlags = sound->soundFlags & 0x80;
     }
@@ -1324,29 +1368,12 @@ EntityDef* CreateSoundActorB16DB0Def(ape::xml::XmlElement* root, ape::xml::XmlEl
 }
 
 // @func 0x001E6B18 CreateSafeDef
-// The definition constructor (0x001E5170) copies the class fields in place.
 EntityDef* CreateSafeDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
                          const EntityDef* parent)
 {
     SafeDefDesc desc(loader);
     desc.Parse(root, elem, loader, parent);
     auto* def = new SafeDef(desc);
-    for (int i = 0; i < 10; ++i)
-        def->hashes130[i] = desc.hashes[i];
-    def->field_158 = desc.field_108;
-    def->field_160 = desc.field_110;
-    for (int i = 0; i < 7; ++i)
-        def->floats170[i] = desc.floats[i];
-    for (int i = 0; i < 9; ++i)
-        def->hashes18C[i] = desc.hashes13C[i];
-    def->field_1B0 = desc.hashes13C[9];
-    def->field_1C0[0] = desc.field_170.x;
-    def->field_1C0[1] = desc.field_170.y;
-    def->field_1C0[2] = desc.field_170.z;
-    def->field_1D0 = desc.hashes180[0];
-    def->field_1D4 = desc.hashes180[1];
-    def->field_1D8 = desc.hashes180[2];
-    def->field_1DC = desc.field_18C;
     delete desc.parts;
     return def;
 }

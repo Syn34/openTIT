@@ -1420,5 +1420,14 @@ float Character::GetTurnRate()
     return component ? CharacterCompTurnRate(component) : 0.0f;
 }
 
+// @func 0x0012D290 Character::LeaveInteractState
+void Character::LeaveInteractState()
+{
+    if (EntityGetState(this, 1) != 6)
+        return;
+    EntitySetState(this, 0, 0);
+    EntitySetState(this, 1, 0);
+}
+
 } // namespace entity
 } // namespace sly

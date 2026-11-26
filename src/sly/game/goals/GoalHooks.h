@@ -98,9 +98,9 @@ void HintEntitySetEnabled(void* entity, bool enable);       // entity virtual sl
 void HintInteractableSetEnabled(void* entity, bool enable); // 0x001EB814
 int HintInteractionState(const void* interaction);          // +0x44
 void HintInteractionSetState(void* interaction, int state); // 0x00266E6C
-void HintLaserGroupEnable(void* group, bool enable);        // 0x003992AC
-void HintLaserEnable(void* laser, bool enable);             // 0x0039D32C
-void HintLaserFieldEnable(void* field, bool enable);        // 0x00399758
+void HintLaserGroupEnable(void* group, bool enable);        // 0x00399758
+void HintLaserEnable(void* laser, bool enable);             // 0x003992AC
+void HintLaserFieldEnable(void* field, bool enable);        // 0x0039D32C
 
 // ---------------------------------------------------------------------------
 // Players
