@@ -527,6 +527,14 @@ public:
     ape::world::ApeObj* frameObject = nullptr; // 0x1AC
     Entity* keyObject = nullptr;              // 0x1B0
     uint8_t propFlags = 0;                    // 0x1B4 bit 7: anyone may interact
+    // The aim frame: the base frame turned by the yaw about the world's y
+    // axis (translation included), then pitched about its own x axis, with
+    // normalised axes (0x001DC988).
+    void UpdateAimFrame();
+    ape::Matrix34 baseFrame{};                // 0x1C0 the frame object's (or the prop's) transform at spawn
+    ape::Matrix34 aimFrame{};                 // 0x200
+    float pitch = 0.0f;                       // 0x240 radians
+    float yaw = 0.0f;                         // 0x244 radians
     camera::CameraMode* cameraMode = nullptr; // 0x26C the turret camera
     void* phantomA = nullptr;                 // 0x270
     void* phantomB = nullptr;                 // 0x274
