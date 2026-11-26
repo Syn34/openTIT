@@ -233,6 +233,20 @@ TargetableCVariant::~TargetableCVariant() = default;
 // @func 0x00758CB4 TargetableCLinked::~TargetableCLinked (deleting thunk, +0x180)
 TargetableCLinked::~TargetableCLinked() = default;
 
+// @func 0x0075811C TargetableDefC::DefSlot6
+uint32_t TargetableDefC::DefSlot6() const
+{
+    switch (navType) {
+    case 0x9260C26Eu:   // "Static"
+    case 0x41EB0AA3u:
+    case 0x29846DDAu:
+    case 0x4438A28Fu:   // "Obstacle"
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 // @func 0x0075862C TargetableCBase::GetRenderObject
 ape::world::ApeObj* TargetableCBase::GetRenderObject() { return BodyAsObject(rigidBody); }
 

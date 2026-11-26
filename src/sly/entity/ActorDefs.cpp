@@ -3,6 +3,8 @@
 // which are members here).
 #include "sly/entity/ActorDefs.h"
 
+#include "sly/entity/GameEntityHooks.h"
+
 namespace sly {
 namespace entity {
 
@@ -104,6 +106,9 @@ TargetableCLinkedDef::~TargetableCLinkedDef() = default;
 // @func 0x00750EAC EntityDefB14FD8::~EntityDefB14FD8
 // @func 0x00750F14 EntityDefB14FD8::~EntityDefB14FD8 (deleting)
 EntityDefB14FD8::~EntityDefB14FD8() = default;
+
+// @func 0x007549BC SoundActorB16B48::Slot65
+bool SoundActorB16B48::Slot65() { return EntityGetState(this, 0) == 1; }
 
 } // namespace entity
 } // namespace sly

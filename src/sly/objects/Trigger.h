@@ -133,6 +133,7 @@ public:
     // -- trigger virtual interface (slots 71..77) ---------------------------
     virtual void OnEnter(ObjEntity* entity);
     virtual void OnExit(ObjEntity* entity);
+    // @func 0x00759E40 TriggerBase::OnStay
     virtual void OnStay(ObjEntity* entity) { (void)entity; }
     // Removes an occupant without the leave notifications.
     virtual void RemoveOccupant(ObjEntity* entity);
