@@ -177,6 +177,9 @@ void CharacterCompEndAnim(EntityComponent* character);
 // Entity slot 52 (+0xD0, base 0x000DC730): root motion step of the playing
 // animation as a transform (identity without one).
 ape::Matrix34 EntityRootMotionDelta(Entity* entity, float dt);
+// Root motion of a playing animation layer over `dt` (0x00352F70): the
+// identity unless the clip has a root track.
+void AnimLayerRootMotion(void* layer, float dt, ape::Matrix34& out);
 // Tint record of a renderer mesh (mesh +0x5C, optional): colour bytes at
 // +0x08 and amount at +0x0C.
 void MeshSetTint(ape::world::AglMesh* mesh, const uint8_t color[4], float amount);

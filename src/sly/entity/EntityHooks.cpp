@@ -160,8 +160,18 @@ void CharacterCompEndAnim(EntityComponent* character) { (void)character; }
 // TODO(0x000DC730 Entity::GetRootMotion)
 ape::Matrix34 EntityRootMotionDelta(Entity* entity, float dt)
 {
-    (void)entity; (void)dt;
-    return { { 1.0f, 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 0.0f, 1.0f } };
+    ape::Matrix34 delta = { { 1.0f, 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f, 0.0f },
+                            { 0.0f, 0.0f, 0.0f, 1.0f } };
+    entity->RootMotionDelta(delta, false, 0, dt);
+    return delta;
+}
+// TODO(0x00352F70 AnimLayer root motion): the anim layer port has no root
+// track extraction yet.
+void AnimLayerRootMotion(void* layer, float dt, ape::Matrix34& out)
+{
+    (void)layer; (void)dt;
+    out = { { 1.0f, 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f, 0.0f },
+            { 0.0f, 0.0f, 0.0f, 1.0f } };
 }
 
 void MeshSetTint(ape::world::AglMesh* mesh, const uint8_t color[4], float amount)

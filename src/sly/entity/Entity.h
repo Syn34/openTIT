@@ -197,6 +197,8 @@ enum EntityFlags : uint32_t {
 // Second flag word (+0xB0, 16 bits).
 enum EntityFlags2 : uint16_t {
     kEnt2_SoundsMuted     = 0x0010,
+    kEnt2_RootMotionObjectScale = 0x0400,  // root motion translation scaled with the object
+    kEnt2_RootMotionDamped = 0x0800,  // root motion scaled by rootMotionScale / rootMotionWeight
     kEnt2_AlphaSet        = 0x0020,  // an opacity has been applied (later ones scale the geometry alpha)
     kEnt2_Highlight       = 0x0040,
     kEnt2_PendingVisible  = 0x0080,  // value applied with kEnt2_VisibilityPending
@@ -350,6 +352,10 @@ public:
     // with no stretching.
     virtual bool PlayClipByName(float speed, float blend, float duration, const char* clip, uint32_t layer,
                                 bool loop, const char* prefix = nullptr, uint32_t listener = 0);
+    // Slot 52 (+0xD0): motion of the root of the clip playing on `layer`
+    // this frame (identity without one); see kEnt2_RootMotion*. NOTE:
+    // `consume` is not read by the base.
+    virtual void RootMotionDelta(ape::Matrix34& out, bool consume, uint32_t layer, float dt);
     // Slot 53 (+0xD4): the base version only records the state (flags bit 6).
     // @func 0x007373AC Entity::SetActiveVisual
     virtual void SetActiveVisual(bool on) { flags = on ? (flags | 0x40u) : (flags & ~0x40u); }
@@ -581,6 +587,8 @@ public:
     float cullDistance = 0.0f;                     // 0xD4
     EntityDef* def = nullptr;                      // 0xD8
     void* field_DC = nullptr;                      // 0xDC NOTE: object driven by messages 0x21595665/0x00C73980
+    ape::Vec3 rootMotionScale{1.0f, 1.0f, 1.0f, 0.0f};   // 0xE0 (kEnt2_RootMotionDamped)
+    float rootMotionWeight = 1.0f;                 // 0xF0 share of the root rotation kept (kEnt2_RootMotionDamped)
     class EntityListener* listener = nullptr;      // 0xF4
     ape::ApeTArray<EntityComponent*>* components = nullptr;   // 0xF8 (allocated on first add)
     ape::ApeTArray<void*>* watchers = nullptr;     // 0xFC NOTE: objects interested in this entity
