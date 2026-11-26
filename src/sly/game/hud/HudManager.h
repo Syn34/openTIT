@@ -301,7 +301,8 @@ struct HudManagerState {
     ape::ApeTSortedMap<HudObject*> hideList;     // 0x0106C240 elements to hide at the end of the frame
     ape::ApeTSortedMap<HudObject*> updateList;   // 0x0106C258 elements updated per frame
     bool allEnabled = false;                     // 0x00F64CC4
-    ape::ApeTArray<HudObject*> field_C2C0;       // 0x0106C2C0 NOTE: elements leave it on Refresh; use unknown
+    ape::ApeTArray<HudObject*> suspended;        // 0x0106C2C0 elements SuspendHud hid (a refresh drops them)
+    bool hudSuspended = false;                   // 0x0106C3C0
     ape::ApeTSortedMap<HudObjectDef*> defs;      // 0x0106C210 element definitions by name
     entity::Entity* contextEntity = nullptr;     // 0x00F64CB4 owner the next meter A follows
     uint32_t contextName = 0;                    // 0x0106C270
@@ -416,6 +417,17 @@ void StartLifetimeScripts();
 // meter requests, runs the text override and updates the enabled
 // elements; elements whose object went away leave their stacks.
 void UpdateHud(float dt);
+// 0x00366E20: hides every visible element but the busy element and three
+// other system elements, remembering them for ResumeHud.
+void SuspendHud();
+// 0x00367018: shows the elements SuspendHud hid again, stack priorities
+// 0..3 in turn.
+void ResumeHud();
+// 0x003677C4: a plain element built from `source`'s definition, registered
+// as `name`.
+HudObject* CloneElement(HudObject* source, uint32_t name);
+// 0x00367900: the same for the element registered as `sourceName`.
+HudObject* CloneElementByName(uint32_t sourceName, uint32_t name);
 // 0x0035B668: level unload: every element and definition is destroyed.
 void UnloadHud();
 // 0x00363B78: animates the text override (TODO).

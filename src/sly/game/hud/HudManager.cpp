@@ -12,6 +12,7 @@
 #include "ape/world/ApeObj.h"
 #include "sly/anim/AnimController.h"
 #include "sly/game/hud/HudHooks.h"
+#include "sly/game/hud/HudElement.h"
 #include "sly/game/hud/HudMeter.h"
 #include "sly/entity/GameEntityHooks.h"
 
@@ -181,6 +182,73 @@ void UpdateHud(float dt)
                 ++i;
         }
     }
+}
+
+namespace {
+// Elements SuspendHud leaves alone (0x00F64CE4, 0x00F64CE8, 0x00F64CFC; the
+// last is the pause screen element). NOTE: names unknown.
+constexpr uint32_t kSuspendExemptA = 0xB4D251F9u;
+constexpr uint32_t kSuspendExemptB = 0x8182782Eu;
+constexpr uint32_t kSuspendExemptPause = 0xC2AB44C8u;
+} // namespace
+
+// @func 0x00366E20 hud::SuspendHud
+void SuspendHud()
+{
+    HudManagerState& hud = Hud();
+    hud.suspended.Clear();
+    for (uint32_t i = 0; i < hud.objects.Count(); ++i) {
+        HudObject* element = hud.objects.Data()[i].value;
+        if (!element->object || !ObjectVisible(element->object))
+            continue;
+        const uint32_t name = element->RegisteredName();
+        if (name == g_busyElementName || name == kSuspendExemptA || name == kSuspendExemptB ||
+            name == kSuspendExemptPause)
+            continue;
+        element->SetActive(false);
+        hud.suspended.Add(element);
+    }
+    hud.hudSuspended = true;
+}
+
+// @func 0x00367018 hud::ResumeHud
+void ResumeHud()
+{
+    HudManagerState& hud = Hud();
+    if (hud.suspended.Count() != 0) {
+        for (int32_t priority = 0; priority < 4; ++priority) {
+            for (int32_t i = int32_t(hud.suspended.Count()) - 1; i >= 0; --i) {
+                HudObject* element = hud.suspended[size_t(i)];
+                if ((element->def ? element->def->priority : 0) != priority)
+                    continue;
+                element->SetActive(true);
+                element->EnterStack();
+            }
+        }
+    }
+    hud.suspended.Clear();
+    hud.hudSuspended = false;
+}
+
+// @func 0x003677C4 hud::CloneElement
+HudObject* CloneElement(HudObject* source, uint32_t name)
+{
+    if (!source || !name || !source->def)
+        return nullptr;
+    auto* element = new HudPlainElement(source->def);
+    element->typeFlags |= kHud_Object;
+    Hud().objects.Add(name, element);
+    element->name = name;
+    return element;
+}
+
+// @func 0x00367900 hud::CloneElementByName
+HudObject* CloneElementByName(uint32_t sourceName, uint32_t name)
+{
+    if (!sourceName || !name)
+        return nullptr;
+    // NOTE: the console warns (with the source's name) when nothing was made.
+    return CloneElement(Find(sourceName), name);
 }
 
 // @func 0x0035B668 hud::UnloadHud

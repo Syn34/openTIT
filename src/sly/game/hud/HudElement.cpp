@@ -164,7 +164,7 @@ void HudElement::Refresh()
     stateFlags = flags;
     if ((stateFlags & kState_OutroB) && !*Hud().hideList.Find(RegisteredName()))
         Hud().hideList.Add(RegisteredName(), this);
-    ape::ApeTArray<HudObject*>& list = Hud().field_C2C0;
+    ape::ApeTArray<HudObject*>& list = Hud().suspended;
     const int at = list.FindLast(this);
     if (at >= 0)
         list.RemoveAt(size_t(at));
