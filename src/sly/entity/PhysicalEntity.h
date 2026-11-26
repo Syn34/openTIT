@@ -30,7 +30,7 @@ public:
     float FallAcceleration() const;
     // Slot 3: the collision shape's box at the identity transform, or the
     // entity default without a shape.
-    void GetBounds(ape::Aabb& out) const;
+    void GetBounds(ape::Aabb& out) const override;
 
     // Definition flags (+0x174).
     enum Flags : uint32_t {

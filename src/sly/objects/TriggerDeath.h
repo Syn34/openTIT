@@ -38,7 +38,7 @@ class DeathTriggerDef : public TriggerDef {
 public:
     DeathTriggerDef(const TriggerDefDesc& desc, uint32_t deathType, uint32_t scriptName,
                     int physicsState, float damage, bool flag0, bool flag1);
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
     // tagged there); the deleting variant returns the block to the bucket
     // allocator.
@@ -81,7 +81,7 @@ public:
     explicit DeathTrigger(const DeathTriggerInstanceDesc& desc);
     ~DeathTrigger() override;
 
-    void Update(float dt) override;
+    bool Update(float dt) override;
     void SetEnabled(bool enabled) override;
     bool IsDebugDisplayed() const override;
     // TODO(0x0021C8B8 DeathTrigger::OnEnter) kills the character (2.5 KB of

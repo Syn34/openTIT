@@ -10,7 +10,6 @@ namespace sly {
 namespace objects {
 
 namespace {
-constexpr uint32_t kFlags2_Character = 0x08;
 }
 
 // @func 0x002172A8 CameraBehaviorTriggerDef::~CameraBehaviorTriggerDef
@@ -26,14 +25,14 @@ CameraBehaviorTriggerDef::~CameraBehaviorTriggerDef()
 }
 
 // @func 0x00218980 CameraBehaviorTriggerDef::Create
-ObjEntity* CameraBehaviorTriggerDef::Create(EntityPlacement* placement)
+Entity* CameraBehaviorTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kDefClass_CameraBehaviorTrigger) != 0))
         return nullptr;
-    TriggerInstanceDesc desc(GetInstanceName(placement), this);
+    TriggerInstanceDesc desc(InstanceName(placement), this);
     placement->FillInstanceDesc(desc);
     CameraBehaviorTrigger* trigger = new CameraBehaviorTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -41,22 +40,23 @@ ObjEntity* CameraBehaviorTriggerDef::Create(EntityPlacement* placement)
 CameraBehaviorTrigger::~CameraBehaviorTrigger() = default;
 
 // @func 0x00218D78 CameraBehaviorTrigger::Update
-void CameraBehaviorTrigger::Update(float dt)
+bool CameraBehaviorTrigger::Update(float dt)
 {
     // Disabled volumes do not even process their reports.
     if (IsEnabled())
-        TriggerBase::Update(dt);
+        return TriggerBase::Update(dt);
+    return true;
 }
 
 // @func 0x0021941C CameraBehaviorTrigger::OnEnter
 // Only player characters (or player vehicles, class2 flag 0x400) count.
-void CameraBehaviorTrigger::OnEnter(ObjEntity* entity)
+void CameraBehaviorTrigger::OnEnter(Entity* entity)
 {
     if (!entity)
         return;
-    const bool character = (entity->flags2 & kFlags2_Character) != 0;
+    const bool character = entity->HasTypeBit(kType_Character);
     const bool vehicle = (EntityClass2(entity) & 0x400) != 0;
-    if ((!character && !vehicle) || !entity->IsPlayer())
+    if ((!character && !vehicle) || !EntityIsPlayer(entity))
         return;
     TriggerBase::OnEnter(entity);
     ApplyBehavior(entity);

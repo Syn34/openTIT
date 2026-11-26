@@ -113,18 +113,17 @@ void PolledTrigger::PollListener()
 }
 
 // @func 0x0020FB9C PolledTrigger::Update
-void PolledTrigger::Update(float dt)
+bool PolledTrigger::Update(float dt)
 {
     if (!IsPolled()) {
-        TriggerBase::Update(dt);
-        return;
+        return TriggerBase::Update(dt);
     }
     PollListener();
-    ObjEntity::Update(dt);
+    return Entity::Update(dt);
 }
 
 // @func 0x0020FF0C PolledTrigger::OnEnter
-void PolledTrigger::OnEnter(ObjEntity* entity)
+void PolledTrigger::OnEnter(Entity* entity)
 {
     if (IsPolled())
         return;
@@ -132,7 +131,7 @@ void PolledTrigger::OnEnter(ObjEntity* entity)
 }
 
 // @func 0x0020FF60 PolledTrigger::OnExit
-void PolledTrigger::OnExit(ObjEntity* entity)
+void PolledTrigger::OnExit(Entity* entity)
 {
     if (IsPolled())
         return;
@@ -216,16 +215,16 @@ EntityDef* CreateAmbientSoundTriggerDef(ape::xml::XmlElement* root, ape::xml::Xm
 }
 
 // @func 0x002105F8 AmbientSoundTriggerDef::Create
-ObjEntity* AmbientSoundTriggerDef::Create(EntityPlacement* placement)
+Entity* AmbientSoundTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kPlace_ForceCreate) != 0))
         return nullptr;
     if (IsAudioDisabled())
         return nullptr;
-    TriggerInstanceDesc desc(GetInstanceName(placement), this);
+    TriggerInstanceDesc desc(InstanceName(placement), this);
     placement->FillInstanceDesc(desc);
     AmbientSoundTrigger* trigger = new AmbientSoundTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -237,12 +236,12 @@ AmbientSoundTrigger::AmbientSoundTrigger(const TriggerInstanceDesc& desc)
     SoundDef()->ResolveSound();
 }
 
-// @func 0x00210CA4 AmbientSoundTrigger::OnCreated
-void AmbientSoundTrigger::OnCreated()
+// @func 0x00210CA4 AmbientSoundTrigger::OnSpawn
+void AmbientSoundTrigger::OnSpawn()
 {
     m_voice = 0;
     SoundDef()->ResolveSound();
-    PolledTrigger::OnCreated();
+    PolledTrigger::OnSpawn();
 }
 
 // @func 0x00210D80 AmbientSoundTrigger::ComputeSoundParams
@@ -307,10 +306,10 @@ void AmbientSoundTrigger::ComputeSoundParams(ape::Vec3& position, float& volume,
 }
 
 // @func 0x002112C8 AmbientSoundTrigger::Update
-void AmbientSoundTrigger::Update(float dt)
+bool AmbientSoundTrigger::Update(float dt)
 {
     if (!m_enabled)
-        return;
+        return true;
     if (audio::SoundNameHasDef(SoundDef()->soundName) && audio::IsVoiceValid(m_voice)) {
         ape::Vec3 position = GetListenerPosition();
         float volume, spread;
@@ -319,15 +318,14 @@ void AmbientSoundTrigger::Update(float dt)
         SetVoice3D(m_voice, position, volume);
     }
     if (!IsPolled()) {
-        TriggerBase::Update(dt);
-        return;
+        return TriggerBase::Update(dt);
     }
     PollListener();
-    ObjEntity::Update(dt);
+    return Entity::Update(dt);
 }
 
 // @func 0x002114FC AmbientSoundTrigger::OnEnter
-void AmbientSoundTrigger::OnEnter(ObjEntity* entity)
+void AmbientSoundTrigger::OnEnter(Entity* entity)
 {
     if (!IsPolled() && entity != GetPlayerEntity())
         return;
@@ -344,7 +342,7 @@ void AmbientSoundTrigger::OnEnter(ObjEntity* entity)
 }
 
 // @func 0x0021167C AmbientSoundTrigger::OnExit
-void AmbientSoundTrigger::OnExit(ObjEntity* entity)
+void AmbientSoundTrigger::OnExit(Entity* entity)
 {
     audio::StopVoice(m_voice, true);
     if (!IsPolled())
@@ -383,16 +381,16 @@ EntityDef* CreateSoundZoneTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlEl
 }
 
 // @func 0x002130D0 SoundZoneTriggerDef::Create
-ObjEntity* SoundZoneTriggerDef::Create(EntityPlacement* placement)
+Entity* SoundZoneTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & 0x04000000u) != 0))
         return nullptr;
     if (IsAudioDisabled())
         return nullptr;
-    TriggerInstanceDesc desc(GetInstanceName(placement), this);
+    TriggerInstanceDesc desc(InstanceName(placement), this);
     placement->FillInstanceDesc(desc);
     SoundZoneTrigger* trigger = new SoundZoneTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -402,8 +400,8 @@ SoundZoneTrigger::SoundZoneTrigger(const TriggerInstanceDesc& desc)
 {
 }
 
-// @func 0x00214038 SoundZoneTrigger::OnCreated
-void SoundZoneTrigger::OnCreated()
+// @func 0x00214038 SoundZoneTrigger::OnSpawn
+void SoundZoneTrigger::OnSpawn()
 {
     if (SoundZoneTriggerDef* zoneDef = ZoneDef()) {
         zoneDef->zone = FindSoundZone(zoneDef->zoneName);
@@ -411,7 +409,7 @@ void SoundZoneTrigger::OnCreated()
     }
     m_next = nullptr;
     m_prev = nullptr;
-    PolledTrigger::OnCreated();
+    PolledTrigger::OnSpawn();
 }
 
 void SoundZoneTrigger::LinkActive()
@@ -516,10 +514,10 @@ float ZoneFadeTime(const SoundZone* zone)
 // Fading volumes follow the listener's position; the others ramp their weight
 // up while occupied and down (unlinking at zero) when empty, over the zone's
 // cross-fade time. The active trigger of the zone hands the weight on.
-void SoundZoneTrigger::Update(float dt)
+bool SoundZoneTrigger::Update(float dt)
 {
     if (!m_enabled)
-        return;
+        return true;
     SoundZoneTriggerDef* zoneDef = ZoneDef();
     SoundZone* zone = zoneDef ? zoneDef->zone : nullptr;
     if (m_fades) {
@@ -546,11 +544,11 @@ void SoundZoneTrigger::Update(float dt)
                 SoundZoneSetWeight(zone, m_weight);
         }
     }
-    PolledTrigger::Update(dt);
+    return PolledTrigger::Update(dt);
 }
 
 // @func 0x002140C0 SoundZoneTrigger::OnEnter
-void SoundZoneTrigger::OnEnter(ObjEntity* entity)
+void SoundZoneTrigger::OnEnter(Entity* entity)
 {
     if (!IsPolled() && entity != GetPlayerEntity())
         return;
@@ -572,7 +570,7 @@ void SoundZoneTrigger::OnEnter(ObjEntity* entity)
 }
 
 // @func 0x002142E0 SoundZoneTrigger::OnExit
-void SoundZoneTrigger::OnExit(ObjEntity* entity)
+void SoundZoneTrigger::OnExit(Entity* entity)
 {
     SoundZoneTriggerDef* zoneDef = ZoneDef();
     // Without a fade the zone is dropped at once; fading zones are faded out by Update.
@@ -601,7 +599,8 @@ bool SoundZoneTrigger::IsInside(const ape::Vec3& point) const
 {
     if (IsPolled())
         return PolledTrigger::IsInside(point);
-    ape::Aabb box = GetBounds(true);
+    // Entity::GetBounds is not const in the port.
+    ape::Aabb box = const_cast<SoundZoneTrigger*>(this)->GetBounds(true);
     return ape::AabbContainsPoint(box, point);
 }
 

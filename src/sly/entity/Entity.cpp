@@ -18,6 +18,7 @@
 #include "agl/AglRenderTarget.h"
 #include "sly/camera/CameraHooks.h"
 #include "sly/game/AudioSystem.h"
+#include "sly/components/AnimComponent.h"
 
 #include <cfloat>
 #include <cmath>
@@ -206,6 +207,85 @@ Entity::Entity()
     transform.yAxis = { 0.0f, 1.0f, 0.0f, 0.0f };
     transform.zAxis = { 0.0f, 0.0f, 1.0f, 0.0f };
     transform.translation = { 0.0f, 0.0f, 0.0f, 1.0f };
+}
+
+// @func 0x000D3578 Entity::Entity
+// @func 0x000D3B94 Entity::Entity (thunk)
+Entity::Entity(const EntityInstanceDesc& desc)
+    : objectRestoreTransform(desc.transform), transform(desc.transform), def(desc.def)
+{
+    GameObjectInit(this, desc.StateLayers(), desc.stateDataSize);
+    nameHash = ape::HashNameNoCase(desc.name);
+
+    // Entity flags: the player slot in the top byte, alive, and the
+    // description's options.
+    const uint32_t opts = desc.flags;
+    flags = (uint32_t(desc.player) << 24) | kEnt_Alive | 0x00800000u;
+    if (opts & EntityInstanceDesc::kDesc_PlacementBit29)
+        flags |= kEnt_Hidden;
+    if (opts & EntityInstanceDesc::kDesc_Bit9)
+        flags |= kEnt_10000;
+    if (opts & EntityInstanceDesc::kDesc_Bit8)
+        flags |= kEnt_8000 | kEnt_4000;
+    if (opts & EntityInstanceDesc::kDesc_NoObjectSync)
+        flags |= kEnt_NoObjectSync;
+    if (opts & EntityInstanceDesc::kDesc_PlacementBit31)
+        flags |= kEnt_Visible;
+    if (opts & EntityInstanceDesc::kDesc_PlacementBit30)
+        flags |= kEnt_80;
+    if (opts & EntityInstanceDesc::kDesc_NotListed)
+        flags |= kEnt_NotListed;
+    flags2 = kEnt2_RootMotionObjectScale;
+    if (def && def->HasFlag(EntityDef::kDefFlag_Field20))
+        flags2 |= kEnt2_4000;
+    interactionCount = 1;
+    classBits = 0;
+    renderId = desc.renderId;
+    field_D0 = desc.field_84 >= 0.0f ? desc.field_84 * desc.field_84 : -1.0f;
+    cullDistance = 1.0f;
+    field_DC = reinterpret_cast<void*>(uintptr_t(desc.field_80));
+    typeBits[0] = desc.typeBits[0];
+    typeBits[1] = desc.typeBits[1];
+    typeBits[2] = desc.typeBits[2];
+
+    EntitySetUpObject(this, desc);
+
+    // Entities with a player slot are players.
+    if (desc.player != 0xFF) {
+        flags &= ~0x00C00000u;
+        classBits |= 1;
+    }
+    if (!(flags & kEnt_NotListed))
+        RegisterEntity(kList_All, this);
+
+    renderId = desc.renderId;
+    if (renderId == 0xFFFFFFFFu || renderId == 0)
+        renderId = NewRenderId();
+
+    if (def) {
+        if (def->HasFlag(EntityDef::kDefFlag_Desc5))
+            flags |= kEnt_Hidden;
+        if (desc.attachments && desc.attachments->Count() != 0)
+            EntityApplyAttachments(this, desc);
+        flags2 = def->HasFlag(EntityDef::kDefFlag_Desc6) ? (flags2 | kEnt2_Highlight) : (flags2 & ~kEnt2_Highlight);
+        // The definition's components, each built with this entity as owner.
+        if (def->componentDescs) {
+            for (ComponentDesc* componentDesc : *def->componentDescs) {
+                componentDesc->owner = this;
+                if (EntityComponent* component = CreateComponent(componentDesc)) {
+                    if (!components)
+                        components = new ape::ApeTArray<EntityComponent*>(4);
+                    components->PushBack(component);
+                }
+                componentDesc->owner = nullptr;
+            }
+        }
+    }
+
+    if (EntityComponent* anim = GetComponent(kComp_Character))
+        static_cast<components::AnimComponent*>(anim)->SetController(static_cast<anim::AnimController*>(animController));
+    SetClassBits(0x400000000ull, true, true);
+    SetClassBits(0x800000000ull, true, true);
 }
 
 // @func 0x000DF8B4 Entity::~Entity

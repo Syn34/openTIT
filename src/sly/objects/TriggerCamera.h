@@ -50,7 +50,7 @@ struct CameraTriggerDefDesc : TriggerDefDesc {
 class CameraTriggerDef : public TriggerDef {
 public:
     explicit CameraTriggerDef(const CameraTriggerDefDesc& desc);
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
     // tagged there); the deleting variant returns the block to the bucket
     // allocator.
@@ -105,8 +105,8 @@ class CameraTrigger : public TriggerBase {
 public:
     explicit CameraTrigger(const CameraTriggerInstanceDesc& desc);
     ~CameraTrigger() override;
-    void OnEnter(ObjEntity* entity) override;
-    void OnExit(ObjEntity* entity) override;
+    void OnEnter(Entity* entity) override;
+    void OnExit(Entity* entity) override;
     bool IsDebugDisplayed() const override;
     // Removes this trigger's camera mode from the game camera and frees it
     // (0x002169C0, called by the camera when it drops the mode).
@@ -116,8 +116,8 @@ private:
     // TODO(0x0021612C CameraTrigger::ActivateCamera, 0x002163A8
     // DeactivateCamera, 0x00215D98 BuildCameraMode, 0x0021652C Update): the
     // camera modes live in the camera module (0x00100000..), not ported.
-    void ActivateCamera(ObjEntity* entity) { (void)entity; }
-    void DeactivateCamera(ObjEntity* entity) { (void)entity; }
+    void ActivateCamera(Entity* entity) { (void)entity; }
+    void DeactivateCamera(Entity* entity) { (void)entity; }
 
     uint16_t m_allowedStates;          // 0x1AC
     uint16_t m_excludedStates;         // 0x1AE

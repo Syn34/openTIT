@@ -22,6 +22,7 @@ class Entity;
 class EntityComponent;
 class EntityDef;
 struct ComponentDesc;
+struct EntityInstanceDesc;
 
 // -- game object base class (vtable 0x00B219D0, 0x00464xxx) -------------------
 // Base part of Entity::OnSpawn (0x00464B18).
@@ -30,6 +31,16 @@ void GameObjectSpawn(Entity* entity);
 // active (0x00464BD4 / 0x00464CBC).
 bool GameObjectUpdate(Entity* entity, float dt);
 bool GameObjectPostUpdate(Entity* entity, float dt);
+// The game object base's constructor (state machine with `layers` layers and
+// `dataSize` bytes of state data each; StateMachine::StateMachine 0x0045CBE8).
+void GameObjectInit(Entity* entity, uint32_t layers, uint32_t dataSize);
+// 0x000D2F04: the entity's world object: the placement's source object or a
+// new instance of the definition's geometry, its animation controller and
+// skeleton, initial transform and scale.
+void EntitySetUpObject(Entity* entity, const EntityInstanceDesc& desc);
+// 0x000D1B10: applies the description's attachment records (attached child
+// entities, locators, effects).
+void EntityApplyAttachments(Entity* entity, const EntityInstanceDesc& desc);
 
 // -- components ----------------------------------------------------------------
 // Builds a component from its description (0x002635E8). Null on failure.
@@ -161,6 +172,10 @@ void ScriptInstanceSetState(void* instance, uint32_t stateName);
 
 // 0x00490518: drops whatever the game property system keeps for a definition.
 void PropertySystemForgetDef(EntityDef* def);
+// 0x00490360: files a definition in the game property registry (under its
+// name, and under `type` when that is one of the seven registry types),
+// unless it is a trigger or registryFlags bit 1 is set.
+void PropertySystemRegisterDef(EntityDef* def, uint32_t type);
 
 // 0x000D8C18: queues a flash/fade draw of every geometry instance under
 // `object` (the instance's parts drawn again with the renderer's two
