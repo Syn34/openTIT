@@ -599,6 +599,11 @@ public:
     // Option menu pages: the labels and sliders of a page's "Menu" object
     // show the current settings (SlyGameOptionPages.cpp).
     void RefreshControlsPage(ape::ApeGuiObject* screen);
+    // The movies page: labels "Move01".."Move08" under "Moves" show the
+    // movies of the current page ("$STR_UNKNOWN" for a locked one); the
+    // front end's extras (and menu 0x0E) list the cinematics, the pause menu
+    // the other group (0x0046E438).
+    void RefreshMoviesPage(ape::ApeGuiObject* screen);
     void RefreshAudioPage(ape::ApeGuiObject* screen);
     void RefreshDisplayPage(ape::ApeGuiObject* screen);
     // Accept on the controls page: the camera X/Y inversion or vibration
@@ -742,7 +747,8 @@ public:
     uint8_t movesCategory = 0;                  // +0x1285C5 moves page: category (0..3)
     uint8_t movesPage = 0;                      // +0x1285C6 moves page: page of five moves
     uint8_t field_1285C7 = 0;                   // +0x1285C7
-    uint8_t field_1285C8[2] = {};               // +0x1285C8
+    uint8_t moviesPage = 0;                     // +0x1285C8 movies page: page of eight movies
+    uint8_t field_1285C9 = 0;                   // +0x1285C9
     uint32_t field_1285CC[6] = {};              // +0x1285CC
     void* field_1285E4 = nullptr;               // +0x1285E4
     uint32_t field_1285EC = 0;                  // +0x1285EC
