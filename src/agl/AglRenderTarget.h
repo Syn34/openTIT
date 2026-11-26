@@ -136,6 +136,12 @@ public:
     void SetTexture(AglTexture* texture);
     // Viewport in pixels of the render surface (clipped to it).
     void SetViewport(const uint16_t rect[4]);
+    // Slot 3: the render target's name.
+    // @func 0x007A2154 AglRenderTarget::GetName
+    virtual const char* GetName() const { return name; }
+    // Slot 4. NOTE: empty on the console; its purpose is not known.
+    // @func 0x007A2150 AglRenderTarget::Slot4
+    virtual void Slot4() {}
     // Binds the render surface and sets the viewport (render thread).
     virtual void ApplyViewport();
 

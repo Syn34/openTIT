@@ -44,6 +44,9 @@ public:
 
     // Name, hash and size from a level package header.
     void SetHeader(const AglTextureHeader& header);
+    // Slot 3: the texture's name.
+    // @func 0x007A0E8C AglTextureBase::GetName
+    virtual const char* GetName() const { return name; }
     // Texture coordinate wrap modes (gpu::TextureWrap values) for s, t, r.
     void SetWrap(uint16_t wrapS, uint16_t wrapT, uint16_t wrapR);
 
