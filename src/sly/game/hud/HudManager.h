@@ -611,6 +611,11 @@ ape::xml::Color8 ColorStyleColorB(HudColorStyle* const* found);
 // 0x0036196C: reads the element definitions and colour styles of a HUD
 // definition file into the definition map.
 void LoadHudDefinitions(ape::xml::XmlElement* root);
+// 0x0035B984: every element is refreshed (screens locked first, scripts
+// told "0x25F79944"), the stacks and the suspended list emptied, the owner
+// meters and the queued elements destroyed and the text override reset.
+// With `flagMap` the map element gets flag bit 20.
+void ResetHudElements(bool flagMap);
 // 0x0035AC7C: builds one element per definition (the element class is
 // chosen by the definition's type bits) and registers it by name.
 void BuildHudElements();

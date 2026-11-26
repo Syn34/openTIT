@@ -134,6 +134,10 @@ public:
 class HudType10000 : public HudObject {
 public:
     explicit HudType10000(HudObjectDef* def);
+
+    // +0x3C0 flag word. Bit 20 is set when the HUD is reset with its
+    // request flag (ResetHudElements). NOTE: meaning unknown.
+    uint32_t mapFlags = 0;
 };
 
 } // namespace hud
