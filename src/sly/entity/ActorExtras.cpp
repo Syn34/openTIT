@@ -4,7 +4,9 @@
 #include "ape/math/ApeMatrixOps.h"
 #include "ape/sys/ApeGeometry.h"
 #include "ape/world/ApeObj.h"
+#include "ape/world/ApeSkeleton.h"
 #include "sly/camera/CameraMode.h"
+#include "sly/entity/ActorDefs.h"
 #include "sly/entity/GameCamera.h"
 #include "sly/entity/GameEntityHooks.h"
 #include "sly/tuning/TargetRangeTuning.h"
@@ -35,6 +37,25 @@ void InteractivePropC::UpdateAimFrame()
     ape::Matrix34RotationX(pitch, rotation);
     ape::Matrix34PreMultiply(frame, rotation);
     aimFrame = ape::Matrix34NormalizeAxes(frame);
+}
+
+// -- SoundActorB17270 (the gadget turret) ------------------------------------------
+
+// @func 0x001CAF1C SoundActorB17270::FindAimParts
+void SoundActorB17270::FindAimParts()
+{
+    const auto* turretDef = static_cast<const SoundActorB17270Def*>(def);
+    if (turretDef->aimPartName) {
+        aimBone = GetBoneByName(turretDef->aimPartName);
+        if (!aimBone)
+            aimObject = EntityFindObject(this, turretDef->aimPartName);
+        else
+            aimParentBone = GetBone(aimBone->def->parent);
+    }
+    if (turretDef->field_194)
+        object_344 = EntityFindObject(this, turretDef->field_194);
+    if (turretDef->field_198)
+        object_348 = EntityFindObject(this, turretDef->field_198);
 }
 
 } // namespace entity

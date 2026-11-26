@@ -172,15 +172,28 @@ public:
     int32_t field_190 = 0x16;                       // 0x190 NOTE: always 22
     Volume volumes[kVolumeCount];                   // 0x1A0
 };
-// 0x00B17228. NOTE: only the placement defaults.
+// 0x00B17228: the gadget turret's definition.
 class SoundActorB17270Def : public SoundActorDef {
 public:
+    // The sound actor fields, then its own (0x001C9E34).
+    explicit SoundActorB17270Def(const struct SoundActorB17270DefDesc& desc);
     ~SoundActorB17270Def() override;
-    uint32_t field_1B4 = 0;             // 0x1B4
+    uint32_t aimPartName = 0;           // 0x190 hash 0x4156E113: bone (or object) the turret aims from
+    uint32_t field_194 = 0;             // 0x194 hash 0x7997D9A2 (an object)
+    uint32_t field_198 = 0;             // 0x198 hash 0xC72945F3 (an object)
+    ape::Vec3 aimOffset{};              // 0x1A0 attribute 0xCC0D6864
+    uint32_t field_1B0 = 0;             // 0x1B0 hash 0x7242FC8F
+    // Placement defaults (SoundActorB17270Placement +0x110..+0x135).
+    uint32_t field_1B4 = 0;             // 0x1B4 hash 0x53FFAFC2
     float field_1B8[7] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f};   // 0x1B8..0x1D0
+    float field_1D4 = 0.34906584f;      // 0x1D4 attribute 0x2D3AC4D0 (radians; degrees in the file)
+    float field_1D8 = 0.08726646f;      // 0x1D8 attribute 0x2C30B0AF (radians; degrees in the file)
+    uint32_t mode = 0;                  // 0x1DC index of hash 0x04F3FC3D in {0x13234CFF, 0x8FA5D8C3}
     int32_t field_1E0 = -1;             // 0x1E0
     bool field_1E4 = true;              // 0x1E4
     bool field_1E5 = true;              // 0x1E5
+    bool field_1E6 = true;              // 0x1E6 attribute 0xAD4866C3
+    bool field_1E7 = false;             // 0x1E7 attribute 0xC4F817C0
 };
 // 0x00B17490: the sentry light definition ("SentryLight" element).
 class SoundActorB174C0Def : public SoundActorDef {

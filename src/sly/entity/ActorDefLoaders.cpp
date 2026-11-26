@@ -702,6 +702,101 @@ SoundActorB16678Def::SoundActorB16678Def(const SoundActorB16678DefDesc& desc)
     desc.CopyTo(*this);
 }
 
+// -- SoundActorB17270 (the gadget turret) ----------------------------------------
+constexpr uint32_t kType_SoundActorB17270 = 0x2000000;
+
+struct SoundActorB17270DefDesc : SoundActorDefDesc {
+    explicit SoundActorB17270DefDesc(const EntityDefDesc& loader) : SoundActorDefDesc(loader)
+    {
+        typeBits |= kType_SoundActorB17270;
+    }
+    uint32_t aimPartName = 0;           // 0x140
+    uint32_t field_144 = 0;             // 0x144
+    uint32_t field_148 = 0;             // 0x148
+    ape::Vec3 aimOffset{};              // 0x150
+    uint32_t field_160 = 0;             // 0x160
+    uint32_t field_164 = 0;             // 0x164
+    float floats168[7] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f};   // 0x168..0x180
+    float field_184 = 0.34906584f;      // 0x184 20 degrees
+    float field_188 = 0.08726646f;      // 0x188 5 degrees
+    uint32_t mode = 0;                  // 0x18C
+    int32_t field_190 = -1;             // 0x190
+    bool bools194[4] = {true, true, true, false};   // 0x194..0x197
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001CA080 SoundActorB17270DefDesc::Parse
+// A turret parent passes on everything but the aim offset and the mode;
+// three of the floats may not be negative and two angles are read in degrees.
+void SoundActorB17270DefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                    const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorDefDesc::Parse(root, elem, loader, parent);
+    SoundActorB17270DefDesc defaults(loader);
+    if (const auto* turret = SameClassParent<SoundActorB17270Def>(parent, kType_SoundActorB17270)) {
+        defaults.aimPartName = turret->aimPartName;
+        defaults.field_144 = turret->field_194;
+        defaults.field_148 = turret->field_198;
+        defaults.field_160 = turret->field_1B0;
+        defaults.field_164 = turret->field_1B4;
+        for (int i = 0; i < 7; ++i)
+            defaults.floats168[i] = turret->field_1B8[i];
+        defaults.field_184 = turret->field_1D4;
+        defaults.field_188 = turret->field_1D8;
+        defaults.field_190 = turret->field_1E0;
+        defaults.bools194[0] = turret->field_1E4;
+        defaults.bools194[1] = turret->field_1E5;
+        defaults.bools194[2] = turret->field_1E6;
+        defaults.bools194[3] = turret->field_1E7;
+    }
+    elem->GetHash(0x4156E113u, &aimPartName, defaults.aimPartName);
+    elem->GetHash(0x7997D9A2u, &field_144, defaults.field_144);
+    elem->GetHash(0xC72945F3u, &field_148, defaults.field_148);
+    elem->GetVec3(0xCC0D6864u, &aimOffset.x, &defaults.aimOffset.x);
+    elem->GetHash(0x7242FC8Fu, &field_160, defaults.field_160);
+    elem->GetHash(0x53FFAFC2u, &field_164, defaults.field_164);
+    static constexpr uint32_t kFloatAttrs[7] = {0x09198A77u, 0x58E70C1Bu, 0x0B109E97u, 0x0B10795Bu,
+                                                0x0B13D227u, 0x667AB4F5u, 0xDBA26CDAu};
+    for (int i = 0; i < 7; ++i) {
+        const bool read = elem->GetFloat(kFloatAttrs[i], &floats168[i], defaults.floats168[i]) == ape::xml::kQuery_Ok;
+        if (read && i >= 2 && i <= 4)
+            floats168[i] = std::max(floats168[i], 0.0f);
+    }
+    constexpr float kDegToRad = 0.017453292f;
+    if (elem->GetFloat(0x2D3AC4D0u, &field_184, defaults.field_184) == ape::xml::kQuery_Ok)
+        field_184 *= kDegToRad;
+    if (elem->GetFloat(0x2C30B0AFu, &field_188, defaults.field_188) == ape::xml::kQuery_Ok)
+        field_188 *= kDegToRad;
+    uint32_t modeName = 0;
+    if (elem->GetHash(0x04F3FC3Du, &modeName, 0) == ape::xml::kQuery_Ok) {
+        static constexpr uint32_t kModes[2] = {0x13234CFFu, 0x8FA5D8C3u};
+        for (uint32_t i = 0; i < 2; ++i) {
+            if (kModes[i] == modeName) {
+                mode = i;
+                break;
+            }
+        }
+    }
+    elem->GetInt(0x9F5A4080u, &field_190, defaults.field_190);
+    static constexpr uint32_t kBoolAttrs[4] = {0x3EFBF433u, 0x4128CDCDu, 0xAD4866C3u, 0xC4F817C0u};
+    for (int i = 0; i < 4; ++i)
+        elem->GetBool(kBoolAttrs[i], &bools194[i], defaults.bools194[i]);
+}
+
+// @func 0x001C9E34 SoundActorB17270Def::SoundActorB17270Def
+SoundActorB17270Def::SoundActorB17270Def(const SoundActorB17270DefDesc& desc)
+    : SoundActorDef(desc), aimPartName(desc.aimPartName), field_194(desc.field_144), field_198(desc.field_148),
+      aimOffset(desc.aimOffset), field_1B0(desc.field_160), field_1B4(desc.field_164), field_1D4(desc.field_184),
+      field_1D8(desc.field_188), mode(desc.mode), field_1E0(desc.field_190), field_1E4(desc.bools194[0]),
+      field_1E5(desc.bools194[1]), field_1E6(desc.bools194[2]), field_1E7(desc.bools194[3])
+{
+    desc.CopyTo(*this);
+    for (int i = 0; i < 7; ++i)
+        field_1B8[i] = desc.floats168[i];
+}
+
 // -- SoundActorB168E0 ------------------------------------------------------------
 constexpr uint32_t kType_SoundActorB168E0 = 0x200000;
 
@@ -1298,6 +1393,17 @@ EntityDef* CreateSoundActorB16678Def(ape::xml::XmlElement* root, ape::xml::XmlEl
     SoundActorB16678DefDesc desc(loader);
     desc.Parse(root, elem, loader, parent);
     auto* def = new SoundActorB16678Def(desc);
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001CA7C0 CreateSoundActorB17270Def
+EntityDef* CreateSoundActorB17270Def(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                     const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorB17270DefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new SoundActorB17270Def(desc);
     delete desc.parts;
     return def;
 }

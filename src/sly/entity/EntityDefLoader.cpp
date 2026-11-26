@@ -113,7 +113,7 @@ const DefClass kDefClasses[] = {
     {0xA0BCC96Fu, objects::CreateCrawlTriggerDef},
     {0xA09DEEA4u, objects::CreateAlertTriggerDef},
     {0x9F7993AFu, objects::CreateFilteredTriggerDef},
-    {0x942B64F0u, nullptr},                              // 0x001CA7C0
+    {0x942B64F0u, CreateSoundActorB17270Def},
     {0xA5900924u, objects::CreateUpdateEnableTriggerDef},
     {0xA273E6E4u, nullptr},                              // 0x00245A30
     {0xA0C4F7BCu, objects::CreateDeathTriggerDef},

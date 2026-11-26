@@ -10,7 +10,7 @@
 #include "sly/game/AudioSystem.h"
 #include "sly/game/Tween.h"
 
-namespace ape::world { class ApeObj; }
+namespace ape::world { class ApeObj; struct ApeSkeletonBone; }
 namespace ape::setting { class Setting; }
 namespace sly::camera { class CameraMode; }
 namespace sly::objects { struct ActorInstanceDesc; struct InteractivePropBInstanceDesc; struct ObjectActorInstanceDesc; struct SafeInstanceDesc; struct SoundActorInstanceDesc; struct SoundActorB16678InstanceDesc; struct SoundActorB168E0InstanceDesc;
@@ -928,6 +928,14 @@ public:
     uint8_t turretFlags = 0;                  // 0x310 bit 7: aims level
     uint32_t field_328 = 0;                   // 0x328 cleared by SetOnlyTarget
     ape::ApeTArray<Entity*> targets;          // 0x32C counted references
+    // Looks up the definition's aim bone (or, without such a bone, the aim
+    // object) and its two other objects (0x001CAF1C).
+    void FindAimParts();
+    ape::world::ApeObj* aimObject = nullptr;  // 0x340 SoundActorB17270Def::aimPartName when not a bone
+    ape::world::ApeObj* object_344 = nullptr; // 0x344 SoundActorB17270Def::field_194
+    ape::world::ApeObj* object_348 = nullptr; // 0x348 SoundActorB17270Def::field_198
+    ape::world::ApeSkeletonBone* aimParentBone = nullptr;   // 0x34C parent of the aim bone
+    ape::world::ApeSkeletonBone* aimBone = nullptr;         // 0x350
     bool field_355 = false;                   // 0x355 NOTE: selects the alternative states
     bool engaged = false;                     // 0x356
     uint8_t flags357 = 0;                     // 0x357 bit 7 set by slot 4, cleared by slot 5
