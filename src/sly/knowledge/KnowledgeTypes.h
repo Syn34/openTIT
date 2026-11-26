@@ -4,6 +4,8 @@
 
 #include "sly/knowledge/Knowledge.h"
 
+#include "ape/math/ApeMath.h"
+
 namespace sly {
 namespace knowledge {
 
@@ -66,6 +68,21 @@ bool REndMeleeAttackExecute(KRef*, KnowledgeData*);
 void RFireProjectileLink(KRef*, KnowledgeData*);
 void RFireProjectileClone(KRef*, KnowledgeData*);
 bool RFireProjectileExecute(KRef*, KnowledgeData*);
+// RFireProjectile field getters (used by Execute).
+namespace fire_projectile {
+const char* ProjDefName(const KRef* ref);       // field 1
+float XOffset(const KRef* ref);                 // field 2
+float YOffset(const KRef* ref);                 // field 3
+float ZOffset(const KRef* ref);                 // field 4
+bool UseHighArc(const KRef* ref);               // field 5
+bool UseBoneOrient(const KRef* ref);            // field 6
+bool InvertBoneOrient(const KRef* ref);         // field 7
+bool PredictTargetPos(const KRef* ref);         // field 8
+float DirX(const KRef* ref);                    // field 12
+float DirY(const KRef* ref);                    // field 13
+float DirZ(const KRef* ref);                    // field 14
+ape::Vec3 TargetOffset(const KRef* ref);        // fields 15-17
+} // namespace fire_projectile
 void RFireWeaponLink(KRef*, KnowledgeData*);
 bool RFireWeaponExecute(KRef*, KnowledgeData*);
 bool RSetAnimSpeedExecute(KRef*, KnowledgeData*);
