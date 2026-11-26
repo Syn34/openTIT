@@ -553,14 +553,16 @@ public:
 // Definition of SoundActorB16B48. NOTE: only the options its timers read.
 class SoundActorB16B48Def : public SoundActorDef {
 public:
+    // The sound actor fields, then the two lists and the options (0x001C1D4C).
+    explicit SoundActorB16B48Def(const struct SoundActorB16B48DefDesc& desc);
     ~SoundActorB16B48Def() override;
-    ape::ApeTArray<void*> field_190;   // 0x190 NOTE: element type unknown
+    ape::ApeTArray<uint32_t> lightNames; // 0x190 names of the light objects
     ape::ApeTArray<int32_t> bodyParts; // 0x1A4 part index of each light body
-    float field_1B8 = 0.0f;            // 0x1B8 placement default
-    bool restartWhenWaiting = false;   // 0x1BC
-    bool unlightOnSlot3 = false;       // 0x1BD
-    bool unlightOnSlot4 = false;       // 0x1BE
-    bool lightHasBodies = false;       // 0x1BF
+    float field_1B8 = -1.0f;           // 0x1B8 placement default (attribute 0x2DF33CE3)
+    bool restartWhenWaiting = false;   // 0x1BC attribute 0x45703A61
+    bool unlightOnSlot3 = true;        // 0x1BD attribute 0xB10A3CDE
+    bool unlightOnSlot4 = false;       // 0x1BE attribute 0x89D243B8
+    bool lightHasBodies = true;        // 0x1BF attribute 0x428E4540
 };
 
 // Sound actor with a two-way switch (vtable 0x00B16678; destructor

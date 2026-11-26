@@ -145,7 +145,7 @@ const DefClass kDefClasses[] = {
     {0x0E5B671Du, nullptr},                              // 0x00203BE4
     {0x04B6FABDu, nullptr},                              // 0x00167080
     {0x044344C9u, CreateInteractivePropAUseDef},
-    {0x2190D8D7u, nullptr},                              // 0x001C28E8
+    {0x2190D8D7u, CreateSoundActorB16B48Def},
     {0x201FA54Fu, CreateActorGroupDef},
     {0x1B733030u, nullptr},                              // laser field 0x000C1780
     {0x184A4683u, objects::CreateSoundZoneTriggerDef},

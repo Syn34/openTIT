@@ -706,6 +706,87 @@ SoundActorB17008Def::SoundActorB17008Def(const SoundActorB17008DefDesc& desc) : 
         volumes[i] = desc.volumes[i];
 }
 
+// -- SoundActorB16B48 (light) ----------------------------------------------------
+constexpr uint32_t kType_SoundActorB16B48 = 0x1000000;
+
+struct SoundActorB16B48DefDesc : SoundActorDefDesc {
+    explicit SoundActorB16B48DefDesc(const EntityDefDesc& loader) : SoundActorDefDesc(loader)
+    {
+        typeBits |= kType_SoundActorB16B48;
+    }
+    ape::ApeTArray<uint32_t> lightNames{4, nullptr, true};   // 0x140
+    ape::ApeTArray<int32_t> bodyParts{4, nullptr, true};     // 0x154
+    float field_168 = -1.0f;            // 0x168
+    bool options[4] = {};               // 0x16C
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001C2058 SoundActorB16B48DefDesc::Parse
+// The lists start as the parent's and grow by the light names (attribute
+// 0x2DF2E2B5 and its three numbered companions 0x9069741D..F) and the body
+// part numbers (0xCBC57F7D and 0xACEA7055..7; one-based in the file). A
+// missing numbered attribute repeats the value read before it.
+void SoundActorB16B48DefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                    const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorDefDesc::Parse(root, elem, loader, parent);
+    float defaultValue = -1.0f;
+    bool defaultOptions[4] = {false, true, false, true};
+    if (const auto* other = SameClassParent<SoundActorB16B48Def>(parent, kType_SoundActorB16B48)) {
+        for (uint32_t name : other->lightNames)
+            lightNames.PushBack(name);
+        for (int32_t part : other->bodyParts)
+            bodyParts.PushBack(part);
+        defaultValue = other->field_1B8;
+        defaultOptions[0] = other->restartWhenWaiting;
+        defaultOptions[1] = other->unlightOnSlot3;
+        defaultOptions[2] = other->unlightOnSlot4;
+        defaultOptions[3] = other->lightHasBodies;
+    }
+
+    uint32_t name = 0;
+    elem->GetHash(0x2DF2E2B5u, &name, 0);
+    if (name != 0)
+        lightNames.PushBack(name);
+    for (uint32_t i = 1; i < 4; ++i) {
+        elem->GetHash(0x9069741Cu + i, &name, name);
+        if (name != 0)
+            lightNames.PushBack(name);
+    }
+    int32_t part = -1;
+    if (elem->GetInt(0xCBC57F7Du, &part, -1) == ape::xml::kQuery_Ok) {
+        part = std::max(part - 1, 0);
+        bodyParts.PushBack(part);
+    }
+    for (uint32_t i = 1; i < 4; ++i) {
+        if (elem->GetInt(0xACEA7054u + i, &part, part) == ape::xml::kQuery_Ok) {
+            part = std::max(part - 1, 0);
+            bodyParts.PushBack(part);
+        }
+    }
+
+    elem->GetFloat(0x2DF33CE3u, &field_168, defaultValue);
+    static constexpr uint32_t kOptionAttrs[4] = {0x45703A61u, 0xB10A3CDEu, 0x89D243B8u, 0x428E4540u};
+    for (int i = 0; i < 4; ++i)
+        elem->GetBool(kOptionAttrs[i], &options[i], defaultOptions[i]);
+}
+
+// @func 0x001C1D4C SoundActorB16B48Def::SoundActorB16B48Def
+SoundActorB16B48Def::SoundActorB16B48Def(const SoundActorB16B48DefDesc& desc)
+    : SoundActorDef(desc), field_1B8(desc.field_168), restartWhenWaiting(desc.options[0]),
+      unlightOnSlot3(desc.options[1]), unlightOnSlot4(desc.options[2]), lightHasBodies(desc.options[3])
+{
+    desc.CopyTo(*this);
+    lightNames.Init(desc.lightNames.Count(), nullptr, true);
+    bodyParts.Init(desc.bodyParts.Count(), nullptr, true);
+    for (uint32_t name : desc.lightNames)
+        lightNames.PushBack(name);
+    for (int32_t part : desc.bodyParts)
+        bodyParts.PushBack(part);
+}
+
 // -- SignalActor -----------------------------------------------------------------
 constexpr uint32_t kType_Signal = 0x40000;
 
@@ -1010,6 +1091,17 @@ EntityDef* CreateSoundActorB17008Def(ape::xml::XmlElement* root, ape::xml::XmlEl
     SoundActorB17008DefDesc desc(loader);
     desc.Parse(root, elem, loader, parent);
     auto* def = new SoundActorB17008Def(desc);
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001C28E8 CreateSoundActorB16B48Def
+EntityDef* CreateSoundActorB16B48Def(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                     const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorB16B48DefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new SoundActorB16B48Def(desc);
     delete desc.parts;
     return def;
 }
