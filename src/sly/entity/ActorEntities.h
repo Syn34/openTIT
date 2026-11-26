@@ -11,8 +11,9 @@
 #include "sly/game/Tween.h"
 
 namespace ape::world { class ApeObj; }
+namespace ape::setting { class Setting; }
 namespace sly::camera { class CameraMode; }
-namespace sly::objects { struct ActorInstanceDesc; struct InteractivePropBInstanceDesc; }
+namespace sly::objects { struct ActorInstanceDesc; struct InteractivePropBInstanceDesc; struct ObjectActorInstanceDesc; }
 
 namespace sly {
 namespace entity {
@@ -861,11 +862,32 @@ public:
 };
 
 // Actor holding a world object reference (vtable 0x00B18488, 0x200 bytes).
+// NOTE: this is the teleporter ("Sly_Teleporter" settings, "Teleporter"
+// definition element).
 class ObjectActor : public ActorEntity {
 public:
+    // Keeps the destination; a destination object in this level is looked
+    // up and referenced (0x001EB478).
+    explicit ObjectActor(const objects::ObjectActorInstanceDesc& desc);
     ~ObjectActor() override;
-    ape::world::ApeObj* object_1F4 = nullptr; // 0x1F4 counted reference
+    // Slot 62: asks the game for the trip (game state layer 1 state 7) with
+    // the destination; refused while the teleporter does not teleport.
+    bool InteractionBegin(Entity* user) override;
+    // Shows or hides the teleporter and switches its interaction (0x001EB814).
+    void SetEnabled(bool enabled);
+
+    char destControllable[0x40] = {};         // 0x1A5
+    uint32_t destObj = 0;                     // 0x1E8
+    uint32_t destLevel = 0;                   // 0x1EC
+    uint32_t destSpawnPoint = 0;              // 0x1F0
+    ape::world::ApeObj* object_1F4 = nullptr; // 0x1F4 counted reference: the destination object
+    bool noTeleport = false;                  // 0x1F8
+    bool destControllableCurrentPlayer = false;   // 0x1F9
 };
+
+// Association callback of the "Sly_Teleporter" setting (0x001EB9CC): the
+// teleporter is built for the object `objectName` once the level runs.
+void AssociateTeleporter(ape::setting::Setting* setting, const char* objectName, bool reload);
 
 // Actor with two tweens and two arrays (vtable 0x00B186C8). NOTE: it is the
 // target range ("Entity.TgtRange.*" tuning: its camera leaves over

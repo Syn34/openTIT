@@ -57,6 +57,18 @@ struct ActorInstanceDesc : ScriptedInstanceDesc {
     entity::Entity* field_CC = nullptr; // 0xCC ActorEntity::field_190
 };
 
+// Instance description of the teleporter actor (ObjectActor), built from a
+// "Sly_Teleporter" setting.
+struct ObjectActorInstanceDesc : ActorInstanceDesc {
+    using ActorInstanceDesc::ActorInstanceDesc;
+    const char* destControllable = nullptr;   // 0xD0 name of the character to become
+    uint32_t destObj = 0;               // 0xD4 object to arrive at
+    uint32_t destLevel = 0;             // 0xD8 level to go to (0: this one)
+    uint32_t destSpawnPoint = 0;        // 0xDC respawn point there
+    bool noTeleport = false;            // 0xE0
+    bool destControllableCurrentPlayer = false;   // 0xE1
+};
+
 // Placement of scripted entities (vtable 0x00B12868). NOTE: the class names
 // follow the definitions whose parsers build them; the two base names are
 // guesses.

@@ -36,6 +36,28 @@ bool MinigameFlag30();
 // The game camera (game world +0x1281E0).
 class GameCamera;
 GameCamera* MainGameCamera();
+// Name hash of the running level (game world +0x128114).
+uint32_t GameWorldCurrentLevel();
+// A trip asked for by a teleporter: game state layer 1 enters state 7
+// (0x004665C0) and its state data takes the request (the travel dialog
+// record: name +0x00, player +0x44, level +0x48, respawn point +0x4C,
+// object +0x50, object instance +0x54, keep-name flag +0x58, the asking
+// interaction +0x5C).
+struct TravelRequest {
+    const char* destControllable = nullptr;
+    int32_t player = -1;
+    uint32_t level = 0;
+    uint32_t respawnPoint = 0;
+    uint32_t destObj = 0;
+    ape::world::ApeObj* destObject = nullptr;
+    bool keepCharacterName = false;
+    EntityComponent* interaction = nullptr;
+};
+void GameWorldRequestTravel(const TravelRequest& request);
+// 0x002B81FC: the interaction component follows its enabled state.
+void InteractionSetActive(EntityComponent* interaction, bool active);
+// Interaction component flag word +0x7C bit 19: the contextual prompt stays hidden.
+void InteractionSetAlwaysHideContextual(EntityComponent* interaction, bool hide);
 // Word +0x3D4 of a character definition (not modelled yet).
 uint32_t CharacterDefWord3D4(const EntityDef* def);
 // Animation driver component (type 0x17): state (bits 25-29 of +0x18) and

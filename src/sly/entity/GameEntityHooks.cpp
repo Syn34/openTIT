@@ -89,5 +89,10 @@ void ListDPassBegin() {}
 // TODO(0x004A6DF0)
 void QueueObjectRenderRefresh(ape::world::ApeObj* object, bool recurse) { (void)object; (void)recurse; }
 
+uint32_t GameWorldCurrentLevel() { return 0; }
+void GameWorldRequestTravel(const TravelRequest& request) { (void)request; }
+void InteractionSetActive(EntityComponent* interaction, bool active) { (void)interaction; (void)active; }
+void InteractionSetAlwaysHideContextual(EntityComponent* interaction, bool hide) { (void)interaction; (void)hide; }
+
 } // namespace entity
 } // namespace sly
