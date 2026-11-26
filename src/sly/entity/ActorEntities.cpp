@@ -1,5 +1,6 @@
 // openTIT - Scripted actors (see ActorEntities.h).
 #include "sly/entity/ActorEntities.h"
+#include "sly/entity/PhysicalEntity.h"
 #include "sly/objects/EntityPlacements.h"
 #include "ape/world/ApeBase.h"
 #include "sly/entity/PhysicsHooks.h"
@@ -125,6 +126,28 @@ bool InteractivePropA::Update(float dt)
 // @func 0x001EA830 SearchlightActor::~SearchlightActor (thunk, +0x180)
 // @func 0x001EA8EC SearchlightActor::~SearchlightActor (thunk, +0x17C)
 SearchlightActor::~SearchlightActor() = default;
+
+// @func 0x001E9C90 SearchlightActor::SearchlightActor
+SearchlightActor::SearchlightActor(const objects::ActorInstanceDesc& desc) : ActorEntity(desc)
+{
+    const SearchlightDef* lightDef = Def();
+    object_1B0 = EntityFindObject(this, lightDef->field_160[0]);
+    object_1B4 = EntityFindObject(this, lightDef->field_160[1]);
+    lightObject = EntityFindObject(this, lightDef->field_160[2]);
+    object_1BC = EntityFindObject(this, lightDef->field_160[3]);
+    if (lightObject)
+        lightObject->SetVisible(false, false);
+}
+
+// @func 0x001E9D98 SearchlightDef::Spawn
+Entity* SearchlightDef::Spawn(EntityPlacement* placement)
+{
+    objects::ActorInstanceDesc desc(InstanceName(placement), this);
+    placement->FillInstanceDesc(desc);
+    auto* light = new SearchlightActor(desc);
+    light->OnSpawn();
+    return light;
+}
 
 // @func 0x001EB078 SearchlightActor::GetAimPoint
 ape::Vec3 SearchlightActor::GetAimPoint() { return ActorEntity::GetAimPoint(); }
@@ -1138,6 +1161,90 @@ bool TweenActor::InteractionBegin(Entity* /*user*/)
 // TODO(0x001EDD84 TweenActor::TakeUser)
 void TweenActor::TakeUser(Entity* user) { field_358 = user; }
 
+// @func 0x001ED85C TweenActor::ReleaseOwned
+void TweenActor::ReleaseOwned(Entity* entity)
+{
+    if (!entity)
+        return;
+    // NOTE: the definition is read as a physical one whatever its class.
+    const auto* entityDef = static_cast<const PhysicalEntityDef*>(entity->def);
+    if ((entityDef->defFlags & (1u << 21)) && entity->object) {
+        if (ape::world::ApeObj* parent = entity->object->m_parent)
+            parent->DetachChild(entity->object);
+    }
+    entity->Release(false);
+    if (entity->flags & kEnt_Alive)
+        entity->Release(true);
+    if (entity == field_32C)
+        field_32C = nullptr;
+}
+
+// @func 0x001ED964 TweenActor::ReleaseOwnedPair
+void TweenActor::ReleaseOwnedPair(const OwnedPair& pair)
+{
+    if (pair.second)
+        pair.second->Release(false);
+    ReleaseOwned(pair.first);
+}
+
+// @func 0x001ED9D4 TweenActor::ReleaseAllOwned
+void TweenActor::ReleaseAllOwned()
+{
+    for (const OwnedPair& pair : field_280)
+        ReleaseOwnedPair(pair);
+    field_280.Clear();
+}
+
+// @func 0x001EDA8C TweenActor::ReleaseEntity330
+void TweenActor::ReleaseEntity330()
+{
+    Entity* entity = field_330;
+    if (!entity)
+        return;
+    if (entity->object) {
+        if (ape::world::ApeObj* parent = entity->object->m_parent)
+            parent->DetachChild(entity->object);
+    }
+    entity->SetVisible(false, true, true, true);
+    entity->Release(false);
+    entity->Release(true);
+    field_330 = nullptr;
+}
+
+// @func 0x001EDB90 TweenActor::ReleaseEntities33C
+void TweenActor::ReleaseEntities33C()
+{
+    for (Entity*& entity : field_33C) {
+        if (entity) {
+            entity->Release(true);
+            entity = nullptr;
+        }
+    }
+}
+
+// @func 0x001EDC2C TweenActor::ReleaseEntities334
+void TweenActor::ReleaseEntities334()
+{
+    for (Entity** slot : {&field_334, &field_338}) {
+        if (*slot) {
+            (*slot)->Release(true);
+            *slot = nullptr;
+        }
+    }
+    tweenFlags &= ~(1u << 28);
+}
+
+// @func 0x001EDCD4 TweenActor::ReleaseUserProp
+void TweenActor::ReleaseUserProp()
+{
+    if (!field_358)
+        return;
+    if (Entity* prop = field_358->FindDescendant(0x366FD481u)) {
+        prop->SetVisible(false, true, true, true);
+        prop->Release(true);
+    }
+}
+
 // @func 0x001EE940 TweenActor::InteractionCancel
 void TweenActor::InteractionCancel() { Reset(false); }
 
@@ -1235,6 +1342,28 @@ bool InteractivePropB::CanInteractWith(Entity* other, int kind, float* priority)
             return false;
     }
     return ActorEntity::CanInteractWith(other, kind, priority);
+}
+
+// @func 0x001F54E8 InteractivePropB::InteractivePropB
+InteractivePropB::InteractivePropB(const objects::InteractivePropBInstanceDesc& desc)
+    : ActorEntity(desc), field_1F8(desc.field_100), useTime(desc.field_104), field_200(desc.field_108),
+      field_204(desc.field_10C), field_210(desc.field_E0), rotation(desc.rotation), attachedDef(desc.field_D0)
+{
+    if (desc.field_110) {
+        SpawnAttached();
+        EntitySetState(this, 0, 0);
+    }
+    EntityJoinListenerGroup(this, 0x6927A078u, true);
+}
+
+// @func 0x001F5660 InteractivePropBDef::Spawn
+Entity* InteractivePropBDef::Spawn(EntityPlacement* placement)
+{
+    objects::InteractivePropBInstanceDesc desc(InstanceName(placement), this);
+    placement->FillInstanceDesc(desc);
+    auto* prop = new InteractivePropB(desc);
+    prop->OnSpawn();
+    return prop;
 }
 
 // TODO(0x001F50E4 InteractivePropB::SpawnAttached)

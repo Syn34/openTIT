@@ -113,6 +113,7 @@ class InteractivePropBDef : public ActorDef {
 public:
     explicit InteractivePropBDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~InteractivePropBDef() override;
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7
     uint32_t field_130 = 0;                         // 0x130 hash 0x2899600F
     ape::Vec3 field_140{};                          // 0x140 attribute 0xEF4DDD13
     ape::Vec4 rotation{0.0f, 0.0f, 0.0f, 1.0f};     // 0x150 from attribute 0xC7400937 (degrees)
