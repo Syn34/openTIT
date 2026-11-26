@@ -2,7 +2,13 @@
 #include "sly/game/hud/HudHideoutMenu.h"
 
 #include "agl/AglResources.h"
+#include "sly/anim/AnimController.h"
+#include "sly/anim/AnimLayer.h"
+#include "ape/anim/ApeAnimScript.h"
 #include "agl/AglTexture.h"
+#include "agl/AglDrawList.h"
+#include "agl/gpu/GpuTypes.h"
+#include "sly/tuning/HudTuning.h"
 #include "sly/game/ObjectHelpers.h"
 #include "sly/game/SlyGame.h"
 #include "sly/game/hud/HudHooks.h"
@@ -16,6 +22,7 @@
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
 
+#include <cmath>
 #include <cstdlib>
 
 namespace sly {
@@ -42,6 +49,13 @@ constexpr uint32_t kGuiEvent_Shutdown = 0x0E;   // NOTE: event sent with the pag
 constexpr int kCallbackList_6 = 6;
 constexpr int kCallbackList_Draw = 8;
 constexpr int kCallbackList_0 = 0;
+
+// The default layer's clip played through once (0x004A5D40 with true).
+bool ClipDoneIgnoringLoop(anim::AnimController* controller)
+{
+    anim::AnimLayer* layer = controller ? controller->FindLayer(0) : nullptr;
+    return layer ? layer->IsDone(true) : true;
+}
 
 uint32_t PickClip(const HudObjectDef::MenuPageDef& page, const uint32_t* same, const uint32_t* fromNone,
                   const uint32_t* from)
@@ -449,11 +463,289 @@ void HudHideoutMenu::DrawPagesCallback(void* unused, void* context)
         static_cast<HudHideoutMenu*>(context)->DrawPages();
 }
 
-// TODO(0x003720B0 HudHideoutMenu::Update): the menu state machine, the map
-// and the page fields are not ported.
+namespace {
+
+void SetMapVertex(agl::AglDrawVertex& vertex, const ape::Vec3& position, const uint8_t color[4], float u, float v)
+{
+    vertex.position[0] = position.x;
+    vertex.position[1] = position.y;
+    vertex.position[2] = position.z;
+    for (int i = 0; i < 4; ++i)
+        vertex.color[i] = color[i];
+    vertex.uv[0] = u;
+    vertex.uv[1] = v;
+}
+
+} // namespace
+
+// @func 0x00373C28 HudHideoutMenu::DrawMap
+void HudHideoutMenu::DrawMap()
+{
+    const HudObjectDef::MenuDef& info = def->menu;
+
+    // Where the corner instances are now, and their centre.
+    mapCentre = ape::world::kWorldZero;
+    for (int i = 0; i < 4; ++i) {
+        cornerPos[i] = corners[i] ? corners[i]->GetWorld().translation : ape::world::kWorldZero;
+        mapCentre.x += cornerPos[i].x;
+        mapCentre.y += cornerPos[i].y;
+        mapCentre.z += cornerPos[i].z;
+    }
+    mapCentre.x *= 0.25f;
+    mapCentre.y *= 0.25f;
+    mapCentre.z *= 0.25f;
+
+    // How far the frame has grown against its size at build time.
+    const float spanX = (cornerPos[3].x - cornerPos[0].x) / (mapMax.x - mapMin.x);
+    const float spanY = (cornerPos[3].y - cornerPos[0].y) / (mapMax.y - mapMin.y);
+    cornerPos[0].y += 0.15f;
+    cornerPos[1].y += 0.15f;
+    const float width = (cornerPos[0].x - cornerPos[2].x) / mapSize.x;
+
+    agl::AglDrawList& list = agl::GetDrawList();   // NOTE: the game world's frame list (+0x1285E4)
+    list.SetMaterial(mapMaterial, 0);
+    list.SetWorldMatrix(ape::world::kWorldIdentity, 0);
+
+    const float zoom = g_uIMainMenuUVScaling.Get();
+    const float zoomX = spanX * zoom;
+    const float zoomY = 1.0f - spanY * zoom;
+    const float uLeft = (1.0f - zoomX) * 0.5f;
+    const float uRight = 1.0f - uLeft;
+    const float uInset = zoomX * 0.135f / width;
+    const float vCentre = zoom * 0.02f + 0.5f;
+    const float vTop = zoomY * 0.5f + 0.25f;
+    const float vBottom = (1.0f - zoomY * 0.5f) - 0.25f;
+
+    agl::AglDrawPrimitive primitive;
+    list.AllocPrimitive(&primitive, static_cast<uint8_t>(agl::gpu::PrimitiveType::Triangles), 12, 0);
+    agl::AglDrawVertex* v = primitive.vertices;
+    // Left, top, right and bottom triangles fanning out from the centre.
+    SetMapVertex(v[0], mapCentre, info.mapColor, 0.5f, vCentre);
+    SetMapVertex(v[1], cornerPos[0], info.cornerColors[0], uLeft, vTop);
+    SetMapVertex(v[2], cornerPos[2], info.cornerColors[2], uLeft + uInset, vBottom);
+    SetMapVertex(v[3], mapCentre, info.mapColor, 0.5f, vCentre);
+    SetMapVertex(v[4], cornerPos[0], info.cornerColors[0], uLeft, vTop);
+    SetMapVertex(v[5], cornerPos[1], info.cornerColors[1], uRight, vTop);
+    SetMapVertex(v[6], mapCentre, info.mapColor, 0.5f, vCentre);
+    SetMapVertex(v[7], cornerPos[3], info.cornerColors[3], uRight - uInset, vBottom);
+    SetMapVertex(v[8], cornerPos[2], info.cornerColors[2], uLeft + uInset, vBottom);
+    SetMapVertex(v[9], mapCentre, info.mapColor, 0.5f, vCentre);
+    SetMapVertex(v[10], cornerPos[3], info.cornerColors[3], uRight - uInset, vBottom);
+    SetMapVertex(v[11], cornerPos[1], info.cornerColors[1], uRight, vTop);
+    list.EndPrimitive();
+}
+
+// @func 0x003742AC HudHideoutMenu::DrawMapCallback
+void HudHideoutMenu::DrawMapCallback(void* unused, void* context)
+{
+    (void)unused;
+    if (context)
+        static_cast<HudHideoutMenu*>(context)->DrawMap();
+}
+
+bool HudHideoutMenu::ScriptRunning() const
+{
+    return shutdownScript && (shutdownScript->actions || shutdownScript->currentStep);
+}
+
+void HudHideoutMenu::StartInitScript()
+{
+    if (!gui || shutdownScript)
+        return;
+    shutdownScript = ape::PlayGuiScript("Default_Init", gui, false, false);
+    ape::SendGuiEvent(0x0C, 0xFFFFFFFFu, gui, 0);
+}
+
+bool HudHideoutMenu::MenuAnimDone() const
+{
+    if ((menuFlags & kM_AnimOk) && !HudClipDone(animController))
+        return false;
+    auto* script = static_cast<ape::ApeAnimScriptInstance*>(animScript);
+    return !(menuFlags & 0x02000000u) || (script && script->IsFinished(false));
+}
+
+// @func 0x003720B0 HudHideoutMenu::Update
 void HudHideoutMenu::Update(float dt)
 {
-    (void)dt;
+    if (!CanAct())
+        return;
+    if ((animState >> 1) == kMenu_Closed && !(menuFlags & kM_OpenReq) && !(menuFlags & kM_CloseReq))
+        return;
+    if (!object || !object->IsVisible())
+        return;
+    if (g_game) {
+        g_game->AddCallback(kCallbackList_6, reinterpret_cast<void*>(&DrawMapCallback), this, nullptr);
+        g_game->AddCallback(kCallbackList_Draw, reinterpret_cast<void*>(&DrawPagesCallback), this, nullptr);
+    }
+
+    // Requests made since the last update.
+    if (menuFlags & kM_OpenReq) {
+        if (CanAct() && (animState >> 1) == kMenu_Closed) {
+            context = nullptr;
+            BeginOpen();
+        }
+        menuFlags &= ~kM_OpenReq;
+    } else if (menuFlags & kM_CloseReq) {
+        Close((menuFlags & kM_CloseFlag) != 0);
+        menuFlags &= ~kM_CloseReq;
+    }
+
+    const HudObjectDef::MenuDef& info = def->menu;
+    if (object->GetType() == ape::world::kObjType_GeomInstance) {
+        // The page labels take the menu's alpha.
+        if (page < info.pageCount) {
+            const HudObjectDef::MenuPageDef& pageDef = info.pages[page];
+            for (uint32_t i = 0; i < pageDef.fieldCount; ++i) {
+                if (ape::ApeGuiObject* label = pageDef.fields[i].label) {
+                    ape::xml::Color8 color = label->GetColor();
+                    color.a = object->m_byteA8;
+                    label->SetColor(color);
+                }
+            }
+        }
+        // The child swings by the pulse (a triangle phase through a cosine).
+        const float t = pulseTimer / info.field_CC;
+        pulseTimer += dt;
+        const int whole = int(t);
+        const float phase = (whole & 1) ? 1.0f - (t - float(whole)) : t - float(whole);
+        const float amplitude = info.field_D0;
+        childAngle = (std::cos(phase * 3.1415927f) - 1.0f) * -0.5f * (amplitude + amplitude) - amplitude;
+        if (g_game)
+            g_game->AddCallback(kCallbackList_0, reinterpret_cast<void*>(&TurnChildCallback), this, nullptr);
+    }
+
+    switch (animState >> 1) {
+    case kMenu_Opening:
+        if (MenuAnimDone()) {
+            const HudObjectDef::MenuPageDef& current = info.pages[page];
+            if (current.animA || current.animB)
+                PlayMenuClip(PickClip(current, kTransitionSame, kTransitionFromNone, kTransitionFrom));
+            StartInitScript();
+            animState = (animState & 1u) | (kMenu_OpeningPlain << 1);
+        }
+        break;
+    case kMenu_OpeningPlain:
+        if (!context) {
+            if (!MenuAnimDone() || ScriptRunning())
+                break;
+            delete shutdownScript;
+            shutdownScript = nullptr;
+            animState = (animState & 1u) | (kMenu_Open << 1);
+            if (page < info.pageCount) {
+                const HudObjectDef::MenuPageDef& pageDef = info.pages[page];
+                for (uint32_t i = 0; i < pageDef.fieldCount; ++i) {
+                    if (!pageDef.fields[i].object3d && pageDef.fields[i].object)
+                        pageDef.fields[i].object->SetVisible(true);
+                }
+            }
+        } else {
+            // Opened on behalf of another element: wait until it is hidden,
+            // then take the prompts over and open.
+            const HudObject* owner = static_cast<const HudObject*>(context);
+            if (owner->object && owner->object->IsVisible())
+                break;
+            context = nullptr;
+            if (HudObject* back = info.backButton ? Find(info.backButton) : nullptr) {
+                const bool shown = back->object && back->object->IsVisible();
+                menuFlags = shown ? (menuFlags | kM_BackWasShown) : (menuFlags & ~kM_BackWasShown);
+                if (const char* own = FirstLabelText(back))
+                    ape::StrCopyBounded(backText, own, sizeof backText);
+            }
+            if (HudObject* select = info.selectButton ? Find(info.selectButton) : nullptr) {
+                const bool shown = select->object && select->object->IsVisible();
+                menuFlags = shown ? (menuFlags | kM_SelectWasShown) : (menuFlags & ~kM_SelectWasShown);
+                if (const char* own = FirstLabelText(select))
+                    ape::StrCopyBounded(selectText, own, sizeof selectText);
+            }
+            if (HudObject* back = info.backButton ? Find(info.backButton) : nullptr)
+                back->ShowText(-1.0f, "$HIDEOUT_BUTTON_BACK", true, false, nullptr, kNoTint);
+            if (HudObject* select = info.selectButton ? Find(info.selectButton) : nullptr)
+                select->ShowText(-1.0f, "$HIDEOUT_BUTTON_SELECT", true, false, nullptr, kNoTint);
+            if (nextGui) {
+                gui = nextGui;
+                nextGui = nullptr;
+            }
+            if (gui && !shutdownScript) {
+                ape::StopGuiScripts("", gui);
+                StartInitScript();
+            }
+            PlayMenuClip(kClip_Open);
+            object->SetVisible(true, true);
+            SetPageFieldsVisible(true, true);
+        }
+        break;
+    case kMenu_Transition:
+        if (ClipDoneIgnoringLoop(animController)) {
+            StartInitScript();
+            animState = (animState & 1u) | (4u << 1);
+        }
+        break;
+    case 4:   // transition played: wait for the init script
+        if (!shutdownScript) {
+            animState = (animState & 1u) | (kMenu_Open << 1);
+        } else if (!ScriptRunning()) {
+            delete shutdownScript;
+            shutdownScript = nullptr;
+            animState = (animState & 1u) | (kMenu_Open << 1);
+        }
+        break;
+    case 6:   // closing clip of a page switch played
+        if (ClipDoneIgnoringLoop(animController)) {
+            if (nextGui)
+                PlayTransition();
+            else
+                BeginClose();
+        }
+        break;
+    case kMenu_Switching:
+        if (ScriptRunning())
+            break;
+        delete shutdownScript;
+        shutdownScript = nullptr;
+        {
+            const HudObjectDef::MenuPageDef& from = info.pages[previousPage];
+            const HudObjectDef::MenuPageDef& to = info.pages[page];
+            if (from.animA == to.animA && from.animB == to.animB) {
+                if (nextGui)
+                    PlayTransition();
+                else
+                    BeginClose();
+            } else {
+                animState = (animState & 1u) | (6u << 1);
+                PlayMenuClip(PickClip(from, kCloseSame, kCloseFromNone, kCloseFrom));
+            }
+        }
+        break;
+    case kMenu_Closing:
+        if (MenuAnimDone()) {
+            PlayMenuClip(kClip_ClosePlain);
+            animState = (animState & 1u) | (kMenu_ClosingPlain << 1);
+        }
+        break;
+    case kMenu_ClosingPlain:
+        if (MenuAnimDone() && !ScriptRunning()) {
+            delete shutdownScript;
+            shutdownScript = nullptr;
+            Refresh();
+        }
+        break;
+    default:
+        break;
+    }
+
+    if (animController)
+        animController->UpdateLayers(dt);
+    if (!object || !object->IsVisible())
+        return;
+    const ape::Vec3& zero = ape::world::kWorldZero;
+    if ((baseOffset.x == zero.x && baseOffset.y == zero.y && baseOffset.z == zero.z) || !HudPlacementEnabled())
+        return;
+    ape::Matrix34 local = object->GetLocal();
+    local.translation.x = zero.x + baseOffset.x + offset.x;
+    local.translation.y = zero.y + baseOffset.y + offset.y;
+    local.translation.z = zero.z + baseOffset.z + offset.z;
+    object->SetLocal(local);
+    object->MarkDirty();
 }
 
 } // namespace hud

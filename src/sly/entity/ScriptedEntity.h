@@ -13,6 +13,8 @@
 #include "sly/entity/EntityInterfaces.h"
 
 namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; class ApeAnimScriptState; }
+namespace ape::xml { class XmlElement; }
+namespace sly::objects { struct ScriptedInstanceDesc; }
 
 namespace sly {
 namespace entity {
@@ -22,6 +24,11 @@ namespace entity {
 // script; adds three virtual slots. Its destructor has no body of its own.
 class ScriptedEntity : public Entity {
 public:
+    ScriptedEntity() = default;
+    // 0x000E01C0 (thunk 0x000E02D8): the entity base, health from the
+    // description, the state flags (placement bindings, immortality from the
+    // definition), the description's extra script and the lifetime script.
+    explicit ScriptedEntity(const objects::ScriptedInstanceDesc& desc);
     // @func 0x00747504 ScriptedEntity::~ScriptedEntity
     // @func 0x00747530 ScriptedEntity::~ScriptedEntity (deleting)
     ~ScriptedEntity() override = default;
@@ -114,6 +121,12 @@ public:
     // and a script message (0x000E0620).
     void OnDefeated();
 
+protected:
+    // Starts the lifetime script: `scriptOverride` (any library) when it
+    // names another script than the definition's, else the definition's own
+    // (0x000E0000).
+    void StartLifetimeScript(uint32_t scriptOverride);
+
 };
 
 // Description of scripted definitions (EntityDefDesc + 0x30 bytes).
@@ -128,6 +141,11 @@ struct ScriptedEntityDefDesc : EntityDefDesc {
     uint32_t field_74 = 0;          // 0x74 (definition slot 5)
     uint16_t damageFlags = 0;       // 0x78 bits 4-15 (see ScriptedEntityDef::damageFlags)
     uint16_t hitMask = 0;           // 0x7A
+
+    // Inherits the loader's fields and reads the scripted attributes; a
+    // scripted `parent` ("from") supplies the defaults (0x000C3910).
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
 };
 
 // Scripted entity definition (vtable 0x00B11D98, slot 7 Spawn is pure).

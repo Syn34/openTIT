@@ -41,6 +41,11 @@ public:
     // 0x0036C898: hides the sub-objects when the definition says so
     // (definition byte +0x9C).
     void HideSubObjects();
+    // 0x0036CEA0: queues the visible screen (after hiding its sub-objects)
+    // and draws the field frames at their scene objects (world callback
+    // 0x0036D0EC).
+    void Draw();
+    static void DrawCallback(void* unused, void* context);
 
     uint32_t field_A4 = 0;            // +0xA4
     uint32_t introAnim = 0;           // +0xA8

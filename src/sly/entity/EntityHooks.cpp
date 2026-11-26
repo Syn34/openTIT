@@ -166,8 +166,6 @@ void LoadDefs1F7B9E20(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) {}
 void LoadShootingDefs(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) {}
 // TODO(0x000D5C00 LoadSpawnDefs)
 void LoadSpawnDefs(ape::xml::XmlElement*, ape::xml::XmlElement*) {}
-// TODO(0x000CA038 LoadEntityDef)
-EntityDef* LoadEntityDef(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) { return nullptr; }
 
 // TODO(0x00490518)
 void PropertySystemForgetDef(EntityDef* def) { (void)def; }

@@ -32,6 +32,13 @@ public:
     // Slot 6 (0x0036FAC8): nothing.
     void SetEnabled(bool enabled, bool flag) override;
 
+    // 0x0036FAD0: shows the prompt with `text` in its message label.
+    void Show(const char* text);
+    // 0x0036FCD0: draws the three GUI objects at their scene objects
+    // (world callback 0x00370104).
+    void Draw();
+    static void DrawCallback(void* unused, void* context);
+
     ape::world::ApeObj* sceneObjects[3] = {};   // +0xA4 definition names +0xA0..+0xA8
     ape::ApeGuiObject* guiObjects[3] = {};      // +0xB0 definition +0x94..+0x9C, shown when idle
     uint32_t field_BC = 0;

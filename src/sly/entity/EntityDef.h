@@ -63,6 +63,10 @@ void ParseEntityAttachments(ape::xml::XmlElement* root, ape::xml::XmlElement* el
 // Each concrete definition class sets its own combination; a "from" parent is
 // recognised by them.
 enum DefClassBits : uint32_t {
+    // NOTE: same bits as the placement flags of the matching classes.
+    kDefClass_Scripted     = 0x00000002,  // ScriptedEntityDef and everything built on it
+    kDefClass_Actor        = 0x00000004,  // ActorDef family
+    kDefClass_Physical     = 0x00002000,  // PhysicalEntityDef family
     kDefClass_Trigger      = 0x00400000,  // trigger family (never in the property registry)
     kDefClass_Sound        = 0x01000000,  // ambient sound / sound zone triggers
     kDefClass_08000000     = 0x08000000,  // NOTE: set by damage/death/filtered/... triggers
@@ -85,17 +89,19 @@ struct EntityDefDesc {
     uint32_t field_20 = 0;         // 0x20 bit 0 becomes EntityDef::flags bit 23
     float field_24 = -1.0f;        // 0x24 placement default
     float field_28 = -1.0f;        // 0x28 placement default
-    bool field_2C = false;         // 0x2C
+    uint8_t loadScope = 0;         // 0x2C load scope of the file the definition comes from
     // 0x30 type hash under which the property registry files the definition
     // (one of the seven at 0x00AE9490). NOTE: role assumed from 0x00490360.
     uint32_t propertyType = 0;
     uint32_t field_34 = 0;         // 0x34
     uint32_t havokSkeleton = 0;    // 0x38 Havok skeleton the geometry's bones are mapped to
-    uint32_t field_3C = 0;         // 0x3C
+    float field_3C = 0.0f;         // 0x3C attribute 0xDD1DC180
     // 0x40 names of the component templates the definition's entities get
     // (the loader's list; may be null or empty).
     ape::ApeTArray<uint32_t>* const* componentNames = nullptr;
-    uint32_t field_44 = 0;         // 0x44
+    // 0x44 the definition element's attachment records (the loader copies
+    // them into the new definition; may be null or empty).
+    EntityAttachmentList* const* attachments = nullptr;
     // 0x48 bounding radius forced on the template object (when positive and
     // the object's definition has a radius).
     float boundingRadius = -1.0f;
@@ -191,7 +197,7 @@ public:
     uint32_t havokSkeleton = 0;                     // 0x7C
     // 0x80 Havok bone index of each geometry bone (BuildHavokBoneMap; owned).
     uint16_t* boneMap = nullptr;
-    uint32_t field_84 = 0;                          // 0x84 EntityDefDesc::field_3C
+    float field_84 = 0.0f;                          // 0x84 EntityDefDesc::field_3C
     EntityAttachmentList* attachments = nullptr;    // 0x88 records copied into every placement
 };
 

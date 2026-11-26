@@ -10,6 +10,7 @@
 #include "ape/container/ApeTSortedMap.h"
 #include "ape/memory/ApeTArray.h"
 #include "sly/game/Tween.h"
+#include "ape/xml/ApeXml.h"
 
 namespace ape::world { class ApeObj; }
 namespace ape { class ApeGuiObject; }
@@ -243,6 +244,43 @@ struct HudObjectDef {
         uint8_t flags = 0;           // +0xC4 bit 0: persistent
         bool flagC5 = false;         // +0xC5 attribute 0x379040C0
     } list800;
+    // Map definitions (type bit 0x10000, "HudMap", +0x94..+0x1B0).
+    struct MapFieldDef {             // 0x24 bytes
+        uint8_t color[4] = {};       // +0x00
+        uint32_t objectName = 0;     // +0x04
+        ape::ApeGuiObject* object = nullptr;     // +0x08 "parentFrame2D"
+        ape::ApeGuiObject* textFrame = nullptr;  // +0x0C "textFrame2D"
+        ape::ApeGuiObject* label = nullptr;      // +0x10 "text2D"
+        uint32_t introScript = 0;    // +0x14
+        uint32_t outroScript = 0;    // +0x18
+        uint32_t flags = 0;          // +0x1C bit 31 clone, bit 30 player colour
+        uint32_t id = 0;             // +0x20 "ID"
+    };
+    struct MapDef {
+        MapFieldDef* fields = nullptr;   // +0x94
+        uint32_t fieldCount = 0;     // +0x98
+        float defaultFade = -1.0f;   // +0x9C "DisplayTime"
+        bool startActive = false;    // +0xA0 "StartActive"
+        uint32_t field_A4 = 0;       // +0xA4 attribute 0x5A63486C
+        struct Corner { uint32_t name = 0; uint8_t color[4] = {}; };
+        Corner corners[4];           // +0xA8 "TLPoint", "TRPoint", "BLPoint", "BRPoint"
+        uint32_t field_C8 = 0;       // +0xC8 attribute 0xA3DAD21C
+        uint32_t field_CC = 0;       // +0xCC attribute 0xFC3E33C2
+        char text_D0[0x20] = {};     // +0xD0 attribute 0x654B8263
+        uint8_t color_F0[4] = {};    // +0xF0 attribute 0x39887387
+        uint32_t field_F4[4] = {};   // +0xF4 attributes 0x624CED18, 0x624CED1E, 0x624CEAEA, 0x624CEAF0
+        char names[4][0x20] = {};    // +0x104 attributes 0xC86B54ED, 0x05D0B873, 0x7A962D3F, 0xB7FB90C5
+        uint32_t playerBlip = 0;     // +0x184 (the radar's blip attributes)
+        uint32_t enemyBlip = 0;      // +0x188
+        uint32_t goalBlip = 0;       // +0x18C
+        uint32_t goalEdgeBlip = 0;   // +0x190
+        uint32_t bottleBlip = 0;     // +0x194
+        uint32_t safeBlip = 0;       // +0x198
+        float field_19C = 1.0f;      // +0x19C attribute 0xEA68DF12
+        float field_1A0 = 1.0f;      // +0x1A0 attribute 0xC9037FF5
+        uint32_t glowName = 0;       // +0x1A4 attribute 0x62AA4B26
+        uint8_t colors[3][4] = {};   // +0x1A8 the radar's colour attributes
+    } map;
     // Timed text definitions (type bit 0x4000): the lines (+0xA4..+0xAC).
     HudTimedLines timedLines;
     // Meter definitions (type bit 8, +0x94..+0xC0) overlay the members above.
@@ -603,9 +641,18 @@ struct HudColorStyle {
     uint8_t colors[3][4] = {};       // +0x0C attributes 0xEAB9B1D2, 0xEAB9B1D3, 0x68762E36
     uint32_t field_18 = 0;           // +0x18 attribute 0x31F8E7E5
 };
+// The first / second colour of a style (`found` as returned by the style
+// map's Find; opaque black without a style). 0x0036AA04 / 0x0036AA68.
+ape::xml::Color8 ColorStyleColorA(HudColorStyle* const* found);
+ape::xml::Color8 ColorStyleColorB(HudColorStyle* const* found);
 // 0x0036196C: reads the element definitions and colour styles of a HUD
 // definition file into the definition map.
 void LoadHudDefinitions(ape::xml::XmlElement* root);
+// 0x0035B984: every element is refreshed (screens locked first, scripts
+// told "0x25F79944"), the stacks and the suspended list emptied, the owner
+// meters and the queued elements destroyed and the text override reset.
+// With `flagMap` the map element gets flag bit 20.
+void ResetHudElements(bool flagMap);
 // 0x0035AC7C: builds one element per definition (the element class is
 // chosen by the definition's type bits) and registers it by name.
 void BuildHudElements();
