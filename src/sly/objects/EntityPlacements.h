@@ -236,9 +236,27 @@ struct TargetableBInstanceDesc : ScriptedInstanceDesc {
         ~Name() override;                         \
     }
 
-SLY_PLACEMENT(TargetableCPlacement, ScriptedEntityPlacement);       // 0x00B18B30
+// Vtable 0x00B18B30. NOTE: its copy (slot 2) is not ported.
+class TargetableCPlacement : public ScriptedEntityPlacement {
+public:
+    using ScriptedEntityPlacement::ScriptedEntityPlacement;
+    ~TargetableCPlacement() override;
+    PhysicalSettings settings;          // +0xF0
+    float field_114 = -1.0f;            // +0x114 attribute 0x0023FEF4
+    float field_118 = 3.4028235e38f;    // +0x118 attribute 0xCEDD379A
+    bool field_11C = false;             // +0x11C
+};
 SLY_PLACEMENT(TargetableCLinkedPlacement, ScriptedEntityPlacement); // 0x00B18F48
-SLY_PLACEMENT(RigidEntityB19198Placement, ScriptedEntityPlacement); // 0x00B19178
+// Vtable 0x00B19178. NOTE: its copy (slot 2) is not ported.
+class RigidEntityB19198Placement : public ScriptedEntityPlacement {
+public:
+    using ScriptedEntityPlacement::ScriptedEntityPlacement;
+    ~RigidEntityB19198Placement() override;
+    PhysicalSettings settings;          // +0xF0
+    uint32_t field_114 = 0;             // +0x114
+    // Attributes 0x926425E9, 0x7F6CE437, 0x918F1125.
+    bool field_118[3] = {};             // +0x118..+0x11A
+};
 
 #undef SLY_PLACEMENT
 
@@ -756,6 +774,12 @@ EntityPlacement* ParseTweenActorPlacement(ape::xml::XmlElement* root, ape::xml::
                                           const char* name, EntityDef* def);
 EntityPlacement* ParseInteractivePropBPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                 const char* name, EntityDef* def);
+// TargetableC and 0x00B19178 rigid entity placement loaders (0x001FAB38,
+// 0x002048A0).
+EntityPlacement* ParseTargetableCPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                           const char* name, EntityDef* def);
+EntityPlacement* ParseRigidEntityB19198Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                 const char* name, EntityDef* def);
 // Placement loaders of the rigid-body scripted classes (0x00167F58,
 // 0x0016CBE0, 0x00177D78, 0x0017F1A0, 0x00190EA0).
 EntityPlacement* ParseRigidPropPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,

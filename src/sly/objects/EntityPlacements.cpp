@@ -930,5 +930,41 @@ EntityPlacement* ParseInteractivePropBPlacement(ape::xml::XmlElement* root, ape:
     return placement;
 }
 
+// @func 0x001FAB38 ParseTargetableCPlacement
+// The definition's hitFlags bit 31 gives the placement's bit 30.
+EntityPlacement* ParseTargetableCPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                           const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new TargetableCPlacement(name, def);
+    if (def) {
+        const bool bit = (static_cast<const entity::TargetableDefC*>(def)->hitFlags & 0x80000000u) != 0;
+        placement->bits84 = (placement->bits84 & ~0x40000000u) | (bit ? 0x40000000u : 0u);
+    }
+    placement->flags |= 0x20;
+    placement->Parse(elem);
+    ParsePhysicalSettings(elem, placement->settings);
+    elem->GetFloat(0x0023FEF4u, &placement->field_114, placement->field_114);
+    elem->GetFloat(0xCEDD379Au, &placement->field_118, placement->field_118);
+    ToRadians(placement->settings.rotation);
+    return placement;
+}
+
+// @func 0x002048A0 ParseRigidEntityB19198Placement
+EntityPlacement* ParseRigidEntityB19198Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                 const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new RigidEntityB19198Placement(name, def);
+    placement->flags |= 0x1000;
+    placement->Parse(elem);
+    ParsePhysicalSettings(elem, placement->settings);
+    ToRadians(placement->settings.rotation);
+    elem->GetBool(0x926425E9u, &placement->field_118[0], placement->field_118[0]);
+    elem->GetBool(0x7F6CE437u, &placement->field_118[1], placement->field_118[1]);
+    elem->GetBool(0x918F1125u, &placement->field_118[2], placement->field_118[2]);
+    return placement;
+}
+
 } // namespace objects
 } // namespace sly
