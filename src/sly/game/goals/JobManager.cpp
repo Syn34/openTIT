@@ -7,6 +7,7 @@
 #include "sly/entity/GameEntityHooks.h"
 #include "sly/game/GameScripts.h"
 #include "sly/game/SlyGame.h"
+#include "sly/game/GameShellHooks.h"
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
 #include "sly/game/goals/Goal.h"
@@ -54,7 +55,7 @@ ape::Matrix34& PlayerSpawnTransform()
     return g_game ? g_game->Player(0).spawnTransform : transform;
 }
 entity::Entity* PlayableCharacter(int) { return nullptr; }
-void DefaultSpawnTransform(int, ape::Matrix34*) {}
+void DefaultSpawnTransform(int slot, ape::Matrix34* out) { sly::DefaultSpawnTransform(slot, out); }
 bool PointInstanceWorldTransform(uint32_t, ape::Matrix34*) { return false; }
 bool TakeRespawnOverride(ape::Matrix34*, bool* wasSet)
 {

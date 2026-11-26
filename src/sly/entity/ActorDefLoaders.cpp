@@ -398,6 +398,67 @@ void InteractivePropBDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlEle
 }
 
 
+// -- Safe --------------------------------------------------------------------------
+constexpr uint32_t kType_Safe = 0x10000000;
+
+struct SafeDefDesc : ClassDefDesc {
+    explicit SafeDefDesc(const EntityDefDesc& loader) : ClassDefDesc(loader, kType_Safe) {}
+    uint32_t hashes[10] = {};           // 0xE0..0x104
+    float field_108 = 0.0f;             // 0x108
+    ape::Vec3 field_110{};              // 0x110
+    float floats[7] = {55.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};   // 0x120..0x138
+    uint32_t hashes13C[10] = {};        // 0x13C..0x160
+    ape::Vec3 field_170{};              // 0x170
+    uint32_t hashes180[3] = {};         // 0x180..0x188
+    float field_18C = 4.0f;             // 0x18C
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001E6300 SafeDefDesc::Parse
+// A safe parent passes on everything but the two vectors.
+void SafeDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                        const EntityDef* parent)
+{
+    ActorDefDesc::Parse(root, elem, loader, parent);
+    SafeDefDesc defaults(loader);
+    if (const auto* safe = SameClassParent<SafeDef>(parent, kType_Safe)) {
+        for (int i = 0; i < 10; ++i)
+            defaults.hashes[i] = safe->hashes130[i];
+        defaults.field_108 = safe->field_158;
+        for (int i = 0; i < 7; ++i)
+            defaults.floats[i] = safe->floats170[i];
+        for (int i = 0; i < 9; ++i)
+            defaults.hashes13C[i] = safe->hashes18C[i];
+        defaults.hashes13C[9] = safe->field_1B0;
+        defaults.hashes180[0] = safe->field_1D0;
+        defaults.hashes180[1] = safe->field_1D4;
+        defaults.hashes180[2] = safe->field_1D8;
+        defaults.field_18C = safe->field_1DC;
+    }
+    static constexpr uint32_t kHashAttrs[10] = {0xCA9B378Eu, 0x07AB8180u, 0xCAF309B3u, 0x00F161A9u, 0xDA59999Bu,
+                                                0x4B3B3ECEu, 0xA4C980A9u, 0xF86846F7u, 0xA3BB4824u, 0x1F114A8Au};
+    static constexpr uint32_t kFloatAttrs[7] = {0x91B5CB68u, 0x462137C5u, 0xCA7EA426u, 0x4A3F3DB5u,
+                                                0x19C09DDEu, 0xC55EF4EBu, 0x6AF36019u};
+    static constexpr uint32_t kHash13CAttrs[10] = {0x3A15BFABu, 0xDB732E22u, 0x5977F5AFu, 0xDB1B5BFDu,
+                                                   0xCD553C2Au, 0x3B15E5B7u, 0xCCFD6A05u, 0x098591A0u,
+                                                   0x3A1BDFB9u, 0x06556689u};
+    static constexpr uint32_t kHash180Attrs[3] = {0x675C8395u, 0x8DAC3405u, 0x07E04656u};
+    for (int i = 0; i < 10; ++i)
+        elem->GetHash(kHashAttrs[i], &hashes[i], defaults.hashes[i]);
+    elem->GetFloat(0x16DD189Au, &field_108, defaults.field_108);
+    elem->GetVec3(0x81785FF8u, &field_110.x, &defaults.field_110.x);
+    for (int i = 0; i < 7; ++i)
+        elem->GetFloat(kFloatAttrs[i], &floats[i], defaults.floats[i]);
+    for (int i = 0; i < 10; ++i)
+        elem->GetHash(kHash13CAttrs[i], &hashes13C[i], defaults.hashes13C[i]);
+    elem->GetVec3(0xC88E4511u, &field_170.x, &defaults.field_170.x);
+    for (int i = 0; i < 3; ++i)
+        elem->GetHash(kHash180Attrs[i], &hashes180[i], defaults.hashes180[i]);
+    elem->GetFloat(0x3EF33B23u, &field_18C, defaults.field_18C);
+}
+
 } // namespace
 
 // -- SoundActor (and the base of the sound actor classes) --------------------------
@@ -791,6 +852,126 @@ SoundActorB16B48Def::SoundActorB16B48Def(const SoundActorB16B48DefDesc& desc)
         bodyParts.PushBack(part);
 }
 
+// -- SoundActorB16DB0 (six tracked volumes) --------------------------------------
+constexpr uint32_t kType_SoundActorB16DB0 = 0x400000;
+
+struct SoundActorB16DB0DefDesc : SoundActorDefDesc {
+    explicit SoundActorB16DB0DefDesc(const EntityDefDesc& loader) : SoundActorDefDesc(loader)
+    {
+        typeBits |= kType_SoundActorB16DB0;
+    }
+    ape::Vec3 angles{};                 // 0x140
+    float field_150 = 0.0f;             // 0x150
+    float field_154 = -1.0f;            // 0x154
+    float field_158 = 0.0f;             // 0x158
+    uint32_t field_15C = 0;             // 0x15C
+    uint32_t field_160 = 0;             // 0x160
+    float field_164 = -1.0f;            // 0x164
+    float field_168 = -1.0f;            // 0x168
+    bool flag16C = false;               // 0x16C
+    bool flag16D = false;               // 0x16D
+    bool options[9] = {};               // 0x16E bits 30..22 of the definition's options
+    SoundActorB16DB0Def::Volume volumes[SoundActorB16DB0Def::kVolumeCount];   // 0x180
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001C49E8 SoundActorB16DB0DefDesc::Parse
+// Option 27 (the fourth) keeps the description's volumes; otherwise they
+// start as the parent's (or the defaults). Each "Trigger" child then
+// updates the next volume.
+void SoundActorB16DB0DefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                    const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorDefDesc::Parse(root, elem, loader, parent);
+    float defaultFloats[3] = {0.0f, -1.0f, 0.0f};
+    uint32_t defaultHashes[2] = {};
+    float default164 = -1.0f, default168 = -1.0f;
+    bool defaultOptions[9] = {};
+    SoundActorB16DB0Def::Volume defaultVolumes[SoundActorB16DB0Def::kVolumeCount];
+    if (const auto* other = SameClassParent<SoundActorB16DB0Def>(parent, kType_SoundActorB16DB0)) {
+        defaultFloats[0] = other->field_1A0;
+        defaultFloats[1] = other->triggerDelay;
+        defaultFloats[2] = other->field_1A8;
+        defaultHashes[0] = other->field_1AC;
+        defaultHashes[1] = other->field_1B0;
+        default164 = other->field_1B4;
+        default168 = other->field_1B8;
+        for (int i = 0; i < 9; ++i)
+            defaultOptions[i] = (other->options >> (30 - i)) & 1;
+        for (int i = 0; i < SoundActorB16DB0Def::kVolumeCount; ++i)
+            defaultVolumes[i] = other->volumes[i];
+    }
+    constexpr float kDegToRad = 0.017453292f;
+    const ape::Vec3 zero{};
+    if (elem->GetVec3(0x3C6AE50Bu, &angles.x, &zero.x) == ape::xml::kQuery_Ok) {
+        angles.x *= kDegToRad;
+        angles.y *= kDegToRad;
+        angles.z *= kDegToRad;
+    }
+    elem->GetFloat(0x7D873487u, &field_150, defaultFloats[0]);
+    elem->GetFloat(0x7BC2B446u, &field_154, defaultFloats[1]);
+    elem->GetFloat(0x1B75F0DAu, &field_158, defaultFloats[2]);
+    elem->GetHash(0x2DF2E2B5u, &field_15C, defaultHashes[0]);
+    elem->GetHash(0x53FFAFC2u, &field_160, defaultHashes[1]);
+    elem->GetFloat(0x667AB4F5u, &field_164, default164);
+    elem->GetFloat(0x7A392528u, &field_168, default168);
+    elem->GetBool(0xBC50985Bu, &flag16C, false);
+    elem->GetBool(0xCD7DD617u, &flag16D, false);
+    static constexpr uint32_t kOptionAttrs[9] = {0xA4AC4BB2u, 0xC56C09B3u, 0x9698E4BFu, 0xA8F641D7u, 0xC53B9DE4u,
+                                                 0xF7C51457u, 0x013BDD92u, 0x23872185u, 0xA8DB95B1u};
+    for (int i = 0; i < 9; ++i)
+        elem->GetBool(kOptionAttrs[i], &options[i], defaultOptions[i]);
+    if (!options[3]) {
+        for (int i = 0; i < SoundActorB16DB0Def::kVolumeCount; ++i)
+            volumes[i] = defaultVolumes[i];
+    }
+
+    constexpr uint32_t kElem_Trigger = 0xEB9EE198u;   // "Trigger"
+    int index = 0;
+    for (ape::xml::XmlElement* child = elem->FirstChildElement(kElem_Trigger); child;
+         child = child->NextSiblingElement(kElem_Trigger), ++index) {
+        if (index >= SoundActorB16DB0Def::kVolumeCount)
+            continue;
+        SoundActorB16DB0Def::Volume& volume = volumes[index];
+        child->GetHash(0x75849CFEu, &volume.field_00, volume.field_00);
+        child->GetVec3(0x2B7B3EB4u, &volume.field_10.x, &volume.field_10.x);
+        child->GetVec3(0x313AB0C1u, &volume.field_20.x, &volume.field_20.x);
+        ape::Vec3 degrees{};
+        if (child->GetVec3(0x313AB844u, &degrees.x, &zero.x) == ape::xml::kQuery_Ok)
+            volume.rotation =
+                QuatFromEuler({degrees.x * kDegToRad, degrees.y * kDegToRad, degrees.z * kDegToRad, 0.0f});
+        child->GetHash(0x632DA119u, &volume.field_40, volume.field_40);
+        child->GetBool(0x8141EC8Au, &volume.field_44, volume.field_44);
+        child->GetBool(0xF8E455ACu, &volume.field_45, volume.field_45);
+    }
+
+    field_150 = std::max(field_150, 0.0f);
+    field_158 = std::max(field_158, 0.0f);
+    // The first two options exclude each other.
+    if (options[0] && options[1])
+        options[0] = options[1] = false;
+}
+
+// @func 0x001C463C SoundActorB16DB0Def::SoundActorB16DB0Def
+SoundActorB16DB0Def::SoundActorB16DB0Def(const SoundActorB16DB0DefDesc& desc)
+    : SoundActorDef(desc), angles(desc.angles), field_1A0(desc.field_150), triggerDelay(desc.field_154),
+      field_1A8(desc.field_158), field_1AC(desc.field_15C), field_1B0(desc.field_160), field_1B4(desc.field_164),
+      field_1B8(desc.field_168)
+{
+    desc.CopyTo(*this);
+    options &= 0x8000FFFFu;
+    for (int i = 0; i < 9; ++i)
+        options |= uint32_t(desc.options[i]) << (30 - i);
+    for (int i = 0; i < kVolumeCount; ++i)
+        volumes[i] = desc.volumes[i];
+    if (desc.flag16D)
+        options = (options & 0xFFC0FFFFu) | 0x00050000u;
+    else if (desc.flag16C)
+        options = (options & 0xFFC0FFFFu) | 0x00030000u;
+}
+
 // -- SignalActor -----------------------------------------------------------------
 constexpr uint32_t kType_Signal = 0x40000;
 
@@ -1127,6 +1308,45 @@ EntityDef* CreateScriptObjectActorDef(ape::xml::XmlElement* root, ape::xml::XmlE
     auto* def = new ScriptObjectActorDef(desc);
     def->field_130 = value;
     def->field_140 = vector;
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001C5408 CreateSoundActorB16DB0Def
+EntityDef* CreateSoundActorB16DB0Def(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                     const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorB16DB0DefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new SoundActorB16DB0Def(desc);
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001E6B18 CreateSafeDef
+// The definition constructor (0x001E5170) copies the class fields in place.
+EntityDef* CreateSafeDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                         const EntityDef* parent)
+{
+    SafeDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new SafeDef(desc);
+    for (int i = 0; i < 10; ++i)
+        def->hashes130[i] = desc.hashes[i];
+    def->field_158 = desc.field_108;
+    def->field_160 = desc.field_110;
+    for (int i = 0; i < 7; ++i)
+        def->floats170[i] = desc.floats[i];
+    for (int i = 0; i < 9; ++i)
+        def->hashes18C[i] = desc.hashes13C[i];
+    def->field_1B0 = desc.hashes13C[9];
+    def->field_1C0[0] = desc.field_170.x;
+    def->field_1C0[1] = desc.field_170.y;
+    def->field_1C0[2] = desc.field_170.z;
+    def->field_1D0 = desc.hashes180[0];
+    def->field_1D4 = desc.hashes180[1];
+    def->field_1D8 = desc.hashes180[2];
+    def->field_1DC = desc.field_18C;
     delete desc.parts;
     return def;
 }

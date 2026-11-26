@@ -29,6 +29,26 @@ LaserFieldDef::~LaserFieldDef()
 // @func 0x007443FC LaserFieldEntity::~LaserFieldEntity (deleting thunk, +0x17C)
 LaserFieldEntity::~LaserFieldEntity() = default;
 
+// @func 0x000C21EC LaserFieldEntity::Interface17CSlot5
+// @func 0x000C23D4 LaserFieldEntity::Interface17CSlot5 (thunk, +0x17C)
+void LaserFieldEntity::Interface17CSlot5(const void* event)
+{
+    ContactEventDisable(event);
+    if (!body)
+        return;
+    void* bodyA = ContactEventBody(event, 0);
+    void* bodyB = ContactEventBody(event, 1);
+    void* other = bodyA == body ? bodyB : (bodyB == body ? bodyA : nullptr);
+    Entity* toucher = nullptr;
+    if (other && RigidBodyOwnerType(other) == kBodyOwner_Entity)
+        toucher = static_cast<Entity*>(RigidBodyOwner(other));
+    if (!toucher || !static_cast<const LaserFieldDef*>(def)->playersTrip || !(toucher->classBits & 1))
+        return;
+    const int state = EntityGetState(this, 0);
+    if (state == 0 || state == 1)
+        EntitySetState(this, 0, 2);
+}
+
 // @func 0x007444AC LaserFieldEntity::GetRenderObject
 ape::world::ApeObj* LaserFieldEntity::GetRenderObject() { return static_cast<ape::world::ApeObj*>(body); }
 

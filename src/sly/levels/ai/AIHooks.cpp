@@ -22,6 +22,7 @@ float PropFloat(const PropertyBlock*, AIProp) { return 0.0f; }
 
 const PropertyBlock* FindSettingObject(uint32_t) { return nullptr; }
 ape::world::ApeSplineInstance* FindLevelSplineInstance(uint32_t) { return nullptr; }
+void EntitySetMoveHeading(Entity*, float, float) {}
 bool CharacterSpawnerSettings(const Entity*, uint32_t[3], const PropertyBlock*[3]) { return false; }
 
 bool SpawnerAltObjectBounds(const Entity*, ape::Vec3&, ape::Vec3&) { return false; }
