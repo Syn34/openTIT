@@ -13,8 +13,9 @@
   (0x007755E4-0x0077A950) and the runtime-data allocator templates (0x007737A4-0x00773998
   causes, 0x007742DC-0x00774D2C results, one instantiation per type with runtime data).
   Still TODO there: 0x00773A90/0x00773E8C are the library's handle-list pool Init/Grow
-  (the port keeps the library in vectors; Erase 0x00773C8C is a tagged ApeTHandleList copy) and 0x00774E1C-0x00775550 are
-  RFireProjectile field getters used only by its Execute (0x00398040).
+  (the port keeps the library in vectors; Erase 0x00773C8C is a tagged ApeTHandleList copy).
+  0x00774E1C-0x00775550 are the RFireProjectile field getters used only by its Execute
+  (0x00398040); they are in KnowledgeResults.cpp (`fire_projectile::`).
 * `KnowledgeCauses.cpp`, `KnowledgeResults.cpp`: per-type callbacks. Still TODO:
   RCameraShake (0x003958C8), RSetPosition (0x003967B0), RStartMeleeAttack::Execute
   (0x0039724C), RFireProjectile (0x00397970/0x00397D8C/0x00398040).

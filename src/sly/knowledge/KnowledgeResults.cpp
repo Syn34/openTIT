@@ -621,6 +621,36 @@ void RFireProjectileClone(KRef* ref, KnowledgeData* list)
                       ape::TempFormat("RFireProjectile: Cannot find bone (%s) for character %s!",
                                       ResultValue(ref, 0).str, owner->GetDebugName()));
 }
+namespace fire_projectile {
+// @func 0x00774E1C RFireProjectile::ProjDefName
+const char* ProjDefName(const KRef* ref) { return ResultValue(ref, 1).str; }
+// @func 0x00774EB0 RFireProjectile::XOffset
+float XOffset(const KRef* ref) { return ResultValue(ref, 2).f; }
+// @func 0x00774F44 RFireProjectile::YOffset
+float YOffset(const KRef* ref) { return ResultValue(ref, 3).f; }
+// @func 0x00774FD8 RFireProjectile::ZOffset
+float ZOffset(const KRef* ref) { return ResultValue(ref, 4).f; }
+// @func 0x00775350 RFireProjectile::UseHighArc
+bool UseHighArc(const KRef* ref) { return ResultValue(ref, 5).b; }
+// @func 0x00775550 RFireProjectile::UseBoneOrient
+bool UseBoneOrient(const KRef* ref) { return ResultValue(ref, 6).b; }
+// @func 0x00775228 RFireProjectile::InvertBoneOrient
+bool InvertBoneOrient(const KRef* ref) { return ResultValue(ref, 7).b; }
+// @func 0x007752BC RFireProjectile::PredictTargetPos
+bool PredictTargetPos(const KRef* ref) { return ResultValue(ref, 8).b; }
+// @func 0x0077506C RFireProjectile::DirX
+float DirX(const KRef* ref) { return ResultValue(ref, 12).f; }
+// @func 0x00775100 RFireProjectile::DirY
+float DirY(const KRef* ref) { return ResultValue(ref, 13).f; }
+// @func 0x00775194 RFireProjectile::DirZ
+float DirZ(const KRef* ref) { return ResultValue(ref, 14).f; }
+// @func 0x007753E4 RFireProjectile::TargetOffset
+ape::Vec3 TargetOffset(const KRef* ref)
+{
+    return { ResultValue(ref, 15).f, ResultValue(ref, 16).f, ResultValue(ref, 17).f, 0.0f };
+}
+} // namespace fire_projectile
+
 // TODO(0x00398040 RFireProjectile::Execute)
 bool RFireProjectileExecute(KRef*, KnowledgeData*) { return false; }
 
