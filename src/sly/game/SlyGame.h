@@ -26,7 +26,8 @@
 #include <vector>
 
 namespace ape::file { class File; }
-namespace ape { struct ApeLevelWorld; }
+namespace ape { struct ApeLevelWorld; class ApeGuiFile; }
+namespace ape::world { class ApeScene; }
 namespace ape { struct GuiEvent; class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeAnimScript; class ApeGuiObject; }
 namespace agl { class AglRenderTarget; }
 
@@ -450,6 +451,17 @@ public:
     // Walks the levels `level` includes, recursively. NOTE: nothing is done
     // with them on the console (the work was compiled out) (0x0047C68C).
     void VisitIncludedLevels(const ape::ApeLevelDef* level);
+    // Fits the root GUI screens ("Common.Menus", "InGame.HUD", ...) to the
+    // display: scaled by height / 720 ("UI.PlatformScale" for most), and
+    // the full-screen ones sized to the whole display (0x00467610).
+    void FitGuiRoots();
+    // Loads the GUI: the string table of the language, the common GUI
+    // scene, "UI_Common" and the screen set `screens` (0 front end, 1 in
+    // game, -1 none; `devPaths` reads them from the development tree), then
+    // fits the roots and installs the game's GUI filters (0x004678B8).
+    void LoadGui(int screens, bool devPaths);
+    // The game's handling of a GUI event (0x00479400).
+    bool OnGuiEvent(const ape::GuiEvent& event);
     // A player is down: meter B snaps and a running return-treasure
     // microgame loses the treasure if the player carried it.
     void OnPlayerDown(uint32_t player);
@@ -604,6 +616,15 @@ public:
     // front end's extras (and menu 0x0E) list the cinematics, the pause menu
     // the other group (0x0046E438).
     void RefreshMoviesPage(ape::ApeGuiObject* screen);
+    // Left / right on the movies page: back to its first page, the page is
+    // refreshed and the focus moves to the first focusable object of the
+    // event object's parent (0x00472DF8).
+    void OnMoviesPageEvent(const ape::GuiEvent& event);
+    // The moves page: the category name in "Category.Msg" and the moves of
+    // the current page of five in "Move01".."Move05" under "Moves"; an
+    // ancestor's moves stay "$STR_UNKNOWN" until the job is started, a
+    // costume's until its costume is unlocked (0x0046DFF0).
+    void RefreshMovesPage(ape::ApeGuiObject* screen);
     void RefreshAudioPage(ape::ApeGuiObject* screen);
     void RefreshDisplayPage(ape::ApeGuiObject* screen);
     // Accept on the controls page: the camera X/Y inversion or vibration
@@ -687,9 +708,9 @@ public:
     uint32_t splitViewOwners[kSplitViews] = {}; // +0x1281E4
     gameplay::Minigame* minigame = nullptr;     // +0x1281F4 the level's game mode
     uint32_t field_1281F8 = 0;                  // +0x1281F8
-    void* guiCommon = nullptr;                  // +0x1281FC UI_Common GUI resource
-    void* guiScene = nullptr;                   // +0x128200 GUI/GUI_Common.san
-    void* guiScreens = nullptr;                 // +0x128204 front end / in-game GUI resource
+    ape::ApeGuiFile* guiCommon = nullptr;       // +0x1281FC UI_Common GUI resource
+    ape::world::ApeScene* guiScene = nullptr;   // +0x128200 GUI/GUI_Common.san
+    ape::ApeGuiFile* guiScreens = nullptr;      // +0x128204 front end / in-game GUI resource
     float field_128208 = 0.0f;                  // +0x128208
     ape::ApeTArray<QueuedCutscene*> cutsceneQueue; // +0x12820C queued cutscenes (count +0x128214)
     bool resumeAfterCutscenes = false;          // +0x128220

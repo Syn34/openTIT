@@ -11,6 +11,45 @@
 namespace sly {
 namespace entity {
 
+// @func 0x00204B74 RigidEntityB19198::Release
+bool RigidEntityB19198::Release(bool kill)
+{
+    if (kill) {
+        if (linkedB)
+            linkedB->Release(false);
+        linkedB = nullptr;
+        if (linkedA)
+            linkedA->Release(false);
+        linkedA = nullptr;
+        if (RigidBodyInWorld(rigidBody))
+            RigidBodyRemoveFromWorld(rigidBody);
+        for (int i = 0; i < RigidBodyConstraintCount(rigidBody); ++i)
+            HavokRelease(RigidBodyConstraint(rigidBody, i));
+        RigidBodyClearUserProperties(rigidBody);
+        HavokRelease(rigidBody);
+    }
+    return ScriptedEntity::Release(kill);
+}
+
+// @func 0x00208AE8 RigidEntityB19198::CanInteractWith
+bool RigidEntityB19198::CanInteractWith(Entity* other, int kind, float* priority)
+{
+    if (kind < 0 || (kind > 0 && kind != 4))
+        return false;
+    // Kind 0 needs a partner on some team (flags bits 22-23).
+    if (kind == 0 && other && ((other->flags >> 22) & 3) == 0)
+        return false;
+    return Entity::CanInteractWith(other, kind, priority);
+}
+
+// @func 0x00208A68 RigidEntityB19198::Damage
+bool RigidEntityB19198::Damage(float amount, Entity* source, uint32_t type)
+{
+    if (health > 0.0f)
+        ScriptedEntity::Damage(amount, source, type);
+    return health > 0.0f;
+}
+
 // @func 0x002070E8 RigidEntityB19198::GetRenderId
 uint32_t RigidEntityB19198::GetRenderId()
 {
@@ -43,6 +82,19 @@ void RigidEntityB19198::Detached(float gravityFactor)
 {
     RigidBodySetGravityFactor(rigidBody, gravityFactor);
     Entity::Detached(gravityFactor);
+}
+
+// @func 0x00208BB0 RigidEntityB19198::SetTransform
+void RigidEntityB19198::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    RigidBodySetTransform(rigidBody, m);
+}
+
+// @func 0x00206E80 RigidEntityB19198::SetVelocity
+void RigidEntityB19198::SetVelocity(const ape::Vec3& velocity)
+{
+    SetBodyVelocity(rigidBody, velocity);
 }
 
 // @func 0x00206F6C RigidEntityB19198::GetVelocity

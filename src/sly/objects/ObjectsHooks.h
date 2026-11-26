@@ -116,7 +116,8 @@ int GetPlayerCount();
 // ---------------------------------------------------------------------------
 // Whether a player character is currently disguised (0x00129894).
 bool IsCharacterDisguised(const Entity* character);
-// Spline definition by name hash (ApeTDefList<ApeSplineDef>::Find on 0x00F8F158).
+// Spline instance by name hash (the instance map of 0x00F8F158; the camera
+// triggers and the lasers move along them).
 void* FindSplineDef(uint32_t nameHash);
 // Job manager (0x00F64C20): the job named `jobNameHash` (0x002E1220), or null.
 void* FindJob(uint32_t jobNameHash);

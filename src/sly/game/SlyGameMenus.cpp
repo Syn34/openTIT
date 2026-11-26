@@ -17,6 +17,11 @@
 #include "sly/entity/Character.h"
 #include "sly/gameplay/Sequencer.h"
 #include "agl/AglRenderTarget.h"
+#include "agl/AglDisplay.h"
+#include <string>
+#include "sly/game/Localization.h"
+#include "ape/world/ApeScene.h"
+#include "ape/level/ApeGuiFile.h"
 #include "ape/anim/ApeAnimScript.h"
 #include "sly/gameplay/ReturnTreasure.h"
 #include "sly/entity/GameEntityHooks.h"
@@ -1526,6 +1531,121 @@ void SlyGame::VisitIncludedLevels(const ape::ApeLevelDef* level)
         if (const ape::ApeLevelDef* included = ape::FindLevelDef(name))
             VisitIncludedLevels(included);
     }
+}
+
+} // namespace sly
+
+namespace sly {
+
+namespace {
+// The root GUI screens (table 0x00F65DF4).
+struct GuiRoot {
+    const char* name;
+    bool fullScreen;      // sized to the display
+    bool platformScale;   // scaled by "UI.PlatformScale" too
+};
+constexpr GuiRoot kGuiRoots[] = {
+    {"Common.Menus", true, true},
+    {"Common.HUD", true, true},
+    {"Common.Loading.HintText", true, false},
+    {"FrontEnd.Screens", false, false},
+    {"FrontEnd.Menus", true, true},
+    {"InGame.Menus", true, true},
+    {"InGame.HUD", true, true},
+    {"InGame.Binocucom01", true, true},
+    {"InGame.BinocucomPhoto", true, true},
+    {"ArtViewer.Menus", true, true},
+    {"ArtViewer.HUD", true, true},
+    {"LevelEditor.Menus", true, false},
+    {"LevelEditor.HUD", true, false},
+};
+} // namespace
+
+// @func 0x00467610 SlyGame::FitGuiRoots
+void SlyGame::FitGuiRoots()
+{
+    constexpr float kReferenceHeight = 720.0f;
+    const agl::AglDisplaySettings& display = agl::GetDisplaySettings();
+    for (const GuiRoot& root : kGuiRoots) {
+        ape::ApeGuiObject* object = ape::FindGuiObject(root.name, nullptr);
+        if (!object)
+            continue;
+        float screen[2] = {float(display.width), float(display.height)};
+        const float scale = screen[1] * (root.platformScale ? g_uIPlatformScale.Get() : 1.0f) / kReferenceHeight;
+        object->SetScale(ape::Vec3{scale, scale, scale, 0.0f});
+        if (root.fullScreen) {
+            // NOTE: the console first scales the display size by the ratio
+            // of two engine words (0x010C5A3C / 0x010C5A3E) to the back
+            // buffer size; they are not modelled, the ratio is taken as 1.
+            const ape::Vec3& objectScale = object->GetScale();
+            const float size[2] = {screen[0] / objectScale.x, screen[1] / objectScale.y};
+            object->SetSize(size);
+            object->SetExpand(false);
+        }
+        object->Invalidate();
+    }
+}
+
+} // namespace sly
+
+namespace sly {
+
+namespace {
+// Screen sets of the GUI (table 0x00F65E5C).
+const char* const kGuiScreenSets[] = {"FrontEnd", "InGame"};
+constexpr uint32_t kGuiSceneFlags = 4;
+
+ape::ApeGuiFile* LoadGuiFile(const char* name, const char* path)
+{
+    const std::string fileName = name;   // the names live in the shared format buffer
+    const std::string filePath = path;
+    auto* file = new ape::ApeGuiFile(fileName.c_str(), filePath.c_str());
+    file->AddLoadRef();
+    return file;
+}
+
+// TODO(0x0048AFC4 GamePadFilter): the game's GUI pad filter (it also drops
+// the pads while a transition runs, the hideout menu is busy or a front end
+// prompt is up, and records the input for the menus); until it is ported
+// the players' filter is used.
+bool GamePadFilter(uint32_t pad, ape::GuiPadInput* input)
+{
+    return GuiPadFilterForPlayers(pad, input);
+}
+} // namespace
+
+// @func 0x0048B308 GameGuiFilter
+// The game's GUI event filter (its user data is the game).
+static bool GameGuiFilter(const ape::GuiEvent* event)
+{
+    return static_cast<SlyGame*>(event->userData)->OnGuiEvent(*event);
+}
+
+// TODO(0x00479400 SlyGame::OnGuiEvent): the menus' event handling (pages,
+// sliders, prompts); not ported yet, every event passes through.
+bool SlyGame::OnGuiEvent(const ape::GuiEvent&)
+{
+    return false;
+}
+
+// @func 0x004678B8 SlyGame::LoadGui
+void SlyGame::LoadGui(int screens, bool devPaths)
+{
+    strings = LoadLanguageStrings();
+    guiScene = ape::world::CreateScene(kGuiSceneFlags);
+    ape::world::LoadSceneFile(guiScene, "GUI/GUI_Common.san", false);
+    ape::world::FinishSceneLoad(guiScene);
+
+    const char* root = devPaths ? "../../Scripts/com" : "Scripts";
+    guiCommon = LoadGuiFile("UI_Common", ape::TempFormat("%s/UI/%s", root, "Common.xml"));
+    if (screens != -1) {
+        const char* set = (screens >= 0 && screens < 2) ? kGuiScreenSets[screens] : "";
+        const std::string path = ape::TempFormat("%s/UI/%s.xml", root, set);
+        guiScreens = LoadGuiFile(ape::TempFormat("UI_%s", set), path.c_str());
+    }
+    FitGuiRoots();
+    ape::SetGuiPadFilter(GamePadFilter, this);
+    ape::SetGuiFilter(GameGuiFilter, this);
 }
 
 } // namespace sly

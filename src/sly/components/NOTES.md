@@ -114,3 +114,16 @@ hashing the executable's strings and word pairs. Hashes with no match keep a
   0x0026F8D4). The code that queues into it is not identified.
 * The loaders of entity file elements 0xE452FC60 / 0x1F7B9E20 (0x002AD4F4 / 0x002AF5F0) read
   nothing.
+
+## agent3, sixth pass
+* `CustomModel.*` (type 0x15): the costume models picked in the profile (costume choices,
+  `PlayerProgress::costume`), cloned from a placed instance or made from the geometry
+  definition, posed like the owner every frame (world callback list 2).
+* `CombatComponent.*` (type 3): constructor (attack/reaction registry lookups), destructor,
+  state block, attack slot table (0x00276978), mode requests (0x00276558). The mode switch
+  0x00275110, slot 4 0x002766A8 and Update 0x002794F0 are TODO. The deferred-switch global
+  0x0105BC20 has no known writer.
+* `SimplePhysics.*` (type 0x1F): destructor, state (phantom in/out of the world), centre
+  offset; the constructor 0x00256FD0 builds Havok objects and is not ported, so the factory
+  still returns null for the type.
+* `InteractionComponent::Stop` (0x002B7704): user at +0x40.
