@@ -13,6 +13,8 @@ void* ActorPartCreateBody(const ActorPartDesc& part, uint32_t navMode)
     return nullptr;
 }
 
+const char* HavokBodyName(void*) { return nullptr; }
+
 bool RigidBodyInWorld(void* body) { (void)body; return false; }
 void RigidBodyRemoveFromWorld(void* body) { (void)body; }
 void RigidBodyAddToWorld(void* body, uint32_t collisionGroup) { (void)body; (void)collisionGroup; }

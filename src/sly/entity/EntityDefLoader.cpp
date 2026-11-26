@@ -8,15 +8,19 @@
 // description from it, parses its own attributes and constructs the
 // definition. Factories not ported yet are listed with their console address
 // and leave the definition out.
+#include "sly/entity/ActorDefLoaders.h"
 #include "sly/entity/ActorEntities.h"
 #include "sly/entity/EntityDef.h"
 #include "sly/entity/EntityHooks.h"
+#include "sly/entity/PhysicsHooks.h"
 #include "sly/entity/PropEntities.h"
 
 #include "ape/core/ApeString.h"
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
 #include "ape/xml/ApeXml.h"
+
+#include <cstdio>
 
 namespace sly {
 
@@ -101,8 +105,8 @@ struct DefClass {
 const DefClass kDefClasses[] = {
     {kClass_Actor, CreateActorDef},
     {kClass_Projectile, CreatePhysicalEntityDef},
-    {0x906A55EAu, nullptr},                              // 0x001B0120
-    {0x8CD0E8E8u, nullptr},                              // 0x001B24D0
+    {0x906A55EAu, CreateSignalActorDef},
+    {0x8CD0E8E8u, CreateActorB15E60Def},
     {0x871F883Au, nullptr},                              // 0x0020A298
     {0xA0BCC96Fu, objects::CreateCrawlTriggerDef},
     {0xA09DEEA4u, objects::CreateAlertTriggerDef},
@@ -112,23 +116,23 @@ const DefClass kDefClasses[] = {
     {0xA273E6E4u, nullptr},                              // 0x00245A30
     {0xA0C4F7BCu, objects::CreateDeathTriggerDef},
     {0xB266AD6Cu, nullptr},                              // 0x00307A78
-    {0xB2221492u, nullptr},                              // 0x001AB548
+    {0xB2221492u, CreateHitCounterActorDef},
     {0xAEF4C388u, nullptr},                              // "BreakableChain" 0x001A5AD8
     {0xA8F71270u, nullptr},                              // 0x0023FA28
     {0xA7CFB837u, nullptr},                              // 0x0016ADC4
     {0xBC13B5BCu, nullptr},                              // 0x000C58A8
     {0xB9F78EFDu, nullptr},                              // 0x000C63B0
-    {0xB47D3A95u, nullptr},                              // 0x001AC858
+    {0xB47D3A95u, CreateWatchActorDef},
     {0xB3748711u, nullptr},                              // 0x001DE610
     {0xDCC028E7u, objects::CreateJumpDirTriggerDef},
     {0xCCFB1F40u, nullptr},                              // 0x0018F8E8
-    {0xC475D118u, nullptr},                              // "Teleporter" 0x001EB2B8
+    {0xC475D118u, CreateObjectActorDef},                 // "Teleporter"
     {0xBC6FA23Bu, nullptr},                              // 0x001C5408
-    {0xEE9D8477u, nullptr},                              // "SentryLight" 0x001D0208
+    {0xEE9D8477u, CreateSoundActorB174C0Def},            // "SentryLight"
     {0xEBE54755u, nullptr},                              // 0x000C77E4
     {0xEB9EE198u, objects::CreateTriggerDef},            // "Trigger"
     {0xE65DDB0Fu, objects::CreateAmbientSoundTriggerDef},
-    {0xDF511592u, nullptr},                              // 0x001BED98
+    {0xDF511592u, CreateSoundActorB16678Def},
     {0x00227313u, nullptr},                              // "Item" 0x001F9BA0
     {0xFDC69C0Fu, nullptr},                              // 0x002183FC
     {0xF8ADA400u, nullptr},                              // 0x002F8EE0
@@ -140,31 +144,31 @@ const DefClass kDefClasses[] = {
     {0x109C1EFAu, nullptr},                              // 0x000C5DC8
     {0x0E5B671Du, nullptr},                              // 0x00203BE4
     {0x04B6FABDu, nullptr},                              // 0x00167080
-    {0x044344C9u, nullptr},                              // 0x001DBE80
-    {0x2190D8D7u, nullptr},                              // 0x001C28E8
-    {0x201FA54Fu, nullptr},                              // 0x001AA158
+    {0x044344C9u, CreateInteractivePropAUseDef},
+    {0x2190D8D7u, CreateSoundActorB16B48Def},
+    {0x201FA54Fu, CreateActorGroupDef},
     {0x1B733030u, nullptr},                              // laser field 0x000C1780
     {0x184A4683u, objects::CreateSoundZoneTriggerDef},
-    {0x4F590DD4u, nullptr},                              // 0x001C8780
+    {0x4F590DD4u, CreateSoundActorB17008Def},
     {0x3F0EA991u, nullptr},                              // 0x00176CC0
     {0x35DF6E97u, nullptr},                              // 0x001FE170
-    {0x24A57117u, nullptr},                              // 0x001C0658
+    {0x24A57117u, CreateSoundActorB168E0Def},
     {0x21F55D9Cu, nullptr},                              // 0x000BB4B0
     {0x57CCFDA0u, objects::CreateWindTriggerDef},
     {0x5697EEFBu, objects::CreatePushBlockTriggerDef},
-    {0x55B67D7Cu, nullptr},                              // 0x001ECD08
-    {0x554FC0D9u, nullptr},                              // 0x001BD668
+    {0x55B67D7Cu, CreateTweenActorDef},
+    {0x554FC0D9u, CreateScriptObjectActorDef},
     {0x6E2FB705u, objects::CreateJobTriggerDef},
-    {0x6927A078u, nullptr},                              // 0x001F5BA8
-    {0x633A7385u, nullptr},                              // 0x001D3E58
+    {0x6927A078u, CreateInteractivePropBDef},
+    {0x633A7385u, CreateSoundActorB17728Def},
     {0x5EFDA0B2u, nullptr},                              // 0x0022F630
     {0x75F206BDu, objects::CreateCameraTriggerDef},
     {0x71FE40F4u, nullptr},                              // 0x0017D640
     {0x707C673Cu, objects::CreateWeatherTriggerDef},
     {0x70542137u, nullptr},                              // 0x001D71D8
-    {0x6F429D34u, nullptr},                              // 0x001EA3B8
+    {0x6F429D34u, CreateSearchlightDef},
     {0x7F6CE46Au, objects::CreateFxTriggerDef},
-    {0x7CDC084Cu, nullptr},                              // 0x001AD7F0 (SoundActorDef)
+    {0x7CDC084Cu, CreateSoundActorDef},
     {0x786E8593u, nullptr},                              // "PushBlock" 0x001B4394
     {0x77A6CF07u, objects::CreateDamageTriggerDef},
 };
@@ -302,11 +306,174 @@ ActorDefDesc::ActorDefDesc(const EntityDefDesc& loader)
         need = 1;
 }
 
-// TODO(0x000C85A8 ActorDefDesc::Parse): only the scripted attributes are read.
+namespace {
+
+// Actor attributes.
+constexpr uint32_t kAttr_ActorField88       = 0x43B894DBu;
+constexpr uint32_t kAttr_NavMode            = 0x5B1E4A49u;   // also per part
+constexpr uint32_t kAttr_NavObstacleSize    = 0x354C5B93u;
+constexpr uint32_t kAttr_InheritParts       = 0xFE139BBCu;
+constexpr uint32_t kElem_Part               = 0x6364B153u;
+// Damage scales in ActorDefDesc::damage order (impact .. interaction
+// priority). The fourth is only read while the third is positive.
+constexpr uint32_t kAttr_Damage[15] = {0x824F3B6Fu, 0x6B5A442Du, 0xAD6099F3u, 0xA274B629u, 0x9AB17C61u,
+                                       0x9FF13A0Au, 0x4AD59CEFu, 0x825857B0u, 0x6C74B00Cu, 0x86D97BF8u,
+                                       0x30003446u, 0x3E44F9F5u, 0xFDA86B42u, 0x0D5F7C08u, 0x55B0EB25u};
+// Definition flags 31 down to 22.
+constexpr uint32_t kAttr_DefFlags[10] = {0xBA6158CDu, 0xA499B8DAu, 0xB0D191A7u, 0xF03E41A4u, 0xBD23F15Du,
+                                         0x8CB95A92u, 0xA78B0427u, 0x0883B9B7u, 0x1667C898u, 0xB2B78B0Fu};
+// Part attributes.
+constexpr uint32_t kAttr_PartOffset         = 0x63662D61u;
+constexpr uint32_t kAttr_PartField10        = 0x1B89D5F3u;
+constexpr uint32_t kAttr_PartField24        = 0x75849CFEu;
+constexpr uint32_t kAttr_PartField30        = 0x07A80994u;
+constexpr uint32_t kAttr_PartField40[7] = {0x46206B53u, 0xE3E14C49u, 0x471281EFu, 0x9538DE99u,
+                                           0x9533AB5Au, 0x040C1D75u, 0x69FE7274u};
+constexpr uint32_t kAttr_PartField60[6] = {0x29F45D46u, 0xA1FDE21Du, 0xE2154ADBu, 0x8933D0E0u,
+                                           0x0023FEF4u, 0xB89310FDu};
+constexpr uint32_t kAttr_PartField78        = 0x725B9AF2u;
+constexpr uint32_t kAttr_PartFlags[4] = {0xF8E455ACu, 0xBC07DCA3u, 0x47C04D53u, 0x306B6E24u};   // bits 31..28
+constexpr uint32_t kAttr_PartAimOffset      = 0xCC0D6864u;
+// A definition keeps at most this many parts.
+constexpr uint16_t kMaxActorParts = 0x20;
+
+// Reads boolean attribute `attr` into bit `bit` of `word` (default: the bit of `defaults`).
+void ReadBit(ape::xml::XmlElement* elem, uint32_t attr, uint32_t& word, uint32_t defaults, int bit)
+{
+    bool on = false;
+    elem->GetBool(attr, &on, ((defaults >> bit) & 1) != 0);
+    word = (word & ~(1u << bit)) | (uint32_t(on) << bit);
+}
+
+void AddPart(ape::ApeTArray<ActorPartDesc>*& parts, const ActorPartDesc& part)
+{
+    if (!parts)
+        parts = new ape::ApeTArray<ActorPartDesc>();
+    parts->Add(part);
+}
+
+// One part element.
+ActorPartDesc ParsePart(ape::xml::XmlElement* elem)
+{
+    ActorPartDesc part;
+    elem->GetVec3(kAttr_PartOffset, &part.offset.x, &part.offset.x);
+    part.bodyName = elem->GetString("colObjName");
+    if (!part.IsDescribed())
+        return part;
+    elem->GetVec3(kAttr_PartField10, &part.field_10.x, &part.field_10.x);
+    elem->GetHash(kAttr_PartField24, &part.field_24, part.field_24);
+    for (int i = 0; i < 6; ++i)
+        elem->GetFloat(kAttr_PartField60[i], &part.field_60[i], part.field_60[i]);
+    elem->GetHash(kAttr_PartField78, &part.field_78, part.field_78);
+    for (int i = 0; i < 4; ++i)
+        ReadBit(elem, kAttr_PartFlags[i], part.partFlags, part.partFlags, 31 - i);
+    if (part.partFlags & (1u << 28)) {
+        elem->GetVec3(kAttr_PartField30, &part.field_30.x, &part.field_30.x);
+        for (int i = 0; i < 7; ++i)
+            elem->GetFloat(kAttr_PartField40[i], &part.field_40[i], part.field_40[i]);
+    }
+    elem->GetVec3(kAttr_PartAimOffset, &part.aimOffset.x, &part.aimOffset.x);
+    elem->GetHash(kAttr_NavMode, &part.navMode, part.navMode);
+    return part;
+}
+
+} // namespace
+
+bool ActorPartDesc::IsDescribed() const
+{
+    return (bodyName && *bodyName) || offset.x != 0.0f || offset.y != 0.0f || offset.z != 0.0f;
+}
+
+// @func 0x000C85A8 ActorDefDesc::Parse
 void ActorDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
                          const EntityDef* parent)
 {
+    (void)root;   // only the warnings (stripped) quote the document path
     ScriptedEntityDefDesc::Parse(root, elem, loader, parent);
+
+    // Defaults: the class defaults, or an actor parent's values and parts.
+    ActorDefDesc defaults(loader);
+    defaults.geomName = "";
+    defaults.templateName = "";
+    ape::ApeTArray<ActorPartDesc>* parentParts = nullptr;
+    if (parent && parent->IsClass(kDefClass_Actor)) {
+        const auto* actor = static_cast<const ActorDef*>(parent);
+        defaults.defFlags = (defaults.defFlags & 0x003FFFFFu) | (actor->defFlags & 0xFFC00000u);
+        defaults.field_88 = actor->field_CC;
+        defaults.navMode = actor->navMode;
+        defaults.navObstacleSize = actor->navObstacleSize;
+        const float damage[15] = {actor->impactScale, actor->field_F4, actor->blastScale, actor->field_FC,
+                                  actor->collisionScale, actor->collisionThreshold, actor->collisionMax,
+                                  actor->meleeScale, actor->field_110, actor->projectileScale,
+                                  actor->attackerScale[0], actor->attackerScale[1], actor->attackerScale[2],
+                                  actor->attackerScale[3], actor->interactionPriority};
+        for (int i = 0; i < 15; ++i)
+            defaults.damage[i] = damage[i];
+        for (int i = 0; i < 6; ++i)
+            defaults.interactionNeeds[i] = actor->interactionNeeds[i];
+        if (actor->parts) {
+            for (const ActorDef::Part& part : *actor->parts) {
+                ActorPartDesc desc;
+                static_cast<ActorPartFields&>(desc) = part;
+                desc.partFlags &= 0xF0000000u;
+                desc.bodyName = part.havokObject ? HavokBodyName(part.havokObject) : nullptr;
+                AddPart(parentParts, desc);
+            }
+        }
+    }
+
+    if (!geomName || !*geomName)
+        geomName = defaults.geomName;
+    if (!templateName || !*templateName)
+        templateName = defaults.templateName;
+
+    elem->GetFloat(kAttr_ActorField88, &field_88, defaults.field_88);
+    elem->GetHash(kAttr_NavMode, &navMode, defaults.navMode);
+    elem->GetVec3(kAttr_NavObstacleSize, &navObstacleSize.x, &defaults.navObstacleSize.x);
+    for (int i = 0; i < 15; ++i) {
+        if (i == 3 && !(damage[2] > 0.0f)) {
+            damage[3] = 0.0f;
+            continue;
+        }
+        elem->GetFloat(kAttr_Damage[i], &damage[i], defaults.damage[i]);
+    }
+    for (int i = 0; i < 10; ++i)
+        ReadBit(elem, kAttr_DefFlags[i], defFlags, defaults.defFlags, 31 - i);
+
+    // Interaction needs per kind: the defaults, or six numbers.
+    for (int i = 0; i < 6; ++i)
+        interactionNeeds[i] = defaults.interactionNeeds[i];
+    if (const char* targeting = elem->GetString("targetingFlags")) {
+        int values[6];
+        if (std::sscanf(targeting, "%d,%d,%d,%d,%d,%d", &values[0], &values[1], &values[2], &values[3],
+                        &values[4], &values[5]) == 6) {
+            for (int i = 0; i < 6; ++i)
+                interactionNeeds[i] = uint8_t(values[i]);
+        }
+    }
+
+    // The definition's own parts.
+    for (ape::xml::XmlElement* child = elem->FirstChildElement(kElem_Part); child;
+         child = child->NextSiblingElement(kElem_Part)) {
+        if (parts && parts->Count() >= kMaxActorParts)
+            continue;   // too many parts (warning stripped)
+        const ActorPartDesc part = ParsePart(child);
+        if (part.IsDescribed())
+            AddPart(parts, part);
+    }
+
+    // The parent's parts when asked for or when there are none of our own.
+    bool inheritParts = false;
+    elem->GetBool(kAttr_InheritParts, &inheritParts, false);
+    if (parentParts && parentParts->Count() != 0 && (inheritParts || !parts || parts->Count() == 0)) {
+        for (const ActorPartDesc& part : *parentParts) {
+            if (parts && parts->Count() >= kMaxActorParts)
+                continue;
+            if (part.IsDescribed())
+                AddPart(parts, part);
+        }
+    }
+    delete parentParts;
 }
 
 } // namespace entity
