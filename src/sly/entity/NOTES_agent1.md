@@ -165,3 +165,9 @@ requests, anim script/driver bits, Havok frees, minigame flag, game camera looku
 * AI: nav jump links (`AssociateNavJumpLink`), nav agent creation/snap/path following
   (`NavAgentPathStep` hook; slot 63 is `OnPlatformLink`), vision cone helper (0x000167F0),
   `FindEnemyInCone`, Bismarque constructor.
+* Later in the pass: B16DB0 and Safe definitions, the laser field contact callback
+  (0x000C21EC), the breakable chain entity release, RacerAI move heading (0x0002D8C8), Ms Decibel
+  spline stretch (0x0005BA08), Paradox script commands (0x0005FA08). Next candidates: the Safe
+  constructor 0x001E5CD8 (combination from the game RNG 0x01164888), InteractivePropA definition
+  0x001DD3F8 + constructor 0x001DCBA0, the input mover definition 0x001D62A8 and placement
+  0x001D7D98, InteractivePropB::SpawnAttached 0x001F50E4 (needs Entity::Attach 0x000D15C0).
