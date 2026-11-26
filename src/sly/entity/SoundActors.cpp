@@ -4,9 +4,12 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "sly/entity/ActorDefs.h"
+#include "sly/entity/ActorHooks.h"
+#include "sly/entity/CharacterHooks.h"
 #include "sly/objects/EntityPlacements.h"
 
 #include <cfloat>
+#include <cmath>
 
 namespace sly {
 namespace entity {
@@ -204,6 +207,86 @@ SoundActorB17728::SoundActorB17728(const objects::SoundActorB17728InstanceDesc& 
 {
     lookupFlags &= 0x7F;
     holdWrap = false;
+}
+
+// -- SoundActorB17270 (the gadget turret) ----------------------------------------------
+
+// @func 0x001CB448 SoundActorB17270Def::Spawn
+Entity* SoundActorB17270Def::Spawn(EntityPlacement* placement)
+{
+    objects::SoundActorB17270InstanceDesc desc(InstanceName(placement), this);
+    desc.typeBits[1] |= 0x80000u;
+    for (int i = 0; i < 7; ++i)
+        desc.slotTimes[i] = slotSounds[i].duration;
+    desc.field_F0 = field_1B4;
+    for (int i = 0; i < 7; ++i)
+        desc.field_F4[i] = field_1B8[i];
+    desc.field_110 = field_1E0;
+    desc.field_114[0] = field_1E4;
+    desc.field_114[1] = field_1E5;
+    desc.typeBits[1] |= 0x2000000u;
+    placement->FillInstanceDesc(desc);
+    auto* actor = new SoundActorB17270(desc);
+    actor->OnSpawn();
+    return actor;
+}
+
+// @func 0x001CB000 SoundActorB17270::SoundActorB17270
+SoundActorB17270::SoundActorB17270(const objects::SoundActorB17270InstanceDesc& desc)
+    : SoundActor(desc), field_2F4(desc.field_F0), field_2F8(desc.field_F4[0]), field_2FC(desc.field_F4[1]),
+      field_31C(desc.field_F4[2]), field_320(desc.field_F4[3]), field_324(desc.field_F4[4]),
+      shotCount(desc.field_110)
+{
+    static const ape::Matrix34 kIdentity = {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f},
+                                            {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
+    // NOTE: console global 0x01164B70, assumed +Z.
+    const ape::Vec3 forward = {0.0f, 0.0f, 1.0f, 0.0f};
+    aimFrame = kIdentity;
+    baseTransform = kIdentity;
+    restAim = wantedAim = currentAim = forward;
+    rangeSq = desc.field_F4[5] * desc.field_F4[5];
+    rangeSq2 = desc.field_F4[6] >= 0.0f ? desc.field_F4[6] * desc.field_F4[6] : -1.0f;
+    turretFlags = uint8_t((turretFlags & 0x3F) | (desc.field_114[0] ? 0x80 : 0) | (desc.field_114[1] ? 0x40 : 0));
+    field_355 = false;
+    engaged = false;
+    flags357 = uint8_t((flags357 & 0x7F) | 0x40);
+    if (!def)
+        return;
+    const auto* turretDef = static_cast<const SoundActorB17270Def*>(def);
+    aimBoneIndex = FindBone(turretDef->aimPartName);
+    if (aimBoneIndex == -1)
+        aimBoneObject = EntityFindObject(this, turretDef->aimPartName);
+    FindAimParts();
+    UpdateAimFrames();
+    ape::Vec3 aim = aimFrame.zAxis;
+    if (turretFlags & 0x80)
+        aim.y = 0.0f;
+    const float lengthSq = aim.z * aim.z + aim.x * aim.x + aim.y * aim.y;
+    if (lengthSq >= 1e-05f) {
+        const float inv = 1.0f / std::sqrt(lengthSq);
+        aim.x *= inv;
+        aim.y *= inv;
+        aim.z *= inv;
+    }
+    wantedAim = currentAim = restAim = {aim.x, aim.y, aim.z, 0.0f};
+    weapon = EntitySkin(this);
+    component03 = EntityComponent03(this);
+    if (weapon) {
+        SkinSetOwnerGroup(weapon, GetRenderId());
+        SkinSetShotCallback(weapon, &SoundActorB17270::OnWeaponShot);
+        const float interval = SkinRate(weapon);
+        if (shotCount > 1 && interval > 0.0f)
+            shotDelay = float(shotCount - 1) * interval;
+    }
+}
+
+// @func 0x001CF5E0 SoundActorB17270::OnWeaponShot
+// NOTE: the console does not check that the owner is a turret (type bit
+// 0x2000000 of the second type word) before writing the flag.
+void SoundActorB17270::OnWeaponShot(Entity* owner)
+{
+    if (owner && (owner->typeBits[1] & 0x2000000u))
+        static_cast<SoundActorB17270*>(owner)->flags357 |= 0x40;
 }
 
 } // namespace entity

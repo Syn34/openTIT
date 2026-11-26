@@ -14,7 +14,8 @@ namespace ape::world { class ApeObj; struct ApeSkeletonBone; }
 namespace ape::setting { class Setting; }
 namespace sly::camera { class CameraMode; }
 namespace sly::objects { struct ActorInstanceDesc; struct InteractivePropBInstanceDesc; struct ObjectActorInstanceDesc; struct SafeInstanceDesc; struct SoundActorInstanceDesc; struct SoundActorB16678InstanceDesc; struct SoundActorB168E0InstanceDesc;
-                         struct SoundActorB16B48InstanceDesc; struct SoundActorB17728InstanceDesc; }
+                         struct SoundActorB16B48InstanceDesc; struct SoundActorB17728InstanceDesc;
+                         struct SoundActorB17270InstanceDesc; }
 namespace sly::hud { class HudObject; }
 namespace ape { class ApeAnimScriptInstance; class ApeAnimScriptFloatVar; }
 
@@ -874,7 +875,15 @@ public:
 // NOTE: identified from the turret hooks of the level scripts.
 class SoundActorB17270 : public SoundActor {
 public:
+    // Identity frames, aim straight ahead, the placement's values, the aim
+    // parts; the rest aim follows the aim frame's z axis (level when the
+    // placement says so) and the weapon learns the turret's collision group
+    // and shot callback (0x001CB000).
+    explicit SoundActorB17270(const objects::SoundActorB17270InstanceDesc& desc);
     ~SoundActorB17270() override;
+    // The weapon's shot callback (descriptor 0x00F33568): a shot of the
+    // turret's weapon sets flags357 bit 6 (0x001CF5E0).
+    static void OnWeaponShot(Entity* owner);
     // Offers interaction kind 2 (bit value 4).
     // @func 0x001CEC84 SoundActorB17270::InteractionOffer
     uint32_t InteractionOffer(int kind, Entity* other) override { (void)kind; (void)other; return 4; }
@@ -921,16 +930,33 @@ public:
     ape::Vec3 wantedAim{};                    // 0x2C0 unit direction
     ape::Vec3 currentAim{};                   // 0x2D0 unit direction
     EntityComponent* weapon = nullptr;        // 0x2E0 skin component; its +0x4D0 is the shot interval
+    EntityComponent* component03 = nullptr;   // 0x2E4 component of type 3
+    int32_t aimBoneIndex = -1;                // 0x2E8 bone of SoundActorB17270Def::aimPartName
+    ape::world::ApeObj* aimBoneObject = nullptr;   // 0x2EC the object of that name when no bone
     Entity* linked = nullptr;                 // 0x2F0 released on kill
+    uint32_t field_2F4 = 0;                   // 0x2F4 placement hash (attribute 0x53FFAFC2)
+    float field_2F8 = 0.0f;                   // 0x2F8 placement value
     float field_2FC = 0.0f;                   // 0x2FC copied into the cool-down by slot 4
+    float rangeSq = 0.0f;                     // 0x300 square of a placement distance
+    float rangeSq2 = -1.0f;                   // 0x304 square of another (negative: none)
+    uint32_t field_308 = 0;                   // 0x308
     float coolDown = 0.0f;                    // 0x314 slots 3 and 6 wait while positive
+    uint32_t field_318 = 0;                   // 0x318
+    float field_31C = 0.0f;                   // 0x31C placement value
+    float field_320 = 0.0f;                   // 0x320 placement value
+    float field_324 = 0.0f;                   // 0x324 placement value
     int32_t shotCount = 0;                    // 0x30C
-    uint8_t turretFlags = 0;                  // 0x310 bit 7: aims level
-    uint32_t field_328 = 0;                   // 0x328 cleared by SetOnlyTarget
+    uint8_t turretFlags = 0;                  // 0x310 bit 7: aims level, bit 6 placement flag
+    int32_t field_328 = -1;                   // 0x328 cleared by SetOnlyTarget
     ape::ApeTArray<Entity*> targets;          // 0x32C counted references
     // Looks up the definition's aim bone (or, without such a bone, the aim
     // object) and its two other objects (0x001CAF1C).
     void FindAimParts();
+    // The aim frame from the turret's parts: with the two frame objects (or
+    // the entity where one is missing) the first gives the base transform
+    // and the second the aim frame; otherwise the aim bone (in world space),
+    // the aim object or the entity gives the aim frame (0x001CAAEC).
+    void UpdateAimFrames();
     ape::world::ApeObj* aimObject = nullptr;  // 0x340 SoundActorB17270Def::aimPartName when not a bone
     ape::world::ApeObj* object_344 = nullptr; // 0x344 SoundActorB17270Def::field_194
     ape::world::ApeObj* object_348 = nullptr; // 0x348 SoundActorB17270Def::field_198

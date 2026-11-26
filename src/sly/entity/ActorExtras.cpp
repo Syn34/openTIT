@@ -58,5 +58,19 @@ void SoundActorB17270::FindAimParts()
         object_348 = EntityFindObject(this, turretDef->field_198);
 }
 
+// @func 0x001CAAEC SoundActorB17270::UpdateAimFrames
+void SoundActorB17270::UpdateAimFrames()
+{
+    if (!object_344 && !object_348) {
+        if (aimBone)
+            ape::world::Matrix34Mul(aimFrame, *aimBone->model, GetLocalTransform());
+        else
+            aimFrame = aimObject ? aimObject->GetWorld() : GetLocalTransform();
+        return;
+    }
+    baseTransform = object_344 ? object_344->GetWorld() : GetLocalTransform();
+    aimFrame = object_348 ? object_348->GetWorld() : GetLocalTransform();
+}
+
 } // namespace entity
 } // namespace sly

@@ -17,6 +17,12 @@ class EntityComponent;
 // user is forgotten and nothing is offered any more.
 void InteractionStop(EntityComponent* interaction);
 
+// Skin component (type 0x13) of a weapon: the collision group its shots
+// ignore (+0x4D8) and the callback told of each shot (+0x500; descriptor
+// stored on the console).
+void SkinSetOwnerGroup(EntityComponent* skin, uint32_t group);
+void SkinSetShotCallback(EntityComponent* skin, void (*callback)(Entity* owner));
+
 // Puts the safe's per-frame callback (descriptor 0x00F33C18, 0x001E9C64)
 // on the game world's callback list 3 (0x0046B5F8); GameWorldDequeueSafeCallback
 // takes it off again.

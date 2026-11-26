@@ -177,6 +177,7 @@ class SoundActorB17270Def : public SoundActorDef {
 public:
     // The sound actor fields, then its own (0x001C9E34).
     explicit SoundActorB17270Def(const struct SoundActorB17270DefDesc& desc);
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7 (0x001CB448)
     ~SoundActorB17270Def() override;
     uint32_t aimPartName = 0;           // 0x190 hash 0x4156E113: bone (or object) the turret aims from
     uint32_t field_194 = 0;             // 0x194 hash 0x7997D9A2 (an object)
