@@ -247,7 +247,7 @@ void HoverVehicleSettings::Parse(ape::xml::XmlElement* e)
 // @func 0x0023E470 HoverVehicleDef::~HoverVehicleDef (deleting)
 HoverVehicleDef::~HoverVehicleDef()
 {
-    ReleaseBody(bodyTemplate);
+    BodyRemoveReference(bodyTemplate);
     bodyTemplate = nullptr;
 }
 

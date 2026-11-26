@@ -39,6 +39,10 @@ PhysicsBody* CloneBody(const PhysicsBody* source, const char* name);
 // Takes a body out of its world when it is in one (hkpWorld::removeEntity
 // 0x0092FFC8) and drops the reference (0x007D4EA8).
 void ReleaseBody(PhysicsBody* body);
+// Drops a reference to a body without touching its world (0x007D4EA8).
+void BodyRemoveReference(PhysicsBody* body);
+// Drops a reference to any other physics object (shapes, phantoms).
+void PhysicsRemoveReference(void* object);
 // Takes a body out of its world (if it is in one) and keeps it.
 void RemoveBodyFromWorld(PhysicsBody* body);
 // The body is in a physics world (hkpWorldObject::m_world, +0x08).
@@ -91,12 +95,27 @@ void BodyAddEntityListener(PhysicsBody* body, void* listener);
 // sets bit 0 of byte +0xCE first (Havok fields not identified).
 void AddBodyToWorld(PhysicsBody* body);
 
+// Collision group of a body (filter info +0x2C, bits 16-31).
+uint32_t BodyCollisionGroup(const PhysicsBody* body);
+
+// -- phantoms --------------------------------------------------------------------
+// A sphere phantom (hkpSphereShape 0x0089FE70 inside an
+// hkpSimpleShapePhantom 0x0092A718) with the collision filter word
+// `filterInfo`, added to the game physics world (0x00931D10).
+void* CreateSpherePhantom(float radius, uint32_t filterInfo);
+// Takes a phantom out of its world (0x00931F00) and drops it.
+void ReleasePhantom(void* phantom);
+
 // -- contacts --------------------------------------------------------------------
 // The contact point event handed to a contact listener (hkpContactPointEvent):
 // the two bodies in contact (+0x04/+0x08) and the collision layer of a body
 // (filter info +0x2C, bits 0-4).
 PhysicsBody* ContactBody(const void* event, int index);
 uint32_t BodyCollisionLayer(const PhysicsBody* body);
+// Normal of the contact point, pointing away from `from` (the event's
+// contact point +0x14, normal +0x10; negated when `from` is the event's
+// second body). False when the event carries no contact point (+0x1C).
+bool ContactNormal(const void* event, const PhysicsBody* from, ape::Vec3& normal);
 // Turns the contact off (flag 8 in byte +0x0F of the contact properties).
 void ContactDisable(const void* event);
 // Scales how strongly the contact pushes `body` (hkpResponseModifier::
