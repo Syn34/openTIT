@@ -67,7 +67,7 @@ void InheritDefDesc(const EntityDefDesc& from, EntityDefDesc& to)
     to.field_20 = from.field_20;
     to.field_24 = from.field_24;
     to.field_28 = from.field_28;
-    to.field_2C = from.field_2C;
+    to.loadScope = from.loadScope;
     to.propertyType = from.propertyType;
     to.field_34 = from.field_34;
     to.havokSkeleton = from.havokSkeleton;

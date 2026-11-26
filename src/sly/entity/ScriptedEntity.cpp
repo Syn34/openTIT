@@ -5,6 +5,9 @@
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/world/ApeObj.h"
 #include "sly/entity/EntityHooks.h"
+#include "ape/core/ApeString.h"
+#include "ape/xml/ApeXml.h"
+#include "sly/objects/EntityPlacements.h"
 #include "sly/levels/ai/AITuning.h"
 
 #include <algorithm>
@@ -410,6 +413,142 @@ void ScriptedEntity::OnResume()
     }
     if (animController)
         AnimControllerSetRunning(animController, true);
+}
+
+// -- construction ---------------------------------------------------------------
+
+namespace {
+constexpr uint32_t kVar_Transform = 0x001E8ECCu;    // NOTE: name unknown (matrix variable)
+constexpr uint32_t kVar_DamageType = 0xB32DB729u;   // NOTE: name unknown (hash variable)
+} // namespace
+
+// @func 0x000E01C0 ScriptedEntity::ScriptedEntity
+// @func 0x000E02D8 ScriptedEntity::ScriptedEntity (thunk)
+ScriptedEntity::ScriptedEntity(const objects::ScriptedInstanceDesc& desc)
+    : Entity(desc), maxHealth(desc.field_B8), health(desc.field_B8)
+{
+    stateFlags = kState_Busy;
+    if (desc.field_C4)
+        stateFlags |= 0x80000000u;
+    if (desc.overridesA.Count() != 0)
+        stateFlags |= kState_UsePlacement;
+    if (desc.overridesB.Count() != 0)
+        stateFlags |= 0x00040000u;   // NOTE: second binding list present
+    const auto* scriptedDef = static_cast<const ScriptedEntityDef*>(desc.def);
+    if (scriptedDef->damageFlags & 0x2000)
+        stateFlags |= kState_Immortal;
+    if (desc.field_C0 != 0)
+        script = ape::ApeAnimScriptLibrary::FindScriptAnywhere(desc.field_C0, 0, true);
+    StartLifetimeScript(desc.field_BC);
+}
+
+// @func 0x000E0000 ScriptedEntity::StartLifetimeScript
+void ScriptedEntity::StartLifetimeScript(uint32_t scriptOverride)
+{
+    const auto* scriptedDef = static_cast<const ScriptedEntityDef*>(def);
+    ape::ApeAnimScript* lifetime = scriptedDef->lifetimeScript;
+    if (scriptOverride != 0 && scriptOverride != scriptedDef->lifetimeScriptName) {
+        if (ape::ApeAnimScript* other = ape::ApeAnimScriptLibrary::FindScriptAnywhere(scriptOverride, 0, true))
+            lifetime = other;
+    }
+    if (!lifetime)
+        return;
+    animScript = StartScript(lifetime, 0, true);
+    if (!animScript)
+        return;
+    // The entity releases the instance itself; "Spawn" starts on the first update.
+    animScript->SetRemoveWhenFinished(false);
+    stateFlags |= kState_SpawnPending;
+    ape::ApeAnimScriptVar* matrix = animScript->FindVar(kVar_Transform);
+    if (matrix && matrix->GetType() == ape::AnimScriptVarType::Matrix)
+        static_cast<ape::ApeAnimScriptMatrixVar*>(matrix)->SetMatrix(transform);
+    ape::ApeAnimScriptVar* damageType = animScript->FindVar(kVar_DamageType);
+    if (damageType && damageType->GetType() == ape::AnimScriptVarType::Hash)
+        field_16C = damageType;
+}
+
+// Damage type names of the "DamageTypes" child, in hit mask bit order (table
+// 0x00AC66CC, shared with the Blast script command).
+namespace {
+constexpr uint32_t kDamageTypes[13] = {
+    ape::AnimHash("SuperSpring"), 0xCB378DD0u, 0xB4AC34A8u, ape::AnimHash("PushBlock"), 0xF66BC199u,
+    ape::AnimHash("CrackShot"), ape::AnimHash("Bomb"), ape::AnimHash("laser"), 0x001FE77Fu,
+    ape::AnimHash("ReflectProj"), ape::AnimHash("RatchetWrench"), ape::AnimHash("ColeAmp"),
+    ape::AnimHash("ThrowImpact"),
+};
+constexpr uint32_t kElem_DamageTypes = 0xB2892E4Au;
+
+// Sets or clears bit `bit` of `word` from a boolean attribute (default: the
+// bit's current value in `defaults`).
+void ReadFlagBit(ape::xml::XmlElement* elem, uint32_t attr, uint16_t& word, uint16_t defaults, int bit)
+{
+    bool value = false;
+    elem->GetBool(attr, &value, (defaults >> bit) & 1);
+    word = uint16_t((word & ~(1u << bit)) | (uint32_t(value) << bit));
+}
+} // namespace
+
+// @func 0x000C3910 ScriptedEntityDefDesc::Parse
+void ScriptedEntityDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                                  const EntityDef* parent)
+{
+    (void)root;   // only used for the warning about a parent of another class (stripped)
+    InheritDefDesc(loader, *this);
+
+    // Defaults: the scripted parent's values, else 100 health, no scripts,
+    // flags 9 and 15, no damage stages.
+    ScriptedEntityDefDesc defaults;
+    defaults.damageFlags = 0x8200;
+    float thresholds[5];
+    for (int i = 0; i < 5; ++i)
+        thresholds[i] = float(((defaults.damageFlags >> 4) & 0xF) - i);
+    if (parent && parent->IsClass(kDefClass_Scripted)) {
+        const auto* scripted = static_cast<const ScriptedEntityDef*>(parent);
+        defaults.field_4C = scripted->field_8C;
+        defaults.lifetimeScript = scripted->lifetimeScriptName;
+        defaults.field_54 = scripted->field_98;
+        defaults.invulnerableTime = scripted->invulnerableTime;
+        defaults.field_70 = scripted->field_B4;
+        defaults.field_74 = scripted->field_B8;
+        defaults.damageFlags = uint16_t((scripted->damageFlags & 0xFFF0u) | (defaults.damageFlags & 0xFu));
+        defaults.hitMask = scripted->hitMask;
+        for (int i = 0; i < 5; ++i)
+            thresholds[i] = scripted->stageHealth[i];
+    }
+
+    elem->GetFloat(0xA7D74568u, &field_4C, defaults.field_4C);
+    elem->GetHash(0xF89FDD94u, &lifetimeScript, defaults.lifetimeScript);
+    elem->GetHash(0x7973EFA5u, &field_54, defaults.field_54);
+    ReadFlagBit(elem, 0x2243757Fu, damageFlags, defaults.damageFlags, 15);
+    int32_t stages = 0;
+    elem->GetInt(0xB981F897u, &stages, (defaults.damageFlags >> 4) & 0xF);
+    damageFlags = uint16_t((damageFlags & 0xFF0Fu) | ((stages & 0xF) << 4));
+    elem->GetFloat(0xC7348451u, &invulnerableTime, defaults.invulnerableTime);
+    elem->GetHash(0xC9796122u, &field_70, defaults.field_70);
+    elem->GetHash(0xDB88854Eu, &field_74, defaults.field_74);
+    ReadFlagBit(elem, 0xEB08E801u, damageFlags, defaults.damageFlags, 14);
+    ReadFlagBit(elem, 0xC2F5D6F9u, damageFlags, defaults.damageFlags, 13);
+    ReadFlagBit(elem, 0x93CCEEE2u, damageFlags, defaults.damageFlags, 12);
+    ReadFlagBit(elem, 0xF95AF325u, damageFlags, defaults.damageFlags, 11);
+    ReadFlagBit(elem, 0x9366A555u, damageFlags, defaults.damageFlags, 10);
+    ReadFlagBit(elem, 0xFD95C66Au, damageFlags, defaults.damageFlags, 9);
+    ReadFlagBit(elem, 0xC3BD9B44u, damageFlags, defaults.damageFlags, 8);
+    for (int i = 0; i < 5; ++i)
+        elem->GetFloat(ape::TempFormat("damageStateThreshold%d", i + 1), &stageHealth[i], thresholds[i]);
+
+    // The damage types a hit must carry: each attribute present sets or
+    // clears its bit (the rest keep the value the description had).
+    if (ape::xml::XmlElement* types = elem->FirstChildElement(kElem_DamageTypes)) {
+        for (int i = 0; i < 13; ++i) {
+            bool on = false;
+            if (types->GetBool(kDamageTypes[i], &on, false) == ape::xml::kQuery_Ok) {
+                if (on)
+                    hitMask = uint16_t(hitMask | (1u << i));
+                else
+                    hitMask = uint16_t(hitMask & ~(1u << i));
+            }
+        }
+    }
 }
 
 } // namespace entity

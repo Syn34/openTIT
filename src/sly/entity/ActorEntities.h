@@ -31,10 +31,20 @@ struct ActorPartDesc {
 
 // Description of actor definitions (ScriptedEntityDefDesc + 0x64 bytes).
 struct ActorDefDesc : ScriptedEntityDefDesc {
-    using ScriptedEntityDefDesc::ScriptedEntityDefDesc;
+    ActorDefDesc() = default;
+    // The defaults every actor description starts from: scripted and actor
+    // class bits, the loader's name, 100 health, static nav mode, unit damage
+    // scales (a collision threshold of 0.3, no collision maximum), every
+    // interaction kind needed and definition flag 26 (the console
+    // initialiser 0x00745D88, called with constant arguments by its users).
+    explicit ActorDefDesc(const EntityDefDesc& loader);
+    // Scripted attributes, then the actor's: damage scales, flags,
+    // targeting flags and the parts (0x000C85A8).
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
     ape::ApeTArray<ActorPartDesc>* parts = nullptr;   // 0x7C
     uint8_t interactionNeeds[6] = {};       // 0x80
-    uint32_t field_88 = 0;                  // 0x88
+    float field_88 = -1.0f;                 // 0x88 attribute 0x43B894DB
     uint32_t navMode = 0;                   // 0x8C
     ape::Vec3 navObstacleSize{};            // 0x90
     float damage[15] = {};                  // 0xA0 ActorDef::impactScale .. interactionPriority
@@ -90,7 +100,7 @@ public:
     // Answers to InteractionNeeds by interaction kind. NOTE: the number of
     // kinds is not known (at most 12: the nav mode follows at 0xD0).
     uint8_t interactionNeeds[6] = {};        // 0xC4
-    uint32_t field_CC = 0;                   // 0xCC
+    float field_CC = -1.0f;                  // 0xCC ActorDefDesc::field_88
     uint32_t navMode = 0;                    // 0xD0
     // Size of the nav obstacle box (zero: shaped like each part's body).
     ape::Vec3 navObstacleSize{};             // 0xE0
