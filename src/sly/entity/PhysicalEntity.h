@@ -32,10 +32,14 @@ public:
     // Definition flags (+0x174).
     enum Flags : uint32_t {
         kDefFlag_NoKind2Interaction = 1u << 9,
+        kDefFlag_DieOnHit           = 1u << 10,   // NOTE: name from use (SweepTo)
+        kDefFlag_FaceMotion         = 1u << 22,   // NOTE: name from use (SweepTo)
         kDefFlag_NoInteraction      = 1u << 15,
     };
 
     float gravityScale = 0.0f;               // 0xC0
+    float rollRate = 0.0f;                   // 0x100 radians per second about the forward axis (flag 22)
+    float launchValue = 0.0f;                // 0x12C handed to the anim script on launch. NOTE: meaning unknown
     // Damage taken per hit category (0 = immune). NOTE: filled by the
     // definition parser (not ported).
     float impactScale = 0.0f;                // 0xCC category 1
@@ -85,6 +89,27 @@ public:
     // Empty overrides of the +0x17C interface's slots 7/6 (primary slots 97/98).
     void Interface17CSlot7() override;
     void Interface17CSlot6() override;
+    // Slot 94: aims at `target` (its aim point, the origin without one): the
+    // aim frame (carriedTransform) moves there, with the carried entity.
+    virtual void AimAt(Entity* target);
+    // Slot 95: the entity was launched: works out the flight time to the aim
+    // point and hands the aim frame, whether there is a target and the
+    // definition's launch value to the anim script, which enters "Start".
+    virtual void OnLaunched();
+    // Seconds until the entity reaches the aim point: over the ground at the
+    // current horizontal speed, else (straight up or down) along the fall
+    // under the body's gravity (0x000EF3C8).
+    void UpdateFlightTime();
+    // Frame for moving from `from` to `to`: the body is swept through the
+    // world when it is in one (definitions with flag 10 die when it hits
+    // something); with `orient` and definition flag 22 the forward axis is
+    // eased towards the direction of motion (Entity.Projectile.OrientDampening)
+    // (0x000EB420).
+    void SweepTo(const ape::Matrix34& from, const ape::Vec3& to, ape::Matrix34& out, bool orient);
+    // Slot 101: takes the body's frame over: as it is, or (definition flag
+    // 22) facing along the body's velocity and rolled by the definition's
+    // roll rate.
+    virtual void UpdateFromBody(float dt);
     // Slot 99: empty. NOTE: no caller known.
     virtual void Slot99();
     // Primary slot 100 / +0x180 slot 6: stops listening to the body's contacts.
@@ -118,8 +143,12 @@ public:
     Entity* owner = nullptr;                 // 0x1B0 counted reference
     Entity* target = nullptr;                // 0x1B4 counted reference
     Entity* carried = nullptr;               // 0x1B8 spawned from the definition
-    ape::Matrix34 carriedTransform{};        // 0x1C0
+    // 0x1C0 aim frame: identity at the aim point (slot 94); the carried
+    // entity (e.g. a marker) sits there.
+    ape::Matrix34 carriedTransform{};
+    ape::Vec3 launchPoint{};                 // 0x200 where the entity was launched from
     void* triggerBody = nullptr;             // 0x224 second body, on collision layer 7
+    float flightTime = 0.0f;                 // 0x228 seconds to the aim point (UpdateFlightTime)
     audio::SoundName* impactSound = nullptr; // 0x230 NOTE: name from use
     components::OffscreenMarkerComponent* marker = nullptr;  // 0x26C first component of type 0x1E
 };

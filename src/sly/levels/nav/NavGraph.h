@@ -60,6 +60,12 @@ public:
     // unloads it).
     virtual void ReleaseJumpLink(void* link) { (void)link; }
     virtual void UnloadGraph() {}
+    // Brings the NavPower world up in a memory arena of `arenaSize` bytes
+    // (0x0067B670 and the system initialisers 0x0067C3DC, 0x0067D190,
+    // 0x0062CAB4, 0x006CAD10, 0x00685A9C, 0x0067BF74) and takes it down
+    // again (0x0067BE20, 0x0067BCD4).
+    virtual void StartWorld(void* arena, size_t arenaSize) { (void)arena; (void)arenaSize; }
+    virtual void StopWorld() {}
 };
 
 NavPowerInterface& NavPower();
@@ -81,7 +87,11 @@ struct NavManager {
     static constexpr int kMaxObstacles = 0x200;
     static constexpr int kMaxJumpLinks = 0x200;
 
+    // NavPower arena size the manager is created with.
+    static constexpr size_t kArenaSize = 0x400000;
+
     void* graphData = nullptr;                    // +0x0000 loaded NavGraph.bfx_res image
+    void* arena = nullptr;                        // +0x0004 NavPower memory arena (kArenaSize)
     size_t graphSize = 0;
     int32_t jumpLinkCount = 0;                    // +0x001C
     int32_t obstacleCount = 0;                    // +0x0020
@@ -92,6 +102,12 @@ struct NavManager {
 // The level's nav manager (console pointer 0x00F557EC), may be null.
 NavManager* GetNavManager();
 void SetNavManager(NavManager* nav);
+// Creates the nav manager with its NavPower world and installs it (part of
+// the AI manager constructor 0x000186CC).
+NavManager* CreateNavManager();
+// Takes the installed nav manager down: obstacles, NavPower world, arena,
+// jump links (part of the AI systems teardown 0x00018B30).
+void DestroyNavManager();
 
 // Platform links: looks up the entities their Object1..Object6 properties
 // name (0x00010238).

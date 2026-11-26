@@ -14,6 +14,10 @@ namespace entity {
 
 // The body is in a physics world (hkpWorldObject::m_world, +0x08).
 bool RigidBodyInWorld(void* body);
+// Moves a body from `from` towards `to` through the world (0x004A41C0):
+// `reached` gets the frame it ends up at (`from` moved to `to` when free).
+// True when something blocked the way.
+bool RigidBodySweep(void* body, const ape::Matrix34& from, const ape::Vec3& to, ape::Matrix34& reached);
 // Takes the body out of its world (hkpWorld::removeEntity 0x0092FFC8).
 void RigidBodyRemoveFromWorld(void* body);
 // Puts the body into the game physics world (hkpWorld::addEntity 0x0092F2A8)
