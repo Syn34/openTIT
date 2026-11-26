@@ -649,10 +649,50 @@ ape::Vec3 AIController::NavSnapPoint(const ape::Vec3& point)
     return point;
 }
 
-// TODO(0x00015AAC AIController::TargetReachable): NavPower path query.
+// @func 0x00015AAC AIController::TargetReachable
+// Only players (class bit 0) are checked: a path must lead from the
+// controller's nav point to the player's last point on the mesh.
 bool AIController::TargetReachable()
 {
-    return true;
+    if (target && !(target->classBits & 1))
+        return true;
+    NavQuery query;
+    query.filter = NavFilter();
+    query.searchRadius = NavSearchRadius();
+    if (!NavPointIsValid(navPoint))
+        navPoint = NavCreatePoint(transform.translation, query);   // NOTE: position assumed
+    if (!NavPointIsValid(navPoint))
+        return true;
+    NavManager* nav = GetNavManager();
+    if (!nav || !nav->playerTracker.onMesh)
+        return false;
+    return NavPathToPlayerExists(navPoint, query);
+}
+
+// @func 0x00015C98 AIController::IsAtNavPoint
+bool AIController::IsAtNavPoint(const ape::Vec3& point)
+{
+    if (!NavPointIsValid(navPoint))
+        return false;
+    ape::Vec3 ground;
+    if (!NavPointGroundPosition(navPoint, ground))
+        return false;
+    const float dy = ground.y - point.y;
+    if (dy < -1.0f || dy > 0.5f)
+        return false;
+    const float dx = ground.x - point.x, dz = ground.z - point.z;
+    return dx * dx + dz * dz < 0.04f;
+}
+
+// @func 0x00015E40 AIController::ClipEndsAtNavPoint
+bool AIController::ClipEndsAtNavPoint(float scale)
+{
+    const float remaining = (1.0f - entity->GetAnimProgress(0)) * entity->GetAnimDuration(0) * scale;
+    ape::Matrix34 rest;
+    entity->RootMotionDelta(rest, false, 0, remaining);
+    ape::Matrix34 end = transform;   // NOTE: start frame assumed (lost in the reference)
+    ape::Matrix34PreMultiply(end, rest);
+    return IsAtNavPoint(end.translation);
 }
 
 // @func 0x00014DA8 AIController::BeginMove
