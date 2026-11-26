@@ -43,6 +43,8 @@ void SetGameFrameBuffers(FrameBufferPair* pair);
 
 // Double-buffered counter pair (0x01195090) flipped every frame.
 void FlipFrameCounters();
+// Zeroes both counters (world shutdown).
+void ResetFrameCounters();
 uint32_t& CurrentFrameCounter();
 
 // Debug-draw style buffers (pointer at 0x010AA614) that are only swapped on
@@ -52,5 +54,21 @@ void SetDebugFrameBuffers(FrameBufferPair* pair);
 void SwapDebugBuffersIfRequested();
 
 void EndFrameHook();
+
+// Blend state used by the debug draw buffers (0x010AA208), laid out like a
+// material's blend words: bit 31 enables blending, bits 15-30 hold the
+// source factor; then the equation and the destination factor (GL enums).
+struct DebugDrawBlend {
+    uint32_t word = 0;          // +0x00
+    uint16_t equation = 0;      // +0x04
+    uint16_t dstFactor = 0;     // +0x06
+
+    bool Enabled() const { return (word >> 31) != 0; }
+    uint16_t SrcFactor() const { return uint16_t((word >> 15) & 0xFFFF); }
+};
+const DebugDrawBlend& GetDebugDrawBlend();
+void SetDebugDrawBlend(bool enable, uint16_t srcFactor, uint16_t dstFactor, uint16_t equation);
+// Back to standard alpha blending factors with blending switched off.
+void ResetDebugDrawBlend();
 
 } // namespace sly
