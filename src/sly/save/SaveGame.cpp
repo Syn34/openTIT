@@ -2,10 +2,14 @@
 #include "sly/save/SaveGame.h"
 
 #include "ape/core/ApeString.h"
+#include "ape/level/ApeGui.h"
+#include "ape/xml/ApeStringTable.h"
 #include "platform/Platform.h"
+#include "sly/game/goals/JobManager.h"
 
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <filesystem>
 #include <string>
@@ -18,6 +22,11 @@ namespace sly {
 namespace {
 
 namespace fs = std::filesystem;
+using game::JobManager;
+using game::Job;
+using game::Episode;
+using game::PlayerProgress;
+using game::GetJobManager;
 
 const char* const kSavePrefix    = "BCUS98247_SAVE_";
 const char* const kSaveSlotName  = "BCUS98247_SAVE_SLOT_";
@@ -105,14 +114,65 @@ void RunWorker(void (*worker)())
     std::thread(worker).detach();
 }
 
-// TODO(0x000AE78C BuildSaveDescription): the original fills the title,
-// subtitle and details from the string table and the current episode/job
-// progress. Until those systems exist the fallbacks are used.
-void BuildSaveDescription()
+// Whole percent of a completion figure (the console floors the float).
+int32_t WholePercent(float value)
 {
-    ape::StrCopyBounded(g_title, "Sly Cooper Thieves in Time", sizeof(g_title));
-    ape::StrCopyBounded(g_subtitle, "[Missing Subtitle String]", sizeof(g_subtitle));
-    ape::StrCopyBounded(g_details, "[Missing Details String]", sizeof(g_details));
+    return static_cast<int32_t>(std::floor(value));
+}
+
+// Fills the title, subtitle and details the system save browser shows for
+// `progress`: the game name, the episode (and job) last played, and the
+// completion figures. Without a string table every line gets a placeholder.
+// @func 0x000AE78C BuildSaveDescription
+void BuildSaveDescription(const PlayerProgress* progress)
+{
+    const ape::StringTable* strings = ape::GetGuiStringTable();
+    if (!strings || !progress) {
+        ape::StrCopyBounded(g_title, "[Missing Title String]", sizeof(g_title));
+        ape::StrCopyBounded(g_subtitle, "[Missing Subtitle String]", sizeof(g_subtitle));
+        ape::StrCopyBounded(g_details, "[Missing Details String]", sizeof(g_details));
+        // NOTE: the console also fills a fourth "save text" line here; the PC
+        // save folder has no use for it.
+        return;
+    }
+
+    ape::StrCopyBounded(g_title, strings->Find("SYSTEM_GAMENAME", "[Missing Title String]", false),
+                        sizeof(g_title));
+
+    JobManager* jobs = GetJobManager();
+    const Job* episode = nullptr;
+    if (progress->lastJobId)
+        episode = jobs->FindJobById(progress->lastJobId);
+    if (!episode)
+        episode = jobs->LastStartedJob();
+    if (!episode)
+        episode = jobs->jobs;
+
+    if (!episode) {
+        ape::StrCopyBounded(g_subtitle, strings->Find("UnknownTitleName", "[Missing Location String]", false),
+                            sizeof(g_subtitle));
+    } else {
+        // Record names carry a one-character prefix in front of the string id.
+        const char* episodeName = strings->Find(episode->name + 1, episode->name, episode->field_33B != 0);
+        const Episode* job = progress->lastEpisodeName ? jobs->FindEpisode(progress->lastEpisodeName) : nullptr;
+        if (job) {
+            const char* jobName = strings->Find(job->name + 1, job->name, job->field_1F8 != 0);
+            ape::StrPrintf(g_subtitle, sizeof(g_subtitle), "%s - %s", episodeName, jobName);
+        } else {
+            ape::StrCopyBounded(g_subtitle, episodeName, sizeof(g_subtitle));
+        }
+    }
+
+    const char* format = strings->Find("STR_SAVE_DETAILS", "[Missing Details String]", false);
+    const int32_t completion = WholePercent(jobs->GameCompletion(progress));
+    const int32_t bottles = WholePercent(jobs->BottlePercent(progress));
+    const int32_t treasures = WholePercent(jobs->TreasurePercent(progress));
+    const int32_t safes = WholePercent(jobs->SafePercent(progress));
+    // NOTE: the console also evaluates the mask percentage but does not pass
+    // it to the format.
+    (void)jobs->MaskPercent(progress);
+    ape::StrPrintf(g_details, sizeof(g_details), format, completion, progress->field_020, bottles, treasures,
+                   safes);
 }
 
 // Newest folder whose name starts with `prefix`, or "" if none.
@@ -250,7 +310,7 @@ int32_t SaveGameToList(const void* data, size_t size)
     return PollOperation([&] {
         g_saveInProgress = true;
         std::memcpy(g_buffer, data, size < kSaveGameSize ? size : kSaveGameSize);
-        BuildSaveDescription();
+        BuildSaveDescription(static_cast<const PlayerProgress*>(data));
         RunWorker(ListSaveWorker);
     });
 }
@@ -278,7 +338,7 @@ int32_t AutoSaveGame(const void* data, size_t size)
     return PollOperation([&] {
         g_saveInProgress = true;
         std::memcpy(g_buffer, data, size < kSaveGameSize ? size : kSaveGameSize);
-        BuildSaveDescription();
+        BuildSaveDescription(static_cast<const PlayerProgress*>(data));
         RunWorker(AutoSaveWorker);
     });
 }
