@@ -511,6 +511,13 @@ struct HudTextOverride {
 HudTextOverride& TextOverride();
 // 0x0035B470: restores the label and clears the override.
 void ResetTextOverride(HudTextOverride& state);
+// 0x00369D98: starts the coin count-up: the owner shows `amount` and flies
+// from `position` (a cubic curve up to the counter's tuning offset) while
+// the counter counts from the profile's coins to coins + amount. Nothing
+// happens while an override runs.
+void StartCoinCount(float amount, HudTextOverride& state, const uint8_t* profileIndex, const ape::Vec3& position);
+// 0x0036A050: StartCoinCount on the module's override.
+void ShowCoinCount(float amount, const uint8_t* profileIndex, const ape::Vec3& position);
 
 void RefreshElement(HudObject* object);                             // 0x0035B3BC
 void SetFieldScale(HudObject* object, const ape::Vec3& scale, uint32_t index);   // 0x0035B404

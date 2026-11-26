@@ -40,6 +40,14 @@ public:
     // 0x003709A0: world position of field `index`'s scene object (zero
     // without one).
     ape::Vec3 TrackerFieldPosition(uint32_t index) const;
+    // 0x0036901C: sets the label of field `index` (null text keeps it).
+    void SetTrackerFieldText(const char* text, uint32_t index);
+    // 0x003690F0: shows the list: fields 0/1 get `title`, 2/3 `text`, the
+    // entries are copied; `sticky` keeps it up through Refresh.
+    void ShowList(const char* title, const char* text, const ape::ApeTArray<Entry>* source, bool sticky);
+    // 0x003694A0: ShowList on a possibly missing tracker.
+    static void ShowListOf(HudTracker* tracker, const char* title, const char* text,
+                           const ape::ApeTArray<Entry>* source, bool sticky);
     // 0x00370B88: draws the marker and the text frames at their scene
     // objects (world callback 0x00370E04).
     void DrawFields();
