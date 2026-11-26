@@ -29,6 +29,8 @@ void MKQueueSequence(uint32_t) {}
 
 namespace sly {
 namespace gameplay {
+entity::GameCamera* MKGameCamera() { return nullptr; }
+void MKRippleKnock(entity::Entity*) {}
 void MKCameraRemoveMode(entity::GameCamera*, void*) {}
 void MKClearPlayerTargetingFlag(entity::Entity*) {}
 void MKClearCharacterHooks(entity::Entity*) {}

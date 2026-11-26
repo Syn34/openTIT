@@ -66,6 +66,24 @@ private:
     void Apply(int index, bool on);
 };
 
+// The floor ripple (0x20 bytes, boss +0x348): rings of a level object rise
+// in turn; whatever stands on a raised ring is knocked away.
+struct MegaKnightFloorRipple {
+    // 0x0030419C: binds the ring object chain of the entity named `entityName`.
+    void Init(MegaKnight* owner, uint32_t entityName);
+    // 0x0030C5C8: height of the ring under `target` (0 when it stands on no
+    // raised ring).
+    float HeightAt(const entity::Entity* target) const;
+    // 0x0030C6F8: kills the boss's spawned entities on a raised ring and
+    // throws the player up, at most once per HitCooldown.
+    void Update(float dt);
+
+    MegaKnight* boss = nullptr;                    // +0x00
+    entity::Entity* entity = nullptr;              // +0x04
+    ape::ApeTArray<ape::world::ApeObj*> rings;     // +0x08 innermost first (capacity 32)
+    float cooldown = 0.0f;                         // +0x1C
+};
+
 // The platform object of the fight (0x70 bytes, boss +0x368): a geometry
 // object with two anim scripts.
 struct MegaKnightPlatform {
@@ -181,7 +199,7 @@ struct MegaKnightTracking {
     ape::Vec3 field_1C0{};              // +0x1C0
     ape::Vec3 field_1D0{};              // +0x1D0
     int32_t bone = 0;                   // +0x1E0 boss bone 0x0021C5E0
-    void* camera = nullptr;             // +0x1E4 the game camera
+    entity::GameCamera* camera = nullptr;   // +0x1E4 the game camera
     int32_t field_1E8 = -1;             // +0x1E8
     uint8_t history[0x24] = {};         // +0x1EC ring of 16-byte records (capacity 16)
     ape::Vec3 field_210{};              // +0x210
@@ -198,6 +216,7 @@ struct MegaKnightTracking {
 class MegaKnight : public entity::ActorEntity {
 public:
     ~MegaKnight() override;
+    bool PostUpdate(float dt) override;                     // slot 5
     bool Release(bool kill) override;                       // slot 10
     // The boss takes no hits through the hit categories.
     void OnHitCategory0(entity::EntityHitRecord& hit) override;
@@ -236,6 +255,18 @@ public:
     uint32_t ChooseNextPhase();
     // 0x00304298: stops the arm marker spawners and releases the marker objects.
     void ClearArmMarkers();
+    // 0x003059EC: the tracking block follows the game camera and the
+    // tracking bone.
+    void BindTracking();
+    // 0x0030D434: world transform of skeleton bone `bone` (left unchanged
+    // without the bone).
+    void BoneWorldTransform(int bone, ape::Matrix34& out) const;
+    // 0x0030FC90: picks the behaviour list for the current half and the
+    // number of arms down, from its first action.
+    void SelectBehavior();
+    // 0x00309440: hurts and throws the player. TODO.
+    void HurtPlayer(entity::Entity* source, uint32_t flags, float damage, float dt,
+                    const ape::Vec3& direction, float impulse);
     // 0x00311590: swaps the marker object of arm `arm`. TODO.
     void SetArmMarker(uint32_t arm, bool on);
 
@@ -245,7 +276,10 @@ public:
     MegaKnightStampManager* stampManager = nullptr;    // 0x294
     // State block (built by 0x00768478).
     bool field_298 = false;                            // 0x298
-    bool secondHalf = false;                           // 0x299 NOTE: switches the clip and value sets
+    // NOTE: switches the clip and value sets; while it is set the behaviour
+    // lists "Phase1ArmN" are used (else "Phase2ArmN"), so the name may be
+    // backwards.
+    bool secondHalf = false;                           // 0x299
     uint32_t currentAnim = 0;                          // 0x29C
     uint32_t currentCamera = 0;                        // 0x2A0
     bool armIntact[3] = {true, true, true};            // 0x2A4 arms 0..2
@@ -267,7 +301,7 @@ public:
     MegaKnightObjectPair pair32C;                      // 0x32C
     MegaKnightObjectPair pair338;                      // 0x338
     entity::Entity* heartTarget = nullptr;             // 0x344 NOTE: name from the marker offset it gets
-    ape::ApeTArray<void*> field_350;                   // 0x350 (capacity 32)
+    MegaKnightFloorRipple floorRipple;                 // 0x348
     MegaKnightPlatform* platform = nullptr;            // 0x368
     ape::ApeTArray<entity::Entity*> spawned;           // 0x36C entities the boss spawned (capacity 64)
     entity::Entity* armObject = nullptr;               // 0x380

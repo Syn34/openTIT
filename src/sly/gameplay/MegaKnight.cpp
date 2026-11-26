@@ -6,6 +6,8 @@
 #include "ape/math/ApeBounds.h"
 #include "ape/world/ApeObj.h"
 #include "ape/world/ApeRegions.h"
+#include "ape/world/ApeSkeleton.h"
+#include "sly/entity/ScriptedEntity.h"
 #include "sly/camera/CameraModes.h"
 #include "sly/entity/GameCamera.h"
 #include "sly/game/SpawnManager.h"
@@ -55,6 +57,84 @@ void MegaKnightObjectPair::Show(bool on, bool first)
     Apply(first ? 0 : 1, true);
 }
 
+
+// ===========================================================================
+// Floor ripple
+
+// @func 0x0030419C MegaKnightFloorRipple::Init
+void MegaKnightFloorRipple::Init(MegaKnight* owner, uint32_t entityName)
+{
+    boss = owner;
+    if (entity::Entity* found = entity::FindEntity(entityName))
+        entity = (found->classBits & 0x4) ? found : nullptr;
+    if (!entity || !entity->object)
+        return;
+    for (ape::world::ApeObj* ring = entity->object->GetFirstChild(); ring; ring = ring->GetNextSibling())
+        rings.PushBack(ring);
+}
+
+// @func 0x0030C5C8 MegaKnightFloorRipple::HeightAt
+// The rings are sorted outwards: the first one within 1.5 units of the
+// target's distance from the centre decides.
+float MegaKnightFloorRipple::HeightAt(const entity::Entity* target) const
+{
+    if (!target)
+        return 0.0f;
+    const ape::Vec3& p = target->transform.translation;
+    if (p.x == 0.0f && p.y == 0.0f && p.z == 0.0f)
+        return 0.0f;
+    const float radius = std::sqrt(p.x * p.x + p.z * p.z);
+    for (uint32_t i = 0; i < rings.Count(); ++i) {
+        const ape::Vec3& r = rings[i]->GetWorld().translation;
+        const float ringRadius = std::sqrt(r.x * r.x + r.y * r.y + r.z * r.z);
+        if (std::fabs(ringRadius - radius) <= 1.5f)
+            return r.y < p.y ? 0.0f : r.y;
+        if (radius < ringRadius)
+            return 0.0f;
+    }
+    return 0.0f;
+}
+
+// @func 0x0030C6F8 MegaKnightFloorRipple::Update
+void MegaKnightFloorRipple::Update(float dt)
+{
+    static const ape::Vec3 kUp = {0.0f, 1.0f, 0.0f, 0.0f};   // console global 0x01164B60
+    if (!boss || !entity)
+        return;
+    cooldown -= dt;
+    if (cooldown < 0.0f)
+        cooldown = 0.0f;
+
+    ape::ApeTArray<entity::Entity*>& spawned = boss->spawned;
+    for (int i = 0; i < int(spawned.Count()); ++i) {
+        entity::Entity* e = spawned[uint32_t(i)];
+        if (HeightAt(e) <= 0.0f)
+            continue;
+        e->Release(false);
+        if (e && (e->classBits & entity::kClass_20))
+            MKRippleKnock(e);
+        auto* scripted = (e->classBits & 0x2) ? static_cast<entity::ScriptedEntity*>(e) : nullptr;
+        scripted->Damage(scripted->maxHealth, nullptr, 0);
+        spawned.RemoveAtSwap(uint32_t(i));
+        --i;
+    }
+
+    entity::Entity* player = MKPlayerCharacter();
+    const float height = HeightAt(player);
+    if (height <= 0.0f || cooldown != 0.0f)
+        return;
+    float t = height / g_megaKnightFloorRippleMaxHeight.Get();
+    if (1.0f - t < 0.0f)
+        t = 1.0f;
+    if (t < 0.0f)
+        t = 0.0f;
+    const float impulse = g_megaKnightFloorRippleImpulseStr.Get() * t;
+    if (player && player->IsAlive() && !static_cast<entity::ScriptedEntity*>(player)->IsDead() &&
+        g_megaKnightFloorRippleDamageEnabled.Get()) {
+        boss->HurtPlayer(boss, 0, g_megaKnightFloorRippleDamage.Get(), dt, kUp, impulse);
+        cooldown = g_megaKnightFloorRippleHitCooldown.Get();
+    }
+}
 
 // ===========================================================================
 // Camera controller
@@ -508,6 +588,54 @@ void MegaKnight::ClearArmMarkers()
             object->Release(true);
         retiredArmObjects.PopBack();
     }
+}
+
+// @func 0x0030FB94 MegaKnight::PostUpdate
+bool MegaKnight::PostUpdate(float dt)
+{
+    return ActorEntity::PostUpdate(dt);
+}
+
+// @func 0x003059EC MegaKnight::BindTracking
+void MegaKnight::BindTracking()
+{
+    tracking.camera = MKGameCamera();
+    tracking.bone = FindBone(0x0021C5E0u);
+}
+
+// @func 0x0030D434 MegaKnight::BoneWorldTransform
+void MegaKnight::BoneWorldTransform(int bone, ape::Matrix34& out) const
+{
+    const ape::world::ApeSkeletonBone* b = GetBone(bone);
+    if (!b)
+        return;
+    ape::Matrix34 model = *b->model;
+    ape::world::Matrix34Mul(out, model, object->GetWorld());
+}
+
+// @func 0x0030FC90 MegaKnight::SelectBehavior
+void MegaKnight::SelectBehavior()
+{
+    const uint32_t base = secondHalf ? 0x0993D8AAu    // "Phase1Arm0"
+                                     : 0x09A1F02Bu;   // "Phase2Arm0"
+    const uint32_t armsDown = (armIntact[0] ? 1u : 0u) + (armIntact[2] ? 1u : 0u);
+    behavior = nullptr;
+    const ape::ApeTArray<MegaKnightBehavior*>& list = static_cast<const MegaKnightDef*>(def)->behaviors;
+    for (uint32_t i = 0; i < list.Count(); ++i) {
+        if (list[i]->nameHash == base + armsDown) {
+            behavior = list[i];
+            break;
+        }
+    }
+    behaviorAction = 0;
+}
+
+// TODO(0x00309440 MegaKnight::HurtPlayer): damage, knock-back and hit
+// reaction of the player (vector code).
+void MegaKnight::HurtPlayer(entity::Entity* source, uint32_t flags, float damage, float dt,
+                            const ape::Vec3& direction, float impulse)
+{
+    (void)source; (void)flags; (void)damage; (void)dt; (void)direction; (void)impulse;
 }
 
 // TODO(0x0030E1E0 MegaKnight::ChooseNextPhase): runs the behaviour lists

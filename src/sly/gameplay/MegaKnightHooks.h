@@ -63,6 +63,11 @@ namespace gameplay {
 // the platform is deleted by the boss itself).
 // The game camera stops using a mode it holds (GameCamera::HasTarget 0x000FC5DC
 // then 0x000FBB88 with -1).
+// The game camera entity (game world +0x1281E0).
+entity::GameCamera* MKGameCamera();
+// Floor ripple: entities of class bit 0x20 caught by a raised ring (0x001FB640
+// with their position).
+void MKRippleKnock(entity::Entity* entity);
 void MKCameraRemoveMode(entity::GameCamera* camera, void* mode);
 // Player targeting gadget byte +0x922 bit 3 (cleared when the boss goes).
 void MKClearPlayerTargetingFlag(entity::Entity* player);
