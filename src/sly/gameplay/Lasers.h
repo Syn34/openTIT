@@ -36,9 +36,9 @@ struct LaserGroup;
 // Kinds of laser settings (their definition's type hash).
 enum LaserSettingType : uint32_t {
     kLaserSetting_Group  = 0xA2A8CB13u,   // "Sly_LaserGroup"
-    kLaserSetting_Fixed  = 0xC6CD059Du,   // NOTE: by elimination "Sly_LaserFixed"
-    kLaserSetting_Anchor = 0xA7F58081u,   // NOTE: by elimination "Sly_LaserAnchor"
-    kLaserSetting_Spline = 0xA296BC08u,   // NOTE: by elimination "Sly_LaserSpline"
+    kLaserSetting_Fixed  = 0xA296BC08u,   // "Sly_LaserFixed"
+    kLaserSetting_Anchor = 0xA7F58081u,   // "Sly_LaserAnchor"
+    kLaserSetting_Spline = 0xC6CD059Du,   // "Sly_LaserSpline"
     kLaserSetting_Field  = 0xA296758Eu,   // "Sly_LaserField"
 };
 
@@ -307,8 +307,8 @@ void LaserFieldColorMaterials(const ape::ApeTArray<ape::Vec3>& points, const uin
 // 0x003A09C0 (TODO): a player character against the beams (vector code
 // past the decompiler).
 void LaserTestCharacter(LaserManager& manager, entity::Entity* character);
-// Set-up of a laser from its setting by kind (0x0039A2B8 fixed, 0x0039AD48
-// anchor, 0x0039B5A0 spline; TODO).
+// Set-up of a laser from its setting by kind (0x0039B5A0 fixed, 0x0039AD48
+// anchor, 0x0039A2B8 spline; TODO).
 void LaserSetupFixed(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point);
 void LaserSetupAnchor(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point);
 void LaserSetupSpline(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point);

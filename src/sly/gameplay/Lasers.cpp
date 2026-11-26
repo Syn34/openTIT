@@ -1074,24 +1074,241 @@ void LaserFieldColorMaterials(const ape::ApeTArray<ape::Vec3>& points, const uin
     (void)set;
 }
 
-// TODO(0x0039A2B8 LaserSetupFixed)
+
+// ---------------------------------------------------------------------------
+// Set-up from the settings
+
+namespace {
+
+const char* const kInitTypeNames[2] = {"None", "Flicker"};
+const char* const kDamageTypeNames[2] = {"Fire", "Electric"};
+const char* const kMoveTypeNames[3] = {"Fixed", "Loop", "PingPong"};
+const char* const kSpeedTypeNames[3] = {"PercentPerSec", "MeterPerSec", "TimeFromAtoB"};
+
+// Index of an enumerated setting value among its names (0 when unknown).
+template <size_t N>
+uint32_t EnumIndex(uint32_t value, const char* const (&names)[N])
+{
+    for (uint32_t i = 0; i < N; ++i)
+        if (value == ape::HashNameNoCase(names[i]))
+            return i;
+    return 0;
+}
+
+const char* SettingString(const ape::setting::Setting* setting, const ape::setting::SettingParam& param)
+{
+    const char* text = setting->Value(param).str;
+    return (text && *text) ? text : nullptr;
+}
+
+ape::world::ApeSplineInstance* FindSpline(const char* name)
+{
+    return name ? ape::world::ApeTInstanceList<ape::world::ApeSplineInstance>::Find(ape::HashNameNoCase(name))
+                : nullptr;
+}
+
+ape::world::ApeObj* FindGeom(const char* name)
+{
+    return name ? ape::world::FindGeomInstance(ape::HashNameNoCase(name)) : nullptr;
+}
+
+bool IsSpline(const ape::world::ApeObj* object)
+{
+    return object && object->GetType() == ape::world::kObjType_SplineInstance;
+}
+
+// Arc length of a spline instance's definition. NOTE: read from definition
+// +0x78 on the console, taken to be the spline's length.
+float SplineLength(const ape::world::ApeSplineInstance* spline)
+{
+    return static_cast<const ape::world::ApeSplineDef*>(spline->GetDef())->m_spline.GetLength();
+}
+
+// The group's bounds grow by a spline's world box.
+void AddSplineBounds(LaserGroup& group, const ape::world::ApeObj* spline)
+{
+    ape::Aabb box;
+    ape::AabbTransform(box, spline->GetDef()->GetBounds(), spline->GetWorld());
+    ape::AabbAddBox(group.bounds, box);
+    ape::SphereFromAabb(group.sphere, group.bounds);
+}
+
+void AddPointBounds(LaserGroup& group, const ape::Vec3& point)
+{
+    ape::AabbAddPoint(group.bounds, point);
+    ape::SphereFromAabb(group.sphere, group.bounds);
+}
+
+// The parameters every laser kind starts with.
+void ReadCommon(Laser& laser, const ape::setting::Setting* setting, const sai_params::LaserCommonParams& common)
+{
+    laser.initType = EnumIndex(setting->Value(common.initType).u, kInitTypeNames);
+    laser.damageAmount = setting->Value(common.damageAmount).f;
+    laser.damageType = g_gadgetLaserForceElectricDamage.Get() ? 1u
+                                                               : EnumIndex(setting->Value(common.damageType).u,
+                                                                           kDamageTypeNames);
+}
+
+// Geometry, point scripts, the first beam placement, the sound and the end
+// point display: the common tail of every set-up.
+void FinishSetup(Laser& laser, const ape::setting::Setting* setting, const sai_params::LaserCommonParams& common,
+                 const char* const scripts[2])
+{
+    laser.SetGeometry(setting->Value(common.geomDef).str);
+    laser.StartPointScripts(scripts);
+    if (laser.geometry) {
+        laser.UpdateBeam();
+        laser.ApplyBeam();
+    }
+    audio::StopVoice(laser.voice, true);
+    laser.voice = 0;
+    if (const char* sound = SettingString(setting, common.sound))
+        laser.sound = audio::CreateSoundName(ape::HashNameNoCase(sound), 0);
+    laser.flags = setting->Value(common.alwaysShowEndPoints).b ? (laser.flags | Laser::kFlag_ShowPoints)
+                                                               : (laser.flags & ~Laser::kFlag_ShowPoints);
+}
+
+} // namespace
+
+// @func 0x0039B5A0 LaserSetupFixed
+// The end points are two objects (the "MoveableObj" geometry instances, else
+// the point's first child and its child or sibling), or the two ends of a
+// spline (the "MoveableSpline", else the point's first child spline).
 void LaserSetupFixed(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point)
 {
-    (void)laser;
-    (void)setting;
-    (void)point;
+    using namespace sai_params;
+    ReadCommon(laser, setting, LaserFixedCommon);
+    ape::world::ApeObj* moveableSpline = FindSpline(SettingString(setting, FixedMoveableSpline));
+    ape::world::ApeObj* moveable1 = FindGeom(SettingString(setting, MoveableObj1));
+    ape::world::ApeObj* moveable2 = FindGeom(SettingString(setting, MoveableObj2));
+
+    ape::world::ApeObj* first = moveable1;
+    ape::world::ApeObj* second = moveable2;
+    ape::world::ApeObj* spline = moveableSpline;
+    ape::world::ApeObj* child = (moveableSpline && moveable1 && moveable2) ? nullptr : point->GetFirstChild();
+    for (; child; child = child->GetNextSibling()) {
+        if (IsSpline(child)) {
+            spline = child;
+            break;
+        }
+        if (!first) {
+            first = child;
+            if (!moveable2 && child->GetFirstChild()) {
+                second = child->GetFirstChild();
+                break;
+            }
+        } else if (!moveable2) {
+            second = child;
+            break;
+        }
+    }
+
+    LaserGroup& group = *laser.group;
+    if (!spline) {
+        if (first && second) {
+            laser.points[0].transform.translation = first->GetWorld().translation;
+            laser.points[0].object = moveable1;
+            AddPointBounds(group, laser.points[0].transform.translation);
+            laser.points[1].transform.translation = second->GetWorld().translation;
+            laser.points[1].object = moveable2;
+            AddPointBounds(group, laser.points[1].transform.translation);
+        }
+    } else {
+        auto* path = static_cast<ape::world::ApeSplineInstance*>(spline);
+        for (int i = 0; i < 2; ++i) {
+            LaserEndpoint& p = laser.points[i];
+            p.splineSegment = path->EvaluatePosition(float(i), p.transform.translation, uint32_t(p.splineSegment), false);
+            p.spline = path;
+            p.flags = moveableSpline ? (p.flags | LaserEndpoint::kMoveable) : (p.flags & ~LaserEndpoint::kMoveable);
+        }
+        AddSplineBounds(group, spline);
+    }
+    const char* const scripts[2] = {setting->Value(Point1DirScript).str, setting->Value(Point2DirScript).str};
+    FinishSetup(laser, setting, LaserFixedCommon, scripts);
+}
+
+// @func 0x0039A2B8 LaserSetupSpline
+// Each end point runs along its own spline (the "MoveableSpline1/2" spline
+// instances, else child splines of the point): start offset with a random
+// variance, movement type and a speed (per second as a share of the spline,
+// in metres per second, or as the time from one end to the other).
+void LaserSetupSpline(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point)
+{
+    using namespace sai_params;
+    ReadCommon(laser, setting, LaserSplineCommon);
+    ape::world::ApeObj* moveable[2] = {FindSpline(SettingString(setting, SplineMove1.moveableSpline)),
+                                       FindSpline(SettingString(setting, SplineMove2.moveableSpline))};
+
+    // Without both splines named, the first child spline is the first path
+    // and the second is its own child spline or the next child spline.
+    ape::world::ApeObj* first = moveable[0];
+    ape::world::ApeObj* second = moveable[1];
+    ape::world::ApeObj* child = (moveable[0] && moveable[1]) ? nullptr : point->GetFirstChild();
+    for (; child; child = child->GetNextSibling()) {
+        if (!first && IsSpline(child)) {
+            first = child;
+        } else if (!moveable[1] && IsSpline(child)) {
+            second = child;
+            break;
+        }
+        if (first && !moveable[1] && IsSpline(first->GetFirstChild())) {
+            second = first->GetFirstChild();
+            break;
+        }
+    }
+
+    if (first && second) {
+        ape::world::ApeObj* splines[2] = {first, second};
+        const LaserSplineMoveParams* moves[2] = {&SplineMove1, &SplineMove2};
+        float offsetJitter = 0.0f;
+        float speedJitter = 0.0f;
+        for (int i = 0; i < 2; ++i) {
+            const LaserSplineMoveParams& move = *moves[i];
+            LaserEndpoint& p = laser.points[i];
+            auto* path = static_cast<ape::world::ApeSplineInstance*>(splines[i]);
+
+            // The second point reuses the first one's random offset unless
+            // it asks for its own.
+            if (i == 0 || !setting->Value(UseSplineStartOffsetVariance1).b) {
+                const float variance = setting->Value(move.startOffsetVariance).f;
+                offsetJitter = ape::RandomRange(-variance, variance, ape::g_gameRandom);
+            }
+            const float start = ape::Clamp(setting->Value(move.startOffset).f + offsetJitter, 0.0f, 1.0f);
+            p.spline = path;
+            p.splineSegment = path->EvaluatePosition(start, p.transform.translation, uint32_t(p.splineSegment), false);
+            p.flags = moveable[i] ? (p.flags | LaserEndpoint::kMoveable) : (p.flags & ~LaserEndpoint::kMoveable);
+            AddSplineBounds(*laser.group, path);
+            p.splinePos = start;
+
+            const uint32_t moveType = EnumIndex(setting->Value(move.moveType).u, kMoveTypeNames);
+            p.flags = (p.flags & ~(3u << LaserEndpoint::kMoveTypeShift)) | (moveType << LaserEndpoint::kMoveTypeShift);
+
+            if (i == 0 || !setting->Value(UseSplineMoveSpeedVariance1).b) {
+                const float variance = setting->Value(move.moveSpeedVariance).f;
+                speedJitter = ape::RandomRange(-variance, variance, ape::g_gameRandom);
+            }
+            const float signedSpeed = setting->Value(move.moveSpeed).f + speedJitter;
+            p.flags = signedSpeed < 0.0f ? (p.flags | LaserEndpoint::kReverse) : (p.flags & ~LaserEndpoint::kReverse);
+            float speed = std::fabs(signedSpeed);
+            const uint32_t speedType = EnumIndex(setting->Value(move.speedType).u, kSpeedTypeNames);
+            if (speed > 0.0f) {
+                const float length = SplineLength(path);
+                if (length > 0.0f) {
+                    if (speedType == 1)
+                        speed = speed / length;
+                    else if (speedType == 2)
+                        speed = (length / speed) / length;
+                }
+            }
+            p.speed = speed;
+        }
+    }
+    const char* const scripts[2] = {setting->Value(SplineMove1.dirScript).str, setting->Value(SplineMove2.dirScript).str};
+    FinishSetup(laser, setting, LaserSplineCommon, scripts);
 }
 
 // TODO(0x0039AD48 LaserSetupAnchor)
 void LaserSetupAnchor(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point)
-{
-    (void)laser;
-    (void)setting;
-    (void)point;
-}
-
-// TODO(0x0039B5A0 LaserSetupSpline)
-void LaserSetupSpline(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point)
 {
     (void)laser;
     (void)setting;
