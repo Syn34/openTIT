@@ -13,9 +13,10 @@
 namespace ape::world { class ApeObj; }
 namespace ape::setting { class Setting; }
 namespace sly::camera { class CameraMode; }
-namespace sly::objects { struct ActorInstanceDesc; struct InteractivePropBInstanceDesc; struct ObjectActorInstanceDesc; struct SafeInstanceDesc; }
+namespace sly::objects { struct ActorInstanceDesc; struct InteractivePropBInstanceDesc; struct ObjectActorInstanceDesc; struct SafeInstanceDesc; struct SoundActorInstanceDesc; struct SoundActorB16678InstanceDesc; struct SoundActorB168E0InstanceDesc;
+                         struct SoundActorB16B48InstanceDesc; struct SoundActorB17728InstanceDesc; }
 namespace sly::hud { class HudObject; }
-namespace ape { class ApeAnimScriptInstance; }
+namespace ape { class ApeAnimScriptInstance; class ApeAnimScriptFloatVar; }
 
 namespace sly {
 namespace entity {
@@ -143,6 +144,7 @@ class SoundActorDef : public ActorDef {
 public:
     explicit SoundActorDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~SoundActorDef() override;
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7: a SoundActor (0x001ADF30)
     // Per slot: a sound to play when it starts (non-zero name) and the
     // slot's default duration (negative: none).
     struct SlotSound {
@@ -151,8 +153,8 @@ public:
     };
     SlotSound slotSounds[7];        // 0x130
     ape::Vec3 soundOffset{};        // 0x170 where the sounds play, local to the actor
-    uint32_t field_180 = 0;         // 0x180 hash 0x3A15BFAB
-    uint32_t field_184 = 0;         // 0x184 hash 0xC03F596F
+    uint32_t soundBank = 0;         // 0x180 hash 0x3A15BFAB: bank of the slot sounds
+    uint32_t startSlot = 0;         // 0x184 hash 0xC03F596F: name of the slot to start in
     float durationScale = 1.0f;     // 0x188 applied with SoundActor::kSeq_Scaled
     uint8_t soundFlags = 0;         // 0x18C bit 7: attribute 0xBD75D672
 
@@ -528,7 +530,19 @@ public:
 // three classes below.
 class SoundActor : public ActorEntity {
 public:
+    // Slot names (0x00AD139C); they double as the anim script's state names.
+    // NOTE: the strings are not known.
+    static constexpr uint32_t kSlotNames[7] = {0xB9B6CE5Du, 0xCE7C29A3u, 0x8FA5922Du, 0xDCDF15C3u,
+                                               0x8B3C3A33u, 0x047DC27Cu, 0x3C8207B4u};
+    // The seven slot sounds of the definition with the instance's durations
+    // (unset ones from the definition), the slot states, the starting slot
+    // and the held flag (0x001ADD08).
+    explicit SoundActor(const objects::SoundActorInstanceDesc& desc);
+    SoundActor() = default;
     ~SoundActor() override;
+    // Finds each slot's state in the anim script and the slot timer, the
+    // script's float variable 0xBBBC16FF (0x001ADB14).
+    void ResolveSlotStates();
     // The anim script is paused while the actor is inactive.
     void SetActive(bool active) override;
 
@@ -580,11 +594,8 @@ public:
         float duration = 0.0f;                      // +0x0C
     };
     SoundSlot sounds[7];                      // 0x1A8
-    struct SlotTimer {                        // NOTE: only the duration is known
-        uint8_t field_00[0x14];
-        float duration;                       // +0x14 takes the slot duration
-    };
-    SlotTimer* slotTimer = nullptr;           // 0x218
+    // The script's float variable that receives the current slot's duration.
+    ape::ApeAnimScriptFloatVar* slotTimer = nullptr;   // 0x218
     int32_t currentSlot = -1;                 // 0x21C
     float savedTime = 0.0f;                   // 0x220
     int32_t savedSlot = 0;                    // 0x224
@@ -594,6 +605,8 @@ public:
 // vtable 0x00B16B48 (0x260 bytes).
 class SoundActorB16B48 : public SoundActor {
 public:
+    // Collects the bodies of the definition's light parts (0x001C2BE0).
+    explicit SoundActorB16B48(const objects::SoundActorB16B48InstanceDesc& desc);
     ~SoundActorB16B48() override;
     // Slot 65: only while layer 0 is in state 1.
     bool Slot65() override;
@@ -609,9 +622,12 @@ public:
     // not changed here.
     void SetLight(bool on);
 
-    ape::ApeTArray<ape::world::ApeObj*> lightObjects;   // 0x22C
-    ape::ApeTArray<void*> lightBodies;        // 0x240 Havok rigid bodies
-    uint8_t lightFlags = 0;                   // 0x25C bit 7 lit, bit 5 held
+    ape::ApeTArray<ape::world::ApeObj*> lightObjects{4, nullptr, true};   // 0x22C
+    ape::ApeTArray<void*> lightBodies{4, nullptr, true};   // 0x240 Havok rigid bodies
+    uint32_t field_254 = 0;                   // 0x254
+    float field_258 = 0.0f;                   // 0x258 placement value (attribute 0x2DF33CE3)
+    // Bit 7 lit, bit 6 the definition names light objects, bit 5 held.
+    uint8_t lightFlags = 0;                   // 0x25C
 };
 
 // Definition of SoundActorB16B48. NOTE: only the options its timers read.
@@ -619,6 +635,7 @@ class SoundActorB16B48Def : public SoundActorDef {
 public:
     // The sound actor fields, then the two lists and the options (0x001C1D4C).
     explicit SoundActorB16B48Def(const struct SoundActorB16B48DefDesc& desc);
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7 (0x001C2E20)
     ~SoundActorB16B48Def() override;
     ape::ApeTArray<uint32_t> lightNames; // 0x190 names of the light objects
     ape::ApeTArray<int32_t> bodyParts; // 0x1A4 part index of each light body
@@ -633,6 +650,9 @@ public:
 // 0x0075420C).
 class SoundActorB16678 : public SoundActor {
 public:
+    // The switch position, reset time and options of the placement (inlined
+    // in the definition's Spawn 0x001BEFE8).
+    explicit SoundActorB16678(const objects::SoundActorB16678InstanceDesc& desc);
     // @func 0x0075420C SoundActorB16678::~SoundActorB16678
     // @func 0x0075424C SoundActorB16678::~SoundActorB16678 (deleting)
     // Slot 75: the switch always takes part in interactions.
@@ -678,6 +698,9 @@ public:
 // vtable 0x00B168E0 (destructor 0x0075458C).
 class SoundActorB168E0 : public SoundActor {
 public:
+    // The placement value and flags, and the body of the definition's part
+    // (0x001C08AC).
+    explicit SoundActorB168E0(const objects::SoundActorB168E0InstanceDesc& desc);
     // @func 0x0075458C SoundActorB168E0::~SoundActorB168E0
     // @func 0x007545CC SoundActorB168E0::~SoundActorB168E0 (deleting)
     // @func 0x00754760 SoundActorB168E0::~SoundActorB168E0 (thunk, +0x17C)
@@ -689,7 +712,14 @@ public:
     bool AdvanceTo3(float elapsed, float duration) override;
     bool AdvanceTo5(float elapsed, float duration) override;   // not while armed
 
-    uint8_t flags240 = 0;          // 0x240 bit 3 armed, bit 7 reached slot 3
+    void* partBody = nullptr;      // 0x22C body of SoundActorB168E0Def::field_190's part, or null
+    uint32_t field_230 = 0;        // 0x230
+    int32_t field_234 = -1;        // 0x234
+    float field_238 = 0.0f;        // 0x238 placement value (attribute 0x08C08CA8)
+    uint32_t field_23C = 0;        // 0x23C
+    // Bit 7 reached slot 3, bits 6/5 the placement's flag bits 31/30, bit 3
+    // armed, bit 2 the definition names a target (field_194).
+    uint8_t flags240 = 0;          // 0x240
 };
 
 // Sound actor with six phantom-tracked entities (vtable 0x00B16DB0;
@@ -789,6 +819,9 @@ public:
 // sequence only advances from slot 6 back to 1.
 class SoundActorB17728 : public SoundActor {
 public:
+    // The attached entity's name and the squared range of the placement
+    // (inlined in the definition's Spawn 0x001D40A8).
+    explicit SoundActorB17728(const objects::SoundActorB17728InstanceDesc& desc);
     // @func 0x00755374 SoundActorB17728::~SoundActorB17728
     // @func 0x007553B4 SoundActorB17728::~SoundActorB17728 (deleting)
     // @func 0x00755548 SoundActorB17728::~SoundActorB17728 (thunk, +0x17C)

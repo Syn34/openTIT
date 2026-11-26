@@ -524,8 +524,8 @@ struct SoundActorDefDesc : ClassDefDesc {
         for (int i = 0; i < 7; ++i)
             def.slotSounds[i] = slots[i];
         def.soundOffset = soundOffset;
-        def.field_180 = field_130;
-        def.field_184 = field_134;
+        def.soundBank = field_130;
+        def.startSlot = field_134;
         def.durationScale = durationScale;
         def.soundFlags = uint8_t((def.soundFlags & 0x7F) | (soundFlags & 0x80));
     }
@@ -543,8 +543,8 @@ void SoundActorDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* 
         for (int i = 0; i < 7; ++i)
             defaults.slots[i].duration = sound->slotSounds[i].duration;
         defaults.soundOffset = sound->soundOffset;
-        defaults.field_130 = sound->field_180;
-        defaults.field_134 = sound->field_184;
+        defaults.field_130 = sound->soundBank;
+        defaults.field_134 = sound->startSlot;
         defaults.durationScale = sound->durationScale;
         defaults.soundFlags = sound->soundFlags & 0x80;
     }

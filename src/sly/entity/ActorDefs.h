@@ -127,6 +127,7 @@ class SoundActorB16678Def : public SoundActorDef {
 public:
     // The sound actor fields, then its own (0x001BE8CC).
     explicit SoundActorB16678Def(const struct SoundActorB16678DefDesc& desc);
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7 (0x001BEFE8)
     ~SoundActorB16678Def() override;
     uint32_t field_190 = 0;             // 0x190 starting switch position: 0 "OFF", 1 "ON" (attribute 0xC03F596F)
     float field_194 = -1.0f;            // 0x194 attribute 0xA6710C18
@@ -138,6 +139,7 @@ class SoundActorB168E0Def : public SoundActorDef {
 public:
     // The sound actor fields, then its own (0x001C011C).
     explicit SoundActorB168E0Def(const struct SoundActorB168E0DefDesc& desc);
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7 (0x001C0A10)
     ~SoundActorB168E0Def() override;
     int32_t field_190 = -1;             // 0x190 zero-based index (attribute 0xCBC57F7D, one-based)
     uint32_t field_194 = 0;             // 0x194 hash 0x2DF2E2B5
@@ -194,6 +196,7 @@ class SoundActorB17728Def : public SoundActorDef {
 public:
     // The sound actor fields, then its own (0x001D3A24).
     explicit SoundActorB17728Def(const struct SoundActorB17728DefDesc& desc);
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7 (0x001D40A8)
     ~SoundActorB17728Def() override;
     uint32_t field_190 = 0;             // 0x190 placement default (hash 0x53FFAFC2)
     float field_194 = 0.0f;             // 0x194 placement default (attribute 0x667AB4F5)

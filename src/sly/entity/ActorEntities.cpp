@@ -11,6 +11,7 @@
 #include "sly/entity/EntityHooks.h"
 
 #include "ape/anim/ApeAnimScript.h"
+#include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/memory/ApeMem.h"
 #include "ape/world/ApeObj.h"
 #include "sly/camera/CameraHooks.h"
@@ -214,11 +215,6 @@ void SoundActor::SetActive(bool active)
     ActorEntity::SetActive(active);
 }
 
-namespace {
-// Slot names (0x00AD139C). NOTE: the strings are not known.
-constexpr uint32_t kSlotNames[7] = { 0xB9B6CE5Du, 0xCE7C29A3u, 0x8FA5922Du, 0xDCDF15C3u,
-                                     0x8B3C3A33u, 0x047DC27Cu, 0x3C8207B4u };
-} // namespace
 
 // @func 0x001AE6AC SoundActor::Release
 bool SoundActor::Release(bool kill)
@@ -276,7 +272,7 @@ void SoundActor::PlaySlot(int index, bool force)
         }
         if (animScript) {
             if (slotTimer)
-                slotTimer->duration = duration;
+                slotTimer->SetFloat(duration);
             SetSlotState(index, force);
         }
     }
