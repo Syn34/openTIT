@@ -14,11 +14,11 @@ namespace hud {
 
 class HudTracker : public HudObject {
 public:
-    // One tracked entity (12 bytes; only the entity is used here).
+    // One tracked entity (12 bytes).
     struct Entry {
         uint32_t field_00 = 0;
         entity::Entity* entity = nullptr;   // +0x04
-        uint8_t field_08 = 0;               // +0x08 (9 bytes are copied when entries move)
+        uint8_t withChildren = 0;           // +0x08 its child entities are drawn too (9 bytes are copied when entries move)
     };
 
     // 0x0035A3A0.
@@ -52,6 +52,11 @@ public:
     // objects (world callback 0x00370E04).
     void DrawFields();
     static void DrawFieldsCallback(void* unused, void* context);
+    // 0x00370A0C: queues the entity's object for this frame's HUD draw,
+    // with its child entities when `withChildren`.
+    static void DrawEntity(entity::Entity* tracked, bool withChildren);
+    // 0x00370AE4 (world callback, list 7): draws every tracked entity.
+    static void DrawEntitiesCallback(void* unused, void* context);
 
     ape::ApeTArray<Entry> entries;            // +0xA4
     uint32_t field_B8 = 0;                    // +0xB8

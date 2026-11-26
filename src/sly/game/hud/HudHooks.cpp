@@ -80,3 +80,10 @@ namespace hud {
 void HudQueueObjectDraw(ape::world::ApeObj* object, bool recurse) { (void)object; (void)recurse; }
 } // namespace hud
 } // namespace sly
+
+namespace sly {
+namespace hud {
+// TODO(0x004A6DF0 world draw call buffer)
+void HudQueueObjectDraw2(ape::world::ApeObj* object, bool recurse) { (void)object; (void)recurse; }
+} // namespace hud
+} // namespace sly

@@ -3,6 +3,7 @@
 
 #include "sly/anim/AnimController.h"
 #include "sly/entity/Entity.h"
+#include "sly/game/SlyGame.h"
 #include "sly/game/hud/HudHooks.h"
 
 #include "ape/anim/ApeAnimScript.h"
@@ -76,8 +77,10 @@ void HudTracker::Update(float dt)
 {
     if (!(animState & 1u) || (animState >> 1) == 0)
         return;
-    GameWorldAddHudCallback(this, 7);
-    GameWorldAddHudCallback(this, 8);
+    if (g_game) {
+        g_game->AddCallback(7, reinterpret_cast<void*>(&DrawEntitiesCallback), this, nullptr);
+        g_game->AddCallback(8, reinterpret_cast<void*>(&DrawFieldsCallback), this, nullptr);
+    }
     // Dead entities leave the list (the last entry takes their place).
     for (uint32_t i = 0; i < entries.Count();) {
         const entity::Entity* tracked = entries[i].entity;
@@ -235,6 +238,32 @@ void HudTracker::DrawFields()
         frame->Tick(0.0f);
         frame->Draw();
         frame->SetVisible(wasVisible);
+    }
+}
+
+// @func 0x00370A0C HudTracker::DrawEntity
+void HudTracker::DrawEntity(entity::Entity* tracked, bool withChildren)
+{
+    if (!tracked)
+        return;
+    HudQueueObjectDraw(tracked->object, withChildren);
+    if (!withChildren)
+        return;
+    for (uint32_t i = 0; tracked->children && i < tracked->children->Count(); ++i)
+        DrawEntity((*tracked->children)[i].child, withChildren);
+}
+
+// @func 0x00370AE4 HudTracker::DrawEntitiesCallback
+void HudTracker::DrawEntitiesCallback(void* unused, void* context)
+{
+    (void)unused;
+    auto* tracker = static_cast<HudTracker*>(context);
+    if (!tracker)
+        return;
+    for (uint32_t i = 0; i < tracker->entries.Count(); ++i) {
+        const Entry& entry = tracker->entries[i];
+        if (entry.entity)
+            DrawEntity(entry.entity, entry.withChildren != 0);
     }
 }
 

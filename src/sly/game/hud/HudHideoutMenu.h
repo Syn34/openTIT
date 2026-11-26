@@ -28,6 +28,7 @@ public:
         kM_AnimOk         = 0x04000000,   // bit 26: the last menu clip started
         kM_Suppressed     = 0x08000000,   // bit 27
         kM_CloseReq       = 0x10000000,   // bit 28: close at the next update
+        kM_OpenReq        = 0x20000000,   // bit 29: open at the next update
         kM_CloseFlag      = 0x40000000,   // bit 30: handed to Refresh: do not stay enabled
         kM_Enabled        = 0x80000000u,  // bit 31: the menu may open
     };
@@ -40,7 +41,8 @@ public:
     explicit HudHideoutMenu(HudObjectDef* def);
     // 0x00370F70 / 0x00371304.
     ~HudHideoutMenu() override;
-    // Slot 2. TODO(0x003720B0): the menu state machine is not ported.
+    // Slot 2 (0x003720B0): requests, label alpha, the child's pulse and
+    // the open / switch / close state machine.
     void Update(float dt) override;
     // Slot 3 (0x003733BC).
     void Refresh() override;
@@ -78,6 +80,11 @@ public:
     // during a switch). World callback 0x003746D8.
     void DrawPages();
     static void DrawPagesCallback(void* unused, void* context);
+    // 0x00373C28: draws the map sprite as four triangles from the centre of
+    // the corner instances to their edges, zoomed by the UV scaling tuning.
+    // World callback 0x003742AC (list 6).
+    void DrawMap();
+    static void DrawMapCallback(void* unused, void* context);
     // 0x003739D0 (world callback): turns the child object (else the
     // element's object) about Y by `childAngle` degrees.
     static void TurnChildCallback(void* unused, void* context);
@@ -87,18 +94,15 @@ public:
     agl::AglMaterial* mapMaterial = nullptr;   // +0xAC
     ape::world::ApeObj* corners[4] = {};  // +0xB0
     ape::world::ApeObj* child = nullptr;  // +0xC0
-    ape::Vec3 field_D0{};                 // +0xD0
-    ape::Vec3 field_E0{};                 // +0xE0
-    ape::Vec3 field_F0{};                 // +0xF0
-    ape::Vec3 field_100{};                // +0x100
-    ape::Vec3 field_110{};                // +0x110
+    ape::Vec3 cornerPos[4]{};             // +0xD0 corner positions of the last map draw
+    ape::Vec3 mapCentre{};                // +0x110 their average
     ape::Vec3 mapMin{};                   // +0x120 corner 0
     ape::Vec3 mapMax{};                   // +0x130 corner 3
     ape::Vec3 mapSize{};                  // +0x140 corner 0 - corner 2
     ape::ApeGuiObject* nextGui = nullptr; // +0x150 becomes `gui` at the next transition
     ape::ApeGuiObject* gui = nullptr;     // +0x154 GUI the shutdown script runs on
     ape::GuiScriptPlayer* shutdownScript = nullptr;   // +0x158
-    uint32_t field_15C = 0;
+    float pulseTimer = 0.0f;              // +0x15C
     float childAngle = 0.0f;              // +0x160 degrees (TurnChildCallback)
     uint16_t page = 0;                    // +0x164
     uint16_t previousPage = 0;            // +0x166
@@ -111,6 +115,11 @@ private:
     void PlayMenuClip(uint32_t clip);
     void SetPageFieldsVisible(bool visible, bool only2d);
     void StartShutdownScript();
+    // The menu's GUI script player is still running steps or actions.
+    bool ScriptRunning() const;
+    // Starts "Default_Init" on the menu's GUI unless a script runs.
+    void StartInitScript();
+    bool MenuAnimDone() const;
 };
 
 } // namespace hud

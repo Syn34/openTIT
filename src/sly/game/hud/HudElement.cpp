@@ -386,6 +386,45 @@ void HudElement::Update(float dt)
     object->MarkDirty();
 }
 
+// @func 0x0036C160 HudElement::DrawFields
+void HudElement::DrawFields()
+{
+    for (uint32_t i = 0; i < def->textFieldCount; ++i) {
+        const HudTextField& field = textFields[i];
+        if (!field.field_08 || !field.sceneObject || !field.sceneObject->IsVisible())
+            continue;
+        // The GUI's x and y axes point the other way from the scene's.
+        ape::Matrix34 transform = field.sceneObject->GetWorld();
+        transform.xAxis = {-transform.xAxis.x, -transform.xAxis.y, -transform.xAxis.z, 0.0f};
+        transform.yAxis = {-transform.yAxis.x, -transform.yAxis.y, -transform.yAxis.z, 0.0f};
+        field.field_08->SetTransform(transform);
+        field.field_08->Tick(0.0f);
+        field.field_08->Draw();
+    }
+}
+
+// @func 0x0036C33C HudElement::DrawFieldsCallback
+void HudElement::DrawFieldsCallback(void* unused, void* context)
+{
+    (void)unused;
+    if (context)
+        static_cast<HudElement*>(context)->DrawFields();
+}
+
+// @func 0x0036C36C HudElement::DrawObjectCallback
+void HudElement::DrawObjectCallback(void* unused, void* context)
+{
+    (void)unused;
+    auto* element = static_cast<HudObject*>(context);
+    if (!element || !(element->stateFlags & kState_Shown))
+        return;
+    HudQueueObjectDraw2(element->object, false);
+    for (ape::world::ApeObj* child = element->object->GetFirstChild(); child; child = child->GetNextSibling()) {
+        if (child->IsVisible())
+            HudQueueObjectDraw2(child, true);
+    }
+}
+
 // @func 0x00389C3C HudArElement::Refresh
 void HudArElement::Refresh()
 {

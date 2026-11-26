@@ -73,14 +73,25 @@ agl::AglMaterialAnim* FillAnim(ape::world::ApeObj* geom)
     return material->anim;
 }
 
-// Looks a fill geometry up and hands its U scroll to the game.
-ape::world::ApeObj* FindFillGeometry(uint32_t name)
+// Takes a fill geometry: `out` is set to it and its U scroll is handed to
+// the game (the meter drives it by value). Inlined copies in the POW meter
+// and meter constructors.
+// @func 0x0036468C hud::BindFillGeometry
+// @func 0x00364E70 hud::BindFillGeometry (copy 2)
+void BindFillGeometry(ape::world::ApeObj*& out, ape::world::ApeObj* geom)
 {
-    ape::world::ApeObj* geom = name ? ape::world::FindGeomInstance(name) : nullptr;
     if (!geom || !geom->GetDef())
-        return nullptr;
+        return;
+    out = geom;
     if (agl::AglMaterialAnim* anim = FillAnim(geom))
         anim->u.SetManual();
+}
+
+// Looks a fill geometry up and binds it.
+ape::world::ApeObj* FindFillGeometry(uint32_t name)
+{
+    ape::world::ApeObj* geom = nullptr;
+    BindFillGeometry(geom, name ? ape::world::FindGeomInstance(name) : nullptr);
     return geom;
 }
 

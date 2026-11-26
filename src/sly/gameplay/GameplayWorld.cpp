@@ -52,7 +52,7 @@ ape::Vec3 EntityPosition(const WorldObject* entity) { return CharacterPosition(e
 WorldObject* FindWorldEntity(uint32_t nameHash) { return FindLevelInstance(nameHash); }
 int WorldEntityCount() { return 0; }
 WorldObject* WorldEntityAt(int) { return nullptr; }
-WorldObject* PlayerCharacter(int player) { return player == 0 && g_game ? g_game->playerObject : nullptr; }
+WorldObject* PlayerCharacter(int player) { return g_game ? reinterpret_cast<WorldObject*>(g_game->PlayerCharacter(player)) : nullptr; }
 int PlayerPadIndex(int player) { return player; }
 
 // -- game world ----------------------------------------------------------------
@@ -63,7 +63,7 @@ WorldFlags& GetWorldFlags()
 }
 
 int GameMode() { return 0; }
-void SetLetterbox(bool) {}
+void SetLetterbox(bool on) { SlyGame::SetLetterbox(on); }
 void SetHudVisible(bool) {}
 void ShowLevelHeadline() {}
 void RequestGameTransition(uint32_t) {}
@@ -192,7 +192,10 @@ bool ActorClipFinished(WorldObject*) { return true; }
 float EntityAnimTime(WorldObject*) { return 0.0f; }
 float EntityAnimLength(WorldObject*) { return 1.0f; }
 void ShowButtonHint(uint32_t) {}
-float PadAxis(int, int) { return 0.0f; }
+float PadAxis(int padIndex, int axis)
+{
+    return padIndex >= 0 && padIndex < kLocalPlayerCount ? GetAppRuntime().players[padIndex].GetAnalog(uint32_t(axis)) : 0.0f;
+}
 EntitySkin* EntityActiveSkin(WorldObject*) { return nullptr; }
 EntitySkin* SkinPrevious(const EntitySkin*) { return nullptr; }
 bool EntitySwitchSkin(WorldObject*, EntitySkin*) { return false; }
