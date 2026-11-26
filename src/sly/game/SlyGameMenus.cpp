@@ -24,6 +24,8 @@
 #include "sly/entity/Awards.h"
 #include "sly/game/goals/JobManager.h"
 #include "sly/game/goals/Goal.h"
+#include "sly/game/FileStreaming.h"
+#include "ape/level/ApeLevelScene.h"
 #include <cstring>
 #include "sly/game/AudioSystem.h"
 #include "sly/game/hud/HudElement.h"
@@ -1371,6 +1373,31 @@ void SlyGame::ClearCutsceneQueue()
     resumeAfterCutscenes = false;
     cutscenePlaying = false;
     cutsceneSkipRequested = false;
+}
+
+} // namespace sly
+
+namespace sly {
+namespace entity { void ClearInstanceRenderLists(); }
+
+// @func 0x0047C2B8 SlyGame::UpdateWorld
+void SlyGame::UpdateWorld(float dt)
+{
+    constexpr int kFrameList = 0;
+    constexpr int kWorldList = 12;
+    if (!levelWorld)
+        return;
+    if (dt <= 0.0f)
+        dt = 1.0f / 60.0f;
+    game::UpdateFileStreaming();
+    callbackLists[kFrameList].Clear();
+    HudFrameBegin(dt);
+    RunCallbacks(kFrameList, dt, true);
+    entity::ClearInstanceRenderLists();
+    // NOTE: the console hands these callbacks no frame time.
+    RunCallbacks(kWorldList, 0.0f, false);
+    HudFrameEnd(dt);
+    levelWorld->Update(dt, nullptr);
 }
 
 } // namespace sly

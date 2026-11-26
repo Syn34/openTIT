@@ -56,5 +56,9 @@ float VehicleDefCameraFov(const void* def);
 void DefaultSpawnTransform(int slot, ape::Matrix34* out);
 // Shows or hides the AI entities (0x0048A068).
 void SetAiEntitiesVisible(bool visible);
+// HUD per-frame steps around the world update (0x00365F28 before the
+// first callback list runs, 0x00366710 after the entities). Not ported.
+void HudFrameBegin(float dt);
+void HudFrameEnd(float dt);
 
 } // namespace sly

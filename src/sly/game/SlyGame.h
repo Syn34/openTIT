@@ -26,6 +26,7 @@
 #include <vector>
 
 namespace ape::file { class File; }
+namespace ape { struct ApeLevelWorld; }
 namespace ape { struct GuiEvent; class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeAnimScript; class ApeGuiObject; }
 namespace agl { class AglRenderTarget; }
 
@@ -546,6 +547,11 @@ public:
     // empty, the deferred game events go to the job manager and play
     // resumes (0x0048B810).
     void UpdateCutsceneQueue(float dt);
+    // One step of the level world (only while it exists; a zero step counts
+    // as 1/60 s): file streaming, the HUD, callback list 0 (emptied before
+    // and after), the instance render lists, callback list 12 and the
+    // world's own update (0x0047C2B8).
+    void UpdateWorld(float dt);
     // Drops every queued cutscene (a modal box over one is told it ended,
     // the main view gets its near plane back) and clears the queue flags
     // (0x0047E3CC).
@@ -650,7 +656,8 @@ public:
     uint32_t field_1281A4 = 0;                  // +0x1281A4
     ape::Vec3 hudCameraPos = {0.0f, 0.0f, 0.0f, 0.0f}; // +0x1281B0 UI.3D.CameraPos
     ape::ApeLevelDef* levelDef = nullptr;       // +0x1281C0 the running level
-    uint32_t field_1281C4[4] = {};              // +0x1281C4
+    ape::ApeLevelWorld* levelWorld = nullptr;   // +0x1281C4 the level's scene and cameras
+    uint32_t field_1281C8[3] = {};              // +0x1281C8
     entity::GameCamera* camera = nullptr;       // +0x1281E0 the game camera
     uint32_t splitViewOwners[kSplitViews] = {}; // +0x1281E4
     gameplay::Minigame* minigame = nullptr;     // +0x1281F4 the level's game mode
