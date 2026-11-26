@@ -1,6 +1,8 @@
 // openTIT - Agl draw list: the stream of draw packets the game records for the render thread.
 #include "agl/AglDrawList.h"
 
+#include <memory>
+
 #include "agl/AglRenderTarget.h"
 #include "agl/AglResources.h"
 
@@ -46,18 +48,35 @@ ape::Matrix44 ToMatrix44(const ape::Matrix34& m)
 
 } // namespace
 
-AglDrawList::AglDrawList(size_t packetBytes, uint32_t vertexCapacity, uint8_t vertexBuffers)
-    : m_packets(packetBytes), m_vertexCapacity(vertexCapacity)
+// @func 0x0050EB08 AglDrawList::AglDrawList
+AglDrawList::AglDrawList(size_t packetBytes, uint32_t vertexCapacity, uint8_t vertexBuffers, bool ring)
+    : m_packets((packetBytes + 0xF) & ~size_t(0xF)), m_ring(ring), m_vertexCapacity(vertexCapacity)
 {
+    // NOTE: a list without vertex areas still gets one here so that the
+    // vertex accessors never index an empty vector; it is never written.
     m_vertexBuffers.resize(vertexBuffers ? vertexBuffers : 1);
     for (auto& buffer : m_vertexBuffers)
         buffer.resize(vertexCapacity);
+    // Nothing recorded yet: the first packets always go out.
+    InvalidateCache();
+}
+
+namespace {
+std::unique_ptr<AglDrawList> g_mainDrawList;   // 0x010DDBB4
+}
+
+void CreateMainDrawList(size_t packetBytes, uint32_t vertexCapacity)
+{
+    g_mainDrawList = std::make_unique<AglDrawList>(packetBytes, vertexCapacity, 2, false);
 }
 
 AglDrawList& GetDrawList()
 {
-    static AglDrawList list;
-    return list;
+    // Code that runs without the Agl start-up (tools, tests) gets a list
+    // of the default size.
+    if (!g_mainDrawList)
+        g_mainDrawList = std::make_unique<AglDrawList>();
+    return *g_mainDrawList;
 }
 
 size_t AglDrawList::PlaceBlock(size_t cursor, size_t bytes, size_t align) const

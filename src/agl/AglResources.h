@@ -329,4 +329,20 @@ int TextureBlockChunkHandler(ape::iff::IffReader* reader, void* arg);
 int MemoryBlockChunkHandler(ape::iff::IffReader* reader, void* arg);
 void RegisterMemoryBlockChunk();
 
+// Mesh file chunk handlers (AglLoaders.cpp), registered by the Agl start-up.
+int SubMeshChunkHandler(ape::iff::IffReader* reader, void* arg);         // "SMSH"
+int SubMeshHeaderChunkHandler(ape::iff::IffReader* reader, void* arg);   // "MHDR"
+int VertexDataChunkHandler(ape::iff::IffReader* reader, void* arg);      // "MVTX"
+int SubMeshIndexChunkHandler(ape::iff::IffReader* reader, void* arg);    // "MIDX"
+int VertexDescChunkHandler(ape::iff::IffReader* reader, void* arg);      // "VTXD"
+int BoneTableChunkHandler(ape::iff::IffReader* reader, void* arg);       // "MPAL"
+int SkinWeightChunkHandler(ape::iff::IffReader* reader, void* arg);      // "VINF"
+int MeshIncludeChunkHandler(ape::iff::IffReader* reader, void* arg);     // "MSHR"
+int MeshChunkHandler(ape::iff::IffReader* reader, void* arg);            // "MESH"
+int TopologyHeaderChunkHandler(ape::iff::IffReader* reader, void* arg);  // "MSHH"
+// Material chunk handlers (AglMaterial.cpp).
+int MaterialChunkHandler(ape::iff::IffReader* reader, void* arg);        // "MATL"
+int MaterialHeaderChunkHandler(ape::iff::IffReader* reader, void* arg);  // "MTLH"
+int MaterialClassChunkHandler(ape::iff::IffReader* reader, void* arg);   // "MTLC"
+
 } // namespace agl
