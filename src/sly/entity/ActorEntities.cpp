@@ -1,6 +1,7 @@
 // openTIT - Scripted actors (see ActorEntities.h).
 #include "sly/entity/ActorEntities.h"
 #include "sly/entity/PhysicalEntity.h"
+#include "sly/tuning/TargetRangeTuning.h"
 #include "sly/objects/EntityPlacements.h"
 #include "ape/world/ApeBase.h"
 #include "sly/entity/PhysicsHooks.h"
@@ -1159,7 +1160,75 @@ bool TweenActor::InteractionBegin(Entity* /*user*/)
 }
 
 // TODO(0x001EDD84 TweenActor::TakeUser)
-void TweenActor::TakeUser(Entity* user) { field_358 = user; }
+// @func 0x001EDD84 TweenActor::TakeUser
+void TweenActor::TakeUser(Entity* user)
+{
+    if (field_358) {
+        if (!user) {
+            EntityComponent* character = field_358->GetCharacterComponent();
+            if (character && CharacterCompHasController(character)) {
+                CharacterCompSetPoseHook(character, nullptr, nullptr);
+                for (int32_t& bone : userBones)
+                    bone = 0;
+            }
+            field_D0 = savedFieldD0;
+            savedFieldD0 = 0.0f;
+        }
+        ReleaseUserProp();
+        field_358->Release(false);
+    }
+    field_358 = (user && user->HasTypeBit(3)) ? user : nullptr;
+    if (!field_358)
+        return;
+    savedFieldD0 = field_D0;
+    field_D0 = 1000000.0f;
+    ++field_358->interactionCount;
+    EntityComponent* character = field_358->GetCharacterComponent();
+    if (character && CharacterCompHasController(character)) {
+        static constexpr uint32_t kBones[3] = {0xB3521F35u, 0xB3521F36u, 0xB3521F37u};
+        for (int i = 0; i < 3; ++i)
+            userBones[i] = field_358->FindBone(kBones[i]);
+        CharacterCompSetPoseHook(character, &TweenActor::UserPoseHook, this);
+    }
+}
+
+// @func 0x001EE4D8 TweenActor::ReleaseCamera
+void TweenActor::ReleaseCamera()
+{
+    if (camera && cameraMode) {
+        const float blend = (tweenFlags & (1u << 20)) ? -1.0f : float(g_tgtRangeCamPopTime);
+        if (camera->HasMode(cameraMode))
+            camera->RemoveMode(blend, cameraMode);
+        delete cameraMode;
+    }
+    cameraMode = nullptr;
+    camera = nullptr;
+}
+
+// @func 0x001F4440 TweenActor::UserPoseHook
+void TweenActor::UserPoseHook(void* actor)
+{
+    static_cast<TweenActor*>(actor)->PoseUser();
+}
+
+// @func 0x001EE0CC TweenActor::Release
+bool TweenActor::Release(bool kill)
+{
+    if (kill) {
+        TakeUser(nullptr);
+        ReleaseEntities334();
+        ReleaseOwned(field_32C);
+        ReleaseEntities33C();
+        if (field_368)
+            field_368->Release(false);
+        field_368 = nullptr;
+        ReleaseEntity330();
+        if (phantom)
+            camera::DestroyPhantom(phantom);   // out of its world (when in one) and dropped
+        ReleaseAllOwned();
+    }
+    return ActorEntity::Release(kill);
+}
 
 // @func 0x001ED85C TweenActor::ReleaseOwned
 void TweenActor::ReleaseOwned(Entity* entity)
@@ -1470,6 +1539,60 @@ bool SearchlightActor::InteractionBegin(Entity* newUser)
     return true;
 }
 
+namespace {
+// Opacity of a geometry object (the only kind whose slot 13 is its alpha).
+void SetObjectAlpha(ape::world::ApeObj* object, float alpha)
+{
+    if (object && object->GetType() == ape::world::kObjType_GeomInstance)
+        object->VirtualSlot13(uint8_t(int(alpha * 255.0f) & 0xFF), false);
+}
+} // namespace
+
+// @func 0x001EAE88 SearchlightActor::InteractionCancel
+void SearchlightActor::InteractionCancel()
+{
+    useTime = 0.0f;
+    if (cameraMode) {
+        if (GameCamera* camera = MainGameCamera())
+            camera->RemoveMode(-1.0f, cameraMode);
+        delete cameraMode;
+        cameraMode = nullptr;
+    }
+    if (user) {
+        user->SetVisible(true, true, true, true);
+        user = nullptr;
+    }
+    if (lightObject)
+        lightObject->SetVisible(false, false);
+    SetObjectAlpha(object_1B0, 1.0f);
+    SetObjectAlpha(object_1B4, 1.0f);
+    SetObjectAlpha(object_1BC, 1.0f);
+}
+
+// @func 0x001EA9E8 SearchlightActor::Update
+bool SearchlightActor::Update(float dt)
+{
+    EntityComponent* interaction = EntityInteraction(this);
+    if (interaction && InteractionUsers(interaction) == 2) {
+        useTime += dt;
+        if (user && user->HasTypeBit(3)) {
+            GameCamera* camera = MainGameCamera();
+            if (camera && camera->TopMode() == cameraMode && CharacterWantsToLeave(user))
+                InteractionWithdraw(EntityInteraction(this));
+        }
+        // Eases from 0 to 1 over 0.7 seconds.
+        const float t = std::min(useTime / 0.7f, 1.0f);
+        const float in = (ape::FastCos(-(t * 3.1415927f - 3.1415927f)) + 1.0f) * 0.5f;
+        const float out = 1.0f - in;
+        SetObjectAlpha(lightObject, in);
+        SetObjectAlpha(object_1B0, out);
+        SetObjectAlpha(object_1B4, out);
+        const float keep = Def()->field_170;
+        SetObjectAlpha(object_1BC, (1.0f - keep) * out + keep);
+    }
+    return ActorEntity::Update(dt);
+}
+
 // -- Safe ------------------------------------------------------------------------------------
 
 // @func 0x001E6FA0 Safe::Release
@@ -1516,10 +1639,44 @@ void Safe::InteractionEnd(bool completed)
     InteractionSetOffer(interaction, 2);
 }
 
-// TODO(0x001EE680 TweenActor::Reset)
-void TweenActor::Reset(bool flag)
+// @func 0x001EE680 TweenActor::Reset
+// Ends the use: the user's settings and player block value go back, the
+// script hears it; a completed use also shows the user again, hides its
+// object 0x03BA7BE9, releases the camera and lets go of the user. The actor
+// enters state 10.
+void TweenActor::Reset(bool completed)
 {
-    (void)flag;
+    EntityComponent* interaction = EntityInteraction(this);
+    Entity* user = InteractionUser(interaction);
+    if (!user)
+        return;
+    user->SetTimeScale(0x002237D4u, false);   // NOTE: slot 32 with these arguments
+    InteractionClearFlag20(interaction);
+    EntityPostScriptMessage(this, 0x55B67D7Cu, 0xEE3E52C5u, 0);
+    PlayerBlockSetValue10D8(user->PlayerSlot(), field_3C8);
+    if (completed) {
+        if (field_358) {
+            field_358->SetVisible(true, true, true, true);
+            SetUserObjectVisible(false);
+        }
+        ReleaseCamera();
+        TakeUser(nullptr);
+    }
+    EntitySetState(this, 0, 10);
+}
+
+// @func 0x001EE5A4 TweenActor::SetUserObjectVisible
+void TweenActor::SetUserObjectVisible(bool visible)
+{
+    if (!field_358)
+        return;
+    auto* script = static_cast<ape::ApeAnimScriptInstance*>(field_358->GetAnimScript());
+    if (!script)
+        return;
+    // NOTE: the script variable holds a world object (the script layer hands
+    // objects out as reference-counted handles).
+    if (auto* object = reinterpret_cast<ape::world::ApeObj*>(script->ResolveObject(0x03BA7BE9u, false)))
+        object->SetVisible(visible, false);
 }
 
 // @func 0x001F7128 InteractivePropB::SetVisible

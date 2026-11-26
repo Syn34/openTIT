@@ -60,6 +60,10 @@ void PhysicsCompResetAfterSwap(EntityComponent* component);
 void PhysicsCompSetDisabled(EntityComponent* component, bool disabled);
 // Sends an animation event to the character component's controller (+0x24, 0x0035327C).
 void CharacterCompSendAnimEvent(EntityComponent* component, uint32_t event);
+// The character component's animation controller (+0x24) is present, and its
+// pose hook (+0x34 function, +0x38 argument; null clears it).
+bool CharacterCompHasController(EntityComponent* component);
+void CharacterCompSetPoseHook(EntityComponent* component, void (*hook)(void* arg), void* arg);
 
 // Surface axes of the physics component by its movement mode (+0x1A0 bits
 // 28-30: ground, water, wall climbing through component 0x2C) (0x0026A42C /
@@ -229,6 +233,11 @@ void GameWorldSetHudHidden(bool hidden);
 void GameWorldSetPlayerControl(bool enabled);
 // Interaction component flag word +0x7C: clears bit 20.
 void InteractionClearFlag20(EntityComponent* interaction);
+// 0x002B719C: withdraws the interaction (ends the use).
+void InteractionWithdraw(EntityComponent* interaction);
+// The character asks to leave what it uses: the object its +0x17C interface
+// hands out (slot 3) has flag bit 19 (+0x24). NOTE: meaning from use.
+bool CharacterWantsToLeave(Entity* character);
 // Effect played on a character component (0x002775A8: effect, length, fade).
 void PlayCharacterFx(EntityComponent* component, uint32_t fx, float length, float fade);
 // Skin component (type 0x13): rate (+0x4D0), the scale pair (+0x4C8/+0x4CC),
@@ -259,6 +268,7 @@ int32_t InteractionUsers(EntityComponent* interaction);
 Entity* CharacterCarried(Entity* character);
 // Player block value +0x10D8 (game world +0x1070 + player * 0x20C80). NOTE: meaning unknown.
 uint32_t PlayerBlockValue10D8(uint32_t player);
+void PlayerBlockSetValue10D8(uint32_t player, uint32_t value);
 // First free slot of a carry component, -1 when all are taken (0x002B92A0).
 int CarryCompFreeSlot(EntityComponent* carry);
 // Interaction component: the interaction kinds it offers (0x00266E6C).

@@ -1,5 +1,6 @@
 // openTIT - Small overrides of the vtable-only entity classes (see MiscEntities.h).
 #include "sly/entity/MiscEntities.h"
+#include "ape/world/ApeObj.h"
 
 #include "sly/entity/CharacterHooks.h"
 #include "sly/entity/PhysicsHooks.h"
@@ -150,6 +151,20 @@ void ScriptedObjectB193C8::OnResume()
 // @func 0x00751048 EntityB15028::~EntityB15028
 // @func 0x007510B0 EntityB15028::~EntityB15028 (deleting)
 EntityB15028::~EntityB15028() = default;
+
+// @func 0x001A60FC EntityB15028::Release
+bool EntityB15028::Release(bool kill)
+{
+    if (kill) {
+        for (ape::world::ApeObj** slot : {&object_174, &object_170}) {
+            if (*slot) {
+                (*slot)->Release();
+                *slot = nullptr;
+            }
+        }
+    }
+    return Entity::Release(kill);
+}
 
 } // namespace entity
 } // namespace sly

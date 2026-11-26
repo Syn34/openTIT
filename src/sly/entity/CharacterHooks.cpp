@@ -90,6 +90,14 @@ int CarryCompFreeSlot(EntityComponent* carry)
     return static_cast<components::ReceptacleComponent*>(carry)->FreeSlot();
 }
 void GroupVarSetValue(void* var, float value) { (void)var; (void)value; }
+void PlayerBlockSetValue10D8(uint32_t player, uint32_t value) { (void)player; (void)value; }
+void InteractionWithdraw(EntityComponent*) {}
+bool CharacterWantsToLeave(Entity*) { return false; }
+bool CharacterCompHasController(EntityComponent* component) { (void)component; return false; }
+void CharacterCompSetPoseHook(EntityComponent* component, void (*hook)(void*), void* arg)
+{
+    (void)component; (void)hook; (void)arg;
+}
 float PlayerBlockBusyTime(uint32_t player) { (void)player; return 0.0f; }
 void GameWorldDequeueSafeCallback(Entity* safe) { (void)safe; }
 void GameWorldSetHudHidden(bool hidden) { (void)hidden; }

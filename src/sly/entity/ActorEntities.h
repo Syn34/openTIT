@@ -11,11 +11,13 @@
 #include "sly/game/Tween.h"
 
 namespace ape::world { class ApeObj; }
+namespace ape::setting { class Setting; }
 namespace sly::camera { class CameraMode; }
-namespace sly::objects { struct ActorInstanceDesc; struct InteractivePropBInstanceDesc; }
+namespace sly::objects { struct ActorInstanceDesc; struct InteractivePropBInstanceDesc; struct ObjectActorInstanceDesc; }
 
 namespace sly {
 namespace entity {
+class GameCamera;
 
 // The fields an actor definition part shares with its description (the
 // 0xA0-byte records of ActorDef::Part / ActorPartDesc around the word at
@@ -402,6 +404,13 @@ public:
     // The user takes the light: the spotlight camera rides on it and the user
     // is hidden while the light model shows.
     bool InteractionBegin(Entity* user) override;     // slot 62
+    // Gives the light back: the camera leaves at once, the user shows again,
+    // the light object hides and the other objects are opaque (slot 63).
+    void InteractionCancel() override;
+    // Slot 4: while in use the light model fades in over 0.7 s (the other
+    // objects out), and a user who asks to leave from the light's camera
+    // ends the use.
+    bool Update(float dt) override;
 
     const SearchlightDef* Def() const { return static_cast<const SearchlightDef*>(def); }
 
@@ -411,7 +420,7 @@ public:
     ape::world::ApeObj* object_1B4 = nullptr;   // 0x1B4 field_160[1]
     ape::world::ApeObj* lightObject = nullptr;  // 0x1B8 field_160[2]
     ape::world::ApeObj* object_1BC = nullptr;   // 0x1BC field_160[3]
-    uint32_t field_1C0 = 0;                     // 0x1C0
+    float useTime = 0.0f;                       // 0x1C0 seconds in use
 };
 
 // The actor ActorDef itself spawns (vtable 0x00B12A90 + 0x00B12C3C/0x00B12C64;
@@ -853,13 +862,36 @@ public:
 };
 
 // Actor holding a world object reference (vtable 0x00B18488, 0x200 bytes).
+// NOTE: this is the teleporter ("Sly_Teleporter" settings, "Teleporter"
+// definition element).
 class ObjectActor : public ActorEntity {
 public:
+    // Keeps the destination; a destination object in this level is looked
+    // up and referenced (0x001EB478).
+    explicit ObjectActor(const objects::ObjectActorInstanceDesc& desc);
     ~ObjectActor() override;
-    ape::world::ApeObj* object_1F4 = nullptr; // 0x1F4 counted reference
+    // Slot 62: asks the game for the trip (game state layer 1 state 7) with
+    // the destination; refused while the teleporter does not teleport.
+    bool InteractionBegin(Entity* user) override;
+    // Shows or hides the teleporter and switches its interaction (0x001EB814).
+    void SetEnabled(bool enabled);
+
+    char destControllable[0x40] = {};         // 0x1A5
+    uint32_t destObj = 0;                     // 0x1E8
+    uint32_t destLevel = 0;                   // 0x1EC
+    uint32_t destSpawnPoint = 0;              // 0x1F0
+    ape::world::ApeObj* object_1F4 = nullptr; // 0x1F4 counted reference: the destination object
+    bool noTeleport = false;                  // 0x1F8
+    bool destControllableCurrentPlayer = false;   // 0x1F9
 };
 
-// Actor with two tweens and two arrays (vtable 0x00B186C8).
+// Association callback of the "Sly_Teleporter" setting (0x001EB9CC): the
+// teleporter is built for the object `objectName` once the level runs.
+void AssociateTeleporter(ape::setting::Setting* setting, const char* objectName, bool reload);
+
+// Actor with two tweens and two arrays (vtable 0x00B186C8). NOTE: it is the
+// target range ("Entity.TgtRange.*" tuning: its camera leaves over
+// CamPopTime).
 class TweenActor : public ActorEntity {
 public:
     ~TweenActor() override;
@@ -870,19 +902,34 @@ public:
     // Hiding the actor also triggers its reset while one is pending.
     void ApplyVisibility(bool visible) override;
     // 0x001EE680
-    void Reset(bool flag);
+    void Reset(bool completed);
+    // Shows or hides the user's script object 0x03BA7BE9 (0x001EE5A4).
+    void SetUserObjectVisible(bool visible);
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
     void SetVisible(bool visible, bool immediate, bool children, bool components) override;   // slot 22
     bool InteractionBegin(Entity* user) override;                 // slot 62
     void InteractionCancel() override;                // slot 63: Reset(false)
     void InteractionEnd(bool completed) override;     // slot 64: Reset(completed)
-    // 0x001EDD84 (not ported): takes the interacting entity.
+    // Takes the interacting entity (a character; anything else counts as
+    // none) and lets go of the previous one: the user is kept from being
+    // culled, counted as interacting and posed by the actor through its
+    // animation controller's pose hook (0x001EDD84).
     void TakeUser(Entity* user);
+    // The pose hook (0x001F4440): poses three bones of the user.
+    static void UserPoseHook(void* actor);
+    // TODO(0x001F4098 TweenActor::PoseUser)
+    void PoseUser() {}
+    bool Release(bool kill) override;                 // slot 10
 
+    GameCamera* camera = nullptr;             // 0x1F0 game camera the mode was pushed on
+    camera::CameraMode* cameraMode = nullptr; // 0x1F4
     Entity* field_358 = nullptr;              // 0x358 entity using the actor (non-null while a reset is pending)
     uint32_t field_1FC = 0;                   // 0x1FC cleared when an interaction begins
     Entity* field_368 = nullptr;              // 0x368 counted, dropped when hidden
+    int32_t userBones[3] = {-1, -1, -1};      // 0x35C bones 0xB3521F35..37 of the user
     uint32_t field_3C8 = 0;                   // 0x3C8 player block value (+0x10D8) of the user
+    float savedFieldD0 = 0.0f;                // 0x3CC Entity::field_D0 while a user is held
+    void* phantom = nullptr;                  // 0x354 Havok phantom (released with the actor)
     uint32_t tweenFlags = 0;                  // 0x3D4 bit 17 user damaged, bit 21, bit 29
     // Entities the actor spawned and owns: a pair per record (the second is
     // released first).
@@ -900,6 +947,10 @@ public:
     void ReleaseEntities334();                        // 0x001EDC2C
     // Hides and kills the user's descendant 0x366FD481 (0x001EDCD4).
     void ReleaseUserProp();
+    // Takes the actor's camera mode off its game camera (at once with
+    // tweenFlags bit 20, else over Entity.TgtRange.CamPopTime) and deletes
+    // it (0x001EE4D8).
+    void ReleaseCamera();
 
     FloatTween tween_220;                     // 0x220
     ape::ApeTArray<OwnedPair> field_280;      // 0x280
