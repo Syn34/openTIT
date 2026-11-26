@@ -357,14 +357,35 @@ public:
     // NOTE: set by the montage minigame (outside this module).
     static bool s_roundLost;
 
-    // One round (0x3C bytes on the console). NOTE: built by 0x003396A8 /
-    // 0x00339388 (not ported): the sub-goals of the round and their weights.
-    struct Round {
-        ape::ApeTArray<uint64_t> entries;   // +0x04 (8-byte records)
-        uint8_t data[0x24] = {};
+    // A weighted entry of a round (element 0x001F9B50).
+    struct RoundEntry {
+        uint32_t name = 0;       // "Name"
+        float weight = 0.0f;     // "Weight"
     };
-    uint32_t field_A14 = 0;          // +0xA14 (XML 0xCF4A1DD4)
+    // A penguin minigame of a round (0xC bytes), built by its own factory.
+    struct SubGame {
+        Goal* goal = nullptr;
+        uint32_t field_04 = 0;   // XML 0x46C3D78D
+        uint32_t field_08 = 0;   // XML 0x3BAE1946
+    };
+    static constexpr int kMaxSubGames = 6;
+    // One round (0x3C bytes on the console, element 0xF09E81B8).
+    struct Round {
+        uint32_t field_00 = 0;                 // +0x00 NOTE: never written
+        ape::ApeTArray<RoundEntry> entries;    // +0x04
+        SubGame* games[kMaxSubGames] = {};     // +0x18
+        int32_t gameCount = 0;                 // +0x30
+        float field_34 = 1.0f;                 // +0x34 XML 0xA9597E7D
+        int32_t field_38 = 0;                  // +0x38 XML 0x00012F66
+    };
+    // 0x003396A8
+    static Goal* Create(ape::xml::XmlElement* xml, const GoalDesc* desc);
+    // 0x00339388: reads the minigames and entries of one round.
+    static void ParseRound(ape::xml::XmlElement* first, Round& round, const GoalDesc* desc);
+
+    uint32_t field_A14 = 0;          // +0xA14 (XML 0xCF4A1DD4 "LifetimeScript")
     Round rounds[kRoundCount];       // +0xA18
+    int32_t roundCount = 0;          // +0xB80
 };
 
 // "GoalBartenderGame" (vtable 0x00B1E3E0).

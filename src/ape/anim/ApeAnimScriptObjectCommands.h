@@ -13,7 +13,11 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/math/ApeMath.h"
 
+namespace ape::input { class ApeInputDevice; }
+
 namespace ape {
+
+using input::ApeInputDevice;
 
 // "SwapDef": give an object another definition.
 class ApeAnimScriptSwapDefCommand : public ApeAnimScriptCommand {
@@ -101,6 +105,7 @@ private:
 class ApeAnimScriptOcclusionPlaneCommand : public ApeAnimScriptCommand {
 public:
     ~ApeAnimScriptOcclusionPlaneCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     xml::XmlElement* CreateDebugElement() const override;
     ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
 
@@ -154,6 +159,7 @@ private:
 class ApeAnimScriptRumbleCommand : public ApeAnimScriptCommand {
 public:
     ~ApeAnimScriptRumbleCommand() override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
     xml::XmlElement* CreateDebugElement() const override;
     ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
 
@@ -351,6 +357,9 @@ struct AnimScriptObjectHooks {
     bool (*getWorldTransform)(ApeRefCounted* object, Matrix34& out) = nullptr;
     // Object used by SetMatrixVar when its object is not found.
     ApeRefCounted* (*defaultTransformObject)() = nullptr;
+    // Pad Rumble uses when its controller operand is not a controller
+    // variable (the console global 0x00F65FF8; its writer was not found).
+    ApeInputDevice* defaultRumbleDevice = nullptr;
 };
 AnimScriptObjectHooks& GetAnimScriptObjectHooks();
 
