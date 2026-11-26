@@ -52,14 +52,34 @@ public:
     ~ActorB15E60Def() override;
     float field_13C[5] = {1.0f, 2.0f, 1.0f, 1.0f, 0.0f};   // 0x13C..0x14C
 };
-SLY_ACTOR_DEF(ScriptObjectActorDef, ActorDef);  // 0x00B163F0, spawns ScriptObjectActor
+// 0x00B163F0, spawns ScriptObjectActor. NOTE: only the placement defaults.
+class ScriptObjectActorDef : public ActorDef {
+public:
+    ~ScriptObjectActorDef() override;
+    float field_130 = 0.0f;             // 0x130
+    ape::Vec3 field_140{};              // 0x140
+};
 SLY_ACTOR_DEF(ActorB17990Def, ActorDef);        // 0x00B17948, spawns ActorB17990
 SLY_ACTOR_DEF(TweenActorDef, ActorDef);         // 0x00B18680, spawns TweenActor
 SLY_ACTOR_DEF(InteractivePropBDef, ActorDef);   // 0x00B188C0, spawns InteractivePropB
 
 // Sound actor definitions (base SoundActorDef).
-SLY_ACTOR_DEF(SoundActorB16678Def, SoundActorDef);   // 0x00B16630
-SLY_ACTOR_DEF(SoundActorB168E0Def, SoundActorDef);   // 0x00B16898
+// 0x00B16630. NOTE: only the placement defaults.
+class SoundActorB16678Def : public SoundActorDef {
+public:
+    ~SoundActorB16678Def() override;
+    uint32_t field_190 = 0;             // 0x190
+    float field_194 = -1.0f;            // 0x194
+    bool field_198 = false;             // 0x198
+    bool field_199 = false;             // 0x199
+};
+// 0x00B16898. NOTE: only the placement defaults.
+class SoundActorB168E0Def : public SoundActorDef {
+public:
+    ~SoundActorB168E0Def() override;
+    float field_198 = 0.0f;             // 0x198
+    uint32_t flags_19C = 0x40000000u;   // 0x19C bits 30/31: placement defaults
+};
 SLY_ACTOR_DEF(SoundActorB17008Def, SoundActorDef);   // 0x00B16FD0
 SLY_ACTOR_DEF(SoundActorB17270Def, SoundActorDef);   // 0x00B17228
 SLY_ACTOR_DEF(SoundActorB174C0Def, SoundActorDef);   // 0x00B17490

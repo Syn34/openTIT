@@ -497,17 +497,22 @@ EntityPlacement* ParseRopePlacement(ape::xml::XmlElement* root, ape::xml::XmlEle
 EntityPlacement* ParseSoundActorPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                           const char* name, EntityDef* def)
 {
-    static const uint32_t kSlotAttrs[7] = {0xD5F932F0u, 0xEABE8E36u, 0x800ACF3Au, 0xF9217A56u,
-                                           0x7BA17740u, 0xA9262FCFu, 0xA88C3581u};
     (void)root;
     auto* placement = new SoundActorPlacement(name, def);
     placement->typeBits |= 0x80000;
     placement->flags |= EntityPlacement::kPlace_Actor;
     placement->Parse(elem);
-    elem->GetFloat(0x7B2F95A0u, &placement->field_10C, placement->field_10C);
-    for (int i = 0; i < 7; ++i)
-        elem->GetFloat(kSlotAttrs[i], &placement->slotTimes[i], placement->slotTimes[i]);
     return placement;
+}
+
+void SoundActorPlacement::Parse(ape::xml::XmlElement* elem)
+{
+    static const uint32_t kSlotAttrs[7] = {0xD5F932F0u, 0xEABE8E36u, 0x800ACF3Au, 0xF9217A56u,
+                                           0x7BA17740u, 0xA9262FCFu, 0xA88C3581u};
+    ScriptedEntityPlacement::Parse(elem);
+    elem->GetFloat(0x7B2F95A0u, &field_10C, field_10C);
+    for (int i = 0; i < 7; ++i)
+        elem->GetFloat(kSlotAttrs[i], &slotTimes[i], slotTimes[i]);
 }
 
 // @func 0x001B0398 ParseSignalActorPlacement
@@ -560,6 +565,97 @@ EntityPlacement* ParseActorB15E60Placement(ape::xml::XmlElement* root, ape::xml:
         placement->field_F0[i] = std::max(placement->field_F0[i], 0.0f);
     if (placement->field_F0[1] < placement->field_F0[0])
         placement->field_F0[0] = placement->field_F0[1];
+    return placement;
+}
+
+// @func 0x001BDDC0 ParseScriptObjectActorPlacement
+EntityPlacement* ParseScriptObjectActorPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                 const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new ScriptObjectActorPlacement(name, def);
+    const auto* objectDef = def ? static_cast<const entity::ScriptObjectActorDef*>(def) : nullptr;
+    const ape::Vec3& vec = objectDef ? objectDef->field_140 : ape::world::kWorldZero;
+    placement->field_F0[0] = vec.x;
+    placement->field_F0[1] = vec.y;
+    placement->field_F0[2] = vec.z;
+    placement->field_100 = objectDef ? objectDef->field_130 : 0.0f;
+    placement->typeBits |= 0x200;
+    placement->Parse(elem);
+    elem->GetVec3(0x7DDB2524u, placement->field_F0, placement->field_F0);
+    elem->GetFloat(0x7DDB32EAu, &placement->field_100, placement->field_100);
+    elem->GetFloat(0xE14281CCu, &placement->field_104, placement->field_104);
+    elem->GetBool(0x7D0D427Bu, &placement->field_108[0], placement->field_108[0]);
+    elem->GetBool(0xE019565Du, &placement->field_108[1], placement->field_108[1]);
+    elem->GetBool(0x846B9DA2u, &placement->field_108[2], placement->field_108[2]);
+    return placement;
+}
+
+// @func 0x001BF2A0 SoundActorB16678Placement::Parse
+// The switch state is named ("off" / "on"; anything else is "off").
+void SoundActorB16678Placement::Parse(ape::xml::XmlElement* elem)
+{
+    static const uint32_t kStates[2] = {0x0001314Fu /* "off" */, 0x000009DFu /* "on" */};
+    SoundActorPlacement::Parse(elem);
+    uint32_t state = 0;
+    elem->GetHash(0xC03F596Fu, &state, 0);
+    switchState = 0;
+    for (uint32_t i = 0; i < 2; ++i) {
+        if (kStates[i] == state) {
+            switchState = i;
+            break;
+        }
+    }
+    elem->GetFloat(0xA6710C18u, &field_114, field_114);
+    elem->GetBool(0xD28465E5u, &field_118[0], field_118[0]);
+    elem->GetBool(0xF0169515u, &field_118[1], field_118[1]);
+}
+
+// @func 0x001BF4E0 ParseSoundActorB16678Placement
+EntityPlacement* ParseSoundActorB16678Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new SoundActorB16678Placement(name, def);
+    placement->typeBits |= 0x80000;
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    const auto* switchDef = def ? static_cast<const entity::SoundActorB16678Def*>(def) : nullptr;
+    placement->switchState = switchDef ? switchDef->field_190 : 0;
+    placement->field_114 = switchDef ? switchDef->field_194 : -1.0f;
+    placement->field_118[0] = switchDef && switchDef->field_198;
+    placement->field_118[1] = switchDef && switchDef->field_199;
+    placement->typeBits |= 0x100000;
+    placement->Parse(elem);
+    return placement;
+}
+
+// @func 0x001C0C64 SoundActorB168E0Placement::Parse
+void SoundActorB168E0Placement::Parse(ape::xml::XmlElement* elem)
+{
+    SoundActorPlacement::Parse(elem);
+    elem->GetFloat(0x08C08CA8u, &field_110, field_110);
+    bool bit31 = (flags_114 & 0x80000000u) != 0;
+    elem->GetBool(0xD28465E5u, &bit31, bit31);
+    flags_114 = (flags_114 & 0x7FFFFFFFu) | (bit31 ? 0x80000000u : 0u);
+    bool bit30 = (flags_114 & 0x40000000u) != 0;
+    elem->GetBool(0xD02B978Au, &bit30, bit30);
+    flags_114 = (flags_114 & 0xBFFFFFFFu) | (bit30 ? 0x40000000u : 0u);
+}
+
+// @func 0x001C0E70 ParseSoundActorB168E0Placement
+EntityPlacement* ParseSoundActorB168E0Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new SoundActorB168E0Placement(name, def);
+    placement->typeBits |= 0x80000;
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    const auto* soundDef = def ? static_cast<const entity::SoundActorB168E0Def*>(def) : nullptr;
+    placement->field_110 = soundDef ? soundDef->field_198 : 0.0f;
+    const uint32_t defFlags = soundDef ? soundDef->flags_19C : 0x40000000u;
+    placement->flags_114 = (placement->flags_114 & 0x3FFFFFFFu) | (defFlags & 0xC0000000u);
+    placement->typeBits |= 0x200000;
+    placement->Parse(elem);
     return placement;
 }
 

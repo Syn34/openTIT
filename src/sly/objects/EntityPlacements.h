@@ -281,6 +281,9 @@ public:
     using ActorPlacement::ActorPlacement;
     ~SoundActorPlacement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001AE3B4
+    // The scripted attributes and the sound actor's own (inlined in every
+    // sound actor placement loader).
+    void Parse(ape::xml::XmlElement* elem);
     // One value per sound slot (-FLT_MAX: unset). NOTE: role assumed to be
     // the slot's time; attributes 0xD5F932F0, 0xEABE8E36, 0x800ACF3A,
     // 0xF9217A56, 0x7BA17740, 0xA9262FCF, 0xA88C3581.
@@ -329,14 +332,16 @@ public:
     using ActorPlacement::ActorPlacement;
     ~ScriptObjectActorPlacement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001BDFE8
-    uint32_t field_F0[3] = {};          // +0xF0..+0xF8
-    uint32_t field_100 = 0;             // +0x100
+    float field_F0[3] = {};             // +0xF0..+0xF8 attribute 0x7DDB2524
+    float field_100 = 0.0f;             // +0x100 attribute 0x7DDB32EA
+    float field_104 = -1.0f;            // +0x104 attribute 0xE14281CC (not handed on)
+    // Attributes 0x7D0D427B, 0xE019565D, 0x846B9DA2.
     bool field_108[3] = {};             // +0x108..+0x10A
 };
 struct ScriptObjectActorInstanceDesc : ScriptedInstanceDesc {
     using ScriptedInstanceDesc::ScriptedInstanceDesc;
-    uint32_t field_D0[3] = {};          // 0xD0..0xD8
-    uint32_t field_E0 = 0;              // 0xE0
+    float field_D0[3] = {};             // 0xD0..0xD8
+    float field_E0 = 0.0f;              // 0xE0
     bool field_E8[3] = {};              // 0xE8..0xEA
 };
 
@@ -345,12 +350,16 @@ public:
     using SoundActorPlacement::SoundActorPlacement;
     ~SoundActorB16678Placement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001BF6C0
-    uint32_t field_110[2] = {};         // +0x110, +0x114
-    bool field_118[2] = {};             // +0x118, +0x119
+    // The sound actor attributes and the switch's own (0x001BF2A0).
+    void Parse(ape::xml::XmlElement* elem);
+    uint32_t switchState = 0;           // +0x110 0 "off", 1 "on" (attribute 0xC03F596F)
+    float field_114 = -1.0f;            // +0x114 attribute 0xA6710C18
+    bool field_118[2] = {};             // +0x118, +0x119 attributes 0xD28465E5, 0xF0169515
 };
 struct SoundActorB16678InstanceDesc : SoundActorInstanceDesc {
     using SoundActorInstanceDesc::SoundActorInstanceDesc;
-    uint32_t field_F0[2] = {};          // 0xF0, 0xF4
+    uint32_t switchState = 0;           // 0xF0
+    float field_F4 = -1.0f;             // 0xF4
     bool field_F8[2] = {};              // 0xF8, 0xF9
 };
 
@@ -359,12 +368,15 @@ public:
     using SoundActorPlacement::SoundActorPlacement;
     ~SoundActorB168E0Placement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001C103C
-    uint32_t field_110 = 0;             // +0x110
-    uint32_t flags_114 = 0;             // +0x114 bits 30/31 are handed on
+    // The sound actor attributes and its own (0x001C0C64).
+    void Parse(ape::xml::XmlElement* elem);
+    float field_110 = 0.0f;             // +0x110 attribute 0x08C08CA8
+    // +0x114 bits 30/31 are handed on (attributes 0xD02B978A / 0xD28465E5).
+    uint32_t flags_114 = 0;
 };
 struct SoundActorB168E0InstanceDesc : SoundActorInstanceDesc {
     using SoundActorInstanceDesc::SoundActorInstanceDesc;
-    uint32_t field_F0 = 0;              // 0xF0
+    float field_F0 = 0.0f;              // 0xF0
     uint32_t flags_F4 = 0;              // 0xF4
 };
 
@@ -649,6 +661,14 @@ EntityPlacement* ParseSignalActorPlacement(ape::xml::XmlElement* root, ape::xml:
                                            const char* name, EntityDef* def);
 EntityPlacement* ParseActorB15E60Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                            const char* name, EntityDef* def);
+// Script object actor and two sound actor placement loaders (0x001BDDC0,
+// 0x001BF4E0, 0x001C0E70).
+EntityPlacement* ParseScriptObjectActorPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                 const char* name, EntityDef* def);
+EntityPlacement* ParseSoundActorB16678Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def);
+EntityPlacement* ParseSoundActorB168E0Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def);
 // Placement loaders of the rigid-body scripted classes (0x00167F58,
 // 0x0016CBE0, 0x00177D78, 0x0017F1A0, 0x00190EA0).
 EntityPlacement* ParseRigidPropPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
