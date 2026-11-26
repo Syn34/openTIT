@@ -1,5 +1,6 @@
 // openTIT - Scripted actors (see ActorEntities.h).
 #include "sly/entity/ActorEntities.h"
+#include "sly/entity/PhysicalEntity.h"
 #include "sly/objects/EntityPlacements.h"
 #include "ape/world/ApeBase.h"
 #include "sly/entity/PhysicsHooks.h"
@@ -1159,6 +1160,90 @@ bool TweenActor::InteractionBegin(Entity* /*user*/)
 
 // TODO(0x001EDD84 TweenActor::TakeUser)
 void TweenActor::TakeUser(Entity* user) { field_358 = user; }
+
+// @func 0x001ED85C TweenActor::ReleaseOwned
+void TweenActor::ReleaseOwned(Entity* entity)
+{
+    if (!entity)
+        return;
+    // NOTE: the definition is read as a physical one whatever its class.
+    const auto* entityDef = static_cast<const PhysicalEntityDef*>(entity->def);
+    if ((entityDef->defFlags & (1u << 21)) && entity->object) {
+        if (ape::world::ApeObj* parent = entity->object->m_parent)
+            parent->DetachChild(entity->object);
+    }
+    entity->Release(false);
+    if (entity->flags & kEnt_Alive)
+        entity->Release(true);
+    if (entity == field_32C)
+        field_32C = nullptr;
+}
+
+// @func 0x001ED964 TweenActor::ReleaseOwnedPair
+void TweenActor::ReleaseOwnedPair(const OwnedPair& pair)
+{
+    if (pair.second)
+        pair.second->Release(false);
+    ReleaseOwned(pair.first);
+}
+
+// @func 0x001ED9D4 TweenActor::ReleaseAllOwned
+void TweenActor::ReleaseAllOwned()
+{
+    for (const OwnedPair& pair : field_280)
+        ReleaseOwnedPair(pair);
+    field_280.Clear();
+}
+
+// @func 0x001EDA8C TweenActor::ReleaseEntity330
+void TweenActor::ReleaseEntity330()
+{
+    Entity* entity = field_330;
+    if (!entity)
+        return;
+    if (entity->object) {
+        if (ape::world::ApeObj* parent = entity->object->m_parent)
+            parent->DetachChild(entity->object);
+    }
+    entity->SetVisible(false, true, true, true);
+    entity->Release(false);
+    entity->Release(true);
+    field_330 = nullptr;
+}
+
+// @func 0x001EDB90 TweenActor::ReleaseEntities33C
+void TweenActor::ReleaseEntities33C()
+{
+    for (Entity*& entity : field_33C) {
+        if (entity) {
+            entity->Release(true);
+            entity = nullptr;
+        }
+    }
+}
+
+// @func 0x001EDC2C TweenActor::ReleaseEntities334
+void TweenActor::ReleaseEntities334()
+{
+    for (Entity** slot : {&field_334, &field_338}) {
+        if (*slot) {
+            (*slot)->Release(true);
+            *slot = nullptr;
+        }
+    }
+    tweenFlags &= ~(1u << 28);
+}
+
+// @func 0x001EDCD4 TweenActor::ReleaseUserProp
+void TweenActor::ReleaseUserProp()
+{
+    if (!field_358)
+        return;
+    if (Entity* prop = field_358->FindDescendant(0x366FD481u)) {
+        prop->SetVisible(false, true, true, true);
+        prop->Release(true);
+    }
+}
 
 // @func 0x001EE940 TweenActor::InteractionCancel
 void TweenActor::InteractionCancel() { Reset(false); }

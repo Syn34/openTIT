@@ -884,8 +884,30 @@ public:
     Entity* field_368 = nullptr;              // 0x368 counted, dropped when hidden
     uint32_t field_3C8 = 0;                   // 0x3C8 player block value (+0x10D8) of the user
     uint32_t tweenFlags = 0;                  // 0x3D4 bit 17 user damaged, bit 21, bit 29
+    // Entities the actor spawned and owns: a pair per record (the second is
+    // released first).
+    struct OwnedPair {
+        Entity* first;
+        Entity* second;
+    };
+    // Lets go of an owned entity: off its parent object when its definition
+    // says so (flag 21), released, and killed while still alive (0x001ED85C).
+    void ReleaseOwned(Entity* entity);
+    void ReleaseOwnedPair(const OwnedPair& pair);     // 0x001ED964
+    void ReleaseAllOwned();                           // 0x001ED9D4
+    void ReleaseEntity330();                          // 0x001EDA8C
+    void ReleaseEntities33C();                        // 0x001EDB90
+    void ReleaseEntities334();                        // 0x001EDC2C
+    // Hides and kills the user's descendant 0x366FD481 (0x001EDCD4).
+    void ReleaseUserProp();
+
     FloatTween tween_220;                     // 0x220
-    ape::ApeTArray<void*> field_280;          // 0x280
+    ape::ApeTArray<OwnedPair> field_280;      // 0x280
+    Entity* field_32C = nullptr;              // 0x32C an owned entity (also listed in field_280)
+    Entity* field_330 = nullptr;              // 0x330
+    Entity* field_334 = nullptr;              // 0x334
+    Entity* field_338 = nullptr;              // 0x338
+    Entity* field_33C[2] = {};                // 0x33C
     IntTween tween_36C;                       // 0x36C
     ape::ApeTArray<void*> field_3A0;          // 0x3A0
 };
