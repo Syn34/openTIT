@@ -319,7 +319,7 @@ void InitView(AglRenderTarget* rt)
     rt->callbacks[0].count = 0;
     rt->callbacks[1].count = 0;
     rt->field_298 = 0;
-    rt->postProc = new AglPostProcChain();
+    rt->postProc = new AglViewPostProcChain();
     rt->drawScene = nullptr;
     rt->field_100 = -1;
 }

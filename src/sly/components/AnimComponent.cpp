@@ -15,7 +15,8 @@ namespace components {
 namespace {
 
 // The clip named `clip` in `set` or the nearest parent that has one
-// (0x00760C54, AnimSet::FindClip).
+// (the console recurses through the parents).
+// @func 0x00760C54 FindClipInSet
 const ape::anim::AnimClipDef* FindClipInSet(const ape::anim::AnimSet* set, uint32_t clip)
 {
     for (; set; set = set->parent) {

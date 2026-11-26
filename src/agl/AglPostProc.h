@@ -331,6 +331,13 @@ private:
     AglThermalVisionEffect m_thermalVision;
 };
 
+// The chain a render target creates for its view (vtable 0x00B236A8, built
+// by InitView): adds nothing to the base chain but its own destructor.
+class AglViewPostProcChain final : public AglPostProcChain {
+public:
+    ~AglViewPostProcChain() override;
+};
+
 // Loads the shaders of every post-process pass (start-up).
 void InitPostProcShaders();
 

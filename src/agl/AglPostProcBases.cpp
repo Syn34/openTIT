@@ -108,4 +108,8 @@ AglScreenWarpEffect::~AglScreenWarpEffect()
         MemBlockFree(&blocks[i]);
 }
 
+// @func 0x007A1E4C AglViewPostProcChain::~AglViewPostProcChain
+// @func 0x007A1FC0 AglViewPostProcChain::~AglViewPostProcChain (deleting)
+AglViewPostProcChain::~AglViewPostProcChain() = default;
+
 } // namespace agl
