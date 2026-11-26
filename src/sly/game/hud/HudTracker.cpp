@@ -173,5 +173,36 @@ ape::Vec3 HudTracker::TrackerFieldPosition(uint32_t index) const
     return ape::world::kWorldZero;
 }
 
+// @func 0x00370B88 HudTracker::DrawFields
+void HudTracker::DrawFields()
+{
+    HudQueueObjectDraw(marker, true);
+    for (uint32_t i = 0; i < def->textFieldCount; ++i) {
+        ape::ApeGuiObject* frame = def->trackerFields[i].textFrame;
+        const ape::world::ApeObj* anchor = fieldObjects[i];
+        if (!frame || !anchor || !anchor->IsVisible())
+            continue;
+        // Drawn visible at the scene object, then put back as it was. The
+        // GUI's x and y axes point the other way from the scene's.
+        const bool wasVisible = frame->IsVisible();
+        frame->SetVisible(true);
+        ape::Matrix34 transform = anchor->GetWorld();
+        transform.xAxis = {-transform.xAxis.x, -transform.xAxis.y, -transform.xAxis.z, 0.0f};
+        transform.yAxis = {-transform.yAxis.x, -transform.yAxis.y, -transform.yAxis.z, 0.0f};
+        frame->SetTransform(transform);
+        frame->Tick(0.0f);
+        frame->Draw();
+        frame->SetVisible(wasVisible);
+    }
+}
+
+// @func 0x00370E04 HudTracker::DrawFieldsCallback
+void HudTracker::DrawFieldsCallback(void* unused, void* context)
+{
+    (void)unused;
+    if (context)
+        static_cast<HudTracker*>(context)->DrawFields();
+}
+
 } // namespace hud
 } // namespace sly

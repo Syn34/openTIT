@@ -66,6 +66,21 @@ public:
     uint32_t CurrentPageName() const;
     // 0x003736C4: asks an open menu to close at the next update.
     bool RequestClose(bool flag);
+    // 0x0037370C: the GUI the menu's scripts run on (by path). While closed
+    // or opening it becomes the GUI at once (restarting "Default_Init" when
+    // the first page has no clip set); false while the menu is busy.
+    bool SetGui(const char* path);
+    // 0x003738AC: activates or deactivates the two prompt elements.
+    void SetPromptsActive(bool active);
+    // 0x003742E0: draws the text frames of page `page` at their objects.
+    void DrawPageFields(uint32_t pageIndex);
+    // 0x00374590: draws the current page's fields (and the previous page's
+    // during a switch). World callback 0x003746D8.
+    void DrawPages();
+    static void DrawPagesCallback(void* unused, void* context);
+    // 0x003739D0 (world callback): turns the child object (else the
+    // element's object) about Y by `childAngle` degrees.
+    static void TurnChildCallback(void* unused, void* context);
 
     ape::world::ApeObj*** pageFieldObjects = nullptr;   // +0xA4 per page, per field
     void* context = nullptr;              // +0xA8 given to Open
@@ -84,7 +99,7 @@ public:
     ape::ApeGuiObject* gui = nullptr;     // +0x154 GUI the shutdown script runs on
     ape::GuiScriptPlayer* shutdownScript = nullptr;   // +0x158
     uint32_t field_15C = 0;
-    uint32_t field_160 = 0;
+    float childAngle = 0.0f;              // +0x160 degrees (TurnChildCallback)
     uint16_t page = 0;                    // +0x164
     uint16_t previousPage = 0;            // +0x166
     uint32_t menuFlags = 0;               // +0x168 MenuFlags

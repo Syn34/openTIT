@@ -98,3 +98,12 @@ bool UpgradeIsNew(uint32_t index);
 void UpgradeClearNew(uint32_t index);
 } // namespace hud
 } // namespace sly
+
+namespace sly {
+namespace hud {
+// 0x004A6CF8: queues a geometry (or type-10) object to be drawn this frame
+// on the game world's draw call buffer (+0x1285E8), optionally with its
+// children.
+void HudQueueObjectDraw(ape::world::ApeObj* object, bool recurse);
+} // namespace hud
+} // namespace sly

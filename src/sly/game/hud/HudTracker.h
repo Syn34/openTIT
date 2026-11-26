@@ -40,6 +40,10 @@ public:
     // 0x003709A0: world position of field `index`'s scene object (zero
     // without one).
     ape::Vec3 TrackerFieldPosition(uint32_t index) const;
+    // 0x00370B88: draws the marker and the text frames at their scene
+    // objects (world callback 0x00370E04).
+    void DrawFields();
+    static void DrawFieldsCallback(void* unused, void* context);
 
     ape::ApeTArray<Entry> entries;            // +0xA4
     uint32_t field_B8 = 0;                    // +0xB8
