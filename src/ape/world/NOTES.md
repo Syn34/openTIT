@@ -130,3 +130,14 @@
   emitter SetDef/slot 15 (particle system), spline slot 9.
 * Level scene helpers (ApeLevelScene.cpp): 0x004F04D4 loads the level's scene files with
   their world offsets, 0x004F2FC0 finishes the scene (camera set-up 0x005A5130 is a stub).
+
+## agent2: draw record tables
+* `ApeVisTable.h/.cpp`: the instance draw records (0x01193004, 0x80 bytes, geometry from the
+  front 0x01193008, emitters from the back 0x0119300A): AllocVisRecord 0x0057A53C,
+  LinkVisRecord 0x0057A46C (render node +0x90, renamed `visRecord`), MoveVisRecord 0x0057A1D8,
+  `ApeRenderObj::SyncVisRecord` 0x00582F3C, geometry/emitter destructors 0x005A0158/0x005A3DC0.
+  Light records (0x011945A0, 0x40 bytes; local lights front 0x011945A4, others back
+  0x011945A6): MoveLightRecord 0x005A2024, light destructor 0x005A21B4. Light record
+  allocation (light instance set-up 0x005A2528/0x005A2BA8) and the callers of AllocVisRecord
+  (OnBoundsChanged 0x005A0CD4/0x005A46FC via 0x00579C50) are not ported. Both tables are
+  created on first use (EngineConfig +0x154 records).

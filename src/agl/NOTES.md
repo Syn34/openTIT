@@ -269,3 +269,30 @@ The full link was failing because of files outside `src/agl`: missing
   `ApeDebug::SetFontData`), screen text/line/rect drawing (prim types 3/7/8, 9 = retired).
   The callers of DrawScreenPrims/RetireWorldPrims are in EndRender 0x00522140 (not ported).
 * `CreateIndexedSphereMesh` 0x0051BC20 and `CreateBoxMesh` 0x0051C1A8 in AglPrimitives.
+
+## agent2 pass 3 (frame start, draw buckets, mesh chunks)
+* `AglRenderThread.cpp`: `BeginRenderFrame` (0x0051008C) now advances `AglAnimationClock`
+  (warp/water materials animate) and the render time (0x010DD9E0), then `BeginBackBufferFrame`
+  (0x0053BBE0) = `BeginGpuFrame(false)` (0x005325D8: gamma clamp, render state reset, stereo
+  eye, optional back buffer clear) + back buffer bind. Dropped console parts are listed in a
+  NOTE (profiler 0x011DE300 flip, render thread scratch stacks 0x010DD600/0x010DD700, draw list
+  GPU block flip 0x0050FE10). `AglUpdate` 0x0050FDC8 / `AglPlatformUpdate` 0x0053B650 are the
+  main thread update (called from `ape::EngineUpdate` 0x005DBB30).
+* `AglDrawBucket.h/.cpp`: the shared part of the draw bucket classes (vtables 0x00B233E4..
+  0x00B23CA4): Add/AddUnsorted/Terminate, Sort (peak count, overflow drops the bucket, std::sort
+  for <= 512 items, radix sort 0x00513394 above), Draw (before/after callbacks, bucket stencil
+  set-up 0x00512EF4, items through `DrawRenderItem` 0x00512C30, end 0x00512DA0). Bucket slots
+  outside the range (0x007A1080.. key functions, 0x0079C2xx..) are not ported; the translucent
+  and two-pass Draws (0x00514074 -> 0x00513B78, 0x00514B0C -> 0x00514200/0x00514838) are open.
+  `ApplyMaterialState` in AglDrawBucket.cpp is an untagged stand-in for 0x0079CD0C.
+  `AglRenderCallbackList::Insert/Run` are 0x005131E8/0x005132D8. Render target +0x298 is the
+  technique override (`techniqueOverride`).
+* `AglLoaders.cpp`: skin weights (0x00525A24, `AglSubMesh::skinWeights` = old field_48,
+  `LimitBoneInfluences` 0x004FCD78), vertex data (0x00525818) with byte order fix-up
+  (0x0052528C, 0x00525174), submesh indices (0x00525904). `AglTopology::MeshEntry::material`
+  is an `AglMaterial*`; material +0x28 is its name hash (`nameHash`).
+* Still open nearby: 0x0051038C (second stereo eye: needs the MSAA resolve 0x005358A8/
+  0x00535C84), 0x00523C98/0x00523DF4/0x00523F04/0x00523F74/0x005241F0 (mesh batch and
+  shadow edge chunks; their targets are not modelled), particle system 0x004FF4C0.. and its
+  property chunks 0x005286BC.., post-process Apply functions (their vtable slot use does not
+  match the port's Init/LoadTuning naming yet: e.g. 0x0053EC58 calls slots 6 and 8).

@@ -3,7 +3,9 @@
 // Level files are IFF chunk streams (ape::iff). These handlers read the
 // texture and topology description chunks; the reader's flag bit 2 marks a
 // "resolve only" pass in which textures are looked up instead of created.
+#include "agl/AglPrimitives.h"
 #include "agl/AglResources.h"
+#include "agl/AglState.h"
 #include "agl/AglTexture.h"
 
 #include "ape/core/ApeString.h"
@@ -375,6 +377,110 @@ int BoneTableChunkHandler(ape::iff::IffReader* reader, void* arg)
             table[1 + i] = static_cast<uint8_t>(bone);
         else
             --table[0];   // out of range: dropped
+    }
+    return 1;
+}
+
+namespace {
+
+uint16_t Swap16(uint16_t v)
+{
+    return static_cast<uint16_t>((v >> 8) | (v << 8));
+}
+
+uint32_t Swap32(uint32_t v)
+{
+    return (v >> 24) | ((v >> 8) & 0xFF00u) | ((v << 8) & 0xFF0000u) | (v << 24);
+}
+
+// Vertex attributes whose data may need its byte order swapped (the
+// console checks this list of attribute registers, 0x00F67190).
+constexpr uint32_t kSwappedAttributes[] = { 0, 2, 3, 8, 14, 15, 1, 7, 5, 6 };
+
+} // namespace
+
+// @func 0x00525174 SwapVertexWords
+// Reverses the byte order of the first 'words' 32-bit words of 'count'
+// vertices, 'stride' bytes apart.
+void SwapVertexWords(uint32_t count, uint8_t* data, uint32_t words, uint32_t stride)
+{
+    for (uint32_t v = 0; v < count; ++v, data += stride) {
+        for (uint32_t w = 0; w < words && w < 4; ++w) {
+            uint32_t value;
+            std::memcpy(&value, data + w * 4, 4);
+            value = Swap32(value);
+            std::memcpy(data + w * 4, &value, 4);
+        }
+    }
+}
+
+// @func 0x0052528C SwapVertexData
+// Fixes the byte order of a submesh's vertex buffer, attribute by attribute:
+// float components are swapped as 32-bit words, half and normalized short
+// components as 16-bit words; bytes (and the formats the console leaves
+// alone) are untouched.
+void SwapVertexData(AglSubMesh* mesh)
+{
+    const AglVertexDecl* decl = mesh->vertexDecl;
+    auto* base = static_cast<uint8_t*>(mesh->vertices.data);
+    if (!decl || !base)
+        return;
+    for (uint32_t attribute : kSwappedAttributes) {
+        const AglVertexStream* stream = FindVertexStream(decl->streams, attribute, 0);
+        if (!stream)
+            continue;
+        uint8_t* data = base + stream->offset;
+        switch (static_cast<gpu::VertexAttribType>(stream->type)) {
+        case gpu::VertexAttribType::Float:
+            SwapVertexWords(mesh->vertexCount, data, stream->size, decl->stride);
+            break;
+        case gpu::VertexAttribType::Half:
+        case gpu::VertexAttribType::ShortNorm:
+            for (uint32_t v = 0; v < mesh->vertexCount; ++v) {
+                uint8_t* vertex = data + v * decl->stride;
+                for (uint32_t c = 0; c < stream->size; ++c) {
+                    uint16_t value;
+                    std::memcpy(&value, vertex + c * 2, 2);
+                    value = Swap16(value);
+                    std::memcpy(vertex + c * 2, &value, 2);
+                }
+            }
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+// @func 0x00525818 VertexDataChunkHandler
+// Vertex buffer of a submesh, one vertex stream per chunk.
+// NOTE: on the console the stream blocks follow each other from +0x18; a
+// second stream would overlap the vertex count, so meshes have exactly one.
+int VertexDataChunkHandler(ape::iff::IffReader* reader, void* arg)
+{
+    AglSubMesh* mesh = static_cast<AglSubMesh*>(arg);
+    const uint32_t size = reader->GetChunkSize();
+    mesh->AddVertexStream();
+    MemBlockAlloc(&mesh->vertices, size, 0x80, gpu::MemoryLocation::Local, 2);
+    reader->Read(mesh->vertices.data, size);
+    if (reader->flags & ape::iff::kIffReader_Flag02)
+        SwapVertexData(mesh);
+    return 1;
+}
+
+// @func 0x00525904 SubMeshIndexChunkHandler
+// 16-bit index buffer of a submesh (index count set by its header).
+int SubMeshIndexChunkHandler(ape::iff::IffReader* reader, void* arg)
+{
+    AglSubMesh* mesh = static_cast<AglSubMesh*>(arg);
+    const uint32_t count = mesh->indexCount;
+    mesh->field_3C = 1;
+    MemBlockAlloc(&mesh->indices, count * 2, 0x80, gpu::MemoryLocation::Local, 2);
+    auto* indices = static_cast<uint16_t*>(mesh->indices.data);
+    reader->Read(indices, count * 2);
+    if (reader->flags & ape::iff::kIffReader_Flag02) {
+        for (uint32_t i = 0; i < count; ++i)
+            indices[i] = Swap16(indices[i]);
     }
     return 1;
 }

@@ -34,6 +34,22 @@ void SlyGame::RemoveCallback(int list, void* context, entity::Entity* owner)
     }
 }
 
+// @func 0x0045900C SlyGame::RunCallbacks
+void SlyGame::RunCallbacks(int list, float dt, bool clear)
+{
+    // NOTE: the console passes the frame time in a float register next to
+    // the context; the port's callbacks take (unused, context) only.
+    (void)dt;
+    using Fn = void (*)(void* unused, void* context);
+    ape::ApeTArray<WorldCallback>& callbacks = callbackLists[list];
+    for (size_t i = 0; i < callbacks.Count(); ++i) {
+        const WorldCallback& entry = callbacks[i];
+        reinterpret_cast<Fn>(entry.function)(nullptr, entry.context);
+    }
+    if (clear)
+        callbacks.Clear();
+}
+
 // @func 0x0046B6CC SlyGame::ForgetEntity
 void SlyGame::ForgetEntity(entity::Entity* owner)
 {

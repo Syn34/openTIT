@@ -32,6 +32,11 @@ void BeginGpuFrame(bool clearBackBuffer);
 // BeginGpuFrame without the clear, then the back buffer bound (and
 // cleared with its own clear settings).
 void BeginBackBufferFrame();
+// Main thread update of the graphics layer (counts updates, then the
+// platform part, which has nothing to do). Always true.
+bool AglUpdate();
+bool AglPlatformUpdate();
+uint32_t GetAglUpdateCount();
 // Seconds the renderer has run (0x010DD9E0), the sum of the frame times.
 float GetRenderTime();
 // Waits until the render thread and the GPU are idle and every deferred

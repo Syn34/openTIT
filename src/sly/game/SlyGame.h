@@ -49,6 +49,9 @@ public:
     // Drops every callback owned by 'owner' from all the lists (entity
     // teardown).
     void ForgetEntity(entity::Entity* owner);
+    // Calls every callback of list 'list' (in the order queued); with
+    // 'clear' the list is emptied afterwards.
+    void RunCallbacks(int list, float dt, bool clear);
 
     // Timestamp stamped into every game event.
     uint32_t EventTime() const { return clock ? clock->now : 0; }

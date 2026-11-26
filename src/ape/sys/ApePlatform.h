@@ -84,6 +84,9 @@ bool PlatformSystemShutdown();
 bool PlatformSystemUpdate();
 // Per-frame update of the core engine group.
 bool CoreSystemUpdate();
+// Per-frame update of the engine services: the core/platform layer, then
+// the graphics layer. Always true.
+bool EngineUpdate();
 
 // File system teardown hooks run by the core shutdown, after the input
 // devices are gone: the platform file layer (counterpart of the file

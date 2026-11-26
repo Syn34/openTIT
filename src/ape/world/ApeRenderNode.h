@@ -22,7 +22,7 @@ struct alignas(16) ApeRenderNode {
     void* field_84;             // NOTE: freed through the table's free hook
     void* field_88;             // NOTE: freed through the table's free hook; +0x40 is a pointer
     uint32_t field_8C;
-    void* lightLink;            // 0x90 light linking node (geometry/emitter instances)
+    struct ApeVisRecord* visRecord; // 0x90 draw record of geometry/emitter instances (ApeVisTable.h)
     ApeObj* owner;              // 0x94
     uint32_t field_98;
     uint32_t field_9C;

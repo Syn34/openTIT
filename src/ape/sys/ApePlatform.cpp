@@ -1,6 +1,7 @@
 // openTIT - Ape engine platform bring-up.
 #include "ape/sys/ApePlatform.h"
 
+#include "agl/AglRenderThread.h"
 #include "ape/memory/ApeMem.h"
 #include "platform/Platform.h"
 
@@ -117,6 +118,14 @@ bool PlatformSystemUpdate()
 bool CoreSystemUpdate()
 {
     PlatformSystemUpdate();
+    return true;
+}
+
+// @func 0x005DBB30 EngineUpdate
+bool EngineUpdate()
+{
+    CoreSystemUpdate();
+    agl::AglUpdate();
     return true;
 }
 

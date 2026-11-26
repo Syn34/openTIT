@@ -967,7 +967,7 @@ void SeqPlaySoundCommand::Execute()
             m_voice = entity == nullptr ? PlaySound2D(m_sound, params)
                                         : EntityPlaySound(entity, m_sound, params, bus);
         } else {
-            StreamSystemIdle();
+            StreamSystemIdle(m_request);
             if (!m_request->hasVoice)
                 PrepareSoundRequest();
             m_voice = entity == nullptr ? PlaySoundRequest(m_request, params)

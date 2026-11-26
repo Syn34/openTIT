@@ -9,4 +9,12 @@ FrameClock& GetFrameClock()
     return s_clock;
 }
 
+// @func 0x005DBB60 RunFrameClockProgress
+void RunFrameClockProgress()
+{
+    FrameClock& clock = GetFrameClock();
+    if (clock.progressCallback)
+        clock.progressCallback(clock.progressArg);
+}
+
 } // namespace ape
