@@ -60,7 +60,17 @@ public:
     ape::Vec3 field_140{};              // 0x140
 };
 SLY_ACTOR_DEF(ActorB17990Def, ActorDef);        // 0x00B17948, spawns ActorB17990
-SLY_ACTOR_DEF(TweenActorDef, ActorDef);         // 0x00B18680, spawns TweenActor
+// 0x00B18680, spawns TweenActor. NOTE: only the placement defaults.
+class TweenActorDef : public ActorDef {
+public:
+    ~TweenActorDef() override;
+    uint32_t field_134 = 0;             // 0x134
+    uint32_t field_150 = 0;             // 0x150
+    uint32_t field_154 = 0;             // 0x154
+    uint32_t field_1A0 = 0;             // 0x1A0
+    uint32_t field_1A4 = 0;             // 0x1A4
+    float field_1A8 = 0.0f;             // 0x1A8
+};
 SLY_ACTOR_DEF(InteractivePropBDef, ActorDef);   // 0x00B188C0, spawns InteractivePropB
 
 // Sound actor definitions (base SoundActorDef).

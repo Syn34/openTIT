@@ -222,6 +222,23 @@ void ToRadians(ape::Vec3& angles)
     angles.z *= kDegToRad;
 }
 
+// Orientation from Euler angles in degrees (half angles through
+// FastCos/FastSin; inlined by the console parsers).
+ape::Vec4 QuatFromEulerDegrees(const ape::Vec3& euler)
+{
+    const float hx = euler.x * kDegToRad * 0.5f;
+    const float hy = euler.y * kDegToRad * 0.5f;
+    const float hz = euler.z * kDegToRad * 0.5f;
+    const float cx = ape::FastCos(hx), cy = ape::FastCos(hy), cz = ape::FastCos(hz);
+    const float sx = ape::FastSin(hx), sy = ape::FastSin(hy), sz = ape::FastSin(hz);
+    ape::Vec4 q;
+    q.x = sy * sz * cx + cy * cz * sx;
+    q.y = cz * sy * cx + cy * sz * sx;
+    q.z = cy * sz * cx - cz * sy * sx;
+    q.w = cy * cz * cx - sy * sz * sx;
+    return q;
+}
+
 // The two vectors every physical placement reads.
 void ParsePhysicalSettings(ape::xml::XmlElement* elem, PhysicalSettings& settings)
 {
@@ -699,17 +716,8 @@ void SoundActorB16DB0Placement::Parse(ape::xml::XmlElement* elem)
         child->GetVec3(0x2B7B3EB4u, &record.field_10.x, &record.field_10.x);
         child->GetVec3(0x313AB0C1u, &record.field_20.x, &record.field_20.x);
         ape::Vec3 euler{};
-        if (child->GetVec3(0x313AB844u, &euler.x, &ape::world::kWorldZero.x) == ape::xml::kQuery_Ok) {
-            const float hx = euler.x * kDegToRad * 0.5f;
-            const float hy = euler.y * kDegToRad * 0.5f;
-            const float hz = euler.z * kDegToRad * 0.5f;
-            const float cx = ape::FastCos(hx), cy = ape::FastCos(hy), cz = ape::FastCos(hz);
-            const float sx = ape::FastSin(hx), sy = ape::FastSin(hy), sz = ape::FastSin(hz);
-            record.rotation.x = sy * sz * cx + cy * cz * sx;
-            record.rotation.y = cz * sy * cx + cy * sz * sx;
-            record.rotation.z = cy * sz * cx - cz * sy * sx;
-            record.rotation.w = cy * cz * cx - sy * sz * sx;
-        }
+        if (child->GetVec3(0x313AB844u, &euler.x, &ape::world::kWorldZero.x) == ape::xml::kQuery_Ok)
+            record.rotation = QuatFromEulerDegrees(euler);
         child->GetHash(0x632DA119u, &record.field_40, record.field_40);
         child->GetBool(0x8141EC8Au, &record.field_44, record.field_44);
         child->GetBool(0xF8E455ACu, &record.field_45, record.field_45);
@@ -842,6 +850,83 @@ EntityPlacement* ParseSafePlacement(ape::xml::XmlElement* root, ape::xml::XmlEle
     elem->GetHash(0x06556689u, &placement->field_F0, placement->field_F0);
     elem->GetVec3(0xC88E4511u, placement->field_100, placement->field_100);
     elem->GetHash(0x675C8395u, &placement->field_110, placement->field_110);
+    return placement;
+}
+
+// @func 0x001ED004 TweenActorPlacement::Parse
+// NOTE: attribute 0xBE5301F3 defaults to a global of the game (0x01053BA8)
+// whose value is not known; 0 is assumed.
+void TweenActorPlacement::Parse(ape::xml::XmlElement* elem)
+{
+    static const uint32_t kNameAttrs[7] = {0x161851F3u, 0xEFE3F2BEu, 0x80F96352u, 0x93116591u,
+                                           0x3F7939FEu, 0x04623C7Cu, 0xDEC8B85Du};
+    static const uint32_t kFlagAttrs[5] = {0x6C2C79ECu, 0x33DA09EFu, 0xF9C0C1B5u, 0x1E85A989u, 0xD6F80AE3u};
+    constexpr float kField128Default = 0.0f;
+    ScriptedEntityPlacement::Parse(elem);
+    elem->GetVec2(0x64231FD8u, field_F0, field_F0);
+    elem->GetVec2(0x64231EEAu, field_F8, field_F8);
+    for (int i = 0; i < 7; ++i)
+        elem->GetHash(kNameAttrs[i], &names[i], names[i]);
+    elem->GetHash(0x6350BDB4u, &names[8], names[8]);
+    elem->GetFloat(0xC6BA9BDEu, &field_124, field_124);
+    for (int i = 0; i < 5; ++i)
+        elem->GetBool(kFlagAttrs[i], &field_134[i], field_134[i]);
+    elem->GetFloat(0xBE5301F3u, &field_128, kField128Default);
+    elem->GetFloat(0x48CDF4C0u, &field_12C, field_12C);
+    elem->GetBool(0x850F9FE3u, &field_134[5], field_134[5]);
+    elem->GetFloat(0x81B5B597u, &field_130, field_130);
+    elem->GetHash(0xF24070D0u, &names[7], names[7]);
+    elem->GetBool(0x4DE83B5Au, &field_134[6], field_134[6]);
+    elem->GetBool(0x6BDE6A90u, &field_134[7], field_134[7]);
+}
+
+// @func 0x001ED358 ParseTweenActorPlacement
+// NOTE: the console reads the definition without checking it for null.
+EntityPlacement* ParseTweenActorPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                          const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new TweenActorPlacement(name, def);
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    if (def) {
+        const auto* tweenDef = static_cast<const entity::TweenActorDef*>(def);
+        placement->names[0] = tweenDef->field_134;
+        placement->names[1] = tweenDef->field_150;
+        placement->names[2] = tweenDef->field_154;
+        placement->names[5] = tweenDef->field_1A4;
+        placement->names[8] = tweenDef->field_1A0;
+        placement->field_130 = tweenDef->field_1A8;
+    }
+    placement->field_0C |= 8;
+    placement->Parse(elem);
+    return placement;
+}
+
+// @func 0x001F5E50 InteractivePropBPlacement::Parse
+void InteractivePropBPlacement::Parse(ape::xml::XmlElement* elem)
+{
+    ScriptedEntityPlacement::Parse(elem);
+    elem->GetHash(0x2899600Fu, &field_F0, field_F0);
+    elem->GetVec3(0xEF4DDD13u, &field_100.x, &field_100.x);
+    ape::Vec3 euler = ape::world::kWorldZero;
+    elem->GetVec3(0xC7400937u, &euler.x, &euler.x);
+    rotation = QuatFromEulerDegrees(euler);
+    elem->GetFloat(0xDD61F47Cu, &field_120, field_120);
+    elem->GetFloat(0x3CC6000Du, &field_124, field_124);
+    elem->GetFloat(0x6AA47C5Au, &field_128, field_128);
+    elem->GetHash(0x6AA4B8C7u, &field_12C, field_12C);
+    elem->GetBool(0xEA3BBF97u, &field_130, field_130);
+}
+
+// @func 0x001F60D8 ParseInteractivePropBPlacement
+EntityPlacement* ParseInteractivePropBPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new InteractivePropBPlacement(name, def);
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    placement->field_0C |= 0x10;
+    placement->Parse(elem);
     return placement;
 }
 

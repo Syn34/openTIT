@@ -526,12 +526,30 @@ public:
     using ActorPlacement::ActorPlacement;
     ~TweenActorPlacement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001ED4F0
-    uint32_t field_F0[0x11] = {};       // +0xF0..+0x130
-    bool field_134[8] = {};             // +0x134..+0x13B
+    // The scripted attributes and the tween's own (0x001ED004).
+    void Parse(ape::xml::XmlElement* elem);
+    float field_F0[2] = {};             // +0xF0 attribute 0x64231FD8
+    float field_F8[2] = {};             // +0xF8 attribute 0x64231EEA
+    // +0x100..+0x120 attributes 0x161851F3, 0xEFE3F2BE, 0x80F96352, 0x93116591,
+    // 0x3F7939FE, 0x04623C7C, 0xDEC8B85D, 0xF24070D0, 0x6350BDB4 (hashes).
+    uint32_t names[9] = {};
+    float field_124 = 0.0f;             // +0x124 attribute 0xC6BA9BDE
+    float field_128 = 0.0f;             // +0x128 attribute 0xBE5301F3
+    float field_12C = 0.0f;             // +0x12C attribute 0x48CDF4C0
+    float field_130 = 0.0f;             // +0x130 attribute 0x81B5B597
+    // +0x134..+0x13B attributes 0x6C2C79EC, 0x33DA09EF, 0xF9C0C1B5,
+    // 0x1E85A989, 0xD6F80AE3, 0x850F9FE3, 0x4DE83B5A, 0x6BDE6A90.
+    bool field_134[8] = {false, true, false, true, true, false, false, false};
 };
 struct TweenActorInstanceDesc : ScriptedInstanceDesc {
     using ScriptedInstanceDesc::ScriptedInstanceDesc;
-    uint32_t field_D0[0x11] = {};       // 0xD0..0x110
+    float field_D0[2] = {};             // 0xD0
+    float field_D8[2] = {};             // 0xD8
+    uint32_t names[9] = {};             // 0xE0..0x100
+    float field_104 = 0.0f;             // 0x104
+    float field_108 = 0.0f;             // 0x108
+    float field_10C = 0.0f;             // 0x10C
+    float field_110 = 0.0f;             // 0x110
     bool field_114[8] = {};             // 0x114..0x11B
 };
 
@@ -542,7 +560,23 @@ struct TweenActorInstanceDesc : ScriptedInstanceDesc {
         ~Name() override;                         \
     }
 
-SLY_PLACEMENT(InteractivePropBPlacement, ActorPlacement);           // 0x00B188F0
+// Vtable 0x00B188F0. NOTE: its copy (slot 2) is not ported.
+class InteractivePropBPlacement : public ActorPlacement {
+public:
+    using ActorPlacement::ActorPlacement;
+    ~InteractivePropBPlacement() override;
+    // The scripted attributes and the prop's own (0x001F5E50).
+    void Parse(ape::xml::XmlElement* elem);
+    uint32_t field_F0 = 0;              // +0xF0 attribute 0x2899600F (hash)
+    ape::Vec3 field_100{};              // +0x100 attribute 0xEF4DDD13
+    // +0x110 orientation (attribute 0xC7400937, Euler angles in degrees).
+    ape::Vec4 rotation{0.0f, 0.0f, 0.0f, 1.0f};
+    float field_120 = 0.0f;             // +0x120 attribute 0xDD61F47C
+    float field_124 = 0.0f;             // +0x124 attribute 0x3CC6000D
+    float field_128 = 0.0f;             // +0x128 attribute 0x6AA47C5A
+    uint32_t field_12C = 0;             // +0x12C attribute 0x6AA4B8C7 (hash)
+    bool field_130 = false;             // +0x130 attribute 0xEA3BBF97
+};
 
 #undef SLY_PLACEMENT
 
@@ -717,6 +751,11 @@ EntityPlacement* ParseInteractivePropAPlacement(ape::xml::XmlElement* root, ape:
 // Safe placement loader (0x001E6D78).
 EntityPlacement* ParseSafePlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
                                     EntityDef* def);
+// Tween actor and InteractivePropB placement loaders (0x001ED358, 0x001F60D8).
+EntityPlacement* ParseTweenActorPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                          const char* name, EntityDef* def);
+EntityPlacement* ParseInteractivePropBPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def);
 // Placement loaders of the rigid-body scripted classes (0x00167F58,
 // 0x0016CBE0, 0x00177D78, 0x0017F1A0, 0x00190EA0).
 EntityPlacement* ParseRigidPropPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,

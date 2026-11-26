@@ -345,8 +345,16 @@ void TweenActorPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
 {
     ActorPlacement::FillInstanceDesc(baseDesc);
     auto& desc = static_cast<TweenActorInstanceDesc&>(baseDesc);
-    for (int i = 0; i < 0x11; ++i)
-        desc.field_D0[i] = field_F0[i];
+    desc.field_D0[0] = field_F0[0];
+    desc.field_D0[1] = field_F0[1];
+    desc.field_D8[0] = field_F8[0];
+    desc.field_D8[1] = field_F8[1];
+    for (int i = 0; i < 9; ++i)
+        desc.names[i] = names[i];
+    desc.field_104 = field_124;
+    desc.field_108 = field_128;
+    desc.field_10C = field_12C;
+    desc.field_110 = field_130;
     for (int i = 0; i < 8; ++i)
         desc.field_114[i] = field_134[i];
 }
