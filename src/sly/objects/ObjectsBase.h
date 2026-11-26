@@ -49,6 +49,12 @@ enum PlacementFlags : uint32_t {
     kPlace_ForceCreate    = 0x02000000,   // NOTE: overrides a placement's "skip" bit
 };
 
+// Attachment record a definition adds to every placement made from it (0xC0
+// bytes on the console). NOTE: contents not decoded; copied as a whole.
+struct DefAttachment {
+    uint8_t data[0xC0];
+};
+
 // ---------------------------------------------------------------------------
 // Definition description (console block of 0x4C bytes, extended per class).
 // ---------------------------------------------------------------------------
@@ -82,11 +88,6 @@ struct EntityDefDesc {
 // (0x000C387C, entity module): the flag bytes and the shared scalar fields.
 void InheritDefDesc(const EntityDefDesc& from, EntityDefDesc& to);
 
-// Attachment record a definition adds to every placement made from it (0xC0
-// bytes on the console). NOTE: contents not decoded; copied as a whole.
-struct DefAttachment {
-    uint8_t data[0xC0];
-};
 
 // ---------------------------------------------------------------------------
 // Definition base (console 0x8C bytes, vtable 0x00B12230).
@@ -128,17 +129,34 @@ public:
 // Instance description (console block of 0x90 bytes, extended per class).
 // ---------------------------------------------------------------------------
 struct EntityInstanceDesc {
+    // Flag word (+0x14). Bits 11-13 mirror placement bits84 bits 29-31.
+    enum Flags : uint32_t {
+        kDesc_PlacementBit29 = 1u << 11,
+        kDesc_PlacementBit30 = 1u << 12,
+        kDesc_PlacementBit31 = 1u << 13,
+        kDesc_Sound          = 1u << 19,   // set by the sound actor placements
+    };
+
+    // 0x00 attachment records of the placement (created on the first one).
+    ape::ApeTArray<DefAttachment>* attachments = nullptr;
     uint32_t flags = 0;                 // 0x14
+    uint8_t field_18 = 0;               // 0x18 placement bits84 bits 21-28
     const char* name = nullptr;         // 0x1C
     EntityDef* def = nullptr;           // 0x20
+    uint32_t field_24 = 0;              // 0x24 placement field_70
     ape::Matrix34 transform{};          // 0x30
+    ape::Vec3 field_70{};               // 0x70 placement field_60 (offset)
+    uint32_t field_80 = 0;              // 0x80 placement field_74
     float field_84 = 1.0f;              // 0x84
     float field_88 = 1.0f;              // 0x88
+    uint32_t field_8C = 0;              // 0x8C placement field_88 (kept when that is 0)
 
     // 0x000CDFB0/0x000CDD28 (entity module) with the arguments every Create in this
     // directory passes: one reference, identity transform, unit scales.
     EntityInstanceDesc(const char* instanceName, EntityDef* ownerDef);
-    virtual ~EntityInstanceDesc() = default;
+    virtual ~EntityInstanceDesc();
+    EntityInstanceDesc(const EntityInstanceDesc&) = delete;
+    EntityInstanceDesc& operator=(const EntityInstanceDesc&) = delete;
 };
 
 // ---------------------------------------------------------------------------
