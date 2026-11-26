@@ -24,9 +24,16 @@ using ScriptPropertyOverride = TextField;
 // Instance description of scripted entities (base description + 0x38
 // bytes); the classes' own parts follow from +0xC8.
 struct ScriptedInstanceDesc : EntityInstanceDesc {
-    using EntityInstanceDesc::EntityInstanceDesc;
-    ape::ApeTArray<ScriptPropertyOverride> overridesA;   // 0x90
-    ape::ApeTArray<ScriptPropertyOverride> overridesB;   // 0xA4
+    // 0x000DFDF8: the base description (no own placement defaults), type
+    // bits 0 and 1, and the scripted defaults from the (scripted) definition.
+    ScriptedInstanceDesc(uint32_t layerCount, uint32_t stateDataSize, const char* instanceName, EntityDef* ownerDef,
+                         ape::world::ApeObj* source, const void* field28, const ape::Matrix34& initialTransform,
+                         const ape::Vec3& initialScale, bool bit16, bool bit15, bool bit14, bool startVisible,
+                         bool bit12, bool bit9, bool bit8, bool notListed, uint32_t field80, uint8_t player,
+                         uint32_t field8C);
+    ScriptedInstanceDesc(const char* instanceName, EntityDef* ownerDef);
+    ape::ApeTArray<ScriptPropertyOverride> overridesA{16, nullptr, true};   // 0x90
+    ape::ApeTArray<ScriptPropertyOverride> overridesB{16, nullptr, true};   // 0xA4
     float field_B8 = 0.0f;              // 0xB8
     uint32_t field_BC = 0;              // 0xBC
     uint32_t field_C0 = 0;              // 0xC0

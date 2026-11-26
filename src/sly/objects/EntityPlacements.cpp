@@ -1070,5 +1070,34 @@ EntityPlacement* ParseBreakableChainPlacement(ape::xml::XmlElement* root, ape::x
     return placement;
 }
 
+// @func 0x000DFDF8 ScriptedInstanceDesc::ScriptedInstanceDesc
+ScriptedInstanceDesc::ScriptedInstanceDesc(uint32_t layerCount, uint32_t dataSize, const char* instanceName,
+                                           EntityDef* ownerDef, ape::world::ApeObj* source, const void* field28,
+                                           const ape::Matrix34& initialTransform, const ape::Vec3& initialScale,
+                                           bool bit16, bool bit15, bool bit14, bool startVisible, bool bit12,
+                                           bool bit9, bool bit8, bool notListed, uint32_t field80, uint8_t playerSlot,
+                                           uint32_t field8C)
+    : EntityInstanceDesc(-1.0f, -1.0f, layerCount, dataSize, instanceName, ownerDef, source, field28,
+                         initialTransform, initialScale, bit16, bit15, bit14, startVisible, bit12, bit9, bit8,
+                         notListed, field80, playerSlot, field8C)
+{
+    // NOTE: the definition is taken to be a scripted one, as on the console.
+    const auto* scriptDef = static_cast<const entity::ScriptedEntityDef*>(ownerDef);
+    typeBits[0] |= 1u << kType_Scripted | 1u;
+    field_B8 = scriptDef ? scriptDef->field_8C : 100.0f;
+    field_BC = scriptDef ? scriptDef->lifetimeScriptName : 0;
+    field_C0 = scriptDef ? scriptDef->field_98 : 0;
+    field_C4 = scriptDef ? (scriptDef->damageFlags & 0x8000u) != 0 : true;
+}
+
+// The arguments the scripted spawns pass: one state layer, no source
+// object, identity transform, unit scale, no player.
+ScriptedInstanceDesc::ScriptedInstanceDesc(const char* instanceName, EntityDef* ownerDef)
+    : ScriptedInstanceDesc(1, 0, instanceName, ownerDef, nullptr, nullptr, ape::world::kWorldIdentity,
+                           ape::world::kWorldUnitScale, false, false, true, false, false, true, false, false, 0,
+                           0xFF, 0)
+{
+}
+
 } // namespace objects
 } // namespace sly
