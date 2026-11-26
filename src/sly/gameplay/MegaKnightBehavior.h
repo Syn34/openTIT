@@ -149,11 +149,21 @@ struct MegaKnightStampSet {
     void Parse(XmlElement* element);                // 0x0030386C
 };
 
+// A camera of the boss fight (records allocated by the definition loader
+// 0x0030743C, not ported, and freed with MemFree).
+struct MegaKnightCameraDef {
+    uint8_t data_00[0x20] = {};
+    uint32_t name = 0;          // +0x20
+    float values[4] = {};       // +0x24 blended to by the camera controller
+    float easeTime = 0.0f;      // +0x34 used when no ease time is given
+};
+
 // The mega knight's definition (only what the destructor touches).
 class MegaKnightDef : public entity::EntityDef {
 public:
     ~MegaKnightDef() override;                      // 0x00303A4C / 0x00303CEC
-    ape::ApeTArray<char*> strings;                  // +0x130 NOTE: role unknown
+    // Fight cameras (named; MegaKnight::SetCamera).
+    ape::ApeTArray<MegaKnightCameraDef*> cameras;   // +0x130
     ape::ApeTArray<MegaKnightBehavior*> behaviors;  // +0x144
     ape::ApeTArray<MegaKnightStampSet*> stampSets;  // +0x158
 };
