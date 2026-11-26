@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <cstring>
 
+namespace ape::file { class File; }
 namespace ape { class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeGuiObject; }
 namespace agl { class AglRenderTarget; }
 
@@ -32,6 +33,7 @@ class SpawnManager;
 namespace goals { class Goal; }
 namespace gameplay { class Minigame; }
 namespace entity { class Entity; class GameCamera; }
+struct LevelParams;
 
 // A deferred call queued on one of the world callback lists: the game
 // calls function(owner, context) when it runs the list.
@@ -357,6 +359,11 @@ public:
     // 1: the camera), set at once or blended over `time` seconds along
     // `curve`.
     void SetListenerCameraWeight(float weight, float time, float curve);
+    // Reads the level parameters from the level data document (the first
+    // "LevelParams" element; once per level, not in the front end).
+    void LoadLevelParams(ape::file::File& file);
+    // The level parameters select the special mode 1.
+    bool LevelParamsMode1() const;
     // The power meter of a player on the HUD (second bar of meter B).
     void ShowPlayerPower(uint32_t player) const;
 
@@ -399,7 +406,7 @@ public:
     char pendingLevelName[0x40] = {};           // +0x12811C
     uint32_t field_12815C = 0;                  // +0x12815C
     uint32_t field_128160 = 0;                  // +0x128160
-    agl::AglRenderTarget* field_128164 = nullptr;   // +0x128164
+    LevelParams* levelParams = nullptr;         // +0x128164
     agl::AglRenderTarget* mainView = nullptr;       // +0x128168 the game camera's render target
     agl::AglRenderTarget* hud3dView = nullptr;      // +0x12816C "HUD_3D"
     agl::AglRenderTarget* postHud3dView = nullptr;  // +0x128170 "PostHUD_3D"

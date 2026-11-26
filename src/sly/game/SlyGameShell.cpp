@@ -10,6 +10,8 @@
 #include "sly/tuning/GameTuning.h"
 #include "sly/entity/Entity.h"
 #include "sly/game/AppRuntime.h"
+#include "sly/game/LevelParams.h"
+#include "ape/xml/ApeXml.h"
 
 #include <cmath>
 
@@ -174,6 +176,43 @@ uint32_t ContextualMarkerFor(uint32_t characterHash)
     case 0xDF0611F9u: return g_gameContextualCarmelita.Get();     // "CarmelitaFox"
     default: return g_gameContextualSly.Get();
     }
+}
+
+// TODO(0x00481A88 CreateLevelParams): parses "headlineString", the job
+// headline overrides and the level settings.
+LevelParams* CreateLevelParams(ape::xml::XmlDocument& document, ape::xml::XmlElement* element)
+{
+    (void)document;
+    (void)element;
+    return nullptr;
+}
+
+// @func 0x004829F0 SlyGame::LoadLevelParams
+void SlyGame::LoadLevelParams(ape::file::File& file)
+{
+    constexpr uint32_t kLevelParamsElement = 0x1AF675EAu;
+    ape::xml::XmlDocument document;
+    if (!document.LoadFromStream(file, nullptr))
+        return;
+    ape::xml::XmlElement* element = document.FirstChildElement();
+    if (!element) {
+        document.GetDocumentPath();   // NOTE: the console builds a diagnostic and drops it
+        return;
+    }
+    for (; element; element = element->NextSiblingElement()) {
+        if (!element->IsValid() || element->GetNameHash() != kLevelParamsElement)
+            continue;
+        if ((flags1C >> 6) != 0 || levelParams)
+            continue;
+        if (LevelParams* params = CreateLevelParams(document, element))
+            levelParams = params;
+    }
+}
+
+// @func 0x00476C30 SlyGame::LevelParamsMode1
+bool SlyGame::LevelParamsMode1() const
+{
+    return levelParams && levelParams->field_1544 == 1;
 }
 
 } // namespace sly
