@@ -3,6 +3,9 @@
 #include "sly/camera/CameraModes.h"
 #include "sly/entity/GameCamera.h"
 #include "sly/game/GameMessages.h"
+#include "sly/game/SlyGame.h"
+#include "sly/game/hud/HudManager.h"
+#include "ape/world/ApeObj.h"
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "sly/levels/ai/AITuning.h"
@@ -119,6 +122,47 @@ void ParadoxAI::StartPhaseOne()
         }
     }
     SetState(0);
+}
+
+// @func 0x0005BB20 ParadoxAI::Attach
+// NOTE: the console reads the player and the game camera without checks.
+void ParadoxAI::Attach(Entity* attached)
+{
+    AIController::Attach(attached);
+    Entity* player = PlayerCharacter();
+    fightCamera = g_game->camera;
+    fightCamera->RestartBlend(-1.0f);
+    fightCamera->resetTimer = 0.1f;
+    player->object->SetBoundingRadius(20.0f);
+    entity->object->SetBoundingRadius(20.0f);
+    hud::SetContext(character, 0xFB7FA14Du);
+    RegisterListener(entity, 0xF11D508Eu, true);
+    pendingCommand = 0;
+    field_1D0 = 0;
+    field_1DC = 0;
+    field_138 = 0;
+    phaseObjectCount = 0;
+    field_13C = 0;
+    field_1C0 = 0;
+    strafeMode = nullptr;
+    cameraMode = nullptr;
+    field_1E0 = -1;
+    phase = 0;
+    field_200 = field_1FD = field_1FE = false;
+    field_1E4 = 0;
+    field_1FF = false;
+    field_1C8 = 1.0f;
+    field_1CC = 5.0f;
+    field_1D4 = 1;
+    field_1BC = 1.0f;
+    settled = 1;
+    field_202 = field_203 = false;
+    arena = entity::FindEntity(0x4E16D4BEu);
+    static constexpr uint32_t kBars[4] = {0x392E4B66u, 0xF92BBACFu, 0xDD6C1E82u, 0xE573C33Au};
+    for (int i = 0; i < 4; ++i)
+        bars[i] = hud::CloneElement(hud::Find(kBars[i]), 0x821DC31Fu);
+    state = 0;
+    EnterState();
 }
 
 } // namespace ai

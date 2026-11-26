@@ -659,6 +659,12 @@ public:
     // TODO(0x0005E990 ParadoxAI::PlayCamera): pushes camera `name` with the
     // given interpolation.
     void PlayCamera(uint32_t name, float interp) { (void)name; (void)interp; }
+    // Slot 2: the fight starts: the game camera becomes the fight camera
+    // (blend restarted, reset every 0.1 s), Paradox and the player get a
+    // bounding radius of 20, the boss meter shows Paradox, Paradox joins
+    // listener group 0xF11D508E, the fight state is reset, the arena entity
+    // 0x4E16D4BE and the four HUD bars are looked up, and state 0 begins.
+    void Attach(Entity* entity) override;
     // Slot 3: leaves the listener groups and the boss state, takes the fight
     // camera off the player and its two modes off it, sends the player's
     // script state 0xBC1BA9E7 and deactivates the player, then the base.
@@ -675,12 +681,30 @@ public:
     void StartPhaseOne();
 
     int32_t phase = 0;            // +0x134
+    uint32_t field_138 = 0;       // +0x138
+    uint32_t field_13C = 0;       // +0x13C
     int32_t phaseObjectCount = 0;               // +0x140
     ape::ApeRefCounted* phaseObjects[8] = {};   // +0x160 NOTE: capacity assumed
     entity::GameCamera* fightCamera = nullptr;          // +0x1A0 attached to the player during the fight
     camera::StrafeCameraMode* strafeMode = nullptr;    // +0x1A4
     camera::CameraMode* cameraMode = nullptr;          // +0x1A8 the phase camera (PlayCamera)
     Entity* arena = nullptr;      // +0x1AC NOTE: the entity whose script names the phase objects
+    float field_1BC = 1.0f;       // +0x1BC
+    uint32_t field_1C0 = 0;       // +0x1C0
+    float field_1C8 = 1.0f;       // +0x1C8
+    float field_1CC = 5.0f;       // +0x1CC
+    uint32_t field_1D0 = 0;       // +0x1D0
+    uint32_t field_1D4 = 1;       // +0x1D4
+    uint32_t field_1DC = 0;       // +0x1DC
+    int32_t field_1E0 = -1;       // +0x1E0
+    uint32_t field_1E4 = 0;       // +0x1E4
+    hud::HudObject* bars[4] = {}; // +0x1EC clones (0x821DC31F) of HUD elements 0x392E4B66, 0xF92BBACF, 0xDD6C1E82, 0xE573C33A
+    bool field_200 = false;       // +0x200
+    bool field_1FD = false;       // +0x1FD
+    bool field_1FE = false;       // +0x1FE
+    bool field_1FF = false;       // +0x1FF
+    bool field_202 = false;       // +0x202
+    bool field_203 = false;       // +0x203
     uint32_t pendingCommand = 0;  // +0x1B0
     float pendingValue = 0.0f;    // +0x1B4
     bool hasPendingCommand = false;   // +0x1B8
