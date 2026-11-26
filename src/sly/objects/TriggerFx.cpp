@@ -101,7 +101,7 @@ FxTriggerInstanceDesc::FxTriggerInstanceDesc(const char* instanceName, FxTrigger
     texts.reserve(kFxTextCapacity);
 }
 
-// @func 0x0021E620 FxTriggerDef::Create
+// @func 0x0021E620 FxTriggerDef::Spawn
 Entity* FxTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kDefClass_FxTrigger) != 0))
@@ -256,7 +256,7 @@ EntityDef* CreatePushBlockTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlEl
     return new PushBlockTriggerDef(desc);
 }
 
-// @func 0x002219A8 PushBlockTriggerDef::Create
+// @func 0x002219A8 PushBlockTriggerDef::Spawn
 Entity* PushBlockTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->typeBits & kTrigType_PushBlock) != 0))
