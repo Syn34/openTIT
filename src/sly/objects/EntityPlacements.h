@@ -58,6 +58,11 @@ SLY_PLACEMENT(SafePlacement, ActorPlacement);                       // 0x00B1802
 SLY_PLACEMENT(TweenActorPlacement, ActorPlacement);                 // 0x00B186B0
 SLY_PLACEMENT(InteractivePropBPlacement, ActorPlacement);           // 0x00B188F0
 
+// Placements of the plain entity definitions (no members of their own).
+SLY_PLACEMENT(ChainPlacement, EntityPlacement);                     // 0x00B15180 (constructor 0x0074FA80)
+SLY_PLACEMENT(RopePlacement, EntityPlacement);                      // 0x00B162B0 (constructor 0x00750680)
+SLY_PLACEMENT(PlacementB193A8, EntityPlacement);                    // 0x00B193A8 (constructor 0x00760088)
+
 #undef SLY_PLACEMENT
 
 } // namespace objects

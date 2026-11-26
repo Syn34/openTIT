@@ -109,5 +109,17 @@ TweenActorPlacement::~TweenActorPlacement() = default;
 // @func 0x00757604 InteractivePropBPlacement::~InteractivePropBPlacement (deleting)
 InteractivePropBPlacement::~InteractivePropBPlacement() = default;
 
+// @func 0x0074FD10 ChainPlacement::~ChainPlacement
+// @func 0x00751130 ChainPlacement::~ChainPlacement (deleting)
+ChainPlacement::~ChainPlacement() = default;
+
+// @func 0x0073B790 RopePlacement::~RopePlacement
+// @func 0x00753A24 RopePlacement::~RopePlacement (deleting)
+RopePlacement::~RopePlacement() = default;
+
+// @func 0x007592B8 PlacementB193A8::~PlacementB193A8
+// @func 0x007593B0 PlacementB193A8::~PlacementB193A8 (deleting)
+PlacementB193A8::~PlacementB193A8() = default;
+
 } // namespace objects
 } // namespace sly
