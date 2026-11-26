@@ -151,7 +151,7 @@ public:
     AnimSet* Owner() const { return m_owner; }
 
 private:
-    ApeTFixedArray<AnimClipEntry> m_entries;   // +0x00 (default allocator, no index table)
+    ApeTFixedArray<AnimClipEntry> m_entries;   // +0x00 (default allocator, no handle table)
     uint16_t m_count = 0;
     AnimSet* m_owner;          // +0x10
 };

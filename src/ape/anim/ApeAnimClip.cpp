@@ -240,8 +240,8 @@ char g_animClipFileNameBuffer[0x41];   // 0x010C2708
 AnimClipPool::AnimClipPool(uint16_t capacity, AnimSet* owner)
     : m_owner(owner)
 {
-    m_entries.Init(capacity, false, GetDefaultAllocator());
-    for (uint16_t i = 0; i < m_entries.Count(); ++i) {
+    m_entries.Init(capacity, nullptr, GetDefaultAllocator());
+    for (uint16_t i = 0; i < m_entries.Capacity(); ++i) {
         new (&m_entries[i]) AnimClipEntry{};
         m_entries[i].kind = kEntry_Free;
     }
@@ -249,7 +249,7 @@ AnimClipPool::AnimClipPool(uint16_t capacity, AnimSet* owner)
 
 int16_t AnimClipPool::Alloc(int32_t kind)
 {
-    if (m_count >= m_entries.Count())
+    if (m_count >= m_entries.Capacity())
         return -1;
     const int16_t index = (int16_t)m_count++;
     m_entries[index].kind = kind;
