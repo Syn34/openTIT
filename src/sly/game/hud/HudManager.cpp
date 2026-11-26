@@ -3,6 +3,8 @@
 
 #include "ape/core/ApeString.h"
 #include "ape/anim/ApeAnimScript.h"
+#include "ape/anim/ApeAnimScriptVars.h"
+#include "sly/game/GameScripts.h"
 #include "ape/level/ApeGuiScript.h"
 #include "ape/level/ApeGuiTypes.h"
 #include "sly/anim/AnimLayer.h"
@@ -92,6 +94,37 @@ HudObject::~HudObject()
         delete animController;
         animController = nullptr;
     }
+}
+
+// @func 0x0035BD08 HudObject::StartLifetimeScript
+void HudObject::StartLifetimeScript()
+{
+    if (!field_10)
+        return;
+    // NOTE: the console also hands the animation controller to "this" (the
+    // object variable's +0x24 word); the port's variable keeps 32 bits there.
+    ape::ApeAnimScriptInstance* script = StartObjectScript(field_10, ObjectScriptRef(object), 0, true);
+    animScript = script;
+    if (!script)
+        return;
+    if (ape::ApeRefCounted* camera = GameCameraScriptRef()) {
+        ape::ApeAnimScriptVar* var = script->FindVar(0x760CB725u);   // "camera"
+        if (var && var->GetType() == ape::AnimScriptVarType::Object)
+            static_cast<ape::ApeAnimScriptObjectVar*>(var)->SetObject(camera);
+    }
+    // The element owns the script: it is not dropped when it finishes.
+    script->SetRemoveWhenFinished(false);
+    script->Update(1.0f / 60.0f);
+    // NOTE: the console warns here when the script has no commands
+    // ("hud object '%s' lifetime script '%s' has no commands").
+}
+
+// @func 0x0035BFB0 hud::StartLifetimeScripts
+void StartLifetimeScripts()
+{
+    auto& objects = Hud().objects;
+    for (uint32_t i = 0; i < objects.Count(); ++i)
+        objects.Data()[i].value->StartLifetimeScript();
 }
 
 // @func 0x0036A2FC HudObject::Update
@@ -790,17 +823,17 @@ int CountElementsAtAnchor(int32_t anchor)
 }
 
 // @func 0x00369D00 hud::SetContext
-void SetContext(uint32_t value, uint32_t name)
+void SetContext(entity::Entity* owner, uint32_t name)
 {
     Hud().contextName = name;
-    Hud().contextValue = value;
+    Hud().contextEntity = owner;
 }
 
 // @func 0x00369D14 hud::SetContextByString
-void SetContextByString(uint32_t value, const char* name)
+void SetContextByString(entity::Entity* owner, const char* name)
 {
     Hud().contextName = ape::HashNameNoCase(name);
-    Hud().contextValue = value;
+    Hud().contextEntity = owner;
 }
 
 // @func 0x0036960C hud::RequestScreen
@@ -824,14 +857,14 @@ void SetPowMeterPrefix(const char* prefix)
 void SnapMeterA()
 {
     if (HudObject* meter = Hud().meterA)
-        meter->shownValue = meter->targetValue;
+        meter->meterHoldTimer = meter->meterHoldTime;
 }
 
 // @func 0x00369658 hud::SnapMeterB
 void SnapMeterB()
 {
     if (HudObject* meter = Hud().meterB)
-        meter->shownValue = meter->targetValue;
+        meter->meterHoldTimer = meter->meterHoldTime;
 }
 
 namespace {
@@ -859,11 +892,11 @@ void SetMeterBVariant(bool on)
 }
 
 // @func 0x00369BC8 hud::SnapMeterOf
-void SnapMeterOf(uint32_t owner)
+void SnapMeterOf(const entity::Entity* owner)
 {
     for (HudObject* meter : Hud().meters) {
         if (meter->meterOwner == owner) {
-            meter->shownValue = meter->targetValue;
+            meter->meterHoldTimer = meter->meterHoldTime;
             return;
         }
     }

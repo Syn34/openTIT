@@ -14,6 +14,7 @@
 namespace ape::world { class ApeObj; }
 namespace ape { class ApeGuiObject; }
 namespace sly { namespace anim { class AnimController; } }
+namespace sly { namespace entity { class Entity; } }
 
 #include <cstdint>
 
@@ -26,6 +27,8 @@ enum HudTypeFlags : uint32_t {
     kHud_Object  = 0x00000001,   // every registered element
     kHud_Type2   = 0x00000002,   // NOTE: the pause/countdown screen element (goal timer test)
     kHud_Type4   = 0x00000004,
+    kHud_Type8   = 0x00000008,   // health meter (HudMeter)
+    kHud_Type10  = 0x00000010,   // POW meter (HudPowMeter)
     kHud_Type20  = 0x00000020,   // popup element (HudPopup)
     kHud_Type40  = 0x00000040,
     kHud_Type200 = 0x00000200,
@@ -55,7 +58,8 @@ struct HudObjectDef {
     char animPrefix[0x20] = {};      // +0x24 base of the element's clip names (empty: defName)
     uint32_t name = 0;               // +0x44
     ape::world::ApeObj* templateObject = nullptr;   // +0x48 the element's scene object (shared or cloned)
-    uint32_t field_4C = 0;           // +0x4C
+    uint32_t field_4C = 0;           // +0x4C lifetime anim script of the elements (HudObject::field_10)
+    uint32_t typeMask = 0;           // +0x50 element classes the definition can build (HudTypeFlags)
     int32_t anchor = kAnchor_None;   // +0x54 HudAnchor
     int32_t priority = 0;            // +0x70 order in the anchor stack (ascending)
     ape::Vec3 baseOffset{};          // +0x80 screen position (zero: the default position)
@@ -102,6 +106,33 @@ struct HudObjectDef {
     };
     TrackerFieldDef* trackerFields = nullptr;
     uint32_t trackerMarkerName = 0;
+    // Meter definitions (type bit 8, +0x94..+0xC0) overlay the members above.
+    struct MeterDef {
+        int32_t player = 0;          // +0x94 local player whose character the meter follows
+        uint8_t useOwner = 0;        // +0x98 follow an explicit owner instead
+        uint32_t fillA = 0;          // +0x9C geometry with the fill material (scrolled by the value)
+        uint32_t fillB = 0;          // +0xA0 second fill geometry
+        uint32_t frame = 0;          // +0xA4 shown with fill A
+        uint8_t showFill = 0;        // +0xA8 bit 0: fill A and the frame are shown
+        uint32_t extra = 0;          // +0xAC fill geometry shown with `showExtra`
+        uint32_t extra2 = 0;         // +0xB0 NOTE: looked up but never used
+        uint8_t showExtra = 0;       // +0xB4
+        float holdTime = 0.0f;       // +0xB8 delay before a loss drains the meter
+        float drainTime = 0.0f;      // +0xBC duration of the drain (0: at once)
+        uint8_t healthMeter = 0;     // +0xC0 clip names get the "HealthMeter" suffix
+    } meter;
+    // POW meter definitions (type bit 0x10, +0x94..+0x128).
+    struct PowMeterDef {
+        int32_t player = 0;          // +0x94
+        uint32_t fillA = 0;          // +0x98
+        uint32_t fillB = 0;          // +0x9C
+        uint32_t pips[10] = {};      // +0xA0 one geometry per POW level
+        uint32_t introScript = 0;    // +0xF4 global anim script started with the intro
+        uint32_t field_F8 = 0;       // +0xF8
+        uint32_t pipScripts[10] = {};   // +0xFC global anim script per pip
+        float holdTime = 0.0f;       // +0x124 NOTE: kept like the meter's; unused by the POW meter
+        float drainTime = 0.0f;      // +0x128
+    } pow;
 };
 
 // Anim script states of the element states (0x00F64F88): "NONE", "Intro",
@@ -173,6 +204,9 @@ public:
     void SetStateAnim(int state, uint32_t clip, bool loop);
     // 0x0036A4C0: sets a state of the element's anim script.
     void SetScriptState(uint32_t state);
+    // 0x0035BD08: starts the element's lifetime anim script (definition
+    // +0x4C) with "camera" and "this" bound.
+    void StartLifetimeScript();
     // Name the element is registered under (its own or its definition's).
     uint32_t RegisteredName() const { return name ? name : (def ? def->name : 0); }
 
@@ -251,11 +285,11 @@ public:
     float animSpeed = 1.0f;        // +0x188
     // Meter elements: owner (+0xA8, overlaying the text of other kinds) and
     // the flag byte +0xC0 (bit 5 switches the meter's script variant).
-    uint32_t meterOwner = 0;
+    entity::Entity* meterOwner = nullptr;
     uint8_t meterFlagsC0 = 0;
     uint32_t updateFlags = 0;      // +0xD0 bit 31 cleared by ResetUpdateFlags()
-    float targetValue = 0.0f;      // +0xD8
-    float shownValue = 0.0f;       // +0xDC
+    float meterHoldTime = 0.0f;    // +0xD8 meters: delay before a loss drains the meter
+    float meterHoldTimer = 0.0f;   // +0xDC meters: delay left (SnapMeter* restart it)
     HudTextField* textFields = nullptr;   // +0x148 def->textFieldCount entries
     uint32_t stateFlags = 0;       // +0x18C StateFlags
 };
@@ -268,7 +302,8 @@ struct HudManagerState {
     ape::ApeTSortedMap<HudObject*> updateList;   // 0x0106C258 elements updated per frame
     bool allEnabled = false;                     // 0x00F64CC4
     ape::ApeTArray<HudObject*> field_C2C0;       // 0x0106C2C0 NOTE: elements leave it on Refresh; use unknown
-    uint32_t contextValue = 0;                   // 0x00F64CB4
+    ape::ApeTSortedMap<HudObjectDef*> defs;      // 0x0106C210 element definitions by name
+    entity::Entity* contextEntity = nullptr;     // 0x00F64CB4 owner the next meter A follows
     uint32_t contextName = 0;                    // 0x0106C270
     bool pendingScreen = false;                  // 0x0106C274
     uint32_t pendingScreenName = 0;              // 0x0106C278
@@ -277,6 +312,7 @@ struct HudManagerState {
     uint32_t fallbackType200Name = 0;            // 0x00F64D10
     HudObject* meterA = nullptr;                 // 0x00F64CB8
     HudObject* meterB = nullptr;                 // 0x00F64CBC
+    HudObject* powMeter = nullptr;               // 0x00F64CC0
     ape::ApeTArray<HudObject*> meters;           // 0x0106C280 every meter element
     ape::ApeTArray<HudObject*> stacks[kAnchor_Count];   // 0x0106C2D4 elements per corner
 };
@@ -360,8 +396,8 @@ void ShowType4000ByName(uint32_t name, bool a, bool intro, bool b);  // 0x00367B
 int CountElementsAtAnchor(int32_t anchor);                           // 0x00367134
 // 0x00362830: mirrors an offset for a corner.
 void AnchorMirror(float out[3], int32_t anchor, const float in[3]);
-void SetContext(uint32_t value, uint32_t name);                      // 0x00369D00
-void SetContextByString(uint32_t value, const char* name);           // 0x00369D14
+void SetContext(entity::Entity* owner, uint32_t name);               // 0x00369D00
+void SetContextByString(entity::Entity* owner, const char* name);    // 0x00369D14
 void RequestScreen(bool skip, const char* name);                     // 0x0036960C
 void SetPowMeterPrefix(const char* prefix);                          // 0x00369CAC
 void SnapMeterA();                                                   // 0x00369D58
@@ -371,7 +407,9 @@ void SnapMeterB();                                                   // 0x003696
 void SetMeterBState(bool on);
 void SetMeterBVariant(bool on);
 // 0x00369BC8: snaps the meter of `owner` to its target value.
-void SnapMeterOf(uint32_t owner);
+void SnapMeterOf(const entity::Entity* owner);
+// 0x0035BFB0: every registered element starts its lifetime script.
+void StartLifetimeScripts();
 void ResetUpdateFlags();                                             // 0x00369500
 bool AnyUpdatingElementVisible();                                    // 0x003695A0
 

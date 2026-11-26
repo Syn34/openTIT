@@ -37,6 +37,12 @@ ape::world::ApeObj* HudCloneObject(ape::world::ApeObj* object)
     return object;
 }
 void HudSetObjectLod(ape::world::ApeObj* object, uint32_t lod) { SetHierarchyLod(object, lod); }
+// TODO(world object / script object bridge)
+ape::ApeRefCounted* ObjectScriptRef(ape::world::ApeObj*) { return nullptr; }
+// TODO(game world +0x1281E0 camera object)
+ape::ApeRefCounted* GameCameraScriptRef() { return nullptr; }
+// TODO(game world +0x128214)
+bool HudFrameTimeFrozen() { return false; }
 
 } // namespace hud
 } // namespace sly

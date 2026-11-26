@@ -14,9 +14,6 @@ namespace agl {
 
 // UV animation attached to a material (0x98 bytes on the console).
 // NOTE: contents not reconstructed yet.
-struct AglMaterialAnim {
-    uint8_t data[0x98] = {};
-};
 
 namespace {
 
