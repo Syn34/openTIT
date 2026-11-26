@@ -186,14 +186,6 @@ uint32_t ContextualMarkerFor(uint32_t characterHash)
     }
 }
 
-// TODO(0x00481A88 CreateLevelParams): parses "headlineString", the job
-// headline overrides and the level settings.
-LevelParams* CreateLevelParams(ape::xml::XmlDocument& document, ape::xml::XmlElement* element)
-{
-    (void)document;
-    (void)element;
-    return nullptr;
-}
 
 // @func 0x004829F0 SlyGame::LoadLevelParams
 void SlyGame::LoadLevelParams(ape::file::File& file)
