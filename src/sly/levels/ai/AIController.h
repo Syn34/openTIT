@@ -383,13 +383,33 @@ struct AIDamageInfo {
     ape::Vec3 position{};        // +0x10 where the hit landed (see field_0C)
 };
 
-// One remembered sighting (0x50 bytes on the console; eight per block).
+// One active melee attack volume (0x50 bytes on the console; sixteen in a
+// pool). NOTE: the port names them "sightings" after an older reading; an
+// attack started by the knowledge rules follows a point on the attacker
+// (an attach locator or a bone) and hits the target once when the point
+// passes close enough.
 struct AISighting {
-    Entity* entity = nullptr;                    // +0x00
-    uint32_t field_04 = 0;                       // +0x04
-    uint32_t kind = 0;                           // +0x08
+    Entity* entity = nullptr;                    // +0x00 attacker
+    Entity* target = nullptr;                    // +0x04
+    uint32_t kind = 0;                           // +0x08 attach point name (locator or bone)
     int32_t bone = -1;                           // +0x0C bone of the entity it refers to
-    uint8_t data[0x40] = {};                     // NOTE: rest not decoded
+    ape::Vec3 offset{};                          // +0x10 from the bone (or the attacker)
+    ape::Vec3 position{};                        // +0x20 world position this frame
+    float radius = 0.0f;                         // +0x30
+    uint32_t field_34 = 0;                       // +0x34 NOTE: stored, not read by the manager
+    uint32_t reaction = 0;                       // +0x38 hit record reaction
+    float damage = 0.0f;                         // +0x3C
+    float push = 0.0f;                           // +0x40
+};
+
+// Settings of a melee attack (AIManager::AddAttack).
+struct AIAttackDesc {
+    float damage = 0.0f;
+    float push = 0.0f;
+    float radius = 0.0f;
+    ape::Vec3 offset{};          // from the attach point
+    uint32_t field_34 = 0;
+    uint32_t reaction = 0;
 };
 
 // The level's AI manager (console pointer 0x00F557F0).
@@ -424,8 +444,19 @@ public:
     void OnLevelStart();
     void OnLevelEnd();
     void Reset();
+    // Set-up before a level runs: counters and the player sighting state
+    // cleared, the eight surround directions, empty sightings (0x00018DD0).
+    void Init();
     // Looks up the objects of the platform jump links (0x00019210).
     void ResolveJumpLinks();
+    // Starts a melee attack of `attacker` on `target` from the attach point
+    // `attachName` (a locator of the attacker's object definition, else a
+    // bone); ignored when all sixteen volumes are in use (0x0001B8C0).
+    void AddAttack(Entity* attacker, Entity* target, uint32_t attachName, const AIAttackDesc& desc);
+    // Moves every attack volume with its attacker and hits the target the
+    // volume's path passes (0x000193C0). Volumes of dead targets and
+    // volumes that hit are dropped.
+    void UpdateAttacks();
     // Shows or hides every non-ally AI entity (0x0001B2F4).
     void SetEntitiesVisible(bool visible);
     // Hands a script command to every controller in the active list
@@ -435,24 +466,29 @@ public:
     // the player and the allies (0x0001AC80).
     Entity* PickTarget(const AIController* controller) const;
 
-    // Eight records at +0x50 the constructor clears. NOTE: users not found
-    // yet; the two vectors start at the shared zero vector.
+    // Eight records at +0x50, one per compass direction around a target
+    // (Init points `direction` 45 degrees apart). NOTE: users not found yet.
     struct Record50 {
         uint32_t field_00 = 0;                         // +0x00
         ape::Vec3 field_10{};                          // +0x10
-        ape::Vec3 field_20{};                          // +0x20
+        ape::Vec3 direction{};                         // +0x20
     };
     static constexpr int kRecord50Count = 8;
 
     int32_t controllerCount = 0;                       // +0x00
     int32_t activeCount = 0;                           // +0x04
     int32_t allyCount = 0;                             // +0x10
+    int32_t field_0C = 0;                              // +0x0C NOTE: cleared by Init
     int32_t sightingCount = 0;                         // +0x18
+    bool field_1C = false;                             // +0x1C NOTE: cleared by Init
     float killHeight = 0.0f;                           // +0x20 below this the AI snaps back to its entity
+    uint32_t field_24 = 0;                             // +0x24 NOTE: cleared by Init
     float targetingPause = 0.0f;                       // +0x28 no new targets while positive
     float timeSinceSeen = 0.0f;                        // +0x2C
     ape::Vec3 lastPlayerPosition{};                    // +0x30
     float field_40 = 1.0f;                             // +0x40 NOTE: meaning unknown
+    uint32_t field_44 = 0;                             // +0x44 NOTE: cleared by Init
+    uint32_t field_48 = 0;                             // +0x48 NOTE: cleared by Init
     Record50 records50[kRecord50Count];                // +0x50 (0x40 bytes apart)
     AIController* controllers[kMaxControllers] = {};   // +0x250
     AIController* active[kMaxControllers] = {};        // +0x650

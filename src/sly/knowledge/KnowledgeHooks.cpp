@@ -1,6 +1,7 @@
 // openTIT - Knowledge hooks: TODO stubs (see KnowledgeHooks.h).
 #include "sly/knowledge/KnowledgeHooks.h"
 #include "sly/game/GameMessages.h"
+#include "sly/levels/ai/AIController.h"
 
 namespace sly {
 namespace knowledge {
@@ -38,8 +39,20 @@ void CharacterSetAnimSpeed(EntityComponent*, float) {}
 bool SoundAlertSuppressed(Entity*) { return false; }
 void SkinRequestFire(EntityComponent*) {}
 bool EntityHasAttachPoint(Entity*, uint32_t) { return true; }
-// TODO(0x0001B8C0): the AI manager's attack sighting list lives in sly/levels/ai.
-void AIAddMeleeAttack(Entity*, Entity*, uint32_t, const MeleeAttackParams&) {}
+void AIAddMeleeAttack(Entity* attacker, Entity* target, uint32_t bone, const MeleeAttackParams& params)
+{
+    levels::ai::AIManager* manager = levels::ai::GetAIManager();
+    if (!manager)
+        return;
+    levels::ai::AIAttackDesc desc;
+    desc.damage = params.field_3C;
+    desc.push = params.field_40;
+    desc.radius = params.field_30;
+    desc.offset = params.offset;
+    desc.field_34 = params.field_34;
+    desc.reaction = params.field_38;
+    manager->AddAttack(attacker, target, bone, desc);
+}
 
 } // namespace knowledge
 } // namespace sly
