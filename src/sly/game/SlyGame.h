@@ -549,6 +549,7 @@ public:
     // show the current settings (SlyGameOptionPages.cpp).
     void RefreshControlsPage(ape::ApeGuiObject* screen);
     void RefreshAudioPage(ape::ApeGuiObject* screen);
+    void RefreshDisplayPage(ape::ApeGuiObject* screen);
     // Shows the running level's headline (see SlyGameMenus.cpp).
     void ShowLevelHeadline(bool force);
     // Marks the running level visited for the all-levels trophy.
