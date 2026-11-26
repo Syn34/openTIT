@@ -2,6 +2,10 @@
 // the level chunk handlers of every definition and instance type.
 #include "ape/world/ApeWorldInit.h"
 
+#include "agl/AglPrimitives.h"
+#include "agl/AglResources.h"
+#include "agl/AglShaderClass.h"
+#include "agl/AglState.h"
 #include "ape/core/ApeSystem.h"
 #include "ape/memory/ApeTFreeList.h"
 #include "ape/sys/ApeIff.h"
@@ -54,11 +58,51 @@ int LoadEmitterDefChunk(iff::IffReader*, void*)
     return 1;
 }
 
-// TODO(0x00586DB4 InitWorldDebugMaterials) debug materials of the world
-// module (shader classes 0x6DC54CB1/0x3A45928D) and their vertex layout.
+// Debug drawing of the world module (regions, occluders): two shader
+// classes, a translucent material of the first and a position-only vertex
+// layout (0x0119509C / 0x0119509D, 0x00F88964..0x00F8896C, 0x0116BE00).
+struct WorldDebugDraw {
+    bool initialised = false;
+    bool disabled = false;
+    agl::AglShaderClass* lineClass = nullptr;
+    agl::AglShaderClass* solidClass = nullptr;
+    agl::AglMaterial* material = nullptr;
+    agl::AglVertexDecl decl;
+    // NOTE: the console also sets up a 0x40-entry pool (0x011950A0) with
+    // three counters for the queued debug shapes; their type is not known.
+    uint16_t counts[3] = {};
+};
+WorldDebugDraw s_worldDebug;
+
+// @func 0x00586DB4 InitWorldDebugMaterials
 bool InitWorldDebugMaterials()
 {
-    return false;
+    WorldDebugDraw& debug = s_worldDebug;
+    if (debug.disabled)
+        return false;
+    if (debug.initialised)
+        return true;
+    debug.lineClass = agl::GetShaderClass(0x6DC54CB1u);    // NOTE: class names unknown
+    debug.solidClass = agl::GetShaderClass(0x3A45928Du);
+    if (!g_engineConfig.debugDrawEnabled || !debug.lineClass || !debug.solidClass)
+        return false;
+    debug.counts[0] = debug.counts[1] = debug.counts[2] = 0;
+    agl::AglMaterial* material = agl::AglMaterial::CreateWithClass(debug.lineClass);
+    debug.material = material;
+    // Depth tested for equality without writes, alpha blended.
+    material->depthTest = false;
+    material->depthFunc = agl::gpu::CompareFunc::Equal;
+    material->blendDst = agl::gpu::BlendFactor::OneMinusSrcAlpha;
+    material->blendEnable = true;
+    material->blendSrc = agl::gpu::BlendFactor::SrcAlpha;
+    material->blendEquation = agl::gpu::BlendEquation::Add;
+    static const agl::AglVertexStream kPositionOnly[] = {
+        { 0, static_cast<uint8_t>(agl::gpu::VertexAttribType::Float), 3, 0, 0, false },
+        { 0, 0, 0, 0, 0, false },
+    };
+    agl::VertexDeclInit(&debug.decl, kPositionOnly, 12);
+    debug.initialised = true;
+    return true;
 }
 
 // TODO(0x00586BF4 RecordWorldDebugPrograms) pre-recorded program blocks of
@@ -67,10 +111,28 @@ void RecordWorldDebugPrograms()
 {
 }
 
-// TODO(0x00586B3C InitWorldShadowMaterial) clone of built-in material 0
-// used for shadow volumes.
+// Material and box mesh of the world's shadow volume / occluder drawing
+// (0x00F88960 and 0x00F8895C on the console). NOTE: the users are not ported.
+agl::AglMaterial* s_shadowVolumeMaterial = nullptr;
+agl::AglSubMesh* s_shadowVolumeBox = nullptr;
+
+// @func 0x00586B3C InitWorldShadowMaterial
+// A copy of built-in material 0 that ignores the depth buffer (always
+// passes, no writes), never culls and does not blend; and a solid box mesh
+// drawn with the built-in material.
 void InitWorldShadowMaterial()
 {
+    agl::AglMaterial* base = agl::GetBuiltinMaterial(0);
+    agl::AglMaterial* material = agl::AglMaterial::Clone(*base);
+    s_shadowVolumeMaterial = material;
+    material->blendDst = agl::gpu::BlendFactor::Zero;
+    material->depthTest = false;
+    material->depthFunc = agl::gpu::CompareFunc::Always;
+    material->blendEquation = agl::gpu::BlendEquation::Add;
+    material->cullFrontFace = 0;
+    material->blendEnable = false;
+    material->blendSrc = agl::gpu::BlendFactor::One;
+    s_shadowVolumeBox = agl::CreateBoxMesh(base, true);
 }
 
 // TODO(0x005868D0 InitWorldShadowMaps) shadow map render target and

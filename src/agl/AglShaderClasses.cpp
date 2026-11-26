@@ -2057,8 +2057,8 @@ public:
 };
 
 class SlyPanoramaTechnique : public AglTechnique {
-    // TODO(0x005C9948 SlyPanoramaTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     // @func 0x007ABDBC SlyPanoramaTechnique::~SlyPanoramaTechnique
     // @func 0x007AF470 SlyPanoramaTechnique::~SlyPanoramaTechnique (deleting)
     ~SlyPanoramaTechnique() override = default;
@@ -2395,6 +2395,17 @@ void SlyPanoramaTechnique::BeginMaterial(AglMaterial* material)
     if (material->anim)
         UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
     UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005C9948 SlyPanoramaTechnique::Draw
+// The standard lit draw: cached fog (colour 0x20), lights from 0x10 and the
+// local eye in 1, item alpha in 2.
+void SlyPanoramaTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    UploadItemLighting(item, 0x10, 1);
+    FinishItemDraw(item, 2);
 }
 
 // @func 0x005CAD48 SlyPropTechnique::BeginMaterial
