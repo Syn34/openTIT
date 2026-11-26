@@ -12,6 +12,7 @@
 #include "sly/entity/ActorEntities.h"
 #include "sly/entity/EntityDef.h"
 #include "sly/entity/EntityHooks.h"
+#include "sly/entity/PhysicalEntity.h"
 #include "sly/entity/PhysicsHooks.h"
 #include "sly/entity/PropEntities.h"
 
@@ -88,11 +89,12 @@ EntityDef* CreateActorDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem
     return def;
 }
 
-// TODO(0x000C4020 PhysicalEntityDefDesc::Parse) TODO(0x000C30E8 PhysicalEntityDef::PhysicalEntityDef):
-// the physical definition (description 0x1A0 bytes) is not ported.
-EntityDef* CreatePhysicalEntityDef(ape::xml::XmlElement*, ape::xml::XmlElement*, const EntityDefDesc&, const EntityDef*)
+EntityDef* CreatePhysicalEntityDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                   const EntityDefDesc& loader, const EntityDef* parent)
 {
-    return nullptr;
+    PhysicalEntityDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    return new PhysicalEntityDef(desc);
 }
 
 struct DefClass {

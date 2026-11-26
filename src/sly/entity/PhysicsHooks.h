@@ -22,6 +22,23 @@ struct ActorPartDesc;
 // 0x4438A28F add property 0x67E6342B. Null when the part names no body or
 // the body is not found.
 void* ActorPartCreateBody(const ActorPartDesc& part, uint32_t navMode);
+// Material of a rigid body: mass (hkpRigidBody::getMass 0x00922918), friction
+// (+0x8C), restitution (+0x90) and the damping halves (+0x194/+0x196).
+struct RigidBodyMaterial {
+    float mass = -1.0f, friction = -1.0f, restitution = -1.0f, linearDamping = -1.0f, angularDamping = -1.0f;
+};
+RigidBodyMaterial RigidBodyGetMaterial(void* body);
+// The template body of a physical definition (inline in 0x000C30E8): the
+// named body of the level's physics data (0x0034654C on the game world's
+// physics resource +0x1281D4), copied (hkpRigidBodyCinfo 0x0091FB50 /
+// 0x0091D208, hkpRigidBody 0x0091E100) with its name; fixed/keyframed motion
+// types get mass properties from `mass` (1 when not positive); non-negative
+// material values replace the template's; collision filter layer 6;
+// `highQuality` sets quality type 6. Without a name a non-zero `offset`
+// builds a body of its own (NOTE: that path is undecodable data in the
+// reference). Null when nothing is built.
+void* PhysicalDefCreateBody(const char* bodyName, const ape::Vec3& offset, float mass, float friction,
+                            float restitution, float linearDamping, float angularDamping, bool highQuality);
 // Name of a Havok rigid body (hkpWorldObject name, +0x78 without its low bit).
 const char* HavokBodyName(void* body);
 

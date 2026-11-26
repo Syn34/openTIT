@@ -21,8 +21,77 @@ namespace sly {
 namespace components { class OffscreenMarkerComponent; }
 namespace entity {
 
-class PhysicalEntityDef : public EntityDef {
+// The fields a physical definition shares with its description (description
+// +0xA8..+0x157 = definition +0xC0..+0x177). Unnamed ones carry the
+// attribute hash they are read from.
+struct PhysicalDefFields {
+    float gravityScale = 1.0f;               // 0xC0 attribute 0xCEDD379A
+    float field_C4 = -1.0f;                  // 0xC4 attribute 0x43B894DB
+    float field_C8 = 1.0f;                   // 0xC8 attribute 0xFA012435 (not negative)
+    // Damage taken per hit category (0 = immune).
+    float impactScale = 0.0f;                // 0xCC category 1 (attribute 0x824F3B6F)
+    float blastScale = 0.0f;                 // 0xD0 category 2 (attribute 0xAD6099F3)
+    float meleeScale = 1.0f;                 // 0xD4 category 3 (attribute 0x825857B0)
+    float projectileScale = 1.0f;            // 0xD8 category 4 (attribute 0x86D97BF8)
+    float field_DC = 1.0f;                   // 0xDC attribute 0x6D6DEDAC
+    float field_E0 = -1.0f;                  // 0xE0 attribute 0x48110963
+    ape::Vec3 angles{};                      // 0xF0 attribute 0xBCEEA49F (degrees in the file)
+    float rollRate = 0.0f;                   // 0x100 radians per second about the forward axis (flag 22; 0x0026F042, degrees)
+    float field_104 = 0.0f;                  // 0x104 attribute 0x287EDCD7 (degrees in the file)
+    float field_108 = 0.0f;                  // 0x108 attribute 0xE6233EB6
+    float field_10C[2] = {};                 // 0x10C attribute 0x0D13FD3F (second: degrees, halved)
+    float field_114 = 0.0f;                  // 0x114 attribute 0x38D66ECB
+    float field_118 = 0.0f;                  // 0x118 attribute 0x6C01B0DC
+    float field_11C = 0.0f;                  // 0x11C cosine of attribute 0x7DEAD86B (degrees; -1 outside 0..360)
+    float field_120 = 0.0f;                  // 0x120 attribute 0x717526C2
+    float field_124 = 0.0f;                  // 0x124 attribute 0x56C86E35 (degrees in the file)
+    float field_128 = 0.0f;                  // 0x128 attribute 0xDD16AC83
+    float launchValue = 0.0f;                // 0x12C handed to the anim script on launch (0x263F3CA1)
+    float field_130 = 0.0f;                  // 0x130 attribute 0xF4521F7F, squared
+    float field_134 = 0.0f;                  // 0x134 attribute 0xA11783B1, squared
+    float field_138 = 0.0f;                  // 0x138 attribute 0xF58DBE1F
+    uint32_t impactSoundName = 0;            // 0x13C hash 0x2D9FE345
+    uint32_t field_140 = 0;                  // 0x140 hash 0xC8E6EA68
+    uint32_t carriedDefName = 0;             // 0x144 definition of the carried entity (0x51D7D9E6), 0 for none
+    uint32_t field_148 = 0;                  // 0x148 hash 0x64129428
+    uint32_t field_14C = 0;                  // 0x14C hash 0x632DA119
+    // 0x150 child element 0x03C599D8: four floats and a bool; +0x161 marks
+    // that the element was given.
+    float field_150[4] = {};                 // 0x150 attributes 0x77C17F6F, 0x9D9B30D5, 0x6CA62860, 0x6CA62772
+    bool field_160 = false;                  // 0x160 attribute 0xB38E5179
+    bool hasField150 = false;                // 0x161
+    // 0x164 child element 0x1DD0B478 (sets flag 18): attributes 0xC40CA429,
+    // 0x17D91276, 0x52EB1B8F.
+    float field_164[3] = {};
+    uint32_t damageTypes = 0;                // 0x170 bit per damage type (child element 0x7C28C95E)
+    uint32_t defFlags = 0;                   // 0x174 PhysicalEntityDef::Flags (bits 9-31)
+};
+
+// Description of physical definitions (ScriptedEntityDefDesc + 0x124 bytes).
+struct PhysicalEntityDefDesc : ScriptedEntityDefDesc, PhysicalDefFields {
+    // The defaults the loader's "projectile" class starts from (the console
+    // initialiser 0x0074596C with constant arguments; NOTE: the values it
+    // takes from the stack are not recovered and stay at their defaults).
+    explicit PhysicalEntityDefDesc(const EntityDefDesc& loader);
+    // Scripted attributes, then the physical ones; the description's
+    // current values (or a physical parent's) are the defaults (0x000C4020).
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+
+    ape::Vec3 offset{};                      // 0x80 attribute 0x63662D61
+    const char* bodyName = "";               // 0x90 "colObjName": rigid body of the level's physics data
+    float mass = -1.0f;                      // 0x94 attribute 0x0023FEF4
+    float friction = -1.0f;                  // 0x98 attribute 0xD9BA76FA (negative: the body's)
+    float restitution = -1.0f;               // 0x9C attribute 0x5AF2884A
+    float linearDamping = -1.0f;             // 0xA0 attribute 0xA1FDE21D
+    float angularDamping = -1.0f;            // 0xA4 attribute 0x8933D0E0
+};
+
+class PhysicalEntityDef : public ScriptedEntityDef, public PhysicalDefFields {
 public:
+    // Copies the description and builds the rigid body the entities clone
+    // (0x000C30E8).
+    explicit PhysicalEntityDef(const PhysicalEntityDefDesc& desc);
     ~PhysicalEntityDef() override;
 
     // Fall acceleration of the entity's body: the physics world's gravity
@@ -36,23 +105,18 @@ public:
     enum Flags : uint32_t {
         kDefFlag_NoKind2Interaction = 1u << 9,
         kDefFlag_DieOnHit           = 1u << 10,   // NOTE: name from use (SweepTo)
-        kDefFlag_FaceMotion         = 1u << 22,   // NOTE: name from use (SweepTo)
+        kDefFlag_HighQuality        = 1u << 11,   // the body gets Havok quality type 6
         kDefFlag_NoInteraction      = 1u << 15,
+        kDefFlag_Field164           = 1u << 18,   // child element 0x1DD0B478 given
+        kDefFlag_FaceMotion         = 1u << 22,   // NOTE: name from use (SweepTo)
     };
 
-    float gravityScale = 0.0f;               // 0xC0
-    float rollRate = 0.0f;                   // 0x100 radians per second about the forward axis (flag 22)
-    float launchValue = 0.0f;                // 0x12C handed to the anim script on launch. NOTE: meaning unknown
-    // Damage taken per hit category (0 = immune). NOTE: filled by the
-    // definition parser (not ported).
-    float impactScale = 0.0f;                // 0xCC category 1
-    float blastScale = 0.0f;                 // 0xD0 category 2
-    float meleeScale = 0.0f;                 // 0xD4 category 3
-    float projectileScale = 0.0f;            // 0xD8 category 4
-    uint32_t impactSoundName = 0;            // 0x13C
-    uint32_t carriedDefName = 0;             // 0x144 definition of the carried entity, 0 for none
-    uint32_t defFlags = 0;                   // 0x174 Flags
-    void* collisionShape = nullptr;          // 0x190
+    ape::Vec3 offset{};                      // 0x180 PhysicalEntityDefDesc::offset
+    void* collisionShape = nullptr;          // 0x190 the template rigid body (Havok)
+
+protected:
+    // NOTE: for subclasses whose console constructors are not ported yet.
+    PhysicalEntityDef() = default;
 };
 
 class PhysicalEntity : public ScriptedEntity, public EntityInterface17C, public EntityInterface180 {
