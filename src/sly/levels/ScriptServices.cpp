@@ -1,6 +1,7 @@
 // openTIT - TODO stubs for the game services used by the script commands #83-#269.
 // Each returns what the original returns for a missing object.
 #include "sly/levels/ScriptServices.h"
+#include "sly/game/AudioSystem.h"
 #include "sly/game/goals/JobManager.h"
 
 #include "ape/xml/ApeXml.h"
@@ -152,9 +153,8 @@ void AudioStopCategory(uint32_t category, bool flag) { (void)category; (void)fla
 void AudioStopAll() {}
 
 void SoundVarStop(ape::ApeAnimScriptVar* var, bool flag) { (void)var; (void)flag; }
-// TODO(0x0044A78C / 0x0044CEB0): sound registers are not modelled by the audio port.
-void AudioSetVoiceRegister(uint32_t voice, int32_t reg, int8_t value) { (void)voice; (void)reg; (void)value; }
-void AudioSetGlobalRegister(int32_t reg, int8_t value) { (void)reg; (void)value; }
+void AudioSetVoiceRegister(uint32_t voice, int32_t reg, int8_t value) { audio::SetVoiceRegister(voice, reg, value); }
+void AudioSetGlobalRegister(int32_t reg, int8_t value) { audio::SetGlobalRegister(reg, value); }
 // TODO(0x010AFEA4): the audio port keeps the music voice private.
 uint32_t AudioMusicVoice() { return 0; }
 void MusicStop(bool flag) { (void)flag; }

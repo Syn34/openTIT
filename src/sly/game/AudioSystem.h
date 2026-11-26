@@ -37,6 +37,19 @@ public:
     virtual void UnloadBank(uint32_t bank) { (void)bank; }
     virtual void StartStream(uint32_t stream, uint32_t arg) { (void)stream; (void)arg; }
     virtual void SetMasterParams(int voices) { (void)voices; }
+    // Sound script registers: per voice and global (value range -128..127).
+    virtual void SetVoiceRegister(SoundHandle h, int reg, int8_t value) { (void)h; (void)reg; (void)value; }
+    virtual void SetGlobalRegister(int reg, int8_t value) { (void)reg; (void)value; }
+    // Pause groups: pauses the voices of the groups in 'mask' / resumes them.
+    virtual void PauseGroups(uint32_t mask) { (void)mask; }
+    virtual void ResumeGroups(uint32_t mask) { (void)mask; }
+    // Speaker layout reported by the output (2 stereo, 3 5.1, 4 7.1).
+    virtual int SpeakerMode() { return 2; }
+    // The library voices a sound handle drives and the current output level
+    // of one of them (used for lip sync and meters).
+    virtual int SubVoiceCount(SoundHandle h) { (void)h; return 0; }
+    virtual uint32_t SubVoice(SoundHandle h, int index) { (void)h; (void)index; return 0; }
+    virtual float SubVoiceLevel(uint32_t subVoice) { (void)subVoice; return 0.0f; }
 };
 
 AudioBackend& Backend();
@@ -112,6 +125,14 @@ struct Voice {
     SoundHandle handle = 0;     // +0x10 library handle
     SoundDef* def = nullptr;    // +0x14
     bool countedInCategory = false; // +0x1C
+    float volume = 1.0f;        // +0x5C effective volume (requested * def * scale)
+    float requestedVolume = 1.0f; // +0x60
+    float defVolume = 1.0f;     // +0x64 NOTE: set when the voice starts (0x00444610, not ported)
+    float volumeScale = 1.0f;   // +0x68 NOTE: idem
+    uint32_t field_90 = 0;      // NOTE: passed with the position, meaning unknown
+    bool positional = false;    // +0x94 the voice follows a world position
+    float position[3] = {};     // +0xC0
+    bool positionDirty = false; // +0xD0 the position changed since the last update
     uint32_t trackKey = 0;      // +0xAC key in the tracked-voice map (0 = none)
     int32_t counterIndex = 0;   // +0xB4 index into the per-category counters
 };
@@ -153,6 +174,24 @@ void StopCategory(SoundCategory category, bool force);
 void StopCategoryByHash(uint32_t nameHash, bool force);
 // Stops the voice registered under 'key' in the tracked-voice map.
 void StopTrackedVoice(uint32_t key);
+
+// Sound script registers of a voice / of the library.
+void SetVoiceRegister(VoiceId id, int reg, int8_t value);
+void SetGlobalRegister(int reg, int8_t value);
+// Moves a positional voice and sets its volume. False when audio is off.
+bool SetVoicePosition(VoiceId id, const float position[3], float volume, uint32_t field_90);
+// Highest output level of the library voices of a sound (0 if none).
+float VoiceLevel(VoiceId id);
+
+// Pausing: everything (e.g. the pause menu) and individual pause groups.
+void SetPauseAll(bool paused);
+bool IsPauseAll();
+void PauseGroups(uint32_t mask);
+void ResumeGroups(uint32_t mask);
+// Number of output channels of the speaker layout (2, 6 or 8).
+int OutputChannelCount();
+// Starts fading bus 'bus' (0..3) to 'volume' over 'seconds' (at once for 0).
+void FadeBusVolume(uint32_t bus, float volume, float seconds);
 
 // The music voice and its sound reference (0x010AFEA4 / 0x00F65B70).
 void SetMusicVoice(VoiceId id, SoundName* name);
