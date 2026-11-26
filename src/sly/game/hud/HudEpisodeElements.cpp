@@ -434,8 +434,8 @@ int CompareUpgradesNewFirst(const void* a, const void* b)
 {
     const uint32_t ia = *static_cast<const uint32_t*>(a);
     const uint32_t ib = *static_cast<const uint32_t*>(b);
-    const bool newA = (UpgradeState(ia) & kUpgrade_New) != 0;
-    const bool newB = (UpgradeState(ib) & kUpgrade_New) != 0;
+    const bool newA = (UpgradeStateOf(ia) & kUpgrade_New) != 0;
+    const bool newB = (UpgradeStateOf(ib) & kUpgrade_New) != 0;
     if (newA == newB)
         return int(ia) - int(ib);
     return newB ? 1 : -1;
@@ -469,7 +469,10 @@ void HudType800::ShowTimed(float fade, bool flag, HudObject* linkedTo, const uin
             for (uint32_t i = 0; i < LoadedUpgradeCount(); ++i)
                 entries.PushBack(i);
         } else {
-            CollectAvailableUpgrades(entries);
+            std::vector<uint32_t> unlocked;
+            CollectUnlockedUpgrades(unlocked);
+            for (uint32_t index : unlocked)
+                entries.PushBack(index);
             if (entries.Count() != 0)
                 std::qsort(entries.Data(), entries.Count(), sizeof(uint32_t), CompareUpgradesNewFirst);
         }
@@ -479,7 +482,7 @@ void HudType800::ShowTimed(float fade, bool flag, HudObject* linkedTo, const uin
             if (const UpgradeEntry* upgrade = GetUpgradeEntry(entries[i])) {
                 uint32_t objectName = 0;
                 for (const UpgradeIcon& entry : kUpgradeIcons) {
-                    if (entry.character == upgrade->field_08) {
+                    if (entry.character == upgrade->type) {
                         objectName = entry.object;
                         break;
                     }
@@ -511,9 +514,9 @@ void HudType800::RefreshRows()
             const uint32_t upgradeIndex = entries[wrapped];
             if (const UpgradeEntry* upgrade = GetUpgradeEntry(upgradeIndex)) {
                 SetListFieldText(info.fields, info.fieldCount, nameField, upgrade->name);
-                const char* price = (UpgradeState(upgradeIndex) & kUpgrade_Purchased)
+                const char* price = (UpgradeStateOf(upgradeIndex) & kUpgrade_Bought)
                                         ? "$HIDEOUT_THIEFNET_SOLD"
-                                        : ape::TempFormat("%d", upgrade->field_0C);
+                                        : ape::TempFormat("%d", upgrade->cost);
                 SetListFieldText(info.fields, info.fieldCount, priceField, price);
             }
         } else {
@@ -659,14 +662,14 @@ void HudType800::Update(float dt)
             // Buy the selected upgrade.
             const UpgradeEntry* upgrade = GetUpgradeEntry(entries[old]);
             auto* script = static_cast<ape::ApeAnimScriptInstance*>(animScript);
-            if (!upgrade || !UpgradeBuy(upgrade->field_00)) {
+            if (!upgrade || !UpgradeBuy(upgrade->id)) {
                 if (script)
                     script->SetStateAndUpdate(kScript_PurchaseFailed);
             } else {
                 if (script)
                     script->SetStateAndUpdate(kScript_Purchase);
                 RefreshRows();
-                if (upgrade->field_94)
+                if (upgrade->notAbility)
                     GameWorldMarkAbilitiesChanged();
             }
         } else if (!(pressed & kInput_Up) && !(listFlags & kE_QueuedUp)) {
@@ -740,8 +743,8 @@ void HudType800::Update(float dt)
         if (const UpgradeEntry* upgrade = GetUpgradeEntry(index)) {
             SetListFieldText(info.fields, info.fieldCount, kField800_Empty, upgrade->desc);
             const char* coins = "";
-            if (!(UpgradeState(index) & kUpgrade_Purchased))
-                coins = UpgradeAffordable(upgrade->field_00) ? "$THIEFNET_COINS_GOOD" : "$THIEFNET_COINS_BAD";
+            if (!(UpgradeStateOf(index) & kUpgrade_Bought))
+                coins = UpgradeAffordable(upgrade->id) ? "$THIEFNET_COINS_GOOD" : "$THIEFNET_COINS_BAD";
             SetListFieldText(info.fields, info.fieldCount, kField800_Cleared, coins);
         }
     }
@@ -812,7 +815,7 @@ void HudType800::PlaceRows()
         if (!((index >= 0 && index < int32_t(count)) || count > 5))
             continue;
         const uint32_t wrapped = (selected + count + uint32_t(offsetRow)) % count;
-        const uint8_t state = UpgradeState(entries[wrapped]);
+        const uint8_t state = UpgradeStateOf(entries[wrapped]);
         // The upgrade's icon at the row's icon locator.
         if (wrapped < entryObjects.Count() && entryObjects[wrapped]) {
             if (const ape::world::ApeObj* locator = FindInHierarchy(object, kIconLocators800[row])) {
@@ -824,12 +827,12 @@ void HudType800::PlaceRows()
         }
         // Sold upgrades show the row copy and the first extra object.
         if (rows[row] && row < info.rowCount) {
-            rows[row]->SetVisible((state & kUpgrade_Purchased) != 0, true);
+            rows[row]->SetVisible((state & kUpgrade_Bought) != 0, true);
             if (const ape::world::ApeObj* locator = FindInHierarchy(object, info.rowLocators[row]))
                 place(rows[row], locator);
         }
         if (rowExtraA[row])
-            rowExtraA[row]->SetVisible((state & kUpgrade_Purchased) != 0, true);
+            rowExtraA[row]->SetVisible((state & kUpgrade_Bought) != 0, true);
         // New upgrades show the second one and the "new" text; they stop
         // being new once the list is closed.
         if (rowExtraB[row]) {

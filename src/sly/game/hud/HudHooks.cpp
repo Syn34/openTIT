@@ -54,13 +54,10 @@ bool HudFrameTimeFrozen() { return false; }
 bool GameWorldInLoadingState() { return game::GameWorldState(1) == 12; }
 
 int ProfileCoinCount(uint8_t profile) { return int(game::ProfileProgress(profile).coins); }
-int ProfileCoinCount(uint8_t profile) { (void)profile; return 0; }
 // TODO(game world +0x70)
 int GameWorldCoins() { return 0; }
-// TODO(0x0049E0DC)
-bool UpgradeBuy(uint32_t id) { (void)id; return false; }
-// TODO(0x0049E268)
-bool UpgradeAffordable(uint32_t id) { (void)id; return false; }
+bool UpgradeBuy(uint32_t id) { return BuyUpgrade(id); }   // 0x0049E0DC
+bool UpgradeAffordable(uint32_t id) { return CanBuyUpgrade(id); }   // 0x0049E268
 // TODO(game world +0x1AC bit 1)
 void GameWorldMarkAbilitiesChanged() {}
 
@@ -83,8 +80,8 @@ void SetAppInputHeld(bool held) { s_appInputHeld = held; }
 
 namespace sly {
 namespace hud {
-bool UpgradeIsNew(uint32_t index) { return (UpgradeState(index) & kUpgrade_New) != 0; }
-void UpgradeClearNew(uint32_t index) { UpgradeState(index) &= uint8_t(~kUpgrade_New); }
+bool UpgradeIsNew(uint32_t index) { return (UpgradeStateOf(index) & kUpgrade_New) != 0; }
+void UpgradeClearNew(uint32_t index) { UpgradeStateOf(index) &= uint8_t(~kUpgrade_New); }
 } // namespace hud
 } // namespace sly
 

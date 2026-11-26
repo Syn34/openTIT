@@ -35,28 +35,6 @@ UpgradeEntry* GetUpgradeEntry(uint32_t index)
     return index < kUpgradeCount ? &s_upgrades[index] : nullptr;
 }
 
-uint32_t& LoadedUpgradeCount()
-{
-    static uint32_t count = 0;   // 0x010C1A9C
-    return count;
-}
-
-uint8_t& UpgradeState(uint32_t index)
-{
-    static uint8_t states[kUpgradeCount] = {};   // game world +0xFBC
-    static uint8_t dummy = 0;
-    return index < kUpgradeCount ? states[index] : (dummy = 0);
-}
-
-// @func 0x0049E330 CollectAvailableUpgrades
-void CollectAvailableUpgrades(ape::ApeTArray<uint32_t>& out)
-{
-    for (uint32_t i = 0; i < LoadedUpgradeCount() && i < kUpgradeCount; ++i) {
-        if (s_upgrades[i].field_00 != 0 && (UpgradeState(i) & kUpgrade_Available))
-            out.PushBack(i);
-    }
-}
-
 // @func 0x0049E860 TextField::Clear
 void TextField::Clear()
 {
@@ -574,5 +552,10 @@ bool UpgradeOwned(uint32_t type, uint32_t item)
     }
     return false;
 }
+
+
+uint32_t LoadedUpgradeCount() { return s_upgradeCount; }
+
+uint8_t& UpgradeStateOf(uint32_t index) { return StateOf(index); }
 
 } // namespace sly
