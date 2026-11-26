@@ -23,6 +23,23 @@ namespace entity {
 
 using namespace components;
 
+namespace {
+
+// The factory builds type 0x0D through CreateAIComponent and then swaps in
+// its own vtable (0x00B1D2C8): an AI component whose only override is the
+// destructor emitted next to the other component classes.
+class FactoryAIComponent : public levels::ai::AIComponent {
+public:
+    explicit FactoryAIComponent(const levels::ai::AIComponentDesc* desc) : AIComponent(desc) {}
+    ~FactoryAIComponent() override;
+};
+
+// @func 0x00765B64 FactoryAIComponent::~FactoryAIComponent
+// @func 0x00765B94 FactoryAIComponent::~FactoryAIComponent (deleting)
+FactoryAIComponent::~FactoryAIComponent() = default;
+
+} // namespace
+
 // TODO(0x002635E8 CreateComponent): the console switch covers every
 // component type (0x00-0x2F, AI components through the AI factory); the
 // port builds the classes ported so far and returns null for the others.
@@ -54,7 +71,7 @@ EntityComponent* CreateComponent(ComponentDesc* desc)
     case 0x0C:
         return new ControlScriptedC(desc);
     case 0x0D:
-        return new levels::ai::AIComponent(static_cast<levels::ai::AIComponentDesc*>(desc));
+        return new FactoryAIComponent(static_cast<levels::ai::AIComponentDesc*>(desc));
     case 0x30:
         return new levels::ai::BossGrizzComponent(static_cast<levels::ai::BossGrizzDesc*>(desc));
     case kCompDesc_ControlAI:
