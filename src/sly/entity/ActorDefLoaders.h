@@ -27,6 +27,9 @@ SLY_DECLARE_DEF_FACTORY(CreateInteractivePropBDef);  // 0x6927A078
 SLY_DECLARE_DEF_FACTORY(CreateSoundActorDef);        // 0x7CDC084C
 SLY_DECLARE_DEF_FACTORY(CreateSoundActorB17728Def);  // 0x633A7385
 SLY_DECLARE_DEF_FACTORY(CreateSoundActorB174C0Def);  // 0xEE9D8477 "SentryLight"
+SLY_DECLARE_DEF_FACTORY(CreateSoundActorB16678Def);  // 0xDF511592
+SLY_DECLARE_DEF_FACTORY(CreateSoundActorB168E0Def);  // 0x24A57117
+SLY_DECLARE_DEF_FACTORY(CreateSoundActorB17008Def);  // 0x4F590DD4
 
 } // namespace entity
 } // namespace sly

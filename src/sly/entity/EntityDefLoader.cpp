@@ -132,7 +132,7 @@ const DefClass kDefClasses[] = {
     {0xEBE54755u, nullptr},                              // 0x000C77E4
     {0xEB9EE198u, objects::CreateTriggerDef},            // "Trigger"
     {0xE65DDB0Fu, objects::CreateAmbientSoundTriggerDef},
-    {0xDF511592u, nullptr},                              // 0x001BED98
+    {0xDF511592u, CreateSoundActorB16678Def},
     {0x00227313u, nullptr},                              // "Item" 0x001F9BA0
     {0xFDC69C0Fu, nullptr},                              // 0x002183FC
     {0xF8ADA400u, nullptr},                              // 0x002F8EE0
@@ -149,10 +149,10 @@ const DefClass kDefClasses[] = {
     {0x201FA54Fu, CreateActorGroupDef},
     {0x1B733030u, nullptr},                              // laser field 0x000C1780
     {0x184A4683u, objects::CreateSoundZoneTriggerDef},
-    {0x4F590DD4u, nullptr},                              // 0x001C8780
+    {0x4F590DD4u, CreateSoundActorB17008Def},
     {0x3F0EA991u, nullptr},                              // 0x00176CC0
     {0x35DF6E97u, nullptr},                              // 0x001FE170
-    {0x24A57117u, nullptr},                              // 0x001C0658
+    {0x24A57117u, CreateSoundActorB168E0Def},
     {0x21F55D9Cu, nullptr},                              // 0x000BB4B0
     {0x57CCFDA0u, objects::CreateWindTriggerDef},
     {0x5697EEFBu, objects::CreatePushBlockTriggerDef},

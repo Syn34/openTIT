@@ -118,20 +118,51 @@ public:
 // 0x00B16630. NOTE: only the placement defaults.
 class SoundActorB16678Def : public SoundActorDef {
 public:
+    // The sound actor fields, then its own (0x001BE8CC).
+    explicit SoundActorB16678Def(const struct SoundActorB16678DefDesc& desc);
     ~SoundActorB16678Def() override;
-    uint32_t field_190 = 0;             // 0x190
-    float field_194 = -1.0f;            // 0x194
-    bool field_198 = false;             // 0x198
-    bool field_199 = false;             // 0x199
+    uint32_t field_190 = 0;             // 0x190 starting switch position: 0 "OFF", 1 "ON" (attribute 0xC03F596F)
+    float field_194 = -1.0f;            // 0x194 attribute 0xA6710C18
+    bool field_198 = false;             // 0x198 attribute 0xD28465E5
+    bool field_199 = false;             // 0x199 attribute 0xF0169515
 };
 // 0x00B16898. NOTE: only the placement defaults.
 class SoundActorB168E0Def : public SoundActorDef {
 public:
+    // The sound actor fields, then its own (0x001C011C).
+    explicit SoundActorB168E0Def(const struct SoundActorB168E0DefDesc& desc);
     ~SoundActorB168E0Def() override;
-    float field_198 = 0.0f;             // 0x198
-    uint32_t flags_19C = 0x40000000u;   // 0x19C bits 30/31: placement defaults
+    int32_t field_190 = -1;             // 0x190 zero-based index (attribute 0xCBC57F7D, one-based)
+    uint32_t field_194 = 0;             // 0x194 hash 0x2DF2E2B5
+    float field_198 = 0.0f;             // 0x198 attribute 0x08C08CA8
+    // 0x19C bits 31 (0xD28465E5) and 30 (0xD02B978A): placement defaults.
+    uint32_t flags_19C = 0x40000000u;
 };
-SLY_ACTOR_DEF(SoundActorB17008Def, SoundActorDef);   // 0x00B16FD0
+// 0x00B16FD0: six trigger volumes ("Trigger" children of the definition).
+class SoundActorB17008Def : public SoundActorDef {
+public:
+    // One trigger volume (0x60 bytes). NOTE: field meanings unknown; the
+    // attribute hashes are given.
+    struct Volume {
+        uint32_t field_00 = 0;                      // +0x00 hash 0x75849CFE
+        ape::Vec3 field_10{};                       // +0x10 attribute 0x2B7B3EB4
+        ape::Vec3 field_20{};                       // +0x20 attribute 0x313AB0C1
+        ape::Vec4 rotation{0.0f, 0.0f, 0.0f, 1.0f}; // +0x30 from attribute 0x313AB844 (degrees)
+        bool field_40 = true;                       // +0x40 attribute 0x8141EC8A
+        bool field_41 = false;                      // +0x41 attribute 0xF8E455AC
+        uint32_t field_44 = 0;                      // +0x44 NOTE: the parser reads "WindType" and drops it
+        float field_48 = 0.0f;                      // +0x48 attribute 0x8FA5922D
+        float field_4C = 0.0f;                      // +0x4C attribute 0x3C8207B4
+        float field_50 = 0.0f;                      // +0x50 attribute 0x7C8F6049
+        float field_54 = 0.0f;                      // +0x54 attribute 0x8C014439
+    };
+    static constexpr int kVolumeCount = 6;
+    // The sound actor fields, then the volumes (0x001C7F28).
+    explicit SoundActorB17008Def(const struct SoundActorB17008DefDesc& desc);
+    ~SoundActorB17008Def() override;
+    int32_t field_190 = 0x16;                       // 0x190 NOTE: always 22
+    Volume volumes[kVolumeCount];                   // 0x1A0
+};
 // 0x00B17228. NOTE: only the placement defaults.
 class SoundActorB17270Def : public SoundActorDef {
 public:

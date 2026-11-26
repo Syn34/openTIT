@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 namespace sly {
 namespace entity {
@@ -537,6 +538,174 @@ SoundActorB174C0Def::SoundActorB174C0Def(const SoundActorB174C0DefDesc& desc)
     desc.CopyTo(*this);
 }
 
+// -- SoundActorB16678 (two-way switch) -------------------------------------------
+constexpr uint32_t kType_SoundActorB16678 = 0x100000;
+
+struct SoundActorB16678DefDesc : SoundActorDefDesc {
+    explicit SoundActorB16678DefDesc(const EntityDefDesc& loader) : SoundActorDefDesc(loader)
+    {
+        typeBits |= kType_SoundActorB16678;
+    }
+    uint32_t position = 0;      // 0x140
+    float field_144 = -1.0f;    // 0x144
+    bool field_148 = false;     // 0x148
+    bool field_149 = false;     // 0x149
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001BEA40 SoundActorB16678DefDesc::Parse
+// The starting position is "OFF" or "ON" (anything else: off).
+void SoundActorB16678DefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                    const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorDefDesc::Parse(root, elem, loader, parent);
+    SoundActorB16678DefDesc defaults(loader);
+    if (const auto* other = SameClassParent<SoundActorB16678Def>(parent, kType_SoundActorB16678)) {
+        defaults.position = other->field_190;
+        defaults.field_144 = other->field_194;
+        defaults.field_148 = other->field_198;
+        defaults.field_149 = other->field_199;
+    }
+    static constexpr uint32_t kPositions[2] = {0x0001314Fu /* "OFF" */, 0x000009DFu /* "ON" */};
+    position = defaults.position;
+    uint32_t name = 0;
+    if (elem->GetHash(0xC03F596Fu, &name, 0) == ape::xml::kQuery_Ok) {
+        position = 0;
+        for (uint32_t i = 0; i < 2; ++i) {
+            if (kPositions[i] == name) {
+                position = i;
+                break;
+            }
+        }
+    }
+    elem->GetFloat(0xA6710C18u, &field_144, defaults.field_144);
+    elem->GetBool(0xD28465E5u, &field_148, defaults.field_148);
+    elem->GetBool(0xF0169515u, &field_149, defaults.field_149);
+}
+
+// @func 0x001BE8CC SoundActorB16678Def::SoundActorB16678Def
+SoundActorB16678Def::SoundActorB16678Def(const SoundActorB16678DefDesc& desc)
+    : SoundActorDef(desc), field_190(desc.position), field_194(desc.field_144), field_198(desc.field_148),
+      field_199(desc.field_149)
+{
+    desc.CopyTo(*this);
+}
+
+// -- SoundActorB168E0 ------------------------------------------------------------
+constexpr uint32_t kType_SoundActorB168E0 = 0x200000;
+
+struct SoundActorB168E0DefDesc : SoundActorDefDesc {
+    explicit SoundActorB168E0DefDesc(const EntityDefDesc& loader) : SoundActorDefDesc(loader)
+    {
+        typeBits |= kType_SoundActorB168E0;
+    }
+    int32_t field_140 = -1;     // 0x140
+    uint32_t field_144 = 0;     // 0x144
+    float field_148 = 0.0f;     // 0x148
+    uint32_t flags_14C = 0;     // 0x14C bits 30/31
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001C02A8 SoundActorB168E0DefDesc::Parse
+void SoundActorB168E0DefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                    const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorDefDesc::Parse(root, elem, loader, parent);
+    int32_t defaultIndex = -1;
+    uint32_t defaultHash = 0;
+    float defaultValue = 0.0f;
+    uint32_t defaultFlags = 0x40000000u;
+    if (const auto* other = SameClassParent<SoundActorB168E0Def>(parent, kType_SoundActorB168E0)) {
+        defaultIndex = other->field_190;
+        defaultHash = other->field_194;
+        defaultValue = other->field_198;
+        defaultFlags = other->flags_19C & 0xC0000000u;
+    }
+    elem->GetHash(0x2DF2E2B5u, &field_144, defaultHash);
+    elem->GetFloat(0x08C08CA8u, &field_148, defaultValue);
+    ReadBitAttr(elem, 0xD28465E5u, flags_14C, defaultFlags, 31);
+    ReadBitAttr(elem, 0xD02B978Au, flags_14C, defaultFlags, 30);
+    if (elem->GetInt(0xCBC57F7Du, &field_140, defaultIndex) == ape::xml::kQuery_Ok)
+        field_140 = std::max(field_140 - 1, 0);
+}
+
+// @func 0x001C011C SoundActorB168E0Def::SoundActorB168E0Def
+SoundActorB168E0Def::SoundActorB168E0Def(const SoundActorB168E0DefDesc& desc)
+    : SoundActorDef(desc), field_190(desc.field_140), field_194(desc.field_144), field_198(desc.field_148)
+{
+    desc.CopyTo(*this);
+    flags_19C = (flags_19C & 0x3FFFFFFFu) | (desc.flags_14C & 0xC0000000u);
+}
+
+// -- SoundActorB17008 (six trigger volumes) --------------------------------------
+constexpr uint32_t kType_SoundActorB17008 = 0x800000;
+
+struct SoundActorB17008DefDesc : SoundActorDefDesc {
+    explicit SoundActorB17008DefDesc(const EntityDefDesc& loader) : SoundActorDefDesc(loader)
+    {
+        typeBits |= kType_SoundActorB17008;
+    }
+    SoundActorB17008Def::Volume volumes[SoundActorB17008Def::kVolumeCount];   // 0x140
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001C8138 SoundActorB17008DefDesc::Parse
+// The volumes start cleared (all zero, not the volume defaults) or as the
+// parent's; each "Trigger" child updates the next one.
+void SoundActorB17008DefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                    const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorDefDesc::Parse(root, elem, loader, parent);
+    const auto* other = SameClassParent<SoundActorB17008Def>(parent, kType_SoundActorB17008);
+    for (int i = 0; i < SoundActorB17008Def::kVolumeCount; ++i) {
+        if (other) {
+            volumes[i] = other->volumes[i];
+        } else {
+            volumes[i] = SoundActorB17008Def::Volume();
+            std::memset(static_cast<void*>(&volumes[i]), 0, sizeof(volumes[i]));
+        }
+    }
+    constexpr uint32_t kElem_Trigger = 0xEB9EE198u;   // "Trigger"
+    constexpr float kDegToRad = 0.017453292f;
+    int index = 0;
+    for (ape::xml::XmlElement* child = elem->FirstChildElement(kElem_Trigger); child;
+         child = child->NextSiblingElement(kElem_Trigger), ++index) {
+        if (index >= SoundActorB17008Def::kVolumeCount)
+            continue;
+        SoundActorB17008Def::Volume& volume = volumes[index];
+        child->GetHash(0x75849CFEu, &volume.field_00, volume.field_00);
+        child->GetVec3(0x2B7B3EB4u, &volume.field_10.x, &volume.field_10.x);
+        child->GetVec3(0x313AB0C1u, &volume.field_20.x, &volume.field_20.x);
+        const ape::Vec3 zero{};
+        ape::Vec3 degrees{};
+        if (child->GetVec3(0x313AB844u, &degrees.x, &zero.x) == ape::xml::kQuery_Ok)
+            volume.rotation =
+                QuatFromEuler({degrees.x * kDegToRad, degrees.y * kDegToRad, degrees.z * kDegToRad, 0.0f});
+        child->GetBool(0x8141EC8Au, &volume.field_40, volume.field_40);
+        child->GetBool(0xF8E455ACu, &volume.field_41, volume.field_41);
+        // NOTE: the console parses the "WindType" attribute here into a
+        // temporary and drops it.
+        child->GetFloat(0x7C8F6049u, &volume.field_50, volume.field_50);
+        child->GetFloat(0x8FA5922Du, &volume.field_48, volume.field_48);
+        child->GetFloat(0x3C8207B4u, &volume.field_4C, volume.field_4C);
+        child->GetFloat(0x8C014439u, &volume.field_54, volume.field_54);
+    }
+}
+
+// @func 0x001C7F28 SoundActorB17008Def::SoundActorB17008Def
+SoundActorB17008Def::SoundActorB17008Def(const SoundActorB17008DefDesc& desc) : SoundActorDef(desc)
+{
+    desc.CopyTo(*this);
+    for (int i = 0; i < kVolumeCount; ++i)
+        volumes[i] = desc.volumes[i];
+}
+
 // -- SignalActor -----------------------------------------------------------------
 constexpr uint32_t kType_Signal = 0x40000;
 
@@ -808,6 +977,39 @@ EntityDef* CreateSoundActorB174C0Def(ape::xml::XmlElement* root, ape::xml::XmlEl
     SoundActorB174C0DefDesc desc(loader);
     desc.Parse(root, elem, loader, parent);
     auto* def = new SoundActorB174C0Def(desc);
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001BED98 CreateSoundActorB16678Def
+EntityDef* CreateSoundActorB16678Def(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                     const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorB16678DefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new SoundActorB16678Def(desc);
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001C0658 CreateSoundActorB168E0Def
+EntityDef* CreateSoundActorB168E0Def(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                     const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorB168E0DefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new SoundActorB168E0Def(desc);
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001C8780 CreateSoundActorB17008Def
+EntityDef* CreateSoundActorB17008Def(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                     const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorB17008DefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new SoundActorB17008Def(desc);
     delete desc.parts;
     return def;
 }
