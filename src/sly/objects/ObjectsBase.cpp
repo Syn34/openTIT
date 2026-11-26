@@ -33,7 +33,7 @@ void InheritDefDesc(const EntityDefDesc& from, EntityDefDesc& to)
 
 // Stand-in for 0x000C26D8 (entity module): only the identity fields.
 EntityDef::EntityDef(const EntityDefDesc& desc)
-    : classBits(desc.classBits), typeBits(desc.typeBits)
+    : classBits(desc.classBits), typeBits(desc.typeBits), field_24(desc.field_24), field_28(desc.field_28)
 {
     geomNameHash = ape::HashNameNoCase(desc.geomName);
     field_30 = ape::HashNameNoCase(desc.field_14);
@@ -59,12 +59,28 @@ EntityInstanceDesc::EntityInstanceDesc(const char* instanceName, EntityDef* owne
 {
 }
 
-// Stand-in for the placement base constructor (inlined into 0x00746148).
+// The placement base constructor (entity module; inlined into every
+// placement constructor, e.g. TriggerPlacement 0x00746148): identity
+// transform, the definition's defaults and a copy of its attachment records.
 EntityPlacement::EntityPlacement(const char* placementName, EntityDef* ownerDef)
     : transform(ape::world::kWorldIdentity), def(ownerDef)
 {
+    if (def) {
+        field_7C = def->field_24;
+        field_80 = def->field_28;
+    }
+    bits84 = 0x80000000u | 0x1FE00000u;
+    if (def && (def->options & 0x02))
+        bits84 |= 0x20000000u;
     if (placementName)
         ape::StrNCopy(name, placementName, sizeof(name) - 1);
+    if (def && def->attachments) {
+        for (const DefAttachment& attachment : *def->attachments) {
+            if (!ownedArray)
+                ownedArray = new ape::ApeTArray<DefAttachment>();
+            ownedArray->Add(attachment);
+        }
+    }
 }
 
 // Stand-in for 0x000CDB28 (entity module): the transform and name.

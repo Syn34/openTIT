@@ -82,6 +82,12 @@ struct EntityDefDesc {
 // (0x000C387C, entity module): the flag bytes and the shared scalar fields.
 void InheritDefDesc(const EntityDefDesc& from, EntityDefDesc& to);
 
+// Attachment record a definition adds to every placement made from it (0xC0
+// bytes on the console). NOTE: contents not decoded; copied as a whole.
+struct DefAttachment {
+    uint8_t data[0xC0];
+};
+
 // ---------------------------------------------------------------------------
 // Definition base (console 0x8C bytes, vtable 0x00B12230).
 // ---------------------------------------------------------------------------
@@ -107,10 +113,15 @@ public:
     uint32_t classBits = 0;        // 0x14
     uint32_t typeBits = 0;         // 0x18
     uint8_t options = 0;           // 0x20 bit 3: sleeps unless a player is near (update-enable volumes)
+    float field_24 = -1.0f;        // 0x24 EntityDefDesc::field_24 (placement default)
+    float field_28 = -1.0f;        // 0x28 EntityDefDesc::field_28 (placement default)
     uint32_t geomNameHash = 0;     // 0x2C
     uint32_t field_30 = 0;         // 0x30
     uint32_t nameHash = 0;         // 0x34
     char name[0x40] = {};          // 0x38
+    // 0x88 attachment records copied into every placement. NOTE: filled by
+    // the entity module's definition code (not modelled; stays null here).
+    ape::ApeTArray<DefAttachment>* attachments = nullptr;
 };
 
 // ---------------------------------------------------------------------------
@@ -146,13 +157,21 @@ public:
 
     uint32_t flags = 0;                // 0x04 PlacementFlags
     uint32_t typeBits = 0;             // 0x08 class-specific type bit (see EntityDef::typeBits)
-    // 0x10: array owned by the placement, freed with it. NOTE: element type
-    // and the code that fills it are in the entity module (not modelled).
-    ape::ApeArrayBase* ownedArray = nullptr;
+    uint32_t field_0C = 0;             // 0x0C
+    // 0x10: the definition's attachment records, copied by the constructor
+    // (created on the first one) and freed with the placement.
+    ape::ApeTArray<DefAttachment>* ownedArray = nullptr;
     ape::Matrix34 transform{};         // 0x20
+    ape::Vec3 field_60{};              // 0x60
+    uint32_t field_70 = 0;             // 0x70
+    uint32_t field_74 = 0;             // 0x74
     EntityDef* def = nullptr;          // 0x78
-    float field_7C = 0.0f;             // 0x7C (from the def, overridable)
-    float field_80 = 0.0f;             // 0x80
+    float field_7C = -1.0f;            // 0x7C (from the def, overridable)
+    float field_80 = -1.0f;            // 0x80
+    // 0x84 bit field: bit 31 set, bit 30 clear, bit 29 the definition's
+    // option bit 1, bits 21-28 all set. NOTE: meanings unknown.
+    uint32_t bits84 = 0;
+    uint32_t field_88 = 0;             // 0x88
     char name[0x28] = {};              // 0x8C
 };
 

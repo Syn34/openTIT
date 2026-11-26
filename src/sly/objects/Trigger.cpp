@@ -129,10 +129,8 @@ ObjEntity* TriggerDef::Create(EntityPlacement* placement)
 // Placement
 // ===========================================================================
 
-// TODO(0x00746148 TriggerPlacement::TriggerPlacement) the console constructor
-// also copies the definition's 0xC0-byte attachment records (def +0x88) into
-// the placement's owned array (+0x10, via the out-of-line PushBack
-// 0x00733964); the stand-in EntityDef does not model that list yet.
+// The definition's flags override the arguments.
+// @func 0x00746148 TriggerPlacement::TriggerPlacement
 TriggerPlacement::TriggerPlacement(const char* placementName, EntityDef* ownerDef,
                                    TriggerVolume* triggerVolume, bool aabb, bool owns,
                                    bool start, bool players, bool all, bool skip)
