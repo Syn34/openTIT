@@ -130,6 +130,12 @@ public:
 // Interaction component (type kComp_Interaction).
 class InteractionComponent : public EntityComponent {
 public:
+    // 0x002B7704: ends the current use: the owner is told (slot 63), a
+    // character user leaves its interaction state and is let go, and nothing
+    // is offered any more. Always true.
+    bool Stop();
+
+    Entity* user = nullptr;     // 0x40 the entity using the owner (holds a reference)
     int32_t users = 0;          // 0x44 NOTE: interactions in progress
     uint32_t playerMask = 0;    // 0x58 bit per player slot currently interacting
 };
