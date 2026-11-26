@@ -185,3 +185,15 @@
   console passes the safe's cracking session; the port takes the player / state directly).
   0x002E7694 and 0x002E70B8 (the other safe callbacks) and 0x002E5C68 (mask counter text; the
   pointer passed where HudObject::ShowText has `flag` needs checking) are not done.
+
+## agent3, fourth pass
+* `hud/HudType8000.*`: element of type bit 0x8000 (vtable 0x00B1F9C8): its own show/hide state
+  machine (0x003686D0-0x00368D78, flag word +0x214), Refresh/SetActive/destructor and slots 6-8.
+  Constructor 0x00357DC4 and Update 0x00382308 (7.5 KB) not ported.
+* `hud::UpdateTextOverride` (0x00363B78) is the coin counter count-up ("Game.MonetaryCollect.
+  CoinCounter.*" tuning); HudTextOverride fields renamed. `ProfileCoinCount` is a HudHooks stub
+  (profile record +0x70).
+* JobManager: ShowMaskCount 0x002E5C68 (total in `g_maskCounterTotal`, 0x010682A4, never set
+  yet), OnSafeSessionEnded 0x002E7694. 0x002E70B8 (bottle pickup callback) still TODO.
+* Goal type 0x22 (0x003373E8, vtable 0x00B1EDE8, 0xBB0 bytes) is a penguin goal over five
+  spawners named <base>+0..4 (spawn manager map); not ported.
