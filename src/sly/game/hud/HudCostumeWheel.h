@@ -45,8 +45,8 @@ public:
     explicit HudCostumeWheel(HudObjectDef* def);
     // 0x003747F4 / 0x00374A8C.
     ~HudCostumeWheel() override;
-    // Slot 2. TODO(0x00374AF0): angles, the label colours, the pulse, the
-    // left/right page selection and the state machine are not ported.
+    // Slot 2 (0x00374AF0): requests, page angles, the pulse, label colours,
+    // left/right page selection and the show/hide state machine.
     void Update(float dt) override;
     // Slot 3 (0x003767C8).
     void Refresh() override;
@@ -86,6 +86,9 @@ public:
     float pulse = 0.0f;                      // +0xE8
 
 private:
+    // Next page from `from` in direction `step` (+1 / -1) whose item can be
+    // chosen; `from` itself when none.
+    int FindAvailablePage(int from, int step) const;
     void PlayWheelState(uint32_t state, bool loop);
     void SetFieldText(uint32_t fieldName, const char* text);
     void SetFieldsVisible();
