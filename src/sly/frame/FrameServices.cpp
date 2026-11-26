@@ -35,6 +35,7 @@ FrameBufferPair* g_debugFrameBuffers = nullptr;       // 0x010AA614
 bool g_debugSwapRequested = false;                    // bit 4 of 0x010AA1B0
 uint32_t g_frameCounters[2] = {};                     // 0x01195090
 uint32_t g_frameCounterIndex = 0;                     // 0x01195098
+DebugDrawBlend g_debugDrawBlend;                      // 0x010AA208
 
 } // namespace
 
@@ -64,6 +65,13 @@ void FlipFrameCounters()
     g_frameCounters[g_frameCounterIndex] = 0;
 }
 
+// @func 0x005AC634 ResetFrameCounters
+void ResetFrameCounters()
+{
+    g_frameCounters[0] = 0;
+    g_frameCounters[1] = 0;
+}
+
 uint32_t& CurrentFrameCounter() { return g_frameCounters[g_frameCounterIndex]; }
 
 void RequestDebugBufferSwap() { g_debugSwapRequested = true; }
@@ -81,6 +89,25 @@ void SwapDebugBuffersIfRequested()
 // Empty in the shipped game (a debug hook compiled out).
 void EndFrameHook()
 {
+}
+
+const DebugDrawBlend& GetDebugDrawBlend() { return g_debugDrawBlend; }
+
+// @func 0x0042A218 SetDebugDrawBlend
+void SetDebugDrawBlend(bool enable, uint16_t srcFactor, uint16_t dstFactor, uint16_t equation)
+{
+    g_debugDrawBlend.word = (enable ? 0x80000000u : 0u) | (uint32_t(srcFactor) << 15) | (g_debugDrawBlend.word & 0x7FFFu);
+    g_debugDrawBlend.dstFactor = dstFactor;
+    g_debugDrawBlend.equation = equation;
+}
+
+// @func 0x00428F00 ResetDebugDrawBlend
+void ResetDebugDrawBlend()
+{
+    constexpr uint16_t kSrcAlpha = 0x0302;
+    constexpr uint16_t kOneMinusSrcAlpha = 0x0303;
+    constexpr uint16_t kFuncAdd = 0x8006;
+    SetDebugDrawBlend(false, kSrcAlpha, kOneMinusSrcAlpha, kFuncAdd);
 }
 
 } // namespace sly

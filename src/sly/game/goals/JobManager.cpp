@@ -75,6 +75,9 @@ uint8_t* ProfileNotifyPair(uint8_t profile)
     return pairs[profile & 7];
 }
 void GameWorldReloadLevel() { sly::RequestLevelRestart(); }
+void GameWorldSetActivePlayer(uint8_t) {}
+void GameWorldPostEvent(uint32_t) {}
+void HudType200Transition(hud::HudObject*) {}
 void GameWorldSetState(int, int) {}
 void GameWorldSetStateData(const char*, uint32_t) {}
 bool CurrentLevelJobValue(uint32_t*) { return false; }
@@ -850,6 +853,15 @@ void JobManager::StoreSafeState(int state)
         EpisodeProgress& progress = episode->Progress();
         progress.flags = uint16_t((progress.flags & ~7u) | (uint32_t(state) & 7u));
     }
+}
+
+// @func 0x002E7694 JobManager::OnSafeSessionEnded
+void JobManager::OnSafeSessionEnded(entity::Entity* player)
+{
+    constexpr uint32_t kEvent_SafeClosed = 0x0D;   // NOTE: event name unknown
+    GameWorldSetActivePlayer(uint8_t(player->flags >> 24));
+    GameWorldPostEvent(kEvent_SafeClosed);
+    HudType200Transition(hud::FindActiveType200());
 }
 
 // @func 0x002E1DB0 JobManager::StartJobFromHubByName

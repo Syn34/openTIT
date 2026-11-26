@@ -46,5 +46,7 @@ ape::ApeRefCounted* GameCameraScriptRef() { return nullptr; }
 bool HudFrameTimeFrozen() { return false; }
 bool GameWorldInLoadingState() { return game::GameWorldState(1) == 12; }
 
+int ProfileCoinCount(uint8_t profile) { (void)profile; return 0; }
+
 } // namespace hud
 } // namespace sly

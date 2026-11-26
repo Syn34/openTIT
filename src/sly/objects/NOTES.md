@@ -119,3 +119,19 @@
 * `TriggerSound.*`: PolledTrigger::IsInside, AmbientSoundTrigger::ComputeSoundParams (inner
   radius / falloff fields), SoundZoneTrigger fade weight (fade curve from
   `SoundZone::fadeCurve`, +0x04) and Update.
+
+## Vehicles (agent3, 0x00229CC4-0x0024EEDC)
+* Definition elements: "WheeledVehicle" (kind 1, vtables 0x00B1B710/0x00B1B740), "HoverVehicle"
+  (kind 2, `HoverVehicle.*`) and "SimpleWheeledVehicle" (kind 3, `SimpleWheeledVehicle.*`).
+* `VehiclePhysics.*`: the opaque `PhysicsBody` abstraction the vehicles use instead of Havok
+  (lookup/clone of template bodies, velocities, impulses, listeners, phantoms, contact events);
+  stubs forward to sly/entity PhysicsHooks where those exist.
+* VehicleEntity slots 94-99 are the body interface (centre of mass, angular velocity get/set,
+  point impulse, mass, SetEnabled); flag bit 31 = kVehicle_Enabled, bit 29 = kVehicle_ShowHelp.
+  Entity slot 70 now takes a name hash and returns a body (`Slot70(uint32_t)`).
+* Not ported (TODO stubs): the hover flight model 0x002418B0/0x00241500/0x002430C8, the
+  SimpleWheeled body build 0x00247068, driving 0x0024A4D0, wheels 0x00249C18/0x0024C860,
+  probe 0x00248E00, sounds 0x00248470, definition swap 0x0024B1E8, its state handler slot 9
+  (0x0024E6EC/0x0024DF08), SetTransform/SetVelocity/PostUpdate/OnHitReaction (bad instruction
+  data), the definition parsers (0x0023E590, 0x00244CF8; HoverVehicleSettings::Parse holds the
+  hover attribute part) and the whole WheeledVehicle kind (0x00229CC4-0x0023E0F0).

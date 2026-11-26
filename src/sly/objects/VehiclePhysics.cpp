@@ -22,6 +22,18 @@ void ReleaseBody(PhysicsBody* body)
     entity::HavokRelease(body);
 }
 
+void BodyRemoveReference(PhysicsBody* body)
+{
+    if (body)
+        entity::HavokRelease(body);
+}
+
+void PhysicsRemoveReference(void* object)
+{
+    if (object)
+        entity::HavokRelease(object);
+}
+
 void RemoveBodyFromWorld(PhysicsBody* body)
 {
     if (body && BodyInWorld(body))
@@ -70,6 +82,18 @@ void AddBodyToWorld(PhysicsBody* body)
 {
     entity::RigidBodyClearHalfA6(body);
     entity::RigidBodyAddToWorld(body, ~0u);
+}
+
+uint32_t BodyCollisionGroup(const PhysicsBody* body) { return entity::RigidBodyCollisionGroup(Raw(body)); }
+
+void* CreateSpherePhantom(float radius, uint32_t filterInfo) { (void)radius; (void)filterInfo; return nullptr; }
+void ReleasePhantom(void* phantom) { PhysicsRemoveReference(phantom); }
+
+bool ContactNormal(const void* event, const PhysicsBody* from, ape::Vec3& normal)
+{
+    (void)event; (void)from;
+    normal = {0.0f, 0.0f, 0.0f, 0.0f};
+    return false;
 }
 
 PhysicsBody* ContactBody(const void* event, int index)

@@ -296,3 +296,14 @@ The full link was failing because of files outside `src/agl`: missing
   shadow edge chunks; their targets are not modelled), particle system 0x004FF4C0.. and its
   property chunks 0x005286BC.., post-process Apply functions (their vtable slot use does not
   match the port's Init/LoadTuning naming yet: e.g. 0x0053EC58 calls slots 6 and 8).
+
+## Particle properties and material animation (agent2)
+* `AglParticleProps.h/.cpp`: emitter properties (ctor 0x004FFFF0) and all scene chunks
+  ("EMPC", "EMPH", "EPIB", "EPMN", "EPNM", "EPTC", "EPCT", "EPTS", "EPUV", "EPCP", "EPSP"
+  path spline 0x0052996C, "EPTR" rotation keys 0x00529FE0). `RegisterParticleChunkHandlers`
+  is untagged and has no caller yet: the Agl start-up 0x0050F520 / 0x0050E614 is not ported.
+  `AglEmitProperties::ApplyRecord` 0x004FF4C0 and the particle system itself (0x004FE3DC..,
+  emitter vtable 0x00B232D8: 0x00500548/0x0050059C/0x00500908) are open.
+* `AglMaterial.cpp`: material UV animation channels (0x00501410, 0x00501520, 0x00501780,
+  0x0050BF48, 0x0050B980, 0x0050D1E0).
+* `AglDrawListReplay.cpp`: display list replay 0x005159E8 and its packet handlers.

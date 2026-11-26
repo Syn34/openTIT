@@ -47,7 +47,7 @@ public:
 class VehicleEntity : public entity::ScriptedEntity {
 public:
     enum VehicleFlags : uint32_t {
-        kVehicle_Flag20000000 = 0x20000000u,   // NOTE: set by the constructor, meaning unknown
+        kVehicle_ShowHelp = 0x20000000u,       // show the controls help text (NOTE: name from the help text state machine)
         kVehicle_FlashPending = 0x40000000u,   // play the hit reaction on the next update
         kVehicle_Enabled = 0x80000000u,        // input and physics run (NOTE: name from how the kinds use it)
     };

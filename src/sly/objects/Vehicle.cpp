@@ -77,7 +77,7 @@ VehicleEntity::VehicleEntity(VehicleDef* vehicleDef)
     def = vehicleDef;
     invulnerableTimer = 0.0f;
     vehicleFlags = (vehicleFlags & ~uint32_t(kVehicle_FlashPending)) | kVehicle_Enabled |
-                   kVehicle_Flag20000000;
+                   kVehicle_ShowHelp;
     if (classBits & kClass_00000001)
         renderId = 0;
     flags = (flags & ~(3u << 22)) | ((vehicleDef->team & 3) << 22);
