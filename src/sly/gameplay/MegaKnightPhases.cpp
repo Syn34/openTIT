@@ -171,6 +171,7 @@ MKPhaseIdle::MKPhaseIdle(MegaKnight* owner)
 // @func 0x003125C8 MKPhaseIdle::~MKPhaseIdle (deleting)
 MKPhaseIdle::~MKPhaseIdle() = default;
 
+// @func 0x00768958 MKPhaseIdle::StateName
 const char* MKPhaseIdle::StateName(int state) const { return TableName(kIdleStates, state); }
 
 // @func 0x00312698 MKPhaseIdle::OnEnter
@@ -254,6 +255,7 @@ MKPhaseLaser::MKPhaseLaser(MegaKnight* owner)
 // @func 0x00312C8C MKPhaseLaser::~MKPhaseLaser (deleting)
 MKPhaseLaser::~MKPhaseLaser() = default;
 
+// @func 0x00768974 MKPhaseLaser::StateName
 const char* MKPhaseLaser::StateName(int state) const { return TableName(kLaserStates, state); }
 
 // TODO(0x00312D78 MKPhaseLaser::OnEnter): aims the laser (vector code the
@@ -309,6 +311,7 @@ MKPhaseLaserQuick::MKPhaseLaserQuick(MegaKnight* owner)
 // @func 0x00313ED4 MKPhaseLaserQuick::~MKPhaseLaserQuick (deleting)
 MKPhaseLaserQuick::~MKPhaseLaserQuick() = default;
 
+// @func 0x00768990 MKPhaseLaserQuick::StateName
 const char* MKPhaseLaserQuick::StateName(int state) const { return TableName(kLaserQuickStates, state); }
 
 // @func 0x00313FA0 MKPhaseLaserQuick::OnEnter
@@ -369,6 +372,7 @@ MKPhaseBlockShot::MKPhaseBlockShot(MegaKnight* owner)
 // @func 0x00314C50 MKPhaseBlockShot::~MKPhaseBlockShot (deleting)
 MKPhaseBlockShot::~MKPhaseBlockShot() = default;
 
+// @func 0x007689AC MKPhaseBlockShot::StateName
 const char* MKPhaseBlockShot::StateName(int state) const { return TableName(kBlockShotStates, state); }
 
 // @func 0x00314D20 MKPhaseBlockShot::OnEnter
@@ -428,6 +432,7 @@ MKPhaseMonitorPlatform::MKPhaseMonitorPlatform(MegaKnight* owner)
 // @func 0x003151F0 MKPhaseMonitorPlatform::~MKPhaseMonitorPlatform (deleting)
 MKPhaseMonitorPlatform::~MKPhaseMonitorPlatform() = default;
 
+// @func 0x007689C8 MKPhaseMonitorPlatform::StateName
 const char* MKPhaseMonitorPlatform::StateName(int state) const { return TableName(kMonitorStates, state); }
 
 // @func 0x003152C0 MKPhaseMonitorPlatform::OnEnter
@@ -523,6 +528,7 @@ MKPhaseShootPlatform::MKPhaseShootPlatform(MegaKnight* owner)
 // @func 0x00316240 MKPhaseShootPlatform::~MKPhaseShootPlatform (deleting)
 MKPhaseShootPlatform::~MKPhaseShootPlatform() = default;
 
+// @func 0x007689E4 MKPhaseShootPlatform::StateName
 const char* MKPhaseShootPlatform::StateName(int state) const { return TableName(kShootStates, state); }
 
 // @func 0x00316308 MKPhaseShootPlatform::OnEnter
@@ -590,6 +596,7 @@ MKPhaseRopeAttached::MKPhaseRopeAttached(MegaKnight* owner)
 // @func 0x0031715C MKPhaseRopeAttached::~MKPhaseRopeAttached (deleting)
 MKPhaseRopeAttached::~MKPhaseRopeAttached() = default;
 
+// @func 0x00768A00 MKPhaseRopeAttached::StateName
 const char* MKPhaseRopeAttached::StateName(int state) const { return TableName(kRopeStates, state); }
 
 // TODO(0x00317228 MKPhaseRopeAttached::OnEnter): picks the held rope and
@@ -657,6 +664,7 @@ MKPhaseGroundSmash::MKPhaseGroundSmash(MegaKnight* owner)
 // @func 0x0031873C MKPhaseGroundSmash::~MKPhaseGroundSmash (deleting)
 MKPhaseGroundSmash::~MKPhaseGroundSmash() = default;
 
+// @func 0x00768A1C MKPhaseGroundSmash::StateName
 const char* MKPhaseGroundSmash::StateName(int state) const { return TableName(kGroundSmashStates, state); }
 
 // @func 0x00318830 MKPhaseGroundSmash::OnEnter
@@ -722,6 +730,7 @@ MKPhaseShoulderHit::MKPhaseShoulderHit(MegaKnight* owner)
 // @func 0x0031939C MKPhaseShoulderHit::~MKPhaseShoulderHit (deleting)
 MKPhaseShoulderHit::~MKPhaseShoulderHit() = default;
 
+// @func 0x00768A40 MKPhaseShoulderHit::StateName
 const char* MKPhaseShoulderHit::StateName(int state) const { return TableName(kShoulderHitStates, state); }
 
 // @func 0x00319468 MKPhaseShoulderHit::OnEnter
@@ -807,6 +816,7 @@ MKPhaseStruggle::MKPhaseStruggle(MegaKnight* owner)
 // @func 0x0031A018 MKPhaseStruggle::~MKPhaseStruggle (deleting)
 MKPhaseStruggle::~MKPhaseStruggle() = default;
 
+// @func 0x00768A64 MKPhaseStruggle::StateName
 const char* MKPhaseStruggle::StateName(int state) const { return TableName(kStruggleStates, state); }
 
 // @func 0x0031A0E8 MKPhaseStruggle::OnEnter
@@ -856,6 +866,7 @@ MKPhaseTargetHit::MKPhaseTargetHit(MegaKnight* owner)
 // @func 0x0031A4D8 MKPhaseTargetHit::~MKPhaseTargetHit (deleting)
 MKPhaseTargetHit::~MKPhaseTargetHit() = default;
 
+// @func 0x00768A88 MKPhaseTargetHit::StateName
 const char* MKPhaseTargetHit::StateName(int state) const { return TableName(kTargetHitStates, state); }
 
 // @func 0x0031A5A8 MKPhaseTargetHit::OnEnter
@@ -906,6 +917,7 @@ MKPhaseTowerShake::MKPhaseTowerShake(MegaKnight* owner)
 // @func 0x0031AA20 MKPhaseTowerShake::~MKPhaseTowerShake (deleting)
 MKPhaseTowerShake::~MKPhaseTowerShake() = default;
 
+// @func 0x00768AAC MKPhaseTowerShake::StateName
 const char* MKPhaseTowerShake::StateName(int state) const { return TableName(kTowerShakeStates, state); }
 
 // @func 0x0031AAF0 MKPhaseTowerShake::OnEnter

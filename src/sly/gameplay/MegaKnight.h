@@ -311,13 +311,18 @@ public:
     // Slot 16 (+0x40): where the boss looks while the phase runs.
     virtual void UpdateFocus();
     // Slots 17/18: NOTE: meaning unknown (0x00768924 / 0x0076892C defaults).
+    // @func 0x00768924 MegaKnightPhase::Query17
     virtual bool Query17() const { return false; }
+    // @func 0x0076892C MegaKnightPhase::Query18
     virtual bool Query18() const { return true; }
     // Slot 19 (+0x4C): the phase is over (default 0x00768934: always).
+    // @func 0x00768934 MegaKnightPhase::IsDone
     virtual bool IsDone() { return true; }
     // Slot 20: the phase id (default 0x0076893C: -1).
+    // @func 0x0076893C MegaKnightPhase::PhaseId
     virtual int PhaseId() const { return -1; }
     // Slot 21: name of a state (default 0x00768944: "Invalid").
+    // @func 0x00768944 MegaKnightPhase::StateName
     virtual const char* StateName(int state) const { (void)state; return "Invalid"; }
     // Slot 22 (+0x58): per-frame update; false requests another pass.
     virtual bool UpdatePhase(float dt) = 0;
@@ -342,6 +347,7 @@ public:
     void OnEnter() override;
     void OnExit(uint32_t next) override;
     bool IsDone() override;
+    // @func 0x00768950 MKPhaseIdle::PhaseId
     int PhaseId() const override { return kMKPhase_Idle; }
     const char* StateName(int state) const override;
     bool UpdatePhase(float dt) override;
@@ -361,6 +367,7 @@ public:
     void OnEventA() override;
     void UpdateFocus() override;
     bool IsDone() override;
+    // @func 0x0076896C MKPhaseLaser::PhaseId
     int PhaseId() const override { return kMKPhase_Laser; }
     const char* StateName(int state) const override;
     bool UpdatePhase(float dt) override;
@@ -381,6 +388,7 @@ public:
     void OnEventA() override;
     void UpdateFocus() override;
     bool IsDone() override;
+    // @func 0x00768988 MKPhaseLaserQuick::PhaseId
     int PhaseId() const override { return kMKPhase_LaserQuick; }
     const char* StateName(int state) const override;
     bool UpdatePhase(float dt) override;
@@ -396,6 +404,7 @@ public:
     void OnEnter() override;
     void OnExit(uint32_t next) override;
     bool IsDone() override;
+    // @func 0x007689A4 MKPhaseBlockShot::PhaseId
     int PhaseId() const override { return kMKPhase_BlockShot; }
     const char* StateName(int state) const override;
     bool UpdatePhase(float dt) override;
@@ -417,6 +426,7 @@ public:
     void UpdateFocus() override;
     bool Query17() const override;
     bool IsDone() override;
+    // @func 0x007689C0 MKPhaseMonitorPlatform::PhaseId
     int PhaseId() const override { return kMKPhase_MonitorPlatform; }
     const char* StateName(int state) const override;
     bool UpdatePhase(float dt) override;
@@ -438,6 +448,7 @@ public:
     void UpdateFocus() override;
     bool Query17() const override;
     bool IsDone() override;
+    // @func 0x007689DC MKPhaseShootPlatform::PhaseId
     int PhaseId() const override { return kMKPhase_ShootPlatform; }
     const char* StateName(int state) const override;
     bool UpdatePhase(float dt) override;
@@ -456,6 +467,7 @@ public:
     void OnEventB() override;
     void UpdateFocus() override;
     bool IsDone() override;
+    // @func 0x007689F8 MKPhaseRopeAttached::PhaseId
     int PhaseId() const override { return kMKPhase_RopeAttached; }
     const char* StateName(int state) const override;
     bool UpdatePhase(float dt) override;
@@ -490,6 +502,7 @@ public:
     void OnEnter() override;
     void OnExit(uint32_t next) override;
     bool IsDone() override;
+    // @func 0x00768A14 MKPhaseGroundSmash::PhaseId
     int PhaseId() const override { return kMKPhase_GroundSmash; }
     const char* StateName(int state) const override;
     bool UpdatePhase(float dt) override;
@@ -512,6 +525,9 @@ public:
     void OnExit(uint32_t next) override;
     void OnEventD() override;
     bool IsDone() override;
+    // @func 0x00768A30 MKPhaseShoulderHit::Query18
+    bool Query18() const override { return false; }
+    // @func 0x00768A38 MKPhaseShoulderHit::PhaseId
     int PhaseId() const override { return kMKPhase_ShoulderHit; }
     const char* StateName(int state) const override;
     bool UpdatePhase(float dt) override;
@@ -528,6 +544,9 @@ public:
     void OnEnter() override;
     void OnExit(uint32_t next) override;
     bool IsDone() override;
+    // @func 0x00768A54 MKPhaseStruggle::Query18
+    bool Query18() const override { return false; }
+    // @func 0x00768A5C MKPhaseStruggle::PhaseId
     int PhaseId() const override { return kMKPhase_Struggle; }
     const char* StateName(int state) const override;
     bool UpdatePhase(float dt) override;
@@ -543,6 +562,9 @@ public:
     void OnEnter() override;
     void OnExit(uint32_t next) override;
     bool IsDone() override;
+    // @func 0x00768A78 MKPhaseTargetHit::Query18
+    bool Query18() const override { return false; }
+    // @func 0x00768A80 MKPhaseTargetHit::PhaseId
     int PhaseId() const override { return kMKPhase_TargetHit; }
     const char* StateName(int state) const override;
     bool UpdatePhase(float dt) override;
@@ -559,6 +581,9 @@ public:
     void OnExit(uint32_t next) override;
     bool Query17() const override;
     bool IsDone() override;
+    // @func 0x00768A9C MKPhaseTowerShake::Query18
+    bool Query18() const override { return false; }
+    // @func 0x00768AA4 MKPhaseTowerShake::PhaseId
     int PhaseId() const override { return kMKPhase_TowerShake; }
     const char* StateName(int state) const override;
     bool UpdatePhase(float dt) override;
