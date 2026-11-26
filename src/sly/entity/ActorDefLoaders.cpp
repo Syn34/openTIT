@@ -198,14 +198,18 @@ constexpr uint32_t kType2_ObjectActor = 0x2;
 struct ObjectActorDefDesc : ClassDefDesc {
     explicit ObjectActorDefDesc(const EntityDefDesc& loader)
         : ClassDefDesc(loader, kType2_ObjectActor, SecondWord{}) {}
-    // Nothing of its own: only the actor attributes (0x001EB118; a parent of
-    // another class earns a warning, stripped).
     void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
-               const EntityDef* parent)
-    {
-        ActorDefDesc::Parse(root, elem, loader, parent);
-    }
+               const EntityDef* parent);
 };
+
+// @func 0x001EB118 ObjectActorDefDesc::Parse
+// Nothing of its own: only the actor attributes (a parent of another class
+// earns a warning, stripped).
+void ObjectActorDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                               const EntityDef* parent)
+{
+    ActorDefDesc::Parse(root, elem, loader, parent);
+}
 
 // -- InteractivePropA ------------------------------------------------------------
 constexpr uint32_t kType2_InteractivePropA = 0x4;

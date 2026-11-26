@@ -1539,6 +1539,60 @@ bool SearchlightActor::InteractionBegin(Entity* newUser)
     return true;
 }
 
+namespace {
+// Opacity of a geometry object (the only kind whose slot 13 is its alpha).
+void SetObjectAlpha(ape::world::ApeObj* object, float alpha)
+{
+    if (object && object->GetType() == ape::world::kObjType_GeomInstance)
+        object->VirtualSlot13(uint8_t(int(alpha * 255.0f) & 0xFF), false);
+}
+} // namespace
+
+// @func 0x001EAE88 SearchlightActor::InteractionCancel
+void SearchlightActor::InteractionCancel()
+{
+    useTime = 0.0f;
+    if (cameraMode) {
+        if (GameCamera* camera = MainGameCamera())
+            camera->RemoveMode(-1.0f, cameraMode);
+        delete cameraMode;
+        cameraMode = nullptr;
+    }
+    if (user) {
+        user->SetVisible(true, true, true, true);
+        user = nullptr;
+    }
+    if (lightObject)
+        lightObject->SetVisible(false, false);
+    SetObjectAlpha(object_1B0, 1.0f);
+    SetObjectAlpha(object_1B4, 1.0f);
+    SetObjectAlpha(object_1BC, 1.0f);
+}
+
+// @func 0x001EA9E8 SearchlightActor::Update
+bool SearchlightActor::Update(float dt)
+{
+    EntityComponent* interaction = EntityInteraction(this);
+    if (interaction && InteractionUsers(interaction) == 2) {
+        useTime += dt;
+        if (user && user->HasTypeBit(3)) {
+            GameCamera* camera = MainGameCamera();
+            if (camera && camera->TopMode() == cameraMode && CharacterWantsToLeave(user))
+                InteractionWithdraw(EntityInteraction(this));
+        }
+        // Eases from 0 to 1 over 0.7 seconds.
+        const float t = std::min(useTime / 0.7f, 1.0f);
+        const float in = (ape::FastCos(-(t * 3.1415927f - 3.1415927f)) + 1.0f) * 0.5f;
+        const float out = 1.0f - in;
+        SetObjectAlpha(lightObject, in);
+        SetObjectAlpha(object_1B0, out);
+        SetObjectAlpha(object_1B4, out);
+        const float keep = Def()->field_170;
+        SetObjectAlpha(object_1BC, (1.0f - keep) * out + keep);
+    }
+    return ActorEntity::Update(dt);
+}
+
 // -- Safe ------------------------------------------------------------------------------------
 
 // @func 0x001E6FA0 Safe::Release

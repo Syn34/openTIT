@@ -403,6 +403,13 @@ public:
     // The user takes the light: the spotlight camera rides on it and the user
     // is hidden while the light model shows.
     bool InteractionBegin(Entity* user) override;     // slot 62
+    // Gives the light back: the camera leaves at once, the user shows again,
+    // the light object hides and the other objects are opaque (slot 63).
+    void InteractionCancel() override;
+    // Slot 4: while in use the light model fades in over 0.7 s (the other
+    // objects out), and a user who asks to leave from the light's camera
+    // ends the use.
+    bool Update(float dt) override;
 
     const SearchlightDef* Def() const { return static_cast<const SearchlightDef*>(def); }
 
@@ -412,7 +419,7 @@ public:
     ape::world::ApeObj* object_1B4 = nullptr;   // 0x1B4 field_160[1]
     ape::world::ApeObj* lightObject = nullptr;  // 0x1B8 field_160[2]
     ape::world::ApeObj* object_1BC = nullptr;   // 0x1BC field_160[3]
-    uint32_t field_1C0 = 0;                     // 0x1C0
+    float useTime = 0.0f;                       // 0x1C0 seconds in use
 };
 
 // The actor ActorDef itself spawns (vtable 0x00B12A90 + 0x00B12C3C/0x00B12C64;

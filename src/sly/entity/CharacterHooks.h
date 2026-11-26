@@ -233,6 +233,11 @@ void GameWorldSetHudHidden(bool hidden);
 void GameWorldSetPlayerControl(bool enabled);
 // Interaction component flag word +0x7C: clears bit 20.
 void InteractionClearFlag20(EntityComponent* interaction);
+// 0x002B719C: withdraws the interaction (ends the use).
+void InteractionWithdraw(EntityComponent* interaction);
+// The character asks to leave what it uses: the object its +0x17C interface
+// hands out (slot 3) has flag bit 19 (+0x24). NOTE: meaning from use.
+bool CharacterWantsToLeave(Entity* character);
 // Effect played on a character component (0x002775A8: effect, length, fade).
 void PlayCharacterFx(EntityComponent* component, uint32_t fx, float length, float fade);
 // Skin component (type 0x13): rate (+0x4D0), the scale pair (+0x4C8/+0x4CC),

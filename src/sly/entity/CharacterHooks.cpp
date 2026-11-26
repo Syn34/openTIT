@@ -91,6 +91,8 @@ int CarryCompFreeSlot(EntityComponent* carry)
 }
 void GroupVarSetValue(void* var, float value) { (void)var; (void)value; }
 void PlayerBlockSetValue10D8(uint32_t player, uint32_t value) { (void)player; (void)value; }
+void InteractionWithdraw(EntityComponent*) {}
+bool CharacterWantsToLeave(Entity*) { return false; }
 bool CharacterCompHasController(EntityComponent* component) { (void)component; return false; }
 void CharacterCompSetPoseHook(EntityComponent* component, void (*hook)(void*), void* arg)
 {
