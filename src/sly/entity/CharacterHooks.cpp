@@ -86,11 +86,6 @@ void GameWorldDequeueSafeCallback(Entity* safe) { (void)safe; }
 void GameWorldSetHudHidden(bool hidden) { (void)hidden; }
 void GameWorldSetPlayerControl(bool enabled) { (void)enabled; }
 void InteractionClearFlag20(EntityComponent* interaction) { (void)interaction; }
-bool EntityPlayClip(Entity* entity, float blend, float speed, float fade, void* clip, uint32_t layer, bool loop)
-{
-    (void)entity; (void)blend; (void)speed; (void)fade; (void)layer; (void)loop;
-    return clip != nullptr;
-}
 void PlayCharacterFx(EntityComponent* component, uint32_t fx, float length, float fade) { (void)component; (void)fx; (void)length; (void)fade; }
 float SkinRate(EntityComponent* skin) { (void)skin; return 0.0f; }
 void SkinSetRate(EntityComponent* skin, float rate) { (void)skin; (void)rate; }

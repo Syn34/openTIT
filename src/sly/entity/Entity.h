@@ -146,6 +146,9 @@ struct EntityLocator {
 
 // One attached child entity (console record of 0xF0 bytes in the array at +0x154).
 struct EntityChildLink {
+    // 0x00 NOTE: name of the link (slot 51 prefixes the children's clip names
+    // with it); the size of the buffer is assumed from the next field.
+    char name[0x80] = {};
     ape::Vec3 offset;                    // 0x80 attach offset
     ape::Vec4 rotation;                  // 0x90 attach rotation (quaternion)
     uint32_t partName = 0;               // 0xA0 attach part / slot name hash
@@ -332,6 +335,21 @@ public:
     // looks the clip up in the global clip registry).
     virtual void* FindAnimClip(uint32_t nameHash);                 // slot 47 (+0xBC)
     virtual void* FindAnimClipByName(const char* name);            // slot 48 (+0xC0)
+    // Slot 49 (+0xC4): plays `clip` on the controller layer created for
+    // `layer` (cross-fading over `blend` seconds, the module default when
+    // negative), or starts it on the first layer when there is no such layer.
+    // A positive `duration` stretches the clip to last that long. `listener`
+    // names the control listener to attach. False without a controller or clip.
+    virtual bool PlayClip(float speed, float blend, float duration, void* clip, uint32_t layer, bool loop,
+                          uint32_t listener = 0);
+    // Slot 50 (+0xC8): the same for a clip given by name hash.
+    virtual bool PlayClipByHash(float speed, float blend, float duration, uint32_t clip, uint32_t layer,
+                                bool loop, uint32_t listener = 0);
+    // Slot 51 (+0xCC): the same by name (prefixed with `prefix` when given).
+    // Children linked with kChild_ForwardAnim first play "<link name>_<name>"
+    // with no stretching.
+    virtual bool PlayClipByName(float speed, float blend, float duration, const char* clip, uint32_t layer,
+                                bool loop, const char* prefix = nullptr, uint32_t listener = 0);
     // Slot 53 (+0xD4): the base version only records the state (flags bit 6).
     // @func 0x007373AC Entity::SetActiveVisual
     virtual void SetActiveVisual(bool on) { flags = on ? (flags | 0x40u) : (flags & ~0x40u); }

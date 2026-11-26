@@ -611,29 +611,32 @@ void GameCamera::ResetObjectTransform()
 }
 
 // @func 0x000FC968 GameCamera::PlayClip
-bool GameCamera::PlayClip(float blend, float speed, float fade, void* clip, uint32_t layer, bool loop)
+bool GameCamera::PlayClip(float speed, float blend, float duration, void* clip, uint32_t layer, bool loop,
+                          uint32_t listener)
 {
-    const bool started = EntityPlayClip(this, blend, speed, fade, clip, layer, loop);
+    const bool started = Entity::PlayClip(speed, blend, duration, clip, layer, loop, listener);
     if (started)
         cameraFlags &= ~kCamFlag_AnimHold;
     return started;
 }
 
 // @func 0x000FC9B8 GameCamera::PlayClipByHash
-bool GameCamera::PlayClipByHash(float blend, float speed, float fade, uint32_t clip, uint32_t layer, bool loop)
+bool GameCamera::PlayClipByHash(float speed, float blend, float duration, uint32_t clip, uint32_t layer, bool loop,
+                                uint32_t listener)
 {
     if (animController)
         camera::AnimPrepareClip(animController, clip);
-    const bool started = PlayClip(blend, speed, fade, FindAnimClip(clip), layer, loop);
+    const bool started = PlayClip(speed, blend, duration, FindAnimClip(clip), layer, loop, listener);
     if (started)
         lastAnim = clip;
     return started;
 }
 
 // @func 0x000FCAE4 GameCamera::PlayClipByName
-bool GameCamera::PlayClipByName(float blend, float speed, float fade, const char* clip, uint32_t layer, bool loop)
+bool GameCamera::PlayClipByName(float speed, float blend, float duration, const char* clip, uint32_t layer,
+                                bool loop, const char* /*prefix*/, uint32_t listener)
 {
-    return PlayClip(blend, speed, fade, FindAnimClipByName(clip), layer, loop);
+    return PlayClip(speed, blend, duration, FindAnimClipByName(clip), layer, loop, listener);
 }
 
 // @func 0x000FCE18 GameCamera::PlayAdditiveAnim
