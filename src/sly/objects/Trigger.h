@@ -81,6 +81,12 @@ public:
     // @func 0x00746060 TriggerPlacement::~TriggerPlacement
     // @func 0x00759DA8 TriggerPlacement::~TriggerPlacement (deleting)
     ~TriggerPlacement() override = default;
+    // Member-wise copies (used by the entity module). NOTE: as on the console
+    // the copy shares the base placement's attachment array.
+    // @func 0x007464A0 TriggerPlacement::TriggerPlacement (copy)
+    TriggerPlacement(const TriggerPlacement&) = default;
+    // @func 0x007466D8 TriggerPlacement::operator=
+    TriggerPlacement& operator=(const TriggerPlacement&) = default;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
 
     TriggerVolume* volume = nullptr;   // 0xB4 phantom assigned by the level loader

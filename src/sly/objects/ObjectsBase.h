@@ -158,9 +158,13 @@ public:
     // Slot 2 (base 0x000CDB28): copies the placement into an instance description.
     virtual void FillInstanceDesc(EntityInstanceDesc& desc) const;
 
-    EntityPlacement(const EntityPlacement&) = delete;
-    EntityPlacement& operator=(const EntityPlacement&) = delete;
+protected:
+    // Member-wise, for the derived placements' copies. NOTE: the copy shares
+    // `ownedArray` (as on the console).
+    EntityPlacement(const EntityPlacement&) = default;
+    EntityPlacement& operator=(const EntityPlacement&) = default;
 
+public:
     uint32_t flags = 0;                // 0x04 PlacementFlags
     uint32_t typeBits = 0;             // 0x08 class-specific type bit (see EntityDef::typeBits)
     uint32_t field_0C = 0;             // 0x0C
