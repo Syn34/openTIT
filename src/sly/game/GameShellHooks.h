@@ -47,6 +47,8 @@ void ShowCharacterHint();
 // Closes the GUI popup over the game and its event handler (0x004645AC,
 // 0x00464804).
 void CloseGuiPopup();
+// Default start transform of a character slot (0x00486460).
+void DefaultSpawnTransform(int slot, ape::Matrix34* out);
 // Shows or hides the AI entities (0x0048A068).
 void SetAiEntitiesVisible(bool visible);
 

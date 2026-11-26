@@ -1050,3 +1050,31 @@ void SlyGame::RestorePlayerView(GamePlayer& player)
 }
 
 } // namespace sly
+
+namespace sly {
+
+// @func 0x00486460 DefaultSpawnTransform
+// Where character slot `slot` starts without a placement: the point
+// instance named by "Game.PlayerSpawnPointName<n>", else the identity at
+// "Game.PlayerSpawnPos".
+void DefaultSpawnTransform(int slot, ape::Matrix34* out)
+{
+    static const ape::TuningHash* const kPointNames[SlyGame::kMaxPlayers] = {
+        &g_gamePlayerSpawnPointName,  &g_gamePlayerSpawnPointName2, &g_gamePlayerSpawnPointName3,
+        &g_gamePlayerSpawnPointName4, &g_gamePlayerSpawnPointName5, &g_gamePlayerSpawnPointName6,
+        &g_gamePlayerSpawnPointName7, &g_gamePlayerSpawnPointName8, &g_gamePlayerSpawnPointName9,
+    };
+    if (slot >= 0 && slot < SlyGame::kMaxPlayers) {
+        if (const uint32_t pointName = kPointNames[slot]->Get()) {
+            if (ape::world::ApeObj* point = ape::world::FindObject(pointName, ape::world::kObjType_PointInstance)) {
+                *out = point->GetLocal();
+                return;
+            }
+        }
+    }
+    *out = ape::world::kWorldIdentity;
+    const float* position = g_gamePlayerSpawnPos.Get();
+    out->translation = ape::Vec3{position[0], position[1], position[2], out->translation.pad};
+}
+
+} // namespace sly
