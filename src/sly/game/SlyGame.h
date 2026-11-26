@@ -442,6 +442,11 @@ public:
     // closes, the audio groups and binocucoms resume and rumble follows the
     // vibration option again (0x0047DFC8).
     void ResumeFromPause();
+    // Follows the audio rate ramp: every voice plays at its rate, and while
+    // it is slowed the music's low-pass cut-off fades down to
+    // "Audio.SlowTimeMusicLPFFrequency" (back up to 23999 Hz at normal
+    // speed) over "Audio.SlowTimeMusicLPFCrossfadeDuration" (0x00468A38).
+    void UpdateSlowTimeAudio(float dt);
     // A player is down: meter B snaps and a running return-treasure
     // microgame loses the treasure if the player carried it.
     void OnPlayerDown(uint32_t player);

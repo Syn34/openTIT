@@ -29,6 +29,8 @@
 #include "sly/game/GameMessages.h"
 #include "ape/level/ApeLevelScene.h"
 #include <cstring>
+#include <cmath>
+#include <algorithm>
 #include "sly/game/AudioSystem.h"
 #include "sly/game/hud/HudElement.h"
 #include "sly/game/hud/HudHideoutMenu.h"
@@ -1470,6 +1472,43 @@ void SlyGame::ResumeFromPause()
     const bool vibration = (settings.flags & GameSettings::kFlag_Vibration) != 0;
     for (AppPlayer& player : GetAppRuntime().players)
         player.SetRumblePaused(!vibration);
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x00468A38 SlyGame::UpdateSlowTimeAudio
+void SlyGame::UpdateSlowTimeAudio(float dt)
+{
+    constexpr float kEpsilon = 1e-5f;
+    constexpr float kOpenCutoff = 23999.0f;
+    if (std::fabs(dt) < kEpsilon)
+        return;
+    const float rate = audioRamp.active ? audioRamp.value : 1.0f;
+    audio::SetGlobalPlaybackRate(rate);
+    const audio::VoiceId music = audio::MusicVoice();
+    if (!audio::IsVoiceValid(music))
+        return;
+
+    const float slowCutoff = g_audioSlowTimeMusicLPFFrequency.Get();
+    const float fade = g_audioSlowTimeMusicLPFCrossfadeDuration.Get();
+    if (std::fabs(rate - 1.0f) < kEpsilon) {
+        if (musicFilterCutoff >= kOpenCutoff)
+            return;
+        if (std::fabs(fade) < kEpsilon)
+            musicFilterCutoff = kOpenCutoff;
+        else
+            musicFilterCutoff = std::min(kOpenCutoff, musicFilterCutoff + (kOpenCutoff - slowCutoff) / fade * dt);
+    } else {
+        if (musicFilterCutoff <= slowCutoff)
+            return;
+        if (std::fabs(fade) < kEpsilon)
+            musicFilterCutoff = fade;   // NOTE: the console stores the duration here, not the cut-off
+        else
+            musicFilterCutoff = std::max(slowCutoff, musicFilterCutoff + (slowCutoff - kOpenCutoff) / fade * dt);
+    }
+    audio::SetVoiceLowPass(music, musicFilterCutoff);
 }
 
 } // namespace sly
