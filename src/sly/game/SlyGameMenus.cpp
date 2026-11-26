@@ -9,6 +9,7 @@
 #include "sly/components/Components.h"
 #include "sly/entity/Entity.h"
 #include "sly/entity/GameCamera.h"
+#include "sly/camera/CameraModes.h"
 #include "sly/game/AppRuntime.h"
 #include "sly/game/GameShellHooks.h"
 #include "sly/game/LevelParams.h"
@@ -386,8 +387,8 @@ void SlyGame::RefreshCamera()
         return;
     camera->PostUpdate(0.0f);
     camera->RefreshView();
-    if (field_128584)
-        FrameObjectRefresh(field_128584);
+    if (cutsceneCameraMode)
+        cutsceneCameraMode->Activate();
 }
 
 // @func 0x00488078 SlyGame::ThrowPlayer
@@ -1026,8 +1027,8 @@ void SlyGame::UpdateCutsceneQueue(float dt)
                 return;
             }
             resumeAfterCutscenes = false;
-            RestorePlayerView(players[0]);
-            field_128584 = nullptr;
+            ClearCameraModes();
+            cutsceneCameraMode = nullptr;
             if (camera) {
                 camera->SetVisibilityDeferred(false, false);
                 camera->SetRenderEnabled(false);
@@ -1042,11 +1043,39 @@ void SlyGame::UpdateCutsceneQueue(float dt)
     }
 }
 
-// TODO(0x004845F0 SlyGame::RestorePlayerView): the camera and HUD go back
-// to the player block's character after the cutscenes.
-void SlyGame::RestorePlayerView(GamePlayer& player)
+// @func 0x004845F0 SlyGame::ClearCameraModes
+void SlyGame::ClearCameraModes()
 {
-    (void)player;
+    if (!camera)
+        return;
+    while (camera::CameraMode* mode = camera->TopMode()) {
+        switch (mode->GetType()) {
+        case 1:
+            CameraMode1SetTarget(mode, nullptr);
+            break;
+        case camera::kCamMode_Default:
+            static_cast<camera::DefaultCameraMode*>(mode)->SetTarget(nullptr);
+            break;
+        case camera::kCamMode_Spline:
+            static_cast<camera::SplineCameraMode*>(mode)->SetTarget(nullptr);
+            break;
+        case camera::kCamMode_Vehicle:
+            static_cast<camera::VehicleCameraMode*>(mode)->SetTarget(nullptr);
+            break;
+        case camera::kCamMode_HavokVehicle:
+            static_cast<camera::HavokVehicleCameraMode*>(mode)->SetTarget(nullptr);
+            break;
+        default:
+            break;
+        }
+        if (mode == camera->animMode)
+            camera->animMode = nullptr;
+        camera->RemoveMode(-1.0f, mode);
+        if (mode == cutsceneCameraMode) {
+            delete mode;
+            cutsceneCameraMode = nullptr;
+        }
+    }
 }
 
 } // namespace sly

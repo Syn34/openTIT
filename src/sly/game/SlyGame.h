@@ -37,6 +37,7 @@ namespace goals { class Goal; }
 namespace gameplay { class Minigame; class ReturnTreasureMicrogame; }
 namespace entity { class Entity; class GameCamera; }
 namespace audio { struct MixState; }
+namespace camera { class CameraMode; }
 struct LevelParams;
 
 // A deferred call queued on one of the world callback lists: the game
@@ -490,8 +491,8 @@ public:
     // (variant on while it is not in the idle state 0/6 or a debug switch
     // forces it).
     void SetPlayerMeterVariant(uint32_t player, bool on);
-    // The camera updates once more and re-applies its view; the frame
-    // object (+0x128584) is told (slot 7).
+    // The camera updates once more and re-applies its view; the cutscene
+    // camera mode (+0x128584) activates again.
     void RefreshCamera();
     // Throws or drops (`drop`) a player's character towards `target`.
     void ThrowPlayer(uint32_t player, const ape::Vec3& target, bool drop);
@@ -528,8 +529,10 @@ public:
     // empty, the deferred game events go to the job manager and play
     // resumes (0x0048B810).
     void UpdateCutsceneQueue(float dt);
-    // The camera and HUD go back to a player block's character (0x004845F0).
-    void RestorePlayerView(GamePlayer& player);
+    // Pops every camera mode (followed targets dropped), deleting the
+    // cutscene camera mode (0x004845F0). NOTE: the console passes a player
+    // block it does not use.
+    void ClearCameraModes();
     // Leaves for the hideout of the current episode (ending the running
     // job), or for the level's default hideout outside episodes.
     static void ReturnToHideout();
@@ -648,7 +651,7 @@ public:
     DialogState dialog;                         // +0x1283C0
     gameplay::ReturnTreasureMicrogame* returnTreasure = nullptr; // +0x12847C
     ape::ApeTArray<WorldCallback> callbackLists[kCallbackListCount]; // +0x128480
-    void* field_128584 = nullptr;               // +0x128584 NOTE: object refreshed with the camera (slot 7)
+    camera::CameraMode* cutsceneCameraMode = nullptr; // +0x128584 camera mode of the cutscenes (owned)
     float timeScaleA = 1.0f;                    // +0x128588
     float timeScaleATarget = -1.0f;             // +0x12858C
     uint8_t field_128590 = 0;                   // +0x128590

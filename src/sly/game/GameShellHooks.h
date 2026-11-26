@@ -33,8 +33,9 @@ void GadgetSetMeterVariant(entity::EntityComponent* gadget, bool on);
 bool AiDebugMeterSwitch();
 // State of a character's state machine layer (entity virtual slot 8).
 int CharacterState(const entity::Entity* character, uint32_t layer);
-// The game world's frame object (+0x128584) refreshes (its slot 7).
-void FrameObjectRefresh(void* frameObject);
+// The camera mode of type 1 follows `target` (0x001088E4; the mode class is
+// not ported).
+void CameraMode1SetTarget(void* mode, entity::Entity* target);
 // A character is thrown (0x0012B908) or dropped (0x0012BB9C) towards a
 // point.
 void CharacterThrowTowards(entity::Entity* character, const ape::Vec3& target);
