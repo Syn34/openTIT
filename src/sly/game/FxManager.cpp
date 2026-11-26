@@ -1,6 +1,8 @@
 // openTIT - Effect manager walkers and camera shake queue. See FxManager.h.
 #include "sly/game/FxManager.h"
 
+#include "sly/game/FxEffects.h"
+
 #include "platform/Platform.h"
 #include "sly/entity/Entity.h"
 
@@ -36,6 +38,43 @@ void FxManager::KillEntityEffects(entity::Entity* entity)
     ape::world::ApeObj* object = entity->object;
     for (int32_t i = effects.FirstIndex(); i != effects.kNone; i = effects.NextIndex(i))
         effects.At(i)->KillIfAttachedTo(object);
+}
+
+// @func 0x002EF7B8 FxManager::SetTimeScaleOn
+void FxManager::SetTimeScaleOn(ape::world::ApeObj* object, float timeScale)
+{
+    for (int32_t i = effects.FirstIndex(); i != effects.kNone; i = effects.NextIndex(i))
+        effects.At(i)->SetValueIfAttachedTo(object, timeScale);
+}
+
+// @func 0x002F0E0C FxManager::Play
+FxEffect* FxManager::Play(const FxEffectDesc& desc, uint32_t* handle)
+{
+    if (effects.Count() >= effects.Capacity())
+        return nullptr;
+    FxEffect* effect = nullptr;
+    switch (desc.kind) {
+    case kFx_ObjShake:
+        effect = new FxObjShakeEffect(static_cast<const FxObjShakeDesc&>(desc));
+        break;
+    case kFx_Trail:
+        effect = new FxTrailEffect(desc);
+        break;
+    case kFx_GeoDisplay:
+        effect = new FxGeoDisplayEffect(desc);
+        break;
+    case kFx_MotionTrail:
+        effect = new FxMotionTrailEffect(static_cast<const FxMotionTrailDesc&>(desc));
+        break;
+    case kFx_Delay:
+        effect = new FxDelayEffect(desc);
+        break;
+    default:
+        return nullptr;
+    }
+    // The console takes the list node first and stores the new effect in it.
+    *handle = effects.PushBack(effect);
+    return effect;
 }
 
 // @func 0x002F20A4 FxManager::StopEffect

@@ -636,10 +636,10 @@ void UnloadHud();
 // A colour style of the definition file (0x1C bytes, element 0xFA405F99).
 struct HudColorStyle {
     uint32_t name = 0;               // +0x00 "Name"
-    uint32_t field_04 = 0;           // +0x04 attribute 0x7A30D7E3
-    uint32_t field_08 = 0;           // +0x08 attribute 0x760CB725
+    uint32_t field_04 = 0;           // +0x04 "Entity": definition shown in a model slot (HudModelSlot.h)
+    uint32_t field_08 = 0;           // +0x08 "Camera": camera definition it is viewed through
     uint8_t colors[3][4] = {};       // +0x0C attributes 0xEAB9B1D2, 0xEAB9B1D3, 0x68762E36
-    uint32_t field_18 = 0;           // +0x18 attribute 0x31F8E7E5
+    uint32_t field_18 = 0;           // +0x18 "IdleAnim": clip the model plays
 };
 // The first / second colour of a style (`found` as returned by the style
 // map's Find; opaque black without a style). 0x0036AA04 / 0x0036AA68.
