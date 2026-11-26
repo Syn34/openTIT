@@ -17,6 +17,7 @@
 #include "sly/entity/Character.h"
 #include "sly/gameplay/Sequencer.h"
 #include "agl/AglRenderTarget.h"
+#include "agl/AglDisplay.h"
 #include "ape/anim/ApeAnimScript.h"
 #include "sly/gameplay/ReturnTreasure.h"
 #include "sly/entity/GameEntityHooks.h"
@@ -1525,6 +1526,59 @@ void SlyGame::VisitIncludedLevels(const ape::ApeLevelDef* level)
         // NOTE: the console looks the level up twice.
         if (const ape::ApeLevelDef* included = ape::FindLevelDef(name))
             VisitIncludedLevels(included);
+    }
+}
+
+} // namespace sly
+
+namespace sly {
+
+namespace {
+// The root GUI screens (table 0x00F65DF4).
+struct GuiRoot {
+    const char* name;
+    bool fullScreen;      // sized to the display
+    bool platformScale;   // scaled by "UI.PlatformScale" too
+};
+constexpr GuiRoot kGuiRoots[] = {
+    {"Common.Menus", true, true},
+    {"Common.HUD", true, true},
+    {"Common.Loading.HintText", true, false},
+    {"FrontEnd.Screens", false, false},
+    {"FrontEnd.Menus", true, true},
+    {"InGame.Menus", true, true},
+    {"InGame.HUD", true, true},
+    {"InGame.Binocucom01", true, true},
+    {"InGame.BinocucomPhoto", true, true},
+    {"ArtViewer.Menus", true, true},
+    {"ArtViewer.HUD", true, true},
+    {"LevelEditor.Menus", true, false},
+    {"LevelEditor.HUD", true, false},
+};
+} // namespace
+
+// @func 0x00467610 SlyGame::FitGuiRoots
+void SlyGame::FitGuiRoots()
+{
+    constexpr float kReferenceHeight = 720.0f;
+    const agl::AglDisplaySettings& display = agl::GetDisplaySettings();
+    for (const GuiRoot& root : kGuiRoots) {
+        ape::ApeGuiObject* object = ape::FindGuiObject(root.name, nullptr);
+        if (!object)
+            continue;
+        float screen[2] = {float(display.width), float(display.height)};
+        const float scale = screen[1] * (root.platformScale ? g_uIPlatformScale.Get() : 1.0f) / kReferenceHeight;
+        object->SetScale(ape::Vec3{scale, scale, scale, 0.0f});
+        if (root.fullScreen) {
+            // NOTE: the console first scales the display size by the ratio
+            // of two engine words (0x010C5A3C / 0x010C5A3E) to the back
+            // buffer size; they are not modelled, the ratio is taken as 1.
+            const ape::Vec3& objectScale = object->GetScale();
+            const float size[2] = {screen[0] / objectScale.x, screen[1] / objectScale.y};
+            object->SetSize(size);
+            object->SetExpand(false);
+        }
+        object->Invalidate();
     }
 }
 

@@ -450,6 +450,10 @@ public:
     // Walks the levels `level` includes, recursively. NOTE: nothing is done
     // with them on the console (the work was compiled out) (0x0047C68C).
     void VisitIncludedLevels(const ape::ApeLevelDef* level);
+    // Fits the root GUI screens ("Common.Menus", "InGame.HUD", ...) to the
+    // display: scaled by height / 720 ("UI.PlatformScale" for most), and
+    // the full-screen ones sized to the whole display (0x00467610).
+    void FitGuiRoots();
     // A player is down: meter B snaps and a running return-treasure
     // microgame loses the treasure if the player carried it.
     void OnPlayerDown(uint32_t player);
