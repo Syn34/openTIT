@@ -20,6 +20,16 @@ void ReleaseSpawned(WorldObject*& entity)
 }
 } // namespace
 
+// @func 0x0077D934 BartenderMinigame::~BartenderMinigame
+// @func 0x0077DB10 BartenderMinigame::~BartenderMinigame (deleting)
+// @func 0x0077E6BC BartenderMinigame::~BartenderMinigame (thunk, +0x38)
+// @func 0x0077E100 BartenderMinigame::~BartenderMinigame (deleting thunk, +0x38)
+// @func 0x0077E4DC BartenderMinigame::~BartenderMinigame (thunk, +0x3C)
+// @func 0x0077DF04 BartenderMinigame::~BartenderMinigame (deleting thunk, +0x3C)
+// @func 0x0077E2FC BartenderMinigame::~BartenderMinigame (thunk, +0x40)
+// @func 0x0077DD08 BartenderMinigame::~BartenderMinigame (deleting thunk, +0x40)
+BartenderMinigame::~BartenderMinigame() = default;
+
 // @func 0x0077AF08 FishingMinigame::~FishingMinigame
 // @func 0x0077E8AC FishingMinigame::~FishingMinigame (deleting)
 FishingMinigame::~FishingMinigame() = default;

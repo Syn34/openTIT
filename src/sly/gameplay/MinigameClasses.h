@@ -9,11 +9,44 @@
 #include "sly/gameplay/Minigame.h"
 #include "sly/gameplay/PenguinMinigames.h"
 #include "ape/memory/ApeTArray.h"
+#include "sly/entity/EntityInterfaces.h"
+
+#include <array>
 
 #include <vector>
 
 namespace sly {
 namespace gameplay {
+
+// Game-side event listener base (vtable 0x00B21A30, destructor 0x0048F6B0):
+// leaving every listener group is all its destructor does.
+class MinigameListener {
+public:
+    virtual ~MinigameListener();
+    // Slot 2: a message posted to a group the listener joined.
+    virtual void OnListenerMessage(const void* message) { (void)message; }
+    bool joined = false;   // +0x04 the listener is in some group
+};
+
+// The bartender minigame (vtable 0x00B20220 + contact listener 0x00B2028C at
+// +0x38, entity listener 0x00B202B4 at +0x3C, event listener 0x00B202D8 at
+// +0x40; constructor 0x003A3B30). NOTE: the members Minigame still carries
+// for the bartender (Minigame.h) belong here.
+class BartenderMinigame : public Minigame,
+                          public entity::EntityInterface17C,
+                          public entity::EntityInterface180,
+                          public MinigameListener {
+public:
+    ~BartenderMinigame() override;
+
+    std::vector<uint8_t> field_48;     // +0x48 compact array
+    ape::ApeTArray<void*> field_60;    // +0x60
+    std::vector<uint8_t> field_74;     // +0x74 compact array
+    ape::ApeTArray<void*> field_8C;    // +0x8C
+    ape::ApeTArray<void*> field_AC;    // +0xAC
+    ape::ApeTArray<void*> field_C0;    // +0xC0
+    std::vector<std::array<uint8_t, 8>> field_100;   // +0x100 pool (capacity at +0x110)
+};
 
 // The fishing minigame (vtable 0x00B20428, constructor 0x003B3148).
 class FishingMinigame : public Minigame {
@@ -48,16 +81,6 @@ public:
     ape::ApeTArray<void*> field_70;   // +0x70
     std::vector<uint8_t> field_170;   // +0x170 compact array
     ape::ApeTArray<void*> field_188;  // +0x188
-};
-
-// Game-side event listener base (vtable 0x00B21A30, destructor 0x0048F6B0):
-// leaving every listener group is all its destructor does.
-class MinigameListener {
-public:
-    virtual ~MinigameListener();
-    // Slot 2: a message posted to a group the listener joined.
-    virtual void OnListenerMessage(const void* message) { (void)message; }
-    bool joined = false;   // +0x04 the listener is in some group
 };
 
 // The fencing minigame (vtable 0x00B205B8 + listener 0x00B2061C at +0x38;
