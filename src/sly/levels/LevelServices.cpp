@@ -1,4 +1,5 @@
 // openTIT - Stubs of the services used by the third batch of level script code.
+#include "sly/gameplay/Lasers.h"
 #include "sly/levels/LevelServices.h"
 
 #include "sly/game/SlyGame.h"
@@ -8,15 +9,27 @@
 namespace sly {
 namespace levels {
 
-// TODO(0x00399000 laser manager) the laser module is not ported yet.
-LaserGroup* FindLaserGroup(uint32_t nameHash) { (void)nameHash; return nullptr; }
-Laser* FindLaser(uint32_t nameHash) { (void)nameHash; return nullptr; }
-LaserField* FindLaserField(uint32_t nameHash) { (void)nameHash; return nullptr; }
-void LaserGroupReset(LaserGroup* group) { (void)group; }
-void LaserGroupSetEnabled(LaserGroup* group, bool enable) { (void)group; (void)enable; }
-void LaserReset(Laser* laser) { (void)laser; }
-void LaserSetEnabled(Laser* laser, bool enable) { (void)laser; (void)enable; }
-void LaserFieldSetEnabled(LaserField* field, bool enable, bool immediate) { (void)field; (void)enable; (void)immediate; }
+// Lasers: sly/gameplay/Lasers.*.
+LaserGroup* FindLaserGroup(uint32_t nameHash)
+{
+    LaserManager* lasers = GetLaserManager();
+    return lasers ? lasers->FindGroup(nameHash) : nullptr;
+}
+Laser* FindLaser(uint32_t nameHash)
+{
+    LaserManager* lasers = GetLaserManager();
+    return lasers ? lasers->FindLaser(nameHash) : nullptr;
+}
+LaserField* FindLaserField(uint32_t nameHash)
+{
+    LaserManager* lasers = GetLaserManager();
+    return lasers ? lasers->FindField(nameHash) : nullptr;
+}
+void LaserGroupReset(LaserGroup* group) { group->ResetLasers(); }
+void LaserGroupSetEnabled(LaserGroup* group, bool enable) { group->SetEnabled(enable, false, false); }
+void LaserReset(Laser* laser) { laser->Reset(); }
+void LaserSetEnabled(Laser* laser, bool enable) { laser->SetEnabled(enable, false, false); }
+void LaserFieldSetEnabled(LaserField* field, bool enable, bool immediate) { field->SetEnabled(enable, true, immediate); }
 
 // TODO(0x000D951C EntityInteraction) interaction components live in the entity module.
 void* EntityInteractionComponent(WorldObject* entity) { (void)entity; return nullptr; }

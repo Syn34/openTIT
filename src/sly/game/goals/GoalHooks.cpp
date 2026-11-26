@@ -1,4 +1,5 @@
 // openTIT - TODO stubs for the goal module's outside calls (see GoalHooks.h).
+#include "sly/gameplay/Lasers.h"
 #include "sly/game/goals/GoalHooks.h"
 
 #include "sly/game/hud/HudType8000.h"
@@ -73,16 +74,16 @@ bool HintEntityNeedsRefresh(const void*) { return false; }
 void HintEntityRefresh(void*) {}
 bool HintEntityInteractable(const void*) { return false; }
 void* HintEntityInteraction(void*) { return nullptr; }
-void* HintFindLaserGroup(uint32_t) { return nullptr; }
-void* HintFindLaser(uint32_t) { return nullptr; }
-void* HintFindLaserField(uint32_t) { return nullptr; }
+void* HintFindLaserGroup(uint32_t name) { return GetLaserManager() ? GetLaserManager()->FindGroup(name) : nullptr; }
+void* HintFindLaser(uint32_t name) { return GetLaserManager() ? GetLaserManager()->FindLaser(name) : nullptr; }
+void* HintFindLaserField(uint32_t name) { return GetLaserManager() ? GetLaserManager()->FindField(name) : nullptr; }
 void HintEntitySetEnabled(void*, bool) {}
 void HintInteractableSetEnabled(void*, bool) {}
 int HintInteractionState(const void*) { return 0; }
 void HintInteractionSetState(void*, int) {}
-void HintLaserGroupEnable(void*, bool) {}
-void HintLaserEnable(void*, bool) {}
-void HintLaserFieldEnable(void*, bool) {}
+void HintLaserGroupEnable(void* group, bool enable) { static_cast<LaserGroup*>(group)->SetEnabled(enable, false, false); }
+void HintLaserEnable(void* laser, bool enable) { static_cast<Laser*>(laser)->SetEnabled(enable, false, false); }
+void HintLaserFieldEnable(void* field, bool enable) { static_cast<LaserField*>(field)->SetEnabled(enable, false, false); }
 
 // Players / entities
 void* PlayerCharacter(int) { return nullptr; }
