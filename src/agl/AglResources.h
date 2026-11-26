@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace ape::iff { class IffReader; }
 
@@ -90,6 +91,7 @@ public:
 
 class AglTopology : public AglResource {
 public:
+    AglTopology();
     static AglTopology* Create();
     static void Destroy(void* object);
     void Release() override;
@@ -108,8 +110,15 @@ public:
     void SetFlags(bool flag80, bool flag40, bool flag20);
     // LOD distance scale (0 without LOD settings).
     float GetLodScale() const;
+    // Appends a submesh drawn with 'material' (both reference counted) and
+    // names the submesh after the topology.
+    void AddMesh(AglSubMesh* mesh, AglMaterial* material);
 
-    uint8_t field_8[0x30 - 8] = {};
+    static constexpr int kInlineMeshes = 4;    // entries stored in the object itself
+    static constexpr int kMeshBlock = 40;      // entries of the block used beyond that
+
+    uint8_t field_8[0x10 - 8] = {};
+    MeshEntry inlineMeshes[kInlineMeshes] = {};   // 0x10
     MeshEntry* meshes = nullptr;            // 0x30
     uint16_t meshCount = 0;                 // 0x34
     uint8_t flags = 0;                      // 0x36 (bits 5..7 set by SetFlags)
@@ -119,7 +128,36 @@ public:
     const float* lod = nullptr;             // 0x58: LOD settings, scale at [4]
     const char* name = nullptr;             // 0x60
     uint8_t field_64[0x70 - 0x64] = {};
+    AglTopology* lodOwner = nullptr;        // 0x54 NOTE: points at the topology itself after construction
+    uint32_t field_5C = 0;                  // 0x5C
+    // Storage of the entries beyond the inline ones (a pooled 40-entry
+    // block on the console).
+    std::vector<MeshEntry> meshBlock;
 };
+
+// The topology dictionary (0x010DDC80): topologies by name hash, filled as
+// mesh records are loaded.
+void RegisterTopology(AglTopology* topology);
+AglTopology* FindTopology(uint32_t nameHash);
+// Per-object light selection state of a render object ("AglLight", 0xF0
+// bytes, pooled; the world module creates one per lit instance). Only the
+// set-up fields are known.
+struct AglLight {
+    uint8_t field_00[0xD4] = {};
+    uint8_t flags = 0;              // +0xD4 bit 7 cleared on creation
+    // +0xD5: frame slot in which the object's lights are re-evaluated
+    // (objects are spread over EngineConfig +0x99 frames).
+    uint8_t updatePhase = 0;
+    uint8_t field_D6 = 0;
+    uint8_t field_D7 = 0;
+    int32_t field_D8 = -1;
+    uint8_t field_DC[0xF0 - 0xDC] = {};
+};
+AglLight* CreateLight();
+void FreeLight(AglLight* light);
+
+// The placeholder mesh used for missing meshes.
+AglTopology* GetDefaultMesh();
 
 class AglShaderClass;
 // UV animation of a material (0x98 bytes): scroll in U, scroll in V and a
@@ -173,6 +211,25 @@ struct AglMaterialAnim {
     Channel v;                             // +0x38
     Channel rotation;                      // +0x68
 
+    // Settings of one channel as stored in a material animation chunk.
+    struct ChannelParams {
+        float speed = 0.0f;       // 0 switches the channel off
+        float steps = 0.0f;
+        float limit = 0.0f;
+        float delayMin = 0.0f;
+        float delayMax = 0.0f;
+        float playTime = 0.0f;
+        float pivot[2] = {};      // rotation channel only
+        uint8_t mode = 0;         // Channel::kMode_*
+        uint8_t channel = 0;      // 0 U, 1 V, 2 rotation
+        uint8_t flags = 0;
+    };
+
+    AglMaterialAnim();
+    // Configures one channel. When both scrolls are stepped and V is the
+    // slower one, U is driven by V instead (flip book frames in rows).
+    void Configure(const ChannelParams& params);
+    void CopyFrom(const AglMaterialAnim& source);
     // Advances the three channels once per rendered frame.
     void Update();
     // The quantised U and V offsets.
@@ -213,6 +270,10 @@ public:
     void CopyFrom(const AglMaterial& source);
     // A new material with the same class and settings.
     static AglMaterial* Clone(const AglMaterial& source);
+    // Fills the material from a material header (texture, colours, blend,
+    // cull, wrap, depth and sort settings) and lets the shader class named
+    // there set it up, falling back to the default class.
+    void Setup(struct AglMaterialDesc* desc);
 
     enum BlendMode {
         kBlend_None = 0,         // opaque (or an unrecognised combination)
@@ -269,6 +330,8 @@ public:
 // textured with default texture 0 or 1). All alpha blended; created on
 // first use.
 AglMaterial* GetBuiltinMaterial(int index);
+// A live material (still referenced) with that name hash, or null.
+AglMaterial* FindLiveMaterial(uint32_t nameHash);
 
 // A new unlit material for sprites and screen quads: textured with 'texture',
 // or vertex colored when 'texture' is null. Blend state is left at the

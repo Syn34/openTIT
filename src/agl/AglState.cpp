@@ -6,6 +6,9 @@
 #include "agl/AglPrimitives.h"
 #include "agl/AglResources.h"
 #include "agl/AglShader.h"
+#include "agl/AglRenderTarget.h"
+
+#include "ape/math/ApeMath.h"
 
 namespace agl {
 
@@ -398,6 +401,28 @@ void InvalidateRenderState()
     st.stencilFront = AglStencilState();
     st.stencilBack = AglStencilState();
     GetDrawList().InvalidateCache();
+}
+
+// @func 0x004FCC34 UploadViewSpaceMatrix
+void UploadViewSpaceMatrix(const ape::Matrix34& viewSpace)
+{
+    const ape::Matrix44& p = GetViewConstants().projection;
+    const ape::Vec3* rows[4] = { &viewSpace.xAxis, &viewSpace.yAxis, &viewSpace.zAxis, &viewSpace.translation };
+    float m[4][4];
+    for (int i = 0; i < 4; ++i) {
+        // The axes are directions; the translation row carries w = 1.
+        const ape::Vec3& r = *rows[i];
+        const float w = i == 3 ? 1.0f : 0.0f;
+        m[i][0] = r.x * p.rows[0].x + r.y * p.rows[1].x + r.z * p.rows[2].x + w * p.rows[3].x;
+        m[i][1] = r.x * p.rows[0].y + r.y * p.rows[1].y + r.z * p.rows[2].y + w * p.rows[3].y;
+        m[i][2] = r.x * p.rows[0].z + r.y * p.rows[1].z + r.z * p.rows[2].z + w * p.rows[3].z;
+        m[i][3] = r.x * p.rows[0].w + r.y * p.rows[1].w + r.z * p.rows[2].w + w * p.rows[3].w;
+    }
+    float transposed[16];
+    for (int c = 0; c < 4; ++c)
+        for (int r = 0; r < 4; ++r)
+            transposed[c * 4 + r] = m[r][c];
+    Cmd().SetVertexProgramConstants(0, 16, transposed);
 }
 
 // @func 0x005011A0 ApplyParticleStencilMask

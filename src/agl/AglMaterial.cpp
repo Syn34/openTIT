@@ -10,6 +10,7 @@
 
 #include "ape/math/ApeMath.h"
 #include "ape/sys/ApeGeometry.h"
+#include "ape/sys/ApeIff.h"
 #include "ape/world/ApeInstances.h"
 
 #include <cmath>
@@ -172,7 +173,7 @@ void AglMaterial::CopyFrom(const AglMaterial& source)
     if (source.anim) {
         if (!anim)
             anim = ape::ApeTListAllocator<AglMaterialAnim>::GetAllocator().New();
-        *anim = *source.anim;
+        anim->CopyFrom(*source.anim);
     }
 }
 
@@ -209,6 +210,119 @@ AglMaterial::BlendMode AglMaterial::GetBlendMode() const
 
 namespace {
 AglMaterial* g_builtinMaterials[6] = {};   // 0x010F0C60
+}
+
+// Inline on the console wherever a material is looked up by name (the
+// pool's live objects are walked).
+AglMaterial* FindLiveMaterial(uint32_t nameHash)
+{
+    AglMaterial* found = nullptr;
+    ape::ApeTListAllocator<AglMaterial>::GetAllocator().ForEach([&](AglMaterial* material) {
+        if (!found && material->nameHash == nameHash)
+            found = material;
+    });
+    return found && found->refCount >= 1 ? found : nullptr;
+}
+
+namespace {
+
+// Texture wrap mode by stored clamp mode (0x00F66EDC).
+constexpr uint16_t kClampModeWrap[3] = { 1, 3, 2 };
+// Culled front face by stored cull mode (0x00F66ED0); 2 draws both sides.
+constexpr uint16_t kCullModeFace[3] = {
+    static_cast<uint16_t>(gpu::FrontFace::CW), static_cast<uint16_t>(gpu::FrontFace::CW), 0,
+};
+constexpr uint32_t kDefaultClassHash = 0x03DE9E33u;   // 0x00F66FB4
+
+// Draw order group by the stored sort layer value.
+uint8_t SortGroup(uint8_t layer)
+{
+    switch (layer) {
+    case 0x20: return 0;
+    case 0x28: return 1;
+    case 0x2C: return 2;
+    case 0x2F: return 3;
+    case 0x30: return 4;
+    case 0x38: return 5;
+    case 0x3C: return 6;
+    case 0x2E: return 10;
+    case 0x40: case 0x50: case 0x60: return 9;
+    case 0x66: return 12;
+    default: return 0;
+    }
+}
+
+} // namespace
+
+// @func 0x0050C3D8 AglMaterial::Setup
+void AglMaterial::Setup(AglMaterialDesc* desc)
+{
+    nameHash = desc->nameHash;
+    AglTexture* texture = FindTexture(desc->field_0);
+    if (!texture)
+        texture = GetDefaultTexture(kAglTex_White);
+    AddTexture(texture);
+
+    for (int i = 0; i < 4; ++i) {
+        color0[i] = desc->diffuseColor[i] / 255.0f;
+        color1[i] = desc->specColor[i] / 255.0f;
+    }
+    field_60 = desc->specPower;
+
+    // NOTE: the console traps on blend/cull/clamp modes outside its tables;
+    // they fall back to the first entry here.
+    blendEquation = gpu::BlendEquation::Add;
+    blendEnable = true;
+    blendSrc = gpu::BlendFactor::SrcAlpha;
+    switch (desc->blendMode < 5 ? desc->blendMode : 0) {
+    case 4:   // subtractive
+        blendEquation = gpu::BlendEquation::ReverseSubtract;
+        blendDst = gpu::BlendFactor::One;
+        break;
+    case 3:   // additive
+        blendDst = gpu::BlendFactor::One;
+        break;
+    case 2:   // alpha blended
+        blendDst = gpu::BlendFactor::OneMinusSrcAlpha;
+        break;
+    case 1:   // blending on, but replacing
+        blendSrc = gpu::BlendFactor::One;
+        blendDst = gpu::BlendFactor::Zero;
+        break;
+    default:  // opaque
+        blendEnable = false;
+        blendSrc = gpu::BlendFactor::One;
+        blendDst = gpu::BlendFactor::Zero;
+        break;
+    }
+    cullFrontFace = kCullModeFace[desc->cullMode < 3 ? desc->cullMode : 0];
+    texture->SetWrap(kClampModeWrap[desc->clampModeU < 3 ? desc->clampModeU : 0],
+                     kClampModeWrap[desc->clampModeV < 3 ? desc->clampModeV : 0], 1);
+
+    // Stored flags: 0x01 lit, 0x02 -> material flag 0x20, 0x04 -> 0x40,
+    // 0x20 -> 0x10, 0x10 depth test, 0x08 depth compare (else always pass).
+    const uint8_t stored = desc->flags;
+    flags = static_cast<uint8_t>((flags & 0x0F) | ((stored & 0x01) ? kFlag_Lit : 0) | ((stored & 0x04) ? kFlag_40 : 0) |
+                                 ((stored & 0x02) ? kFlag_20 : 0) | ((stored & 0x20) ? kFlag_10 : 0));
+    depthTest = (stored & 0x10) != 0;
+    field_65 = (flags & kFlag_10) ? 8 : 0;
+    depthFunc = (stored & 0x08) ? gpu::CompareFunc::LEqual : gpu::CompareFunc::Always;
+    field_2D = SortGroup(desc->sortLayer);
+
+    // The named class sets the material up; a class may refuse and name a
+    // replacement, and unknown classes fall back to the default one.
+    AglShaderClass* cls = nullptr;
+    bool accepted = false;
+    do {
+        const uint32_t requested = desc->replacementClass;
+        cls = FindShaderClass(requested);
+        if (!cls)
+            cls = FindShaderClass(kDefaultClassHash);
+        accepted = cls->SetupMaterial(this, desc);
+        if (!accepted && requested == desc->replacementClass)
+            desc->replacementClass = kDefaultClassHash;
+    } while (!accepted);
+    shaderClass = cls;
 }
 
 // @func 0x0050F0F0 GetBuiltinMaterial
@@ -284,6 +398,67 @@ constexpr float kPi = 3.1415927f;
 constexpr float kTwoPi = 6.2831855f;
 
 } // namespace
+
+// Channels start active, unscaled (range 1) and pivot about the centre.
+AglMaterialAnim::AglMaterialAnim()
+{
+    for (Channel* channel : { &u, &v, &rotation }) {
+        channel->range = 1.0f;
+        channel->pivot[0] = channel->pivot[1] = 0.5f;
+        channel->flags = (channel->flags & 0xFFF) | (uint32_t(Channel::kPhase_Active) << Channel::kPhaseShift);
+    }
+}
+
+// @func 0x00508FBC AglMaterialAnim::CopyFrom
+// Copies settings and state; each channel keeps the low 12 bits of its own
+// flag word.
+void AglMaterialAnim::CopyFrom(const AglMaterialAnim& source)
+{
+    frameStamp = source.frameStamp;
+    wrapU = source.wrapU;
+    Channel* to[3] = { &u, &v, &rotation };
+    const Channel* from[3] = { &source.u, &source.v, &source.rotation };
+    for (int i = 0; i < 3; ++i) {
+        const uint32_t ownBits = to[i]->flags & 0xFFF;
+        *to[i] = *from[i];
+        to[i]->flags = (from[i]->flags & ~0xFFFu) | ownBits;
+    }
+}
+
+// @func 0x0050B6D8 AglMaterialAnim::Configure
+void AglMaterialAnim::Configure(const ChannelParams& params)
+{
+    Channel* channels[3] = { &u, &v, &rotation };
+    if (params.channel < 3) {
+        Channel& channel = *channels[params.channel];
+        const uint32_t keep = channel.flags & 0xFFFFF;   // phase and low bits
+        if (params.speed == 0.0f) {
+            channel.flags = (channel.flags & ~Channel::kModeMask) | (Channel::kMode_Off << Channel::kModeShift);
+        } else {
+            channel.speed = params.speed;
+            channel.step = params.steps;
+            channel.range = params.limit;
+            channel.waitMin = params.delayMin;
+            channel.waitMax = params.delayMax;
+            channel.activeTime = params.playTime;
+            if (params.channel == 2) {
+                channel.pivot[0] = params.pivot[0];
+                channel.pivot[1] = params.pivot[1];
+            } else {
+                channel.pivot[0] = channel.pivot[1] = 0.0f;
+            }
+            channel.flags = (channel.flags & ~Channel::kModeMask) | (uint32_t(params.mode) << Channel::kModeShift);
+            // An unstepped ping-pong follows a sine.
+            if (params.mode == Channel::kMode_PingPong && params.steps == 0.0f)
+                channel.flags = keep | (uint32_t(params.mode) << Channel::kModeShift) | Channel::kFlag_Sine;
+        }
+    }
+    if (u.Mode() != Channel::kMode_Off && v.Mode() != Channel::kMode_Off && u.step > 0.0f && v.step > 0.0f &&
+        v.speed < u.speed) {
+        wrapU = 1;
+        u.flags = (u.flags & ~Channel::kModeMask) | (Channel::kMode_Off << Channel::kModeShift);
+    }
+}
 
 // @func 0x00501410 AglMaterialAnim::Channel::SetPhase
 void AglMaterialAnim::Channel::SetPhase(int phase)
@@ -486,21 +661,96 @@ const char* AglMaterial::GetName() const
     return textures[0] ? textures[0]->GetName() : nullptr;
 }
 
-// TODO(0x0051C640 MaterialChunkHandler): material record container. Skipped.
-int MaterialChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+// @func 0x0051C640 MaterialChunkHandler
+// A material record: a new material, announced to the create hook before
+// and after its children (header, animation) are read.
+int MaterialChunkHandler(ape::iff::IffReader* reader, void* /*arg*/)
 {
+    AglMaterial* material = AglMaterial::Create();
+    RunMaterialCreateHook(material, 0);
+    reader->ParseChunks(material);
+    RunMaterialCreateHook(material, 1);
     return 1;
 }
 
-// TODO(0x0051C704 MaterialHeaderChunkHandler): material settings. Skipped.
-int MaterialHeaderChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+// @func 0x0051C704 MaterialHeaderChunkHandler
+// The material settings. Versions 2-4 store the same fields (version 2 in
+// another order, version 4 adds the sort layer); class parameters follow.
+int MaterialHeaderChunkHandler(ape::iff::IffReader* reader, void* arg)
 {
+    AglMaterial* material = static_cast<AglMaterial*>(arg);
+    AglMaterialDesc desc;
+    uint8_t version = 4;
+    reader->ReadU8(&version);
+    auto readTextures = [&]() {
+        reader->ReadU32(&desc.field_0);
+        reader->ReadU32(&desc.diffuseHash);
+        reader->ReadU32(&desc.detailHash);
+        reader->ReadU32(&desc.detail2Hash);
+        reader->ReadU32(&desc.textureHash);
+    };
+    auto readSurface = [&]() {
+        reader->ReadU32(&desc.nameHash);
+        reader->ReadRaw32(desc.name);
+        reader->ReadU8(&desc.blendMode);
+        reader->ReadU8(&desc.cullMode);
+        reader->ReadU8(&desc.flags);
+        reader->ReadRaw4(desc.diffuseColor);
+        reader->ReadRaw4(desc.specColor);
+        reader->ReadFloat(&desc.specPower);
+    };
+    if (version == 4 || version == 3) {
+        readTextures();
+        readSurface();
+        reader->ReadU8(&desc.clampModeU);
+        reader->ReadU8(&desc.clampModeV);
+        if (version == 4)
+            reader->ReadU8(&desc.sortLayer);
+        reader->ReadU8(&desc.envMapType);
+        reader->ReadU8(&desc.wrapMode);
+        reader->ReadU32(&desc.replacementClass);
+    } else if (version == 2) {
+        readSurface();
+        reader->ReadU32(&desc.field_0);
+        reader->ReadU8(&desc.clampModeU);
+        reader->ReadU8(&desc.clampModeV);
+        reader->ReadU32(&desc.diffuseHash);
+        reader->ReadU8(&desc.envMapType);
+        reader->ReadU8(&desc.wrapMode);
+        reader->ReadU32(&desc.detailHash);
+        reader->ReadU32(&desc.detail2Hash);
+        reader->ReadU32(&desc.textureHash);
+    }
+    desc.paramCount = static_cast<uint8_t>(reader->GetChunkRemaining() / 4);
+    for (uint8_t i = 0; i < desc.paramCount && i < 24; ++i)
+        reader->ReadU32(reinterpret_cast<uint32_t*>(&desc.params[i]));
+    material->Setup(&desc);
     return 1;
 }
 
-// TODO(0x0051CD48 MaterialClassChunkHandler): shader class parameters. Skipped.
-int MaterialClassChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+// @func 0x0051CD48 MaterialClassChunkHandler
+// One UV animation channel of the material (the animation is created with
+// the first channel).
+int MaterialClassChunkHandler(ape::iff::IffReader* reader, void* arg)
 {
+    AglMaterial* material = static_cast<AglMaterial*>(arg);
+    uint8_t version = 0;
+    AglMaterialAnim::ChannelParams params;
+    reader->ReadU8(&version);
+    reader->ReadFloat(&params.speed);
+    reader->ReadFloat(&params.steps);
+    reader->ReadFloat(&params.limit);
+    reader->ReadFloat(&params.delayMin);
+    reader->ReadFloat(&params.delayMax);
+    reader->ReadFloat(&params.playTime);
+    reader->ReadFloat(&params.pivot[0]);
+    reader->ReadFloat(&params.pivot[1]);
+    reader->ReadU8(&params.mode);
+    reader->ReadU8(&params.channel);
+    reader->ReadU8(&params.flags);
+    if (!material->anim)
+        material->anim = ape::ApeTListAllocator<AglMaterialAnim>::GetAllocator().New();
+    material->anim->Configure(params);
     return 1;
 }
 
