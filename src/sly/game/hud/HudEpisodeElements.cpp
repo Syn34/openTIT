@@ -15,6 +15,7 @@
 #include "ape/world/ApeObj.h"
 #include "ape/world/ApeSceneSetup.h"
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 
@@ -381,8 +382,8 @@ HudType1000::HudType1000(HudObjectDef* def_) : HudObject(0, def_)
             fieldObjects[i] = FindInHierarchy(object, info.fields[i].objectName);
     }
     MakeListClips(def, clips);
-    field_190 = 0;
-    field_194 = 1;
+    titleB = 0;
+    titleA = 1;
     for (ape::world::ApeObj*& row : rows)
         row = CopyGeometry(info.rowGeometry);
     for (int i = 0; i < 6; ++i) {
@@ -511,8 +512,102 @@ void HudType1000::ShowTimed(float fade, const char* text_, bool flag, HudObject*
     RefreshRows();
 }
 
-// TODO(0x0037AE00 HudType1000::RefreshRows)
-void HudType1000::RefreshRows() {}
+namespace {
+
+// Job records of the episodes' first and second parts (0x00F64F00 /
+// 0x00F64F18; only the first episode has a second part).
+const uint32_t kEpisodeJobs[6] = {0xC04EF95Cu, 0x04318BE6u, 0x002899AFu, 0x80624694u, 0xCB3407A9u, 0x738D14AAu};
+const uint32_t kEpisodeSecondJobs[6] = {0xD598818Bu, 0, 0, 0, 0, 0};
+
+// Row fields of the 0x1000 element.
+constexpr uint32_t kField_TitleA = 0x93831D09u;          // "Title A"
+constexpr uint32_t kField_TitleB = 0x93831D0Au;          // "Title b"
+constexpr uint32_t kField_GameProgress = 0x53D9E41Fu;    // "GAME Progress"
+constexpr uint32_t kField_EpisodeProgress = 0x0EE9F108u; // "EPISODE Progress"
+constexpr uint32_t kField_Bottles = 0xDE006FF7u;
+constexpr uint32_t kField_BottleCount = 0xF1FB3454u;
+constexpr uint32_t kField_Treasures = 0x0BBAEF6Eu;
+constexpr uint32_t kField_TreasureCount = 0x9B13B20Bu;
+constexpr uint32_t kField_Safe = 0xC1CE33D0u;
+constexpr uint32_t kField_SafeCount = 0x196765EDu;
+constexpr uint32_t kField_Masks = 0xF17AEB11u;
+constexpr uint32_t kField_MaskCount = 0x10C350EEu;
+
+const char* const kNotAvailableValue = "$STR_NOT_AVAILABLE_01";
+const char* const kNotAvailableTotal = "$STR_NOT_AVAILABLE_02";
+
+// Name shown for episode `index`: unknown until started; the first episode
+// uses the level name text.
+const char* EpisodeTitle(uint32_t index)
+{
+    const game::Job* job = game::GetJobManager()->FindJobById(kEpisodeJobs[index]);
+    if (!job || job->ProgressState() < 1)
+        return "$STR_UNKNOWN";
+    if (index == 0)
+        return "$ParisLevelName";
+    return job->name;
+}
+
+const char* CountText(bool available, int value, const char* otherwise)
+{
+    return available ? ape::TempFormat("%d", value) : otherwise;
+}
+
+int Percent(float value) { return static_cast<int>(std::floor(value)); }
+
+} // namespace
+
+// @func 0x0037AE00 HudType1000::RefreshRows
+void HudType1000::RefreshRows()
+{
+    const HudObjectDef::ListFieldDef* fields = def->list.fields;
+    const uint32_t fieldCount = def->list.fieldCount;
+    auto setText = [&](uint32_t name, const char* text) { SetListFieldText(fields, fieldCount, name, text); };
+
+    setText(kField_TitleA, EpisodeTitle(titleA));
+    setText(kField_TitleB, EpisodeTitle(titleB));
+
+    game::JobManager* jobs = game::GetJobManager();
+    const game::Job* part1 = jobs->FindJobById(kEpisodeJobs[selected]);
+    const game::Job* part2 = jobs->FindJobById(kEpisodeSecondJobs[selected]);
+    if (!part1)
+        return;
+    const bool started = part1->ProgressState() > 0;
+    setText(kField_GameProgress,
+            ape::TempFormat("$STR_GAME_COMPLETE %d$STR_PERCENTAGE", Percent(jobs->GameCompletion(nullptr))));
+
+    if (!part2 || part2->ProgressState() < 1) {
+        setText(kField_EpisodeProgress,
+                ape::TempFormat("$STR_EPISODE_COMPLETE %d$STR_PERCENTAGE", Percent(part1->Completion())));
+        const bool hasTreasures = started && part1->TreasureCount() != 0;
+        setText(kField_Bottles, CountText(hasTreasures, part1->CollectedBottles(), kNotAvailableValue));
+        setText(kField_BottleCount, CountText(hasTreasures, game::g_defaultBottleCount, kNotAvailableTotal));
+        setText(kField_Treasures, CountText(hasTreasures, part1->CollectedTreasures(), kNotAvailableValue));
+        setText(kField_TreasureCount, CountText(hasTreasures, part1->TreasureCount(), kNotAvailableTotal));
+        setText(kField_Safe, CountText(hasTreasures, part1->SafeState() == 3 ? 1 : 0, kNotAvailableValue));
+        setText(kField_SafeCount, CountText(hasTreasures, 1, kNotAvailableTotal));
+        setText(kField_Masks, CountText(started, part1->CollectedMasks(), kNotAvailableValue));
+        setText(kField_MaskCount, CountText(started, part1->MaskCount(), kNotAvailableTotal));
+        return;
+    }
+
+    // Two-part episode: the completion is the mean of both parts and the
+    // counts are summed (the safe is the first part's).
+    const float completion = (part1->Completion() + part2->Completion()) * 0.5f;
+    setText(kField_EpisodeProgress, ape::TempFormat("$STR_EPISODE_COMPLETE %d$STR_PERCENTAGE", Percent(completion)));
+    const bool hasTreasures = started && (part1->TreasureCount() + part2->TreasureCount()) != 0;
+    setText(kField_Bottles,
+            CountText(hasTreasures, part1->CollectedBottles() + part2->CollectedBottles(), kNotAvailableValue));
+    setText(kField_BottleCount, CountText(hasTreasures, game::g_defaultBottleCount * 2, kNotAvailableTotal));
+    setText(kField_Treasures,
+            CountText(hasTreasures, part1->CollectedTreasures() + part2->CollectedTreasures(), kNotAvailableValue));
+    setText(kField_TreasureCount,
+            CountText(hasTreasures, part1->TreasureCount() + part2->TreasureCount(), kNotAvailableTotal));
+    setText(kField_Safe, CountText(hasTreasures, part1->SafeState() == 3 ? 1 : 0, kNotAvailableValue));
+    setText(kField_SafeCount, CountText(hasTreasures, 1, kNotAvailableTotal));
+    setText(kField_Masks, CountText(started, part1->CollectedMasks() + part2->CollectedMasks(), kNotAvailableValue));
+    setText(kField_MaskCount, CountText(started, part1->MaskCount() + part2->MaskCount(), kNotAvailableTotal));
+}
 
 // @func 0x0037DE50 HudType1000::SetEnabled
 void HudType1000::SetEnabled(bool enabled, bool flag)

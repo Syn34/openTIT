@@ -97,9 +97,10 @@ public:
     // 0x0037C7E0: plays the outro, or refreshes / queues the element.
     void Hide(bool a, bool b);
     // 0x0037CB10: shows the element (or restarts its update animation);
-    // the rows are refreshed (0x0037AE00, TODO).
+    // the rows are refreshed.
     void ShowTimed(float fade, const char* text, bool flag, HudObject* linkedTo, const uint8_t* color);
-    // TODO(0x0037AE00): fills the rows from the episodes.
+    // 0x0037AE00: fills the title, completion and collectible rows from the
+    // episode records (both parts summed for a two-part episode).
     void RefreshRows();
 
     uint32_t clips[7] = {};            // +0xC8
@@ -120,8 +121,8 @@ public:
     ape::world::ApeObj* episodeB[6] = {};    // +0x148 instances 0x00F64E70
     ape::world::ApeObj* episodeC[6] = {};    // +0x160 instances 0x00F64EA0
     ape::world::ApeObj* episodeD[6] = {};    // +0x178 instances 0x00F64EE8
-    uint32_t field_190 = 0;            // +0x190
-    uint32_t field_194 = 1;            // +0x194
+    uint32_t titleB = 0;               // +0x190 episode whose name is in field "Title b"
+    uint32_t titleA = 1;               // +0x194 episode whose name is in field "Title A"
     ape::world::ApeObj* copiesA[6] = {};     // +0x198 copies of instance 0xEF3B431E
     ape::world::ApeObj* copiesB[6] = {};     // +0x1B0 copies of instance 0x04DABC6F
     ape::world::ApeObj* copiesC[6] = {};     // +0x1C8 copies of instance 0x15AA444A
