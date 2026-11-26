@@ -1,6 +1,7 @@
 // openTIT - TODO stubs for the game services used by the script commands #83-#269.
 // Each returns what the original returns for a missing object.
 #include "sly/levels/ScriptServices.h"
+#include "sly/game/SlyGame.h"
 #include "sly/game/AudioSystem.h"
 #include "sly/game/goals/JobManager.h"
 
@@ -144,7 +145,11 @@ void MaterialAnimSetVSpeed(void* anim, float speed) { (void)anim; (void)speed; }
 void EntityRunScript(WorldObject* entity, uint32_t script) { (void)entity; (void)script; }
 void WeaponSetShooting(void* weapon, bool shooting) { (void)weapon; (void)shooting; }
 void GameWorldShowPrompt(WorldObject* player, const char* message, const char* buttons) { (void)player; (void)message; (void)buttons; }
-void GameWorldCall482B20(bool force) { (void)force; }
+void GameWorldCall482B20(bool force)
+{
+    if (g_game)
+        g_game->ShowLevelHeadline(force);
+}
 
 void HudShowText(void* hud, const char* text, float displayTime, bool forceStart, bool flag) { (void)hud; (void)text; (void)displayTime; (void)forceStart; (void)flag; }
 void HudStopByName(uint32_t hudName, bool flag, bool forceStop) { (void)hudName; (void)flag; (void)forceStop; }

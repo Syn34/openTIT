@@ -33,8 +33,9 @@ void GadgetSetMeterVariant(entity::EntityComponent* gadget, bool on);
 bool AiDebugMeterSwitch();
 // State of a character's state machine layer (entity virtual slot 8).
 int CharacterState(const entity::Entity* character, uint32_t layer);
-// The game world's frame object (+0x128584) refreshes (its slot 7).
-void FrameObjectRefresh(void* frameObject);
+// The camera mode of type 1 follows `target` (0x001088E4; the mode class is
+// not ported).
+void CameraMode1SetTarget(void* mode, entity::Entity* target);
 // A character is thrown (0x0012B908) or dropped (0x0012BB9C) towards a
 // point.
 void CharacterThrowTowards(entity::Entity* character, const ape::Vec3& target);
@@ -47,6 +48,12 @@ void ShowCharacterHint();
 // Closes the GUI popup over the game and its event handler (0x004645AC,
 // 0x00464804).
 void CloseGuiPopup();
+// Camera of a vehicle definition: its kind (definition +0xF0: 0 vehicle, 1
+// follow, 2 Havok vehicle, 3 orthographic) and field of view (+0x2B0).
+int VehicleDefCameraKind(const void* def);
+float VehicleDefCameraFov(const void* def);
+// Default start transform of a character slot (0x00486460).
+void DefaultSpawnTransform(int slot, ape::Matrix34* out);
 // Shows or hides the AI entities (0x0048A068).
 void SetAiEntitiesVisible(bool visible);
 

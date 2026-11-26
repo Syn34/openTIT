@@ -4,12 +4,24 @@
 
 #include "ape/core/ApeString.h"
 #include "ape/level/ApeGui.h"
+#include "ape/level/ApeGuiScript.h"
 #include "ape/world/ApeObj.h"
 #include "sly/components/Components.h"
 #include "sly/entity/Entity.h"
 #include "sly/entity/GameCamera.h"
+#include "sly/camera/CameraModes.h"
 #include "sly/game/AppRuntime.h"
 #include "sly/game/GameShellHooks.h"
+#include "sly/game/LevelParams.h"
+#include "sly/game/Subtitles.h"
+#include "sly/entity/Character.h"
+#include "sly/gameplay/Sequencer.h"
+#include "agl/AglRenderTarget.h"
+#include "ape/anim/ApeAnimScript.h"
+#include "sly/gameplay/ReturnTreasure.h"
+#include "sly/entity/GameEntityHooks.h"
+#include "sly/game/SoundZones.h"
+#include "sly/entity/Awards.h"
 #include "sly/game/goals/JobManager.h"
 #include "sly/game/AudioSystem.h"
 #include "sly/game/hud/HudElement.h"
@@ -53,6 +65,8 @@ constexpr uint32_t kPadPause = 0x4000;
 
 // Component type of the AI controllers that show the contextual marker.
 constexpr uint32_t kComp_ContextualMarker = 0x1B;
+// Entity type bit of the vehicles (type word +0xC8 bit 10).
+constexpr uint32_t kType_Vehicle = 74;
 // Component type reset when the AI entities are shown or hidden.
 constexpr uint32_t kComp_24 = 0x24;
 
@@ -375,8 +389,8 @@ void SlyGame::RefreshCamera()
         return;
     camera->PostUpdate(0.0f);
     camera->RefreshView();
-    if (field_128584)
-        FrameObjectRefresh(field_128584);
+    if (playerCameraMode)
+        playerCameraMode->Activate();
 }
 
 // @func 0x00488078 SlyGame::ThrowPlayer
@@ -407,11 +421,60 @@ void SlyGame::SwitchPlayerCharacter(uint32_t player, uint32_t def, const ape::Ma
     SwitchPlayerCharacter(players[player], def, transform, a, b, c, d);
 }
 
-// TODO(0x00484858 SlyGame::AttachCameraTo): the game camera's follow mode
-// targets the block's character and restarts its blend.
+// @func 0x00484858 SlyGame::AttachCameraTo
 void SlyGame::AttachCameraTo(GamePlayer& player)
 {
-    (void)player;
+    if (!camera)
+        return;
+    ClearCameraModes();
+    playerCameraMode = nullptr;
+    entity::Entity* character = player.character;
+    if (!character)
+        return;
+    // NOTE: the console constructors of the default, vehicle and Havok
+    // vehicle modes (0x000FF0D8, 0x0010DE30, 0x00111410) take the target;
+    // the port's modes get it through SetTarget.
+    camera::CameraMode* mode = nullptr;
+    if (character->HasTypeBit(kType_Vehicle)) {
+        switch (VehicleDefCameraKind(character->def)) {
+        case 0: {
+            auto* vehicle = new camera::VehicleCameraMode(camera);
+            vehicle->SetTarget(character);
+            mode = vehicle;
+            break;
+        }
+        case 1: {
+            auto* follow = new camera::DefaultCameraMode(camera);
+            follow->SetTarget(character);
+            mode = follow;
+            break;
+        }
+        case 2: {
+            auto* havok = new camera::HavokVehicleCameraMode(camera);
+            havok->SetTarget(character);
+            mode = havok;
+            break;
+        }
+        case 3:
+            mode = new camera::OrthoCameraMode(VehicleDefCameraFov(character->def), camera, character);
+            break;
+        default:
+            return;
+        }
+    } else {
+        if (!character->HasTypeBit(3))
+            return;
+        if (g_cameraDefaultOrbit.Get()) {
+            mode = new camera::OrbitCameraMode(camera, character, camera::kOrbit_Standard);
+        } else {
+            auto* follow = new camera::DefaultCameraMode(camera);
+            follow->SetTarget(character);
+            mode = follow;
+        }
+    }
+    playerCameraMode = mode;
+    camera->PushMode(-1.0f, mode, false);
+    RefreshCamera();
 }
 
 // @func 0x00488A78 SlyGame::AttachCameraToPlayer
@@ -566,12 +629,532 @@ void SlyGame::EndDialog(bool toFrontEnd)
     dialog.field_8C = 0;
     dialog.screenHash = 0;
     dialog.field_A0 = 0;
-    dialog.field_A4 = 0;
+    dialog.duration = 0.0f;
     dialog.field_A8 = 0;
-    dialog.field_AC = 0;
+    dialog.countRate = 0.0f;
     dialog.field_B0 = 0;
     dialog.flags &= 0x1FFFFFFFu;
     dialog.mixState = nullptr;
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x00482B20 SlyGame::ShowLevelHeadline
+// The running level's headline (the running job's override when there is
+// one), once per profile and level unless forced; the profile's unlock
+// entry of the level records that it was shown.
+void SlyGame::ShowLevelHeadline(bool force)
+{
+    constexpr uint32_t kDefaultHeadlineElement = 0x633E5DF3u;   // 0x00F64CEC. NOTE: name unknown
+    if (pendingLevelHash == 0 || !levelParams || localPlayerCount == 0)
+        return;
+    game::PlayerProgress::UnlockEntry* entry = nullptr;
+    for (game::PlayerProgress::UnlockEntry& unlock : progress.unlocks) {
+        if (unlock.name == 0)
+            break;
+        if (unlock.name == pendingLevelHash)
+            entry = &unlock;
+    }
+    if (!entry)
+        return;
+    // The first byte of the entry's state word: headline shown.
+    uint8_t shown = uint8_t(entry->state >> 24);
+    if (shown != 0 && !g_gameAlwaysShowLevelHeadline.Get() && !force)
+        return;
+    shown = 1;
+    entry->state = (entry->state & 0x00FFFFFFu) | (uint32_t(shown) << 24);
+
+    const char* text = levelParams->headline[0] != '\0'
+                           ? levelParams->headline
+                           : "<unknown headline string! Check level params for level!>";
+    game::JobManager* jobs = game::GetJobManager();
+    if (game::Episode* job = jobs ? jobs->instance : nullptr) {
+        for (const LevelParams::JobHeadline& headline : levelParams->jobHeadlines) {
+            if (headline.jobName == job->nameHash) {
+                text = headline.text;
+                break;
+            }
+        }
+    }
+    const uint32_t element = levelParams->hash1584 ? levelParams->hash1584 : kDefaultHeadlineElement;
+    static const uint8_t kNoTint[4] = {0, 0, 0, 0};   // 0x01164CA4
+    hud::ShowTextByName(-1.0f, element, text, true, true, nullptr, kNoTint);
+}
+
+} // namespace sly
+
+namespace sly {
+
+namespace {
+
+// The levels that count for the "visit everything" trophy (0x00AE91E8).
+// NOTE: level names unknown; the hashes are their name hashes.
+constexpr uint32_t kTrophyLevels[] = {
+    0xA70C9716u, 0xE3DEF6B5u, 0x467B8C48u, 0x2E01E5EBu, 0x95841725u, 0x2291A3C2u, 0x59CC1B15u,
+    0xBF4B1637u, 0x350D543Bu, 0x63910843u, 0x716016C8u, 0x85EA7462u, 0xDE07516Fu, 0x2986D493u,
+    0xF285665Bu, 0xC25ED889u, 0xF4596EECu, 0x4A2AD4EAu, 0xFCA16EEFu, 0xAEAE3F00u, 0xBC676503u,
+    0xACAA7E76u, 0x1D17219Bu, 0xD44B7705u, 0x29E1A78Cu, 0xA3907718u, 0xE3541252u, 0x3FEEDCAFu,
+    0xFAC4F502u, 0xC7B84D81u, 0x4192876Du, 0x1AD96E63u, 0x40556837u, 0xA0355EFBu, 0x0C44F02Du,
+};
+constexpr uint32_t kTrophyLevelCount = sizeof(kTrophyLevels) / sizeof(kTrophyLevels[0]);
+// Award of the trophy. NOTE: award name unknown.
+constexpr uint32_t kAward_AllLevels = 0x0023FE97u;
+
+} // namespace
+
+// @func 0x0048BF28 SlyGame::RecordLevelVisit
+// Marks the running level as visited in the profile (one bit per level of
+// the trophy list, progress +0x138); visiting the last one awards the
+// trophy.
+void SlyGame::RecordLevelVisit()
+{
+    const uint64_t before = progress.field_138;
+    for (uint32_t i = 0; i < kTrophyLevelCount; ++i) {
+        if (kTrophyLevels[i] == pendingLevelHash) {
+            progress.field_138 |= uint64_t(1) << i;
+            break;
+        }
+    }
+    const uint64_t visited = progress.field_138;
+    if (visited == before || visited == 0)
+        return;
+    uint32_t count = 0;
+    for (uint64_t bits = visited; bits; bits &= bits - 1)
+        ++count;
+    if (count >= kTrophyLevelCount)
+        AwardTrophyByName(kAward_AllLevels);
+}
+
+} // namespace sly
+
+namespace sly {
+
+namespace {
+
+// Sub state data of the modal box (layer 1).
+// NOTE: the console keeps the page pointers as 32-bit words from +0x04; the
+// rest of the block keeps its offsets here.
+struct ModalBoxData {
+    uint8_t field_00[4];
+    const char* pages[4];         // +0x04 (console: four words)
+    int32_t pageCount;            // +0x14 (in the port after the pointers)
+    int32_t page;                 // +0x18 the page shown
+    uint8_t field_1C[8];
+    int32_t position[2];          // +0x24
+    int32_t size[2];              // +0x2C
+    uint8_t colorA[4];            // +0x34
+    uint8_t colorB[4];            // +0x38
+    // +0x3C: bit 29 opened from sub state 0x0B, bit 27/26 options, bit 25
+    // the headline element was showing (it was refreshed away).
+    uint32_t flags;
+};
+static_assert(sizeof(ModalBoxData) <= 0x80, "fits the state data block");
+
+constexpr uint8_t kSub_SpeakerDialog = 8;
+constexpr uint8_t kSub_FrontEndPause = 0x0B;
+constexpr uint32_t kHeadlineElement = 0x633E5DF3u;   // 0x00F64CEC, see ShowLevelHeadline
+
+// Common start of both boxes: sub state 0x0C, the audio paused.
+ModalBoxData* OpenModalBox(SlyGame& game, bool& fromFrontEnd)
+{
+    fromFrontEnd = game.GetState(1) == kSub_FrontEndPause;
+    game.ChangeState(1, kSub_Modal);
+    game.ChangeState(2, 0);
+    audio::SetPauseAll(true);
+    return reinterpret_cast<ModalBoxData*>(game.StateData(1));
+}
+
+} // namespace
+
+// @func 0x00488DF4 SlyGame::ShowMessageBox
+void SlyGame::ShowMessageBox(const char* text, const int32_t position[2], const int32_t size[2])
+{
+    if (!g_gameMoviesEnabled.Get())
+        return;
+    bool fromFrontEnd = false;
+    ModalBoxData* data = OpenModalBox(*this, fromFrontEnd);
+    if (!data)
+        return;
+    data->pages[0] = text;
+    data->pageCount = 1;
+    data->page = 0;
+    data->position[0] = position[0];
+    data->position[1] = position[1];
+    data->size[0] = size[0];
+    data->size[1] = size[1];
+    const uint8_t black[4] = {0, 0, 0, 0xFF};
+    const uint8_t clear[4] = {0, 0, 0, 0};
+    std::memcpy(data->colorA, black, 4);
+    std::memcpy(data->colorB, clear, 4);
+    data->flags = (data->flags & 0xCFFFFFFFu) | (fromFrontEnd ? 0x20000000u : 0u) | 0x0C000000u;
+    const uint32_t headlineName = (levelParams && levelParams->hash1584) ? levelParams->hash1584 : kHeadlineElement;
+    if (hud::HudObject* headline = hud::Find(headlineName)) {
+        if (ElementObjectVisible(headline))
+            data->flags |= 0x02000000u;
+        headline->Refresh();
+    }
+    // NOTE: the console fades between two colour words of its stack that are
+    // not set up here; the fade keeps the object's colours.
+    const ape::xml::Color8 none{0, 0, 0, 0};
+    screenFade.Start(g_gameFadeTime.Get(), none, none, false, false);
+}
+
+// @func 0x004890A0 SlyGame::ShowTextPages
+void SlyGame::ShowTextPages(const char (*pages)[0x80], int count, const int32_t position[2], const int32_t size[2],
+                            bool fade, bool optionA, const uint8_t colorA[4], const uint8_t colorB[4], bool optionB)
+{
+    if (!g_gameMoviesEnabled.Get())
+        return;
+    bool fromFrontEnd = false;
+    ModalBoxData* data = OpenModalBox(*this, fromFrontEnd);
+    if (!data)
+        return;
+    const int kept = count < 4 ? count : 4;   // NOTE: the console does not check the count
+    for (int i = 0; i < kept; ++i)
+        data->pages[i] = pages[i];
+    data->pageCount = count;
+    data->page = 0;
+    data->position[0] = position[0];
+    data->position[1] = position[1];
+    data->size[0] = size[0];
+    data->size[1] = size[1];
+    std::memcpy(data->colorA, colorA, 4);
+    std::memcpy(data->colorB, colorB, 4);
+    data->flags = (data->flags & 0xC3FFFFFFu) | (fromFrontEnd ? 0x20000000u : 0u) | (optionA ? 0x08000000u : 0u) |
+                  (optionB ? 0x04000000u : 0u);
+    if (fade) {
+        const ape::xml::Color8 none{0, 0, 0, 0};   // NOTE: see ShowMessageBox
+        screenFade.Start(g_gameFadeTime.Get(), none, none, false, false);
+    }
+}
+
+// @func 0x00489328 SlyGame::StartSpeakerDialog
+bool SlyGame::StartSpeakerDialog(const DialogSpeakerEntry* speakers, uint32_t count, const char* text,
+                                 const char* sound, uint32_t value, float duration, bool option)
+{
+    constexpr uint32_t kBusy = 0x40000000u;
+    if (dialog.flags & kBusy)
+        return false;
+    dialog.speakers.Clear();
+    for (uint32_t i = 0; i < count && i < 6; ++i)
+        dialog.speakers.PushBack(speakers[i]);
+    dialog.field_98 = value;
+    if (text && text[0] != '\0')
+        ape::StrCopyBounded(dialog.text, text, 0x40);
+    if (sound && sound[0] != '\0')
+        ape::StrCopyBounded(dialog.sound, sound, 0x40);
+    dialog.duration = duration;
+    dialog.field_A8 = 0;
+    dialog.countRate = 0.0f;
+    dialog.field_B0 = 0;
+    if (duration > 0.0f) {
+        const float countDuration = g_gameMonetaryCollectFreezeScreenCountDuration.Get();
+        dialog.countRate = countDuration > 0.0f ? duration / countDuration : 0.0f;
+    }
+    dialog.flags = (option ? 0x80000000u : 0u) | (dialog.flags & 0x1FFFFFFFu) | kBusy;
+    const bool fromFrontEnd = GetState(1) == kSub_FrontEndPause;
+    ChangeState(1, kSub_SpeakerDialog);
+    ChangeState(2, 0);
+    if (uint8_t* data = StateData(1))
+        data[0] = fromFrontEnd ? 1 : 0;
+    dialog.mixState = audio::FindMixState(g_audioFreezeScreenMixState.Get());
+    if (dialog.mixState)
+        audio::PushMixState(dialog.mixState, g_audioFreezeScreenCrossfadeDuration.Get());
+    return true;
+}
+
+} // namespace sly
+
+namespace sly {
+
+// Letterbox visibility saved when a menu opens (0x00F65D8C).
+bool g_letterboxWasVisible = false;
+
+namespace {
+// Class bit of an entity under cutscene control (classBits bit 8).
+constexpr uint64_t kClass_InCutscene = 0x100;
+// Component types touched by the cutscene mode.
+constexpr uint32_t kComp_AnimDriver = 0x17;
+constexpr int kAnimDriver_PlayingScript = 7;
+} // namespace
+
+// @func 0x0048B330 SlyGame::SetCutsceneMode
+void SlyGame::SetCutsceneMode(bool on)
+{
+    entity::Entity* player = players[0].character;
+    if (on) {
+        timeScaleA = 1.0f;
+        timeScaleATarget = -1.0f;
+        field_128590 = 0;
+        timeScaleB = 1.0f;
+        timeScaleBTarget = -1.0f;
+        field_12859C = 0;
+        if (player && player->HasTypeBit(3)) {
+            if (entity::EntityComponent* gadget = entity::EntityGadget(player))
+                GadgetPutAway(gadget, false, true, false);
+        }
+    }
+    if (player) {
+        player->classBits = on ? (player->classBits | kClass_InCutscene) : (player->classBits & ~kClass_InCutscene);
+        if (entity::EntityComponent* targeting = entity::EntityTargeting(player)) {
+            targeting->SetOption(!on);
+            if (on)
+                game::TargetingClearTargets(targeting);
+            else
+                game::TargetingSetEnabled(targeting, false);
+        }
+        if (entity::EntityComponent* component = player->GetComponent(kComp_24))
+            Component24Restart(component, false);
+        if (on) {
+            for (entity::EntityComponent* c = player->GetComponent(kComp_AnimDriver); c;
+                 c = player->GetComponent(kComp_AnimDriver, c)) {
+                if (entity::AnimDriverState(c) == kAnimDriver_PlayingScript)
+                    game::AnimDriverStopScript(c);
+            }
+        }
+    }
+    // NOTE: leaving the cutscene calls an empty AI manager method.
+    if (on) {
+        if (levels::ai::AIManager* manager = levels::ai::GetAIManager())
+            manager->ClearSightings();
+    }
+    const uint32_t count = entity::EntityCount(entity::kList_All);
+    for (uint32_t i = 0; i < count; ++i) {
+        entity::Entity* e = entity::EntityAt(entity::kList_All, i);
+        if (e && e->HasTypeBit(3))
+            e->SetVisibilityDeferred(!on, false);
+    }
+    ClearSubtitle();
+    if (camera) {
+        camera->cameraFlags = on ? (camera->cameraFlags & ~entity::kCamFlag_PostFxDof)
+                                 : (camera->cameraFlags | entity::kCamFlag_PostFxDof);
+    }
+}
+
+// @func 0x0048B674 SlyGame::SetCutsceneHud
+void SlyGame::SetCutsceneHud(bool on)
+{
+    if (cutsceneHudLocked)
+        return;
+    SetCutsceneMode(on);
+    if (returnTreasure && returnTreasure->IsActive())
+        returnTreasure->SetPaused(on);
+    if (!on) {
+        hud::SetAllEnabled(true, false);
+        if (ape::ApeGuiObject* letterbox = ape::FindGuiObject("InGame.Cutscene.Letterbox", nullptr)) {
+            ape::StopGuiScripts("", letterbox);
+            ape::PlayGuiScript("Letterbox_Shutdown", letterbox, true, false);
+        }
+    } else {
+        hud::ResetHudElements(false);
+        entity::Entity* player = players[0].character;
+        if (player && player->HasTypeBit(3)) {
+            if (entity::EntityComponent* gadget = entity::EntityGadget(player))
+                GadgetPutAway(gadget, false, true, false);
+        }
+    }
+}
+
+// @func 0x0048A2F8 SlyGame::ReturnToHideout
+void SlyGame::ReturnToHideout()
+{
+    SlyGame* game = g_game;
+    game::JobManager* jobs = game::GetJobManager();
+    game::Job* episode = jobs ? jobs->CurrentEpisode() : nullptr;
+    if (episode && episode->nameHash != 0) {
+        if (jobs->instance)
+            jobs->FinishJobInstance();
+        g_letterboxWasVisible = false;
+        entity::Entity* player = game->players[0].character;
+        if (player && player->HasTypeBit(3)) {
+            if (entity::EntityComponent* gadget = entity::EntityGadget(player))
+                GadgetPutAway(gadget, false, true, false);
+        }
+        game->pendingLevelName[0] = '\0';
+        episode = jobs->CurrentEpisode();
+        game->RequestLevel(episode ? episode->nameHash : 0, false);
+        return;
+    }
+    // Outside an episode: the level's own hideout (level parameter
+    // 0x10B8A275).
+    const uint32_t hideout = game->levelParams ? game->levelParams->hashes158C[4] : 0;
+    if (hideout != 0) {
+        g_letterboxWasVisible = false;
+        game->pendingLevelName[0] = '\0';
+        if (jobs)
+            jobs->EndJob(true);
+        game->RequestLevel(hideout, false);
+    }
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x0048B810 SlyGame::UpdateCutsceneQueue
+void SlyGame::UpdateCutsceneQueue(float dt)
+{
+    // HUD screen that freezes the cutscenes while it is busy. NOTE: name
+    // unknown (console global 0x00F64CFC).
+    constexpr uint32_t kCutscenePauseScreen = 0xC2AB44C8u;
+    constexpr uint32_t kFinished = 0x20000000u;
+    constexpr uint32_t kBecomeSly = 0x40000000u;
+    constexpr uint32_t kModalSkip = 0x40000000u;   // modal box data +0x3C bit 30
+
+    if (menu != 0)
+        return;
+    if (cutsceneSkipRequested) {
+        cutsceneSkipRequested = false;
+        SetCutsceneHud(true);
+    }
+
+    // The modal box (sub state 0x0C) is told that the cutscene under it ended.
+    auto noteModalBox = [this]() {
+        if (GetState(1) != kSub_Modal)
+            return;
+        if (auto* data = reinterpret_cast<ModalBoxData*>(StateData(1)))
+            data->flags |= kModalSkip;
+    };
+
+    for (size_t i = 0; i < cutsceneQueue.Count(); ++i) {
+        QueuedCutscene* cutscene = cutsceneQueue[i];
+        if (hud::HudObject* blocker = hud::FindType2(kCutscenePauseScreen); blocker && (blocker->animState >> 1) != 0)
+            dt = 0.0f;
+        if (!cutscene->instance) {
+            entity::Entity* player = players[0].character;
+            if ((cutscene->flags & kBecomeSly) && player && player->HasTypeBit(3) && (player->classBits & 0x20))
+                static_cast<entity::Character*>(player)->BecomeSly();
+            cutscene->instance = new ape::ApeAnimScriptInstance(cutscene->script);
+            ApplyScriptBindings(cutscene->instance, cutscene->bindings.data(), cutscene->bindings.size(),
+                                cutscene->source, false, false);
+            if (mainView) {
+                cutscene->savedNearClip = mainView->zNear;
+                mainView->SetNear(g_gameCutSceneNearZClip.Get());
+            }
+        }
+        if (!cutscene->instance || (cutscene->flags & kFinished))
+            continue;
+        cutscene->time += dt;
+        cutscene->instance->Update(dt);
+        if (!cutscene->instance->IsFinished(false) || gameplay::IsSequenceRunning(cutscene->sequence))
+            break;   // later cutscenes wait for this one
+        noteModalBox();
+        if (mainView)
+            mainView->SetNear(cutscene->savedNearClip);
+        if (!g_debugIGCLoop.Get()) {
+            cutscene->flags |= kFinished;
+        } else {
+            // Debug loop: the cutscene starts over at once.
+            delete cutscene->instance;
+            cutscene->instance = nullptr;
+            --i;
+        }
+    }
+
+    for (size_t i = 0; i < cutsceneQueue.Count(); ++i) {
+        QueuedCutscene* cutscene = cutsceneQueue[i];
+        if (!(cutscene->flags & kFinished))
+            continue;
+        cutscene->flags &= ~kFinished;
+        delete cutscene->instance;
+        cutscene->instance = nullptr;
+        delete cutscene;
+        cutsceneQueue.RemoveAt(i);
+        if (cutsceneQueue.Count() == 0) {
+            // The game events that came in during the cutscenes reach the
+            // job manager now. NOTE: the console leaves the log's read index
+            // where it was.
+            if (game::JobManager* jobs = game::GetJobManager()) {
+                GameEventRing<64>& log = players[0].deferredEvents;
+                for (uint16_t e = log.read; e != log.write; e = uint16_t((e + 1) % 64))
+                    jobs->OnGameEvent(0, log.events[e]);
+            }
+            cutscenePlaying = false;
+            flags2D |= 0x20;
+            if (!resumeAfterCutscenes) {
+                SetCutsceneHud(false);
+                return;
+            }
+            resumeAfterCutscenes = false;
+            ClearCameraModes();
+            playerCameraMode = nullptr;
+            if (camera) {
+                camera->SetVisibilityDeferred(false, false);
+                camera->SetRenderEnabled(false);
+            }
+            for (entity::Entity* entity : pausedEntities) {
+                if (entity)
+                    entity->SetActive(true);
+            }
+            return;
+        }
+        --i;
+    }
+}
+
+// @func 0x004845F0 SlyGame::ClearCameraModes
+void SlyGame::ClearCameraModes()
+{
+    if (!camera)
+        return;
+    while (camera::CameraMode* mode = camera->TopMode()) {
+        switch (mode->GetType()) {
+        case 1:
+            CameraMode1SetTarget(mode, nullptr);
+            break;
+        case camera::kCamMode_Default:
+            static_cast<camera::DefaultCameraMode*>(mode)->SetTarget(nullptr);
+            break;
+        case camera::kCamMode_Spline:
+            static_cast<camera::SplineCameraMode*>(mode)->SetTarget(nullptr);
+            break;
+        case camera::kCamMode_Vehicle:
+            static_cast<camera::VehicleCameraMode*>(mode)->SetTarget(nullptr);
+            break;
+        case camera::kCamMode_HavokVehicle:
+            static_cast<camera::HavokVehicleCameraMode*>(mode)->SetTarget(nullptr);
+            break;
+        default:
+            break;
+        }
+        if (mode == camera->animMode)
+            camera->animMode = nullptr;
+        camera->RemoveMode(-1.0f, mode);
+        if (mode == playerCameraMode) {
+            delete mode;
+            playerCameraMode = nullptr;
+        }
+    }
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x00486460 DefaultSpawnTransform
+// Where character slot `slot` starts without a placement: the point
+// instance named by "Game.PlayerSpawnPointName<n>", else the identity at
+// "Game.PlayerSpawnPos".
+void DefaultSpawnTransform(int slot, ape::Matrix34* out)
+{
+    static const ape::TuningHash* const kPointNames[SlyGame::kMaxPlayers] = {
+        &g_gamePlayerSpawnPointName,  &g_gamePlayerSpawnPointName2, &g_gamePlayerSpawnPointName3,
+        &g_gamePlayerSpawnPointName4, &g_gamePlayerSpawnPointName5, &g_gamePlayerSpawnPointName6,
+        &g_gamePlayerSpawnPointName7, &g_gamePlayerSpawnPointName8, &g_gamePlayerSpawnPointName9,
+    };
+    if (slot >= 0 && slot < SlyGame::kMaxPlayers) {
+        if (const uint32_t pointName = kPointNames[slot]->Get()) {
+            if (ape::world::ApeObj* point = ape::world::FindObject(pointName, ape::world::kObjType_PointInstance)) {
+                *out = point->GetLocal();
+                return;
+            }
+        }
+    }
+    *out = ape::world::kWorldIdentity;
+    const float* position = g_gamePlayerSpawnPos.Get();
+    out->translation = ape::Vec3{position[0], position[1], position[2], out->translation.pad};
 }
 
 } // namespace sly

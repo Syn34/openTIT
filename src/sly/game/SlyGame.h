@@ -16,15 +16,17 @@
 #include "ape/memory/ApeTArray.h"
 #include "ape/xml/ApeXml.h"
 #include "sly/game/GamePlayer.h"
+#include "sly/game/Upgrades.h"
 #include "sly/game/goals/JobManager.h"
 #include "sly/save/GameSettings.h"
 #include "sly/gameplay/StateMachine.h"
 
 #include <cstdint>
 #include <cstring>
+#include <vector>
 
 namespace ape::file { class File; }
-namespace ape { class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeGuiObject; }
+namespace ape { class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeAnimScript; class ApeGuiObject; }
 namespace agl { class AglRenderTarget; }
 
 namespace sly {
@@ -35,6 +37,7 @@ namespace goals { class Goal; }
 namespace gameplay { class Minigame; class ReturnTreasureMicrogame; }
 namespace entity { class Entity; class GameCamera; }
 namespace audio { struct MixState; }
+namespace camera { class CameraMode; }
 struct LevelParams;
 
 // A deferred call queued on one of the world callback lists: the game
@@ -175,22 +178,26 @@ struct BlurAnimation {
     bool active = false;         // +0x14 bit 30
 };
 
-// A cutscene waiting in the game's queue (+0x12820C). NOTE: only the
-// fields the game shell reads are named.
+// A cutscene waiting in the game's queue (+0x12820C): its script, the
+// variable bindings handed to the script instance and the sequence that
+// must end with it.
 struct QueuedCutscene {
-    uint32_t field_00[5] = {};                  // +0x00
-    uint32_t scriptName = 0;                    // +0x14
-    void* script = nullptr;                     // +0x18
+    std::vector<TextField> bindings;            // +0x00 (an ApeTArray on the console)
+    ape::ApeAnimScriptInstance* source = nullptr; // +0x14 instance `var` bindings copy from
+    ape::ApeAnimScript* script = nullptr;       // +0x18
     ape::ApeAnimScriptInstance* instance = nullptr; // +0x1C
     float time = 0.0f;                          // +0x20
     float savedNearClip = 0.0f;                 // +0x24 main view near plane while it plays
     uint32_t sequence = 0;                      // +0x28
     uint32_t field_2C = 0;                      // +0x2C
-    uint32_t flags = 0;                         // +0x30 bit 30: hide player, bit 29: finished
+    uint32_t flags = 0;                         // +0x30 bit 30: player back to Sly, bit 29: finished
 };
 
+// A speaker of the dialog (12 bytes on the console: name, entity, flags).
 struct DialogSpeakerEntry {
-    uint8_t bytes[12];
+    uint32_t nameHash = 0;
+    void* entity = nullptr;     // NOTE: the sequence entity (WorldObject)
+    uint8_t flags = 0;
 };
 
 // Speaker dialog block (+0x1283C0, initialised by 0x007867FC).
@@ -200,14 +207,14 @@ struct DialogState {
     char sound[0x43] = {};                  // +0x41
     ape::ApeTArray<DialogSpeakerEntry> speakers;   // +0x84 six 12-byte entries
     uint16_t field_8C = 0;                  // +0x8C
-    uint32_t field_98 = 0;                  // +0x98
+    uint32_t field_98 = 0;                  // +0x98 caller's value (HUD screen of the speakers)
     uint32_t screenHash = 0;                // +0x9C
     uint32_t field_A0 = 0;                  // +0xA0
-    uint32_t field_A4 = 0;                  // +0xA4
+    float duration = 0.0f;                  // +0xA4 seconds the dialog stays (0: until answered)
     uint32_t field_A8 = 0;                  // +0xA8
-    uint32_t field_AC = 0;                  // +0xAC
+    float countRate = 0.0f;                 // +0xAC duration / "FreezeScreen.CountDuration"
     uint32_t field_B0 = 0;                  // +0xB0
-    uint32_t flags = 0;                     // +0xB4 bit 30: busy, bit 29/31 options
+    uint32_t flags = 0;                     // +0xB4 bit 30: busy, bit 31: caller's option, bit 29 cleared on start
     const audio::MixState* mixState = nullptr;   // +0xB8 mix state pushed for the dialog
 };
 
@@ -484,8 +491,8 @@ public:
     // (variant on while it is not in the idle state 0/6 or a debug switch
     // forces it).
     void SetPlayerMeterVariant(uint32_t player, bool on);
-    // The camera updates once more and re-applies its view; the frame
-    // object (+0x128584) is told (slot 7).
+    // The camera updates once more and re-applies its view; the player
+    // camera mode (+0x128584) activates again.
     void RefreshCamera();
     // Throws or drops (`drop`) a player's character towards `target`.
     void ThrowPlayer(uint32_t player, const ape::Vec3& target, bool drop);
@@ -494,15 +501,54 @@ public:
                                bool b, bool c, bool d);
     void SwitchPlayerCharacter(uint32_t player, uint32_t def, const ape::Matrix34* transform, bool a, bool b,
                                bool c, bool d);
-    // The camera follows a player block's character again (0x00484858).
+    // The camera follows a player block's character: the camera modes are
+    // cleared and a mode for the character is pushed (vehicles pick theirs
+    // from their definition; "Camera.DefaultOrbit" selects the orbit mode
+    // for characters) (0x00484858).
     void AttachCameraTo(GamePlayer& player);
     void AttachCameraToPlayer(uint32_t player);
+    // Modal message box (sub state 0x0C) with one text, or a series of text
+    // pages; both pause the audio. The pages take two colours, two options
+    // and can fade the screen. Only while "Game.MoviesEnabled" is set.
+    void ShowMessageBox(const char* text, const int32_t position[2], const int32_t size[2]);
+    void ShowTextPages(const char (*pages)[0x80], int count, const int32_t position[2], const int32_t size[2],
+                       bool fade, bool optionA, const uint8_t colorA[4], const uint8_t colorB[4], bool optionB);
+    // Starts the speaker dialog (sub state 8, the frozen screen): speakers
+    // (at most six), text and sound keys, the caller's value, how long it
+    // stays and an option bit; its mix state is pushed. False while one runs.
+    bool StartSpeakerDialog(const DialogSpeakerEntry* speakers, uint32_t count, const char* text,
+                            const char* sound, uint32_t value, float duration, bool option);
+    // Cutscene mode of the player and the world: time scales back to 1, the
+    // player's gadget away and targeting off, AI sightings cleared, the
+    // characters hidden, the subtitle cleared and the camera's depth of
+    // field off (all reversed when `on` is false).
+    void SetCutsceneMode(bool on);
+    // Cutscene start/end for the HUD: cutscene mode, the return-treasure
+    // microgame paused, the HUD reset (start) or re-enabled with the
+    // letterbox shut down (end).
+    void SetCutsceneHud(bool on);
+    // Runs the queued cutscenes in order (each waits for the one before it
+    // and for its sequence); finished ones leave the queue and, once it is
+    // empty, the deferred game events go to the job manager and play
+    // resumes (0x0048B810).
+    void UpdateCutsceneQueue(float dt);
+    // Pops every camera mode (followed targets dropped), deleting the
+    // player camera mode (0x004845F0). NOTE: the console passes a player
+    // block it does not use.
+    void ClearCameraModes();
+    // Leaves for the hideout of the current episode (ending the running
+    // job), or for the level's default hideout outside episodes.
+    static void ReturnToHideout();
     // Ends the dialog (the frozen screen with a speaker, +0x1283C0) when one
     // is up: sub state 2 (play), or 0x0B with `toFrontEnd`; its mix state
     // fades out and the block is cleared.
     void EndDialog(bool toFrontEnd);
     // The screen shows a held picture instead of the running game.
     bool HoldsFrame();
+    // Shows the running level's headline (see SlyGameMenus.cpp).
+    void ShowLevelHeadline(bool force);
+    // Marks the running level visited for the all-levels trophy.
+    void RecordLevelVisit();
     // Full screen vertical colour gradient behind everything.
     void DrawScreenGradient(agl::AglRenderTarget* view, const uint8_t top[4], const uint8_t bottom[4]);
 
@@ -608,7 +654,7 @@ public:
     DialogState dialog;                         // +0x1283C0
     gameplay::ReturnTreasureMicrogame* returnTreasure = nullptr; // +0x12847C
     ape::ApeTArray<WorldCallback> callbackLists[kCallbackListCount]; // +0x128480
-    void* field_128584 = nullptr;               // +0x128584 NOTE: object refreshed with the camera (slot 7)
+    camera::CameraMode* playerCameraMode = nullptr; // +0x128584 the camera mode following the player (owned)
     float timeScaleA = 1.0f;                    // +0x128588
     float timeScaleATarget = -1.0f;             // +0x12858C
     uint8_t field_128590 = 0;                   // +0x128590
@@ -617,6 +663,7 @@ public:
     uint8_t field_12859C = 0;                   // +0x12859C
     uint32_t hudScreenHash = 0;                 // +0x1285A0 HUD screen of the current sub state
     uint8_t field_1285A4 = 0;                   // +0x1285A4
+    bool cutsceneHudLocked = false;             // +0x1285A5 NOTE: cutscene HUD changes are skipped while set
     uint32_t finishedJobName = 0;               // +0x1285A8 name of the job that ended last
     uint32_t field_1285AC[2] = {};              // +0x1285AC
     uint32_t field_1285B0[4] = {};              // +0x1285B0
