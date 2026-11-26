@@ -2,6 +2,8 @@
 // (0x00444108, 0x0044A78C-0x0044D9C0).
 #include "sly/game/AudioSystem.h"
 
+#include <algorithm>
+
 #include "ape/memory/ApeMem.h"
 #include "ape/memory/ApeRegionHeap.h"
 
@@ -235,6 +237,21 @@ bool IsRequestReady(const SoundRequest* request)
             return false;
     }
     return true;
+}
+
+// @func 0x00444260 RequestDuration
+float RequestDuration(const SoundRequest* request)
+{
+    if (!request->hasVoice || !IsRequestReady(request) || !AudioEnabled())
+        return 0.0f;
+    const Voice* voice = Voices().Find(request->voice);
+    if (!voice)
+        return 0.0f;
+    const int count = Backend().SubVoiceCount(voice->handle);
+    float longest = 0.0f;
+    for (int i = 0; i < count; ++i)
+        longest = std::max(longest, Backend().SubVoiceDuration(Backend().SubVoice(voice->handle, i)));
+    return longest;
 }
 
 // @func 0x004440E8 SoundNameDebugString
