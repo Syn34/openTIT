@@ -26,7 +26,8 @@
 #include <vector>
 
 namespace ape::file { class File; }
-namespace ape { struct ApeLevelWorld; }
+namespace ape { struct ApeLevelWorld; class ApeGuiFile; }
+namespace ape::world { class ApeScene; }
 namespace ape { struct GuiEvent; class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeAnimScript; class ApeGuiObject; }
 namespace agl { class AglRenderTarget; }
 
@@ -454,6 +455,13 @@ public:
     // display: scaled by height / 720 ("UI.PlatformScale" for most), and
     // the full-screen ones sized to the whole display (0x00467610).
     void FitGuiRoots();
+    // Loads the GUI: the string table of the language, the common GUI
+    // scene, "UI_Common" and the screen set `screens` (0 front end, 1 in
+    // game, -1 none; `devPaths` reads them from the development tree), then
+    // fits the roots and installs the game's GUI filters (0x004678B8).
+    void LoadGui(int screens, bool devPaths);
+    // The game's handling of a GUI event (0x00479400).
+    bool OnGuiEvent(const ape::GuiEvent& event);
     // A player is down: meter B snaps and a running return-treasure
     // microgame loses the treasure if the player carried it.
     void OnPlayerDown(uint32_t player);
@@ -691,9 +699,9 @@ public:
     uint32_t splitViewOwners[kSplitViews] = {}; // +0x1281E4
     gameplay::Minigame* minigame = nullptr;     // +0x1281F4 the level's game mode
     uint32_t field_1281F8 = 0;                  // +0x1281F8
-    void* guiCommon = nullptr;                  // +0x1281FC UI_Common GUI resource
-    void* guiScene = nullptr;                   // +0x128200 GUI/GUI_Common.san
-    void* guiScreens = nullptr;                 // +0x128204 front end / in-game GUI resource
+    ape::ApeGuiFile* guiCommon = nullptr;       // +0x1281FC UI_Common GUI resource
+    ape::world::ApeScene* guiScene = nullptr;   // +0x128200 GUI/GUI_Common.san
+    ape::ApeGuiFile* guiScreens = nullptr;      // +0x128204 front end / in-game GUI resource
     float field_128208 = 0.0f;                  // +0x128208
     ape::ApeTArray<QueuedCutscene*> cutsceneQueue; // +0x12820C queued cutscenes (count +0x128214)
     bool resumeAfterCutscenes = false;          // +0x128220
