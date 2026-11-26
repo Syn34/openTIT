@@ -11,6 +11,25 @@
 namespace sly {
 namespace entity {
 
+// @func 0x00208AE8 RigidEntityB19198::CanInteractWith
+bool RigidEntityB19198::CanInteractWith(Entity* other, int kind, float* priority)
+{
+    if (kind < 0 || (kind > 0 && kind != 4))
+        return false;
+    // Kind 0 needs a partner on some team (flags bits 22-23).
+    if (kind == 0 && other && ((other->flags >> 22) & 3) == 0)
+        return false;
+    return Entity::CanInteractWith(other, kind, priority);
+}
+
+// @func 0x00208A68 RigidEntityB19198::Damage
+bool RigidEntityB19198::Damage(float amount, Entity* source, uint32_t type)
+{
+    if (health > 0.0f)
+        ScriptedEntity::Damage(amount, source, type);
+    return health > 0.0f;
+}
+
 // @func 0x002070E8 RigidEntityB19198::GetRenderId
 uint32_t RigidEntityB19198::GetRenderId()
 {

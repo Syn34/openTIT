@@ -30,6 +30,11 @@ public:
     ape::world::ApeObj* ObjectForCollidable(const void* collidable, int32_t* bone) override;
     // Slot 36: the rigid body (see NOTES on slot 36).
     ape::world::ApeObj* GetRenderObject() override;
+    // Slot 76: interaction kinds 0 (not with an entity without team bits)
+    // and 4 only, then the base checks.
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;
+    // Slot 88: damage only while there is health left; true while some is.
+    bool Damage(float amount, Entity* source, uint32_t type) override;
     // Slot 95: empty. NOTE: no caller known.
     virtual void Slot95();
     // Empty overrides of the +0x17C interface's slots 6/7 (primary slots 97/96).
