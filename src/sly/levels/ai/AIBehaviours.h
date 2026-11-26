@@ -505,10 +505,23 @@ public:
     ape::ApeTArray<Record<0x20>> list198{4};             // +0x198
     // +0x1AC pool of ten 16-byte records (begin/end/cursor, capacity +0x1BC).
     std::vector<std::array<uint8_t, 16>> pool1AC;
-    ape::ApeTArray<Record<4>> list1C4{0x40, nullptr, true};   // +0x1C4
+    // +0x1C4 ice barriers spawned this attack, waiting to be thrown.
+    ape::ApeTArray<Entity*> pendingBarriers{0x40, nullptr, true};
     ape::ApeTArray<Record<4>> list1D8{0x40, nullptr, true};   // +0x1D8
-    ape::ApeTArray<Record<8>> list1EC{0x40, nullptr, true};   // +0x1EC
-    uint32_t field_200 = 0;                // +0x200
+    // +0x1EC ice barriers being thrown, each with its throw delay.
+    struct ThrownBarrier {
+        Entity* entity;
+        float delay;
+    };
+    ape::ApeTArray<ThrownBarrier> thrownBarriers{0x40, nullptr, true};
+    Entity* field_200 = nullptr;           // +0x200 an entity the attack spawned (killed by ClearAttack)
+    // Kills what the current attack spawned (the barriers' scripts hear
+    // 0x879F2BDA first) and forgets the attack (0x0003F260).
+    void ClearAttack();
+    // Moves the waiting barriers to the thrown list, every second one
+    // delayed by Entity.Bismarque.IceBarrier.ThrowOffsetTimemax, and clears
+    // the player character's +0x1AC reference (0x00040208).
+    void ThrowBarriers();
     ape::Vec3 field_210{};                 // +0x210
     uint16_t field_220 = 0, field_222 = 0; // +0x220
     uint16_t field_224 = 0, field_226 = 0; // +0x224

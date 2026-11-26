@@ -5,6 +5,7 @@
 #include "sly/levels/ai/AIHooks.h"
 #include "ape/anim/ApeAnimScript.h"
 #include "sly/game/SlyGame.h"
+#include "sly/entity/Character.h"
 #include "sly/levels/ai/AITuning.h"
 
 #include <cmath>
@@ -187,6 +188,52 @@ void BismarqueAI::SetFightVisualsHidden(bool hidden)
         if (attack.script)
             attack.script->SetStateAndUpdate(hidden ? 0x8C3F8D2Eu : 0x28298107u);
     }
+}
+
+namespace {
+constexpr uint32_t kBarrierState_Destroy = 0x879F2BDAu;
+
+void KillBarrier(Entity* barrier)
+{
+    if (auto* script = static_cast<ape::ApeAnimScriptInstance*>(barrier->GetAnimScript()))
+        script->SetStateAndUpdate(kBarrierState_Destroy);
+    barrier->Release(true);
+}
+} // namespace
+
+// @func 0x0003F260 BismarqueAI::ClearAttack
+void BismarqueAI::ClearAttack()
+{
+    stepIndex = 0;
+    modeFlags &= 0x3FFFFFFFu;
+    if (field_200) {
+        field_200->Release(true);
+        field_200 = nullptr;
+    }
+    for (Entity* barrier : pendingBarriers) {
+        if (barrier)
+            KillBarrier(barrier);
+    }
+    for (ThrownBarrier& thrown : thrownBarriers) {
+        if (thrown.entity)
+            KillBarrier(thrown.entity);
+    }
+    pendingBarriers.Clear();
+    list1D8.Clear();
+    thrownBarriers.Clear();
+}
+
+// @func 0x00040208 BismarqueAI::ThrowBarriers
+void BismarqueAI::ThrowBarriers()
+{
+    for (size_t i = 0; i < pendingBarriers.Count(); ++i) {
+        const float delay = (i & 1) ? float(g_bismarqueIceBarrierThrowOffsetTimemax) : 0.0f;
+        thrownBarriers.PushBack({pendingBarriers[i], delay});
+    }
+    pendingBarriers.Clear();
+    Entity* player = PlayerCharacter();
+    if (player && player->HasTypeBit(3))
+        static_cast<entity::Character*>(player)->SetReference1AC(nullptr);
 }
 
 } // namespace ai
