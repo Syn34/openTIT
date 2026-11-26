@@ -25,8 +25,8 @@ constexpr uint32_t kNoIndex = 0xFFFFFFFFu;
 
 PlayerProgress& CurrentProgress() { return g_progressStandIn; }
 PlayerProgress& ProfileProgress(uint8_t) { return g_progressStandIn; }
-uint32_t PlayerGoalCount() { return g_game ? g_game->goals.Count() : 0; }
-Goal* PlayerGoalListAt(uint32_t index) { return index < PlayerGoalCount() ? g_game->goals[index] : nullptr; }
+uint32_t PlayerGoalCount() { return g_game ? g_game->Player(0).goals.Count() : 0; }
+Goal* PlayerGoalListAt(uint32_t index) { return index < PlayerGoalCount() ? g_game->Player(0).goals[index] : nullptr; }
 uint32_t LiveJobId() { return 0; }
 int GameWorldState(int) { return 0; }
 void PlayerResetJobState(int) {}
@@ -437,7 +437,7 @@ void JobManager::ClearGoals()
     constexpr uint32_t kFlag_ClearingGoals = 1u << 30;
     flags |= kFlag_ClearingGoals;
     if (g_game) {
-        ape::ApeTArray<Goal*>& list = g_game->goals;
+        ape::ApeTArray<Goal*>& list = g_game->Player(0).goals;
         while (list.Count() != 0) {
             Goal* goal = list[0];
             goals::GoalProgress progress;
@@ -451,7 +451,7 @@ void JobManager::ClearGoals()
             list.PopBack();
         }
         list.Clear();
-        g_game->jobStateBits &= 0x000FFFFFu;
+        g_game->Player(0).jobStateBits &= 0x000FFFFFu;
     }
     flags &= ~kFlag_ClearingGoals;
     trackedGoal = nullptr;
@@ -501,7 +501,7 @@ bool JobManager::StartJob(uint32_t index)
     if (!job->ParseGoals())
         return false;
     if (g_game)
-        job->MoveGoalsTo(g_game->goals);
+        job->MoveGoalsTo(g_game->Player(0).goals);
     instance = job;
     currentJob = &jobs[job->episode];
     return true;
@@ -803,7 +803,7 @@ bool JobManager::BuildRunningJobGoals(bool forceReload, bool levelRequestFlag, b
     if (job && job->ParseGoals()) {
         built = true;
         if (g_game)
-            job->MoveGoalsTo(g_game->goals);
+            job->MoveGoalsTo(g_game->Player(0).goals);
         instance = job;
         currentJob = &jobs[job->episode];
         if (track) {

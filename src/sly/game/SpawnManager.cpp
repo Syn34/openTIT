@@ -130,7 +130,7 @@ bool Spawner::IsPlayerInRange() const
     if (maxDist <= 0.0f && minDist <= 0.0f)
         return true;
 
-    WorldObject* player = g_game ? g_game->playerObject : nullptr;
+    WorldObject* player = g_game ? reinterpret_cast<WorldObject*>(g_game->PlayerCharacter(0)) : nullptr;
     if (!player)
         return false;
 
