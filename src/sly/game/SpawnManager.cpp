@@ -3,6 +3,7 @@
 
 #include "ape/core/ApeString.h"
 #include "ape/math/ApeMath.h"
+#include "sly/entity/Entity.h"
 #include "sly/game/SlyGame.h"
 #include "sly/game/WorldInterface.h"
 #include "sly/tuning/AiSpawnTuning.h"
@@ -51,6 +52,7 @@ Spawner::Spawner()
 }
 
 // @func 0x004551C8 Spawner::Spawner
+// @func 0x00455954 Spawner::Spawner (thunk)
 Spawner::Spawner(WorldObject* point, const SpawnerSettings* setting)
     : settings(setting ? setting : &DefaultSpawnerSettings()), spawnPoint(point)
 {
@@ -93,7 +95,24 @@ void Spawner::Reset()
     ClearCounters();
 }
 
-void Spawner::Start() {}
+// @func 0x00455BA8 Spawner::Start
+void Spawner::Start()
+{
+    // The trigger entity learns its spawner (the special name 0x5E71DA39
+    // picks the entity nearest the spawn point).
+    if (triggerHash != 0) {
+        constexpr uint32_t kNearestEntity = 0x5E71DA39u;
+        entity::Entity* trigger = triggerHash == kNearestEntity
+                                      ? entity::FindNearestEntity(InstancePosition(spawnPoint))
+                                      : entity::FindEntity(triggerHash);
+        if (trigger)
+            trigger->field_DC = this;
+    }
+    if (group)
+        placement = group->placement;
+    if (!(flags & kFlag_Suspended) && placement == kPlacement_Default)
+        Activate();
+}
 
 // @func 0x0077E89C Spawner::IsCharacterSpawner
 bool Spawner::IsCharacterSpawner() const
@@ -427,9 +446,80 @@ void SpawnGroup::SetSpawnerValues(uint32_t a, uint32_t b)
 // SpawnManager
 // ---------------------------------------------------------------------------
 
+// @func 0x004518D0 SpawnManager::SpawnManager
+SpawnManager::SpawnManager()
+{
+    spawners.reserve(kMaxSpawners);
+    groups.reserve(kMaxGroups);
+    active.reserve(kMaxSpawners);
+    g_spawnManager = this;
+}
+
+// @func 0x00451A6C SpawnManager::~SpawnManager
 SpawnManager::~SpawnManager()
 {
+    // NOTE: the console only frees its tables here (the game clears the
+    // manager before deleting it); the port also deletes what is left.
+    if (g_spawnManager == this)
+        g_spawnManager = nullptr;
     Clear();
+}
+
+// @func 0x00454C88 SpawnManager::Unload
+void SpawnManager::Unload()
+{
+    Clear();
+}
+
+// Puts every spawner of the level into the group of its placed object: the
+// group named by the spawner's second name, or else the group object the
+// spawn point is a child of.
+// @func 0x00451B70 SpawnManager::LinkGroups
+void SpawnManager::LinkGroups()
+{
+    for (Entry& entry : spawners) {
+        Spawner* spawner = entry.spawner;
+        if (!spawner)
+            continue;
+        SpawnGroup* target = nullptr;
+        if (spawner->secondHash != 0) {
+            target = FindGroup(spawner->secondHash);
+        } else {
+            if (spawner->group || !spawner->spawnPoint)
+                continue;
+            WorldObject* parent = WorldObjectParent(spawner->spawnPoint);
+            if (!parent || !WorldObjectIsGroup(parent))
+                continue;
+            target = FindGroup(WorldObjectKey(parent));
+        }
+        if (target)
+            target->AddSpawner(spawner);
+    }
+}
+
+// Level start: every spawner back to its initial counters, every group's
+// spawn budget from its settings (or the sum of its spawners' limits).
+// @func 0x00451CC8 SpawnManager::PrepareLevel
+void SpawnManager::PrepareLevel()
+{
+    busy = true;
+    for (Entry& entry : spawners) {
+        if (entry.spawner)
+            entry.spawner->Reset();
+    }
+    for (GroupEntry& entry : groups) {
+        SpawnGroup* group = entry.group;
+        group->field_0C = group->settings->maxTotal;
+        if (group->field_0C == 0) {
+            int32_t total = 0;
+            Spawner* spawner = group->firstSpawner;
+            for (int32_t i = group->spawnerCount; i > 0; --i) {
+                total += spawner->spawnLimit;
+                group->field_0C = total;
+                spawner = spawner->nextInGroup;
+            }
+        }
+    }
 }
 
 // @func 0x004544B0 SpawnManager::Start

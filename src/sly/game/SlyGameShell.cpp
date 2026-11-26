@@ -3,6 +3,7 @@
 #include "sly/game/SlyGame.h"
 
 #include "agl/AglDisplay.h"
+#include "ape/anim/ApeAnimScript.h"
 #include "ape/input/ApeInputDevice.h"
 #include "ape/level/ApeGui.h"
 #include "ape/sys/ApeFrameClock.h"
@@ -11,6 +12,7 @@
 #include "sly/entity/Entity.h"
 #include "sly/game/AppRuntime.h"
 #include "sly/game/LevelParams.h"
+#include "sly/gameplay/ReturnTreasure.h"
 #include "ape/xml/ApeXml.h"
 
 #include <cmath>
@@ -213,6 +215,79 @@ void SlyGame::LoadLevelParams(ape::file::File& file)
 bool SlyGame::LevelParamsMode1() const
 {
     return levelParams && levelParams->field_1544 == 1;
+}
+
+// Runs a script of the default library once on its own: the instance is
+// registered (and dropped when finished) and given its first frame.
+// @func 0x00491000 RunGlobalScript
+void RunGlobalScript(uint32_t scriptHash)
+{
+    ape::ApeAnimScriptLibrary* library = ape::ApeAnimScriptLibrary::Get(0);
+    if (!library)
+        return;
+    ape::ApeAnimScript* script = library->FindScript(scriptHash);
+    if (!script)
+        return;
+    auto* instance = new ape::ApeAnimScriptInstance(script);
+    ape::ApeAnimScriptInstance::Register(instance);
+    instance->Update(1.0f / 60.0f);
+    instance->SetRemoveWhenFinished(true);
+}
+
+// @func 0x00489DF8 SlyGame::StartReturnTreasure
+void SlyGame::StartReturnTreasure(float limit, entity::Entity* carrier, entity::Entity* treasure,
+                                  uint32_t carrierBone, const ape::Vec3& offset)
+{
+    if (returnTreasure)
+        returnTreasure->Start(limit, carrier, treasure, carrierBone, offset);
+}
+
+// @func 0x00489E78 SlyGame::ReturnTreasureActive
+bool SlyGame::ReturnTreasureActive() const
+{
+    return returnTreasure && returnTreasure->IsActive();
+}
+
+// @func 0x00489EAC SlyGame::CompleteReturnTreasure
+void SlyGame::CompleteReturnTreasure()
+{
+    if (ReturnTreasureActive())
+        returnTreasure->Complete();
+}
+
+// @func 0x00489EF4 SlyGame::UpdateReturnTreasurePlacement
+void SlyGame::UpdateReturnTreasurePlacement()
+{
+    if (ReturnTreasureActive())
+        returnTreasure->UpdatePlacement();
+}
+
+// @func 0x00489F3C SlyGame::StopReturnTreasure
+void SlyGame::StopReturnTreasure(bool lost)
+{
+    if (ReturnTreasureActive())
+        returnTreasure->Stop(lost);
+}
+
+// @func 0x00489F88 SlyGame::PauseReturnTreasure
+void SlyGame::PauseReturnTreasure(bool on)
+{
+    if (ReturnTreasureActive())
+        returnTreasure->SetPaused(on);
+}
+
+// @func 0x00489FD4 SlyGame::RefreshReturnTreasureHud
+void SlyGame::RefreshReturnTreasureHud()
+{
+    if (ReturnTreasureActive())
+        returnTreasure->RefreshHud();
+}
+
+// @func 0x0048A01C SlyGame::SetReturnTreasureHudActive
+void SlyGame::SetReturnTreasureHudActive(bool on)
+{
+    if (ReturnTreasureActive())
+        returnTreasure->SetHudActive(on);
 }
 
 } // namespace sly

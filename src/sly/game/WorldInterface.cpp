@@ -6,6 +6,9 @@ namespace sly {
 
 const char* WorldObjectName(const WorldObject* object) { (void)object; return ""; }
 uint32_t WorldObjectKey(const WorldObject* object) { (void)object; return 0; }
+// TODO: forward to ape::world::ApeObj (parent +0x104, type bits of +0x04).
+WorldObject* WorldObjectParent(const WorldObject* object) { (void)object; return nullptr; }
+bool WorldObjectIsGroup(const WorldObject* object) { (void)object; return false; }
 
 ape::Vec3 InstancePosition(const WorldObject* instance) { (void)instance; return ape::Vec3{}; }
 ape::Vec3 CharacterPosition(const WorldObject* character) { (void)character; return ape::Vec3{}; }

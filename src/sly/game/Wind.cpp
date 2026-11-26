@@ -2,6 +2,7 @@
 #include "sly/game/Wind.h"
 
 #include "ape/core/ApeString.h"
+#include "sly/entity/EntityDef.h"
 #include "sly/game/EconomyTuning.h"
 #include "sly/game/WorldInterface.h"
 
@@ -170,6 +171,21 @@ float GlobalWindStrength()
 void SetGlobalWindStrength(float strength)
 {
     g_throwBoltIncreasePercent.SetFloat(strength);
+}
+
+// The two cached entity definitions are looked up on first use.
+// @func 0x004AE3D0 CacheWindResourceA
+void CacheWindResourceA()
+{
+    if (!g_windResourceA)
+        g_windResourceA = entity::FindEntityDef(0x42361175u);
+}
+
+// @func 0x004AE414 CacheWindResourceB
+void CacheWindResourceB()
+{
+    if (!g_windResourceB)
+        g_windResourceB = entity::FindEntityDef(0x02D45643u);
 }
 
 // @func 0x004AE458 ResetWindGlobals

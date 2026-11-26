@@ -31,7 +31,7 @@ namespace sly {
 class WorldObject;   // world entities, reconstructed by the world module
 class SpawnManager;
 namespace goals { class Goal; }
-namespace gameplay { class Minigame; }
+namespace gameplay { class Minigame; class ReturnTreasureMicrogame; }
 namespace entity { class Entity; class GameCamera; }
 struct LevelParams;
 
@@ -64,18 +64,22 @@ struct ScreenFade {
     bool active = false;                 // +0x10 bit 30
 };
 
-// A value ramp (+0x1282A4 time scale, +0x1282C0 audio rate; initialised by
-// 0x00786724, updated by 0x00787070/0x00787190): `value` moves from
-// `start` to `target` over `duration`.
-// NOTE: the field names follow their use in SlyGame::TimeScale and
-// 0x00468A38; the update functions are outside the game shell range.
+// A value ramp (+0x1282A4 slow motion, +0x1282C0 audio rate; initialised
+// by 0x00786724, updated by 0x00787070/0x00787190): `value` moves from
+// `from` to `to` over `duration`.
+// NOTE: the update functions are outside the game shell range; `hold` is
+// passed through by Start().
 struct ValueRamp {
-    float start = 1.0f;          // +0x00
-    float duration = 0.25f;      // +0x04
+    // Starts the ramp (0x0048EF50); without a duration the value jumps to
+    // `to`.
+    void Start(float fromValue, float toValue, float time, float holdTime);
+
+    float from = 1.0f;           // +0x00
+    float to = 0.25f;            // +0x04
     float value = 1.0f;          // +0x08
-    float target = 0.0f;         // +0x0C
-    float elapsed = 0.0f;        // +0x10
-    float field_14 = 0.0f;       // +0x14
+    float duration = 0.0f;       // +0x0C
+    float hold = 0.0f;           // +0x10
+    float elapsed = 0.0f;        // +0x14
     bool active = false;         // +0x18 bit 31
 };
 
@@ -85,6 +89,10 @@ struct ValueRamp {
 // camera; the range is blended the same way, the intensity always.
 struct DofAnimation {
     void Update(float dt);   // 0x004697D8
+    // Starts an animation (0x0048EF9C).
+    void Start(float intensityFrom, float intensityTo, float focusFrom, float focusTo, float rangeFrom,
+               float rangeTo, float time, entity::Entity* focusTarget, uint8_t samples, bool disableAtEnd,
+               bool nearBlurOn, bool holdAtEnd);
 
     entity::Entity* target = nullptr;   // +0x00 focus on this entity when set
     float intensityStart = 0.0f;        // +0x04
@@ -109,6 +117,11 @@ struct DofAnimation {
 // (0xFF: idle).
 struct NoisePulse {
     void Update(float dt);   // 0x004695A8
+    // Finishes any running pulse, then ramps the noise in from its current
+    // amount to 1 over `time` (bloom settings copied to the noise effect)
+    // (0x0048F008) / out to 0, restoring the bloom (0x0048F158).
+    void FadeIn(float time);
+    void FadeOut(float time);
 
     enum StepKind : int32_t { kStep_Start = 0, kStep_Ramp = 1, kStep_Restore = 2 };
     int32_t steps[2] = {};       // +0x00
@@ -364,6 +377,17 @@ public:
     void LoadLevelParams(ape::file::File& file);
     // The level parameters select the special mode 1.
     bool LevelParamsMode1() const;
+    // The return-treasure microgame (each call does nothing without the
+    // microgame object, the later ones also while it is not running).
+    void StartReturnTreasure(float timeLimit, entity::Entity* carrier, entity::Entity* treasure,
+                             uint32_t carrierBone, const ape::Vec3& offset);
+    bool ReturnTreasureActive() const;
+    void CompleteReturnTreasure();
+    void UpdateReturnTreasurePlacement();
+    void StopReturnTreasure(bool lost);
+    void PauseReturnTreasure(bool paused);
+    void RefreshReturnTreasureHud();
+    void SetReturnTreasureHudActive(bool active);
     // The power meter of a player on the HUD (second bar of meter B).
     void ShowPlayerPower(uint32_t player) const;
 
@@ -458,7 +482,7 @@ public:
     DesaturationQueue desaturation;             // +0x128334
     BlurAnimation blur;                         // +0x1283A8
     DialogState dialog;                         // +0x1283C0
-    void* sequencer = nullptr;                  // +0x12847C NOTE: debug net server (flag +0xA4 bit 31)
+    gameplay::ReturnTreasureMicrogame* returnTreasure = nullptr; // +0x12847C
     ape::ApeTArray<WorldCallback> callbackLists[kCallbackListCount]; // +0x128480
     uint32_t field_128584 = 0;                  // +0x128584
     float timeScaleA = 1.0f;                    // +0x128588
@@ -494,6 +518,8 @@ void ShowLanguageMenu(ape::ApeGuiObject* screen, bool visible);
 ape::ApeGuiObject* FindFocusableGuiObject(ape::ApeGuiObject* object);
 // The HUD uses its corrected (SD 4:3) layouts (0x0046C7B0).
 bool IsSdHudLayout();
+// Runs a script of the default library once, on its own (0x00491000).
+void RunGlobalScript(uint32_t scriptHash);
 // Contextual marker definition of a playable character (by the hash of its
 // name, "Game.Contextual.<name>"); Sly's for any other.
 uint32_t ContextualMarkerFor(uint32_t characterHash);
