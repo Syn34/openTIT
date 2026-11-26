@@ -5,6 +5,7 @@
 #include "sly/components/Components.h"
 #include "sly/components/ContextualMarker.h"
 #include "sly/components/ControlComponents.h"
+#include "sly/components/CustomModel.h"
 #include "sly/components/DamageSequence.h"
 #include "sly/components/InventoryDescs.h"
 #include "sly/components/MonsterCloset.h"
@@ -53,6 +54,8 @@ EntityComponent* CreateComponent(ComponentDesc* desc)
         return new AnimComponent(static_cast<AnimComponentDesc*>(desc));
     case kCompDesc_FacePlayer:
         return new FacePlayerComponent(static_cast<FacePlayerComponentDesc*>(desc));
+    case kCompDesc_CustomModel:
+        return new CustomModelComponent(static_cast<CustomModelComponentDesc*>(desc));
     case kCompDesc_ProcEyes:
         return new ProcEyesComponent(static_cast<ProcEyesComponentDesc*>(desc));
     case kCompDesc_ContextualMarker:
