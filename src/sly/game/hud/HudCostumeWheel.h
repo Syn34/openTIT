@@ -83,7 +83,7 @@ public:
     ape::world::ApeObj** fieldObjects = nullptr;   // +0xDC
     ape::world::ApeObj* glowObject = nullptr;      // +0xE0 definition +0xD4
     float pulseTimer = 0.0f;                 // +0xE4
-    float pulse = 0.0f;                      // +0xE8
+    float pulse = 0.0f;                      // +0xE8 degrees the glow is turned by
 
 private:
     // Next page from `from` in direction `step` (+1 / -1) whose item can be
@@ -94,6 +94,15 @@ private:
     void SetFieldsVisible();
     static void DrawFieldsCallback(void* unused, void* context);   // 0x00376C20
     void DrawFields();                       // 0x00376A20
+    // 0x00375C60 (world callback 0x00376C4C): turns the pointer to the
+    // current page, shows each page's available or locked object and turns
+    // the spokes by their page angles.
+    void UpdatePointer();
+    static void UpdatePointerCallback(void* unused, void* context);
+    // 0x00376598 (world callback 0x00376C70): turns the glow object (else
+    // the element's object) about Y by the pulse angle.
+    void TurnGlow();
+    static void TurnGlowCallback(void* unused, void* context);
 };
 
 } // namespace hud

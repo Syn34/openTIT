@@ -14,6 +14,8 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
 #include "ape/level/ApeGui.h"
+#include "ape/math/ApeMatrixOps.h"
+#include "ape/sys/ApeGeometry.h"
 #include "ape/world/ApeBase.h"
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
@@ -317,8 +319,8 @@ void HudCostumeWheel::Update(float dt)
         wheelFlags &= ~kW_HideReq;
     }
     if (g_game) {
-        // TODO(0x00376C4C / 0x00376C70): the pointer (list 4, 0x00375C60) and
-        // page (list 0, 0x00376598) callbacks are not ported.
+        g_game->AddCallback(kCallbackList_Pointer, reinterpret_cast<void*>(&UpdatePointerCallback), this, nullptr);
+        g_game->AddCallback(kCallbackList_Pages, reinterpret_cast<void*>(&TurnGlowCallback), this, nullptr);
         g_game->AddCallback(kCallbackList_Draw, reinterpret_cast<void*>(&DrawFieldsCallback), this, nullptr);
     }
     const HudObjectDef::WheelDef& info = def->wheel;
@@ -464,6 +466,111 @@ void HudCostumeWheel::Update(float dt)
     local.translation.z = zero.z + baseOffset.z + offset.z;
     object->SetLocal(local);
     object->MarkDirty();
+}
+
+namespace {
+
+bool SimpleItemAvailable(uint32_t kind, uint32_t item)
+{
+    if (kind == HudCostumeWheel::kKind_Costume)
+        return game::GetJobManager()->IsJobValueFlagged(item);
+    return item == 0 || UpgradeUnlocked(kind, item);
+}
+
+void SetWorld(ape::world::ApeObj* object, const ape::Matrix34& world)
+{
+    object->m_world = world;
+    object->m_flags &= ~ape::world::kObjFlag_Dirty;
+}
+
+} // namespace
+
+// @func 0x00375C60 HudCostumeWheel::UpdatePointer
+void HudCostumeWheel::UpdatePointer()
+{
+    constexpr float kDegToRad = 0.017453292f;
+    const HudObjectDef::WheelDef& info = def->wheel;
+    if (pointer) {
+        if (!ItemAvailable(info.pages[page].item)) {
+            pointer->SetVisible(false, true);
+        } else {
+            // Page `page` sits pageAngle * (page - (count - 1) / 2) round the axis.
+            const int slot = page + (1 - info.pageCount) / 2;
+            ape::Matrix34 turn;
+            ape::MatrixAxisAngle(-(float(slot) * info.pageAngle) * kDegToRad, turn, info.axis);
+            ape::Matrix34 world = pointer->GetLocal();
+            if (const ape::world::ApeObj* follow = FindInHierarchy(object, pointerTarget))
+                world = follow->GetWorld();
+            if (pointerTarget == info.pages[page].pointerName)
+                ape::Matrix34PreMultiply(world, turn);
+            pointer->SetLocal({{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f},
+                               {0.0f, 0.0f, 0.0f, 0.0f}});
+            pointer->MarkDirty();
+            SetWorld(pointer, world);
+            pointer->SetVisible(true, true);
+            pointer->MarkDirty();
+        }
+    }
+    if (glow) {
+        glow->SetVisible(false, true);
+        glow->SetVisible(true, false);
+        for (int i = 0; i < info.pageCount; ++i) {
+            const HudObjectDef::WheelPageDef& pageDef = info.pages[i];
+            if (ape::world::ApeObj* spoke = FindInHierarchy(object, pageDef.spokeName))
+                spoke->SetVisible(true, false);
+            const bool available = SimpleItemAvailable(info.kind, pageDef.item);
+            if (ape::world::ApeObj* shown = FindInHierarchy(object, pageDef.availableName))
+                shown->SetVisible(available, true);
+            if (ape::world::ApeObj* locked = FindInHierarchy(object, pageDef.lockedName))
+                locked->SetVisible(!available, false);
+        }
+    }
+    // Spokes of pages that can be chosen turn by their page angle about Y;
+    // the page's available object follows.
+    const ape::Vec3 yAxis{0.0f, 1.0f, 0.0f, 0.0f};
+    for (int i = 0; i < info.pageCount; ++i) {
+        const HudObjectDef::WheelPageDef& pageDef = info.pages[i];
+        if (!SimpleItemAvailable(info.kind, pageDef.item))
+            continue;
+        ape::world::ApeObj* spoke = FindInHierarchy(object, pageDef.spokeName);
+        if (!spoke)
+            continue;
+        ape::Matrix34 turn;
+        ape::MatrixAxisAngle(angles[i].current * kDegToRad, turn, yAxis);
+        ape::Matrix34 world = spoke->GetWorld();
+        ape::Matrix34PreMultiply(world, turn);
+        SetWorld(spoke, world);
+        if (ape::world::ApeObj* shown = FindInHierarchy(object, pageDef.availableName))
+            SetWorld(shown, world);
+    }
+}
+
+// @func 0x00376C4C HudCostumeWheel::UpdatePointerCallback
+void HudCostumeWheel::UpdatePointerCallback(void* unused, void* context)
+{
+    (void)unused;
+    static_cast<HudCostumeWheel*>(context)->UpdatePointer();
+}
+
+// @func 0x00376598 HudCostumeWheel::TurnGlow
+void HudCostumeWheel::TurnGlow()
+{
+    ape::world::ApeObj* target = glowObject ? glowObject : object;
+    if (!target || !object)
+        return;
+    ape::Matrix34 turn;
+    ape::Matrix34RotationY(pulse * 0.017453292f, turn);
+    SetWorld(target, turn);
+    target->SetLocal(turn);
+    target->MarkDirty();
+    object->UpdateWorld(false, false);
+}
+
+// @func 0x00376C70 HudCostumeWheel::TurnGlowCallback
+void HudCostumeWheel::TurnGlowCallback(void* unused, void* context)
+{
+    (void)unused;
+    static_cast<HudCostumeWheel*>(context)->TurnGlow();
 }
 
 // @func 0x00376998 HudCostumeWheel::CurrentItem
