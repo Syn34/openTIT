@@ -110,9 +110,9 @@ enum GoalHintKind : int32_t {
     kHint_Interaction  = 1,   // interaction component of an entity
     kHint_Spawner      = 2,
     kHint_SpawnGroup   = 3,
-    kHint_LaserGroup   = 4,   // NOTE: kinds 4-6 are the laser objects (sly/gameplay lasers)
-    kHint_Laser        = 5,
-    kHint_LaserField   = 6,
+    kHint_Laser        = 4,   // kinds 4-6 are the laser objects (sly/gameplay/Lasers.h)
+    kHint_LaserField   = 5,
+    kHint_LaserGroup   = 6,
     kHint_Interactable = 7,   // entity with field_C8 bit 1 (0x001EB814)
 };
 
