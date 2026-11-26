@@ -63,6 +63,16 @@ float PhysicalEntityDef::FallAcceleration() const
     return PhysicsWorldGravity() * gravityScale;
 }
 
+// @func 0x000E99B0 PhysicalEntityDef::GetBounds
+void PhysicalEntityDef::GetBounds(ape::Aabb& out) const
+{
+    if (!collisionShape) {
+        EntityDefBaseBounds(this, out);
+        return;
+    }
+    HavokShapeLocalAabb(collisionShape, out);
+}
+
 // -- entity ------------------------------------------------------------------------------
 
 // @func 0x000EB0F8 PhysicalEntity::~PhysicalEntity

@@ -28,6 +28,9 @@ public:
     // Fall acceleration of the entity's body: the physics world's gravity
     // scaled by the definition, nothing without a collision shape.
     float FallAcceleration() const;
+    // Slot 3: the collision shape's box at the identity transform, or the
+    // entity default without a shape.
+    void GetBounds(ape::Aabb& out) const;
 
     // Definition flags (+0x174).
     enum Flags : uint32_t {

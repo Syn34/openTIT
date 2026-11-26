@@ -26,7 +26,9 @@ public:
         void* havokObject;          // +0x20
         uint8_t field_24[0x58];
         uint32_t partFlags;         // +0x7C PartFlags
-        uint8_t field_80[0x10];
+        // +0x80 the first part's offset is where the actor is aimed at
+        // (slot 71). NOTE: role for the other parts unknown.
+        ape::Vec3 aimOffset;
         // Nav obstacle mode of the part (0 = the definition's mode).
         uint32_t navMode;           // +0x90
         uint8_t field_94[0xC];
@@ -189,6 +191,10 @@ public:
     // itself when the actor has no parts.
     void PartTransform(ape::Matrix34& out, int index, const ape::Matrix34& frame) const;
 
+    // Slot 71: an interactive actor is aimed at at its position; any other
+    // at its first definition part's offset from its first part (or from
+    // its object).
+    ape::Vec3 GetAimPoint() override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     bool Damage(float amount, Entity* source, uint32_t type) override;
     void OnHitCategory0(EntityHitRecord& hit) override;
