@@ -60,6 +60,12 @@ void HudSubtitle::Update(float dt)
         SetActive(false);
 }
 
+// @func 0x003814A8 HudSubtitle::IsFinished
+bool HudSubtitle::IsFinished() const
+{
+    return (animState >> 1) == 0 || def->timedLines.count <= lineIndex + 1;
+}
+
 // @func 0x00381758 HudSubtitle::Refresh
 void HudSubtitle::Refresh()
 {

@@ -18,6 +18,9 @@ public:
     void Update(float dt) override;
     // Slot 3 (0x00381758): leaves and starts over.
     void Refresh() override;
+    // 0x003814A8: nothing left to show (the element is idle, or its last
+    // line has been written).
+    bool IsFinished() const;
 
     const HudTimedLines* timed = nullptr;   // the definition's line list (+0xA4..+0xAC)
     float delayTimer = 0.0f;     // +0x190
