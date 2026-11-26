@@ -12,6 +12,7 @@
 
 namespace ape { class ApeAllocator; struct Matrix34; }
 
+namespace sly { namespace hud { class HudObject; } }
 namespace sly {
 class Spawner;
 struct GameEvent;
@@ -554,6 +555,10 @@ public:
     // Keeps the safe state (bits 0-2, 3 = opened) in the current episode's
     // progress (0x002E7588).
     void StoreSafeState(int state);
+    // The safe cracking of `player`'s entity ended: control returns to that
+    // player, the world posts event 0xD and the active type-0x200 HUD
+    // element plays its leave transition (0x002E7694).
+    static void OnSafeSessionEnded(entity::Entity* player);
     // StartJobFromHub for the job named `jobName` (none for 0 or an unknown
     // name), always tracked (0x002E1DB0).
     void StartJobFromHubByName(uint32_t jobName, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
@@ -569,6 +574,10 @@ public:
     // HUD element (state "all found" once the default count is reached;
     // `pickup` selects the pickup flavour of that state).
     void UpdateBottleHud(bool pickup);
+    // Shows the collected masks on a counter element: "n" without a total,
+    // "n/total" on a one-field element, else the total in the second field
+    // (0x002E5C68).
+    void ShowMaskCount(hud::HudObject* counter) const;
 
     int32_t pendingKind = 0;         // +0x00 1: a job start is pending
     entity::Entity* pendingEntity = nullptr;   // +0x04 the entity that asked (class bit 17 set)
@@ -676,6 +685,14 @@ uint8_t* ProfileNotifyPair(uint8_t profile);
 uint32_t RunningLevel();
 // Reloads the running level (0x004896F8 with 0).
 void GameWorldReloadLevel();
+// Makes `player` the active player (0x0048A0E4: game world byte +0x1E, the
+// previous one kept in +0x33, the type-0x200 element told, event 4).
+void GameWorldSetActivePlayer(uint8_t player);
+// Posts a game world event without data (0x00472208 -> 0x00470750).
+void GameWorldPostEvent(uint32_t event);
+// The type-0x200 HUD element plays its transition to the idle state
+// (0x00371968, not ported).
+void HudType200Transition(hud::HudObject* element);
 // Goal `index` of the player's goal list (game world +0x10C0, count
 // +0x10C8), null for -1 or out of range (0x002E6A3C).
 Goal* PlayerGoalAt(uint32_t index);
