@@ -1,6 +1,7 @@
 // openTIT - Level AI controller base class and AI manager.
 #include "sly/levels/ai/AIController.h"
 
+#include "ape/anim/ApeAnimClip.h"
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
@@ -8,11 +9,17 @@
 #include "ape/sys/ApeGeometry.h"
 #include "ape/world/ApeObj.h"
 #include "sly/entity/EntityHooks.h"
+#include "ape/world/ApeDef.h"
+#include "sly/entity/CharacterHooks.h"
+#include "sly/entity/EntityHits.h"
+#include "sly/entity/ScriptedEntity.h"
 #include "sly/game/WorldInterface.h"
+#include "sly/levels/ai/AIAnimEventKnowledge.h"
 #include "sly/levels/ai/AIHooks.h"
 #include "sly/levels/ai/AIProxyPoints.h"
 #include "sly/levels/ai/AITuning.h"
 #include "sly/levels/nav/NavGraph.h"
+#include "sly/knowledge/Knowledge.h"
 
 #include <cmath>
 #include <limits>
@@ -24,6 +31,35 @@ namespace ai {
 namespace {
 
 AIManager* g_aiManager = nullptr;
+
+// The object the knowledge system is created with (console 0x00F6578C, a
+// one-byte object). NOTE: it carries no state.
+struct KnowledgeSystemToken;
+KnowledgeSystemToken* g_knowledgeToken = nullptr;
+struct KnowledgeSystemToken {
+    KnowledgeSystemToken() { g_knowledgeToken = this; }
+};
+ape::anim::AnimClipManager* g_aiAnimClips = nullptr;   // 0x00F557F8 (+4)
+
+// Control types of the AI anim sets (0x00AC000C) and their sync type (0x00AC0080).
+const ape::anim::AnimNamedType kAIControlTypes[] = {
+    {"Custom", 0x77297F71u},
+    {"AISpeed", 0xEFBDD8FFu},
+    {"AITargetAngle", 0xC519BC9Au},
+    {"AIJumpProgress", 0xC86A9C83u},
+    {"AIJumpLaunchDegree", 0x54D87795u},
+    {"AITurnDegree", 0xA861BFB1u},
+    {"AIStrafeDegree", 0xBCCE5CC3u},
+    {"AITargetDist", 0xA34430DFu},
+    {"AIHitCount", 0x2E515184u},
+    {"AITargetAtkTypeCount", 0xE6F2F0B6u},
+    {"AngleFromTarget", 0x07D00AAEu},
+    {"DistFromTarget", 0x30B83BE1u},
+};
+constexpr uint32_t kAIControlTypeCount = sizeof(kAIControlTypes) / sizeof(kAIControlTypes[0]);
+const ape::anim::AnimNamedType kAISyncTypes[] = {
+    {"AITargetAnim", 0xA342E54Au},
+};
 
 constexpr float kRadToDeg = 57.2957763671875f;
 constexpr float kDegToRad = 0.01745329238474369f;
@@ -116,6 +152,7 @@ AIController::~AIController()
 // -- geometry helpers -----------------------------------------------------------------
 
 // @func 0x00013E40 ClosestPointOnSegment
+// @func 0x00019248 ClosestPointOnSegment (copy 2)
 ape::Vec3 ClosestPointOnSegment(const ape::Vec3& a, const ape::Vec3& b, const ape::Vec3& p)
 {
     ape::Vec3 dir = {b.x - a.x, b.y - a.y, b.z - a.z, 0.0f};
@@ -930,13 +967,74 @@ void AIController::UpdateMovement(float dt)
 
 // -- AIManager ---------------------------------------------------------------------------
 
+// @func 0x000186CC AIManager::AIManager
 AIManager::AIManager()
 {
-    // TODO(0x000186CC AIManager::AIManager): the console constructor also
-    // creates the knowledge system (0x00F6578C), the proxy point table
-    // (0x00F557F4), the object pool 0x00F557F8 and the nav manager
-    // (0x00F557EC, NavPower world with a 4 MB arena and 512 obstacles).
+    SetAIManager(this);
+    // The knowledge system is a token object; the knowledge module keeps it.
+    knowledge::CreateKnowledgeSystem(new KnowledgeSystemToken());
+    // Anim sets of the AI: 256 slots, the AI control types and one sync type,
+    // with the anim event knowledge callbacks.
+    // NOTE: the console also installs an empty callback (field 0x11C) and the
+    // slot release 0x000653CC (not ported).
+    g_aiAnimClips = new ape::anim::AnimClipManager(0x100, kAIControlTypes, kAIControlTypeCount, kAISyncTypes, 1,
+                                                   AnimEventKnowledgeUserData, nullptr,
+                                                   AnimEventKnowledgeAcquireSlot, nullptr);
+    SetAIProxyPointTable(new AIProxyPointTable(0x200));
+    CreateNavManager();
     SetAIPriorityTargets(&priorityTargets);
+}
+
+// @func 0x00018B30 ShutdownAISystems
+void ShutdownAISystems()
+{
+    SetAIManager(nullptr);
+    DestroyNavManager();
+    if (AIProxyPointTable* table = GetAIProxyPointTable()) {
+        SetAIProxyPointTable(nullptr);
+        delete table;
+    }
+    delete g_aiAnimClips;
+    g_aiAnimClips = nullptr;
+    if (g_knowledgeToken) {
+        knowledge::DestroyKnowledgeSystem();
+        delete g_knowledgeToken;
+        g_knowledgeToken = nullptr;
+    }
+}
+
+ape::anim::AnimClipManager* AIAnimClips() { return g_aiAnimClips; }
+
+
+// @func 0x00018DD0 AIManager::Init
+void AIManager::Init()
+{
+    knowledge::KnowledgeInit();
+    if (g_aiAnimClips)
+        g_aiAnimClips->LoadAnimSetFiles();
+    controllerCount = 0;
+    activeCount = 0;
+    field_0C = 0;
+    allyCount = 0;
+    field_1C = false;
+    field_44 = 0;
+    field_48 = 0;
+    timeSinceSeen = 900.0f;
+    lastPlayerPosition = {0.0f, 0.0f, 0.0f, 0.0f};
+    field_24 = 0;
+    // The surround directions: forward turned about the up axis in eighths
+    // of a full turn.
+    constexpr float kTwoPi = 6.2831854820251465f;
+    for (int i = 0; i < kRecord50Count; ++i) {
+        ape::Matrix34 turn;
+        ape::MatrixAxisAngle(float(i) * 0.125f * kTwoPi, turn, kUp);
+        const ape::Vec3 forward = {0.0f, 0.0f, 1.0f, 0.0f};   // NOTE: console global 0x01164B70, assumed +Z
+        ape::Vec3& dir = records50[i].direction;
+        dir.x = forward.x * turn.xAxis.x + forward.y * turn.yAxis.x + forward.z * turn.zAxis.x;
+        dir.y = forward.x * turn.xAxis.y + forward.y * turn.yAxis.y + forward.z * turn.zAxis.y;
+        dir.z = forward.x * turn.xAxis.z + forward.y * turn.yAxis.z + forward.z * turn.zAxis.z;
+    }
+    ResetSightings();
 }
 
 // @func 0x000191B0 AIManager::OnLevelLoaded
@@ -1090,6 +1188,120 @@ void AIManager::OnLevelEnd()
     KnowledgeLevelEnd();
     AIObjectPoolLevelEnd();
     ResetSightings();
+}
+
+namespace {
+
+ape::Vec3 TransformPoint(const ape::Matrix34& m, const ape::Vec3& v)
+{
+    return {v.x * m.xAxis.x + v.y * m.yAxis.x + v.z * m.zAxis.x + m.translation.x,
+            v.x * m.xAxis.y + v.y * m.yAxis.y + v.z * m.zAxis.y + m.translation.y,
+            v.x * m.xAxis.z + v.y * m.yAxis.z + v.z * m.zAxis.z + m.translation.z, 0.0f};
+}
+
+// Frame an attack volume follows: its bone, else the attacker.
+ape::Matrix34 AttackFrame(const AISighting& attack)
+{
+    if (attack.bone < 0)
+        return attack.entity->transform;
+    return attack.entity->BoneTransform(attack.bone, true, true);
+}
+
+// Class bit of the attacker that marks hits as coming from a player.
+// NOTE: bit 0 of the class bits, read as "player".
+constexpr uint64_t kClass_Player = 0x01;
+
+} // namespace
+
+// @func 0x0001B8C0 AIManager::AddAttack
+void AIManager::AddAttack(Entity* attacker, Entity* target, uint32_t attachName, const AIAttackDesc& desc)
+{
+    if (sightingCount + 1 >= kMaxSightings)
+        return;
+    AISighting& attack = *sightings[sightingCount];
+    attack.entity = attacker;
+    attack.target = target;
+    attack.damage = desc.damage;
+    attack.push = desc.push;
+    attack.radius = desc.radius;
+    attack.offset = desc.offset;
+    attack.kind = attachName;
+    // A locator of the attacker's object names the point relative to its
+    // bone; otherwise the name is a bone.
+    ape::world::ApeLocator* locator = nullptr;
+    if (ape::world::ApeDef* def = attacker->object ? attacker->object->GetDef() : nullptr) {
+        if (def->m_locators)
+            locator = def->m_locators->Find(attachName);
+    }
+    if (locator) {
+        attack.offset = TransformPoint(locator->transform, attack.offset);
+        attack.bone = locator->bone;
+    } else {
+        attack.bone = attacker->FindBone(attachName);
+    }
+    attack.field_34 = desc.field_34;
+    attack.reaction = desc.reaction;
+    attack.position = TransformPoint(AttackFrame(attack), attack.offset);
+    ++sightingCount;
+}
+
+// @func 0x000193C0 AIManager::UpdateAttacks
+void AIManager::UpdateAttacks()
+{
+    for (int i = 0; i < sightingCount; ++i) {
+        AISighting& attack = *sightings[i];
+        bool done = true;
+        if (attack.target->IsAlive()) {
+            done = false;
+            const ape::Vec3 targetCenter = attack.target->GetCenter();
+            const ape::Vec3 previous = attack.position;
+            attack.position = TransformPoint(AttackFrame(attack), attack.offset);
+            // Nearest point of this frame's sweep to the target.
+            const ape::Vec3 nearest = ClosestPointOnSegment(attack.position, previous, targetCenter);
+            const ape::Vec3 toTarget = {targetCenter.x - nearest.x, targetCenter.y - nearest.y,
+                                        targetCenter.z - nearest.z, 0.0f};
+            bool reached;
+            if (entity::EntityComponent* body = attack.target->GetComponent00()) {
+                // NOTE: the vector the hook returns is used as the body's
+                // radius (x) and height (y) here.
+                const ape::Vec3 extent = entity::PhysicsCompUpVector(body);
+                reached = std::fabs(toTarget.y) < extent.y * 0.5f + attack.radius &&
+                          toTarget.x * toTarget.x + toTarget.z * toTarget.z <
+                              (extent.x + attack.radius) * (extent.x + attack.radius);
+            } else {
+                const float reach = attack.radius + 0.5f;
+                reached = toTarget.x * toTarget.x + toTarget.y * toTarget.y + toTarget.z * toTarget.z < reach * reach;
+            }
+            // NOTE: the target is taken to be a scripted entity, as on the console.
+            auto* victim = static_cast<entity::ScriptedEntity*>(attack.target);
+            if (reached && !victim->IsInvulnerable()) {
+                const float length = std::sqrt(toTarget.x * toTarget.x + toTarget.y * toTarget.y +
+                                               toTarget.z * toTarget.z);
+                const float inv = 1.0f / length;
+                entity::EntityHitRecord hit;
+                hit.source = attack.entity;
+                hit.reaction = attack.reaction;
+                hit.damageBits = 0;
+                hit.flags = uint16_t(1u << 13);   // melee
+                if (attack.entity && (attack.entity->classBits & kClass_Player))
+                    hit.flags |= entity::EntityHitRecord::kHit_FromPlayer;
+                hit.vec10 = targetCenter;
+                hit.data.impact.direction = {toTarget.x * inv, toTarget.y * inv, toTarget.z * inv, 0.0f};
+                hit.data.impact.direction2 = {0.0f, 0.0f, 0.0f, 0.0f};
+                hit.data.impact.damage = attack.damage;
+                hit.data.impact.push = attack.push;
+                hit.data.impact.flags_48 = 0;
+                hit.data.impact.field_4C = 0;
+                victim->OnHitCategory1(hit);
+                done = true;
+            }
+        }
+        if (done) {
+            --sightingCount;
+            std::swap(sightings[i], sightings[sightingCount]);
+            --i;
+        }
+    }
 }
 
 // @func 0x00019210 AIManager::ResolveJumpLinks

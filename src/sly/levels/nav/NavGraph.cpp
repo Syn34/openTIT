@@ -171,6 +171,38 @@ NavObstacleHandle AddBodyNavObstacle(NavManager& nav, void* body, const char* na
 NavManager* GetNavManager() { return g_navManager; }
 void SetNavManager(NavManager* nav) { g_navManager = nav; }
 
+NavManager* CreateNavManager()
+{
+    NavManager* nav = new NavManager();
+    g_navManager = nav;
+    nav->arena = ape::MemAlloc(NavManager::kArenaSize, ape::kMemClass_Default, 0x10);
+    NavPower().StartWorld(nav->arena, NavManager::kArenaSize);
+    return nav;
+}
+
+void DestroyNavManager()
+{
+    NavManager* nav = g_navManager;
+    if (!nav)
+        return;
+    g_navManager = nullptr;
+    for (NavObstacleHandle& obstacle : nav->obstacles) {
+        if (obstacle) {
+            NavPower().DestroyObstacle(obstacle);
+            obstacle = nullptr;
+        }
+    }
+    NavPower().StopWorld();
+    ape::MemFree(nav->arena);
+    for (NavJumpLink& link : nav->jumpLinks) {
+        if (link.link) {
+            NavPower().ReleaseJumpLink(link.link);
+            link.link = nullptr;
+        }
+    }
+    delete nav;
+}
+
 // @func 0x00010238 ResolveJumpLinkObjects
 void ResolveJumpLinkObjects(NavManager& nav)
 {

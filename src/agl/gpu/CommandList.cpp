@@ -187,6 +187,11 @@ void CommandList::SetPolygonOffset(bool enable, float factor, float units)
     Push(cmd::PolygonOffset{enable, factor, units});
 }
 
+void CommandList::SetLineWidth(float width)
+{
+    Push(cmd::LineWidth{width});
+}
+
 // @func 0x005E3E40 cellGcmSetRestartIndexEnable
 void CommandList::SetRestartIndexEnable(bool enable)
 {
