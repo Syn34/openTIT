@@ -3,6 +3,8 @@
 #include "sly/camera/CameraModes.h"
 #include "sly/entity/GameCamera.h"
 #include "sly/game/GameMessages.h"
+#include "ape/anim/ApeAnimScript.h"
+#include "ape/anim/ApeAnimScriptVars.h"
 #include "sly/levels/ai/AITuning.h"
 
 namespace sly {
@@ -100,6 +102,23 @@ void ParadoxAI::UpdateStrafeCamera()
         delete strafeMode;
         strafeMode = nullptr;
     }
+}
+
+// @func 0x0005E470 ParadoxAI::StartPhaseOne
+void ParadoxAI::StartPhaseOne()
+{
+    phase = 1;
+    phaseObjectCount = 0;
+    if (arena) {
+        static constexpr uint32_t kObjectVars[5] = {0x11A825BAu, 0x7D63B6B9u, 0xE91F47B8u, 0x54DAD8B7u,
+                                                    0xC09669B6u};
+        auto* script = static_cast<ape::ApeAnimScriptInstance*>(arena->GetAnimScript());
+        for (uint32_t name : kObjectVars) {
+            auto* var = static_cast<ape::ApeAnimScriptObjectVar*>(script->FindVar(name));
+            phaseObjects[phaseObjectCount++] = var ? var->GetObject() : nullptr;
+        }
+    }
+    SetState(0);
 }
 
 } // namespace ai

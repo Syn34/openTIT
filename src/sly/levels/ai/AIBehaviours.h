@@ -668,10 +668,19 @@ public:
     // height); in any other state it is removed (0x0005C848).
     void UpdateStrafeCamera();
 
+    // Phase 1 begins: the five objects named by the arena entity's script
+    // (object variables 0x11A825BA, 0x7D63B6B9, 0xE91F47B8, 0x54DAD8B7,
+    // 0xC09669B6; null when missing) become the phase objects, and the
+    // controller returns to state 0 (0x0005E470).
+    void StartPhaseOne();
+
     int32_t phase = 0;            // +0x134
+    int32_t phaseObjectCount = 0;               // +0x140
+    ape::ApeRefCounted* phaseObjects[8] = {};   // +0x160 NOTE: capacity assumed
     entity::GameCamera* fightCamera = nullptr;          // +0x1A0 attached to the player during the fight
     camera::StrafeCameraMode* strafeMode = nullptr;    // +0x1A4
     camera::CameraMode* cameraMode = nullptr;          // +0x1A8 the phase camera (PlayCamera)
+    Entity* arena = nullptr;      // +0x1AC NOTE: the entity whose script names the phase objects
     uint32_t pendingCommand = 0;  // +0x1B0
     float pendingValue = 0.0f;    // +0x1B4
     bool hasPendingCommand = false;   // +0x1B8
