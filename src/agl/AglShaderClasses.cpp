@@ -2123,9 +2123,9 @@ public:
 };
 
 class SlyTerrainSnowTechnique : public AglTechnique {
-    // TODO(0x005CE508 SlyTerrainSnowTechnique::BeginMaterial)
     // TODO(0x005CE6A0 SlyTerrainSnowTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABE1C SlyTerrainSnowTechnique::~SlyTerrainSnowTechnique
     // @func 0x007AFD0C SlyTerrainSnowTechnique::~SlyTerrainSnowTechnique (deleting)
     ~SlyTerrainSnowTechnique() override = default;
@@ -2134,9 +2134,9 @@ public:
 };
 
 class SlyTerrainSnowDecalTechnique : public AglTechnique {
-    // TODO(0x005CFA68 SlyTerrainSnowDecalTechnique::BeginMaterial)
     // TODO(0x005CFDC0 SlyTerrainSnowDecalTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABE2C SlyTerrainSnowDecalTechnique::~SlyTerrainSnowDecalTechnique
     // @func 0x007AFDC8 SlyTerrainSnowDecalTechnique::~SlyTerrainSnowDecalTechnique (deleting)
     ~SlyTerrainSnowDecalTechnique() override = default;
@@ -5842,6 +5842,48 @@ void SlyDecal4Technique::Draw(AglRenderItem* item)
         UploadLightBlock(item, false, 0);
     ApplyItemStencilRef(item);
     item->geometry->Draw(item);
+}
+
+// @func 0x005CE508 SlyTerrainSnowTechnique::BeginMaterial
+// UV animation in vertex constant 4; the two snow colours (RGB bytes of
+// material constants 3 and 4, w = 0) in vertex constants 6 and 7.
+void SlyTerrainSnowTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    float colors[2][4];
+    for (int i = 0; i < 2; ++i) {
+        UnpackMaterialColor(material, 3 + i, colors[i]);
+        colors[i][3] = 0.0f;
+    }
+    Cmd().SetVertexProgramConstants(6, 4, colors[0]);
+    Cmd().SetVertexProgramConstants(7, 4, colors[1]);
+}
+
+// @func 0x005CFA68 SlyTerrainSnowDecalTechnique::BeginMaterial
+// UV animation in vertex constant 4, the snow colours (RGB bytes of
+// constants 0 and 1, w = 0) in 6 and 7, and two rotated texture layers
+// (angles 12 and 13, scales 8/9 and 10/11, laid out as for SlyDecal4) in 8
+// and 9.
+void SlyTerrainSnowDecalTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    gpu::CommandList& cmd = Cmd();
+    for (int i = 0; i < 2; ++i) {
+        float color[4];
+        UnpackMaterialColor(material, uint32_t(i), color);
+        color[3] = 0.0f;
+        cmd.SetVertexProgramConstants(6 + uint32_t(i), 4, color);
+    }
+    for (int i = 0; i < 2; ++i) {
+        float s, c;
+        ParabolicSinCos(MaterialConstant(material, 12 + i), s, c);
+        const float su = MaterialConstant(material, 8 + 2 * i);
+        const float sv = MaterialConstant(material, 9 + 2 * i);
+        const float layer[4] = { c * su, -(s * sv), s * su, c * sv };
+        Cmd().SetVertexProgramConstants(8 + uint32_t(i), 4, layer);
+    }
 }
 
 } // namespace agl
