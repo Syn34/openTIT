@@ -16,6 +16,7 @@
 #include "sly/game/hud/HudHideoutMenu.h"
 #include "sly/game/hud/HudManager.h"
 #include "sly/gameplay/Minigame.h"
+#include "sly/tuning/GameTuning.h"
 #include "sly/levels/ai/AIController.h"
 
 namespace sly {
@@ -542,6 +543,35 @@ bool GuiPopupEventFilter(const ape::GuiEvent* event)
     if (g_guiPopup.object && event->type == kGuiEvent_Accept && event->object)
         CloseGuiPopup();
     return true;
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x00466678 SlyGame::EndDialog
+void SlyGame::EndDialog(bool toFrontEnd)
+{
+    constexpr uint32_t kDialogBusy = 0x40000000u;
+    if (!(dialog.flags & kDialogBusy))
+        return;
+    dialog.flags &= ~kDialogBusy;
+    ChangeState(1, toFrontEnd ? 0x0B : 2);
+    ChangeState(2, 0);
+    if (dialog.mixState)
+        audio::RemoveMixState(dialog.mixState, g_audioFreezeScreenCrossfadeDuration.Get());
+    dialog.text[0] = '\0';
+    dialog.field_98 = 0;
+    dialog.sound[0] = '\0';
+    dialog.field_8C = 0;
+    dialog.screenHash = 0;
+    dialog.field_A0 = 0;
+    dialog.field_A4 = 0;
+    dialog.field_A8 = 0;
+    dialog.field_AC = 0;
+    dialog.field_B0 = 0;
+    dialog.flags &= 0x1FFFFFFFu;
+    dialog.mixState = nullptr;
 }
 
 } // namespace sly

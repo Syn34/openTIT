@@ -34,6 +34,7 @@ class SpawnManager;
 namespace goals { class Goal; }
 namespace gameplay { class Minigame; class ReturnTreasureMicrogame; }
 namespace entity { class Entity; class GameCamera; }
+namespace audio { struct MixState; }
 struct LevelParams;
 
 // A deferred call queued on one of the world callback lists: the game
@@ -207,7 +208,7 @@ struct DialogState {
     uint32_t field_AC = 0;                  // +0xAC
     uint32_t field_B0 = 0;                  // +0xB0
     uint32_t flags = 0;                     // +0xB4 bit 30: busy, bit 29/31 options
-    uint32_t mixState = 0;                  // +0xB8 mix state pushed for the dialog
+    const audio::MixState* mixState = nullptr;   // +0xB8 mix state pushed for the dialog
 };
 
 class SlyGame : public gameplay::StateMachine {
@@ -496,6 +497,10 @@ public:
     // The camera follows a player block's character again (0x00484858).
     void AttachCameraTo(GamePlayer& player);
     void AttachCameraToPlayer(uint32_t player);
+    // Ends the dialog (the frozen screen with a speaker, +0x1283C0) when one
+    // is up: sub state 2 (play), or 0x0B with `toFrontEnd`; its mix state
+    // fades out and the block is cleared.
+    void EndDialog(bool toFrontEnd);
     // The screen shows a held picture instead of the running game.
     bool HoldsFrame();
     // Full screen vertical colour gradient behind everything.
