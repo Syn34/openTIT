@@ -434,3 +434,15 @@ void SetAiEntitiesVisible(bool visible)
 }
 
 } // namespace sly
+
+namespace sly {
+
+// @func 0x004902B8 ShowCharacterHint
+// Plays the intro of HUD element 0xB7E98FE4 (console global 0x00F64D08;
+// NOTE: the element's name is unknown, the characters show it).
+void ShowCharacterHint()
+{
+    hud::ShowByName(0xB7E98FE4u, true, false, false);
+}
+
+} // namespace sly

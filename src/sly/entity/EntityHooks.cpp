@@ -169,10 +169,6 @@ void LoadShootingDefs(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) {}
 // TODO(0x000D5C00 LoadSpawnDefs)
 void LoadSpawnDefs(ape::xml::XmlElement*, ape::xml::XmlElement*) {}
 
-// TODO(0x00490518)
-void PropertySystemForgetDef(EntityDef* def) { (void)def; }
-// TODO(0x00490360)
-void PropertySystemRegisterDef(EntityDef* def, uint32_t type) { (void)def; (void)type; }
 
 // TODO(0x00443CE0)
 bool VoiceUpdate3D(uint32_t voice, const ape::Vec3& position, const ape::Vec3& velocity)

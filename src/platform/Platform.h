@@ -69,6 +69,30 @@ void DispatchSystemCallbacks();
 void PostSystemEvent(uint32_t event, uint32_t param = 0);
 
 // ---------------------------------------------------------------------------
+// System message dialog (cellMsgDialog replacement)
+// ---------------------------------------------------------------------------
+enum class DialogButtons { None, Ok, YesNo };
+struct MessageDialogStyle {
+    DialogButtons buttons = DialogButtons::Ok;
+    bool defaultNo = false;       // the cursor starts on "no"
+    bool canCancel = true;        // the cancel button closes the dialog
+    bool showBackground = true;   // the game is dimmed behind the dialog
+};
+// Answers handed to the dialog callback.
+enum DialogResult : int { kDialog_Other = 0, kDialog_Yes = 1, kDialog_No = 2 };
+using MessageDialogCallback = void (*)(int result, void* userdata);
+// Opens a dialog with `text` (or the system text of `errorCode`); the
+// callback runs from DispatchSystemCallbacks once it is answered. False
+// when a dialog is already open. On PC the dialog is logged and a dialog
+// with buttons answers "yes"/"ok" at the next dispatch.
+bool OpenMessageDialog(const char* text, const MessageDialogStyle& style, MessageDialogCallback callback,
+                       void* userdata);
+bool OpenErrorDialog(uint32_t errorCode, MessageDialogCallback callback, void* userdata);
+// Closes the open dialog (as answered) / takes it down without an answer.
+void CloseMessageDialog();
+void AbortMessageDialog();
+
+// ---------------------------------------------------------------------------
 // Process
 // ---------------------------------------------------------------------------
 [[noreturn]] void ExitProcess(int code);

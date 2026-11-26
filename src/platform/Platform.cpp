@@ -102,6 +102,8 @@ void PostSystemEvent(uint32_t event, uint32_t param)
     g_pendingEvents.push_back({ event, param });
 }
 
+namespace { void DispatchDialogAnswer(); }
+
 void DispatchSystemCallbacks()
 {
     std::deque<PendingEvent> events;
@@ -116,6 +118,83 @@ void DispatchSystemCallbacks()
         for (const CallbackSlot& s : slots)
             if (s.callback)
                 s.callback(e.event, e.param, s.userdata);
+    DispatchDialogAnswer();
+}
+
+// ---------------------------------------------------------------------------
+// System message dialog
+// ---------------------------------------------------------------------------
+namespace {
+struct MessageDialogState {
+    bool open = false;
+    bool answerPending = false;
+    int answer = kDialog_Other;
+    MessageDialogCallback callback = nullptr;
+    void* userdata = nullptr;
+};
+MessageDialogState g_dialog;
+
+bool OpenDialog(DialogButtons buttons, MessageDialogCallback callback, void* userdata)
+{
+    std::lock_guard<std::mutex> lock(g_eventMutex);
+    if (g_dialog.open)
+        return false;
+    g_dialog.open = true;
+    g_dialog.callback = callback;
+    g_dialog.userdata = userdata;
+    g_dialog.answerPending = buttons != DialogButtons::None;
+    g_dialog.answer = kDialog_Yes;
+    return true;
+}
+
+// Runs the answer of the open dialog, if there is one waiting.
+void DispatchDialogAnswer()
+{
+    MessageDialogCallback callback = nullptr;
+    void* userdata = nullptr;
+    int answer = kDialog_Other;
+    {
+        std::lock_guard<std::mutex> lock(g_eventMutex);
+        if (!g_dialog.open || !g_dialog.answerPending)
+            return;
+        g_dialog.answerPending = false;
+        g_dialog.open = false;
+        callback = g_dialog.callback;
+        userdata = g_dialog.userdata;
+        answer = g_dialog.answer;
+    }
+    if (callback)
+        callback(answer, userdata);
+}
+} // namespace
+
+bool OpenMessageDialog(const char* text, const MessageDialogStyle& style, MessageDialogCallback callback,
+                       void* userdata)
+{
+    if (!OpenDialog(style.buttons, callback, userdata))
+        return false;
+    Log(LogLevel::Info, "[dialog] %s", text ? text : "");
+    return true;
+}
+
+bool OpenErrorDialog(uint32_t errorCode, MessageDialogCallback callback, void* userdata)
+{
+    if (!OpenDialog(DialogButtons::Ok, callback, userdata))
+        return false;
+    Log(LogLevel::Info, "[dialog] system error 0x%08X", errorCode);
+    return true;
+}
+
+void CloseMessageDialog()
+{
+    std::lock_guard<std::mutex> lock(g_eventMutex);
+    g_dialog = MessageDialogState{};
+}
+
+void AbortMessageDialog()
+{
+    std::lock_guard<std::mutex> lock(g_eventMutex);
+    g_dialog = MessageDialogState{};
 }
 
 // ---------------------------------------------------------------------------
