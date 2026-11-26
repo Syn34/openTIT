@@ -33,9 +33,6 @@ EntityPlacement* ParseActorB17990Placement(ape::xml::XmlElement*, ape::xml::XmlE
 {
     return nullptr;
 }
-// TODO(0x000C9AB8 ParseAttachmentRecords): the attachment records of a
-// placement (0xC0 bytes each, children 0xCCEB9AF9, nested).
-void ParseAttachmentRecords(ape::xml::XmlElement*, ape::xml::XmlElement*, EntityAttachmentList*&) {}
 
 // Inline in the loader (element 0xEBE54755).
 EntityPlacement* ParsePlacementB138E8(ape::xml::XmlElement* elem, const char* name, EntityDef* def)
@@ -206,7 +203,7 @@ EntityPlacement* LoadEntityPlacement(ape::xml::XmlElement* root, ape::xml::XmlEl
         placement->bits84 = (placement->bits84 & ~0x20000000u) | (bit29 ? 0x20000000u : 0u);
         entity::RegisterEntityPlacement(nameHash, placement);
         if (ape::xml::XmlElement* attachments = elem->FirstChildElement(kElem_Attachments))
-            ParseAttachmentRecords(root, attachments, placement->attachments);
+            entity::ParseEntityAttachments(root, attachments, placement->attachments);
     }
     return placement;
 }
