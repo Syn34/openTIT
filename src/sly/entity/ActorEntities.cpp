@@ -126,6 +126,28 @@ bool InteractivePropA::Update(float dt)
 // @func 0x001EA8EC SearchlightActor::~SearchlightActor (thunk, +0x17C)
 SearchlightActor::~SearchlightActor() = default;
 
+// @func 0x001E9C90 SearchlightActor::SearchlightActor
+SearchlightActor::SearchlightActor(const objects::ActorInstanceDesc& desc) : ActorEntity(desc)
+{
+    const SearchlightDef* lightDef = Def();
+    object_1B0 = EntityFindObject(this, lightDef->field_160[0]);
+    object_1B4 = EntityFindObject(this, lightDef->field_160[1]);
+    lightObject = EntityFindObject(this, lightDef->field_160[2]);
+    object_1BC = EntityFindObject(this, lightDef->field_160[3]);
+    if (lightObject)
+        lightObject->SetVisible(false, false);
+}
+
+// @func 0x001E9D98 SearchlightDef::Spawn
+Entity* SearchlightDef::Spawn(EntityPlacement* placement)
+{
+    objects::ActorInstanceDesc desc(InstanceName(placement), this);
+    placement->FillInstanceDesc(desc);
+    auto* light = new SearchlightActor(desc);
+    light->OnSpawn();
+    return light;
+}
+
 // @func 0x001EB078 SearchlightActor::GetAimPoint
 ape::Vec3 SearchlightActor::GetAimPoint() { return ActorEntity::GetAimPoint(); }
 
@@ -1235,6 +1257,28 @@ bool InteractivePropB::CanInteractWith(Entity* other, int kind, float* priority)
             return false;
     }
     return ActorEntity::CanInteractWith(other, kind, priority);
+}
+
+// @func 0x001F54E8 InteractivePropB::InteractivePropB
+InteractivePropB::InteractivePropB(const objects::InteractivePropBInstanceDesc& desc)
+    : ActorEntity(desc), field_1F8(desc.field_100), useTime(desc.field_104), field_200(desc.field_108),
+      field_204(desc.field_10C), field_210(desc.field_E0), rotation(desc.rotation), attachedDef(desc.field_D0)
+{
+    if (desc.field_110) {
+        SpawnAttached();
+        EntitySetState(this, 0, 0);
+    }
+    EntityJoinListenerGroup(this, 0x6927A078u, true);
+}
+
+// @func 0x001F5660 InteractivePropBDef::Spawn
+Entity* InteractivePropBDef::Spawn(EntityPlacement* placement)
+{
+    objects::InteractivePropBInstanceDesc desc(InstanceName(placement), this);
+    placement->FillInstanceDesc(desc);
+    auto* prop = new InteractivePropB(desc);
+    prop->OnSpawn();
+    return prop;
 }
 
 // TODO(0x001F50E4 InteractivePropB::SpawnAttached)

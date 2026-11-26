@@ -12,7 +12,7 @@
 
 namespace ape::world { class ApeObj; }
 namespace sly::camera { class CameraMode; }
-namespace sly::objects { struct ActorInstanceDesc; }
+namespace sly::objects { struct ActorInstanceDesc; struct InteractivePropBInstanceDesc; }
 
 namespace sly {
 namespace entity {
@@ -371,6 +371,7 @@ public:
     // @func 0x00757308 SearchlightDef::~SearchlightDef
     // @func 0x00757338 SearchlightDef::~SearchlightDef (deleting)
     ~SearchlightDef() override = default;
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7: a SearchlightActor
     uint8_t interactionNeeds[6] = {};   // 0x12E per interaction kind
     ape::Vec3 cameraOffset{};           // 0x140 camera position relative to the light
     // 0x150 rotation (quaternion) from the Euler angles of attribute
@@ -384,6 +385,9 @@ public:
 // camera mode rides on it.
 class SearchlightActor : public ActorEntity {
 public:
+    // Looks up the four objects the definition names; the light object
+    // starts hidden (0x001E9C90).
+    explicit SearchlightActor(const objects::ActorInstanceDesc& desc);
     ~SearchlightActor() override;
     // Slot 71: the actor's own copy of the actor aim point.
     ape::Vec3 GetAimPoint() override;
@@ -403,7 +407,11 @@ public:
 
     camera::CameraMode* cameraMode = nullptr;   // 0x1A8 spotlight camera mode
     Entity* user = nullptr;                     // 0x1AC
-    ape::world::ApeObj* lightObject = nullptr;  // 0x1B8
+    ape::world::ApeObj* object_1B0 = nullptr;   // 0x1B0 SearchlightDef::field_160[0]
+    ape::world::ApeObj* object_1B4 = nullptr;   // 0x1B4 field_160[1]
+    ape::world::ApeObj* lightObject = nullptr;  // 0x1B8 field_160[2]
+    ape::world::ApeObj* object_1BC = nullptr;   // 0x1BC field_160[3]
+    uint32_t field_1C0 = 0;                     // 0x1C0
 };
 
 // The actor ActorDef itself spawns (vtable 0x00B12A90 + 0x00B12C3C/0x00B12C64;
@@ -418,6 +426,9 @@ public:
 // 0x240 bytes; slot 76 0x001F6808).
 class InteractivePropB : public ActorEntity {
 public:
+    // Placement values; spawns the attached entity at once when the
+    // placement asks for it (0x001F54E8).
+    explicit InteractivePropB(const objects::InteractivePropBInstanceDesc& desc);
     ~InteractivePropB() override;
     void SetVisible(bool visible, bool immediate, bool children, bool components) override;
     bool Release(bool kill) override;                 // slot 10
@@ -435,9 +446,16 @@ public:
     // Spawns the entity of definition `attachedDef` and attaches it (0x001F50E4).
     void SpawnAttached();
 
-    ape::Matrix34 userTransform{};            // 0x1B0
+    ape::Matrix34 userTransform{{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f},
+                                {0.0f, 0.0f, 0.0f, 1.0f}};   // 0x1B0 (identity)
     Entity* attached = nullptr;               // 0x1F0
+    uint32_t field_1F4 = 0;                   // 0x1F4
+    float field_1F8 = 0.0f;                   // 0x1F8 placement value
     float useTime = 0.0f;                     // 0x1FC NOTE: name guessed
+    float field_200 = 0.0f;                   // 0x200 placement value
+    uint32_t field_204 = 0;                   // 0x204 placement value (hash)
+    ape::Vec3 field_210{};                    // 0x210 placement offset
+    ape::Vec4 rotation{0.0f, 0.0f, 0.0f, 1.0f};   // 0x220 placement rotation
     uint32_t attachedDef = 0;                 // 0x230 definition name of the attached entity
 };
 
