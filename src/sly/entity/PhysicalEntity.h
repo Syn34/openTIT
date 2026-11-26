@@ -32,6 +32,8 @@ public:
     // Definition flags (+0x174).
     enum Flags : uint32_t {
         kDefFlag_NoKind2Interaction = 1u << 9,
+        kDefFlag_DieOnHit           = 1u << 10,   // NOTE: name from use (SweepTo)
+        kDefFlag_FaceMotion         = 1u << 22,   // NOTE: name from use (SweepTo)
         kDefFlag_NoInteraction      = 1u << 15,
     };
 
@@ -97,6 +99,12 @@ public:
     // current horizontal speed, else (straight up or down) along the fall
     // under the body's gravity (0x000EF3C8).
     void UpdateFlightTime();
+    // Frame for moving from `from` to `to`: the body is swept through the
+    // world when it is in one (definitions with flag 10 die when it hits
+    // something); with `orient` and definition flag 22 the forward axis is
+    // eased towards the direction of motion (Entity.Projectile.OrientDampening)
+    // (0x000EB420).
+    void SweepTo(const ape::Matrix34& from, const ape::Vec3& to, ape::Matrix34& out, bool orient);
     // Slot 99: empty. NOTE: no caller known.
     virtual void Slot99();
     // Primary slot 100 / +0x180 slot 6: stops listening to the body's contacts.
@@ -133,6 +141,7 @@ public:
     // 0x1C0 aim frame: identity at the aim point (slot 94); the carried
     // entity (e.g. a marker) sits there.
     ape::Matrix34 carriedTransform{};
+    ape::Vec3 launchPoint{};                 // 0x200 where the entity was launched from
     void* triggerBody = nullptr;             // 0x224 second body, on collision layer 7
     float flightTime = 0.0f;                 // 0x228 seconds to the aim point (UpdateFlightTime)
     audio::SoundName* impactSound = nullptr; // 0x230 NOTE: name from use

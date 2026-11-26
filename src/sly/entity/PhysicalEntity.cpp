@@ -9,6 +9,8 @@
 #include "sly/entity/PhysicsHooks.h"
 
 #include "ape/anim/ApeAnimScript.h"
+#include "ape/sys/ApeGeometry.h"
+#include "sly/entity/EntityTuning.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 
 #include <cmath>
@@ -306,6 +308,64 @@ void PhysicalEntity::OnLaunched()
             static_cast<ape::ApeAnimScriptFloatVar*>(var)->SetFloat(Def()->launchValue);
     }
     animScript->SetStateAndUpdate(kScriptState_Start);
+}
+
+// @func 0x000EB420 PhysicalEntity::SweepTo
+void PhysicalEntity::SweepTo(const ape::Matrix34& from, const ape::Vec3& to, ape::Matrix34& out, bool orient)
+{
+    out = from;
+    out.translation = {to.x, to.y, to.z, from.translation.pad};
+    if (!body || !RigidBodyInWorld(body))
+        return;
+    const PhysicalEntityDef* def = Def();
+    if (RigidBodySweep(body, from, to, out) && (def->defFlags & PhysicalEntityDef::kDefFlag_DieOnHit))
+        Damage(maxHealth, nullptr, 0);
+    if (!(def->defFlags & PhysicalEntityDef::kDefFlag_FaceMotion) || !orient)
+        return;
+    const ape::Vec3 at = out.translation;
+    ape::Vec3 motion = {at.x - from.translation.x, at.y - from.translation.y, at.z - from.translation.z, 0.0f};
+    if (std::fabs(motion.x) < 1e-05f && std::fabs(motion.y) < 1e-05f && std::fabs(motion.z) < 1e-05f)
+        return;
+    // Ease the forward axis towards the motion.
+    float damping = g_entityProjectileOrientDampening;
+    if (damping > 1000.0f)
+        damping = 1000.0f;
+    if (damping < 1.0f)
+        damping = 1.0f;
+    const float step = (1.0f / damping) / std::sqrt(motion.z * motion.z + motion.x * motion.x + motion.y * motion.y);
+    ape::Vec3 forward = {motion.x * step + from.zAxis.x, motion.y * step + from.zAxis.y,
+                         motion.z * step + from.zAxis.z, 0.0f};
+    const float inv = 1.0f / std::sqrt(forward.z * forward.z + forward.x * forward.x + forward.y * forward.y);
+    forward = {forward.x * inv, forward.y * inv, forward.z * inv, 0.0f};
+    auto isZero = [](const ape::Vec3& v) {
+        return std::fabs(v.x) < 1e-05f && std::fabs(v.y) < 1e-05f && std::fabs(v.z) < 1e-05f;
+    };
+    if (isZero(forward))
+        forward = out.zAxis;
+    auto cross = [](const ape::Vec3& a, const ape::Vec3& b) {
+        return ape::Vec3{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x, 0.0f};
+    };
+    ape::Matrix34 axes = out;
+    axes.xAxis = cross(out.yAxis, forward);
+    if (isZero(axes.xAxis)) {
+        // Parallel to the up axis: use the world axis least aligned with forward.
+        ape::Vec3 helper;
+        const float ax = std::fabs(forward.x), ay = std::fabs(forward.y), az = std::fabs(forward.z);
+        if (ay > az && ax > az)
+            helper = {0.0f, 0.0f, 1.0f, 0.0f};
+        else if (ax > ay)
+            helper = {0.0f, 1.0f, 0.0f, 0.0f};
+        else
+            helper = {1.0f, 0.0f, 0.0f, 0.0f};
+        axes.xAxis = cross(helper, forward);
+    }
+    axes.zAxis = forward;
+    ape::Matrix34NormalizeAxes(axes);
+    const ape::Vec3 side = axes.xAxis;
+    out.xAxis = {side.x, side.y, side.z, out.xAxis.pad};
+    out.yAxis = cross(forward, side);
+    out.zAxis = {forward.x, forward.y, forward.z, out.zAxis.pad};
+    out.translation = at;
 }
 
 // @func 0x000EDD74 PhysicalEntity::SetCarriedTransform
