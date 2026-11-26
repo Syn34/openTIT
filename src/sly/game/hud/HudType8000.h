@@ -34,6 +34,8 @@ public:
 
     HudType8000() = default;
     explicit HudType8000(HudObjectDef* def) : HudObject(0, def) {}
+    // 0x00381AA8 / 0x00381DF8: hidden, the parts released.
+    ~HudType8000() override;
 
     // Slot 3 (0x003842D0): back to hidden at its stack origin; a pending
     // "leave B" request queues it for destruction.

@@ -13,6 +13,32 @@ uint32_t WithAnimState(uint32_t animState, uint32_t state) { return (animState &
 uint32_t SetBit(uint32_t word, uint32_t bit, bool on) { return on ? (word | bit) : (word & ~bit); }
 } // namespace
 
+// @func 0x00381AA8 HudType8000::~HudType8000
+// @func 0x00381DF8 HudType8000::~HudType8000 (deleting)
+HudType8000::~HudType8000()
+{
+    HudType8000::SetActive(false);
+    auto release = [](ape::world::ApeObj*& part) {
+        if (part)
+            part->Release();
+    };
+    for (ape::world::ApeObj*& part : markers)
+        release(part);
+    for (int i = 0; i < 12; ++i) {
+        release(rowA[i]);
+        release(rowB[i]);
+        release(rowC[i]);
+    }
+    release(part188);
+    part188 = nullptr;
+    release(part18C);
+    part18C = nullptr;
+    for (ape::world::ApeObj*& part : slots)
+        release(part);
+    release(part210);
+    part210 = nullptr;
+}
+
 // @func 0x003686D0 HudType8000::PlayState8000
 void HudType8000::PlayState8000(int state, bool loop)
 {
