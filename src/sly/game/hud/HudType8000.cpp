@@ -290,6 +290,40 @@ void HudType8000::PlayAlert(bool intro)
     PlayHudClip(animController, alertClips[intro ? 0 : 1], 1.0f, false);
 }
 
+// @func 0x00384750 HudType8000::SetAlert
+void HudType8000::SetAlert(bool on)
+{
+    if (on == ((stateWord & kF_Alert) != 0))
+        return;
+    const uint32_t state = AnimStateOf(animState);
+    if (state == 2 || state == 3)
+        PlayHudClip(animController, alertClips[on ? 0 : 1], 1.0f, false);
+    stateWord = on ? (stateWord | kF_Alert) : (stateWord & ~uint32_t(kF_Alert));
+}
+
+// Name of the follow element (0x00F64D3C). NOTE: name and value unknown;
+// set by the game world (not ported).
+uint32_t g_followElementName = 0;
+
+HudType8000* HudType8000::FollowElement()
+{
+    return static_cast<HudType8000*>(FindType8000(g_followElementName));
+}
+
+// @func 0x0029F428 HudType8000::SetFollowElementBlocked
+void HudType8000::SetFollowElementBlocked(bool blocked)
+{
+    HudType8000* element = FollowElement();
+    if (!element)
+        return;
+    const bool visible = element->object && ObjectVisible(element->object);
+    if (blocked && visible)
+        element->Hide8000(false, false);
+    else if (!blocked && !visible)
+        element->ShowTimed8000(-1.0f, false, nullptr);
+    element->stateWord = blocked ? (element->stateWord | kF_Blocked) : (element->stateWord & ~uint32_t(kF_Blocked));
+}
+
 // @func 0x003817E0 HudType8000::SetActive
 void HudType8000::SetActive(bool active)
 {
