@@ -204,12 +204,13 @@ struct GoalCycleEntry {
     char* text = nullptr;
     float duration = 0.0f;
 
-    // 0x00321230 / 0x00321240 (constructor / destructor).
+    // @func 0x00321230 GoalCycleEntry::GoalCycleEntry
     GoalCycleEntry() = default;
+    // @func 0x00321240 GoalCycleEntry::~GoalCycleEntry
     ~GoalCycleEntry() { SetText(nullptr); }
     GoalCycleEntry(const GoalCycleEntry&) = delete;
     GoalCycleEntry& operator=(const GoalCycleEntry&) = delete;
-    // 0x00321288: keeps a copy of `value` (none for a null or empty text).
+    // Keeps a copy of `value` (none for a null or empty text).
     void SetText(const char* value);
 };
 
