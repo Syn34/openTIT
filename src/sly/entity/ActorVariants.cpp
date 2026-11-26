@@ -49,17 +49,17 @@ ape::ApeAnimScriptVar* TakeGroupVar(ape::ApeAnimScriptInstance* script)
     ape::ApeAnimScriptVar* var = script->FindVar(kVar_Group);
     if (!var || var->GetType() != ape::AnimScriptVarType::Float)
         return nullptr;
-    GroupRecordSetCounter(var, 0);
+    GroupVarSetValue(var, 0.0f);
     return var;
 }
 } // namespace
 
 // @func 0x001A990C ActorGroup::ActorGroup
 ActorGroup::ActorGroup(const objects::ActorGroupInstanceDesc& desc)
-    : ActorEntity(desc), field_1C0(desc.field_D0[0]), field_1C8(desc.field_D0[2]), field_1CC(desc.field_D0[3]),
-      anyState(desc.field_E0)
+    : ActorEntity(desc), anyState(desc.field_E0)
 {
-    std::memcpy(&counter, &desc.field_D0[1], sizeof(counter));
+    for (int i = 0; i < 4; ++i)
+        stateTimes[i] = desc.field_D0[i];
     if (!children)
         children = new ape::ApeTArray<EntityChildLink>();
     if (children->Count() != 0)
@@ -92,6 +92,66 @@ Entity* ActorGroupDef::Spawn(EntityPlacement* placement)
     return group;
 }
 
+// @func 0x001AA610 ActorGroup::PostUpdate
+bool ActorGroup::PostUpdate(float dt)
+{
+    if (!ActorEntity::PostUpdate(dt))
+        return false;
+    constexpr uint32_t kState_Member2 = 0x8B3C3A33u;
+    constexpr uint32_t kState_Member3 = 0x3C8207B4u;
+    constexpr uint32_t kState_GroupDone = 0x00B9CB91u;
+    constexpr uint32_t kState_GroupReset = 0xC38793CAu;
+    constexpr uint32_t kEvent_GroupDone = 0x19;
+    const int state = EntityGetState(this, 0);
+    if (state == 0) {
+        uint32_t waiting = 0;
+        for (Member& member : members) {
+            Entity* entity = member.entity;
+            const int memberState = EntityGetState(entity, 0);
+            const float time = EntityStateTime(entity, 0);
+            ape::ApeAnimScriptInstance* script = nullptr;
+            if (memberState == 1 && time >= stateTimes[1]) {
+                if ((script = ScriptOf(entity)) != nullptr) {
+                    if (member.record)
+                        GroupVarSetValue(member.record, stateTimes[2]);
+                    script->SetStateAndUpdate(kState_Member2);
+                }
+                EntitySetState(entity, 0, 2);
+            } else if (memberState == 2) {
+                if (time >= stateTimes[2]) {
+                    if ((script = ScriptOf(entity)) != nullptr) {
+                        if (member.record)
+                            GroupVarSetValue(member.record, stateTimes[3]);
+                        script->SetStateAndUpdate(kState_Member3);
+                    }
+                    EntitySetState(entity, 0, 3);
+                } else {
+                    ++waiting;
+                }
+            } else if (memberState == 3 && time >= stateTimes[3]) {
+                if ((script = ScriptOf(entity)) != nullptr)
+                    script->SetStateAndUpdate(kState_Slot1);
+                EntitySetState(entity, 0, 0);
+            }
+        }
+        const uint32_t needed = field_1D4 < 0 ? members.Count() : uint32_t(field_1D4);
+        if (needed <= waiting) {
+            if (groupVar)
+                GroupVarSetValue(groupVar, stateTimes[0]);
+            if (animScript)
+                animScript->SetStateAndUpdate(kState_GroupDone);
+            EntitySetState(this, 0, 1);
+            // NOTE: posted for player 0.
+            GameWorldPostEntityEvent(0, kEvent_GroupDone, this);
+        }
+    } else if (state == 1 && EntityStateTime(this, 0) >= stateTimes[0]) {
+        if (animScript)
+            animScript->SetStateAndUpdate(kState_GroupReset);
+        EntitySetState(this, 0, 2);
+    }
+    return true;
+}
+
 // @func 0x001AAA70 ActorGroup::HandleMessage
 void ActorGroup::HandleMessage(const EntityMessage& msg)
 {
@@ -105,7 +165,7 @@ void ActorGroup::HandleMessage(const EntityMessage& msg)
                 continue;
             if (ape::ApeAnimScriptInstance* script = ScriptOf(member.entity)) {
                 if (member.record)
-                    GroupRecordSetCounter(member.record, counter);
+                    GroupVarSetValue(member.record, stateTimes[1]);
                 script->SetStateAndUpdate(kState_Slot2);
             }
             EntitySetState(member.entity, 0, 1);

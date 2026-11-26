@@ -249,8 +249,8 @@ ape::ApeRefCounted* WorldObjectRef(ape::world::ApeObj* object);
 void SetAnimScriptKeepAlive(void* script, bool keep);
 // Scripted entity virtual slot 80 (base 0x00737758): the entity ignores kill orders.
 bool IgnoresKillOrder(Entity* entity);
-// Word +0x14 of an actor group member's record takes the group counter.
-void GroupRecordSetCounter(void* record, uint32_t counter);
+// The value (+0x14) of an actor group's float script variable.
+void GroupVarSetValue(void* var, float value);
 // Interaction component: the entity interacting (+0x40) and the number of
 // interactions in progress (+0x44).
 Entity* InteractionUser(EntityComponent* interaction);

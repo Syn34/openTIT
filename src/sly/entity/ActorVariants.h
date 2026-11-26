@@ -30,6 +30,11 @@ public:
     bool Release(bool kill) override { return ActorEntity::Release(kill); }
     // A hurt member plays its second slot state and enters state 1.
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
+    // Slot 5: steps the members through states 1-3 by their times; once
+    // enough members (field_1D4, all when negative) wait in state 2 the group
+    // enters state 1 and reports it; the group leaves state 1 after its own
+    // time.
+    bool PostUpdate(float dt) override;
     // Slot 11: the group and every member back to their first state.
     void ResetState() override;
 
@@ -40,10 +45,10 @@ public:
     ape::ApeTArray<Member> members;      // 0x1A8
     // 0x1BC the group's own script variable 0xBBBC16FF, or null.
     ape::ApeAnimScriptVar* groupVar = nullptr;
-    float field_1C0 = 0.0f;              // 0x1C0 placement field_F0[0]
-    uint32_t counter = 0;                // 0x1C4 placement field_F0[1] (raw word)
-    float field_1C8 = 0.0f;              // 0x1C8 placement field_F0[2]
-    float field_1CC = 0.0f;              // 0x1CC placement field_F0[3]
+    // Times (placement field_F0[0..3]): the group's state 1, then the
+    // members' states 1, 2 and 3; each also becomes the value of the
+    // variables when the next state starts.
+    float stateTimes[4] = {};            // 0x1C0
     bool anyState = false;               // 0x1D0 members react in any state
     int32_t field_1D4 = -1;              // 0x1D4
 };

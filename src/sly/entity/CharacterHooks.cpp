@@ -85,7 +85,7 @@ int CarryCompFreeSlot(EntityComponent* carry)
 {
     return static_cast<components::ReceptacleComponent*>(carry)->FreeSlot();
 }
-void GroupRecordSetCounter(void* record, uint32_t counter) { (void)record; (void)counter; }
+void GroupVarSetValue(void* var, float value) { (void)var; (void)value; }
 float PlayerBlockBusyTime(uint32_t player) { (void)player; return 0.0f; }
 void GameWorldDequeueSafeCallback(Entity* safe) { (void)safe; }
 void GameWorldSetHudHidden(bool hidden) { (void)hidden; }
