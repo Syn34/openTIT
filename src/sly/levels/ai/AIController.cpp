@@ -22,6 +22,7 @@
 #include "sly/levels/nav/NavGraph.h"
 #include "sly/knowledge/Knowledge.h"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -426,6 +427,33 @@ Entity* AIManager::FindNearestEnemy(float radius, const ape::Vec3& position, boo
     return best;
 }
 
+// @func 0x0001B028 AIManager::FindEnemyInCone
+Entity* AIManager::FindEnemyInCone(const ape::Vec3& position, float range, const ape::Vec3& direction,
+                                   float maxAngle) const
+{
+    Entity* best = nullptr;
+    float bestAngle = maxAngle;
+    for (int i = 0; i < controllerCount; ++i) {
+        AIController* controller = controllers[i];
+        if (!controller->IsListedActive() || controller->IsCharacterDead())
+            continue;
+        Entity* enemy = controller->entity;
+        const ape::Vec3& p = enemy->Position();
+        const float dx = p.x - position.x, dy = p.y - position.y, dz = p.z - position.z;
+        const float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist > range)
+            continue;
+        float cosine = (direction.x * dx + direction.y * dy + direction.z * dz) / dist;
+        cosine = std::min(1.0f, std::max(-1.0f, cosine));
+        const float angle = std::acos(cosine);
+        if (angle < bestAngle) {
+            bestAngle = angle;
+            best = enemy;
+        }
+    }
+    return best;
+}
+
 // @func 0x00012928 AIController::Detach
 void AIController::Detach()
 {
@@ -643,10 +671,56 @@ void AIController::StartStateScript(uint32_t scriptHash)
     ape::ApeAnimScriptInstance::Register(stateScript);
 }
 
-// TODO(0x000147B8 AIController::NavSnapPoint): NavPower nearest point query.
+// @func 0x000167F0 AIController::InVisionCone
+bool AIController::InVisionCone(const ape::Matrix34& eye, const ape::Vec3& point, float range, float minDy,
+                                float maxDy, float fovDegrees, bool relativeToBase) const
+{
+    const float halfFov = fovDegrees * 0.017453292f * 0.5f;
+    const ape::Vec3& origin = eye.translation;
+    const ape::Vec3 rayEnd = {origin.x + eye.zAxis.x * range, origin.y + eye.zAxis.y * range,
+                              origin.z + eye.zAxis.z * range, 0.0f};
+    const ape::Vec3 onRay = ClosestPointOnSegment(origin, rayEnd, point);
+    ape::Vec3 toRay = {onRay.x - point.x, onRay.y - point.y, onRay.z - point.z, 0.0f};
+    const float len = std::sqrt(toRay.x * toRay.x + toRay.y * toRay.y + toRay.z * toRay.z);
+    if (len > 1e-05f) {
+        toRay.x /= len;
+        toRay.y /= len;
+        toRay.z /= len;
+    }
+    const ape::Vec3 probe = {point.x + toRay.x, point.y + toRay.y, point.z + toRay.z, 0.0f};
+    const float dy = relativeToBase ? point.y - transform.translation.y : probe.y - origin.y;
+    if (dy < minDy || dy > maxDy)
+        return false;
+    const float dx = probe.x - origin.x;
+    const float dz = probe.z - origin.z;
+    const float flatDy = (flags1 & kF1_FlatFacing) ? 0.0f : dy;
+    const float distSq = dx * dx + flatDy * flatDy + dz * dz;
+    if (!(distSq < range * range))
+        return false;
+    const float inv = 1.0f / std::sqrt(distSq);
+    const ape::Vec3 dir = {dx * inv, flatDy * inv, dz * inv, 0.0f};
+    return std::fabs(SignedAngle(eye.zAxis, dir)) < halfFov;
+}
+
+// @func 0x000147B8 AIController::NavSnapPoint
+// Without a nav manager (or when the mesh offers nothing) the answer is the
+// controller's own position.
 ape::Vec3 AIController::NavSnapPoint(const ape::Vec3& point)
 {
-    return point;
+    ape::Vec3 result = transform.translation;
+    if (!GetNavManager())
+        return result;
+    NavQuery query;
+    query.filter = NavFilter();
+    query.searchRadius = NavSearchRadius();
+    if (!NavPointIsValid(navPoint))
+        navPoint = NavCreatePoint(transform.translation, query);
+    if (NavPointIsValid(navPoint)) {
+        ape::Vec3 found;
+        if (NavPointMoveToward(navPoint, point, query, found))
+            result = found;
+    }
+    return result;
 }
 
 // @func 0x00015AAC AIController::TargetReachable
@@ -828,15 +902,78 @@ void AIController::UpdateState(float dt)
 // @func 0x00014D08 AIController::ExitState
 void AIController::ExitState() {}
 
-// TODO(0x0001199C AIController::CreateNavAgent): builds the NavPower agent
-// from the controller transform (slots 15-18 and 61 supply its settings) and
-// snaps the nav point to the agent position.
-void AIController::CreateNavAgent() {}
+// @func 0x0001199C AIController::CreateNavAgent
+// The agent stands where the controller stands, turned like it; the nav
+// point is snapped again to where the agent was placed.
+void AIController::CreateNavAgent()
+{
+    if (!UsesNavigation())
+        return;
+    if (!GetNavManager()) {
+        navAgent = nullptr;
+        return;
+    }
+    NavAgentDesc desc;
+    // Rotation only, rebuilt through a quaternion (drops any scale).
+    ape::Quat rotation;
+    ape::QuatFromMatrix34(rotation, transform);
+    ape::Matrix34FromQuat(desc.frame, rotation, ape::Vec3{0.0f, 0.0f, 0.0f, 1.0f});
+    desc.position = transform.translation;
+    desc.radius = AgentRadius();
+    desc.field_14 = Slot16();
+    desc.field_18 = Slot17();
+    desc.field_1C = Slot18();
+    desc.filter = NavFilter();
+    ape::Vec3 placed;
+    navAgent = NavAgentCreate(desc, placed);
+    if (navPoint)
+        NavPointRelease(navPoint);
+    NavQuery query;
+    query.filter = desc.filter;   // NOTE: the console passes the agent's query block
+    navPoint = NavCreatePoint(placed, query);
+}
 
-// TODO(0x00015040 AIController::UpdateNavigation): follows the NavPower path
-// (agent position/velocity queries, nav point update); needs the NavPower
-// agent API.
-void AIController::UpdateNavigation() {}
+// @func 0x00015040 AIController::UpdateNavigation
+void AIController::UpdateNavigation()
+{
+    if ((flags0 & kF0_NavRetry) && GetNavManager())
+        BeginMove();
+    if (!(flags0 & kF0_NavMoving) || !navAgent)
+        return;
+    NavAgentSetPosition(navAgent, transform.translation);
+    if (!(stateTime > 0.0f))
+        return;
+    if (navPoint)
+        NavPointRelease(navPoint);
+    navPoint = NavAgentCurrentPoint(navAgent);
+
+    NavPathStep step;
+    NavAgentPathStep(navAgent, 1.5f, step);
+    if (step.onLink) {
+        if (!step.link)
+            return;
+        ape::Vec3 goal = ClosestPointOnSegment(step.edgeStart, step.edgeEnd, transform.translation);
+        if (step.link->type == NavJumpLink::kLink) {
+            // Walk to the nearest point of the link's edge.
+            if (const NavManager* nav = GetNavManager())
+                goal = SnapToNavMesh(*nav, goal);
+            navGoal = goal;
+            OnNavGoalChanged();
+        } else if (step.link->type == NavJumpLink::kPlatformLink) {
+            OnPlatformLink(step.link, step.reversed);
+        }
+        return;
+    }
+    facing = {step.point.x - transform.translation.x, step.point.y - transform.translation.y,
+              step.point.z - transform.translation.z, 0.0f};
+    if (!(flags1 & kF1_FreeFacing) && ((flags1 & kF1_FlatFacing) || !CanPitch()))
+        facing.y = 0.0f;
+    const float inv = 1.0f / std::sqrt(facing.x * facing.x + facing.y * facing.y + facing.z * facing.z);
+    facing.x *= inv;
+    facing.y *= inv;
+    facing.z *= inv;
+    OnNavStep();
+}
 
 // @func 0x00014D0C AIController::PushState
 void AIController::PushState(int newState)

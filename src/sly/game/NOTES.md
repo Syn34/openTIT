@@ -204,3 +204,46 @@
   sources (0x00F65B40..0x00F65B4C, option volumes 0x010AED90/0x010AEDDC/0x010AEE28/0x010AECF8)
   are `g_volumeSettings`; their writers are not identified. NOTE: GameplayWorld.h calls
   0x00F65B4C the time scale, but here it scales dialogue volume; one of the two is wrong.
+
+## agent2: game world model (SlyGame layout, pass 5)
+* `SlyGame` now derives from `gameplay::StateMachine` (4 layers, 0x80 bytes of state data;
+  console vtable 0x00B21A00: dtor 0x00466860, Begin 0x004682C8, Update 0x00469D98, GetState
+  0x0046B5DC, OnMessage 0x00491710 = the game shell update). Layer 0 is the main state, layer 1
+  its sub state. Main state requests go through a transition (+0x32: 1..11 running; sub state
+  requests are held in +0x31 meanwhile): `RequestMainState`/`RequestSubState`/`ChangeState`
+  (0x004665C0). GetState(0) returns the requested main state (+0x30); the real state is
+  `m_states[0]`. `EventTime()` is the bit pattern of the layer-0 timer (the console's "clock"
+  at +0x0C was the state machine's timer array).
+* Layout (SlyGame.h, offsets in comments): save data at +0x50 (`progress`, the profile's
+  `game::PlayerProgress`; `CurrentProgress()` now returns it), pending counters +0x1028,
+  options `GameSettings` +0x1030, nine `GamePlayer` blocks of 0x20C80 at +0x1070 (character
+  +0x08, spawn transform, goals +0x50, power meter +0x64.."Game.Player.Power.*", 4096-event log
+  +0x70, 64-event deferred log +0x20474), render targets (+0x128168 main view, HUD_3D,
+  PostHUD_3D/2D, SplitRender%d), level params +0x128164, cutscene queue +0x12820C, listener
+  weight +0x128270, screen fade +0x128290, slow-motion/audio ramps +0x1282A4/+0x1282C0, DoF
+  animation +0x1282DC, bloom noise pulse +0x128308, desaturation queue +0x128334, blur
+  animation +0x1283A8, dialog block +0x1283C0, return-treasure microgame +0x12847C, callback
+  lists +0x128480, time scales +0x128588/+0x128594.
+* The gameplay hooks StartColorFilter/StartDepthOfField/StartFocusPull/StartExposureRamp were
+  really the blur animation, the slow-motion (+audio) ramps, the DoF animation and the screen
+  fade; they now forward to them (GameplayWorld.cpp). SetLetterbox, PadAxis,
+  GameWorldPostEvent (= `SlyGame::RecordEvent` 0x00482D14) and GameWorldRestartState
+  (0x00488D68) are wired as well.
+* 0x00F65BE8 is the spawn manager (ctor 0x004518D0 sets it), not a GUI manager as some hook
+  comments say. 0x00F65C88 is the "Common.Fade" object (`g_fadeObject`).
+* Post-process effect fields added (AglPostProc.h): DoF (+0x14 near blur, +0x18 focus, +0x1C
+  range, +0x20 intensity, +0x40 quality), blur (+0x14 quality, +0x18 amount), desaturation
+  (+0x14 amount, +0x20 colour, +0x30/+0x34 modes), bloom noise +0xA4 pulse amount.
+* `tuning/GameTuning.*`: the game shell's tuning variables (StaticInit 0x0049B558).
+* `LevelFiles.*`: LevelData.Level.Havok*/Entity/LevelParams file loaders (arena 0x010B7834);
+  IffChunkHandlers got GOAH/ENTH/ENTD/LVLH/LVLD; `LevelParams.h` stands in for the 0x15D0-byte
+  level params object (parser 0x00481A88 still a stub).
+* `gameplay/ReturnTreasure.*`: the return-treasure microgame (ctor, shutdown, reset, stop,
+  complete, pause, HUD); Start 0x00424FB8, Update 0x00426380 and the placement 0x00425F18 /
+  0x0042685C are TODO (vector code past Ghidra), as are the targeting component flags it sets.
+* Still open here: the game update 0x00491710 and its menu/transition helpers (0x00470750
+  OpenMenu, 0x0047C8A0 level start, 0x0047E578 unload, 0x00479400, 0x004734E0/0x00476C70
+  options menus, 0x00484BE0/0x00484858 player placement, 0x0048B810 cutscene queue,
+  0x00488DF4/0x004890A0/0x00489328/0x00489A60 dialogs), SlyGame ctor/dtor/Begin/Update
+  (stubs; the ctor's script command registration exists as RegisterLevelScriptCommands),
+  AppTick 0x0045B858, the penguin minigames (0x004003A0-0x0041FB9C).

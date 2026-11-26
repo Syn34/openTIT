@@ -95,6 +95,7 @@ public:
     ~ApeAnimScriptSetFovCommand() override;
     xml::XmlElement* CreateDebugElement() const override;
     ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
 
 private:
     uint32_t m_object = 0;
@@ -207,6 +208,7 @@ public:
     ~ApeAnimScriptSetScaleCommand() override;
     xml::XmlElement* CreateDebugElement() const override;
     ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
 
 private:
     uint32_t m_object = 0;
@@ -262,6 +264,7 @@ class ApeAnimScriptPlayGuiScriptCommand : public ApeAnimScriptCommand {
 public:
     ~ApeAnimScriptPlayGuiScriptCommand() override;
     ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
 
 private:
     uint32_t m_script = 0;        // "script"
@@ -357,6 +360,13 @@ struct AnimScriptObjectHooks {
     bool (*getWorldTransform)(ApeRefCounted* object, Matrix34& out) = nullptr;
     // Object used by SetMatrixVar when its object is not found.
     ApeRefCounted* (*defaultTransformObject)() = nullptr;
+    // Field of view of a camera instance (ApeObj type 0x0B, +0x154); false
+    // for any other object.
+    bool (*setCameraFov)(ApeRefCounted* object, float fov) = nullptr;
+    // ApeObj::SetScale of a world object.
+    void (*setObjectScale)(ApeRefCounted* object, const Vec3& scale, bool recurse) = nullptr;
+    // Scale of a GUI object (its virtual SetScale).
+    void (*setGuiScale)(void* guiObject, const Vec3& scale) = nullptr;
     // Pad Rumble uses when its controller operand is not a controller
     // variable (the console global 0x00F65FF8; its writer was not found).
     ApeInputDevice* defaultRumbleDevice = nullptr;

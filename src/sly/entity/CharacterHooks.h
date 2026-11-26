@@ -21,6 +21,14 @@ class Entity;
 class EntityComponent;
 class EntityPlacement;
 
+// -- placement of player characters (called by the game world) --------------------
+// 0x0012C968: settles a character after it was moved (time, two -1 limits).
+// NOTE: name from use; the function checks the ground under the character.
+void CharacterSettleAfterMove(Entity* character, float time, int32_t a, int32_t b);
+// 0x00129D94: records the character's transform and states as its restore
+// point (+0x240..).
+void CharacterStoreRestorePoint(Entity* character);
+
 // -- character component (Entity slot 15 / 16) ----------------------------------
 // Model (geometry definition name) the component shows (0x00297E3C), its
 // default model (+0x18) and switching to another one (0x00297EDC).

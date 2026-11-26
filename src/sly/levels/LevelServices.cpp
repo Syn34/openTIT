@@ -1,6 +1,8 @@
 // openTIT - Stubs of the services used by the third batch of level script code.
 #include "sly/levels/LevelServices.h"
 
+#include "sly/game/SlyGame.h"
+
 #include "agl/AglResources.h"
 
 namespace sly {
@@ -138,7 +140,11 @@ void AnimSetSpeed(void* anim, float speed) { (void)anim; (void)speed; }
 bool AnimIsLooping(const void* anim) { (void)anim; return false; }
 void AnimJumpToEnd(void* anim) { (void)anim; }
 uint8_t EntityPlayerByte(const WorldObject* entity) { (void)entity; return 0; }
-void GameWorldPostEvent(uint8_t player, const GameEvent& event) { (void)player; (void)event; }
+void GameWorldPostEvent(uint8_t player, const GameEvent& event)
+{
+    if (g_game)
+        g_game->RecordEvent(player, event);
+}
 
 void EntityListenerSetState(WorldObject* entity, uint32_t state, uint32_t clip, uint32_t target, float value) { (void)entity; (void)state; (void)clip; (void)target; (void)value; }
 void* EntityFindComponentOfType(WorldObject* entity, uint32_t type) { (void)entity; (void)type; return nullptr; }

@@ -16,6 +16,7 @@
 #include "ape/memory/ApeTArray.h"
 #include "ape/xml/ApeXml.h"
 #include "sly/game/GamePlayer.h"
+#include "sly/game/goals/JobManager.h"
 #include "sly/save/GameSettings.h"
 #include "sly/gameplay/StateMachine.h"
 
@@ -388,6 +389,38 @@ public:
     void PauseReturnTreasure(bool paused);
     void RefreshReturnTreasureHud();
     void SetReturnTreasureHudActive(bool active);
+    // A game event happened to `player`: during play (main state 1, sub state
+    // 2 or 3, no queued cutscene) it goes to the player's event log and the
+    // job manager; while cutscenes are queued it waits in player 0's
+    // deferred log. Event 1 about the entity the time source tracks stops
+    // the tracking.
+    void RecordEvent(uint32_t player, const GameEvent& event);
+    // The running job ended: the job manager records it, then the game
+    // restarts the episode, shows the job-complete screen (sub state 7, the
+    // completion in sub state data +0x48) or returns to play (sub state 2).
+    bool OnJobFinished();
+    // The level starts over: main state 3 with fresh main state data.
+    void RestartLevelState();
+    // Ends the running job and goes back to the front end (main state 0,
+    // sub state 7), hiding the letterbox.
+    void QuitToFrontEnd();
+    // After skipping a cinematic: the "Audio.PostCinematicSkipMusic" track
+    // (or silence) and the state flags of a skipped cutscene.
+    void OnCinematicSkipped();
+    // A player is down: meter B snaps and a running return-treasure
+    // microgame loses the treasure if the player carried it.
+    void OnPlayerDown(uint32_t player);
+    // The menus' yes/no answer: sub state data byte 0 set, answer in
+    // state flag bit 0. NOTE: name from use.
+    void AnswerYes();
+    void AnswerNo();
+    // Moves a player's character to a transform: entity and world object
+    // transforms, state reset, and for characters the settle/restore-point
+    // updates.
+    void PlacePlayer(GamePlayer& player, const ape::Matrix34& transform);
+    void PlacePlayer(uint32_t player, const ape::Matrix34& transform);
+    // Aims the physics of a player's character at a point (characters only).
+    void SetPlayerPhysicsTarget(uint32_t player, const ape::Vec3& point);
     // The power meter of a player on the HUD (second bar of meter B).
     void ShowPlayerPower(uint32_t player) const;
 
@@ -415,7 +448,11 @@ public:
     uint32_t field_40 = 0;                      // +0x40
     uint8_t field_44 = 1;                       // +0x44
     uint32_t subState = 0;                      // +0x48
-    // +0x50: save data (0xFE0 bytes written as "save.dat").
+    // +0x50..+0x1030: the save data ("save.dat"): the profile's progress
+    // record (indexed by players[0].index on the console, stride 0xFD8) and
+    // its pending counters.
+    game::PlayerProgress progress;              // +0x50
+    uint8_t pendingCounts[8] = {};              // +0x1028
     GameSettings settings;                      // +0x1030 the options block
     uint8_t field_1054[4] = {};                 // +0x1054
     uint8_t field_1058 = 0;                     // +0x1058
@@ -459,6 +496,10 @@ public:
     struct TimeSource {
         uint8_t field_00[0x3C];
         float deltaTime;                        // +0x3C
+        uint8_t field_40[0x118];
+        uint32_t field_158;                     // +0x158
+        entity::Entity* trackedEntity;          // +0x15C
+        bool tracking;                          // +0x160 bit 31
     };
     TimeSource* timeSource = nullptr;           // +0x128224
     ape::Matrix34 field_128230;                 // +0x128230 identity
@@ -493,7 +534,8 @@ public:
     uint8_t field_12859C = 0;                   // +0x12859C
     uint32_t hudScreenHash = 0;                 // +0x1285A0 HUD screen of the current sub state
     uint8_t field_1285A4 = 0;                   // +0x1285A4
-    uint32_t field_1285A8[3] = {};              // +0x1285A8
+    uint32_t finishedJobName = 0;               // +0x1285A8 name of the job that ended last
+    uint32_t field_1285AC[2] = {};              // +0x1285AC
     uint32_t field_1285B0[4] = {};              // +0x1285B0
     int32_t field_1285C0 = -1;                  // +0x1285C0
     uint8_t field_1285C4[6] = {};               // +0x1285C4
@@ -518,6 +560,13 @@ void ShowLanguageMenu(ape::ApeGuiObject* screen, bool visible);
 ape::ApeGuiObject* FindFocusableGuiObject(ape::ApeGuiObject* object);
 // The HUD uses its corrected (SD 4:3) layouts (0x0046C7B0).
 bool IsSdHudLayout();
+// The dark screen settings ("Game.DarkScreen.*") (0x0048C6EC).
+void SetDarkScreen(float distance, float ramp, float minValue, bool enabled);
+// The trophy communication id ("NPWR03581").
+const char* TrophyCommId();
+// The player character plays a script (its animation driver component is
+// in state 7, "playing script").
+bool PlayerPlayingScript();
 // Runs a script of the default library once, on its own (0x00491000).
 void RunGlobalScript(uint32_t scriptHash);
 // Contextual marker definition of a playable character (by the hash of its

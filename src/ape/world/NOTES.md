@@ -141,3 +141,9 @@
   allocation (light instance set-up 0x005A2528/0x005A2BA8) and the callers of AllocVisRecord
   (OnBoundsChanged 0x005A0CD4/0x005A46FC via 0x00579C50) are not ported. Both tables are
   created on first use (EngineConfig +0x154 records).
+
+## agent2: render passes
+* `ApeRenderPasses.*`: the instance render pass table (0x01194ED8, 200-byte records; only one
+  fits before the count at 0x01194FA0) with its per-frame view banks (0x01194FB0), cleared by
+  0x005AC64C; ForEachPassView 0x005AC470; the camera instance list (0x01193088) cleared by
+  0x005A5864. The pass creator 0x005A9DB0 ("Reflection"/"TextureWarp") is not ported.

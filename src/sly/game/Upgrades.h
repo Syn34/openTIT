@@ -7,6 +7,7 @@
 #include <vector>
 
 namespace ape::xml { class XmlElement; }
+namespace ape { class ApeAnimScriptVar; }
 
 namespace sly {
 
@@ -84,6 +85,11 @@ struct UpgradeEntry {
 };
 
 constexpr uint32_t kUpgradeCount = 0x54;
+
+// Stores the current value of a script variable in a binding record.
+void CopyScriptVarToBinding(TextField& out, const ape::ApeAnimScriptVar* var);
+// qsort comparator of string pointers (case-insensitive).
+int CompareStringPointers(const void* a, const void* b);
 
 // Upgrade record by index, null when out of range.
 UpgradeEntry* GetUpgradeEntry(uint32_t index);

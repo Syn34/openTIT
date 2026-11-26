@@ -10,10 +10,11 @@
 #include <cstdint>
 
 namespace ape { class ApeAnimScriptInstance; class ApeRefCounted; }
-namespace ape::world { class ApeObj; }
+namespace ape::world { class ApeObj; class ApeSplineInstance; }
 
 namespace sly {
 class WorldObject;
+namespace levels { struct NavJumpLink; }
 namespace entity { class Entity; class EntityComponent; struct EntityMessage; }
 namespace hud { class HudObject; }
 
@@ -213,6 +214,8 @@ constexpr uint32_t kPathType_Random = 0x8FA5D8C3u;
 // Level object holding the properties of a setting, by name (the scene's
 // named setting map, 0x00F658D4 +0x20), or null.
 const PropertyBlock* FindSettingObject(uint32_t nameHash);
+// Spline instance of the level by name (sorted map of 0x00F8F158 +0x10), or null.
+ape::world::ApeSplineInstance* FindLevelSplineInstance(uint32_t nameHash);
 // Character spawners (spawner slot 5) carry up to three entity definition
 // names (+0x68..+0x70) with the AI setting object to use for each
 // (+0x78..+0x80). False when `entity` was not made by a character spawner.
@@ -372,8 +375,24 @@ bool NavPathToPlayerExists(void* from, const NavQuery& query);
 // query settings 0x011AD1AC, then 0x0062D25C); false when there is none.
 bool NavPointGroundPosition(void* point, ape::Vec3& out);
 void NavPointRelease(void* point);
+// The nav mesh point found by walking from the point handle `from` towards
+// `to` with the query settings (0x006308AC, 0x0062D25C); false when the walk
+// finds none.
+bool NavPointMoveToward(void* from, const ape::Vec3& to, const NavQuery& query, ape::Vec3& out);
 struct NavAgent;
 void NavAgentDestroy(NavAgent* agent);
+// Settings of a new agent (decomposed by 0x0067C024 / 0x006C09B4).
+struct NavAgentDesc {
+    ape::Matrix34 frame{};       // the controller's orientation (no translation) and position
+    ape::Vec3 position{};
+    float radius = 1.0f;         // controller slot 15
+    float field_14 = 1.0f;       // controller slot 16. NOTE: meaning unknown
+    int field_18 = 0;            // controller slot 17. NOTE: meaning unknown
+    uint32_t field_1C = 0;       // controller slot 18. NOTE: meaning unknown
+    int filter = 0;              // controller slot 61
+};
+// Creates an agent (0x006C0FF8); `placed` receives where it was put.
+NavAgent* NavAgentCreate(const NavAgentDesc& desc, ape::Vec3& placed);
 // 0x006C0AA4 (with the nav query settings 0x011AD1D4): asks the agent to go
 // to `goal`; 0x006C1B94: the goal it settled on (nearest reachable point).
 void NavAgentRequestGoal(NavAgent* agent, const ape::Vec3& goal);
@@ -381,6 +400,20 @@ ape::Vec3 NavAgentGoal(NavAgent* agent);
 // 0x006C0BE4: moves the agent to `position`; 0x006C1CC0: the next point of
 // its path.
 void NavAgentSetPosition(NavAgent* agent, const ape::Vec3& position);
+// The agent's current nav point handle (0x006C1E14).
+void* NavAgentCurrentPoint(NavAgent* agent);
+// The path step `lookahead` metres ahead of the agent (0x006C174C): a point,
+// or (`onLink`) the off-mesh jump link the path crosses with the ends of the
+// link's edge in walking order (0x0062DEAC, 0x0062DB80).
+struct NavPathStep {
+    ape::Vec3 point{};
+    bool onLink = false;
+    const struct NavJumpLink* link = nullptr;
+    bool reversed = false;
+    ape::Vec3 edgeStart{};
+    ape::Vec3 edgeEnd{};
+};
+void NavAgentPathStep(NavAgent* agent, float lookahead, NavPathStep& step);
 ape::Vec3 NavAgentNextPoint(NavAgent* agent);
 
 // 0x004705F8: sends a game event from one entity to another.
