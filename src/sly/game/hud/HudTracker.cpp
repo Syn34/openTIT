@@ -154,5 +154,24 @@ void HudTracker::SetActive(bool active)
 // @func 0x00370934 HudTracker::SetEnabled
 void HudTracker::SetEnabled(bool, bool) {}
 
+// @func 0x00370938 HudTracker::SetTrackerFieldVisible
+void HudTracker::SetTrackerFieldVisible(bool visible, uint32_t index)
+{
+    if (index >= def->textFieldCount)
+        return;
+    if (ape::world::ApeObj* field = fieldObjects[index])
+        field->SetVisible(visible, true);
+}
+
+// @func 0x003709A0 HudTracker::TrackerFieldPosition
+ape::Vec3 HudTracker::TrackerFieldPosition(uint32_t index) const
+{
+    if (index < def->textFieldCount) {
+        if (const ape::world::ApeObj* field = fieldObjects[index])
+            return field->GetWorld().translation;
+    }
+    return ape::world::kWorldZero;
+}
+
 } // namespace hud
 } // namespace sly

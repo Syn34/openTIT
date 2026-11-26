@@ -28,6 +28,9 @@ Goal* PlayerGoalListAt(uint32_t index) { return index < PlayerGoalCount() ? g_ga
 uint32_t LiveJobId() { return 0; }
 int GameWorldState(int) { return 0; }
 void PlayerResetJobState(int) {}
+// TODO(0x00489A60): the game world message box is not ported.
+void GameWorldShowPlayerMessage(uint32_t, const char*, const char*) {}
+int g_debugOpenSafes = 0;
 // TODO(0x00488D68): the game world state machine is not ported.
 void GameWorldRestartState() {}
 // TODO(game world +0x1070 / +0x1280F0 / +0x128160 / +0x1281E0 / +0x128114,
@@ -827,6 +830,26 @@ void JobManager::SelectGoalByName(uint32_t nameHash, bool keepPlayers, bool requ
         }
     }
     SelectGoal(goal, keepPlayers, requestLevel);
+}
+
+// @func 0x002E74C8 JobManager::CanOpenSafe
+bool JobManager::CanOpenSafe(uint32_t player) const
+{
+    if (g_debugOpenSafes == 1)
+        return true;
+    if (g_defaultBottleCount != 0 && uint32_t(g_defaultBottleCount) <= collectedBottles)
+        return true;
+    GameWorldShowPlayerMessage(player, "$SAFE_MESSAGE01", "$BUTTON_X $STR_CONTINUE");
+    return false;
+}
+
+// @func 0x002E7588 JobManager::StoreSafeState
+void JobManager::StoreSafeState(int state)
+{
+    if (Job* episode = CurrentEpisode()) {
+        EpisodeProgress& progress = episode->Progress();
+        progress.flags = uint16_t((progress.flags & ~7u) | (uint32_t(state) & 7u));
+    }
 }
 
 // @func 0x002E1DB0 JobManager::StartJobFromHubByName
