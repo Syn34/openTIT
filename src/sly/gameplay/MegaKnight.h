@@ -263,8 +263,9 @@ public:
     void ClearArmMarkers();
     // 0x0030EEE0: follows the player (tracking block, arm/rope states). TODO.
     void UpdateTracking(float dt);
-    // 0x0030D5C0: aims the boss (look-at and IK). TODO.
-    void UpdateAim(float dt);
+    // 0x0030D5C0: a player hanging on rope 0 or 2 close enough to the
+    // boss's matching bone starts the shoulder hit.
+    void CheckShoulderReach();
     // 0x0030EBF0: runs the current phase (switching to the next one when it
     // is done) and the scripts of finished phases; false once the fight was
     // reset.
@@ -329,8 +330,8 @@ public:
     ape::ApeTArray<entity::Entity*> markedTargets;     // 0x398
     ape::ApeAnimScriptInstance* script3AC = nullptr;   // 0x3AC
     ape::ApeAnimScriptInstance* scripts3B0[3] = {};    // 0x3B0
-    int32_t field_3BC = -1;                            // 0x3BC
-    int32_t field_3C0 = -1;                            // 0x3C0
+    int32_t field_3BC = -1;                            // 0x3BC bone the player reaches from rope 0
+    int32_t field_3C0 = -1;                            // 0x3C0 bone the player reaches from rope 2
     ApproachVec3 lookAt;                               // 0x3D0 target (+0x3E0): point the boss looks at; rate (+0x3F0) IKBlend
     FloatTween glow;                                   // 0x400 NOTE: name assumed (0..1 blend)
     int32_t targetArm = 0;                             // 0x424

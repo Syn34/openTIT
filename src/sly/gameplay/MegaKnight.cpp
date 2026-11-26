@@ -615,7 +615,7 @@ bool MegaKnight::Update(float dt)
     UpdateTracking(dt);
     if (!UpdatePhases(dt))
         return true;
-    UpdateAim(dt);
+    CheckShoulderReach();
 
     // Voice lines: off the platform for a while, the fight is on, standing
     // too close to the boss.
@@ -670,8 +670,37 @@ bool MegaKnight::Update(float dt)
 // TODO(0x0030EEE0 MegaKnight::UpdateTracking)
 void MegaKnight::UpdateTracking(float dt) { (void)dt; }
 
-// TODO(0x0030D5C0 MegaKnight::UpdateAim)
-void MegaKnight::UpdateAim(float dt) { (void)dt; }
+// @func 0x0030D5C0 MegaKnight::CheckShoulderReach
+void MegaKnight::CheckShoulderReach()
+{
+    const float reachSq = g_megaKnightFinishingMoveRadius.Get() * g_megaKnightFinishingMoveRadius.Get();
+    auto inReach = [&](int bone) {
+        ape::Matrix34 m = ape::world::kWorldIdentity;
+        BoneWorldTransform(bone, m);
+        const ape::Vec3& a = tracking.anchor;
+        const float dx = a.x - m.translation.x, dy = a.y - m.translation.y, dz = a.z - m.translation.z;
+        return dx * dx + dy * dy + dz * dz <= reachSq;
+    };
+    int side = -1;
+    bool found = false;
+    if (ropes[0] && MKRopeHeld(ropes[0]) && inReach(field_3BC)) {
+        side = 0;
+        found = true;
+    }
+    if (ropes[2] && MKRopeHeld(ropes[2]) && inReach(field_3C0))
+        side = 2;
+    else if (side == -1 || !found)
+        return;
+
+    MKPlayerBeginFinishingMove(MKPlayerCharacter());
+    if (phases[kMKPhase_ShoulderHit])
+        static_cast<MKPhaseShoulderHit*>(phases[kMKPhase_ShoulderHit])->side = side;
+    const MegaKnightObjectPair& pair = side == 0 ? pair32C : pair338;
+    RemoveMarkedTarget(pair.objects[0]);
+    RemoveMarkedTarget(pair.objects[1]);
+    ResetRopes();
+    SwitchPhase(kMKPhase_ShoulderHit);
+}
 
 // @func 0x0030FB94 MegaKnight::PostUpdate
 bool MegaKnight::PostUpdate(float dt)

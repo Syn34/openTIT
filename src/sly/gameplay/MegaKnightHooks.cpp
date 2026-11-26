@@ -29,6 +29,7 @@ void MKQueueSequence(uint32_t) {}
 
 namespace sly {
 namespace gameplay {
+void MKPlayerBeginFinishingMove(entity::Entity*) {}
 entity::GameCamera* MKGameCamera() { return nullptr; }
 void MKRippleKnock(entity::Entity*) {}
 void MKCameraRemoveMode(entity::GameCamera*, void*) {}

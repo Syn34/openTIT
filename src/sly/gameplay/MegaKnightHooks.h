@@ -63,6 +63,9 @@ namespace gameplay {
 // the platform is deleted by the boss itself).
 // The game camera stops using a mode it holds (GameCamera::HasTarget 0x000FC5DC
 // then 0x000FBB88 with -1).
+// Player character: its +0x17C interface, slot 3 (called when it reaches a
+// shoulder from a rope). NOTE: meaning assumed.
+void MKPlayerBeginFinishingMove(entity::Entity* player);
 // The game camera entity (game world +0x1281E0).
 entity::GameCamera* MKGameCamera();
 // Floor ripple: entities of class bit 0x20 caught by a raised ring (0x001FB640
