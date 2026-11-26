@@ -391,6 +391,31 @@ void AddGoalScript(GoalScriptCursor* scripts, int slot, uint32_t name, const Goa
     list->scripts->PushBack(script);
 }
 
+// The description's constructor: the given identity and texts, every other
+// field cleared, no scripts, four empty nine-bit checkpoint sets. NOTE: the
+// console constructor takes every field as a parameter; ParseGoal passes
+// zero for the ones not listed here.
+// @func 0x00768E30 InitGoalDesc
+void InitGoalDesc(GoalDesc& desc, SlyGame* game, Job* job, uint32_t repeatCount, const char* name,
+                  const char* description, float hintChance)
+{
+    desc = GoalDesc();
+    desc.game = game;
+    desc.job = job;
+    desc.repeatCount = repeatCount;
+    desc.name = name;
+    desc.description = description;
+    std::memcpy(&desc.field_134, &hintChance, sizeof hintChance);
+    for (GoalBlob& blob : desc.blobs) {
+        blob.size = 2;
+        blob.extra = kCheckpointCount;
+        blob.data = new uint8_t[2]();
+    }
+}
+
+// The description's destructor: the script lists, hints, checkpoint sets
+// and cycling texts it owns.
+// @func 0x007691D4 ReleaseGoalDesc
 void ReleaseGoalDesc(GoalDesc& desc)
 {
     for (GoalScriptCursor& cursor : desc.scripts) {
@@ -424,21 +449,9 @@ Goal* ParseGoal(SlyGame* game, Job* job, XmlElement* xml, int32_t index)
     if (Contains(kGoalChildElements, sizeof kGoalChildElements / sizeof kGoalChildElements[0], element))
         return nullptr;
 
-    GoalDesc desc;
-    desc.game = game;
-    desc.job = job;
-    desc.repeatCount = 1;
-    desc.name = "<unknown goal name>";
-    desc.description = "<unknown goal description>";
-    desc.field_134 = 0;
     const float noChance = -1.0f;
-    std::memcpy(&desc.field_134, &noChance, sizeof noChance);
-    // Four nine-bit checkpoint sets.
-    for (GoalBlob& blob : desc.blobs) {
-        blob.size = 2;
-        blob.extra = kCheckpointCount;
-        blob.data = new uint8_t[2]();
-    }
+    GoalDesc desc;
+    InitGoalDesc(desc, game, job, 1, "<unknown goal name>", "<unknown goal description>", noChance);
 
     // NOTE: the console overwrites the default texts even when an attribute
     // is missing (the goal then has no name / description).
