@@ -841,16 +841,16 @@ EntityPlacement* ParseSafePlacement(ape::xml::XmlElement* root, ape::xml::XmlEle
     placement->flags |= EntityPlacement::kPlace_Actor;
     if (def) {
         const auto* safeDef = static_cast<const entity::SafeDef*>(def);
-        placement->field_F0 = safeDef->field_1B0;
+        placement->rewardDefName = safeDef->rewardDefName;
         for (int i = 0; i < 3; ++i)
-            placement->field_100[i] = safeDef->field_1C0[i];
-        placement->field_110 = safeDef->field_1D0;
+            placement->rewardOffset[i] = safeDef->rewardOffset[i];
+        placement->openScript = safeDef->openScript;
     }
     placement->typeBits |= 0x10000000;
     placement->Parse(elem);
-    elem->GetHash(0x06556689u, &placement->field_F0, placement->field_F0);
-    elem->GetVec3(0xC88E4511u, placement->field_100, placement->field_100);
-    elem->GetHash(0x675C8395u, &placement->field_110, placement->field_110);
+    elem->GetHash(0x06556689u, &placement->rewardDefName, placement->rewardDefName);
+    elem->GetVec3(0xC88E4511u, placement->rewardOffset, placement->rewardOffset);
+    elem->GetHash(0x675C8395u, &placement->openScript, placement->openScript);
     return placement;
 }
 

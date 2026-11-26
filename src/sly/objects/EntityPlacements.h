@@ -578,15 +578,15 @@ public:
     using ActorPlacement::ActorPlacement;
     ~SafePlacement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001E6F3C
-    uint32_t field_F0 = 0;              // +0xF0 attribute 0x06556689 (hash)
-    float field_100[3] = {};            // +0x100..+0x108 attribute 0xC88E4511
-    uint32_t field_110 = 0;             // +0x110 attribute 0x675C8395 (hash)
+    uint32_t rewardDefName = 0;         // +0xF0 attribute 0x06556689 (SafeDef::rewardDefName)
+    float rewardOffset[3] = {};         // +0x100..+0x108 attribute 0xC88E4511
+    uint32_t openScript = 0;            // +0x110 attribute 0x675C8395 (hash)
 };
 struct SafeInstanceDesc : ActorInstanceDesc {
     using ActorInstanceDesc::ActorInstanceDesc;
-    uint32_t field_D0 = 0;              // 0xD0
-    float field_E0[3] = {};             // 0xE0..0xE8
-    uint32_t field_F0 = 0;              // 0xF0
+    uint32_t rewardDefName = 0;         // 0xD0
+    float rewardOffset[3] = {};         // 0xE0..0xE8
+    uint32_t openScript = 0;            // 0xF0
 };
 
 class TweenActorPlacement : public ActorPlacement {   // 0x00B186B0

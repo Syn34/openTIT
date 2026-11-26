@@ -121,6 +121,10 @@ public:
     // Character variant check: class bit 5 and definition word +0x3D4 ==
     // 0x04318BE6 (0x0012999C). NOTE: meaning of the variant unknown.
     bool IsVariant04318BE6() const;
+    // Leaves the interaction state: while layer 1 is in state 6 both state
+    // layers go back to state 0 (0x0012D290). NOTE: the state's name is not
+    // known; the users of interactive objects call it when a use ends.
+    void LeaveInteractState();
     // Stops the animation driver (component 0x17) when it is playing a
     // script (state 7) (0x00129BC0).
     void StopScriptedAnimation();

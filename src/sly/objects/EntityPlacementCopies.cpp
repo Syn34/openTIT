@@ -334,10 +334,10 @@ void SafePlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
 {
     ActorPlacement::FillInstanceDesc(baseDesc);
     auto& desc = static_cast<SafeInstanceDesc&>(baseDesc);
-    desc.field_D0 = field_F0;
+    desc.rewardDefName = rewardDefName;
     for (int i = 0; i < 3; ++i)
-        desc.field_E0[i] = field_100[i];
-    desc.field_F0 = field_110;
+        desc.rewardOffset[i] = rewardOffset[i];
+    desc.openScript = openScript;
 }
 
 // @func 0x001ED4F0 TweenActorPlacement::FillInstanceDesc

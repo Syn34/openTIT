@@ -13,7 +13,9 @@
 namespace ape::world { class ApeObj; }
 namespace ape::setting { class Setting; }
 namespace sly::camera { class CameraMode; }
-namespace sly::objects { struct ActorInstanceDesc; struct InteractivePropBInstanceDesc; struct ObjectActorInstanceDesc; }
+namespace sly::objects { struct ActorInstanceDesc; struct InteractivePropBInstanceDesc; struct ObjectActorInstanceDesc; struct SafeInstanceDesc; }
+namespace sly::hud { class HudObject; }
+namespace ape { class ApeAnimScriptInstance; }
 
 namespace sly {
 namespace entity {
@@ -180,26 +182,38 @@ public:
     uint32_t sharedUse = 0;         // 0x130 non-zero: several users at once
 };
 
-// Safe definition (vtable 0x00B17FF0, 0x1E0 bytes; the safe entity code
-// around 0x001E5398 plays "SafeA_*" animations).
+// Safe definition (vtable 0x00B17FF0, 0x1E0 bytes): a combination safe with
+// three dials the player turns in turn, each with its own control.
 class SafeDef : public ActorDef {
 public:
-    explicit SafeDef(const ActorDefDesc& desc) : ActorDef(desc) {}
+    explicit SafeDef(const struct SafeDefDesc& desc);
     ~SafeDef() override;
-    // NOTE: the meanings are not known; each field gives its attribute hash
-    // in SafeDefDesc (ActorDefLoaders.cpp).
-    uint32_t hashes130[10] = {};    // 0x130..0x154
-    float field_158 = 0.0f;         // 0x158
-    ape::Vec3 field_160{};          // 0x160
-    float floats170[7] = {55.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};   // 0x170..0x188
-    uint32_t hashes18C[9] = {};     // 0x18C..0x1AC
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7: a Safe (0x001E60E0)
+    // Object names (attribute hashes in SafeDefDesc). NOTE: entry k names the
+    // object of dial 2 - k.
+    uint32_t dialNames[3] = {};         // 0x130 the dials (rotated about +Z)
+    uint32_t highlightNames[3] = {};    // 0x13C shown while the dial is turned
+    uint32_t solvedNames[3] = {};       // 0x148 shown once the dial is solved
+    uint32_t openObjectName = 0;        // 0x154 NOTE: only ever hidden
+    float tolerance = 0.0f;             // 0x158 degrees around 0 that solve a dial
+    ape::Vec3 field_160{};              // 0x160
+    float field_170 = 55.0f;            // 0x170 NOTE: unused by the safe's own code
+    float field_174 = 0.5f;             // 0x174 NOTE: unused by the safe's own code
+    float timeLimit = 0.0f;             // 0x178 seconds to crack the safe
+    float openDelay = 0.0f;             // 0x17C seconds of the opening state before the reward
+    float dialSmoothing[3] = {};        // 0x180 share of the remaining turn each dial makes per frame
+    uint32_t soundBank = 0;             // 0x18C
+    uint32_t tickSounds[3] = {};        // 0x190 every 5 degrees of turn, per dial
+    uint32_t solvedSounds[3] = {};      // 0x19C per dial
+    uint32_t failSound = 0;             // 0x1A8 the time ran out
+    uint32_t openSound = 0;             // 0x1AC
     // Placement defaults.
-    uint32_t field_1B0 = 0;         // 0x1B0
-    float field_1C0[3] = {};        // 0x1C0
-    uint32_t field_1D0 = 0;         // 0x1D0
-    uint32_t field_1D4 = 0;         // 0x1D4
-    uint32_t field_1D8 = 0;         // 0x1D8
-    float field_1DC = 4.0f;         // 0x1DC
+    uint32_t rewardDefName = 0;         // 0x1B0 definition spawned when the safe opens
+    float rewardOffset[3] = {};         // 0x1C0 where, in the safe object's frame
+    uint32_t openScript = 0;            // 0x1D0 anim script of the instance
+    uint32_t timerHudName = 0;          // 0x1D4 HUD element showing the time left
+    uint32_t promptHudName = 0;         // 0x1D8 HUD element with the stick prompt
+    float turnSpeed = 4.0f;             // 0x1DC degrees per unit of input
 };
 
 // Actor base (0x00B12898 + 0x00B12A44/0x00B12A6C at +0x17C/+0x180).
@@ -994,10 +1008,16 @@ public:
     ape::ApeTArray<void*> field_3A0;          // 0x3A0
 };
 
-// Safe (vtable 0x00B18038; destructor 0x00756CD4; the
-// "SafeA_*" animations): the player cracks it in a camera of its own.
+// Safe (vtable 0x00B18038, 0x270 bytes; destructor 0x00756CD4; the
+// "SafeA_*" animations): a combination safe. The user turns its three dials
+// one after another, each with a control drawn at random (left stick, right
+// stick, tilt), to 0 within the definition's tolerance before the time runs
+// out. The safe then opens (state 2) and spawns its reward.
 class Safe : public ActorEntity {
 public:
+    // Random dial positions, the parts and sounds of the definition, closed,
+    // and the instance's anim script started (0x001E5CD8).
+    explicit Safe(const objects::SafeInstanceDesc& desc);
     ~Safe() override;
     bool Release(bool kill) override;                 // slot 10
     // Leaves the safe camera and shows the user again.
@@ -1005,13 +1025,53 @@ public:
     // Offers interaction kind 1 again.
     void InteractionEnd(bool completed) override;     // slot 64
 
-    ape::ApeTArray<void*> field_1A8;          // 0x1A8 NOTE: element type unknown
-    void* script228 = nullptr;                // 0x228 owned anim script instance
+    // The controls a dial can be turned with.
+    enum Control : int32_t {
+        kControl_LeftStick  = 0,
+        kControl_RightStick = 1,
+        kControl_Tilt       = 2,
+    };
+    // Back to state 0, closed, with a new combination; the marks and the HUD
+    // go away. `failed` (the time ran out) also plays the fail sound and
+    // lets the user go (0x001E5398).
+    void Reset(bool failed);
+    // Picks the definition's dial, highlight and solved objects out of the
+    // tree under `object` (0x001E57E8).
+    void FindParts(ape::world::ApeObj* object);
+    // New random dial positions, shown at once (0x001E70D0).
+    void Scramble();
+    // The HUD prompt of the current control (0x001E77C8).
+    void UpdatePrompt();
+    // Turns dial `index` to `angle` degrees about +Z, keeping its position.
+    void PoseDial(int index, float angle);
+
+    ape::ApeTArray<int32_t> controlBag{3, nullptr, true};   // 0x1A8 controls not drawn yet
+    ape::world::ApeObj* dials[3] = {};        // 0x1BC
+    ape::world::ApeObj* highlights[3] = {};   // 0x1C8 shown while the dial is turned
+    ape::world::ApeObj* solvedMarks[3] = {};  // 0x1D4 shown once the dial is solved
+    ape::world::ApeObj* openObject = nullptr; // 0x1E0
+    float dialAngle[3] = {};                  // 0x1E4 shown angle (eases to dialTarget)
+    float dialTarget[3] = {};                 // 0x1F0 angle the input turned the dial to
+    float dialStart[3] = {};                  // 0x1FC angle the dial was scrambled to
+    float rewardOffset[3] = {};               // 0x210 placement value
+    uint32_t rewardDefName = 0;               // 0x220 placement value
+    float timeLeft = 0.0f;                    // 0x224
+    ape::ApeAnimScriptInstance* script = nullptr;   // 0x228 owned
+    int32_t activeDial = -1;                  // 0x22C dial being turned, -1 for none
+    int32_t control = kControl_LeftStick;     // 0x230 Control of the active dial
+    bool promptPending = false;               // 0x234 the prompt text must be set
+    bool promptShown = false;                 // 0x235
     camera::CameraMode* cameraMode = nullptr; // 0x238
-    audio::SoundName* sound248 = nullptr;     // 0x248
-    audio::SoundName* sound24C = nullptr;     // 0x24C
-    audio::SoundName* sounds250[3] = {};      // 0x250
-    audio::SoundName* sounds25C[3] = {};      // 0x25C
+    hud::HudObject* timerHud = nullptr;       // 0x23C SafeDef::timerHudName
+    hud::HudObject* promptHud = nullptr;      // 0x240 SafeDef::promptHudName
+    hud::HudObject* tiltHud = nullptr;        // 0x244 HUD element 0x569F957F
+    audio::SoundName* failSound = nullptr;    // 0x248
+    audio::SoundName* openSound = nullptr;    // 0x24C
+    audio::SoundName* tickSounds[3] = {};     // 0x250
+    audio::SoundName* solvedSounds[3] = {};   // 0x25C
+
+private:
+    const SafeDef* Def() const { return static_cast<const SafeDef*>(def); }
 };
 
 } // namespace entity
