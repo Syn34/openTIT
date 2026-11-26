@@ -7,6 +7,7 @@
 
 #include "sly/components/ComponentHooks.h"
 #include "sly/components/Components.h"
+#include "sly/game/GameMessages.h"
 
 namespace ape { class ApeAnimScriptInstance; }
 
@@ -23,7 +24,8 @@ public:
     virtual void OnListenerMessage(const ListenerMessage& msg);
 
     // Listener interface at +0x18 (vtable 0x00B1CC5C).
-    struct Listener {
+    struct Listener : GameEventListener {
+        void OnGameMessage(const entity::EntityMessage& msg) override;
         SystemCrackerComponent* outer = nullptr;
     } listener;                                   // 0x18
     uint32_t scriptName = 0;                      // 0x20

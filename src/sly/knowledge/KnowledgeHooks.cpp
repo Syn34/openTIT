@@ -1,13 +1,20 @@
 // openTIT - Knowledge hooks: TODO stubs (see KnowledgeHooks.h).
 #include "sly/knowledge/KnowledgeHooks.h"
+#include "sly/game/GameMessages.h"
 
 namespace sly {
 namespace knowledge {
 
 float FrameTime() { return 1.0f / 30.0f; }
 ape::ApeLevelDef* CurrentLevelDef() { return nullptr; }
-void SendGameEvent(Entity*, Entity*, uint32_t, uint32_t, bool) {}
-void BroadcastGameEvent(Entity*, uint32_t, uint32_t, uint32_t) {}
+void SendGameEvent(Entity* sender, Entity* receiver, uint32_t event, uint32_t data, bool immediate)
+{
+    PostGameMessage(sender, receiver, event, data, immediate);
+}
+void BroadcastGameEvent(Entity* sender, uint32_t group, uint32_t event, uint32_t data)
+{
+    PostToListeners(sender, group, event, data);
+}
 void EntitySetDirectorState(Entity*, uint32_t) {}
 void CharacterPlayAnim(EntityComponent*, const char*) {}
 void EntityPlayAnim(Entity*, const char*) {}

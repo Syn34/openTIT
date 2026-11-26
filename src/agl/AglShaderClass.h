@@ -54,8 +54,8 @@ AglItemStencil& GetItemStencil();
 
 // Animation clock of the renderer (0x010DD5A8): the step queued for the
 // next frame, the last step and the accumulated time that animated
-// materials (texture warps, water) use. NOTE: advanced by the frame start
-// function 0x0051008C, which is not ported yet.
+// materials (texture warps, water) use. Advanced by BeginRenderFrame
+// (0x0051008C).
 struct AglAnimationClock {
     float pendingStep = 0.0f;
     float lastStep = 0.0f;

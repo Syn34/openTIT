@@ -8,8 +8,43 @@ SlyGame* g_game = nullptr;
 // @func 0x00458B50 SlyGame::ResetFrameLists
 void SlyGame::ResetFrameLists()
 {
-    for (FrameList& list : frameLists)
-        list.count = 0;
+    for (int i = 0; i < kFrameListCount; ++i)
+        callbackLists[kFirstFrameList + i].Clear();
+}
+
+// @func 0x0046B5F8 SlyGame::AddCallback
+void SlyGame::AddCallback(int list, void* function, void* context, entity::Entity* owner)
+{
+    WorldCallback entry;
+    entry.function = function;
+    entry.context = context;
+    entry.owner = owner;
+    callbackLists[list].PushBack(entry);
+}
+
+// @func 0x0046B7A4 SlyGame::RemoveCallback
+void SlyGame::RemoveCallback(int list, void* context, entity::Entity* owner)
+{
+    ape::ApeTArray<WorldCallback>& callbacks = callbackLists[list];
+    for (size_t i = 0; i < callbacks.Count();) {
+        if (callbacks[i].owner == owner && callbacks[i].context == context)
+            callbacks.RemoveAtSwap(i);   // re-test the entry moved into slot i
+        else
+            ++i;
+    }
+}
+
+// @func 0x0046B6CC SlyGame::ForgetEntity
+void SlyGame::ForgetEntity(entity::Entity* owner)
+{
+    for (ape::ApeTArray<WorldCallback>& callbacks : callbackLists) {
+        for (size_t i = 0; i < callbacks.Count();) {
+            if (callbacks[i].owner == owner)
+                callbacks.RemoveAtSwap(i);
+            else
+                ++i;
+        }
+    }
 }
 
 } // namespace sly

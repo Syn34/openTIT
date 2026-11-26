@@ -69,6 +69,13 @@ struct AglRenderCallbackList {
     static constexpr int kMax = 4;
     AglRenderCallback entries[kMax];
     uint8_t count = 0;
+
+    // Adds a callback, keeping the entries in ascending priority order
+    // (after the entries of the same priority).
+    void Insert(void (*fn)(void*), void* arg, uint32_t pass, int8_t priority);
+    // Calls the callbacks added for the pass of the render target being
+    // drawn; the material state cache is invalid afterwards.
+    void Run() const;
 };
 
 enum AglProjectionType : uint8_t {
@@ -193,7 +200,7 @@ public:
     AglRenderCallbackList callbacks[2];      // 0x208: before / after the scene
     AglPostProcChain* postProc = nullptr;    // 0x290
     void (*drawScene)() = nullptr;           // 0x294
-    uint32_t field_298 = 0;
+    class AglTechnique* techniqueOverride = nullptr; // 0x298: draws every item of this target
     uint32_t frameCount = 0;                 // 0x29C: frames rendered (0: no motion history yet)
     AglRenderTarget* renderCopy = nullptr;   // 0x2A0
     ape::Matrix34 previousView;              // 0x2B0

@@ -14,6 +14,35 @@
 
 namespace agl {
 
+// @func 0x004FCD78 AglSubMesh::LimitBoneInfluences
+void AglSubMesh::LimitBoneInfluences(int maxInfluences)
+{
+    if (maxInfluences == 4 || !skinWeights)
+        return;
+    for (uint32_t v = 0; v < vertexCount; ++v) {
+        uint8_t* bones = skinWeights + v * 8;
+        uint8_t* weights = bones + 4;
+        // Influences past the limit lose both their bone and their weight.
+        for (int i = maxInfluences < 1 ? 1 : maxInfluences; i < 4; ++i) {
+            bones[i] = 0;
+            weights[i] = 0;
+        }
+        // Tiny secondary weights are dropped; the first weight always stays.
+        uint32_t w[4] = { weights[0], weights[1], weights[2], weights[3] };
+        for (int i = 1; i < 4; ++i)
+            if (w[i] < 4)
+                w[i] = 0;
+        const uint32_t total = w[0] + w[1] + w[2] + w[3];
+        uint8_t sum = 0;
+        for (int i = 1; i < 4; ++i) {
+            weights[i] = static_cast<uint8_t>(total ? (w[i] * 255) / total : 0);
+            sum = static_cast<uint8_t>(sum + weights[i]);
+        }
+        // The first weight takes whatever is left so that the four add to 255.
+        weights[0] = static_cast<uint8_t>(255 - sum);
+    }
+}
+
 namespace {
 
 std::mutex g_resourceLock;   // 0x010DDAF4 (shared with textures)
@@ -60,9 +89,9 @@ AglSubMesh::~AglSubMesh()
     MemBlockFree(&vertices);
     vertices = AglMemBlock();
     MemBlockFree(&indices);
-    if (field_48) {
-        ape::MemFree(field_48);
-        field_48 = nullptr;
+    if (skinWeights) {
+        ape::MemFree(skinWeights);
+        skinWeights = nullptr;
     }
     if (skinMatrices) {
         ape::MemFree(skinMatrices);

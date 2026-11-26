@@ -86,5 +86,8 @@ void DrawOcclusionQueriesForEye();
 // End-of-frame collection of the GPU results.
 void UpdateOcclusionQueries();
 void SetOcclusionQueriesEnabled(bool enabled);
+// Frame start (part of BeginRenderFrame 0x0051008C): notes whether any
+// query is active.
+void RefreshOcclusionQueryState();
 
 } // namespace agl

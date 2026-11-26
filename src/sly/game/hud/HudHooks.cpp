@@ -1,5 +1,6 @@
 // openTIT - HUD module hooks (stubs).
 #include "sly/game/hud/HudHooks.h"
+#include "sly/game/ObjectHelpers.h"
 
 #include "ape/world/ApeObj.h"
 
@@ -35,8 +36,7 @@ ape::world::ApeObj* HudCloneObject(ape::world::ApeObj* object)
     object->AddRef();
     return object;
 }
-// TODO(0x004A5C20 render LOD)
-void HudSetObjectLod(ape::world::ApeObj*, uint32_t) {}
+void HudSetObjectLod(ape::world::ApeObj* object, uint32_t lod) { SetHierarchyLod(object, lod); }
 
 } // namespace hud
 } // namespace sly

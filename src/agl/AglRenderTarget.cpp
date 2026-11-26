@@ -320,6 +320,8 @@ void InitView(AglRenderTarget* rt)
     rt->callbacks[1].count = 0;
     rt->field_298 = 0;
     rt->postProc = new AglViewPostProcChain();
+    rt->techniqueOverride = nullptr;
+    rt->postProc = new AglPostProcChain();
     rt->drawScene = nullptr;
     rt->field_100 = -1;
 }
@@ -742,7 +744,7 @@ void AglRenderTarget::CopyToRenderCopy()
     copy->callbacks[1] = callbacks[1];
     copy->postProc = postProc;
     copy->drawScene = drawScene;
-    copy->field_298 = field_298;
+    copy->techniqueOverride = techniqueOverride;
     copy->frameCount = frameCount;
     // The copy's own render copy pointer is left alone.
     copy->previousView = previousView;

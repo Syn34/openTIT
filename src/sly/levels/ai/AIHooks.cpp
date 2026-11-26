@@ -2,6 +2,7 @@
 #include "sly/levels/ai/AIHooks.h"
 
 #include "sly/entity/Entity.h"
+#include "sly/game/GameMessages.h"
 #include "sly/game/goals/JobManager.h"
 #include "sly/knowledge/Knowledge.h"
 
@@ -25,9 +26,12 @@ int SpawnerLiveCount(const SpawnerRef*) { return 0; }
 Entity* SpawnerLive(const SpawnerRef*, int) { return nullptr; }
 void SpawnerSwapLive(SpawnerRef*, int, int) {}
 RaceTracker* SpawnerRaceTracker(const SpawnerRef*) { return nullptr; }
-void AddToListenerGroup(Entity*, uint32_t, bool) {}
+void AddToListenerGroup(Entity* entity, uint32_t group, bool isEntity)
+{
+    RegisterListener(entity, group, isEntity);
+}
 
-Entity* MessageSender(const entity::EntityMessage&) { return nullptr; }
+Entity* MessageSender(const entity::EntityMessage& msg) { return msg.sender; }
 
 void EntityTick(Entity*, float) {}
 void EntitySetTransform(Entity* entity, const ape::Matrix34& transform)
@@ -65,8 +69,14 @@ void BodyRequestVelocity(EntityComponent*, const ape::Vec3&) {}
 void BodyRequestStop(EntityComponent*) {}
 void BodyRequestHold(EntityComponent*) {}
 ape::Vec3 BodyGroundNormal(EntityComponent*) { return {0.0f, 1.0f, 0.0f, 0.0f}; }
-void SendGameEvent(Entity*, Entity*, uint32_t, uint32_t, bool) {}
-void BroadcastInRange(Entity*, float, uint32_t, uint32_t, uint32_t) {}
+void SendGameEvent(Entity* sender, Entity* receiver, uint32_t event, uint32_t data, bool immediate)
+{
+    PostGameMessage(sender, receiver, event, data, immediate);
+}
+void BroadcastInRange(Entity* sender, float range, uint32_t group, uint32_t event, uint32_t argument)
+{
+    PostToListenersInRange(range, sender, group, event, argument);
+}
 
 void EntitySetScriptState(Entity*, uint32_t) {}
 bool EntityHoldsAttention(const Entity*) { return false; }

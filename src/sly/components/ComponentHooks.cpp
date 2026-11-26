@@ -1,5 +1,8 @@
 // openTIT - Component hooks (stubs).
 #include "sly/components/ComponentHooks.h"
+#include "sly/game/GameMessages.h"
+#include "sly/game/ObjectHelpers.h"
+#include "sly/game/SlyGame.h"
 
 #include "ape/anim/ApeAnimClip.h"
 #include "sly/anim/AnimController.h"
@@ -24,11 +27,17 @@ void AnimControllerBuildLayers(anim::AnimController* controller, void* tree)
     controller->BuildLayers(static_cast<const anim::AnimTree*>(tree));
 }
 void* FindAnimBlendMap(uint32_t nameHash) { return anim::FindAnimBlendMap(nameHash); }
-// TODO(0x004A59B4 geometry material lookup)
-agl::AglMaterial* GeomFindMaterial(ape::world::ApeObj*, uint32_t) { return nullptr; }
-// TODO(0x0046B5F8 game world callback lists)
-void QueueWorldCallback(int, void*, void*, entity::Entity*) {}
-void DequeueWorldCallback(int, void*, void*, entity::Entity*) {}
+agl::AglMaterial* GeomFindMaterial(ape::world::ApeObj* geom, uint32_t name) { return FindGeomMaterial(geom, name); }
+void QueueWorldCallback(int list, void* callback, void* context, entity::Entity* owner)
+{
+    if (g_game)
+        g_game->AddCallback(list, callback, context, owner);
+}
+void DequeueWorldCallback(int list, void*, void* context, entity::Entity* owner)
+{
+    if (g_game)
+        g_game->RemoveCallback(list, context, owner);
+}
 
 // TODO(0x00367900 / 0x00362BEC / 0x00257910 / 0x0046B7A4): HUD element
 // instancing and the marker material override need the HUD and GUI ports.
@@ -55,8 +64,14 @@ ape::ApeRefCounted* EntityScriptObject(entity::Entity*) { return nullptr; }
 uint32_t GadgetMode(entity::EntityComponent*) { return 0; }
 
 // TODO(0x0048FA54 / 0x0048F298 listener groups, render object +0x2C)
-void ListenerJoinGroup(void*, uint32_t) {}
-void ListenerLeaveGroups(void*) {}
+void ListenerJoinGroup(GameEventListener* listener, uint32_t group)
+{
+    RegisterListener(listener, group, false);
+}
+void ListenerLeaveGroups(GameEventListener* listener)
+{
+    UnregisterListener(listener, false);
+}
 void EntitySetRenderLayer(entity::Entity*, uint32_t) {}
 
 // TODO(0x005801A0 / 0x005A05E8 / ApeLocatorSet::Find): geometry instancing.

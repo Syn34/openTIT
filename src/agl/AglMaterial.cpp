@@ -146,7 +146,7 @@ void AglMaterial::CopyFrom(const AglMaterial& source)
 {
     for (int i = 0; i < source.textureCount; ++i)
         AddTexture(source.textures[i]);
-    field_28 = source.field_28;
+    nameHash = source.nameHash;
     field_2D = source.field_2D;
     std::memcpy(color0, source.color0, sizeof(color0));
     std::memcpy(color1, source.color1, sizeof(color1));

@@ -56,6 +56,9 @@ public:
     uint8_t AddVertexStream() { return vertexStreamCount++; }
     // Total GPU memory of the buffers, in 16-byte units.
     uint32_t GetMemoryUnits() const;
+    // Keeps at most 'maxInfluences' (1..3; 4 leaves the data alone) bones per
+    // vertex, drops weights below 4 and renormalises the rest to 255.
+    void LimitBoneInfluences(int maxInfluences);
 
     uint16_t resourceFlags = 0;
     uint32_t id = 0;
@@ -68,7 +71,9 @@ public:
     uint32_t field_3C = 1;                  // index format (1: 16-bit)
     uint32_t indexCount = 0;                // 0x40
     const struct AglVertexDecl* vertexDecl = nullptr;   // 0x44
-    void* field_48 = nullptr;               // engine heap block owned by the submesh
+    // 0x48: per-vertex skinning data, 8 bytes per vertex: four bone
+    // indices then four weights (0..255, summing to 255).
+    uint8_t* skinWeights = nullptr;
     uint32_t primitive = 6;                 // gpu::PrimitiveType (triangle strips by default)
     uint32_t serial = 0;                    // creation order
     void* skinMatrices = nullptr;           // 0x54: bone table, null when not skinned
@@ -86,10 +91,10 @@ public:
     static void Destroy(void* object);
     void Release() override;
 
-    // One drawable piece: geometry and the material slot it uses.
+    // One drawable piece: geometry and the material it is drawn with.
     struct MeshEntry {
         AglSubMesh* mesh;
-        uint32_t material;
+        class AglMaterial* material;
     };
 
     // Names every submesh after the topology.
@@ -168,7 +173,7 @@ public:
     uint32_t field_C = 0;
     AglShaderClass* shaderClass = nullptr;
     AglTexture* textures[kMaxMaterialTextures] = {};
-    uint32_t field_28 = 0;
+    uint32_t nameHash = 0;                 // 0x28 (FindGeomMaterial looks materials up by it)
     uint8_t textureCount = 0;              // texture layers in use
     uint8_t field_2D = 0;
     uint16_t sortKey = 0;                  // draw order key (creation order by default)

@@ -63,6 +63,15 @@ void SystemCrackerComponent::Update(float dt)
     (void)dt;
 }
 
+void SystemCrackerComponent::Listener::OnGameMessage(const entity::EntityMessage& msg)
+{
+    ListenerMessage message;
+    message.sender = msg.sender;
+    message.message = msg.id;
+    message.argument = msg.argument;
+    outer->OnListenerMessage(message);
+}
+
 // @func 0x002B1A14 SystemCrackerComponent::OnListenerMessage
 // @func 0x002B1CE0 SystemCrackerComponent::Listener::OnMessage (thunk)
 void SystemCrackerComponent::OnListenerMessage(const ListenerMessage& msg)
