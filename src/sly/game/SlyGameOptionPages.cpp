@@ -11,6 +11,7 @@
 #include "sly/game/hud/HudHideoutMenu.h"
 #include "sly/game/hud/HudHooks.h"
 #include "sly/game/AppRuntime.h"
+#include "sly/game/AudioSystem.h"
 
 #include <cstring>
 
@@ -246,6 +247,80 @@ void SlyGame::OnMovesPageEvent(const ape::GuiEvent& event)
         ape::SendGuiEvent(kGuiEvent_FocusGained, pad, menuFocus, 0);
         ape::SetGuiSlot(pad, menuFocus);
     }
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x0046EFB8 SlyGame::OnAudioPageEvent
+void SlyGame::OnAudioPageEvent(const ape::GuiEvent& event)
+{
+    // Option objects of the audio page. NOTE: their names are unknown.
+    constexpr uint32_t kObj_Format = 0x7BF2EBF7u;
+    constexpr uint32_t kObj_Volume1 = 0x4CF5FB2Bu;
+    constexpr uint32_t kObj_Volume3 = 0x4CF34C36u;
+    constexpr uint32_t kObj_Volume0 = 0x273D570Bu;
+    constexpr uint32_t kObj_CenterSpeaker = 0x1431E4EBu;
+    constexpr uint32_t kObj_Volume2 = 0xBF338753u;
+    constexpr uint32_t kObj_DynamicRange = 0xADCB105Eu;
+    constexpr uint32_t kGuiEvent_Right = 10;
+    constexpr uint32_t kGuiEvent_Refresh = 0x10;
+    if (!event.object)
+        return;
+    const bool up = event.type == kGuiEvent_Right;
+
+    // Moves a volume one slider step; returns false when it did not change.
+    auto stepVolume = [&](float& volume) {
+        const float before = volume;
+        const float step = 1.0f / float(g_uISliderNumSteps.Get());
+        volume = std::clamp(up ? volume + step : volume - step, 0.0f, 1.0f);
+        hud::PlayHudSound(before == volume ? sliderStopSound : sliderSound);
+        return before != volume;
+    };
+    // Cycles a choice over `count` options.
+    auto cycle = [&](uint8_t& choice, uint8_t count) {
+        choice = up ? uint8_t((choice + 1) % count) : (choice != 0 ? uint8_t(choice - 1) : uint8_t(count - 1));
+        hud::PlayHudSound(toggleSound);
+    };
+
+    audio::AudioVolumeSettings& scales = audio::g_volumeSettings;
+    switch (event.object->nameHash) {
+    case kObj_Format:
+        cycle(settings.audioFormat, 6);
+        audio::SetSpeakerFormat(settings.audioFormat);
+        break;
+    case kObj_Volume1:
+        stepVolume(settings.volumes[1]);
+        scales.masterScale = settings.volumes[1];
+        break;
+    case kObj_Volume3:
+        stepVolume(settings.volumes[3]);
+        break;
+    case kObj_Volume0:
+        stepVolume(settings.volumes[0]);
+        scales.sfxScale = settings.volumes[0];
+        break;
+    case kObj_CenterSpeaker:
+        cycle(settings.centerSpeaker, 3);
+        audio::SetCenterSpeakerSize(settings.centerSpeaker);
+        break;
+    case kObj_Volume2:
+        stepVolume(settings.volumes[2]);
+        scales.musicScale = settings.volumes[2];
+        break;
+    case kObj_DynamicRange:
+        cycle(settings.dynamicRange, 6);
+        audio::SetDynamicRange(settings.dynamicRange);
+        break;
+    default:
+        return;
+    }
+    field_1054[0] = 1;   // the options changed
+    ape::ApeGuiObject* menuGui = nullptr;
+    if (auto* hideout = static_cast<hud::HudHideoutMenu*>(hud::FindActiveType200()))
+        menuGui = hideout->gui;
+    ape::SendGuiEvent(kGuiEvent_Refresh, event.pad, menuGui, 0);
 }
 
 } // namespace sly

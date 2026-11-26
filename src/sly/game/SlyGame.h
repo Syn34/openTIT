@@ -558,6 +558,11 @@ public:
     // (wrapping over four), the page refreshes and the focus moves to the
     // first focusable object near the chosen one, the pointers with it.
     void OnMovesPageEvent(const ape::GuiEvent& event);
+    // Audio page: left/right (GUI events 11/10) on a slider moves its volume
+    // by one "UI.Slider.NumSteps" step (the effect/voice/music scales follow
+    // at once), on a choice cycles the speaker format, centre speaker size or
+    // dynamic range; the page refreshes.
+    void OnAudioPageEvent(const ape::GuiEvent& event);
     // Shows the running level's headline (see SlyGameMenus.cpp).
     void ShowLevelHeadline(bool force);
     // Marks the running level visited for the all-levels trophy.
@@ -692,6 +697,8 @@ public:
     uint32_t pauseSound = 0;                    // +0x1285F0
     uint32_t resumeSound = 0;                   // +0x1285F4
     audio::SoundName* toggleSound = nullptr;    // +0x128604 menu option toggle sound
+    audio::SoundName* sliderSound = nullptr;    // +0x128608 a slider moved
+    audio::SoundName* sliderStopSound = nullptr; // +0x12860C a slider is already at its end
     // Entities borrowed for the split views (+0x128610 count, 0x24-byte
     // records from +0x128614 holding up to four entities at +0x14).
     // NOTE: the rest of a record is not read by the game shell.
