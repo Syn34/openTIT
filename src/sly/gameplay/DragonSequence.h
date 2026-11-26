@@ -12,6 +12,7 @@
 #pragma once
 
 #include "ape/memory/ApeTArray.h"
+#include "sly/entity/ActorEntities.h"
 
 #include <cstdint>
 
@@ -44,10 +45,24 @@ struct DragonBodyPart {
     void SetStateAndStep(uint32_t state);
 };
 
-// The dragon entity members used here.
-class DragonBoss {
+// The dragon entity (vtable 0x00B1D7C0, 0x470 bytes; an actor entity). Its
+// constructor, definition and update are not ported; the members the
+// sequencer uses are modelled.
+class DragonBoss : public entity::ActorEntity {
 public:
     static constexpr int kHeadCount = 3;
+
+    // Deletes the body parts' scripts; the arrays release themselves.
+    ~DragonBoss() override;
+    bool PostUpdate(float dt) override;                          // slot 5
+    // Hits are handled by the body part logic, not the actor base.
+    void OnHitCategory0(entity::EntityHitRecord& hit) override;  // slots 83-87
+    void OnHitCategory1(entity::EntityHitRecord& hit) override;
+    void OnHitCategory2(entity::EntityHitRecord& hit) override;
+    void OnHitCategory3(entity::EntityHitRecord& hit) override;
+    void OnHitCategory4(entity::EntityHitRecord& hit) override;
+    // Primary slot 98 / +0x17C slot 5: contacts are ignored.
+    void Interface17CSlot5(const void* event) override;
 
     void* worldObject = nullptr;              // +0xA0 the entity's world object
     int32_t mode = 0;                         // +0x1B0 (1: the head models get states too)
@@ -57,13 +72,29 @@ public:
     bool field_1F0 = false;                   // +0x1F0
     DragonBodyPart root;                      // +0x21C
     DragonBodyPart laser;                     // +0x264
+    DragonBodyPart headParts[kHeadCount];     // +0x2AC
     DragonBodyPart* heads[kHeadCount] = {};   // +0x384
     // Per head: two attached models that receive the head's states
     // (+0x394 + i*8, +0x398 + i*8; the first only in mode 1).
     void* headModelA[kHeadCount] = {};
     void* headModelB[kHeadCount] = {};
+    // Arrays released with the dragon (+0x3C4 .. +0x44C). NOTE: element
+    // types partly unknown: +0x3C4/+0x3D8 world objects, +0x3EC bodies,
+    // +0x41C spawners.
+    ape::ApeTArray<void*> objectsA;           // +0x3C4
+    ape::ApeTArray<void*> objectsB;           // +0x3D8
+    ape::ApeTArray<void*> bodies;             // +0x3EC
+    ape::ApeTArray<void*> field_408;          // +0x408
+    ape::ApeTArray<void*> spawners;           // +0x41C
+    ape::ApeTArray<void*> field_430;          // +0x430
+    ape::ApeTArray<void*> field_44C;          // +0x44C
 
     int HeadIndex(const DragonBodyPart* part) const;
+    // Tells the listeners of group 0xA07A77E3 that one of the three head
+    // entities (by name) sent message 0x8024237B, with the head's index
+    // (0x0FFFFFFF for other entities). False without an entity.
+    // NOTE: no direct caller; probably handed out as a callback.
+    static bool NotifyHeadEvent(entity::Entity* head);
 };
 
 // ---------------------------------------------------------------------------
