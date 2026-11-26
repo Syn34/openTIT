@@ -100,6 +100,12 @@ SoundCategory CategoryFromHash(uint32_t nameHash)
 // SoundName
 // ---------------------------------------------------------------------------
 
+VoiceId MusicVoice() { return g_musicVoice; }
+// TODO(0x0044D740 SetGlobalPlaybackRate) / TODO(0x0044CCF8 SetVoiceLowPass):
+// the middleware calls are not ported.
+void SetGlobalPlaybackRate(float) {}
+void SetVoiceLowPass(VoiceId, float) {}
+
 namespace {
 std::map<uint32_t, SoundBankDefs*> g_soundBanks;              // 0x010AFEB0
 SoundBankDefs* g_defaultSoundBank = nullptr;                  // 0x00F65B60

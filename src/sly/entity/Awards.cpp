@@ -120,6 +120,11 @@ void AwardTrophyByName(uint32_t awardName)
     AwardTrophy(*g_awardIds->Find(awardName));
 }
 
+int TrophyTotal()
+{
+    return TrophyManager::Instance() ? TrophyCount() : 0;
+}
+
 // @func 0x000B2914 CountUnlockedTrophies
 int CountUnlockedTrophies()
 {

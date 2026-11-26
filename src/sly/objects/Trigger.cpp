@@ -489,6 +489,28 @@ bool TriggerBase::Update(float dt)
     return Entity::Update(dt);
 }
 
+// @func 0x0020D7E8 TriggerBase::SetTransform
+void TriggerBase::SetTransform(const ape::Matrix34& m)
+{
+    Entity::SetTransform(m);
+    if (!m_volume)
+        return;   // NOTE: the console calls into the volume unchecked
+    const int type = VolumeGetType(m_volume);
+    if (type == 0) {
+        // AABB phantom: the same box, centred on the new position.
+        const ape::Aabb box = VolumeGetAabb(m_volume);
+        const ape::Vec3 half{(box.max.x - box.min.x) * 0.5f, (box.max.y - box.min.y) * 0.5f,
+                             (box.max.z - box.min.z) * 0.5f, 0.0f};
+        const ape::Vec3& t = m.translation;
+        ape::Aabb moved;
+        moved.min = {t.x - half.x, t.y - half.y, t.z - half.z, 0.0f};
+        moved.max = {t.x + half.x, t.y + half.y, t.z + half.z, 0.0f};
+        VolumeSetAabb(m_volume, moved);
+    } else if (type == 1 || type == 2) {
+        VolumeSetTransform(m_volume, m);
+    }
+}
+
 // Name of the trigger: the phantom's name (a Havok string pointer whose
 // low bit is a flag; VolumeGetName returns it with the bit cleared).
 // @func 0x00759E30 TriggerBase::GetName

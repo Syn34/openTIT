@@ -132,6 +132,9 @@ public:
     bool Update(float dt) override;
     bool Release(bool immediate) override;
     const char* GetDebugName() override;
+    // Slot 21: moves the trigger and its volume (an AABB volume keeps its
+    // size around the new position).
+    void SetTransform(const ape::Matrix34& m) override;
     ape::Aabb GetBounds(bool world) override;
     void HandleMessage(const entity::EntityMessage& msg) override;
     void ApplyVisibility(bool visible) override;

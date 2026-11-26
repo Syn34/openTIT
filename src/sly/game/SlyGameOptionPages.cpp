@@ -12,6 +12,7 @@
 #include "sly/game/hud/HudHooks.h"
 #include "sly/game/AppRuntime.h"
 #include "sly/game/AudioSystem.h"
+#include "sly/game/goals/JobManager.h"
 
 #include <cstring>
 
@@ -321,6 +322,44 @@ void SlyGame::OnAudioPageEvent(const ape::GuiEvent& event)
     if (auto* hideout = static_cast<hud::HudHideoutMenu*>(hud::FindActiveType200()))
         menuGui = hideout->gui;
     ape::SendGuiEvent(kGuiEvent_Refresh, event.pad, menuGui, 0);
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x0046E438 SlyGame::RefreshMoviesPage
+// NOTE: the console passes the menu page record (its GUI screen at +0x0C).
+void SlyGame::RefreshMoviesPage(ape::ApeGuiObject* screen)
+{
+    constexpr uint8_t kSub_FrontEndExtras = 0x18;   // NOTE: name from use
+    constexpr uint8_t kMenu_Movies = 0x0E;
+    constexpr uint32_t kMoviesPerPage = 8;
+    constexpr uint32_t kGroup_Cinematics = 0;
+    constexpr uint32_t kGroup_Other = 1;
+
+    ape::ApeTArray<game::Unlockable*> movies;
+    const bool cinematics = (GetState(0) == 0 && GetState(1) == kSub_FrontEndExtras) || menu == kMenu_Movies;
+    game::CollectUnlockables(cinematics ? kGroup_Cinematics : kGroup_Other, movies);
+
+    ape::ApeGuiObject* list = ape::FindGuiObject("Moves", screen);
+    if (!list)
+        return;
+    for (uint32_t i = 0; i < kMoviesPerPage; ++i) {
+        ape::ApeGuiObject* label = ape::FindGuiObject(ape::TempFormat("Move%02d", i + 1), list);
+        if (!label || label->GetType() != kGuiType_Label)
+            continue;
+        const uint32_t index = moviesPage * kMoviesPerPage + i;
+        if (index < movies.Count()) {
+            const game::Unlockable* movie = movies[index];
+            const bool known = game::IsUnlocked(static_cast<uint32_t>(movie->index)) || movie->defaultUnlocked;
+            label->SetText(known ? movie->movieName : "$STR_UNKNOWN", false);
+            label->SetFlag30(true);
+        } else {
+            label->SetText("", false);
+            label->SetFlag30(false);
+        }
+    }
 }
 
 } // namespace sly

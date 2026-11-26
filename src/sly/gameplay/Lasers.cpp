@@ -13,6 +13,8 @@
 #include "ape/world/ApeInstances.h"
 #include "ape/world/ApeObj.h"
 #include "sly/entity/Entity.h"
+#include "sly/entity/EntityDef.h"
+#include "ape/spline/ApeSpline.h"
 #include "sly/entity/GameEntityHooks.h"
 #include "sly/game/AudioSystem.h"
 #include "sly/game/GameMath.h"
@@ -40,6 +42,10 @@ constexpr uint32_t kLifetime_FlickerStart = 0x066F8774u;
 constexpr uint32_t kLifetime_On = 0xCADB1721u;
 constexpr uint32_t kLifetime_Off = 0x3ECC2A7Cu;
 constexpr uint32_t kJoint_Disabled = 0xF13F8BB2u;
+constexpr uint32_t kJoint_StartOn = 0xB9B6CDA1u;      // NOTE: names from the hover vehicle's turbo script
+constexpr uint32_t kJoint_StartOff = 0x7D22E5CDu;
+constexpr uint32_t kLifetime_FlickerDelayOver = 0x06FEE56Au;
+constexpr uint32_t kLifetime_FlickerOver = 0xCBCB4FE3u;
 constexpr uint32_t kJoint_DisabledAgain = 0xA86F8ED1u;
 constexpr uint32_t kTriggerTypeBit = 0x00400000u;      // NOTE: entity type bit of the trigger classes
 constexpr float kFirstScriptStep = 0.0177f;            // NOTE: 0x3F9119CE as a float
@@ -446,8 +452,8 @@ void LaserField::Release()
 {
     if (point)
         TagObject(point, kLaserFieldObjectTag, nullptr);
-    polygon.Clear();
     triangles.Clear();
+    altTriangles.Clear();
     damagePhantom = nullptr;
     fxPhantom = nullptr;
     if (lifetimeScript) {
@@ -555,9 +561,24 @@ void LaserField::SetEnabled(bool enabled, bool force, bool applyNow)
 // @func 0x0039FEE0 LaserField::SetOutline
 void LaserField::SetOutline(const ape::ApeTArray<ape::Vec3>* outline)
 {
-    triangles.Clear();
+    altTriangles.Clear();
     if (outline && outline->Count() != 0)
-        TriangulatePolygonXZ(*outline, triangles);
+        TriangulatePolygonXZ(*outline, altTriangles);
+}
+
+// @func 0x0039D620 LaserField::SpawnJoint
+void LaserField::SpawnJoint(entity::EntityDef* def, const ape::Vec3& position)
+{
+    if (!def)
+        return;
+    entity::EntityPlacement placement(nullptr, def);
+    ape::Matrix34FromTranslation(placement.transform, position);
+    entity::Entity* joint = entity::SpawnFromDef(def, placement);
+    if (!joint)
+        return;
+    if (ape::ApeAnimScriptInstance* script = EntityScript(joint))
+        script->SetStateAndUpdate(initType == 1 ? kJoint_StartOff : kJoint_StartOn);
+    joints.PushBack(joint);
 }
 
 // @func 0x0039FF34 LaserField::SetScriptState
@@ -570,6 +591,141 @@ void LaserField::SetScriptState(uint32_t state)
     for (entity::Entity* joint : joints)
         if (ape::ApeAnimScriptInstance* script = EntityScript(joint))
             script->SetStateAndUpdate(state);
+}
+
+// @func 0x0039C1C8 LaserUpdate
+bool LaserUpdate(Laser& laser, float dt)
+{
+    auto showPoints = [&laser](bool show) {
+        for (LaserEndpoint& p : laser.points) {
+            if (!p.script || !p.scriptObject)
+                continue;
+            if (ape::world::ApeObj* object = ScriptVarObject(p.scriptObject))
+                object->SetVisible(show, true);
+        }
+    };
+
+    bool moved = false;
+    if (laser.initType == Laser::kInit_Flicker && laser.flickerTime > 0.0f) {
+        laser.flickerDelay -= dt;
+        if (laser.flickerDelay <= 0.0f) {
+            laser.flickerDelay = 0.0f;
+            laser.flickerTime -= dt;
+            laser.flickerToggle -= dt;
+            if (laser.flickerTime <= 0.0f) {
+                // Flicker over: the beam takes the state it was switched to.
+                laser.flickerTime = 0.0f;
+                laser.flickerToggle = 0.0f;
+                const bool off = (laser.flags & Laser::kFlag_80000000) != 0;
+                laser.flags = off ? (laser.flags & ~Laser::kFlag_Visible) : (laser.flags | Laser::kFlag_Visible);
+                if (laser.geometry)
+                    laser.geometry->SetVisible(!off, true);
+                showPoints((laser.flags & Laser::kFlag_ShowPoints) != 0 || !off);
+                if (audio::SoundNameHasDef(laser.sound)) {
+                    audio::StopVoice(laser.voice, true);
+                    laser.voice = 0;
+                    if (!off)
+                        laser.voice = entity::PlayEntitySound(laser.sound, &laser.beam.translation, nullptr);
+                }
+            } else if (laser.flickerToggle <= 0.0f) {
+                const bool visible = !(laser.flags & Laser::kFlag_Visible);
+                laser.flags = visible ? (laser.flags | Laser::kFlag_Visible) : (laser.flags & ~Laser::kFlag_Visible);
+                laser.flickerToggle = ape::RandomRange(g_laserFlickerMinToggleTime.Get(),
+                                                       g_laserFlickerMaxToggleTime.Get(), ape::g_gameRandom);
+                if (laser.geometry)
+                    laser.geometry->SetVisible(visible, true);
+                showPoints((laser.flags & Laser::kFlag_ShowPoints) != 0 || visible);
+            }
+        }
+        moved = true;
+    }
+
+    if (!g_laserAlwaysUpdate.Get() && !(laser.flags & Laser::kFlag_Enabled) && !moved)
+        return moved;
+    for (LaserEndpoint& p : laser.points) {
+        const uint32_t moveType = p.flags >> LaserEndpoint::kMoveTypeShift;
+        const bool splineMoves = p.spline && ((p.flags & LaserEndpoint::kMoveable) || moveType == 2 ||
+                                              (moveType == 1 && p.speed > 0.0f));
+        if (!p.object && !splineMoves)
+            continue;
+        if (!p.object) {
+            // Type 1 wraps around the spline, the other types reflect at its ends.
+            const float direction = (p.flags & LaserEndpoint::kReverse) ? -1.0f : 1.0f;
+            const float pos = dt * p.speed * direction + p.splinePos;
+            const float whole = std::trunc(pos);
+            p.splinePos = pos;
+            if (moveType == 1) {
+                if (pos > 1.0f)
+                    p.splinePos = pos - whole;
+                else if (pos < 0.0f)
+                    p.splinePos = (pos - whole) + 1.0f;
+            } else if (pos > 1.0f) {
+                p.splinePos = 1.0f - (pos - whole);
+            } else if (pos < 0.0f) {
+                p.splinePos = whole - pos;
+            }
+        } else {
+            LaserGroup* group = laser.group;
+            ape::AabbAddPoint(group->bounds, p.object->GetWorld().translation);
+            ape::SphereFromAabb(group->sphere, group->bounds);
+        }
+        if (!(laser.flags & Laser::kFlag_Visible) && !moved)
+            continue;
+        moved = true;
+        if (p.object) {
+            p.transform = p.object->GetWorld();
+        } else if (p.spline) {
+            const bool reverse = (p.flags & LaserEndpoint::kReverse) != 0;
+            p.splineSegment = p.spline->EvaluatePosition(p.splinePos, p.transform.translation,
+                                                         uint32_t(p.splineSegment), reverse);
+        }
+        if (p.script && p.scriptObject)
+            if (ape::world::ApeObj* object = ScriptVarObject(p.scriptObject))
+                object->SetLocalTransform(p.transform);
+    }
+    return moved;
+}
+
+// @func 0x0039FBD8 LaserFieldUpdate
+// Flickering fields: after the delay the outline blinks at random intervals
+// until the flicker time is over, then the field takes its final state.
+void LaserFieldUpdate(LaserField& field, float dt)
+{
+    if (field.initType != 1 || !(field.flickerTime > 0.0f))
+        return;
+    field.flickerDelay -= dt;
+    if (field.flickerDelay <= 0.0f) {
+        field.flickerDelay = 0.0f;
+        if (field.lifetimeScript)
+            field.lifetimeScript->SetStateAndUpdate(kLifetime_FlickerDelayOver);
+    }
+    if (field.flickerDelay > 0.0f)
+        return;
+    field.flickerTime -= dt;
+    field.field_160 -= dt;
+    if (field.flickerTime <= 0.0f) {
+        field.flickerDelay = 0.0f;
+        field.flickerTime = 0.0f;
+        field.field_160 = 0.0f;
+        if (field.lifetimeScript)
+            field.lifetimeScript->SetStateAndUpdate(kLifetime_FlickerOver);
+        // A field flickering out ends switched off.
+        const bool flickeringOut = (field.flags & LaserField::kFlag_Flickering) != 0;
+        field.SetActive(!flickeringOut);
+        if (flickeringOut) {
+            for (entity::Entity* joint : field.joints)
+                if (ape::ApeAnimScriptInstance* script = EntityScript(joint))
+                    script->SetStateAndUpdate(kJoint_Disabled);
+        }
+    } else if (field.field_160 <= 0.0f) {
+        const bool shown = !(field.flags & LaserField::kFlag_Shown);
+        field.flags = shown ? (field.flags | LaserField::kFlag_Shown) : (field.flags & ~LaserField::kFlag_Shown);
+        field.field_160 = ape::RandomRange(g_laserFlickerMinToggleTime.Get(), g_laserFlickerMaxToggleTime.Get(),
+                                           ape::g_gameRandom);
+        for (ape::world::ApeObj* outline : field.outlines)
+            if (outline)
+                outline->SetVisible(shown, true);
+    }
 }
 
 // ===========================================================================
@@ -692,7 +848,7 @@ void LaserManager::UpdateFieldMaterials()
         LaserField& field = fields[i];
         if (!(field.flags & LaserField::kFlag_Shown))
             continue;
-        const ape::ApeTArray<ape::Vec3>& points = field.triangles.Count() == 0 ? field.polygon : field.triangles;
+        const ape::ApeTArray<ape::Vec3>& points = field.altTriangles.Count() == 0 ? field.triangles : field.altTriangles;
         for (LaserField::MaterialSet& set : field.materialSets)
             LaserFieldColorMaterials(points, field.color, set);
     }
@@ -730,6 +886,31 @@ void LaserManager::Unload()
     lasers.SetUsed(0);
     fields.SetUsed(0);
     groupNames.Clear();
+}
+
+// @func 0x003A11A8 LaserManager::DispatchBeamQueries
+void LaserManager::DispatchBeamQueries()
+{
+    if (lasers.Used() == 0 && groups.Used() == 0)
+        return;
+    for (uint8_t i = 0; i < g_game->localPlayerCount; ++i)
+        LaserTestCharacter(*this, g_game->players[i].character);
+    const bool always = g_laserAlwaysUpdate.Get();
+    for (const BeamQuery& query : beamQueries) {
+        for (uint16_t g = 0; g < groups.Used(); ++g) {
+            LaserGroup& group = groups[g];
+            const uint32_t live = LaserGroup::kFlag_Enabled | LaserGroup::kFlag_InView;
+            if (!always && (group.flags & live) != live)
+                continue;
+            for (uint16_t j = 0; j < group.lasers.Count(); ++j) {
+                Laser& laser = lasers[size_t(group.lasers.Data()[j].value)];
+                if (always || (laser.flags & Laser::kFlag_Enabled))
+                    query.callback(query.user, laser.points[0].transform.translation,
+                                   laser.points[1].transform.translation);
+            }
+        }
+    }
+    beamQueries.Clear();
 }
 
 // @func 0x003A1808 UnloadLasers
@@ -896,19 +1077,11 @@ void LaserPhantomSetEnabled(void* phantom, bool enabled)
     (void)enabled;
 }
 
-// TODO(0x0039C1C8 LaserUpdate): end point movement and beam hits.
-bool LaserUpdate(Laser& laser, float dt)
+// TODO(0x003A09C0 LaserTestCharacter)
+void LaserTestCharacter(LaserManager& manager, entity::Entity* character)
 {
-    (void)laser;
-    (void)dt;
-    return false;
-}
-
-// TODO(0x0039FBD8 LaserFieldUpdate)
-void LaserFieldUpdate(LaserField& field, float dt)
-{
-    (void)field;
-    (void)dt;
+    (void)manager;
+    (void)character;
 }
 
 // TODO(0x0039F840 LaserFieldColorMaterials)
@@ -920,34 +1093,362 @@ void LaserFieldColorMaterials(const ape::ApeTArray<ape::Vec3>& points, const uin
     (void)set;
 }
 
-// TODO(0x0039A2B8 LaserSetupFixed)
+
+// ---------------------------------------------------------------------------
+// Set-up from the settings
+
+namespace {
+
+const char* const kInitTypeNames[2] = {"None", "Flicker"};
+const char* const kDamageTypeNames[2] = {"Fire", "Electric"};
+const char* const kMoveTypeNames[3] = {"Fixed", "Loop", "PingPong"};
+const char* const kSpeedTypeNames[3] = {"PercentPerSec", "MeterPerSec", "TimeFromAtoB"};
+
+// Index of an enumerated setting value among its names (0 when unknown).
+template <size_t N>
+uint32_t EnumIndex(uint32_t value, const char* const (&names)[N])
+{
+    for (uint32_t i = 0; i < N; ++i)
+        if (value == ape::HashNameNoCase(names[i]))
+            return i;
+    return 0;
+}
+
+const char* SettingString(const ape::setting::Setting* setting, const ape::setting::SettingParam& param)
+{
+    const char* text = setting->Value(param).str;
+    return (text && *text) ? text : nullptr;
+}
+
+ape::world::ApeSplineInstance* FindSpline(const char* name)
+{
+    return name ? ape::world::ApeTInstanceList<ape::world::ApeSplineInstance>::Find(ape::HashNameNoCase(name))
+                : nullptr;
+}
+
+ape::world::ApeObj* FindGeom(const char* name)
+{
+    return name ? ape::world::FindGeomInstance(ape::HashNameNoCase(name)) : nullptr;
+}
+
+bool IsSpline(const ape::world::ApeObj* object)
+{
+    return object && object->GetType() == ape::world::kObjType_SplineInstance;
+}
+
+// Arc length of a spline instance's definition. NOTE: read from definition
+// +0x78 on the console, taken to be the spline's length.
+float SplineLength(const ape::world::ApeSplineInstance* spline)
+{
+    return static_cast<const ape::world::ApeSplineDef*>(spline->GetDef())->m_spline.GetLength();
+}
+
+// The group's bounds grow by a spline's world box.
+void AddSplineBounds(LaserGroup& group, const ape::world::ApeObj* spline)
+{
+    ape::Aabb box;
+    ape::AabbTransform(box, spline->GetDef()->GetBounds(), spline->GetWorld());
+    ape::AabbAddBox(group.bounds, box);
+    ape::SphereFromAabb(group.sphere, group.bounds);
+}
+
+void AddPointBounds(LaserGroup& group, const ape::Vec3& point)
+{
+    ape::AabbAddPoint(group.bounds, point);
+    ape::SphereFromAabb(group.sphere, group.bounds);
+}
+
+// The parameters every laser kind starts with.
+void ReadCommon(Laser& laser, const ape::setting::Setting* setting, const sai_params::LaserCommonParams& common)
+{
+    laser.initType = EnumIndex(setting->Value(common.initType).u, kInitTypeNames);
+    laser.damageAmount = setting->Value(common.damageAmount).f;
+    laser.damageType = g_gadgetLaserForceElectricDamage.Get() ? 1u
+                                                               : EnumIndex(setting->Value(common.damageType).u,
+                                                                           kDamageTypeNames);
+}
+
+// Geometry, point scripts, the first beam placement, the sound and the end
+// point display: the common tail of every set-up.
+void FinishSetup(Laser& laser, const ape::setting::Setting* setting, const sai_params::LaserCommonParams& common,
+                 const char* const scripts[2])
+{
+    laser.SetGeometry(setting->Value(common.geomDef).str);
+    laser.StartPointScripts(scripts);
+    if (laser.geometry) {
+        laser.UpdateBeam();
+        laser.ApplyBeam();
+    }
+    audio::StopVoice(laser.voice, true);
+    laser.voice = 0;
+    if (const char* sound = SettingString(setting, common.sound))
+        laser.sound = audio::CreateSoundName(ape::HashNameNoCase(sound), 0);
+    laser.flags = setting->Value(common.alwaysShowEndPoints).b ? (laser.flags | Laser::kFlag_ShowPoints)
+                                                               : (laser.flags & ~Laser::kFlag_ShowPoints);
+}
+
+} // namespace
+
+// @func 0x0039B5A0 LaserSetupFixed
+// The end points are two objects (the "MoveableObj" geometry instances, else
+// the point's first child and its child or sibling), or the two ends of a
+// spline (the "MoveableSpline", else the point's first child spline).
 void LaserSetupFixed(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point)
 {
-    (void)laser;
-    (void)setting;
-    (void)point;
+    using namespace sai_params;
+    ReadCommon(laser, setting, LaserFixedCommon);
+    ape::world::ApeObj* moveableSpline = FindSpline(SettingString(setting, FixedMoveableSpline));
+    ape::world::ApeObj* moveable1 = FindGeom(SettingString(setting, MoveableObj1));
+    ape::world::ApeObj* moveable2 = FindGeom(SettingString(setting, MoveableObj2));
+
+    ape::world::ApeObj* first = moveable1;
+    ape::world::ApeObj* second = moveable2;
+    ape::world::ApeObj* spline = moveableSpline;
+    ape::world::ApeObj* child = (moveableSpline && moveable1 && moveable2) ? nullptr : point->GetFirstChild();
+    for (; child; child = child->GetNextSibling()) {
+        if (IsSpline(child)) {
+            spline = child;
+            break;
+        }
+        if (!first) {
+            first = child;
+            if (!moveable2 && child->GetFirstChild()) {
+                second = child->GetFirstChild();
+                break;
+            }
+        } else if (!moveable2) {
+            second = child;
+            break;
+        }
+    }
+
+    LaserGroup& group = *laser.group;
+    if (!spline) {
+        if (first && second) {
+            laser.points[0].transform.translation = first->GetWorld().translation;
+            laser.points[0].object = moveable1;
+            AddPointBounds(group, laser.points[0].transform.translation);
+            laser.points[1].transform.translation = second->GetWorld().translation;
+            laser.points[1].object = moveable2;
+            AddPointBounds(group, laser.points[1].transform.translation);
+        }
+    } else {
+        auto* path = static_cast<ape::world::ApeSplineInstance*>(spline);
+        for (int i = 0; i < 2; ++i) {
+            LaserEndpoint& p = laser.points[i];
+            p.splineSegment = path->EvaluatePosition(float(i), p.transform.translation, uint32_t(p.splineSegment), false);
+            p.spline = path;
+            p.flags = moveableSpline ? (p.flags | LaserEndpoint::kMoveable) : (p.flags & ~LaserEndpoint::kMoveable);
+        }
+        AddSplineBounds(group, spline);
+    }
+    const char* const scripts[2] = {setting->Value(Point1DirScript).str, setting->Value(Point2DirScript).str};
+    FinishSetup(laser, setting, LaserFixedCommon, scripts);
 }
 
-// TODO(0x0039AD48 LaserSetupAnchor)
-void LaserSetupAnchor(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point)
-{
-    (void)laser;
-    (void)setting;
-    (void)point;
-}
-
-// TODO(0x0039B5A0 LaserSetupSpline)
+// @func 0x0039A2B8 LaserSetupSpline
+// Each end point runs along its own spline (the "MoveableSpline1/2" spline
+// instances, else child splines of the point): start offset with a random
+// variance, movement type and a speed (per second as a share of the spline,
+// in metres per second, or as the time from one end to the other).
 void LaserSetupSpline(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point)
 {
-    (void)laser;
-    (void)setting;
-    (void)point;
+    using namespace sai_params;
+    ReadCommon(laser, setting, LaserSplineCommon);
+    ape::world::ApeObj* moveable[2] = {FindSpline(SettingString(setting, SplineMove1.moveableSpline)),
+                                       FindSpline(SettingString(setting, SplineMove2.moveableSpline))};
+
+    // Without both splines named, the first child spline is the first path
+    // and the second is its own child spline or the next child spline.
+    ape::world::ApeObj* first = moveable[0];
+    ape::world::ApeObj* second = moveable[1];
+    ape::world::ApeObj* child = (moveable[0] && moveable[1]) ? nullptr : point->GetFirstChild();
+    for (; child; child = child->GetNextSibling()) {
+        if (!first && IsSpline(child)) {
+            first = child;
+        } else if (!moveable[1] && IsSpline(child)) {
+            second = child;
+            break;
+        }
+        if (first && !moveable[1] && IsSpline(first->GetFirstChild())) {
+            second = first->GetFirstChild();
+            break;
+        }
+    }
+
+    if (first && second) {
+        ape::world::ApeObj* splines[2] = {first, second};
+        const LaserSplineMoveParams* moves[2] = {&SplineMove1, &SplineMove2};
+        float offsetJitter = 0.0f;
+        float speedJitter = 0.0f;
+        for (int i = 0; i < 2; ++i) {
+            const LaserSplineMoveParams& move = *moves[i];
+            LaserEndpoint& p = laser.points[i];
+            auto* path = static_cast<ape::world::ApeSplineInstance*>(splines[i]);
+
+            // The second point reuses the first one's random offset unless
+            // it asks for its own.
+            if (i == 0 || !setting->Value(UseSplineStartOffsetVariance1).b) {
+                const float variance = setting->Value(move.startOffsetVariance).f;
+                offsetJitter = ape::RandomRange(-variance, variance, ape::g_gameRandom);
+            }
+            const float start = ape::Clamp(setting->Value(move.startOffset).f + offsetJitter, 0.0f, 1.0f);
+            p.spline = path;
+            p.splineSegment = path->EvaluatePosition(start, p.transform.translation, uint32_t(p.splineSegment), false);
+            p.flags = moveable[i] ? (p.flags | LaserEndpoint::kMoveable) : (p.flags & ~LaserEndpoint::kMoveable);
+            AddSplineBounds(*laser.group, path);
+            p.splinePos = start;
+
+            const uint32_t moveType = EnumIndex(setting->Value(move.moveType).u, kMoveTypeNames);
+            p.flags = (p.flags & ~(3u << LaserEndpoint::kMoveTypeShift)) | (moveType << LaserEndpoint::kMoveTypeShift);
+
+            if (i == 0 || !setting->Value(UseSplineMoveSpeedVariance1).b) {
+                const float variance = setting->Value(move.moveSpeedVariance).f;
+                speedJitter = ape::RandomRange(-variance, variance, ape::g_gameRandom);
+            }
+            const float signedSpeed = setting->Value(move.moveSpeed).f + speedJitter;
+            p.flags = signedSpeed < 0.0f ? (p.flags | LaserEndpoint::kReverse) : (p.flags & ~LaserEndpoint::kReverse);
+            float speed = std::fabs(signedSpeed);
+            const uint32_t speedType = EnumIndex(setting->Value(move.speedType).u, kSpeedTypeNames);
+            if (speed > 0.0f) {
+                const float length = SplineLength(path);
+                if (length > 0.0f) {
+                    if (speedType == 1)
+                        speed = speed / length;
+                    else if (speedType == 2)
+                        speed = (length / speed) / length;
+                }
+            }
+            p.speed = speed;
+        }
+    }
+    const char* const scripts[2] = {setting->Value(SplineMove1.dirScript).str, setting->Value(SplineMove2.dirScript).str};
+    FinishSetup(laser, setting, LaserSplineCommon, scripts);
 }
 
-// TODO(0x0039F3D8 LaserFieldSetup)
+// @func 0x0039AD48 LaserSetupAnchor
+// The first end point sits on an anchor object (the "MoveableAnchorObj"
+// geometry instance, else the laser's point); the second runs along a
+// spline as in LaserSetupSpline.
+void LaserSetupAnchor(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point)
+{
+    using namespace sai_params;
+    ReadCommon(laser, setting, LaserAnchorCommon);
+    ape::world::ApeObj* moveableSpline = FindSpline(SettingString(setting, AnchorMove.moveableSpline));
+    ape::world::ApeObj* moveableAnchor = FindGeom(SettingString(setting, MoveableAnchorObj));
+    ape::world::ApeObj* anchor = moveableAnchor ? moveableAnchor : point;
+
+    ape::world::ApeObj* spline = moveableSpline;
+    if (!moveableSpline) {
+        for (ape::world::ApeObj* child = point->GetFirstChild(); child; child = child->GetNextSibling()) {
+            if (IsSpline(child)) {
+                spline = child;
+                break;
+            }
+        }
+    }
+    if (anchor && spline) {
+        LaserGroup& group = *laser.group;
+        const float variance = setting->Value(AnchorMove.startOffsetVariance).f;
+        const float start = ape::Clamp(
+            setting->Value(AnchorMove.startOffset).f + ape::RandomRange(-variance, variance, ape::g_gameRandom), 0.0f,
+            1.0f);
+
+        LaserEndpoint& a = laser.points[0];
+        a.transform.translation = anchor->GetWorld().translation;
+        a.object = moveableAnchor;
+        AddPointBounds(group, a.transform.translation);
+
+        LaserEndpoint& b = laser.points[1];
+        auto* path = static_cast<ape::world::ApeSplineInstance*>(spline);
+        b.splineSegment = path->EvaluatePosition(start, b.transform.translation, uint32_t(b.splineSegment), false);
+        b.spline = path;
+        b.flags = moveableSpline ? (b.flags | LaserEndpoint::kMoveable) : (b.flags & ~LaserEndpoint::kMoveable);
+        AddSplineBounds(group, path);
+        b.splinePos = start;
+        const uint32_t moveType = EnumIndex(setting->Value(AnchorMove.moveType).u, kMoveTypeNames);
+        b.flags = (b.flags & ~(3u << LaserEndpoint::kMoveTypeShift)) | (moveType << LaserEndpoint::kMoveTypeShift);
+
+        const float speedVariance = setting->Value(AnchorMove.moveSpeedVariance).f;
+        const float signedSpeed =
+            setting->Value(AnchorMove.moveSpeed).f + ape::RandomRange(-speedVariance, speedVariance, ape::g_gameRandom);
+        b.flags = signedSpeed < 0.0f ? (b.flags | LaserEndpoint::kReverse) : (b.flags & ~LaserEndpoint::kReverse);
+        float speed = std::fabs(signedSpeed);
+        const uint32_t speedType = EnumIndex(setting->Value(AnchorMove.speedType).u, kSpeedTypeNames);
+        if (speed > 0.0f) {
+            const float length = SplineLength(path);
+            if (length > 0.0f) {
+                if (speedType == 1)
+                    speed = speed / length;
+                else if (speedType == 2)
+                    speed = (length / speed) / length;
+            }
+        }
+        b.speed = speed;
+    }
+    const char* const scripts[2] = {setting->Value(PointAnchorDirScript).str, setting->Value(AnchorMove.dirScript).str};
+    FinishSetup(laser, setting, LaserAnchorCommon, scripts);
+}
+
+// @func 0x0039F3D8 LaserFieldSetup
 void LaserFieldSetup(LaserField& field)
 {
+    using namespace sai_params;
+    field.flickerDelay = 0.0f;
+    field.flickerTime = 0.0f;
+    field.field_160 = 0.0f;
+    field.flags &= ~(LaserField::kFlag_Occupied | LaserField::kFlag_Started | LaserField::kFlag_Flickering);
+    const ape::setting::Setting* setting = field.setting;
+    if (!setting) {
+        field.SetEnabled(true, true, false);
+        return;
+    }
+    if (const char* triggerName = SettingString(setting, FieldActivationTrigger)) {
+        if (entity::Entity* found = entity::FindEntity(ape::HashNameNoCase(triggerName)))
+            field.trigger = (found->typeBits[0] & kTriggerTypeBit) ? found : nullptr;
+    }
+
+    // The outline: the control points of the point's child spline in world space.
+    ape::ApeTArray<ape::Vec3> outline;
+    if (auto* spline = static_cast<ape::world::ApeSplineInstance*>(field.outlineSpline)) {
+        const ape::ApeSpline& path = static_cast<const ape::world::ApeSplineDef*>(spline->GetDef())->m_spline;
+        const ape::Matrix34& m = spline->GetWorld();
+        for (uint32_t i = 0; i < path.GetNumPoints(); ++i) {
+            const ape::Vec3& p = path.GetPoint(i).position;
+            outline.PushBack({m.xAxis.x * p.x + m.yAxis.x * p.y + m.zAxis.x * p.z + m.translation.x,
+                              m.xAxis.y * p.x + m.yAxis.y * p.y + m.zAxis.y * p.z + m.translation.y,
+                              m.xAxis.z * p.x + m.yAxis.z * p.y + m.zAxis.z * p.z + m.translation.z, 0.0f});
+        }
+    }
+    field.initType = EnumIndex(setting->Value(FieldInitType).u, kInitTypeNames);
+    TriangulatePolygonXZ(outline, field.triangles);
+
+    if (field.lifetimeScript) {
+        ReleaseScript(field.lifetimeScript);
+        field.lifetimeScript = nullptr;
+    }
+    if (const char* scriptName = SettingString(setting, LifetimeScript)) {
+        if (ape::ApeAnimScript* script = ape::ApeAnimScriptLibrary::FindScriptAnywhere(ape::HashNameNoCase(scriptName), 0, true)) {
+            field.lifetimeScript = new ape::ApeAnimScriptInstance(script);
+            field.lifetimeScript->SetRemoveWhenFinished(false);
+        }
+    }
+    LaserFieldBuildPhantoms(field);
+    LaserFieldBuildVisuals(field, outline);
+    field.SetEnabled(field.trigger != nullptr || setting->Value(FieldStartEnabled).b, true, false);
+}
+
+// TODO(0x0039E6F8 LaserFieldBuildPhantoms)
+void LaserFieldBuildPhantoms(LaserField& field)
+{
     (void)field;
+}
+
+// TODO(0x0039DA30 LaserFieldBuildVisuals)
+void LaserFieldBuildVisuals(LaserField& field, const ape::ApeTArray<ape::Vec3>& outline)
+{
+    (void)field;
+    (void)outline;
 }
 
 } // namespace sly
