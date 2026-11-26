@@ -10,6 +10,9 @@
 #include "ape/math/ApeMatrixOps.h"
 #include "ape/file/ApeFile.h"
 #include "ape/memory/ApeMem.h"
+#include "ape/setting/ApeSetting.h"
+#include "ape/world/ApeInstances.h"
+#include "sly/game/SAISettings.h"
 
 namespace sly {
 namespace levels {
@@ -227,6 +230,62 @@ void ResolveJumpLinkObjects(NavManager& nav)
             if (link.objects[j])
                 ++link.objectCount;
         }
+    }
+}
+
+// @func 0x00010B18 AssociateNavJumpLink
+void AssociateNavJumpLink(ape::setting::Setting* setting, const char* splineName, bool reload)
+{
+    NavManager* nav = GetNavManager();
+    if (reload || !nav)
+        return;
+    namespace params = sai_params;
+    constexpr uint32_t kLinkType_Strip = 0x9AEE76F2u;     // "StripLink"
+    constexpr uint32_t kLinkType_Platform = 0x936F8EEDu;  // "PlatformLink"
+
+    ape::world::ApeSplineInstance* spline = ai::FindLevelSplineInstance(ape::HashNameNoCase(splineName));
+    if (!spline) {
+        ape::TempFormat("Fail to find the spline (%s) to create the Nav jump link!", splineName);
+        return;
+    }
+    const uint32_t linkType = setting->Value(params::LinkType).u;
+    ape::world::ApeSplineInstance* edge2 = nullptr;
+    if (linkType == kLinkType_Strip) {
+        // The second edge is the spline's child; a parented spline is
+        // itself the second edge of another strip.
+        if (spline->m_parent || !spline->m_firstChild)
+            return;
+        edge2 = ai::FindLevelSplineInstance(spline->m_firstChild->GetNameHash());
+        if (!edge2) {
+            ape::TempFormat("Fail to find the spline2 (%s) to create the Nav jump link strip!",
+                            spline->m_firstChild->GetName());
+            return;
+        }
+    }
+    if (nav->jumpLinkCount >= NavManager::kMaxJumpLinks) {
+        ape::TempFormat("Too many jump links, max is (%d)", NavManager::kMaxJumpLinks);
+        return;
+    }
+    NavJumpLink& link = nav->jumpLinks[nav->jumpLinkCount++];
+    link.type = linkType == kLinkType_Platform ? NavJumpLink::kPlatformLink : NavJumpLink::kLink;
+    link.settingName = setting->nameHash;
+    link.platformJumpDistXZ = setting->Value(params::PlatformJumpDistXZ).f;
+    link.platformJumpHeight = setting->Value(params::PlatformJumpHeight).f;
+    link.platformFallHeight = setting->Value(params::PlatformFallHeight).f;
+    link.walk = setting->Value(params::Walk).b;
+
+    spline->m_root->UpdateWorld(false, false);
+    ape::Vec3 points[4];
+    spline->EvaluatePosition(0.0f, points[0], false);
+    spline->EvaluatePosition(1.0f, points[1], false);
+    if (edge2) {
+        edge2->EvaluatePosition(0.0f, points[2], false);
+        edge2->EvaluatePosition(1.0f, points[3], false);
+        link.link = NavPower().CreateJumpLink(points, 4);
+    } else {
+        // NOTE: the console hands NavPower a parameter block for point links
+        // whose contents were not recovered.
+        link.link = NavPower().CreateJumpLink(points, 2);
     }
 }
 

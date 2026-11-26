@@ -21,6 +21,17 @@ const BismarqueStepList& BismarqueAI::CurrentSteps() const
     return p.normal;
 }
 
+// @func 0x000175FC BismarqueAI::BismarqueAI
+BismarqueAI::BismarqueAI()
+{
+    pool1AC.reserve(10);
+    modeFlags &= 0x3FFFFFFFu;
+    currentAttack = -1;
+    qteIntroDelay = g_bismarqueQTEGameIntroDelayTimeMax;
+    counterCooldown = g_bismarqueCounterAttackDelayTimeMax;
+    field_308 &= 0x1FFFFFFFu;
+}
+
 // @func 0x007392D8 BismarqueAI::~BismarqueAI
 // @func 0x00739464 BismarqueAI::~BismarqueAI (deleting)
 BismarqueAI::~BismarqueAI() = default;

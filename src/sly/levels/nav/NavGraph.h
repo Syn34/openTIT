@@ -13,6 +13,8 @@
 
 #include "ape/math/ApeMath.h"
 
+namespace ape::setting { class Setting; }
+
 #include <cstddef>
 #include <cstdint>
 
@@ -59,6 +61,14 @@ public:
     // Jump links (0x0060EABC releases one) and the loaded graph (0x0067738C
     // unloads it).
     virtual void ReleaseJumpLink(void* link) { (void)link; }
+    // A jump link through `count` points: two (the ends of a point link) or
+    // four (both ends of the two splines of a strip link) (0x0060F9E0 /
+    // 0x0060FE80, handle kept with 0x0062FF90).
+    virtual void* CreateJumpLink(const ape::Vec3* points, int count)
+    {
+        (void)points; (void)count;
+        return nullptr;
+    }
     virtual void UnloadGraph() {}
     // Brings the NavPower world up in a memory arena of `arenaSize` bytes
     // (0x0067B670 and the system initialisers 0x0067C3DC, 0x0067D190,
@@ -74,12 +84,19 @@ void SetNavPower(NavPowerInterface* navPower);
 
 // Jump link created from a "SAINavJumpLink_" level object (0x38 bytes).
 struct NavJumpLink {
-    enum Type : int32_t { kPointLink = 0, kStripLink = 1, kPlatformLink = 2 };
-    int32_t type = kPointLink;                    // +0x00
+    // Point and strip links are both kLink; only platform links resolve
+    // their objects.
+    enum Type : int32_t { kUnused = 0, kLink = 1, kPlatformLink = 2 };
+    int32_t type = kUnused;                       // +0x00
     void* link = nullptr;                         // +0x04 NavPower link object
     uint32_t settingName = 0;                     // +0x08 level object holding the link's properties
     class entity::Entity* objects[6] = {};        // +0x0C entities named by Object1..Object6
     int32_t objectCount = 0;                      // +0x24
+    // Properties of the link's setting (SAINavJumpLink_).
+    float platformJumpDistXZ = 0.0f;              // +0x28
+    float platformJumpHeight = 0.0f;              // +0x2C
+    float platformFallHeight = 0.0f;              // +0x30
+    bool walk = false;                            // +0x34
 };
 
 // Per-level navigation state.
@@ -121,6 +138,11 @@ void DestroyNavManager();
 // Platform links: looks up the entities their Object1..Object6 properties
 // name (0x00010238).
 void ResolveJumpLinkObjects(NavManager& nav);
+// Association callback of the "SAINavJumpLink_" setting (0x00010B18):
+// `splineName` names the level spline the link follows. A strip link takes
+// its second edge from the spline's first child. Nothing happens on reload or
+// without a nav manager.
+void AssociateNavJumpLink(ape::setting::Setting* setting, const char* splineName, bool reload);
 // One update (0x000104C8). NOTE: the console first calls 0x0067C8B8 on the
 // tracker; its result is not used.
 void UpdatePlayerNavTracker(PlayerNavTracker& tracker, const ape::Vec3* playerPosition, float dt);

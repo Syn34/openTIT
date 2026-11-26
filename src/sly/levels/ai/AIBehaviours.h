@@ -421,6 +421,9 @@ struct BismarquePattern {       // NOTE: only the phase table is known
 
 class BismarqueAI : public AIController {
 public:
+    // Empty lists and pool, no attack running, the counter attack and QTE
+    // intro timers at their tuning maxima (0x000175FC).
+    BismarqueAI();
     // Frees the boss's lists (their element types are not decoded).
     ~BismarqueAI() override;
     bool AllowsInteraction() override;
@@ -458,10 +461,28 @@ public:
     ape::world::ApeObj* markers[2] = {};   // +0x290
     ape::world::ApeObj* anchors[2] = {};   // +0x298
     float counterCooldown = 0.0f;          // +0x2EC
-    // NOTE: lists and a pool of 16-byte records only freed here.
-    ape::ApeTArray<void*> lists134[6];     // +0x134..+0x198
-    std::vector<std::array<uint8_t, 16>> pool1AC;   // +0x1AC (capacity at +0x1BC)
-    ape::ApeTArray<void*> lists1C4[3];     // +0x1C4..+0x1EC
+    // Lists whose element types are not decoded (records of the sizes the
+    // constructor gives).
+    template <size_t N> struct Record { uint8_t bytes[N]; };
+    ape::ApeTArray<Record<0x70>> list134{0x10};          // +0x134
+    ape::ApeTArray<Record<4>> list148{0x40, nullptr, true};   // +0x148
+    ape::ApeTArray<Record<4>> list15C{0x40, nullptr, true};   // +0x15C
+    ape::ApeTArray<Record<0x30>> list170{0x40, nullptr, true}; // +0x170
+    ape::ApeTArray<Record<8>> list184{8};                // +0x184
+    ape::ApeTArray<Record<0x20>> list198{4};             // +0x198
+    // +0x1AC pool of ten 16-byte records (begin/end/cursor, capacity +0x1BC).
+    std::vector<std::array<uint8_t, 16>> pool1AC;
+    ape::ApeTArray<Record<4>> list1C4{0x40, nullptr, true};   // +0x1C4
+    ape::ApeTArray<Record<4>> list1D8{0x40, nullptr, true};   // +0x1D8
+    ape::ApeTArray<Record<8>> list1EC{0x40, nullptr, true};   // +0x1EC
+    uint32_t field_200 = 0;                // +0x200
+    ape::Vec3 field_210{};                 // +0x210
+    uint16_t field_220 = 0, field_222 = 0; // +0x220
+    uint16_t field_224 = 0, field_226 = 0; // +0x224
+    uint32_t field_230 = 0;                // +0x230
+    ape::Vec3 field_240{0.0f, 0.0f, 1.0f, 0.0f};   // +0x240 a direction (the engine's default forward)
+    float qteIntroDelay = 0.0f;            // +0x2C8 Entity.Bismarque.QTE.Game.IntroDelayTimeMax
+    uint32_t field_308 = 0;                // +0x308 flag bits 29-31 cleared
 };
 class ElJefeAI : public AIController {
 public:

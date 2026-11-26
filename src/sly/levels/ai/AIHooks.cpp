@@ -21,6 +21,7 @@ bool PropBool(const PropertyBlock*, AIProp) { return false; }
 float PropFloat(const PropertyBlock*, AIProp) { return 0.0f; }
 
 const PropertyBlock* FindSettingObject(uint32_t) { return nullptr; }
+ape::world::ApeSplineInstance* FindLevelSplineInstance(uint32_t) { return nullptr; }
 bool CharacterSpawnerSettings(const Entity*, uint32_t[3], const PropertyBlock*[3]) { return false; }
 
 bool SpawnerAltObjectBounds(const Entity*, ape::Vec3&, ape::Vec3&) { return false; }
@@ -118,10 +119,14 @@ void NavPointRelease(void*) {}
 void* NavCreatePoint(const ape::Vec3&, const NavQuery&) { return nullptr; }
 bool NavPathToPlayerExists(void*, const NavQuery&) { return true; }
 bool NavPointGroundPosition(void*, ape::Vec3&) { return false; }
+bool NavPointMoveToward(void*, const ape::Vec3&, const NavQuery&, ape::Vec3&) { return false; }
 void NavAgentDestroy(NavAgent*) {}
+NavAgent* NavAgentCreate(const NavAgentDesc&, ape::Vec3&) { return nullptr; }
 void NavAgentRequestGoal(NavAgent*, const ape::Vec3&) {}
 ape::Vec3 NavAgentGoal(NavAgent*) { return {}; }
 void NavAgentSetPosition(NavAgent*, const ape::Vec3&) {}
+void* NavAgentCurrentPoint(NavAgent*) { return nullptr; }
+void NavAgentPathStep(NavAgent*, float, NavPathStep&) {}
 ape::Vec3 NavAgentNextPoint(NavAgent*) { return {}; }
 
 void KnowledgeLevelStart() { knowledge::KnowledgeLevelStart(); }

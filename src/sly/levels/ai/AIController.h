@@ -31,6 +31,7 @@ namespace ape::anim { class AnimClipManager; }
 namespace sly {
 namespace levels {
 struct AIProxyPoint;
+struct NavJumpLink;
 
 namespace ai {
 
@@ -188,7 +189,9 @@ public:
     virtual void EnterState();
     virtual void UpdateState(float dt);
     virtual void ExitState();
-    // Slot 59 (+0xEC): advances the nav path. TODO(0x00015040).
+    // Slot 59 (+0xEC): advances the nav path: retries a failed request, keeps
+    // the agent with the controller and, once the state has run a moment,
+    // faces the next path point or reacts to a jump link ahead.
     virtual void UpdateNavigation();
     // Slots 60/61 (+0xF0/+0xF4): settings of the nav agent: search radius and
     // the proxy point / nav filter (1 heavy, 2 light; see "Filter").
@@ -277,8 +280,10 @@ public:
     virtual void Slot51() {}
     // @func 0x00738720 AIController::Slot52
     virtual void Slot52() {}
-    // @func 0x0073874C AIController::Slot63
-    virtual void Slot63() {}
+    // Slot 63 (+0xFC): the path crosses platform jump link `link` (in its
+    // reverse direction when `reversed`).
+    // @func 0x0073874C AIController::OnPlatformLink
+    virtual void OnPlatformLink(const NavJumpLink* link, bool reversed) { (void)link; (void)reversed; }
 
     // -- helpers ----------------------------------------------------------------------
     // Turns the transform to face `direction` (horizontal part only, up axis
@@ -328,6 +333,14 @@ public:
     // Where the playing clip's remaining root motion (scaled by `scale`)
     // takes the controller is at its nav point (0x00015E40).
     bool ClipEndsAtNavPoint(float scale);
+    // `point` lies in the vision cone of `eye` (z axis = view direction,
+    // translation = eye position): the point, pulled one metre towards the
+    // view ray, is within `range` of the eye, its height above the eye (or,
+    // with `relativeToBase`, the point's own height above the controller)
+    // is within [minDy, maxDy] and it is less than half of `fovDegrees` off
+    // the view direction about the up axis (0x000167F0).
+    bool InVisionCone(const ape::Matrix34& eye, const ape::Vec3& point, float range, float minDy, float maxDy,
+                      float fovDegrees, bool relativeToBase) const;
     // Re-tests the line of sight to the target if needed.
     bool IsTargetVisible();
     // Line of sight test between two points (physics ray cast).
@@ -447,6 +460,11 @@ public:
     // Nearest listed, living enemy within `radius` of `position` (optionally
     // only engaged ones) (0x0001AE6C).
     Entity* FindNearestEnemy(float radius, const ape::Vec3& position, bool engagedOnly) const;
+    // The living, listed enemy within `range` of `position` that lies closest
+    // to the direction `direction` (unit), if its angle off it is below
+    // `maxAngle` radians (0x0001B028).
+    Entity* FindEnemyInCone(const ape::Vec3& position, float range, const ape::Vec3& direction,
+                            float maxAngle) const;
     // Drops priority targets that are no longer alive (0x0001A7C0).
     void PrunePriorityTargets();
     // Level start: links the proxy point patrol chains and sets the kill
