@@ -49,3 +49,34 @@ void HavokFree(void* data, uint32_t bytes) { (void)data; (void)bytes; }
 
 } // namespace entity
 } // namespace sly
+
+namespace sly {
+namespace entity {
+
+// TODO(0x00456918): the suspension selection job; nothing changes state.
+void EntityJobSelectSuspended(const EntitySuspendJobParams&, std::vector<uint16_t>& suspend,
+                              std::vector<uint16_t>& resume)
+{
+    suspend.clear();
+    resume.clear();
+}
+// TODO(0x00456A60): the deletion selection job; nothing is destroyed.
+void EntityJobSelectDead(std::vector<uint16_t>& dead) { dead.clear(); }
+// TODO(0x00456BA8 / 0x00456CF0): the update selection jobs. NOTE: every live
+// entity is selected until the job's filter is known.
+void EntityJobSelectForUpdate(std::vector<Entity*>& out)
+{
+    for (uint32_t i = 0; i < EntityCount(kList_All); ++i)
+        if (Entity* entity = EntityAt(kList_All, i); entity && entity->IsAlive())
+            out.push_back(entity);
+}
+void EntityJobSelectForPostUpdate(std::vector<Entity*>& out) { EntityJobSelectForUpdate(out); }
+// TODO(0x0020F400)
+void FlushTriggerReports() {}
+// TODO(0x0026F798)
+void EntityPostUpdateDone() {}
+// TODO(0x0028BDB0)
+void EntityModuleLevelStartHooks() {}
+
+} // namespace entity
+} // namespace sly
