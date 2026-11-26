@@ -59,7 +59,9 @@ struct PlayerProgress {
     uint8_t field_000 = 0;           // +0x000 NOTE: from 0x010B1804 at reset
     uint8_t field_001 = 0;           // +0x001 NOTE: from 0x00F65BF4 (1) at reset
     uint16_t field_002 = 0;          // +0x002 NOTE: from 0x00F65BF5 (1) at reset
-    uint32_t field_020 = 0;          // +0x020
+    uint32_t field_020 = 0;          // +0x020 NOTE: second value of the save details text
+    uint32_t lastJobId = 0;          // +0x024 id of the 0x35C-byte record last played (save subtitle)
+    uint32_t lastEpisodeName = 0;    // +0x02C name hash of the 0x218-byte record last played
     uint32_t bottleBits[kEpisodeSlots] = {};  // +0x034 one bit per clue bottle (Job::bottleSlot)
     uint16_t maskBits[kEpisodeSlots] = {};    // +0x064 one bit per mask (Job::maskSlot)
     uint32_t field_70 = 0;           // +0x070 NOTE: read by 0x00465D5C, meaning unknown
