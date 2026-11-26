@@ -364,7 +364,7 @@ void SeqEnqueueStreamCommand::Execute()
 // @func 0x0042F0B4 SeqEnqueueStreamCommand::Update
 bool SeqEnqueueStreamCommand::Update(float /*dt*/)
 {
-    if (m_request != nullptr && !StreamSystemIdle()) {
+    if (m_request != nullptr && !StreamSystemIdle(m_request)) {
         // Wait while the request holds a voice. A request without one is
         // not waited for (the original warns that it has not started
         // buffering).

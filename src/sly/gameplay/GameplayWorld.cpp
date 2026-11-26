@@ -4,6 +4,7 @@
 #include "sly/gameplay/GameplayWorld.h"
 
 #include "sly/game/AppRuntime.h"
+#include "sly/game/AudioSystem.h"
 #include "sly/game/SlyGame.h"
 #include "sly/game/WorldInterface.h"
 
@@ -111,12 +112,12 @@ bool PadPressed(int padIndex, uint32_t mask)
 uint32_t CharacterAcceptedButtons(WorldObject*, uint32_t) { return 0; }
 
 void StopAllSounds() {}
-bool IsSoundCategoryPlaying(int) { return false; }
-bool IsTrackedVoicePlaying(uint32_t) { return false; }
+bool IsSoundCategoryPlaying(int category) { return audio::IsCategoryPlaying(static_cast<audio::SoundCategory>(category)); }
+bool IsTrackedVoicePlaying(uint32_t key) { return audio::IsTrackedVoicePlaying(key); }
 void PlayMusicStream(audio::SoundName*, bool) {}
 
 // -- sound requests ------------------------------------------------------------
-bool StreamSystemIdle() { return true; }
+bool StreamSystemIdle(audio::SoundRequest* request) { return audio::IsRequestReady(request); }
 
 // -- misc ----------------------------------------------------------------------
 Minigame* ActiveMinigame() { return nullptr; }

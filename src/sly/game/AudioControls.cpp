@@ -217,5 +217,37 @@ void SetAudioHeapSize(int kilobytes)
     g_audioHeap->Init(g_audioHeapMemory, bytes, false);
 }
 
+// @func 0x004431A0 IsRequestReady
+bool IsRequestReady(const SoundRequest* request)
+{
+    if (!request->hasVoice)
+        return false;
+    const Voice* voice = Voices().Find(request->voice);
+    const SoundHandle handle = voice ? voice->handle : 0;
+    const int count = Backend().SubVoiceCount(handle);
+    if (count == 0) {
+        // Nothing to buffer: ready unless it is a multi-part sound.
+        const SoundDef* def = request->name ? request->name->def : nullptr;
+        return !def || def->variantCount <= 0;
+    }
+    for (int i = 0; i < count; ++i) {
+        if (!Backend().SubVoiceStarted(Backend().SubVoice(handle, i)))
+            return false;
+    }
+    return true;
+}
+
+// @func 0x004440E8 SoundNameDebugString
+const char* SoundNameDebugString(const SoundName*)
+{
+    return "[UNKNOWN]";
+}
+
+// @func 0x004440F4 SoundRequestDebugString
+const char* SoundRequestDebugString(const SoundRequest*)
+{
+    return "[UNKNOWN]";
+}
+
 } // namespace audio
 } // namespace sly

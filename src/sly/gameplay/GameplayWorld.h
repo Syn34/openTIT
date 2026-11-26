@@ -208,9 +208,8 @@ void PlayMusicStream(audio::SoundName* name, bool play);   // 0x00449E48
 // ---------------------------------------------------------------------------
 // Sound requests
 // ---------------------------------------------------------------------------
-// 0x004431A0. NOTE: purpose unknown; the stream wait of SeqEnqueueStream is
-// skipped while it returns true.
-bool StreamSystemIdle();
+// 0x004431A0: the request's voice has started buffering (audio::IsRequestReady).
+bool StreamSystemIdle(audio::SoundRequest* request);
 
 // ---------------------------------------------------------------------------
 // The active game-mode object of the level (+0x1281F4, see Minigame.h).

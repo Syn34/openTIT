@@ -52,6 +52,8 @@ public:
     virtual float SubVoiceLevel(uint32_t subVoice) { (void)subVoice; return 0.0f; }
     // True while a voice group (bus) has voices playing.
     virtual bool IsGroupActive(uint32_t group) { (void)group; return false; }
+    // A library voice has started playing (its stream is buffered).
+    virtual bool SubVoiceStarted(uint32_t subVoice) { (void)subVoice; return true; }
 };
 
 AudioBackend& Backend();
@@ -193,6 +195,15 @@ bool IsTrackedVoicePlaying(uint32_t key);
 // Replaces the audio heap (0x00F65B58) with a new one of 'kilobytes' KB
 // (none for 0).
 void SetAudioHeapSize(int kilobytes);
+
+struct SoundRequest;
+// The request's voice has started (every library voice of it is buffered,
+// or the sound needs no streaming). False without a voice.
+bool IsRequestReady(const SoundRequest* request);
+// Debug names of sounds and requests; stripped from the shipping game,
+// which prints "[UNKNOWN]" instead.
+const char* SoundNameDebugString(const SoundName* name);
+const char* SoundRequestDebugString(const SoundRequest* request);
 
 // Pausing: everything (e.g. the pause menu) and individual pause groups.
 void SetPauseAll(bool paused);
