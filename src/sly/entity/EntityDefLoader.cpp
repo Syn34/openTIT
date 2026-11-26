@@ -122,7 +122,7 @@ const DefClass kDefClasses[] = {
     {0xAEF4C388u, nullptr},                              // "BreakableChain" 0x001A5AD8
     {0xA8F71270u, nullptr},                              // 0x0023FA28
     {0xA7CFB837u, nullptr},                              // 0x0016ADC4
-    {0xBC13B5BCu, nullptr},                              // 0x000C58A8
+    {0xBC13B5BCu, CreateProjectileMineDef},
     {0xB9F78EFDu, nullptr},                              // 0x000C63B0
     {0xB47D3A95u, CreateWatchActorDef},
     {0xB3748711u, nullptr},                              // 0x001DE610

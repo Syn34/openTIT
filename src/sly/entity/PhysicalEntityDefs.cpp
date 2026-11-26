@@ -1,7 +1,9 @@
 // openTIT - The physical definition: description defaults, parser and
 // constructor (see PhysicalEntity.h).
+#include "sly/entity/ActorDefLoaders.h"
 #include "sly/entity/PhysicalEntity.h"
 #include "sly/entity/PhysicsHooks.h"
+#include "sly/entity/Projectiles.h"
 
 #include "ape/math/ApeMath.h"
 #include "ape/xml/ApeXml.h"
@@ -186,6 +188,87 @@ PhysicalEntityDef::PhysicalEntityDef(const PhysicalEntityDefDesc& desc)
     collisionShape = PhysicalDefCreateBody(desc.bodyName, desc.offset, desc.mass, desc.friction,
                                            desc.restitution, desc.linearDamping, desc.angularDamping,
                                            (defFlags & kDefFlag_HighQuality) != 0);
+}
+
+// -- EntityProjectileMine ---------------------------------------------------------
+namespace {
+
+constexpr uint32_t kClass_ProjectileMine = 0x20000;
+
+struct ProjectileMineDefDesc : PhysicalEntityDefDesc {
+    explicit ProjectileMineDefDesc(const EntityDefDesc& loader) : PhysicalEntityDefDesc(loader)
+    {
+        classBits |= kClass_ProjectileMine;
+    }
+    uint32_t field_158 = 0;     // 0x158
+    float field_15C = 1.0f;     // 0x15C
+    bool field_160 = false;     // 0x160
+    float field_164 = 1.0f;     // 0x164
+    float field_168 = 0.0f;     // 0x168
+    float field_16C = 1.0f;     // 0x16C
+    float field_170 = 0.0f;     // 0x170
+    float field_174 = 0.0f;     // 0x174
+    bool field_178 = false;     // 0x178
+    bool field_179 = true;      // 0x179
+    bool field_17A = false;     // 0x17A
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x000C5528 ProjectileMineDefDesc::Parse
+// Five values come from a mine parent; the rest have fixed defaults.
+void ProjectileMineDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                  const EntityDefDesc& loader, const EntityDef* parent)
+{
+    PhysicalEntityDefDesc::Parse(root, elem, loader, parent);
+    uint32_t defaultHash = 0;
+    float default15C = 1.0f, default164 = 1.0f;
+    bool default160 = false, default17A = false;
+    if (parent && (parent->classBits & kClass_ProjectileMine)) {
+        const auto* mine = static_cast<const ProjectileMineDef*>(parent);
+        defaultHash = mine->field_194;
+        default15C = mine->field_198;
+        default160 = mine->field_19C;
+        default164 = mine->field_1A0;
+        default17A = mine->field_1B6;
+    }
+    elem->GetHash(0xFEBE4776u, &field_158, defaultHash);
+    elem->GetFloat(0xD93B86F6u, &field_15C, default15C);
+    elem->GetBool(0xFBCDDB3Bu, &field_160, default160);
+    elem->GetFloat(0xD63894F0u, &field_164, default164);
+    elem->GetFloat(0x35FE9ECFu, &field_168, 0.0f);
+    elem->GetFloat(0xB289BA5Eu, &field_170, 0.0f);
+    elem->GetFloat(0x9EB4518Au, &field_174, 0.0f);
+    elem->GetBool(0x0927884Eu, &field_178, false);
+    elem->GetBool(0x572A6E83u, &field_179, true);
+    elem->GetBool(0x644AB625u, &field_17A, default17A);
+}
+
+} // namespace
+
+// @func 0x000C58A8 CreateProjectileMineDef
+// The mine's body goes on collision layer 23.
+EntityDef* CreateProjectileMineDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                   const EntityDefDesc& loader, const EntityDef* parent)
+{
+    ProjectileMineDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new ProjectileMineDef(desc);
+    def->field_194 = desc.field_158;
+    def->field_198 = desc.field_15C;
+    def->field_19C = desc.field_160;
+    def->field_1A0 = desc.field_164;
+    def->field_1A4 = desc.field_168;
+    def->field_1A8 = desc.field_16C;
+    def->field_1AC = desc.field_170;
+    def->field_1B0 = desc.field_174;
+    def->armOnApproach = desc.field_178;
+    def->field_1B5 = desc.field_179;
+    def->field_1B6 = desc.field_17A;
+    if (def->collisionShape)
+        RigidBodySetCollisionLayer(def->collisionShape, 23);
+    return def;
 }
 
 } // namespace entity

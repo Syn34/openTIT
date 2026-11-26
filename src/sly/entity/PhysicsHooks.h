@@ -28,6 +28,8 @@ struct RigidBodyMaterial {
     float mass = -1.0f, friction = -1.0f, restitution = -1.0f, linearDamping = -1.0f, angularDamping = -1.0f;
 };
 RigidBodyMaterial RigidBodyGetMaterial(void* body);
+// Replaces a body's collision filter word (+0x2C) with layer `layer`.
+void RigidBodySetCollisionLayer(void* body, uint32_t layer);
 // The template body of a physical definition (inline in 0x000C30E8): the
 // named body of the level's physics data (0x0034654C on the game world's
 // physics resource +0x1281D4), copied (hkpRigidBodyCinfo 0x0091FB50 /

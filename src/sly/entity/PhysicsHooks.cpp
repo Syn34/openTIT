@@ -15,6 +15,7 @@ void* ActorPartCreateBody(const ActorPartDesc& part, uint32_t navMode)
 
 const char* HavokBodyName(void*) { return nullptr; }
 RigidBodyMaterial RigidBodyGetMaterial(void*) { return {}; }
+void RigidBodySetCollisionLayer(void*, uint32_t) {}
 void* PhysicalDefCreateBody(const char*, const ape::Vec3&, float, float, float, float, float, bool) { return nullptr; }
 
 bool RigidBodyInWorld(void* body) { (void)body; return false; }

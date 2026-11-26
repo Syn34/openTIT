@@ -30,8 +30,19 @@ public:
 // Definition of EntityProjectileMine (vtable 0x00B134F8, 0x1C0 bytes).
 class ProjectileMineDef : public PhysicalEntityDef {
 public:
+    explicit ProjectileMineDef(const PhysicalEntityDefDesc& desc) : PhysicalEntityDef(desc) {}
     ~ProjectileMineDef() override;
-    bool armOnApproach = false;   // 0x1B4 NOTE: name from use (arms the mine in state 1)
+    uint32_t field_194 = 0;       // 0x194 hash 0xFEBE4776
+    float field_198 = 1.0f;       // 0x198 attribute 0xD93B86F6
+    bool field_19C = false;       // 0x19C attribute 0xFBCDDB3B
+    float field_1A0 = 1.0f;       // 0x1A0 attribute 0xD63894F0
+    float field_1A4 = 0.0f;       // 0x1A4 attribute 0x35FE9ECF
+    float field_1A8 = 1.0f;       // 0x1A8 NOTE: not read by the parser
+    float field_1AC = 0.0f;       // 0x1AC attribute 0xB289BA5E
+    float field_1B0 = 0.0f;       // 0x1B0 attribute 0x9EB4518A
+    bool armOnApproach = false;   // 0x1B4 attribute 0x0927884E. NOTE: name from use (arms the mine in state 1)
+    bool field_1B5 = true;        // 0x1B5 attribute 0x572A6E83
+    bool field_1B6 = false;       // 0x1B6 attribute 0x644AB625
 };
 
 // Plain projectile (0x2F0 bytes; constructor 0x000F2488).
