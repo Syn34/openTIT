@@ -173,32 +173,46 @@ public:
     AglEmitProperties(const AglEmitProperties&) = delete;
     AglEmitProperties& operator=(const AglEmitProperties&) = delete;
 
-    // Copies the emitter record into the properties.
+    // Copies the emitter record into the properties and picks the
+    // particle material or meshes.
     void ApplyRecord(const AglEmitterRecord& record);
+    // Sprite particles drawn with 'material' (switched to the particle
+    // shader class).
+    void SetMaterial(class AglMaterial* material);
+    // Adds a mesh to emit (switched to the mesh particle shader class).
+    void AddMesh(class AglSubMesh* mesh);
 
     int16_t refCount = 1;               // +0x00
-    float ttl = 0.0f;                   // +0x04 NOTE: the colour fades are relative to it
-    float field_08 = 0.0f;
-    float field_0C = 0.0f;
-    float field_10 = 1.0f;
-    float field_14[5] = {};
-    uint16_t field_28 = 0;
-    uint8_t flags2A = 0x10;             // bits 5-7 cleared, bit 4 set by the constructor
-    uint8_t field_2B = 0;
-    uint8_t field_2C = 0;
-    float field_30 = -3.0f;
-    float field_34 = -50.0f;
-    float field_38 = -50.0f;
-    float field_3C = 5.0f;
-    float field_40 = 1.0f;
-    uint8_t field_44 = 0;
-    uint8_t field_45 = 0;
-    float field_48[4] = {};
-    uint8_t field_58 = 0;
-    uint16_t field_5A = 0;
+    float ttl = 0.0f;                   // +0x04 particle lifetime (seconds); the colour fades are relative to it
+    float invTtl = 0.0f;                // +0x08 1 / ttl
+    float ttlVariance = 0.0f;           // +0x0C fraction, clamped to [0, 0.75]
+    float emitRate = 1.0f;              // +0x10 particles per second
+    float emitRateVariance = 0.0f;      // +0x14 [0, 0.75]
+    float burstDelay = 0.0f;            // +0x18
+    float burstDelayVariance = 0.0f;    // +0x1C [0, 0.75]
+    float burstDuration = 0.0f;         // +0x20
+    float burstDurationVariance = 0.0f; // +0x24 [0, 0.75]
+    uint16_t maxParticles = 0;          // +0x28 rate x lifetime, at least 1
+    // Render flags: bit 7 / 6 / 5 from record flags 0x04 / 0x20 / 0x10
+    // (meanings unknown); the constructor sets bit 4.
+    uint8_t flags2A = 0x10;
+    uint8_t processClass = 0;           // +0x2B
+    uint8_t alignment = 0;              // +0x2C
+    float particleNearCull = -3.0f;     // +0x30 negated distances (view space z)
+    float particleFarCull = -50.0f;     // +0x34
+    float emitterFarCull = -50.0f;      // +0x38
+    float emitterFadeDist = 5.0f;       // +0x3C at least 1
+    float field_40 = 1.0f;              // +0x40 1 when record flag 0x08 is set, else 0
+    bool emitsMeshes = false;           // +0x44 particles are meshes rather than sprites
+    // +0x48: the sprite material, or (overlaid on the console) up to four
+    // particle meshes.
+    class AglMaterial* material = nullptr;
+    class AglSubMesh* meshes[4] = {};
+    uint8_t meshCount = 0;              // +0x58
+    // +0x5A: largest pre-recorded mesh draw (console command words).
+    uint16_t maxDrawWords = 0;
     float aspect[2] = { 1.0f, 1.0f };   // +0x5C particle width / height (normalised to max 1)
-    float field_64 = 0.0f;
-    float field_68 = 0.0f;
+    float materialParams[2] = {};       // +0x64 the material's first two constants
     AglVelocityProperty* velocity = nullptr;   // +0x6C
     AglColorProperty* color = nullptr;         // +0x70
     AglSizeProperty* size = nullptr;           // +0x74

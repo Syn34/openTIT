@@ -10,6 +10,7 @@
 #include "ape/memory/ApeMem.h"
 #include "ape/memory/ApeTFreeList.h"
 
+#include <map>
 #include <mutex>
 
 namespace agl {
@@ -201,6 +202,83 @@ void AglTopology::QueryMemoryUnits() const
 void AglTopology::SetFlags(bool flag80, bool flag40, bool flag20)
 {
     flags = static_cast<uint8_t>((flags & 0x1F) | (flag80 ? 0x80 : 0) | (flag40 ? 0x40 : 0) | (flag20 ? 0x20 : 0));
+}
+
+// @func 0x00508690 AglTopology::AglTopology
+AglTopology::AglTopology()
+{
+    meshes = inlineMeshes;
+    meshCount = 0;
+    flags = static_cast<uint8_t>(((flags | 0x10) & 0x3F) | 0x20);
+    boundRadius = 1.0f;
+    hash = 0;
+    lodOwner = this;
+    lod = nullptr;
+    field_5C = 0;
+    name = "NOT SET";
+}
+
+namespace {
+
+// Moves a reference counted pointer into a slot (the slot takes a
+// reference, the previous occupant loses one).
+template <class T>
+void AssignRef(T*& slot, T* value)
+{
+    if (slot == value)
+        return;
+    T* previous = slot;
+    slot = value;
+    if (value)
+        value->AddRef();
+    if (previous)
+        previous->Release();
+}
+
+std::map<uint32_t, AglTopology*>& TopologyNames()
+{
+    static std::map<uint32_t, AglTopology*> names;
+    return names;
+}
+
+} // namespace
+
+// @func 0x00508B94 AglTopology::AddMesh
+void AglTopology::AddMesh(AglSubMesh* mesh, AglMaterial* material)
+{
+    if (meshCount == kInlineMeshes) {
+        // The inline entries move to a larger block.
+        meshBlock.assign(kMeshBlock, MeshEntry{ nullptr, nullptr });
+        for (int i = 0; i < kInlineMeshes; ++i) {
+            meshBlock[size_t(i)] = inlineMeshes[i];
+            inlineMeshes[i] = MeshEntry{ nullptr, nullptr };
+        }
+        meshes = meshBlock.data();
+    } else if (meshCount > kInlineMeshes && meshCount >= meshBlock.size()) {
+        // NOTE: the console block holds 40 entries and is not checked; the
+        // port grows it instead of writing past its end.
+        meshBlock.resize(meshBlock.size() * 2, MeshEntry{ nullptr, nullptr });
+        meshes = meshBlock.data();
+    }
+    MeshEntry& entry = meshes[meshCount];
+    AssignRef(entry.mesh, mesh);
+    AssignRef(entry.material, material);
+    ++meshCount;
+    mesh->name = name;
+}
+
+void RegisterTopology(AglTopology* topology)
+{
+    std::lock_guard<std::mutex> guard(g_topologyLock);
+    TopologyNames()[topology->hash] = topology;
+}
+
+// @func 0x004FED94 FindTopology
+AglTopology* FindTopology(uint32_t nameHash)
+{
+    std::lock_guard<std::mutex> guard(g_topologyLock);
+    auto it = TopologyNames().find(nameHash);
+    return it != TopologyNames().end() ? it->second : nullptr;
 }
 
 // @func 0x0050A268 AglTopology::GetLodScale

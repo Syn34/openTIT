@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace ape::iff { class IffReader; }
 
@@ -90,6 +91,7 @@ public:
 
 class AglTopology : public AglResource {
 public:
+    AglTopology();
     static AglTopology* Create();
     static void Destroy(void* object);
     void Release() override;
@@ -108,8 +110,15 @@ public:
     void SetFlags(bool flag80, bool flag40, bool flag20);
     // LOD distance scale (0 without LOD settings).
     float GetLodScale() const;
+    // Appends a submesh drawn with 'material' (both reference counted) and
+    // names the submesh after the topology.
+    void AddMesh(AglSubMesh* mesh, AglMaterial* material);
 
-    uint8_t field_8[0x30 - 8] = {};
+    static constexpr int kInlineMeshes = 4;    // entries stored in the object itself
+    static constexpr int kMeshBlock = 40;      // entries of the block used beyond that
+
+    uint8_t field_8[0x10 - 8] = {};
+    MeshEntry inlineMeshes[kInlineMeshes] = {};   // 0x10
     MeshEntry* meshes = nullptr;            // 0x30
     uint16_t meshCount = 0;                 // 0x34
     uint8_t flags = 0;                      // 0x36 (bits 5..7 set by SetFlags)
@@ -119,7 +128,17 @@ public:
     const float* lod = nullptr;             // 0x58: LOD settings, scale at [4]
     const char* name = nullptr;             // 0x60
     uint8_t field_64[0x70 - 0x64] = {};
+    AglTopology* lodOwner = nullptr;        // 0x54 NOTE: points at the topology itself after construction
+    uint32_t field_5C = 0;                  // 0x5C
+    // Storage of the entries beyond the inline ones (a pooled 40-entry
+    // block on the console).
+    std::vector<MeshEntry> meshBlock;
 };
+
+// The topology dictionary (0x010DDC80): topologies by name hash, filled as
+// mesh records are loaded.
+void RegisterTopology(AglTopology* topology);
+AglTopology* FindTopology(uint32_t nameHash);
 
 class AglShaderClass;
 // UV animation of a material (0x98 bytes): scroll in U, scroll in V and a
@@ -269,6 +288,8 @@ public:
 // textured with default texture 0 or 1). All alpha blended; created on
 // first use.
 AglMaterial* GetBuiltinMaterial(int index);
+// A live material (still referenced) with that name hash, or null.
+AglMaterial* FindLiveMaterial(uint32_t nameHash);
 
 // A new unlit material for sprites and screen quads: textured with 'texture',
 // or vertex colored when 'texture' is null. Blend state is left at the

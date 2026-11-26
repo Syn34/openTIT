@@ -2,6 +2,10 @@
 // (0x004FFFF0, 0x005284C0-0x00529F98).
 #include "agl/AglParticleProps.h"
 
+#include "agl/AglResources.h"
+#include "agl/AglShaderClass.h"
+#include "agl/AglTexture.h"
+
 #include "ape/sys/ApeIff.h"
 
 #include <algorithm>
@@ -104,12 +108,131 @@ AglEmitProperties::~AglEmitProperties()
             property->Release();
 }
 
-// TODO(0x004FF4C0 AglEmitProperties::ApplyRecord) copies and converts the
-// emitter record (lifetimes, rates, culling distances, bursts, emit
-// meshes); the particle system that reads the result is not ported.
+namespace {
+
+constexpr uint32_t kParticleClassHash = 0x90873B1Bu;      // sprite particles
+constexpr uint32_t kMeshParticleClassHash = 0x59D9B0B7u;  // mesh particles
+
+// Variances are fractions of their value, limited to 75%.
+float ClampVariance(float variance)
+{
+    return std::clamp(variance, 0.0f, 0.75f);
+}
+
+AglShaderClass* ParticleClass()
+{
+    static AglShaderClass* cls = FindShaderClass(kParticleClassHash);   // 0x010F0BC8
+    return cls;
+}
+
+AglShaderClass* MeshParticleClass()
+{
+    static AglShaderClass* cls = FindShaderClass(kMeshParticleClassHash);   // 0x010F0BB8
+    return cls;
+}
+
+// The material emitters without a named material use: additive, no depth
+// test, textured with the white default texture.
+AglMaterial* CreateDefaultParticleMaterial()
+{
+    AglMaterial* material = nullptr;
+    if (AglShaderClass* cls = FindShaderClass(kParticleClassHash)) {
+        material = AglMaterial::Create();
+        material->shaderClass = cls;
+    }
+    if (!material)
+        return nullptr;
+    material->blendEquation = gpu::BlendEquation::Add;
+    material->blendDst = gpu::BlendFactor::One;
+    material->depthTest = false;
+    material->blendEnable = true;
+    material->blendSrc = gpu::BlendFactor::SrcAlpha;
+    material->AddTexture(GetDefaultTexture(kAglTex_White));
+    return material;
+}
+
+} // namespace
+
+// @func 0x004FF4C0 AglEmitProperties::ApplyRecord
 void AglEmitProperties::ApplyRecord(const AglEmitterRecord& record)
 {
     ttl = record.ttl;
+    invTtl = 1.0f / record.ttl;
+    ttlVariance = ClampVariance(record.ttlVariance);
+    emitRate = record.emitRate;
+    emitRateVariance = ClampVariance(record.emitRateVariance);
+    maxParticles = static_cast<uint16_t>(std::max(1, int(record.emitRate * record.ttl)));
+    burstDelay = record.burstDelay;
+    burstDelayVariance = ClampVariance(record.burstDelayVariance);
+    burstDuration = record.burstDuration;
+    burstDurationVariance = ClampVariance(record.burstDurationVariance);
+
+    if (record.emitObjectType == 0) {
+        // Sprites: the named material, or the default particle material.
+        AglMaterial* sprite = record.emitObjectHash ? FindLiveMaterial(record.emitObjectHash) : nullptr;
+        if (!sprite)
+            sprite = CreateDefaultParticleMaterial();
+        SetMaterial(sprite);
+    } else if (record.emitObjectType == 1) {
+        if (AglTopology* topology = FindTopology(record.emitObjectHash))
+            AddMesh(topology->meshes[0].mesh);
+    }
+
+    field_40 = (record.renderFlags & 0x08) ? 1.0f : 0.0f;
+    flags2A = static_cast<uint8_t>((flags2A & 0x1F) | ((record.renderFlags & 0x04) ? 0x80 : 0) |
+                                   ((record.renderFlags & 0x20) ? 0x40 : 0) |
+                                   ((record.renderFlags & 0x10) ? 0x20 : 0));
+    particleNearCull = -record.particleNearZCull;
+    particleFarCull = -record.particleFarZCull;
+    emitterFarCull = -record.emitterFarZCull;
+    emitterFadeDist = std::max(record.emitterFarZFadeDist, 1.0f);
+    processClass = record.processClass;
+    alignment = record.alignment;
+
+    // Mesh emitters may name up to three more meshes.
+    if (record.emitObjectType == 1) {
+        for (uint32_t hash : record.emitMeshHash) {
+            if (hash == 0)
+                return;
+            if (AglTopology* topology = FindTopology(hash))
+                AddMesh(topology->meshes[0].mesh);
+        }
+    }
+}
+
+// @func 0x004FEDD0 AglEmitProperties::SetMaterial
+void AglEmitProperties::SetMaterial(AglMaterial* sprite)
+{
+    material = sprite;
+    sprite->AddRef();
+    emitsMeshes = false;
+    sprite->cullFrontFace = 0;
+    // The particle quad takes the proportions of the first texture.
+    const AglTexture* texture = sprite->textures[0];
+    const float width = texture->image.desc.width;
+    const float height = texture->image.desc.height;
+    const float longest = std::max(width, height);
+    aspect[0] = width / longest;
+    aspect[1] = height / longest;
+    materialParams[0] = sprite->constants ? sprite->constants[0] : 0.0f;
+    materialParams[1] = sprite->constants ? sprite->constants[1] : 0.0f;
+    if (sprite->shaderClass != ParticleClass())
+        sprite->shaderClass = ParticleClass();
+}
+
+// @func 0x004FEBF0 AglEmitProperties::AddMesh
+// NOTE: the console also pre-records the mesh's draw call (vertex constants
+// and the draw command) into a command buffer and keeps the largest size in
+// maxDrawWords; the PC renderer draws the submesh directly.
+void AglEmitProperties::AddMesh(AglSubMesh* mesh)
+{
+    meshes[meshCount] = mesh;
+    emitsMeshes = true;
+    ++meshCount;
+    mesh->AddRef();
+    auto* meshMaterial = static_cast<AglMaterial*>(mesh->owner);
+    if (meshMaterial->shaderClass != MeshParticleClass())
+        meshMaterial->shaderClass = MeshParticleClass();
 }
 
 void SetEmitPropertiesLoadCallback(void (*callback)(AglEmitProperties* props, void* arg, int phase), void* arg)

@@ -15,6 +15,7 @@
 #include "ape/core/ApeSystem.h"
 #include "ape/file/ZipArchive.h"
 #include "ape/sys/ApeIff.h"
+#include "ape/world/ApeWorldHooks.h"
 
 #include <atomic>
 
@@ -60,6 +61,31 @@ constexpr uint32_t kParticleStride = 24;
 int ShadowEdgeChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
 {
     return 1;
+}
+
+// The world module reaches meshes (topologies) through its render hooks.
+// PC only: the console world code calls these functions directly.
+ape::world::AglMesh* ToMesh(AglTopology* topology)
+{
+    return reinterpret_cast<ape::world::AglMesh*>(topology);
+}
+AglTopology* ToTopology(ape::world::AglMesh* mesh)
+{
+    return reinterpret_cast<AglTopology*>(mesh);
+}
+
+void InstallWorldRenderHooks()
+{
+    ape::world::ApeWorldRenderHooks& hooks = ape::world::g_worldRenderHooks;
+    hooks.findMesh = [](uint32_t nameHash) { return ToMesh(FindTopology(nameHash)); };
+    hooks.setMeshOwnerName = [](ape::world::AglMesh* mesh, const char* name) { ToTopology(mesh)->SetName(name); };
+    hooks.releaseMesh = [](ape::world::AglMesh* mesh) { ToTopology(mesh)->Release(); };
+    hooks.enableMeshShadows = [](ape::world::AglMesh* mesh) { ToTopology(mesh)->SetFlags(true, false, false); };
+    hooks.getMeshPartCount = [](ape::world::AglMesh* mesh) { return ToTopology(mesh)->meshCount; };
+    hooks.getMeshPartMaterialFlags = [](ape::world::AglMesh* mesh, int part) {
+        const AglMaterial* material = ToTopology(mesh)->meshes[part].material;
+        return material ? material->flags : uint8_t(0);
+    };
 }
 
 } // namespace
@@ -294,6 +320,7 @@ bool AglInit()
     InitStencilShadows();
     InitOutlines();
     InitOcclusionQueries();
+    InstallWorldRenderHooks();
 
     // NOTE: 0x010C5A72 is set here and 0x010C5A08/0x010C5A0C cleared; their
     // readers are not identified (0x010C5A08 is the deferred release list

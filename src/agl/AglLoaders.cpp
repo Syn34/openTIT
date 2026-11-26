@@ -328,11 +328,24 @@ bool AglTexture::LoadExternal(const char* path)
     return false;
 }
 
-// TODO(0x00525E40 MeshChunkHandler): creates a topology and parses its
-// header, submesh and include children. Skipped until the topology mesh
-// list allocation (0x00508B94) is ported.
-int MeshChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+// @func 0x00525E40 MeshChunkHandler
+// A mesh record: a new topology filled by the header and submesh children.
+// Parts without a material of their own use their submesh's material; the
+// finished topology enters the dictionary.
+int MeshChunkHandler(ape::iff::IffReader* reader, void* /*arg*/)
 {
+    AglTopology* topology = AglTopology::Create();
+    reader->ParseChunks(topology);
+    for (uint16_t i = 0; i < topology->meshCount; ++i) {
+        AglTopology::MeshEntry& entry = topology->meshes[i];
+        if (!entry.material) {
+            auto* material = static_cast<AglMaterial*>(entry.mesh->owner);
+            entry.material = material;
+            if (material)
+                material->AddRef();
+        }
+    }
+    RegisterTopology(topology);
     return 1;
 }
 
@@ -498,11 +511,16 @@ int VertexDataChunkHandler(ape::iff::IffReader* reader, void* arg)
     return 1;
 }
 
-// TODO(0x00524500 SubMeshChunkHandler): takes a submesh from the pool, adds it
-// to the topology passed in 'arg' (0x00508B94) and parses its children with
-// the submesh as their argument. Skipped for now.
-int SubMeshChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+// @func 0x00524500 SubMeshChunkHandler
+// A submesh record of the topology being loaded: the new submesh joins the
+// topology (which keeps the only reference) and its children fill it.
+int SubMeshChunkHandler(ape::iff::IffReader* reader, void* arg)
 {
+    auto* topology = static_cast<AglTopology*>(arg);
+    AglSubMesh* mesh = AglSubMesh::Create();
+    topology->AddMesh(mesh, static_cast<AglMaterial*>(mesh->owner));
+    mesh->Release();
+    reader->ParseChunks(mesh);
     return 1;
 }
 

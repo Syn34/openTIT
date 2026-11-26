@@ -211,6 +211,18 @@ namespace {
 AglMaterial* g_builtinMaterials[6] = {};   // 0x010F0C60
 }
 
+// Inline on the console wherever a material is looked up by name (the
+// pool's live objects are walked).
+AglMaterial* FindLiveMaterial(uint32_t nameHash)
+{
+    AglMaterial* found = nullptr;
+    ape::ApeTListAllocator<AglMaterial>::GetAllocator().ForEach([&](AglMaterial* material) {
+        if (!found && material->nameHash == nameHash)
+            found = material;
+    });
+    return found && found->refCount >= 1 ? found : nullptr;
+}
+
 // @func 0x0050F0F0 GetBuiltinMaterial
 AglMaterial* GetBuiltinMaterial(int index)
 {
