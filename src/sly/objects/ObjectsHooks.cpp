@@ -2,6 +2,7 @@
 //
 // TODO stubs: each returns the "nothing there" value until the named console
 // system is ported and can be called directly.
+#include "ape/world/ApeInstances.h"
 #include "sly/objects/ObjectsHooks.h"
 
 #include "sly/game/AudioSystem.h"
@@ -154,11 +155,9 @@ bool IsCharacterDisguised(const Entity* character)
     (void)character;
     return false;
 }
-// TODO(0x007335C4 ApeTDefList<ApeSplineDef>::Find)
 void* FindSplineDef(uint32_t nameHash)
 {
-    (void)nameHash;
-    return nullptr;
+    return ape::world::ApeTInstanceList<ape::world::ApeSplineInstance>::Find(nameHash);
 }
 // TODO(0x002E1220)
 void* FindJob(uint32_t jobNameHash)

@@ -1,4 +1,6 @@
 // openTIT - Camera trigger volumes.
+#include "ape/world/ApeObj.h"
+#include "sly/game/ObjectHelpers.h"
 #include "sly/objects/TriggerCamera.h"
 
 #include "sly/objects/TriggerTuning.h"
@@ -230,6 +232,22 @@ void CameraTrigger::OnExit(Entity* entity)
         return;
     DeactivateCamera(entity);
     TriggerBase::OnExit(entity);
+}
+
+// @func 0x002167BC CameraTrigger::SetAttachParent
+void CameraTrigger::SetAttachParent(Entity* parent)
+{
+    attachParent = parent;
+    if (!parent || !parent->object)
+        return;
+    for (void** slot : {&m_splinePos, &m_splineTgt}) {
+        if (!*slot)
+            continue;
+        const uint32_t name = static_cast<ape::world::ApeObj*>(*slot)->GetNameHash();
+        ape::world::ApeObj* found = FindInHierarchy(attachParent->object, name);
+        if (found && found->GetType() == ape::world::kObjType_SplineInstance)
+            *slot = found;
+    }
 }
 
 // @func 0x002169C0 CameraTrigger::ReleaseCameraMode

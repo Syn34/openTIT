@@ -108,6 +108,9 @@ public:
     void OnEnter(Entity* entity) override;
     void OnExit(Entity* entity) override;
     bool IsDebugDisplayed() const override;
+    // Slot 46: attached to a parent entity, the splines are looked up again
+    // among the parent's objects (same names).
+    void SetAttachParent(Entity* parent) override;
     // Removes this trigger's camera mode from the game camera and frees it
     // (0x002169C0, called by the camera when it drops the mode).
     void ReleaseCameraMode();
