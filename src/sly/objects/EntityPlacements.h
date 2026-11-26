@@ -308,8 +308,8 @@ public:
     float field_F0[4] = {};             // +0xF0..+0xFC
     bool field_100 = false;             // +0x100 attribute 0x317F6BB4
 };
-struct ActorGroupInstanceDesc : ScriptedInstanceDesc {
-    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+struct ActorGroupInstanceDesc : ActorInstanceDesc {
+    using ActorInstanceDesc::ActorInstanceDesc;
     float field_D0[4] = {};             // 0xD0..0xDC
     bool field_E0 = false;              // 0xE0
 };
@@ -324,8 +324,8 @@ public:
     // +0x104 bits 30/31 are handed on (attributes 0x994327AD / 0x609A61B6).
     uint32_t flags_104 = 0;
 };
-struct HitCounterActorInstanceDesc : ScriptedInstanceDesc {
-    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+struct HitCounterActorInstanceDesc : ActorInstanceDesc {
+    using ActorInstanceDesc::ActorInstanceDesc;
     float field_D0[5] = {};             // 0xD0..0xE0
     uint32_t flags_E4 = 0;              // 0xE4
 };
@@ -346,8 +346,8 @@ public:
                           -3.4028235e38f, -3.4028235e38f};   // +0xF0..+0x108
     float field_10C = 0.0f;             // +0x10C attribute 0x7B2F95A0
 };
-struct SoundActorInstanceDesc : ScriptedInstanceDesc {
-    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+struct SoundActorInstanceDesc : ActorInstanceDesc {
+    using ActorInstanceDesc::ActorInstanceDesc;
     float slotTimes[7] = {};            // 0xD0..0xE8
     float field_EC = 0.0f;              // 0xEC
 };
@@ -362,8 +362,8 @@ public:
     // +0xFC bits 30/31 are handed on (attributes 0x3AF62E9E / 0x4D97C801).
     uint32_t flags_FC = 0;
 };
-struct SignalActorInstanceDesc : ScriptedInstanceDesc {
-    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+struct SignalActorInstanceDesc : ActorInstanceDesc {
+    using ActorInstanceDesc::ActorInstanceDesc;
     float field_D0[3] = {};             // 0xD0..0xD8
     uint32_t flags_DC = 0;              // 0xDC
 };
@@ -376,8 +376,8 @@ public:
     // Attributes 0xCEA8E637, 0x06CD2139, 0x0DE78502, 0x0B0BD5E6, 0x285C1380.
     float field_F0[5] = {};             // +0xF0..+0x100
 };
-struct ActorB15E60InstanceDesc : ScriptedInstanceDesc {
-    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+struct ActorB15E60InstanceDesc : ActorInstanceDesc {
+    using ActorInstanceDesc::ActorInstanceDesc;
     float field_D0[5] = {};             // 0xD0..0xE0
 };
 
@@ -393,8 +393,8 @@ public:
     // Attributes 0x7D0D427B, 0xE019565D, 0x846B9DA2.
     bool field_108[3] = {};             // +0x108..+0x10A
 };
-struct ScriptObjectActorInstanceDesc : ScriptedInstanceDesc {
-    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+struct ScriptObjectActorInstanceDesc : ActorInstanceDesc {
+    using ActorInstanceDesc::ActorInstanceDesc;
     float field_D0[3] = {};             // 0xD0..0xD8
     float field_E0 = 0.0f;              // 0xE0
     bool field_E8[3] = {};              // 0xE8..0xEA
@@ -539,8 +539,8 @@ public:
     ActorB17990Block block{};           // +0x120
     uint32_t flags_164 = 0;             // +0x164 bits 30/31 are handed on
 };
-struct ActorB17990InstanceDesc : ScriptedInstanceDesc {
-    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+struct ActorB17990InstanceDesc : ActorInstanceDesc {
+    using ActorInstanceDesc::ActorInstanceDesc;
     ape::Vec3 field_D0{};               // 0xD0
     ape::Vec3 field_E0{};               // 0xE0
     uint32_t field_F0[4] = {};          // 0xF0..0xFC
@@ -555,8 +555,8 @@ public:
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001DEB58
     float field_F0[2] = {};             // +0xF0, +0xF4 radians (attribute 0xBF3F0DB1, in degrees)
 };
-struct InteractivePropAInstanceDesc : ScriptedInstanceDesc {
-    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+struct InteractivePropAInstanceDesc : ActorInstanceDesc {
+    using ActorInstanceDesc::ActorInstanceDesc;
     float field_D0[2] = {};             // 0xD0, 0xD4
 };
 
@@ -569,8 +569,8 @@ public:
     float field_100[3] = {};            // +0x100..+0x108 attribute 0xC88E4511
     uint32_t field_110 = 0;             // +0x110 attribute 0x675C8395 (hash)
 };
-struct SafeInstanceDesc : ScriptedInstanceDesc {
-    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+struct SafeInstanceDesc : ActorInstanceDesc {
+    using ActorInstanceDesc::ActorInstanceDesc;
     uint32_t field_D0 = 0;              // 0xD0
     float field_E0[3] = {};             // 0xE0..0xE8
     uint32_t field_F0 = 0;              // 0xF0
@@ -596,8 +596,8 @@ public:
     // 0x1E85A989, 0xD6F80AE3, 0x850F9FE3, 0x4DE83B5A, 0x6BDE6A90.
     bool field_134[8] = {false, true, false, true, true, false, false, false};
 };
-struct TweenActorInstanceDesc : ScriptedInstanceDesc {
-    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+struct TweenActorInstanceDesc : ActorInstanceDesc {
+    using ActorInstanceDesc::ActorInstanceDesc;
     float field_D0[2] = {};             // 0xD0
     float field_D8[2] = {};             // 0xD8
     uint32_t names[9] = {};             // 0xE0..0x100
@@ -617,8 +617,8 @@ struct TweenActorInstanceDesc : ScriptedInstanceDesc {
 
 // Instance description of InteractivePropB (the placement's fields 0x20
 // bytes lower).
-struct InteractivePropBInstanceDesc : ScriptedInstanceDesc {
-    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+struct InteractivePropBInstanceDesc : ActorInstanceDesc {
+    using ActorInstanceDesc::ActorInstanceDesc;
     uint32_t field_D0 = 0;              // 0xD0
     ape::Vec3 field_E0{};               // 0xE0
     ape::Vec4 rotation{0.0f, 0.0f, 0.0f, 1.0f};   // 0xF0

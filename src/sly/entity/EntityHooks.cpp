@@ -134,6 +134,11 @@ bool ForwardVisibilityToComponents() { return false; }
 bool ComponentHidesRender(EntityComponent*) { return false; }
 
 void AnimControllerDestroy(void* controller) { delete static_cast<anim::AnimController*>(controller); }
+void EntityJoinListenerGroup(Entity* entity, uint32_t group, bool add)
+{
+    (void)entity; (void)group; (void)add;
+}
+
 void EntityLeaveListenerGroup(Entity* entity)
 {
     UnregisterListener(entity, true);

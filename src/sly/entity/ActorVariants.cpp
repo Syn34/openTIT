@@ -1,11 +1,15 @@
 // openTIT - Small actor classes (see ActorVariants.h).
 #include "sly/entity/ActorVariants.h"
 
+#include <cstring>
+
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "sly/entity/CharacterHooks.h"
 #include "sly/entity/EntityHooks.h"
 #include "sly/entity/GameEntityHooks.h"
+#include "sly/entity/ActorDefs.h"
+#include "sly/objects/EntityPlacements.h"
 
 namespace sly {
 namespace entity {
@@ -32,6 +36,61 @@ ape::ApeAnimScriptInstance* ScriptOf(Entity* entity)
 
 
 // -- ActorGroup --------------------------------------------------------------------------
+
+namespace {
+// The script variable a group shares with its members (a float variable
+// whose word is cleared).
+constexpr uint32_t kVar_Group = 0xBBBC16FFu;
+// Event listener group every actor group joins. NOTE: name unknown.
+constexpr uint32_t kListenerGroup_ActorGroups = 0xBD27942Du;
+
+ape::ApeAnimScriptVar* TakeGroupVar(ape::ApeAnimScriptInstance* script)
+{
+    ape::ApeAnimScriptVar* var = script->FindVar(kVar_Group);
+    if (!var || var->GetType() != ape::AnimScriptVarType::Float)
+        return nullptr;
+    GroupRecordSetCounter(var, 0);
+    return var;
+}
+} // namespace
+
+// @func 0x001A990C ActorGroup::ActorGroup
+ActorGroup::ActorGroup(const objects::ActorGroupInstanceDesc& desc)
+    : ActorEntity(desc), field_1C0(desc.field_D0[0]), field_1C8(desc.field_D0[2]), field_1CC(desc.field_D0[3]),
+      anyState(desc.field_E0)
+{
+    std::memcpy(&counter, &desc.field_D0[1], sizeof(counter));
+    if (!children)
+        children = new ape::ApeTArray<EntityChildLink>();
+    if (children->Count() != 0)
+        members.SetCapacity(children->Count());
+    for (const EntityChildLink& link : *children) {
+        Entity* member = link.child;
+        if (!member)
+            continue;
+        EntitySetState(member, 0, 0);
+        ape::ApeAnimScriptVar* var = nullptr;
+        if (ape::ApeAnimScriptInstance* script = ScriptOf(member)) {
+            var = TakeGroupVar(script);
+            script->SetStateAndUpdate(kState_Slot1);
+        }
+        members.PushBack(Member{member, var});
+    }
+    if (animScript)
+        groupVar = TakeGroupVar(animScript);
+    EntityJoinListenerGroup(this, kListenerGroup_ActorGroups, true);
+    EntitySetState(this, 0, 0);
+}
+
+// @func 0x001A9C80 ActorGroupDef::Spawn
+Entity* ActorGroupDef::Spawn(EntityPlacement* placement)
+{
+    objects::ActorGroupInstanceDesc desc(InstanceName(placement), this);
+    placement->FillInstanceDesc(desc);
+    auto* group = new ActorGroup(desc);
+    group->OnSpawn();
+    return group;
+}
 
 // @func 0x001AAA70 ActorGroup::HandleMessage
 void ActorGroup::HandleMessage(const EntityMessage& msg)

@@ -26,6 +26,7 @@ class ActorGroupDef : public ActorDef {
 public:
     explicit ActorGroupDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~ActorGroupDef() override;
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7
     float field_130[4] = {};            // 0x130
     bool field_140 = false;             // 0x140
 };

@@ -5,6 +5,9 @@
 
 #include "sly/entity/ActorEntities.h"
 
+namespace sly::objects { struct ActorGroupInstanceDesc; }
+namespace ape { class ApeAnimScriptVar; }
+
 namespace sly {
 namespace entity {
 
@@ -20,6 +23,9 @@ public:
     // @func 0x00751750 ActorGroup::~ActorGroup (thunk, +0x180)
     // @func 0x00751520 ActorGroup::~ActorGroup (deleting thunk, +0x180)
     ~ActorGroup() override = default;
+    // Takes every attached child as a member: back to state 0, its script
+    // in the first slot state and its group variable cleared (0x001A990C).
+    explicit ActorGroup(const objects::ActorGroupInstanceDesc& desc);
     // @func 0x001AA5E0 ActorGroup::Release
     bool Release(bool kill) override { return ActorEntity::Release(kill); }
     // A hurt member plays its second slot state and enters state 1.
@@ -32,8 +38,14 @@ public:
         void* record;        // NOTE: its word +0x14 takes the group's counter
     };
     ape::ApeTArray<Member> members;      // 0x1A8
-    uint32_t counter = 0;                // 0x1C4
+    // 0x1BC the group's own script variable 0xBBBC16FF, or null.
+    ape::ApeAnimScriptVar* groupVar = nullptr;
+    float field_1C0 = 0.0f;              // 0x1C0 placement field_F0[0]
+    uint32_t counter = 0;                // 0x1C4 placement field_F0[1] (raw word)
+    float field_1C8 = 0.0f;              // 0x1C8 placement field_F0[2]
+    float field_1CC = 0.0f;              // 0x1CC placement field_F0[3]
     bool anyState = false;               // 0x1D0 members react in any state
+    int32_t field_1D4 = -1;              // 0x1D4
 };
 
 // Counts hits from players (vtable 0x00B15550; destructor 0x00751AA4).

@@ -158,6 +158,8 @@ bool PhysicsStepInProgress();
 void AnimControllerDestroy(void* controller);
 // 0x0048F298 (entity, true): removes the entity from its event listener group.
 void EntityLeaveListenerGroup(Entity* entity);
+// 0x0048FA54: adds the entity to event listener group `group`.
+void EntityJoinListenerGroup(Entity* entity, uint32_t group, bool add);
 // User data tag a released world object keeps (with the entity's render id).
 constexpr uint32_t kUserTag_ReleasedEntity = 0x25431D90u;
 void WorldObjectSetUserData(ape::world::ApeObj* object, uint32_t tag, uint32_t value);
