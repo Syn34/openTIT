@@ -32,12 +32,8 @@ SlyGame::SlyGame(uint8_t initialState)
 // ends the dialog, destroys the managers, the scene and the render targets.
 SlyGame::~SlyGame()
 {
-    for (GamePlayer& player : players) {
-        if (player.character) {
-            player.character->Release(false);
-            player.character = nullptr;
-        }
-    }
+    for (GamePlayer& player : players)
+        player.ReleaseCharacter();
 }
 
 // @func 0x0046B5DC SlyGame::GetState

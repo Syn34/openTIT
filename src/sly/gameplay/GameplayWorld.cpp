@@ -63,7 +63,7 @@ WorldFlags& GetWorldFlags()
 }
 
 int GameMode() { return 0; }
-void SetLetterbox(bool) {}
+void SetLetterbox(bool on) { SlyGame::SetLetterbox(on); }
 void SetHudVisible(bool) {}
 void ShowLevelHeadline() {}
 void RequestGameTransition(uint32_t) {}
@@ -192,7 +192,10 @@ bool ActorClipFinished(WorldObject*) { return true; }
 float EntityAnimTime(WorldObject*) { return 0.0f; }
 float EntityAnimLength(WorldObject*) { return 1.0f; }
 void ShowButtonHint(uint32_t) {}
-float PadAxis(int, int) { return 0.0f; }
+float PadAxis(int padIndex, int axis)
+{
+    return padIndex >= 0 && padIndex < kLocalPlayerCount ? GetAppRuntime().players[padIndex].GetAnalog(uint32_t(axis)) : 0.0f;
+}
 EntitySkin* EntityActiveSkin(WorldObject*) { return nullptr; }
 EntitySkin* SkinPrevious(const EntitySkin*) { return nullptr; }
 bool EntitySwitchSkin(WorldObject*, EntitySkin*) { return false; }

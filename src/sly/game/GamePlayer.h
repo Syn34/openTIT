@@ -57,6 +57,8 @@ struct GamePlayer {
 
     // Power back to its tuning defaults, full (0x0045C81C).
     void ResetMeter();
+    // Releases the character (its virtual Release) and forgets it.
+    void ReleaseCharacter();
     // Empties both event logs (0x0045C7A8).
     void ClearEventLogs();
     // Recharges the power meter by dt (0x00465CB8): rate +0x68 (a character

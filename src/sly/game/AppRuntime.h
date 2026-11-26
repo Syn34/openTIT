@@ -33,10 +33,15 @@ struct AppPlayer {
     // NOTE: stores two words at +0xD0/+0xD4 (meaning unknown; the app
     // constructor initialises them from a global pair).
     void SetField_D0(const uint32_t value[2]);
+    // Analog value `index` of the pad (0 without a pad, for an index the
+    // player may not use, or past the last analog).
+    float GetAnalog(uint32_t index) const;
+    bool IsPadConnected() const;
 
     uint8_t index = 0;                        // +0xB4 (stride 0x2EC0)
     uint32_t inputFlags = 0;                  // +0xB8
     uint32_t inputMask = 0;                   // +0xBC
+    uint32_t analogMask = 0xFFFFFFFFu;        // +0xC4 analog values the player may use
     ape::input::ApePadDevice* pad = nullptr;  // +0xCC
     uint32_t field_D0[2] = {};                // +0xD0
 };
