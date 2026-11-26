@@ -2145,8 +2145,8 @@ public:
 };
 
 class SlyTextureWarpTechnique : public AglTechnique {
-    // TODO(0x005D17E8 SlyTextureWarpTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABE3C SlyTextureWarpTechnique::~SlyTextureWarpTechnique
@@ -2192,8 +2192,8 @@ public:
 };
 
 class ShoTextureWarpTechnique : public AglTechnique {
-    // TODO(0x005D7598 ShoTextureWarpTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABE8C ShoTextureWarpTechnique::~ShoTextureWarpTechnique
@@ -5979,6 +5979,33 @@ void SlyWater2Technique::BeginMaterial(AglMaterial* material)
 void SlyWater3Technique::BeginMaterial(AglMaterial* material)
 {
     BeginWaterMaterial(material, 0x27, 27, 0x23, 5, 0x28);
+}
+
+// @func 0x005D17E8 SlyTextureWarpTechnique::Draw
+// Per-vertex lights for lit materials; item alpha in fragment constant 2;
+// mirrored items are not special-cased.
+void SlyTextureWarpTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    UploadMaterialVertexLights(item);
+    BeginItemAlpha(item, 2);
+    ApplyItemStencilRef(item);
+    item->geometry->Draw(item);
+    EndItemAlpha(item);
+}
+
+// @func 0x005D7598 ShoTextureWarpTechnique::Draw
+// Per-vertex lights for lit materials and the item alpha in fragment
+// constant 8; no stencil tag.
+void ShoTextureWarpTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    UploadMaterialVertexLights(item);
+    BeginItemAlpha(item, 8);
+    item->geometry->Draw(item);
+    EndItemAlpha(item);
 }
 
 } // namespace agl
