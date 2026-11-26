@@ -560,7 +560,11 @@ public:
     // Both wait while something occupies the actor, depending on flag bit 29.
     bool AdvanceTo2(float elapsed, float duration) override;
     bool AdvanceTo5(float elapsed, float duration) override;
+    // Slot 5: the tracked triggers report while the actor is in state 4
+    // past the definition's delay, or (flag bit 26) in state 6.
+    bool PostUpdate(float dt) override;
     bool IsOccupied() const;
+    static constexpr uint32_t kOccupancy_Bit26 = 1u << 26;
     static constexpr uint32_t kOccupancy_Bit29 = 1u << 29;
 
     struct Tracked {
@@ -579,6 +583,7 @@ public:
 class SoundActorB16DB0Def : public SoundActorDef {
 public:
     ~SoundActorB16DB0Def() override;
+    float triggerDelay = 0.0f;     // 0x1A4 time in state 4 before the triggers report
     uint32_t options = 0;          // 0x1BC bit 28: close even when occupied
 };
 
@@ -596,6 +601,8 @@ public:
     bool Release(bool kill) override;
     bool AdvanceTo2(float elapsed, float duration) override;
     bool AdvanceTo5(float elapsed, float duration) override;
+    // Slot 5: the tracked triggers report while the actor is in state 4.
+    bool PostUpdate(float dt) override;
 
     struct Tracked {               // 0x10-byte records
         void* phantom = nullptr;   // +0x00 Havok phantom
