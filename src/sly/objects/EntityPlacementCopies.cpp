@@ -359,6 +359,26 @@ void TweenActorPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
         desc.field_114[i] = field_134[i];
 }
 
+// @func 0x00204AE0 RigidEntityB19198Placement::FillInstanceDesc
+void RigidEntityB19198Placement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
+{
+    ScriptedEntityPlacement::FillInstanceDesc(baseDesc);
+    auto& desc = static_cast<RigidEntityB19198InstanceDesc&>(baseDesc);
+    CopyPhysical(desc.settings, settings);
+    desc.field_F4 = field_114;
+    for (int i = 0; i < 3; ++i)
+        desc.field_F8[i] = field_118[i];
+}
+
+// @func 0x0020AB8C PlacementB193A8::FillInstanceDesc
+void PlacementB193A8::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
+{
+    EntityPlacement::FillInstanceDesc(baseDesc);
+    auto& desc = static_cast<InstanceDescB193A8&>(baseDesc);
+    desc.field_90 = field_B4;
+    desc.field_94 = field_B8;
+}
+
 // @func 0x001FAD7C TargetableCPlacement::FillInstanceDesc
 void TargetableCPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
 {
