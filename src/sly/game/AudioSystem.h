@@ -215,6 +215,13 @@ int OutputChannelCount();
 // Starts fading bus 'bus' (0..3) to 'volume' over 'seconds' (at once for 0).
 void FadeBusVolume(uint32_t bus, float volume, float seconds);
 
+// Queues the music to switch to (the previous queued name is released).
+// While music changes are locked the current music is released instead.
+// NOTE: the two flags are stored for the music update (not ported); their
+// meaning is unknown.
+void SetPendingMusic(SoundName* name, bool flagA, bool flagB);
+void SetMusicLocked(bool locked);
+
 // Stops every voice at once and forgets the tracked voices.
 void StopAllSounds();
 

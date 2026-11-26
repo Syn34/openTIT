@@ -411,6 +411,36 @@ void SetMusicVoice(VoiceId id, SoundName* name)
     g_musicVoice = id;
 }
 
+namespace {
+SoundName* g_pendingMusic = nullptr;    // 0x00F65B74
+bool g_pendingMusicFlagA = false;       // 0x010AFEA8
+bool g_pendingMusicFlagB = false;       // 0x010AFEA9
+bool g_musicLocked = false;             // 0x010B0998 NOTE: writer not identified
+} // namespace
+
+void SetMusicLocked(bool locked)
+{
+    g_musicLocked = locked;
+}
+
+// @func 0x00449E48 SetPendingMusic
+void SetPendingMusic(SoundName* name, bool flagA, bool flagB)
+{
+    if (!g_audioEnabled)
+        return;
+    if (g_musicLocked) {
+        StopVoice(g_musicVoice, true);
+        return;
+    }
+    if (g_pendingMusic)
+        SoundNameRelease(g_pendingMusic);
+    g_pendingMusic = name;
+    g_pendingMusicFlagA = flagA;
+    g_pendingMusicFlagB = flagB;
+    if (name)
+        SoundNameAddRef(name);
+}
+
 // @func 0x00449950 StopAllSounds
 void StopAllSounds()
 {
