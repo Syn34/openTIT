@@ -152,6 +152,56 @@ void PlayCounterSound(uint32_t sound)
 
 } // namespace
 
+// @func 0x00369D98 hud::StartCoinCount
+void StartCoinCount(float amount, HudTextOverride& state, const uint8_t* profileIndex, const ape::Vec3& position)
+{
+    static const uint8_t kNoTint[4] = {0, 0, 0, 0};   // 0x01164CA4
+    if (state.active)
+        return;
+    ResetTextOverride(state);
+    state.profileIndex = profileIndex;
+    state.active = true;
+    if (HudObject* owner = state.owner) {
+        char text[16];
+        std::snprintf(text, sizeof text, "%i", int(amount));
+        owner->ShowText(-1.0f, text, true, false, nullptr, kNoTint);
+        if (ape::world::ApeObj* object = owner->object) {
+            object->SetScale({1.0f, 1.0f, 1.0f, 0.0f}, false);
+            object->VirtualSlot13(0xFF, false);   // opaque
+            ape::Matrix34 local = object->GetLocal();
+            local.xAxis = {1.0f, 0.0f, 0.0f, 0.0f};
+            local.yAxis = {0.0f, 1.0f, 0.0f, 0.0f};
+            local.zAxis = {0.0f, 0.0f, 1.0f, 0.0f};
+            local.translation = {position.x, position.y, position.z, 0.0f};
+            object->SetLocal(local);
+            object->MarkDirty();
+        }
+    }
+    state.timer = g_gameMonetaryCollectCoinCounterMovementTimeMax.Get();
+    state.showDelay = g_gameMonetaryCollectCoinCounterDelayTimeMax.Get();
+    const float coins = profileIndex ? float(ProfileCoinCount(*profileIndex)) : 0.0f;
+    state.value = coins;
+    state.target = coins + amount;
+    const float countTime = g_gameMonetaryCollectCoinCounterCountUpTimeMax.Get();
+    state.rate = countTime > 0.0f ? amount / countTime : 0.0f;
+    // Control points of the fly-in: the start, above the start, above the
+    // counter and the counter.
+    const float* end = g_gameMonetaryCollectCoinCounterEndHUDOffset.Get();
+    const float lift = g_gameMonetaryCollectCoinCounterMoveHUDYOffset.Get();
+    state.transform.xAxis = {position.x, position.y, position.z, 0.0f};
+    state.transform.translation = {end[0], end[1], end[2], 0.0f};
+    state.transform.yAxis = {position.x, position.y + lift, position.z, 0.0f};
+    state.transform.zAxis = {end[0], end[1] + lift, end[2], 0.0f};
+}
+
+// @func 0x0036A050 hud::ShowCoinCount
+void ShowCoinCount(float amount, const uint8_t* profileIndex, const ape::Vec3& position)
+{
+    HudTextOverride& state = TextOverride();
+    if (!state.active)
+        StartCoinCount(amount, state, profileIndex, position);
+}
+
 // @func 0x00363B78 hud::UpdateTextOverride
 // The coin counter's count-up: the collected coin flies to the counter
 // along a curve (shrinking and fading), the counter label counts up in the
@@ -977,7 +1027,7 @@ void AnchorMirror(float out[3], int32_t anchor, const float in[3])
         out[0] = -out[0];
         out[1] = -out[1];
         break;
-    case kAnchor_BottomLeft:
+    case kAnchor_BottomRight:
         out[0] = -out[0];
         break;
     default:

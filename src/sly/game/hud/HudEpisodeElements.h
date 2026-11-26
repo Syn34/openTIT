@@ -21,6 +21,9 @@ namespace hud {
 
 // Flag word bits shared by the 0x800 and 0x1000 kinds (+0xFC).
 enum EpisodeListFlags : uint32_t {
+    kE_ScriptOk   = 0x00800000,   // bit 23
+    kE_AnimOk     = 0x01000000,   // bit 24
+    kE_Suppressed = 0x02000000,   // bit 25
     kE_LeaveB     = 0x10000000,   // bit 28: destroyed once hidden
     kE_LeaveA     = 0x20000000,   // bit 29
     kE_Shown      = 0x40000000,   // bit 30
@@ -42,9 +45,13 @@ public:
     void Refresh() override;
     // Slot 5 (0x00376C98).
     void SetActive(bool active) override;
-    // Slot 6. TODO(0x003798D8): needs the hide/show helpers 0x00377D18 /
-    // 0x003780E0.
+    // Slot 6. TODO(0x003798D8): needs the show helper 0x003780E0.
     void SetEnabled(bool enabled, bool flag) override;
+    // 0x003772C0: starts the intro.
+    void BeginShow();
+    // 0x00377D18: plays the outro (clearing the "new" mark of the upgrades
+    // the list showed), or refreshes / queues the element when hidden.
+    void Hide(bool a, bool b);
 
     uint32_t clips[7] = {};            // +0xC8 (Intro, OnUpdate, Idle, ScrollUp, ScrollDn, Outro)
     uint8_t tint[4] = {};              // +0xE4
@@ -83,8 +90,17 @@ public:
     void Refresh() override;
     // Slot 5 (0x0037A58C).
     void SetActive(bool active) override;
-    // Slot 6. TODO(0x0037DE50): needs 0x0037C7E0 / 0x0037CB10.
+    // Slot 6 (0x0037DE50).
     void SetEnabled(bool enabled, bool flag) override;
+    // 0x0037AC70: starts the intro.
+    void BeginShow();
+    // 0x0037C7E0: plays the outro, or refreshes / queues the element.
+    void Hide(bool a, bool b);
+    // 0x0037CB10: shows the element (or restarts its update animation);
+    // the rows are refreshed (0x0037AE00, TODO).
+    void ShowTimed(float fade, const char* text, bool flag, HudObject* linkedTo, const uint8_t* color);
+    // TODO(0x0037AE00): fills the rows from the episodes.
+    void RefreshRows();
 
     uint32_t clips[7] = {};            // +0xC8
     uint8_t tint[4] = {};              // +0xE4

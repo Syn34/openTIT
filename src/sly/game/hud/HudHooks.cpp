@@ -65,3 +65,18 @@ bool AppInputHeld() { return s_appInputHeld; }
 void SetAppInputHeld(bool held) { s_appInputHeld = held; }
 } // namespace hud
 } // namespace sly
+
+namespace sly {
+namespace hud {
+// TODO(game world +0xFBC upgrade flags)
+bool UpgradeIsNew(uint32_t index) { (void)index; return false; }
+void UpgradeClearNew(uint32_t index) { (void)index; }
+} // namespace hud
+} // namespace sly
+
+namespace sly {
+namespace hud {
+// TODO(0x004A6CF8 world draw call buffer)
+void HudQueueObjectDraw(ape::world::ApeObj* object, bool recurse) { (void)object; (void)recurse; }
+} // namespace hud
+} // namespace sly

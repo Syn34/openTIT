@@ -11,6 +11,7 @@
 #include "ape/level/ApeGui.h"
 #include "ape/level/ApeGuiScript.h"
 #include "ape/level/ApeGuiTypes.h"
+#include "ape/math/ApeMatrixOps.h"
 #include "ape/world/ApeBase.h"
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
@@ -34,7 +35,7 @@ const uint32_t kCloseFrom[3] = {0, 0xBCFA3661u, 0xBCFA3662u};            // 0x00
 const uint32_t kCloseFromNone[3] = {0, 0xB143A780u, 0xB143A781u};        // 0x00ADC680
 const uint32_t kCloseSame[3] = {0, 0x1C3AFE84u, 0x1C3AFE85u};            // 0x00ADC698
 
-const uint8_t kWhite[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+const uint8_t kNoTint[4] = {0, 0, 0, 0};
 constexpr uint32_t kGuiEvent_Shutdown = 0x0E;   // NOTE: event sent with the page switch
 
 // World callback lists of the menu.
@@ -226,9 +227,9 @@ void HudHideoutMenu::BeginOpen()
             ape::StrCopyBounded(selectText, own, sizeof selectText);
     }
     if (HudObject* back = info.backButton ? Find(info.backButton) : nullptr)
-        back->ShowText(-1.0f, "$HIDEOUT_BUTTON_BACK", true, false, nullptr, kWhite);
+        back->ShowText(-1.0f, "$HIDEOUT_BUTTON_BACK", true, false, nullptr, kNoTint);
     if (HudObject* select = info.selectButton ? Find(info.selectButton) : nullptr)
-        select->ShowText(-1.0f, "$HIDEOUT_BUTTON_SELECT", true, false, nullptr, kWhite);
+        select->ShowText(-1.0f, "$HIDEOUT_BUTTON_SELECT", true, false, nullptr, kNoTint);
     PlayMenuClip(kClip_Open);
     if (object)
         object->SetVisible(true, true);
@@ -351,6 +352,101 @@ bool HudHideoutMenu::RequestClose(bool flag)
         return false;
     menuFlags = (menuFlags & ~kM_CloseFlag) | (flag ? kM_CloseFlag : 0u) | kM_CloseReq;
     return true;
+}
+
+// @func 0x0037370C HudHideoutMenu::SetGui
+bool HudHideoutMenu::SetGui(const char* path)
+{
+    const uint32_t state = animState >> 1;
+    if (state == kMenu_Transition || state == kMenu_ClosingPlain || state == 4 || state == 6 ||
+        state == kMenu_Switching)
+        return false;
+    ape::ApeGuiObject* found = path ? ape::FindGuiObject(path, nullptr) : nullptr;
+    nextGui = found;
+    const HudObjectDef::MenuPageDef& current = def->menu.pages[page];
+    const bool plain = current.animA == 0 && current.animB == 0;
+    if (state == kMenu_Closed || state == kMenu_OpeningPlain) {
+        if (found) {
+            gui = found;
+            nextGui = nullptr;
+            delete shutdownScript;
+            shutdownScript = nullptr;
+        }
+        if (plain && !shutdownScript && gui) {
+            shutdownScript = ape::PlayGuiScript("Default_Init", gui, false, false);
+            ape::SendGuiEvent(0x0C, 0xFFFFFFFFu, gui, 0);
+        }
+    }
+    return true;
+}
+
+// @func 0x003738AC HudHideoutMenu::SetPromptsActive
+void HudHideoutMenu::SetPromptsActive(bool active)
+{
+    const HudObjectDef::MenuDef& info = def->menu;
+    if (HudObject* back = info.backButton ? Find(info.backButton) : nullptr)
+        back->SetActive(active);
+    if (HudObject* select = info.selectButton ? Find(info.selectButton) : nullptr)
+        select->SetActive(active);
+}
+
+// @func 0x003739D0 HudHideoutMenu::TurnChildCallback
+void HudHideoutMenu::TurnChildCallback(void* unused, void* context)
+{
+    (void)unused;
+    auto* menu = static_cast<HudHideoutMenu*>(context);
+    if (!menu)
+        return;
+    ape::world::ApeObj* target = menu->child ? menu->child : menu->object;
+    if (!target || !menu->object)
+        return;
+    ape::Matrix34 turn;
+    ape::Matrix34RotationY(menu->childAngle * 0.017453292f, turn);
+    target->m_world = turn;
+    target->m_flags &= ~ape::world::kObjFlag_Dirty;
+    target->SetLocal(turn);
+    target->MarkDirty();
+    menu->object->UpdateWorld(false, false);
+}
+
+// @func 0x003742E0 HudHideoutMenu::DrawPageFields
+void HudHideoutMenu::DrawPageFields(uint32_t pageIndex)
+{
+    const HudObjectDef::MenuDef& info = def->menu;
+    if (pageIndex >= info.pageCount)
+        return;
+    const HudObjectDef::MenuPageDef& pageDef = info.pages[pageIndex];
+    for (uint32_t i = 0; i < pageDef.fieldCount; ++i) {
+        const HudObjectDef::MenuFieldDef& field = pageDef.fields[i];
+        const ape::world::ApeObj* anchor = pageFieldObjects[pageIndex] ? pageFieldObjects[pageIndex][i] : nullptr;
+        if (!field.object3d || !anchor || !field.object || !field.object->IsVisible())
+            continue;
+        // The GUI's x and y axes point the other way from the scene's.
+        ape::Matrix34 transform = anchor->GetWorld();
+        transform.xAxis = {-transform.xAxis.x, -transform.xAxis.y, -transform.xAxis.z, 0.0f};
+        transform.yAxis = {-transform.yAxis.x, -transform.yAxis.y, -transform.yAxis.z, 0.0f};
+        field.object3d->SetTransform(transform);
+        field.object3d->Tick(0.0f);
+        field.object3d->Draw();
+    }
+}
+
+// NOTE: the console also projects three of its points (+0xE0, +0x100,
+// +0xF0) to the screen here without using the results.
+// @func 0x00374590 HudHideoutMenu::DrawPages
+void HudHideoutMenu::DrawPages()
+{
+    if (page != previousPage)
+        DrawPageFields(previousPage);
+    DrawPageFields(page);
+}
+
+// @func 0x003746D8 HudHideoutMenu::DrawPagesCallback
+void HudHideoutMenu::DrawPagesCallback(void* unused, void* context)
+{
+    (void)unused;
+    if (context)
+        static_cast<HudHideoutMenu*>(context)->DrawPages();
 }
 
 // TODO(0x003720B0 HudHideoutMenu::Update): the menu state machine, the map

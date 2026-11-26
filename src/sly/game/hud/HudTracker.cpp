@@ -173,5 +173,78 @@ ape::Vec3 HudTracker::TrackerFieldPosition(uint32_t index) const
     return ape::world::kWorldZero;
 }
 
+// @func 0x0036901C HudTracker::SetTrackerFieldText
+void HudTracker::SetTrackerFieldText(const char* value, uint32_t index)
+{
+    if (!value || index >= def->textFieldCount)
+        return;
+    if (ape::ApeGuiObject* label = def->trackerFields[index].label) {
+        label->SetText(value, false);
+        label->Invalidate();
+    }
+}
+
+// @func 0x003690F0 HudTracker::ShowList
+void HudTracker::ShowList(const char* title, const char* body, const ape::ApeTArray<Entry>* source, bool keep)
+{
+    constexpr uint32_t kScript_Intro = 0x04296E4Cu;   // "Intro"
+    sticky = keep;
+    if ((animState >> 1) == 1)
+        return;
+    animState = (animState & 1u) | (1u << 1);
+    SetActive(true);
+    SetTrackerFieldText(title, 0);
+    SetTrackerFieldText(title, 1);
+    SetTrackerFieldText(body, 2);
+    SetTrackerFieldText(body, 3);
+    entries.Clear();
+    if (source) {
+        for (uint16_t i = 0; i < source->Count(); ++i)
+            entries.Add((*source)[i]);
+    }
+    PlayHudClip(animController, introAnim, 1.0f, false);
+    if (animScript)
+        static_cast<ape::ApeAnimScriptInstance*>(animScript)->SetStateAndUpdate(kScript_Intro);
+}
+
+// @func 0x003694A0 HudTracker::ShowListOf
+void HudTracker::ShowListOf(HudTracker* tracker, const char* title, const char* body,
+                            const ape::ApeTArray<Entry>* source, bool keep)
+{
+    if (tracker)
+        tracker->ShowList(title, body, source, keep);
+}
+
+// @func 0x00370B88 HudTracker::DrawFields
+void HudTracker::DrawFields()
+{
+    HudQueueObjectDraw(marker, true);
+    for (uint32_t i = 0; i < def->textFieldCount; ++i) {
+        ape::ApeGuiObject* frame = def->trackerFields[i].textFrame;
+        const ape::world::ApeObj* anchor = fieldObjects[i];
+        if (!frame || !anchor || !anchor->IsVisible())
+            continue;
+        // Drawn visible at the scene object, then put back as it was. The
+        // GUI's x and y axes point the other way from the scene's.
+        const bool wasVisible = frame->IsVisible();
+        frame->SetVisible(true);
+        ape::Matrix34 transform = anchor->GetWorld();
+        transform.xAxis = {-transform.xAxis.x, -transform.xAxis.y, -transform.xAxis.z, 0.0f};
+        transform.yAxis = {-transform.yAxis.x, -transform.yAxis.y, -transform.yAxis.z, 0.0f};
+        frame->SetTransform(transform);
+        frame->Tick(0.0f);
+        frame->Draw();
+        frame->SetVisible(wasVisible);
+    }
+}
+
+// @func 0x00370E04 HudTracker::DrawFieldsCallback
+void HudTracker::DrawFieldsCallback(void* unused, void* context)
+{
+    (void)unused;
+    if (context)
+        static_cast<HudTracker*>(context)->DrawFields();
+}
+
 } // namespace hud
 } // namespace sly
