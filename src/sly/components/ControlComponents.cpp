@@ -100,6 +100,20 @@ void ControlComponent::Update(float dt)
     pressed = 0;
 }
 
+// @func 0x0074EC88 ControlComponentDesc::~ControlComponentDesc (copy, character module)
+// @func 0x0074ECFC ControlComponentDesc::~ControlComponentDesc (deleting, copy, character module)
+// @func 0x0075D6E8 ControlComponentDesc::~ControlComponentDesc (copy, vehicle module)
+// @func 0x0075D974 ControlComponentDesc::~ControlComponentDesc (deleting, copy, vehicle module)
+// @func 0x0075DA44 ControlComponentDesc::~ControlComponentDesc (copy 2, vehicle module)
+// @func 0x0075DB28 ControlComponentDesc::~ControlComponentDesc (deleting, copy 2, vehicle module)
+ControlComponentDesc::~ControlComponentDesc() = default;
+
+// @func 0x0074EBBC CodeComponentDesc::~CodeComponentDesc (copy, character module)
+// @func 0x0074EDCC CodeComponentDesc::~CodeComponentDesc (deleting, copy, character module)
+// @func 0x0075D6A4 CodeComponentDesc::~CodeComponentDesc (copy, vehicle module)
+// @func 0x0075D9DC CodeComponentDesc::~CodeComponentDesc (deleting, copy, vehicle module)
+CodeComponentDesc::~CodeComponentDesc() = default;
+
 // -- pad controllers ---------------------------------------------------------------
 
 // The destructors only run the base destructor.
