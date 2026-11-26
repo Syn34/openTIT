@@ -112,6 +112,8 @@ public:
     WorldObject* playerObject = nullptr;        // +0x1078 the controlled player character
     ape::ApeTArray<goals::Goal*> goals;         // +0x10C0 the running job's goals (count +0x10C8)
     SpawnManager* spawnManager = nullptr;       // NOTE: owner of the spawner groups; slot unknown
+    // NOTE: saved and cleared while a minigame runs, restored when it stops.
+    uint8_t field_12828C = 0;                   // +0x12828C
     uint32_t flags1282A0 = 0;                   // +0x1282A0
     float slowMotionScale = 1.0f;               // +0x1282AC
     uint32_t slowMotionFlags = 0;               // +0x1282BC bit 31: slow motion active

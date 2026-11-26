@@ -45,6 +45,10 @@ public:
     ApeScene(const ApeScene&) = delete;
     ApeScene& operator=(const ApeScene&) = delete;
 
+    // Slot 14. NOTE: one of the SPU render job virtuals on the console
+    // (0x00598B3C, not ported).
+    virtual void VirtualSlot14() {}
+
     bool OwnsRegions() const { return (m_flags & kFlag_OwnsRegions) != 0; }
     uint8_t GetSlot() const { return m_slot; }
     const char* GetName() const { return m_name; }
