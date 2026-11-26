@@ -8,6 +8,11 @@
 #include "sly/entity/EntityHooks.h"
 #include "sly/entity/PhysicsHooks.h"
 
+#include "ape/anim/ApeAnimScript.h"
+#include "ape/anim/ApeAnimScriptVars.h"
+
+#include <cmath>
+
 namespace sly {
 namespace entity {
 
@@ -18,6 +23,14 @@ constexpr uint32_t kGameEvent_PhysicalReleased = 0x1E;
 // Collision layer of the second body (low five bits of its filter word).
 constexpr uint32_t kTriggerBodyLayer = 7;
 constexpr uint32_t kFilterLayerMask = 0x1F;
+// Anim script variables set on launch. NOTE: names unknown, roles from use.
+constexpr uint32_t kScriptVar_AimFrame = 0x03CBAB04u;     // matrix
+constexpr uint32_t kScriptVar_HasTarget = 0xCD22388Bu;    // int
+constexpr uint32_t kScriptVar_LaunchValue = 0xCC2DABB0u;  // float
+constexpr uint32_t kScriptState_Start = 0x04B8CC42u;      // "Start"
+const ape::Matrix34 kIdentityFrame = {
+    {1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
+};
 
 // Drops a counted entity reference and clears the pointer.
 void DropReference(Entity*& entity)
@@ -235,6 +248,64 @@ void PhysicalEntity::SetTarget(Entity* newTarget)
         if (target && target->IsAlive())
             target->AddRef();
     }
+}
+
+// @func 0x000EF25C PhysicalEntity::AimAt
+void PhysicalEntity::AimAt(Entity* target)
+{
+    ape::Matrix34 aim = kIdentityFrame;
+    if (target)
+        aim.translation = target->GetAimPoint();
+    SetCarriedTransform(aim);
+}
+
+// @func 0x000EF3C8 PhysicalEntity::UpdateFlightTime
+void PhysicalEntity::UpdateFlightTime()
+{
+    const ape::Vec3 velocity = GetVelocity();
+    const ape::Vec3& aim = carriedTransform.translation;
+    const ape::Vec3& from = Position();
+    const float groundSpeed = std::sqrt(velocity.z * velocity.z + velocity.x * velocity.x);
+    const float rise = aim.y - from.y;
+    if (groundSpeed > 1e-05f) {
+        const float dx = aim.x - from.x;
+        const float dz = aim.z - from.z;
+        flightTime = std::sqrt(dz * dz + dx * dx) / groundSpeed;
+        return;
+    }
+    // NOTE: the console reads the gravity of the world the body is in.
+    const float gravity = PhysicsWorldGravity() * Def()->gravityScale;
+    if (std::fabs(velocity.y) * 0.1f < std::fabs(gravity)) {
+        const float a = velocity.y / gravity;
+        const float disc = a * a - (rise * 2.0f) / gravity;
+        if (disc >= 0.0f)
+            flightTime = a + std::sqrt(disc);
+    } else {
+        // Hardly any gravity: the rise at the vertical speed, corrected to
+        // first order.
+        flightTime = (rise / velocity.y) * ((gravity * rise) / (velocity.y * 2.0f * velocity.y) + 1.0f);
+    }
+}
+
+// @func 0x000EF564 PhysicalEntity::OnLaunched
+void PhysicalEntity::OnLaunched()
+{
+    UpdateFlightTime();
+    if (!animScript)
+        return;
+    if (ape::ApeAnimScriptVar* var = animScript->FindVar(kScriptVar_AimFrame)) {
+        if (var->GetType() == ape::AnimScriptVarType::Matrix)
+            static_cast<ape::ApeAnimScriptMatrixVar*>(var)->SetMatrix(carriedTransform);
+    }
+    if (ape::ApeAnimScriptVar* var = animScript->FindVar(kScriptVar_HasTarget)) {
+        if (var->GetType() == ape::AnimScriptVarType::Int)
+            static_cast<ape::ApeAnimScriptIntVar*>(var)->SetInt(target != nullptr ? 1 : 0);
+    }
+    if (ape::ApeAnimScriptVar* var = animScript->FindVar(kScriptVar_LaunchValue)) {
+        if (var->GetType() == ape::AnimScriptVarType::Float)
+            static_cast<ape::ApeAnimScriptFloatVar*>(var)->SetFloat(Def()->launchValue);
+    }
+    animScript->SetStateAndUpdate(kScriptState_Start);
 }
 
 // @func 0x000EDD74 PhysicalEntity::SetCarriedTransform

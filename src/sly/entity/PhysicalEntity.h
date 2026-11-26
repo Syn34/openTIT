@@ -36,6 +36,7 @@ public:
     };
 
     float gravityScale = 0.0f;               // 0xC0
+    float launchValue = 0.0f;                // 0x12C handed to the anim script on launch. NOTE: meaning unknown
     // Damage taken per hit category (0 = immune). NOTE: filled by the
     // definition parser (not ported).
     float impactScale = 0.0f;                // 0xCC category 1
@@ -85,6 +86,17 @@ public:
     // Empty overrides of the +0x17C interface's slots 7/6 (primary slots 97/98).
     void Interface17CSlot7() override;
     void Interface17CSlot6() override;
+    // Slot 94: aims at `target` (its aim point, the origin without one): the
+    // aim frame (carriedTransform) moves there, with the carried entity.
+    virtual void AimAt(Entity* target);
+    // Slot 95: the entity was launched: works out the flight time to the aim
+    // point and hands the aim frame, whether there is a target and the
+    // definition's launch value to the anim script, which enters "Start".
+    virtual void OnLaunched();
+    // Seconds until the entity reaches the aim point: over the ground at the
+    // current horizontal speed, else (straight up or down) along the fall
+    // under the body's gravity (0x000EF3C8).
+    void UpdateFlightTime();
     // Slot 99: empty. NOTE: no caller known.
     virtual void Slot99();
     // Primary slot 100 / +0x180 slot 6: stops listening to the body's contacts.
@@ -118,8 +130,11 @@ public:
     Entity* owner = nullptr;                 // 0x1B0 counted reference
     Entity* target = nullptr;                // 0x1B4 counted reference
     Entity* carried = nullptr;               // 0x1B8 spawned from the definition
-    ape::Matrix34 carriedTransform{};        // 0x1C0
+    // 0x1C0 aim frame: identity at the aim point (slot 94); the carried
+    // entity (e.g. a marker) sits there.
+    ape::Matrix34 carriedTransform{};
     void* triggerBody = nullptr;             // 0x224 second body, on collision layer 7
+    float flightTime = 0.0f;                 // 0x228 seconds to the aim point (UpdateFlightTime)
     audio::SoundName* impactSound = nullptr; // 0x230 NOTE: name from use
     components::OffscreenMarkerComponent* marker = nullptr;  // 0x26C first component of type 0x1E
 };

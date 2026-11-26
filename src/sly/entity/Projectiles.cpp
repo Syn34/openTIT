@@ -2,6 +2,8 @@
 #include "sly/entity/Projectiles.h"
 #include "sly/entity/EntityHits.h"
 
+#include <cmath>
+
 namespace sly {
 namespace entity {
 
@@ -83,6 +85,34 @@ void EntityProjectileMine::OnHitCategory2(EntityHitRecord& hit)
     ScriptedEntity::Damage(damage, hit.source, kType_Blast);
     if (health <= 0.0f)
         SetPhysState(4, 0);
+}
+
+// @func 0x000F2FB0 Projectile::OnLaunched
+void Projectile::OnLaunched()
+{
+    const ape::Vec3& aim = carriedTransform.translation;
+    const float dx = field_200.x - aim.x;
+    const float dy = field_200.y - aim.y;
+    const float dz = field_200.z - aim.z;
+    const float factor = Def()->arcFactor;
+    const float speedSq = launchVelocity.x * launchVelocity.x + launchVelocity.y * launchVelocity.y +
+                          launchVelocity.z * launchVelocity.z;
+    arc = (factor * 2.0f * speedSq) / std::sqrt(dz * dz + dx * dx + dy * dy);
+    launchVelocity.y += factor * std::sqrt(speedSq);
+    PhysicalEntity::OnLaunched();
+}
+
+// @func 0x000F4094 ProjectileB::AimAt
+void ProjectileB::AimAt(Entity* target)
+{
+    if (field_290 < field_2A0)
+        PhysicalEntity::AimAt(target);
+}
+
+// @func 0x000F4418 ProjectileB::OnLaunched
+void ProjectileB::OnLaunched()
+{
+    PhysicalEntity::OnLaunched();
 }
 
 } // namespace entity
