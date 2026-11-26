@@ -6,6 +6,8 @@
 
 #include "sly/entity/PropEntities.h"
 
+namespace ape { class ApeRefCounted; }
+
 namespace sly {
 namespace entity {
 
@@ -44,10 +46,22 @@ public:
 class ScriptedObjectB193C8 : public Entity {
 public:
     ~ScriptedObjectB193C8() override;
+    // Slot 10: with `kill` the entity leaves the per-frame lists, its script
+    // finishes its "End" state and its helper objects go.
+    bool Release(bool kill) override;
+    // Slot 32: the script is told the new time scale first.
+    void SetTimeScale(uint32_t value, bool children) override;
+    // Slots 60/61: the script pauses (state 0xE69B8987) and resumes (0xD5E4206F).
+    void OnSuspend() override;
+    void OnResume() override;
     // @func 0x007594C0 ScriptedObjectB193C8::GetAnimScript
     void* GetAnimScript() override { return animScript; }   // slot 68
 
+    // NOTE: types of the helper objects unknown; +0x1A0 is released, +0x1B0
+    // deleted with the entity.
+    ape::ApeRefCounted* field_1A0 = nullptr;   // 0x1A0
     void* animScript = nullptr;   // 0x1AC
+    ape::ApeRefCounted* field_1B0 = nullptr;   // 0x1B0
 };
 
 // Entity spawned by EntityDefB14FD8 (vtable 0x00B15028, constructor

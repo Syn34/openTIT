@@ -3,6 +3,9 @@
 
 #include "sly/entity/CharacterHooks.h"
 #include "sly/entity/PhysicsHooks.h"
+#include "sly/game/SlyGame.h"
+
+#include "ape/anim/ApeAnimScript.h"
 
 namespace sly {
 namespace entity {
@@ -86,6 +89,63 @@ void RigidEntityB19198::Interface180Slot6(void* body) { StopListeningTo(body); }
 // @func 0x00759438 ScriptedObjectB193C8::~ScriptedObjectB193C8
 // @func 0x00759468 ScriptedObjectB193C8::~ScriptedObjectB193C8 (deleting)
 ScriptedObjectB193C8::~ScriptedObjectB193C8() = default;
+
+namespace {
+constexpr uint32_t kScript_End = 0x00010CBBu;       // "End"
+constexpr uint32_t kScript_Suspend = 0xE69B8987u;   // NOTE: names unknown
+constexpr uint32_t kScript_Resume = 0xD5E4206Fu;
+constexpr int kCallbackList_ScriptedObject = 10;
+} // namespace
+
+// @func 0x0020ABD8 ScriptedObjectB193C8::Release
+bool ScriptedObjectB193C8::Release(bool kill)
+{
+    if (kill) {
+        UnregisterEntity(kList_B, this);
+        if (g_game)
+            g_game->RemoveCallback(kCallbackList_ScriptedObject, this, nullptr);
+        if (auto* script = static_cast<ape::ApeAnimScriptInstance*>(animScript)) {
+            script->SetState(kScript_End);
+            script->SetRemoveWhenFinished(true);
+            animScript = nullptr;
+        }
+        delete field_1B0;
+        field_1B0 = nullptr;
+        if (field_1A0) {
+            field_1A0->Release();
+            field_1A0 = nullptr;
+        }
+    }
+    return Entity::Release(kill);
+}
+
+// @func 0x0020B95C ScriptedObjectB193C8::SetTimeScale
+void ScriptedObjectB193C8::SetTimeScale(uint32_t value, bool children)
+{
+    if (auto* script = static_cast<ape::ApeAnimScriptInstance*>(animScript))
+        script->SetStateAndUpdate(value);
+    Entity::SetTimeScale(value, children);
+}
+
+// @func 0x0020BAC8 ScriptedObjectB193C8::OnSuspend
+void ScriptedObjectB193C8::OnSuspend()
+{
+    Entity::OnSuspend();
+    if (auto* script = static_cast<ape::ApeAnimScriptInstance*>(animScript)) {
+        script->SetStateAndUpdate(kScript_Suspend);
+        script->SetActive(false);
+    }
+}
+
+// @func 0x0020BB2C ScriptedObjectB193C8::OnResume
+void ScriptedObjectB193C8::OnResume()
+{
+    Entity::OnResume();
+    if (auto* script = static_cast<ape::ApeAnimScriptInstance*>(animScript)) {
+        script->SetActive(true);
+        script->SetState(kScript_Resume);
+    }
+}
 
 // @func 0x00751048 EntityB15028::~EntityB15028
 // @func 0x007510B0 EntityB15028::~EntityB15028 (deleting)
