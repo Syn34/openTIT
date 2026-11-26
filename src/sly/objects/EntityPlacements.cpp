@@ -6,6 +6,8 @@
 #include "sly/entity/ActorDefs.h"
 #include "ape/xml/ApeXml.h"
 
+#include <algorithm>
+
 namespace sly {
 namespace objects {
 
@@ -488,6 +490,76 @@ EntityPlacement* ParseRopePlacement(ape::xml::XmlElement* root, ape::xml::XmlEle
     int32_t value = int32_t(placement->field_E4);
     elem->GetInt(0x803BA106u, &value, value);
     placement->field_E4 = uint32_t(value);
+    return placement;
+}
+
+// @func 0x001AE130 ParseSoundActorPlacement
+EntityPlacement* ParseSoundActorPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                          const char* name, EntityDef* def)
+{
+    static const uint32_t kSlotAttrs[7] = {0xD5F932F0u, 0xEABE8E36u, 0x800ACF3Au, 0xF9217A56u,
+                                           0x7BA17740u, 0xA9262FCFu, 0xA88C3581u};
+    (void)root;
+    auto* placement = new SoundActorPlacement(name, def);
+    placement->typeBits |= 0x80000;
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    placement->Parse(elem);
+    elem->GetFloat(0x7B2F95A0u, &placement->field_10C, placement->field_10C);
+    for (int i = 0; i < 7; ++i)
+        elem->GetFloat(kSlotAttrs[i], &placement->slotTimes[i], placement->slotTimes[i]);
+    return placement;
+}
+
+// @func 0x001B0398 ParseSignalActorPlacement
+EntityPlacement* ParseSignalActorPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                           const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new SignalActorPlacement(name, def);
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    const auto* signalDef = def ? static_cast<const entity::SignalActorDef*>(def) : nullptr;
+    placement->field_F0[0] = signalDef ? signalDef->field_15C : 18.849556f;
+    placement->field_F0[1] = signalDef ? signalDef->field_160 : 0.08726646f;
+    placement->field_F0[2] = signalDef ? signalDef->field_168 : 0.0f;
+    const uint32_t defFlags = signalDef ? signalDef->flags_174 : 0x00800000u;
+    placement->flags_FC = (placement->flags_FC & 0x3FFFFFFFu) | ((defFlags & 0x00800000u) << 8) |
+                          ((defFlags & 0x00400000u) << 8);
+    placement->typeBits |= 0x40000;
+    placement->Parse(elem);
+    // The two angles are given in degrees.
+    if (elem->GetFloat(0x26903F9Cu, &placement->field_F0[0], placement->field_F0[0]) == ape::xml::kQuery_Ok)
+        placement->field_F0[0] *= kDegToRad;
+    if (elem->GetFloat(0xC3017FF2u, &placement->field_F0[1], placement->field_F0[1]) == ape::xml::kQuery_Ok)
+        placement->field_F0[1] *= kDegToRad;
+    bool bit31 = (placement->flags_FC & 0x80000000u) != 0;
+    bool bit30 = (placement->flags_FC & 0x40000000u) != 0;
+    elem->GetBool(0x4D97C801u, &bit31, bit31);
+    elem->GetBool(0x3AF62E9Eu, &bit30, bit30);
+    placement->flags_FC = (placement->flags_FC & 0x3FFFFFFFu) | (bit31 ? 0x80000000u : 0u) | (bit30 ? 0x40000000u : 0u);
+    elem->GetFloat(0xAA8C2237u, &placement->field_F0[2], placement->field_F0[2]);
+    return placement;
+}
+
+// @func 0x001B2718 ParseActorB15E60Placement
+// The first four values are not negative, and the first is at most the second.
+EntityPlacement* ParseActorB15E60Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                           const char* name, EntityDef* def)
+{
+    static const uint32_t kAttrs[5] = {0xCEA8E637u, 0x06CD2139u, 0x0DE78502u, 0x0B0BD5E6u, 0x285C1380u};
+    static const float kDefaults[5] = {1.0f, 2.0f, 1.0f, 1.0f, 0.0f};
+    (void)root;
+    auto* placement = new ActorB15E60Placement(name, def);
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    for (int i = 0; i < 5; ++i)
+        placement->field_F0[i] = def ? static_cast<const entity::ActorB15E60Def*>(def)->field_13C[i] : kDefaults[i];
+    placement->typeBits |= 0x10000;
+    placement->Parse(elem);
+    for (int i = 0; i < 5; ++i)
+        elem->GetFloat(kAttrs[i], &placement->field_F0[i], placement->field_F0[i]);
+    for (int i = 0; i < 4; ++i)
+        placement->field_F0[i] = std::max(placement->field_F0[i], 0.0f);
+    if (placement->field_F0[1] < placement->field_F0[0])
+        placement->field_F0[0] = placement->field_F0[1];
     return placement;
 }
 

@@ -37,8 +37,21 @@ public:
     uint32_t flags_148 = 0x80000000u;   // 0x148 bits 30/31: placement defaults
 };
 SLY_ACTOR_DEF(WatchActorDef, ActorDef);         // 0x00B15748, spawns WatchActor
-SLY_ACTOR_DEF(SignalActorDef, ActorDef);        // 0x00B15BD8, spawns SignalActor
-SLY_ACTOR_DEF(ActorB15E60Def, ActorDef);        // 0x00B15E18, spawns ActorB15E60
+// 0x00B15BD8, spawns SignalActor. NOTE: only the placement defaults.
+class SignalActorDef : public ActorDef {
+public:
+    ~SignalActorDef() override;
+    float field_15C = 18.849556f;       // 0x15C radians
+    float field_160 = 0.08726646f;      // 0x160 radians
+    float field_168 = 0.0f;             // 0x168
+    uint32_t flags_174 = 0x00800000u;   // 0x174 bits 22/23: placement defaults
+};
+// 0x00B15E18, spawns ActorB15E60. NOTE: only the placement defaults.
+class ActorB15E60Def : public ActorDef {
+public:
+    ~ActorB15E60Def() override;
+    float field_13C[5] = {1.0f, 2.0f, 1.0f, 1.0f, 0.0f};   // 0x13C..0x14C
+};
 SLY_ACTOR_DEF(ScriptObjectActorDef, ActorDef);  // 0x00B163F0, spawns ScriptObjectActor
 SLY_ACTOR_DEF(ActorB17990Def, ActorDef);        // 0x00B17948, spawns ActorB17990
 SLY_ACTOR_DEF(TweenActorDef, ActorDef);         // 0x00B18680, spawns TweenActor

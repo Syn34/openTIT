@@ -183,7 +183,7 @@ void SoundActorPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
     auto& desc = static_cast<SoundActorInstanceDesc&>(baseDesc);
     desc.field_EC = field_10C;
     for (int i = 0; i < 7; ++i)
-        desc.sounds[i] = sounds[i];
+        desc.slotTimes[i] = slotTimes[i];
     // Flags 17-31 give way to the sound flag.
     desc.flags = (desc.flags & 0x1FFFFu) | EntityInstanceDesc::kDesc_Sound;
 }
