@@ -28,6 +28,7 @@ public:
         kM_AnimOk         = 0x04000000,   // bit 26: the last menu clip started
         kM_Suppressed     = 0x08000000,   // bit 27
         kM_CloseReq       = 0x10000000,   // bit 28: close at the next update
+        kM_OpenReq        = 0x20000000,   // bit 29: open at the next update
         kM_CloseFlag      = 0x40000000,   // bit 30: handed to Refresh: do not stay enabled
         kM_Enabled        = 0x80000000u,  // bit 31: the menu may open
     };
@@ -40,7 +41,8 @@ public:
     explicit HudHideoutMenu(HudObjectDef* def);
     // 0x00370F70 / 0x00371304.
     ~HudHideoutMenu() override;
-    // Slot 2. TODO(0x003720B0): the menu state machine is not ported.
+    // Slot 2 (0x003720B0): requests, label alpha, the child's pulse and
+    // the open / switch / close state machine.
     void Update(float dt) override;
     // Slot 3 (0x003733BC).
     void Refresh() override;
@@ -98,7 +100,7 @@ public:
     ape::ApeGuiObject* nextGui = nullptr; // +0x150 becomes `gui` at the next transition
     ape::ApeGuiObject* gui = nullptr;     // +0x154 GUI the shutdown script runs on
     ape::GuiScriptPlayer* shutdownScript = nullptr;   // +0x158
-    uint32_t field_15C = 0;
+    float pulseTimer = 0.0f;              // +0x15C
     float childAngle = 0.0f;              // +0x160 degrees (TurnChildCallback)
     uint16_t page = 0;                    // +0x164
     uint16_t previousPage = 0;            // +0x166
@@ -111,6 +113,11 @@ private:
     void PlayMenuClip(uint32_t clip);
     void SetPageFieldsVisible(bool visible, bool only2d);
     void StartShutdownScript();
+    // The menu's GUI script player is still running steps or actions.
+    bool ScriptRunning() const;
+    // Starts "Default_Init" on the menu's GUI unless a script runs.
+    void StartInitScript();
+    bool MenuAnimDone() const;
 };
 
 } // namespace hud

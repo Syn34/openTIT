@@ -2,6 +2,9 @@
 #include "sly/game/hud/HudHideoutMenu.h"
 
 #include "agl/AglResources.h"
+#include "sly/anim/AnimController.h"
+#include "sly/anim/AnimLayer.h"
+#include "ape/anim/ApeAnimScript.h"
 #include "agl/AglTexture.h"
 #include "sly/game/ObjectHelpers.h"
 #include "sly/game/SlyGame.h"
@@ -16,6 +19,7 @@
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
 
+#include <cmath>
 #include <cstdlib>
 
 namespace sly {
@@ -42,6 +46,13 @@ constexpr uint32_t kGuiEvent_Shutdown = 0x0E;   // NOTE: event sent with the pag
 constexpr int kCallbackList_6 = 6;
 constexpr int kCallbackList_Draw = 8;
 constexpr int kCallbackList_0 = 0;
+
+// The default layer's clip played through once (0x004A5D40 with true).
+bool ClipDoneIgnoringLoop(anim::AnimController* controller)
+{
+    anim::AnimLayer* layer = controller ? controller->FindLayer(0) : nullptr;
+    return layer ? layer->IsDone(true) : true;
+}
 
 uint32_t PickClip(const HudObjectDef::MenuPageDef& page, const uint32_t* same, const uint32_t* fromNone,
                   const uint32_t* from)
@@ -449,11 +460,208 @@ void HudHideoutMenu::DrawPagesCallback(void* unused, void* context)
         static_cast<HudHideoutMenu*>(context)->DrawPages();
 }
 
-// TODO(0x003720B0 HudHideoutMenu::Update): the menu state machine, the map
-// and the page fields are not ported.
+bool HudHideoutMenu::ScriptRunning() const
+{
+    return shutdownScript && (shutdownScript->actions || shutdownScript->currentStep);
+}
+
+void HudHideoutMenu::StartInitScript()
+{
+    if (!gui || shutdownScript)
+        return;
+    shutdownScript = ape::PlayGuiScript("Default_Init", gui, false, false);
+    ape::SendGuiEvent(0x0C, 0xFFFFFFFFu, gui, 0);
+}
+
+bool HudHideoutMenu::MenuAnimDone() const
+{
+    if ((menuFlags & kM_AnimOk) && !HudClipDone(animController))
+        return false;
+    auto* script = static_cast<ape::ApeAnimScriptInstance*>(animScript);
+    return !(menuFlags & 0x02000000u) || (script && script->IsFinished(false));
+}
+
+// @func 0x003720B0 HudHideoutMenu::Update
 void HudHideoutMenu::Update(float dt)
 {
-    (void)dt;
+    if (!CanAct())
+        return;
+    if ((animState >> 1) == kMenu_Closed && !(menuFlags & kM_OpenReq) && !(menuFlags & kM_CloseReq))
+        return;
+    if (!object || !object->IsVisible())
+        return;
+    if (g_game)
+        g_game->AddCallback(kCallbackList_Draw, reinterpret_cast<void*>(&DrawPagesCallback), this, nullptr);
+    // TODO(0x003742AC / 0x00373C28): the list 6 callback is not ported.
+
+    // Requests made since the last update.
+    if (menuFlags & kM_OpenReq) {
+        if (CanAct() && (animState >> 1) == kMenu_Closed) {
+            context = nullptr;
+            BeginOpen();
+        }
+        menuFlags &= ~kM_OpenReq;
+    } else if (menuFlags & kM_CloseReq) {
+        Close((menuFlags & kM_CloseFlag) != 0);
+        menuFlags &= ~kM_CloseReq;
+    }
+
+    const HudObjectDef::MenuDef& info = def->menu;
+    if (object->GetType() == ape::world::kObjType_GeomInstance) {
+        // The page labels take the menu's alpha.
+        if (page < info.pageCount) {
+            const HudObjectDef::MenuPageDef& pageDef = info.pages[page];
+            for (uint32_t i = 0; i < pageDef.fieldCount; ++i) {
+                if (ape::ApeGuiObject* label = pageDef.fields[i].label) {
+                    ape::xml::Color8 color = label->GetColor();
+                    color.a = object->m_byteA8;
+                    label->SetColor(color);
+                }
+            }
+        }
+        // The child swings by the pulse (a triangle phase through a cosine).
+        const float t = pulseTimer / info.field_CC;
+        pulseTimer += dt;
+        const int whole = int(t);
+        const float phase = (whole & 1) ? 1.0f - (t - float(whole)) : t - float(whole);
+        const float amplitude = info.field_D0;
+        childAngle = (std::cos(phase * 3.1415927f) - 1.0f) * -0.5f * (amplitude + amplitude) - amplitude;
+        if (g_game)
+            g_game->AddCallback(kCallbackList_0, reinterpret_cast<void*>(&TurnChildCallback), this, nullptr);
+    }
+
+    switch (animState >> 1) {
+    case kMenu_Opening:
+        if (MenuAnimDone()) {
+            const HudObjectDef::MenuPageDef& current = info.pages[page];
+            if (current.animA || current.animB)
+                PlayMenuClip(PickClip(current, kTransitionSame, kTransitionFromNone, kTransitionFrom));
+            StartInitScript();
+            animState = (animState & 1u) | (kMenu_OpeningPlain << 1);
+        }
+        break;
+    case kMenu_OpeningPlain:
+        if (!context) {
+            if (!MenuAnimDone() || ScriptRunning())
+                break;
+            delete shutdownScript;
+            shutdownScript = nullptr;
+            animState = (animState & 1u) | (kMenu_Open << 1);
+            if (page < info.pageCount) {
+                const HudObjectDef::MenuPageDef& pageDef = info.pages[page];
+                for (uint32_t i = 0; i < pageDef.fieldCount; ++i) {
+                    if (!pageDef.fields[i].object3d && pageDef.fields[i].object)
+                        pageDef.fields[i].object->SetVisible(true);
+                }
+            }
+        } else {
+            // Opened on behalf of another element: wait until it is hidden,
+            // then take the prompts over and open.
+            const HudObject* owner = static_cast<const HudObject*>(context);
+            if (owner->object && owner->object->IsVisible())
+                break;
+            context = nullptr;
+            if (HudObject* back = info.backButton ? Find(info.backButton) : nullptr) {
+                const bool shown = back->object && back->object->IsVisible();
+                menuFlags = shown ? (menuFlags | kM_BackWasShown) : (menuFlags & ~kM_BackWasShown);
+                if (const char* own = FirstLabelText(back))
+                    ape::StrCopyBounded(backText, own, sizeof backText);
+            }
+            if (HudObject* select = info.selectButton ? Find(info.selectButton) : nullptr) {
+                const bool shown = select->object && select->object->IsVisible();
+                menuFlags = shown ? (menuFlags | kM_SelectWasShown) : (menuFlags & ~kM_SelectWasShown);
+                if (const char* own = FirstLabelText(select))
+                    ape::StrCopyBounded(selectText, own, sizeof selectText);
+            }
+            if (HudObject* back = info.backButton ? Find(info.backButton) : nullptr)
+                back->ShowText(-1.0f, "$HIDEOUT_BUTTON_BACK", true, false, nullptr, kNoTint);
+            if (HudObject* select = info.selectButton ? Find(info.selectButton) : nullptr)
+                select->ShowText(-1.0f, "$HIDEOUT_BUTTON_SELECT", true, false, nullptr, kNoTint);
+            if (nextGui) {
+                gui = nextGui;
+                nextGui = nullptr;
+            }
+            if (gui && !shutdownScript) {
+                ape::StopGuiScripts("", gui);
+                StartInitScript();
+            }
+            PlayMenuClip(kClip_Open);
+            object->SetVisible(true, true);
+            SetPageFieldsVisible(true, true);
+        }
+        break;
+    case kMenu_Transition:
+        if (ClipDoneIgnoringLoop(animController)) {
+            StartInitScript();
+            animState = (animState & 1u) | (4u << 1);
+        }
+        break;
+    case 4:   // transition played: wait for the init script
+        if (!shutdownScript) {
+            animState = (animState & 1u) | (kMenu_Open << 1);
+        } else if (!ScriptRunning()) {
+            delete shutdownScript;
+            shutdownScript = nullptr;
+            animState = (animState & 1u) | (kMenu_Open << 1);
+        }
+        break;
+    case 6:   // closing clip of a page switch played
+        if (ClipDoneIgnoringLoop(animController)) {
+            if (nextGui)
+                PlayTransition();
+            else
+                BeginClose();
+        }
+        break;
+    case kMenu_Switching:
+        if (ScriptRunning())
+            break;
+        delete shutdownScript;
+        shutdownScript = nullptr;
+        {
+            const HudObjectDef::MenuPageDef& from = info.pages[previousPage];
+            const HudObjectDef::MenuPageDef& to = info.pages[page];
+            if (from.animA == to.animA && from.animB == to.animB) {
+                if (nextGui)
+                    PlayTransition();
+                else
+                    BeginClose();
+            } else {
+                animState = (animState & 1u) | (6u << 1);
+                PlayMenuClip(PickClip(from, kCloseSame, kCloseFromNone, kCloseFrom));
+            }
+        }
+        break;
+    case kMenu_Closing:
+        if (MenuAnimDone()) {
+            PlayMenuClip(kClip_ClosePlain);
+            animState = (animState & 1u) | (kMenu_ClosingPlain << 1);
+        }
+        break;
+    case kMenu_ClosingPlain:
+        if (MenuAnimDone() && !ScriptRunning()) {
+            delete shutdownScript;
+            shutdownScript = nullptr;
+            Refresh();
+        }
+        break;
+    default:
+        break;
+    }
+
+    if (animController)
+        animController->UpdateLayers(dt);
+    if (!object || !object->IsVisible())
+        return;
+    const ape::Vec3& zero = ape::world::kWorldZero;
+    if ((baseOffset.x == zero.x && baseOffset.y == zero.y && baseOffset.z == zero.z) || !HudPlacementEnabled())
+        return;
+    ape::Matrix34 local = object->GetLocal();
+    local.translation.x = zero.x + baseOffset.x + offset.x;
+    local.translation.y = zero.y + baseOffset.y + offset.y;
+    local.translation.z = zero.z + baseOffset.z + offset.z;
+    object->SetLocal(local);
+    object->MarkDirty();
 }
 
 } // namespace hud
