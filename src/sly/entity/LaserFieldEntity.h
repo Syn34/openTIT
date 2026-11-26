@@ -12,6 +12,16 @@
 namespace sly {
 namespace entity {
 
+// Definition of the laser field (vtable 0x00B12048, 0x110 bytes; Spawn
+// 0x000C0FE8 not ported).
+class LaserFieldDef : public ScriptedEntityDef {
+public:
+    // Drops the Havok shape it holds.
+    ~LaserFieldDef() override;
+
+    void* collisionShape = nullptr;   // 0xF0 Havok shape (counted reference)
+};
+
 class LaserFieldEntity : public ScriptedEntity, public EntityInterface17C {
 public:
     ~LaserFieldEntity() override;
