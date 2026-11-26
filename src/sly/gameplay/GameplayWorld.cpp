@@ -75,14 +75,42 @@ float g_timeScale = 1.0f;    // 0x00F65B4C
 
 void SetScreenFade(float, float, float alpha, bool) { g_screenFade = alpha; }
 float CurrentScreenFade() { return g_screenFade; }
-void StartColorFilter(float, float, float, uint32_t, bool) {}
-bool ColorFilterBusy() { return false; }
-void StartDepthOfField(float, float, float, float, bool) {}
-bool DepthOfFieldBusy() { return false; }
-void StartFocusPull(const float*, WorldObject*, uint32_t, bool, bool) {}
-bool FocusPullBusy() { return false; }
-void StartExposureRamp(float, const uint8_t*, const uint8_t*, bool) {}
-bool ExposureRampBusy() { return false; }
+// The blur animation (+0x1283A8).
+void StartColorFilter(float r, float g, float b, uint32_t mode, bool hold)
+{
+    if (g_game)
+        g_game->blur.Start(r, g, b, mode, hold);
+}
+bool ColorFilterBusy() { return g_game && g_game->blur.active; }
+// The slow-motion ramp (+0x1282A4), with `both` also the audio rate ramp.
+void StartDepthOfField(float nearStart, float nearEnd, float farStart, float farEnd, bool both)
+{
+    if (!g_game)
+        return;
+    g_game->timeRamp.Start(nearStart, nearEnd, farStart, farEnd);
+    if (both)
+        g_game->audioRamp.Start(nearStart, nearEnd, farStart, farEnd);
+}
+bool DepthOfFieldBusy() { return g_game && g_game->timeRamp.active; }
+// The depth of field animation (+0x1282DC): the command's first flag
+// disables the effect at the end, the second switches the near blur on.
+void StartFocusPull(const float* p, WorldObject* target, uint32_t mode, bool flag30, bool flag31)
+{
+    if (!g_game)
+        return;
+    g_game->dof.Start(p[0], p[1], p[2], p[3], p[4], p[5], p[6], reinterpret_cast<entity::Entity*>(target),
+                      uint8_t(mode), flag30, flag31, false);
+}
+bool FocusPullBusy() { return g_game && g_game->dof.active; }
+// The screen colour fade (+0x128290).
+void StartExposureRamp(float time, const uint8_t* from, const uint8_t* to, bool hold)
+{
+    if (!g_game)
+        return;
+    g_game->screenFade.Start(time, ape::xml::Color8{from[0], from[1], from[2], from[3]},
+                             ape::xml::Color8{to[0], to[1], to[2], to[3]}, hold, false);
+}
+bool ExposureRampBusy() { return g_game && g_game->screenFade.active; }
 void SetAmbientTint(float, float, float) {}
 void ShowMessageBox(const char*, const int32_t*, const int32_t*) {}
 void ShowYesNoPrompt(WorldObject*, const char*, const char*, PromptCallback, PromptCallback onNo,

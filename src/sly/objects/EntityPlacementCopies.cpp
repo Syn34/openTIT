@@ -359,5 +359,33 @@ void TweenActorPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
         desc.field_114[i] = field_134[i];
 }
 
+// @func 0x001FAD7C TargetableCPlacement::FillInstanceDesc
+void TargetableCPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
+{
+    ScriptedEntityPlacement::FillInstanceDesc(baseDesc);
+    auto& desc = static_cast<TargetableCInstanceDesc&>(baseDesc);
+    CopyPhysical(desc.settings, settings);
+    desc.field_F4 = field_114;
+    desc.field_F8 = field_118;
+    desc.flags = (desc.flags & ~EntityInstanceDesc::kDesc_PlacementBit30) |
+                 ((bits84 >> 18) & EntityInstanceDesc::kDesc_PlacementBit30);
+    desc.field_FC = field_11C;
+}
+
+// @func 0x001F6238 InteractivePropBPlacement::FillInstanceDesc
+void InteractivePropBPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
+{
+    ActorPlacement::FillInstanceDesc(baseDesc);
+    auto& desc = static_cast<InteractivePropBInstanceDesc&>(baseDesc);
+    CopyXYZ(desc.field_E0, field_100);
+    desc.rotation = rotation;
+    desc.field_D0 = field_F0;
+    desc.field_100 = field_120;
+    desc.field_104 = field_124;
+    desc.field_108 = field_128;
+    desc.field_10C = field_12C;
+    desc.field_110 = field_130;
+}
+
 } // namespace objects
 } // namespace sly

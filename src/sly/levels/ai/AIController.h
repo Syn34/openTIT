@@ -322,6 +322,12 @@ public:
     // The target can be reached over the nav mesh (always for targets that
     // are not players) (0x00015AAC, NavPower).
     bool TargetReachable();
+    // `point` lies on the nav mesh point the controller stands on: at most
+    // 1 m below to 0.5 m above it and within 0.2 m horizontally (0x00015C98).
+    bool IsAtNavPoint(const ape::Vec3& point);
+    // Where the playing clip's remaining root motion (scaled by `scale`)
+    // takes the controller is at its nav point (0x00015E40).
+    bool ClipEndsAtNavPoint(float scale);
     // Re-tests the line of sight to the target if needed.
     bool IsTargetVisible();
     // Line of sight test between two points (physics ray cast).

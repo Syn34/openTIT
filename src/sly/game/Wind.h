@@ -87,5 +87,8 @@ float GlobalWindStrength();
 void SetGlobalWindStrength(float strength);
 // Clears the cached wind globals (resources looked up by name hash).
 void ResetWindGlobals();
+// Look up the two entity definitions the wind code uses (cached).
+void CacheWindResourceA();
+void CacheWindResourceB();
 
 } // namespace sly

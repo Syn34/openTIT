@@ -1,6 +1,7 @@
 // openTIT - Level start-up helpers: applying a level definition's camera
 // settings and loading its director scripts.
 #include "ape/level/ApeLevelScene.h"
+#include "ape/world/ApeRenderPasses.h"
 
 #include "agl/AglRenderTarget.h"
 #include "agl/AglResources.h"
@@ -123,10 +124,12 @@ void SetupInstancePasses(ApeLevelWorld& world, const ApeLevelDef& level, void* a
 {
     (void)world; (void)level; (void)arg;
 }
-// TODO(0x005A5864 ClearCameraInstanceList) and TODO(0x005AC64C
-// ClearRenderPasses): the camera list (0x01193088) and the instance render
-// pass table (0x01194ED8) of the world module.
-void ClearWorldPassTables() {}
+// The camera list and the instance render pass table of the world module.
+void ClearWorldPassTables()
+{
+    world::ClearCameraInstanceList();
+    world::ClearRenderPasses();
+}
 
 } // namespace
 

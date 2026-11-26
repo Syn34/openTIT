@@ -278,6 +278,85 @@ void BlurAnimation::Update(float dt)
     }
 }
 
+// @func 0x0048EF50 ValueRamp::Start
+void ValueRamp::Start(float fromValue, float toValue, float time, float holdTime)
+{
+    from = fromValue;
+    to = toValue;
+    duration = time;
+    hold = holdTime;
+    elapsed = 0.0f;
+    active = true;
+    value = time <= 0.0f ? toValue : fromValue;
+}
+
+// @func 0x0048EF9C DofAnimation::Start
+void DofAnimation::Start(float intensityFrom, float intensityTo, float focusFrom, float focusTo, float rangeFrom,
+                         float rangeTo, float time, entity::Entity* focusTarget, uint8_t samples, bool disableAtEnd,
+                         bool nearBlurOn, bool holdAtEnd)
+{
+    target = focusTarget;
+    intensityStart = intensityFrom;
+    intensityEnd = intensityTo;
+    focusStart = focusFrom;
+    focusEnd = focusTo;
+    rangeStart = rangeFrom;
+    rangeEnd = rangeTo;
+    duration = time;
+    quality = samples;
+    elapsed = 0.0f;
+    disableWhenDone = disableAtEnd;
+    nearBlur = nearBlurOn;
+    hold = holdAtEnd;
+    active = true;
+}
+
+// @func 0x0048F008 NoisePulse::FadeIn
+void NoisePulse::FadeIn(float time)
+{
+    AglPostProcChain* chain = MainChain();
+    if (!chain)
+        return;
+    auto* bloomEffect = static_cast<agl::AglBloomBase*>(chain->effects[AglPostProcChain::kBloom]);
+    auto* noise = static_cast<agl::AglBloomNoiseBase*>(chain->effects[AglPostProcChain::kBloomNoise]);
+
+    from = step < 2 ? noise->pulseAmount : 0.0f;
+    while (step < 2)
+        Update(3.4028235e38f);
+    steps[0] = kStep_Start;
+    steps[1] = kStep_Ramp;
+    to = 1.0f;
+    duration = time;
+    elapsed = 0.0f;
+    // The noise takes over the bloom's look.
+    noise->field_A0 = bloomEffect->field_30;
+    noise->field_90 = bloomEffect->field_20[0];
+    noise->field_94 = bloomEffect->field_20[1];
+    noise->field_98 = bloomEffect->field_20[2];
+    step = 0;
+    Update(0.0f);
+}
+
+// @func 0x0048F158 NoisePulse::FadeOut
+void NoisePulse::FadeOut(float time)
+{
+    AglPostProcChain* chain = MainChain();
+    if (!chain)
+        return;
+    auto* noise = static_cast<agl::AglBloomNoiseBase*>(chain->effects[AglPostProcChain::kBloomNoise]);
+
+    from = step < 2 ? noise->pulseAmount : 1.0f;
+    while (step < 2)
+        Update(3.4028235e38f);
+    steps[0] = kStep_Ramp;
+    steps[1] = kStep_Restore;
+    to = 0.0f;
+    duration = time;
+    elapsed = 0.0f;
+    step = 0;
+    Update(0.0f);
+}
+
 // @func 0x00488B78 SlyGame::SetDofIntensity
 void SlyGame::SetDofIntensity(float value)
 {

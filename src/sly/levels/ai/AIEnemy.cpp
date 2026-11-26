@@ -7,6 +7,7 @@
 #include "sly/levels/ai/AIHooks.h"
 #include "sly/levels/ai/AIProxyPoints.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace sly {
@@ -66,7 +67,7 @@ void EnemyAI::SetActive(bool active)
         enemyFlagsB &= 0xC3u;
         field_1BC = ape::Vec3{};
         field_19C = ape::Vec3{};
-        field_1B4 = 0;
+        patrolInteractionTime = 0.0f;
         field_1B0 = 0.0f;
         field_181 = 0;
         field_1C8 = 0;
@@ -292,6 +293,64 @@ ape::Vec3 EnemyAI::FilterRootMotion(const ape::Vec3& step)
 float EnemyAI::NavSearchRadius()
 {
     return (enemyFlagsB & kEB_FarSearch) ? 500.0f : 50.0f;
+}
+
+// @func 0x00034444 EnemyAI::TargetInAttackRange
+bool EnemyAI::TargetInAttackRange()
+{
+    const float range = std::max(PropFloat(settings, AIProp::Enemy_RangedAttackRange),
+                                 PropFloat(settings, AIProp::Enemy_FarAttackRange));
+    if (!target || targetDist >= range)
+        return false;
+    if (!PropBool(settings, AIProp::Enemy_AttackRequiresLOS))
+        return true;
+    return TestLineOfSight(entity->GetCenter(), target->GetCenter(), target);
+}
+
+namespace {
+constexpr uint32_t kClip_PatrolInteraction = 0x13BF9082u;   // NOTE: name unknown
+constexpr int kState_PatrolInteraction = 13;
+} // namespace
+
+// @func 0x00039314 EnemyAI::CanStartPatrolInteraction
+bool EnemyAI::CanStartPatrolInteraction(AIController* other, uint32_t clip)
+{
+    if (patrolInteractionTime <= PropFloat(settings, AIProp::Enemy_PatrolInteractionMinTime))
+        return false;
+    float distSq = partnerDistSq;
+    if (other != partner) {
+        const ape::Vec3& a = other->transform.translation;
+        const ape::Vec3& b = transform.translation;
+        const float dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+        distSq = dx * dx + dy * dy + dz * dz;
+    }
+    const float minDist = PropFloat(settings, AIProp::Enemy_PatrolInteractionMinDist);
+    const float maxDist = PropFloat(settings, AIProp::Enemy_PatrolInteractionMaxDist);
+    if (distSq >= maxDist * maxDist || distSq <= minDist * minDist)
+        return false;
+    if (!CharacterHasClip(characterComp, clip) || clip != kClip_PatrolInteraction)
+        return false;
+    return state == 0 || state == 12 || state == 13;
+}
+
+// @func 0x00039178 EnemyAI::StartPatrolInteraction
+void EnemyAI::StartPatrolInteraction(AIController* other, uint32_t clip)
+{
+    patrolInteractionTime = 0.0f;
+    proxyClip = clip;
+    const ape::Vec3& to = other->transform.translation;
+    const ape::Vec3& from = transform.translation;
+    facing = {to.x - from.x, to.y - from.y, to.z - from.z, 0.0f};
+    if (!(flags1 & kF1_FreeFacing) && ((flags1 & kF1_FlatFacing) || !CanPitch()))
+        facing.y = 0.0f;
+    const float inv = 1.0f / std::sqrt(facing.x * facing.x + facing.y * facing.y + facing.z * facing.z);
+    facing = {facing.x * inv, facing.y * inv, facing.z * inv, 0.0f};
+    if (std::fabs(SignedAngle(facing, transform.zAxis)) > 0.7853982f) {
+        OnTurnInPlace();
+        stateAfterTurn = kState_PatrolInteraction;
+    } else {
+        SetState(kState_PatrolInteraction);
+    }
 }
 
 } // namespace ai
