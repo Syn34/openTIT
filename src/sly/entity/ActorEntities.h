@@ -133,6 +133,7 @@ public:
     uint8_t interactionFlags[6] = {};   // 0x170 per interaction kind (InteractivePropC)
     uint32_t bufferSize = 0;        // 0x254
     void* buffer = nullptr;         // 0x258 owned
+    float field_278[2] = {};        // 0x278 placement default (radians)
 };
 
 // The definition InteractivePropA actually uses (vtable 0x00B17B88).

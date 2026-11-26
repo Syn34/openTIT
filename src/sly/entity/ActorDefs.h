@@ -96,6 +96,8 @@ SLY_ACTOR_DEF(SoundActorB174C0Def, SoundActorDef);   // 0x00B17490
 class SoundActorB17728Def : public SoundActorDef {
 public:
     ~SoundActorB17728Def() override;
+    uint32_t field_190 = 0;             // 0x190 placement default (hash)
+    float field_194 = 0.0f;             // 0x194 placement default
     // 0x198 character (CharacterDef::characterName) a near player must be to
     // open the actor; 0 for anyone.
     uint32_t requiredCharacter = 0;

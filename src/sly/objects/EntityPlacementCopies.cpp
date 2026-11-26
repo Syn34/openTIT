@@ -303,8 +303,8 @@ void SoundActorB17728Placement::FillInstanceDesc(EntityInstanceDesc& baseDesc) c
 {
     SoundActorPlacement::FillInstanceDesc(baseDesc);
     auto& desc = static_cast<SoundActorB17728InstanceDesc&>(baseDesc);
-    desc.field_F0[0] = field_110[0];
-    desc.field_F0[1] = field_110[1];
+    desc.field_F0 = field_110;
+    desc.field_F4 = field_114;
 }
 
 // @func 0x001D80C4 ActorB17990Placement::FillInstanceDesc

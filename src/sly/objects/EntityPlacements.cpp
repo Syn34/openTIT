@@ -782,5 +782,46 @@ EntityPlacement* ParseSoundActorB17270Placement(ape::xml::XmlElement* root, ape:
     return placement;
 }
 
+// @func 0x001D4328 ParseSoundActorB17728Placement
+EntityPlacement* ParseSoundActorB17728Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new SoundActorB17728Placement(name, def);
+    placement->typeBits |= 0x80000;
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    if (def) {
+        const auto* doorDef = static_cast<const entity::SoundActorB17728Def*>(def);
+        placement->field_110 = doorDef->field_190;
+        placement->field_114 = doorDef->field_194;
+    }
+    placement->typeBits |= 0x4000000;
+    placement->Parse(elem);
+    elem->GetHash(0x53FFAFC2u, &placement->field_110, placement->field_110);
+    elem->GetFloat(0x667AB4F5u, &placement->field_114, placement->field_114);
+    return placement;
+}
+
+// @func 0x001DE9D8 ParseInteractivePropAPlacement
+EntityPlacement* ParseInteractivePropAPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new InteractivePropAPlacement(name, def);
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    if (def) {
+        const auto* propDef = static_cast<const entity::InteractivePropADef*>(def);
+        placement->field_F0[0] = propDef->field_278[0];
+        placement->field_F0[1] = propDef->field_278[1];
+    }
+    placement->typeBits |= 0x40000000;
+    placement->Parse(elem);
+    if (elem->GetVec2(0xBF3F0DB1u, placement->field_F0, placement->field_F0) == ape::xml::kQuery_Ok) {
+        placement->field_F0[0] *= kDegToRad;
+        placement->field_F0[1] *= kDegToRad;
+    }
+    return placement;
+}
+
 } // namespace objects
 } // namespace sly

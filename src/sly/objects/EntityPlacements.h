@@ -460,11 +460,13 @@ public:
     using SoundActorPlacement::SoundActorPlacement;
     ~SoundActorB17728Placement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001D4620
-    uint32_t field_110[2] = {};         // +0x110, +0x114
+    uint32_t field_110 = 0;             // +0x110 attribute 0x53FFAFC2 (hash)
+    float field_114 = 0.0f;             // +0x114 attribute 0x667AB4F5
 };
 struct SoundActorB17728InstanceDesc : SoundActorInstanceDesc {
     using SoundActorInstanceDesc::SoundActorInstanceDesc;
-    uint32_t field_F0[2] = {};          // 0xF0, 0xF4
+    uint32_t field_F0 = 0;              // 0xF0
+    float field_F4 = 0.0f;              // 0xF4
 };
 
 // Input mover: two vectors, four words and a 0x44-byte block.
@@ -496,11 +498,11 @@ public:
     using ActorPlacement::ActorPlacement;
     ~InteractivePropAPlacement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x001DEB58
-    uint32_t field_F0[2] = {};          // +0xF0, +0xF4
+    float field_F0[2] = {};             // +0xF0, +0xF4 radians (attribute 0xBF3F0DB1, in degrees)
 };
 struct InteractivePropAInstanceDesc : ScriptedInstanceDesc {
     using ScriptedInstanceDesc::ScriptedInstanceDesc;
-    uint32_t field_D0[2] = {};          // 0xD0, 0xD4
+    float field_D0[2] = {};             // 0xD0, 0xD4
 };
 
 class SafePlacement : public ActorPlacement {   // 0x00B18020
@@ -705,6 +707,12 @@ EntityPlacement* ParseSoundActorB16B48Placement(ape::xml::XmlElement* root, ape:
 EntityPlacement* ParseSoundActorB16DB0Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                 const char* name, EntityDef* def);
 EntityPlacement* ParseSoundActorB17270Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def);
+// Door sound actor and interactive prop placement loaders (0x001D4328,
+// 0x001DE9D8).
+EntityPlacement* ParseSoundActorB17728Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                                const char* name, EntityDef* def);
+EntityPlacement* ParseInteractivePropAPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                 const char* name, EntityDef* def);
 // Placement loaders of the rigid-body scripted classes (0x00167F58,
 // 0x0016CBE0, 0x00177D78, 0x0017F1A0, 0x00190EA0).
