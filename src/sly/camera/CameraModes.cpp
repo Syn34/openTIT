@@ -1071,6 +1071,14 @@ void VehicleCameraMode::SetTarget(Entity* entity)
         LoadTargetSettings();
 }
 
+// @func 0x00111200 VehicleCameraMode::Activate
+void VehicleCameraMode::Activate()
+{
+    flags1E4 |= 0x80000000u;
+    AddHavokEntityToWorld(body);
+    StopHavokEntity(body);
+}
+
 // @func 0x0010E9A4 VehicleCameraMode::~VehicleCameraMode
 // @func 0x0010EAD0 VehicleCameraMode::~VehicleCameraMode (deleting)
 VehicleCameraMode::~VehicleCameraMode()
