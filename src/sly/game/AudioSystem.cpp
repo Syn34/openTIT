@@ -3,6 +3,8 @@
 #include "ape/xml/ApeXml.h"
 #include "sly/game/SoundZones.h"
 
+#include <algorithm>
+#include <mutex>
 #include <vector>
 
 #include "ape/core/ApeString.h"
@@ -13,6 +15,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <mutex>
 
 namespace sly {
 namespace audio {
@@ -481,11 +484,60 @@ float g_mixFrom[kMixParamCount] = {};              // 0x010AFD94
 float g_mixTarget[kMixParamCount] = {};            // 0x010AFC98
 float g_mixBlendTime = 0.0f;                       // 0x010AFE88
 float g_mixBlendElapsed = 0.0f;                    // 0x010AFE8C
+// NOTE: the volume sources below are read through the TOC on the console
+// and their writers are not identified: four scale factors (0x00F65B40..
+// 0x00F65B4C) and the option volumes (0x010AED90, 0x010AEDDC, 0x010AEE28,
+// master 0x010AECF8).
+AudioVolumeSettings g_volumeSettings;
+AudioBusVolumes g_busVolumes;                       // 0x00F8E5F4.. (library side), dirty mask 0x011D86D0
+uint32_t g_busUpdateShift = 0;                      // 0x010B0B20
+uint32_t g_audioFrame = 0;                          // 0x010B00DC
 
-// TODO(0x00447860): pushes the blended mix to the sound library buses.
+// Bus groups of the final volume scaling (by bus bit).
+constexpr uint32_t kSfxBuses = 0x9FFFFFF9u;
+constexpr uint32_t kMusicBuses = 0x60000004u;
+constexpr uint32_t kDialogBuses = 0x00000002u;
+
+// @func 0x00447860 ApplyMix
+// Advances the blend towards the target mix, then turns the mix into bus
+// volumes for the sound library: each bus is scaled by its group's volume
+// (sound effects, music, dialogue) and clamped to [0, 1]. Only every
+// 2^shift-th bus is refreshed per call (interleaved by the audio frame).
+// The master volume marks every bus dirty when it changes.
 void ApplyMix(float dt)
 {
-    (void)dt;
+    if (std::fabs(g_mixBlendTime) >= 1e-5f) {
+        g_mixBlendElapsed += dt / g_mixBlendTime;
+        if (g_mixBlendElapsed >= 1.0f) {
+            g_mixBlendElapsed = 1.0f;
+            g_mixBlendTime = 0.0f;
+        }
+        for (int i = 0; i < kMixParamCount; ++i)
+            g_mixCurrent[i] = (g_mixTarget[i] - g_mixFrom[i]) * g_mixBlendElapsed + g_mixFrom[i];
+    }
+
+    AudioBusVolumes& out = g_busVolumes;
+    std::lock_guard<std::mutex> guard(out.lock);
+    const AudioVolumeSettings& volume = g_volumeSettings;
+    const uint32_t step = 1u << g_busUpdateShift;
+    for (uint32_t bus = g_audioFrame & (step - 1); bus < uint32_t(kMixParamCount); bus += step) {
+        const uint32_t bit = 1u << bus;
+        float level = g_mixCurrent[bus];
+        if (bit & kSfxBuses)
+            level = volume.sfxScale * level * volume.sfxOption;
+        if (bit & kMusicBuses)
+            level = volume.musicScale * level * volume.musicOption;
+        if (bit & kDialogBuses)
+            level = volume.dialogScale * volume.masterScale * level * volume.dialogOption;
+        out.dirtyMask |= bit;
+        out.bus[bus] = std::clamp(level, 0.0f, 1.0f);
+    }
+    const float master = std::clamp(volume.masterOption, 0.0f, 1.0f);
+    if (std::fabs(out.lastMaster - master) >= 1e-5f) {
+        out.dirtyMask = 0xFFFFFFFFu;
+        out.lastMaster = master;
+        out.master = master;
+    }
 }
 
 } // namespace
