@@ -329,14 +329,26 @@ void CreatePostProcBuffers()
     b.halfDepth = SurfaceCreateDepth(display.width >> 1, display.height >> 1, kDepthFormat, kAglAA_None);
 }
 
+namespace {
+bool g_postProcBuffersCreated = false;   // 0x010DDB84
+}
+
 // @func 0x00546EF4 InitPostProcBuffers
 void InitPostProcBuffers()
 {
-    static bool created = false;   // 0x010DDB84
-    if (!created) {
+    if (!g_postProcBuffersCreated) {
         CreatePostProcBuffers();
-        created = true;
+        g_postProcBuffersCreated = true;
     }
+}
+
+// @func 0x00546F3C ShutdownPostProcBuffers
+// Lets the next start-up create the buffers again.
+// NOTE: the console does not free the surfaces here (its platform hook
+// 0x00520028 is empty).
+void ShutdownPostProcBuffers()
+{
+    g_postProcBuffersCreated = false;
 }
 
 // @func 0x0051FF1C InitPostProcShaders

@@ -184,6 +184,7 @@ AglPostProcBuffers& GetPostProcBuffers();
 void CreatePostProcBuffers();
 // Start-up of the post-process buffers (once).
 void InitPostProcBuffers();
+void ShutdownPostProcBuffers();
 
 // Game tunables read by the effects (0x01164040..0x0116407C).
 // NOTE: 0x005467DC stores the post-process buffer pointers (AglPostProcBuffers)
