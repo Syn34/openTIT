@@ -245,6 +245,29 @@ std::map<uint32_t, AglTopology*>& TopologyNames()
 
 } // namespace
 
+// @func 0x005087EC AglTopology::~AglTopology
+// @func 0x00508B00 AglTopology::~AglTopology (deleting)
+// Releases the parts from the last to the first.
+// NOTE: the console also releases the LOD settings (0x005084CC) and frees
+// the batch data at +0x5C; neither is modelled here.
+AglTopology::~AglTopology()
+{
+    while (meshCount != 0) {
+        --meshCount;
+        MeshEntry& entry = meshes[meshCount];
+        if (AglSubMesh* mesh = entry.mesh) {
+            entry.mesh = nullptr;
+            mesh->Release();
+        }
+        if (AglMaterial* material = entry.material) {
+            entry.material = nullptr;
+            material->Release();
+        }
+    }
+    meshes = inlineMeshes;
+    lod = nullptr;
+}
+
 // @func 0x00508B94 AglTopology::AddMesh
 void AglTopology::AddMesh(AglSubMesh* mesh, AglMaterial* material)
 {

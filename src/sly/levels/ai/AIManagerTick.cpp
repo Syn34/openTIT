@@ -2,6 +2,8 @@
 // player's allies stand and whom they fight, and the shared timers.
 #include "sly/levels/ai/AIController.h"
 
+#include "agl/AglRenderTarget.h"
+#include "sly/camera/CameraHooks.h"
 #include "sly/entity/EntityHooks.h"
 #include "sly/entity/GameEntityHooks.h"
 #include "sly/knowledge/Knowledge.h"
@@ -9,7 +11,9 @@
 #include "sly/levels/ai/AIHooks.h"
 #include "sly/levels/nav/NavGraph.h"
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 
 namespace sly {
 namespace levels {
@@ -42,13 +46,82 @@ ape::Vec3 TransformPoint(const ape::Matrix34& m, const ape::Vec3& p)
             m.xAxis.z * p.x + m.yAxis.z * p.y + m.zAxis.z * p.z + m.translation.z, 0.0f};
 }
 
+// The point is on the inner side of all eight plane slots of the view
+// frustum, allowing `margin` (the plane groups are stored transposed, four
+// planes per group).
+bool InsideFrustum(const agl::AglFrustum& frustum, const ape::Vec3& p, float margin)
+{
+    for (int group = 0; group < 2; ++group) {
+        const ape::Vec4* soa = &frustum.soa[group * 4];
+        const float dist[4] = {
+            soa[0].x * p.x + soa[3].x + soa[1].x * p.y + soa[2].x * p.z,
+            soa[0].y * p.x + soa[3].y + soa[1].y * p.y + soa[2].y * p.z,
+            soa[0].z * p.x + soa[3].z + soa[1].z * p.y + soa[2].z * p.z,
+            soa[0].w * p.x + soa[3].w + soa[1].w * p.y + soa[2].w * p.z,
+        };
+        for (float d : dist) {
+            if (!(margin + d >= 0.0f))
+                return false;
+        }
+    }
+    return true;
+}
+
 } // namespace
 
-// TODO(0x000182C0 AIManager::UpdateRecord50): Ghidra reports bad instruction
-// data (vector code); the record follows a target's nav position.
+// @func 0x000182C0 AIManager::UpdateRecord50
+// The controller snaps the record's spot onto the nav mesh. The point is
+// good when it lies near the spot (within half the radius, at least three
+// units, both vertically and across), its target can be seen from it (from
+// the height of the controller's entity centre) and it is inside the main
+// view; good points are remembered and add to the good time.
 void AIManager::UpdateRecord50(Record50& record, float dt)
 {
-    (void)record; (void)dt;
+    AIController* controller = record.controller;
+    if (!controller || !controller->target || !(controller->target->flags & entity::kEnt_Alive))
+        return;
+
+    const float radius = record.radius;
+    const float tolerance = std::max(radius * 0.5f, 3.0f);
+    const ape::Vec3 spot = {lastPlayerPosition.x + record.direction.x * radius,
+                            lastPlayerPosition.y + record.direction.y * radius,
+                            lastPlayerPosition.z + record.direction.z * radius, 0.0f};
+    const ape::Vec3 point = controller->NavSnapPoint(spot);
+
+    if (std::fabs(point.y - spot.y) < tolerance) {
+        const float dx = point.x - spot.x;
+        const float dz = point.z - spot.z;
+        record.inRange = dx * dx + 0.0f + dz * dz < tolerance * tolerance;
+        if (record.inRange) {
+            bool visible = false;
+            if (Entity* target = controller->target) {
+                const ape::Vec3 center = controller->GetEntity()->GetCenter();
+                const ape::Vec3& at = controller->Position();
+                const ape::Vec3 eye = {point.x + (center.x - at.x), point.y + (center.y - at.y),
+                                       point.z + (center.z - at.z), 0.0f};
+                const ape::Vec3 targetCenter = target->GetCenter();
+                visible = controller->TestLineOfSight(eye, targetCenter, target);
+            }
+            record.visible = visible;
+        }
+    } else {
+        record.inRange = false;
+    }
+
+    float time = record.goodTime - dt;
+    if (record.inRange) {
+        if (record.visible) {
+            // NOTE: the console reads the main render target without a null
+            // check; without one the point counts as off screen.
+            const agl::AglRenderTarget* view = camera::MainRenderTarget();
+            record.onScreen = view && InsideFrustum(view->frustum, point, 1.0f);
+        }
+        if (record.visible && record.onScreen) {
+            record.lastGoodPoint = point;
+            time = record.goodTime + dt;
+        }
+    }
+    record.goodTime = std::max(std::min(time, 2.0f), 0.0f);
 }
 
 // Part of 0x00019AF0. Two greedy matchings by smallest squared distance: the

@@ -6,6 +6,7 @@
 #include "agl/AglDrawList.h"
 #include "agl/AglOcclusion.h"
 #include "agl/AglParticleProps.h"
+#include "agl/AglPostProc.h"
 #include "agl/AglPostProcShaders.h"
 #include "agl/AglResources.h"
 #include "agl/AglShaderClass.h"
@@ -263,6 +264,7 @@ void InitParticleSystem()
 // most part; the PC renderer allocates its own.
 void InitRenderScratch()
 {
+    InitPostProcBuffers();
 }
 
 // @func 0x0054BF24 InitStencilShadows

@@ -197,3 +197,10 @@
   yet), OnSafeSessionEnded 0x002E7694. 0x002E70B8 (bottle pickup callback) still TODO.
 * Goal type 0x22 (0x003373E8, vtable 0x00B1EDE8, 0xBB0 bytes) is a penguin goal over five
   spawners named <base>+0..4 (spawn manager map); not ported.
+
+## agent2: audio mix
+* `ApplyMix` 0x00447860 blends the mix and writes `g_busVolumes` (bus volume table + dirty mask
+  the sound library reads; groups: sfx 0x9FFFFFF9, music 0x60000004, dialogue bit 1). The volume
+  sources (0x00F65B40..0x00F65B4C, option volumes 0x010AED90/0x010AEDDC/0x010AEE28/0x010AECF8)
+  are `g_volumeSettings`; their writers are not identified. NOTE: GameplayWorld.h calls
+  0x00F65B4C the time scale, but here it scales dialogue volume; one of the two is wrong.

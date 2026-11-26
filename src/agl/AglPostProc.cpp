@@ -284,6 +284,73 @@ AglPostProcChain::~AglPostProcChain() = default;
 
 // --- start-up ------------------------------------------------------------------
 
+AglPostProcBuffers& GetPostProcBuffers()
+{
+    static AglPostProcBuffers buffers;
+    return buffers;
+}
+
+// @func 0x005467DC CreatePostProcBuffers
+void CreatePostProcBuffers()
+{
+    constexpr uint32_t kColorFormat = kAglFmt_LinA8R8G8B8;
+    constexpr uint32_t kDepthFormat = 7;
+    AglPostProcBuffers& b = GetPostProcBuffers();
+    const AglDisplaySettings& display = GetDisplaySettings();
+    auto align8 = [](uint32_t v) { return v ? ((v - 1) & ~7u) + 8 : 0u; };
+
+    // Quarter resolution: four buffers stacked vertically.
+    const uint16_t qw = uint16_t(display.width >> 2);
+    const uint16_t qh = uint16_t(display.height >> 2);
+    b.quarterSurface = SurfaceCreate(qw, align8(qh) * 3 + qh, kColorFormat, kAglAA_None, gpu::MemoryLocation::Local);
+    for (int i = 0; i < 4; ++i) {
+        b.quarterViews[i] = SurfaceCreateView(b.quarterSurface, qw, qh, uint32_t(qh) * uint32_t(i));
+        TextureFromSurface(&b.quarterImages[i], b.quarterViews[i]);
+    }
+    b.quarterDepth = SurfaceCreateDepth(qw, qh, kDepthFormat, kAglAA_None);
+
+    // Eighth resolution: two stacked buffers, plus eighth size views of the
+    // first quarter buffer and of the quarter depth buffer.
+    const uint16_t ew = uint16_t(qw >> 1);
+    const uint16_t eh = uint16_t(qh >> 1);
+    b.eighthSurface = SurfaceCreate(ew, align8(eh) + eh, kColorFormat, kAglAA_None, gpu::MemoryLocation::Local);
+    for (int i = 0; i < 2; ++i) {
+        b.eighthViews[i] = SurfaceCreateView(b.eighthSurface, ew, eh, uint32_t(eh) * uint32_t(i));
+        TextureFromSurface(&b.eighthImages[i], b.eighthViews[i]);
+    }
+    b.eighthOfQuarterView = SurfaceCreateView(b.quarterViews[0], ew, eh, 0);
+    TextureFromSurface(&b.eighthOfQuarterImage, b.eighthOfQuarterView);
+    b.eighthDepthView = SurfaceCreateView(b.quarterDepth, ew, eh, 0);
+
+    // Half resolution colour target and depth buffer.
+    TextureCreate(&b.halfImage, uint16_t(display.width >> 1), uint16_t(display.height >> 1), 1, kColorFormat, true,
+                  nullptr, false);
+    b.halfSurface = b.halfImage.surface;
+    b.halfDepth = SurfaceCreateDepth(display.width >> 1, display.height >> 1, kDepthFormat, kAglAA_None);
+}
+
+namespace {
+bool g_postProcBuffersCreated = false;   // 0x010DDB84
+}
+
+// @func 0x00546EF4 InitPostProcBuffers
+void InitPostProcBuffers()
+{
+    if (!g_postProcBuffersCreated) {
+        CreatePostProcBuffers();
+        g_postProcBuffersCreated = true;
+    }
+}
+
+// @func 0x00546F3C ShutdownPostProcBuffers
+// Lets the next start-up create the buffers again.
+// NOTE: the console does not free the surfaces here (its platform hook
+// 0x00520028 is empty).
+void ShutdownPostProcBuffers()
+{
+    g_postProcBuffersCreated = false;
+}
+
 // @func 0x0051FF1C InitPostProcShaders
 void InitPostProcShaders()
 {

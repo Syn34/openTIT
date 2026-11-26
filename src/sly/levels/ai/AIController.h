@@ -476,12 +476,20 @@ public:
     // the player and the allies (0x0001AC80).
     Entity* PickTarget(const AIController* controller) const;
 
-    // Eight records at +0x50, one per compass direction around a target
-    // (Init points `direction` 45 degrees apart). NOTE: users not found yet.
+    // Eight records at +0x50, one per compass direction around the player
+    // (Init points `direction` 45 degrees apart). Each watches the spot
+    // `radius` along its direction from the last player position for the
+    // controller that uses it. NOTE: the code that fills `controller` and
+    // `radius` is not found yet.
     struct Record50 {
-        uint32_t field_00 = 0;                         // +0x00
-        ape::Vec3 field_10{};                          // +0x10
+        AIController* controller = nullptr;            // +0x00
+        ape::Vec3 lastGoodPoint{};                     // +0x10 last nav point that was seen and on screen
         ape::Vec3 direction{};                         // +0x20
+        float radius = 0.0f;                           // +0x30
+        float goodTime = 0.0f;                         // +0x34 seconds, 0..2: up while good, down otherwise
+        bool inRange = false;                          // +0x38 the nav point is near the spot
+        bool onScreen = false;                         // +0x39 the nav point is inside the main view
+        bool visible = false;                          // +0x3A the target can be seen from the nav point
     };
     static constexpr int kRecord50Count = 8;
 
