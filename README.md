@@ -11,13 +11,13 @@ code, and no game data is included.
 
 <!-- progress:begin -->
 
-## Progress: **41.49%**
+## Progress: **41.77%**
 
-`████████████░░░░░░░░░░░░░░░░░░`  9928 / 23931 functions (23.04% of code bytes)
+`█████████████░░░░░░░░░░░░░░░░░`  9995 / 23931 functions (23.23% of code bytes)
 
 | Region | Functions done | Total | % (functions) | % (bytes) |
 |---|---:|---:|---:|---:|
-| Game + Ape engine | 9808 | 15076 | 65.06% | 37.25% |
+| Game + Ape engine | 9875 | 15076 | 65.50% | 37.57% |
 | C runtime / SPU job support | 120 | 210 | 57.14% | 42.09% |
 | Sony audio (989snd, MultiStream) | 0 | 641 | 0.00% | 0.00% |
 | NavPower navigation (middleware) | 0 | 1852 | 0.00% | 0.00% |
