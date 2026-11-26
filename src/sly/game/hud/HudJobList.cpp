@@ -44,8 +44,8 @@ constexpr uint32_t kField_Description = 0x001FF691u;   // "DESC"
 // Script states played when the accept button picks an entry.
 constexpr uint32_t kScript_Purchase = 0x968EF501u;      // "Purchase": the job starts
 constexpr uint32_t kScript_Unavailable = 0x23200439u;   // NOTE: name unknown; the entry cannot start
-// Default label tint: opaque white (0x01164CA4).
-const uint8_t kWhite[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+// Default label tint: none (transparent, 0x01164CA4).
+const uint8_t kNoTint[4] = {0, 0, 0, 0};
 // World callback lists the element draws and places itself on.
 constexpr int kCallbackList_Draw = 8;
 constexpr int kCallbackList_Place = 3;
@@ -86,7 +86,7 @@ HudJobList::HudJobList(HudObjectDef* def_) : HudObject(0, def_)
 {
     const HudObjectDef::ListDef& info = def->list;
     for (uint8_t& c : tint)
-        c = kWhite[0];
+        c = kNoTint[0];
     listDefaultFade = info.defaultFade;
     const bool persistent = (info.flags & 1) != 0;
     listFlags = (listFlags & 0x0007FFFFu) | (persistent ? (kL_Persistent | kL_Shown) : 0u);
@@ -302,7 +302,7 @@ void HudJobList::SetEnabled(bool enabled, bool flag)
     if (!enabled)
         Hide(flag, false);
     else if (!(listFlags & kL_Shown))
-        ShowTimed(-1.0f, nullptr, false, nullptr, kWhite);
+        ShowTimed(-1.0f, nullptr, false, nullptr, kNoTint);
 }
 
 // @func 0x00380A8C HudJobList::Refresh
@@ -344,7 +344,7 @@ void HudJobList::Update(float dt)
         const char* current = nullptr;
         if (info.fieldCount && info.fields[0].label)
             current = static_cast<ape::ApeGuiLabel*>(info.fields[0].label)->GetText();
-        ShowTimed(-1.0f, current, false, nullptr, kWhite);
+        ShowTimed(-1.0f, current, false, nullptr, kNoTint);
         if (info.fieldCount && info.fields[0].label) {
             info.fields[0].label->SetText(text, false);
             info.fields[0].label->Invalidate();

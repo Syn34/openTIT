@@ -884,12 +884,12 @@ void ShowBottleNotice(const char* text)
 {
     constexpr uint32_t kHud_Timer = 0x04C20F25u;   // "Timer"
     constexpr uint32_t kHud_Tip = 0x0001447Bu;     // "Tip"
-    static const uint8_t kWhite[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+    static const uint8_t kNoTint[4] = {0, 0, 0, 0};   // 0x01164CA4
     if (hud::HudObject* timer = hud::Find(kHud_Timer)) {
         if (timer->object && hud::ObjectVisible(timer->object))
             timer->Show(false, true, false);
     }
-    hud::ShowTextByName(6.0f, kHud_Tip, text, true, false, nullptr, kWhite);
+    hud::ShowTextByName(6.0f, kHud_Tip, text, true, false, nullptr, kNoTint);
 }
 
 } // namespace

@@ -22,7 +22,7 @@ namespace hud {
 
 namespace {
 
-const uint8_t kWhite[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+const uint8_t kNoTint[4] = {0, 0, 0, 0};
 
 // Time periods of the episodes (0x00F64E00) and the instance each one shows
 // with the 0x800 element (0x00F64E1C).
@@ -148,7 +148,7 @@ HudType800::HudType800(HudObjectDef* def_) : HudObject(0, def_)
 {
     const HudObjectDef::List800Def& info = def->list800;
     for (int i = 0; i < 4; ++i)
-        tint[i] = kWhite[i];
+        tint[i] = kNoTint[i];
     listDefaultFade = info.defaultFade;
     const bool persistent = (info.flags & 1) != 0;
     listFlags = (listFlags & 0x0007FFFFu) | (persistent ? (kE_Persistent | kE_Shown) : 0u);
@@ -272,7 +272,7 @@ HudType1000::HudType1000(HudObjectDef* def_) : HudObject(0, def_)
 {
     const HudObjectDef::ListDef& info = def->list;
     for (int i = 0; i < 4; ++i)
-        tint[i] = kWhite[i];
+        tint[i] = kNoTint[i];
     listDefaultFade = info.defaultFade;
     const bool persistent = (info.flags & 1) != 0;
     listFlags = (listFlags & 0x0007FFFFu) | (persistent ? (kE_Persistent | kE_Shown) : 0u);

@@ -34,7 +34,7 @@ const uint32_t kCloseFrom[3] = {0, 0xBCFA3661u, 0xBCFA3662u};            // 0x00
 const uint32_t kCloseFromNone[3] = {0, 0xB143A780u, 0xB143A781u};        // 0x00ADC680
 const uint32_t kCloseSame[3] = {0, 0x1C3AFE84u, 0x1C3AFE85u};            // 0x00ADC698
 
-const uint8_t kWhite[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+const uint8_t kNoTint[4] = {0, 0, 0, 0};
 constexpr uint32_t kGuiEvent_Shutdown = 0x0E;   // NOTE: event sent with the page switch
 
 // World callback lists of the menu.
@@ -226,9 +226,9 @@ void HudHideoutMenu::BeginOpen()
             ape::StrCopyBounded(selectText, own, sizeof selectText);
     }
     if (HudObject* back = info.backButton ? Find(info.backButton) : nullptr)
-        back->ShowText(-1.0f, "$HIDEOUT_BUTTON_BACK", true, false, nullptr, kWhite);
+        back->ShowText(-1.0f, "$HIDEOUT_BUTTON_BACK", true, false, nullptr, kNoTint);
     if (HudObject* select = info.selectButton ? Find(info.selectButton) : nullptr)
-        select->ShowText(-1.0f, "$HIDEOUT_BUTTON_SELECT", true, false, nullptr, kWhite);
+        select->ShowText(-1.0f, "$HIDEOUT_BUTTON_SELECT", true, false, nullptr, kNoTint);
     PlayMenuClip(kClip_Open);
     if (object)
         object->SetVisible(true, true);

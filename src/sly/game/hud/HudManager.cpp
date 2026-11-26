@@ -977,7 +977,7 @@ void AnchorMirror(float out[3], int32_t anchor, const float in[3])
         out[0] = -out[0];
         out[1] = -out[1];
         break;
-    case kAnchor_BottomLeft:
+    case kAnchor_BottomRight:
         out[0] = -out[0];
         break;
     default:
