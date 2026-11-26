@@ -45,6 +45,9 @@ public:
     static AglSubMesh* Create();
     static void Destroy(void* object);
     void Release() override;
+    // Slot 3: the submesh's name.
+    // @func 0x0079ED80 AglSubMesh::GetName
+    virtual const char* GetName() const { return name; }
     // Draws the geometry for a render item: uploads the item's bones (when
     // skinned), binds the vertex streams and the fragment program and issues
     // the draw (console vtable slot 4 of the platform submesh).
@@ -134,6 +137,9 @@ public:
     static AglMaterial* Create();
     static void Destroy(void* object);
     void Release() override;
+    // Slot 3: the material goes by the name of its first texture (null
+    // without one).
+    virtual const char* GetName() const;
     // A new material drawn by 'shaderClass'.
     static AglMaterial* CreateWithClass(AglShaderClass* shaderClass);
     // A new material drawn by the shader class registered under 'classHash'

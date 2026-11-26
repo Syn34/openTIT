@@ -320,4 +320,10 @@ void SetViewEyePosition(const float position[3])
     std::memcpy(g_viewEyePosition, position, sizeof(g_viewEyePosition));
 }
 
+// @func 0x007A0F08 AglMaterial::GetName
+const char* AglMaterial::GetName() const
+{
+    return textures[0] ? textures[0]->GetName() : nullptr;
+}
+
 } // namespace agl
