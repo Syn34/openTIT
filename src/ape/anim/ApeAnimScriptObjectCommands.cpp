@@ -3,6 +3,8 @@
 
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
+#include "ape/level/ApeGui.h"
+#include "ape/level/ApeGuiScript.h"
 #include "ape/math/ApeMatrixOps.h"
 #include "ape/xml/ApeXml.h"
 #include "ape/input/ApeInputDevice.h"
@@ -284,7 +286,15 @@ ApeAnimScriptCommand* ApeAnimScriptSetFovCommand::Create(xml::XmlElement* elemen
     return command;
 }
 
-// TODO(0x004C44BC ApeAnimScriptSetFovCommand::Execute) sets a camera's field of view.
+// @func 0x004C44BC ApeAnimScriptSetFovCommand::Execute
+// Sets the field of view of a camera instance.
+void ApeAnimScriptSetFovCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    instance->FindVar(m_object);   // NOTE: looked up and ignored on the console
+    ApeRefCounted* object = instance->ResolveObject(m_object, false);
+    if (object && g_objectHooks.setCameraFov)
+        g_objectHooks.setCameraFov(object, m_fov);
+}
 
 // @func 0x004C452C ApeAnimScriptSetFovCommand::CreateDebugElement
 xml::XmlElement* ApeAnimScriptSetFovCommand::CreateDebugElement() const
@@ -542,7 +552,22 @@ ApeAnimScriptCommand* ApeAnimScriptSetScaleCommand::Create(xml::XmlElement* elem
     return command;
 }
 
-// TODO(0x004CB4A0 ApeAnimScriptSetScaleCommand::Execute)
+// @func 0x004CB4A0 ApeAnimScriptSetScaleCommand::Execute
+// Scales a GUI object (when the operand is a GUI variable) or a world object
+// (children too when the flag is set).
+void ApeAnimScriptSetScaleCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    ApeAnimScriptVar* var = instance->FindVar(m_object);
+    if (var && var->GetType() == AnimScriptVarType::Gui) {
+        void* gui = static_cast<ApeAnimScriptGuiVar*>(var)->Resolve();
+        if (gui && g_objectHooks.setGuiScale)
+            g_objectHooks.setGuiScale(gui, m_scale);
+        return;
+    }
+    ApeRefCounted* object = instance->ResolveObject(m_object, false);
+    if (object && g_objectHooks.setObjectScale)
+        g_objectHooks.setObjectScale(object, m_scale, m_flagF5897C08);
+}
 
 // @func 0x004CB5E8 ApeAnimScriptSetScaleCommand::CreateDebugElement
 xml::XmlElement* ApeAnimScriptSetScaleCommand::CreateDebugElement() const
@@ -661,7 +686,22 @@ ApeAnimScriptCommand* ApeAnimScriptPlayGuiScriptCommand::Create(xml::XmlElement*
     return command;
 }
 
-// TODO(0x004CC3F4 ApeAnimScriptPlayGuiScriptCommand::Execute) plays a GUI animation.
+// @func 0x004CC3F4 ApeAnimScriptPlayGuiScriptCommand::Execute
+// Restarts a GUI script on the object of a GUI variable: every script of
+// the object is stopped, then `m_script` plays (deleted when it ends).
+void ApeAnimScriptPlayGuiScriptCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (!m_object)
+        return;
+    ApeAnimScriptVar* var = instance->FindVar(m_object);
+    if (!var || var->GetType() != AnimScriptVarType::Gui)
+        return;
+    auto* gui = static_cast<ApeGuiObject*>(static_cast<ApeAnimScriptGuiVar*>(var)->Resolve());
+    if (!gui)
+        return;
+    StopGuiScripts("", gui);
+    PlayGuiScript(m_script, gui, true, false);
+}
 
 // ---------------------------------------------------------------------------
 // AttachObject

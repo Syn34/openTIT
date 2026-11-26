@@ -11,11 +11,17 @@
 #include "sly/tuning/GameTuning.h"
 #include "sly/entity/Entity.h"
 #include "sly/game/AppRuntime.h"
+#include "sly/game/AudioSystem.h"
+#include "sly/entity/Character.h"
+#include "sly/entity/GameEntityHooks.h"
+#include "sly/entity/CharacterHooks.h"
+#include "ape/world/ApeObj.h"
 #include "sly/game/LevelParams.h"
 #include "sly/gameplay/ReturnTreasure.h"
 #include "ape/xml/ApeXml.h"
 
 #include <cmath>
+#include <cstring>
 
 namespace sly {
 
@@ -288,6 +294,187 @@ void SlyGame::SetReturnTreasureHudActive(bool on)
 {
     if (ReturnTreasureActive())
         returnTreasure->SetHudActive(on);
+}
+
+// @func 0x00488D68 SlyGame::RestartLevelState
+void SlyGame::RestartLevelState()
+{
+    RequestMainState(3);
+    if (uint8_t* data = StateData(0))
+        std::memset(data, 0, 0x34);
+}
+
+// Sub state data of the job-complete screen (sub state 7).
+struct JobCompleteData {
+    uint8_t field_00[0x44];
+    uint32_t field_44;
+    uint32_t completion;    // +0x48 what CompleteRunningJob returned
+};
+static_assert(sizeof(JobCompleteData) <= 0x80, "fits the state data block");
+
+// @func 0x0048EC44 SlyGame::OnJobFinished
+bool SlyGame::OnJobFinished()
+{
+    SetLetterbox(false);
+    game::JobManager* jobs = game::GetJobManager();
+    finishedJobName = (jobs && jobs->instance) ? jobs->instance->nameHash : 0;
+    const uint32_t completion = jobs ? jobs->CompleteRunningJob() : 0;
+    progress.AddPendingCount(pendingCounts[players[0].index & 7]);
+
+    if (jobs && !game::ProgressFlag149() && !game::IsInJob() && jobs->currentJob &&
+        jobs->currentJob->ProgressState() == 2) {
+        jobs->RestartEpisodeById(jobs->currentJob->field_2D4);
+    } else if (completion == 0) {
+        RequestSubState(2);
+    } else {
+        RequestSubState(7);
+        if (auto* data = reinterpret_cast<JobCompleteData*>(StateData(1))) {
+            data->field_44 = 0;
+            data->completion = completion;
+        }
+    }
+    return false;
+}
+
+// @func 0x00482D14 SlyGame::RecordEvent
+void SlyGame::RecordEvent(uint32_t player, const GameEvent& event)
+{
+    if (event.type == kEvent_01 && timeSource) {
+        entity::Entity* tracked = timeSource->trackedEntity;
+        if (tracked && (tracked->flags & (1u << 18)) && tracked->nameHash == event.objectId) {
+            timeSource->field_158 = 0;
+            timeSource->trackedEntity = nullptr;
+            timeSource->tracking = false;
+        }
+    }
+
+    const bool playing = transition != 2 && GetState(0) == 1 && (GetState(1) == 2 || GetState(1) == 3);
+    if (playing && cutsceneQueue.Count() == 0) {
+        if (player < localPlayerCount)
+            players[player].eventLog.Push(event);
+        if (game::JobManager* jobs = game::GetJobManager())
+            jobs->OnGameEvent(int(player), event);
+        return;
+    }
+    if (cutsceneQueue.Count() != 0 && (flags2D & 0x04))
+        players[0].deferredEvents.Push(event);
+}
+
+// @func 0x0048A57C SlyGame::QuitToFrontEnd
+void SlyGame::QuitToFrontEnd()
+{
+    if (game::JobManager* jobs = game::GetJobManager())
+        jobs->EndJob(false);
+    if (ape::ApeGuiObject* letterbox = ape::FindGuiObject("InGame.Cutscene.Letterbox", nullptr))
+        letterbox->SetVisible(false);
+    RequestMainState(0);
+    RequestSubState(7);
+}
+
+// @func 0x0048A4E0 SlyGame::OnCinematicSkipped
+void SlyGame::OnCinematicSkipped()
+{
+    audio::SoundName* music = audio::CreateSoundName(g_audioPostCinematicSkipMusic.Get(), 0);
+    if (audio::SoundNameHasDef(music))
+        audio::SetPendingMusic(music, false, false);
+    else
+        audio::StopMusic(true);
+    audio::SoundNameRelease(music);
+    stateFlags = uint8_t((stateFlags & ~0x20) | 0x60);
+}
+
+// @func 0x0047BC68 SlyGame::OnPlayerDown
+void SlyGame::OnPlayerDown(uint32_t player)
+{
+    // NOTE: the console passes the player index to the HUD; it keeps a single
+    // meter B.
+    hud::SnapMeterB();
+    if (ReturnTreasureActive())
+        returnTreasure->OnEntityRemoved(players[player].character);
+}
+
+// @func 0x0048C7DC SlyGame::AnswerYes
+void SlyGame::AnswerYes()
+{
+    if (uint8_t* data = StateData(1))
+        data[0] = 1;
+    stateFlags |= 0x01;
+}
+
+// @func 0x0048C804 SlyGame::AnswerNo
+void SlyGame::AnswerNo()
+{
+    if (uint8_t* data = StateData(1))
+        data[0] = 1;
+    stateFlags &= ~0x01;
+}
+
+// @func 0x00488004 SlyGame::SetPlayerPhysicsTarget
+void SlyGame::SetPlayerPhysicsTarget(uint32_t player, const ape::Vec3& point)
+{
+    entity::Entity* character = players[player].character;
+    if (character && character->HasTypeBit(3))
+        static_cast<entity::Character*>(character)->SetPhysicsTarget(point);
+}
+
+namespace {
+
+void PlaceCharacter(entity::Entity* character, const ape::Matrix34& transform)
+{
+    if (!character)
+        return;
+    character->SetTransform(transform);
+    character->SetLocalTransform(transform);
+    if (character->object)
+        character->object->UpdateWorld(false, false);
+    character->ResetState();
+    if (character->HasTypeBit(3)) {
+        entity::CharacterSettleAfterMove(character, 0.5f, -1, -1);
+        entity::CharacterStoreRestorePoint(character);
+    }
+}
+
+} // namespace
+
+// @func 0x00488178 SlyGame::PlacePlayer
+void SlyGame::PlacePlayer(GamePlayer& player, const ape::Matrix34& transform)
+{
+    PlaceCharacter(player.character, transform);
+}
+
+// @func 0x00488298 SlyGame::PlacePlayer(index)
+void SlyGame::PlacePlayer(uint32_t player, const ape::Matrix34& transform)
+{
+    PlaceCharacter(players[player].character, transform);
+}
+
+// @func 0x0048C6EC SetDarkScreen
+void SetDarkScreen(float distance, float ramp, float minValue, bool enabled)
+{
+    g_gameDarkScreenEnabled.SetBool(enabled);
+    g_gameDarkScreenDistance.SetFloat(distance);
+    g_gameDarkScreenRamp.SetFloat(ramp);
+    g_gameDarkScreenMinValue.SetFloat(minValue);
+}
+
+// @func 0x00467C4C TrophyCommId
+const char* TrophyCommId()
+{
+    return "NPWR03581";
+}
+
+// @func 0x00488ADC PlayerPlayingScript
+bool PlayerPlayingScript()
+{
+    entity::Entity* character = g_game ? g_game->PlayerCharacter(0) : nullptr;
+    if (!character)
+        return false;
+    for (entity::EntityComponent* c = character->GetComponent(entity::kComp_17); c;
+         c = character->GetComponent(entity::kComp_17, c)) {
+        if (entity::AnimDriverState(c) == 7)
+            return true;
+    }
+    return false;
 }
 
 } // namespace sly

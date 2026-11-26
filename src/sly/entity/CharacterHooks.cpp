@@ -137,5 +137,9 @@ bool PhysicsWorldPresent() { return false; }
 void EntityPlayDirectorScript(Entity* entity, uint32_t script) { (void)entity; (void)script; }
 void EntityAttachSpawned(Entity* parent, EntityPlacement& placement, Entity* child) { (void)parent; (void)placement; (void)child; }
 
+// TODO(0x0012C968 / 0x00129D94): character placement helpers.
+void CharacterSettleAfterMove(Entity*, float, int32_t, int32_t) {}
+void CharacterStoreRestorePoint(Entity*) {}
+
 } // namespace entity
 } // namespace sly
