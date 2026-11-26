@@ -876,13 +876,24 @@ public:
     bool InteractionBegin(Entity* user) override;                 // slot 62
     void InteractionCancel() override;                // slot 63: Reset(false)
     void InteractionEnd(bool completed) override;     // slot 64: Reset(completed)
-    // 0x001EDD84 (not ported): takes the interacting entity.
+    // Takes the interacting entity (a character; anything else counts as
+    // none) and lets go of the previous one: the user is kept from being
+    // culled, counted as interacting and posed by the actor through its
+    // animation controller's pose hook (0x001EDD84).
     void TakeUser(Entity* user);
+    // The pose hook (0x001F4440): poses three bones of the user.
+    static void UserPoseHook(void* actor);
+    // TODO(0x001F4098 TweenActor::PoseUser)
+    void PoseUser() {}
+    bool Release(bool kill) override;                 // slot 10
 
     Entity* field_358 = nullptr;              // 0x358 entity using the actor (non-null while a reset is pending)
     uint32_t field_1FC = 0;                   // 0x1FC cleared when an interaction begins
     Entity* field_368 = nullptr;              // 0x368 counted, dropped when hidden
+    int32_t userBones[3] = {-1, -1, -1};      // 0x35C bones 0xB3521F35..37 of the user
     uint32_t field_3C8 = 0;                   // 0x3C8 player block value (+0x10D8) of the user
+    float savedFieldD0 = 0.0f;                // 0x3CC Entity::field_D0 while a user is held
+    void* phantom = nullptr;                  // 0x354 Havok phantom (released with the actor)
     uint32_t tweenFlags = 0;                  // 0x3D4 bit 17 user damaged, bit 21, bit 29
     // Entities the actor spawned and owns: a pair per record (the second is
     // released first).

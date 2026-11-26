@@ -1159,7 +1159,62 @@ bool TweenActor::InteractionBegin(Entity* /*user*/)
 }
 
 // TODO(0x001EDD84 TweenActor::TakeUser)
-void TweenActor::TakeUser(Entity* user) { field_358 = user; }
+// @func 0x001EDD84 TweenActor::TakeUser
+void TweenActor::TakeUser(Entity* user)
+{
+    if (field_358) {
+        if (!user) {
+            EntityComponent* character = field_358->GetCharacterComponent();
+            if (character && CharacterCompHasController(character)) {
+                CharacterCompSetPoseHook(character, nullptr, nullptr);
+                for (int32_t& bone : userBones)
+                    bone = 0;
+            }
+            field_D0 = savedFieldD0;
+            savedFieldD0 = 0.0f;
+        }
+        ReleaseUserProp();
+        field_358->Release(false);
+    }
+    field_358 = (user && user->HasTypeBit(3)) ? user : nullptr;
+    if (!field_358)
+        return;
+    savedFieldD0 = field_D0;
+    field_D0 = 1000000.0f;
+    ++field_358->interactionCount;
+    EntityComponent* character = field_358->GetCharacterComponent();
+    if (character && CharacterCompHasController(character)) {
+        static constexpr uint32_t kBones[3] = {0xB3521F35u, 0xB3521F36u, 0xB3521F37u};
+        for (int i = 0; i < 3; ++i)
+            userBones[i] = field_358->FindBone(kBones[i]);
+        CharacterCompSetPoseHook(character, &TweenActor::UserPoseHook, this);
+    }
+}
+
+// @func 0x001F4440 TweenActor::UserPoseHook
+void TweenActor::UserPoseHook(void* actor)
+{
+    static_cast<TweenActor*>(actor)->PoseUser();
+}
+
+// @func 0x001EE0CC TweenActor::Release
+bool TweenActor::Release(bool kill)
+{
+    if (kill) {
+        TakeUser(nullptr);
+        ReleaseEntities334();
+        ReleaseOwned(field_32C);
+        ReleaseEntities33C();
+        if (field_368)
+            field_368->Release(false);
+        field_368 = nullptr;
+        ReleaseEntity330();
+        if (phantom)
+            camera::DestroyPhantom(phantom);   // out of its world (when in one) and dropped
+        ReleaseAllOwned();
+    }
+    return ActorEntity::Release(kill);
+}
 
 // @func 0x001ED85C TweenActor::ReleaseOwned
 void TweenActor::ReleaseOwned(Entity* entity)

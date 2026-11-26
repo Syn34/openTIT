@@ -60,6 +60,10 @@ void PhysicsCompResetAfterSwap(EntityComponent* component);
 void PhysicsCompSetDisabled(EntityComponent* component, bool disabled);
 // Sends an animation event to the character component's controller (+0x24, 0x0035327C).
 void CharacterCompSendAnimEvent(EntityComponent* component, uint32_t event);
+// The character component's animation controller (+0x24) is present, and its
+// pose hook (+0x34 function, +0x38 argument; null clears it).
+bool CharacterCompHasController(EntityComponent* component);
+void CharacterCompSetPoseHook(EntityComponent* component, void (*hook)(void* arg), void* arg);
 
 // Surface axes of the physics component by its movement mode (+0x1A0 bits
 // 28-30: ground, water, wall climbing through component 0x2C) (0x0026A42C /
