@@ -997,5 +997,107 @@ void PlacementB138E8::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
         desc.bindings.PushBack(binding);
 }
 
+// @func 0x001B5438 PlacementB16088::Parse
+void PlacementB16088::Parse(ape::xml::XmlElement* elem)
+{
+    constexpr uint32_t kElem_Point = 0x65AF9A49u;
+    ScriptedEntityPlacement::Parse(elem);
+    elem->GetFloat(0xE6DF8EF6u, &field_100, field_100);
+    for (ape::xml::XmlElement* child = elem->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        if (child->GetNameHash() != kElem_Point || field_EC.Count() >= 4)
+            continue;
+        Entry point = {{0.0f, 0.0f}};
+        if (child->GetVec2(0x01968AD4u, point.xy, point.xy) == ape::xml::kQuery_Ok)
+            field_EC.PushBack(point);
+    }
+}
+
+// @func 0x001B55C8 ParsePushBlockPlacement
+// NOTE: the console copies the definition's points without checking it for null.
+EntityPlacement* ParsePushBlockPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                         const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new PlacementB16088(name, def);
+    if (def) {
+        const auto* blockDef = static_cast<const entity::PushBlockDef*>(def);
+        placement->field_100 = blockDef->field_E8;
+        for (const entity::PushBlockDef::Point& point : blockDef->points)
+            placement->field_EC.PushBack(point);
+    }
+    placement->typeBits |= 0x20000;
+    placement->Parse(elem);
+    return placement;
+}
+
+// @func 0x001A5C90 ParseBreakableChainPlacement
+// A piece count (attribute 0x2086522B) replaces the definition's pieces with
+// that many pieces of 3.0; piece children (0x048992CE, 1-based index
+// attribute 0x042930B2) override a piece's three values (not below zero).
+// NOTE: the console tests the placement element's own name instead of the
+// child's when looking for piece children (kept), so they are normally
+// ignored.
+EntityPlacement* ParseBreakableChainPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                              const char* name, EntityDef* def)
+{
+    constexpr uint32_t kElem_Piece = 0x048992CEu;
+    static const uint32_t kValueAttrs[3] = {0xEABE8E36u, 0x800ACF3Au, 0xA88C3581u};
+    (void)root;
+    auto* placement = new BreakableChainPlacement(name, static_cast<BreakableChainDef*>(def), nullptr,
+                                                  ape::world::kWorldIdentity, ape::world::kWorldUnitScale, true,
+                                                  false, 0);
+    int32_t count = 0;
+    if (elem->GetInt(0x2086522Bu, &count, 0) == ape::xml::kQuery_Ok && count > 0) {
+        placement->pieces.Clear();
+        for (int32_t i = 0; i < count; ++i)
+            placement->pieces.PushBack(BreakableChainPiece{{3.0f, 3.0f, 3.0f}});
+    }
+    for (ape::xml::XmlElement* child = elem->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        if (elem->GetNameHash() != kElem_Piece)
+            continue;
+        int32_t index = 0;
+        if (child->GetInt(0x042930B2u, &index, 0) != ape::xml::kQuery_Ok)
+            continue;
+        if (index < 1 || index > int32_t(placement->pieces.Count()))
+            continue;   // warning "BreakableChain Piece index is out of range" (stripped)
+        BreakableChainPiece& piece = placement->pieces[size_t(index - 1)];
+        for (int k = 0; k < 3; ++k) {
+            float value = 0.0f;
+            if (child->GetFloat(kValueAttrs[k], &value, piece.values[k]) == ape::xml::kQuery_Ok)
+                piece.values[k] = std::max(value, 0.0f);
+        }
+    }
+    return placement;
+}
+
+// @func 0x000DFDF8 ScriptedInstanceDesc::ScriptedInstanceDesc
+ScriptedInstanceDesc::ScriptedInstanceDesc(uint32_t layerCount, uint32_t dataSize, const char* instanceName,
+                                           EntityDef* ownerDef, ape::world::ApeObj* source, const void* field28,
+                                           const ape::Matrix34& initialTransform, const ape::Vec3& initialScale,
+                                           bool bit16, bool bit15, bool bit14, bool startVisible, bool bit12,
+                                           bool bit9, bool bit8, bool notListed, uint32_t field80, uint8_t playerSlot,
+                                           uint32_t field8C)
+    : EntityInstanceDesc(-1.0f, -1.0f, layerCount, dataSize, instanceName, ownerDef, source, field28,
+                         initialTransform, initialScale, bit16, bit15, bit14, startVisible, bit12, bit9, bit8,
+                         notListed, field80, playerSlot, field8C)
+{
+    // NOTE: the definition is taken to be a scripted one, as on the console.
+    const auto* scriptDef = static_cast<const entity::ScriptedEntityDef*>(ownerDef);
+    typeBits[0] |= 1u << kType_Scripted | 1u;
+    field_B8 = scriptDef ? scriptDef->field_8C : 100.0f;
+    field_BC = scriptDef ? scriptDef->lifetimeScriptName : 0;
+    field_C0 = scriptDef ? scriptDef->field_98 : 0;
+    field_C4 = scriptDef ? (scriptDef->damageFlags & 0x8000u) != 0 : true;
+}
+
+// The arguments the scripted spawns pass: one state layer, no source
+// object, identity transform, unit scale, no player.
+ScriptedInstanceDesc::ScriptedInstanceDesc(const char* instanceName, EntityDef* ownerDef)
+    : ScriptedInstanceDesc(1, 0, instanceName, ownerDef, nullptr, nullptr, ape::world::kWorldIdentity,
+                           ape::world::kWorldUnitScale, false, false, true, false, false, true, false, false, 0,
+                           0xFF, 0)
+{
+}
+
 } // namespace objects
 } // namespace sly

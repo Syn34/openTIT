@@ -149,8 +149,13 @@ public:
     // Re-reads the character and body components (0x0002550C).
     void RefreshComponents();
 
+    // +0x140 place next to the player the AI manager assigns (in the
+    // player's frame).
+    ape::Vec3 surroundOffset{};
     uint32_t field_150 = 0;           // +0x150
-    float field_154 = 20.0f;          // +0x154
+    // +0x154 targets are only handed over within this distance of
+    // startPosition (none when not positive).
+    float field_154 = 20.0f;
     uint32_t field_158 = 0;           // +0x158 set to 1 by Update
     int32_t mode = 0;                 // +0x15C
     ape::Vec3 startPosition{};        // +0x160

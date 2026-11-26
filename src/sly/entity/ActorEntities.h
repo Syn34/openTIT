@@ -166,6 +166,9 @@ public:
     // @func 0x007479D0 ActorEntity::~ActorEntity (thunk, +0x180)
     // @func 0x00747830 ActorEntity::~ActorEntity (deleting thunk, +0x180)
     ~ActorEntity() override { delete parts; }
+    // Collision layer of the first part that has a body (false without a
+    // physics world or a body) (0x000E96A0).
+    bool FirstBodyCollisionLayer(uint32_t& layer) const;
     // Slot 5: simulated part bodies pose the bones and locators they stand
     // for; then the physics state timers.
     bool PostUpdate(float dt) override;

@@ -262,3 +262,19 @@ gameplay::Minigame* CreateMinigame(MinigameKind kind, SlyGame* game, const void*
 
 } // namespace goals
 } // namespace sly
+
+namespace sly {
+namespace goals {
+// Object of the level's named object table (sorted map at +0x10 of the
+// object at 0x00F8F154; the photo filters live there too), or null.
+void* FindLevelTableObject(uint32_t name);
+// 0x0029F428 on the targeting component of the game world's player
+// character (+0x1078, 0x000D949C). NOTE: meaning unknown; the hunt goal
+// calls it with false when it gives the HUD back.
+void PlayerTargeting29F428(bool value);
+// 0x00260C14 on the object an entity returns from its slot 16 (+0x40;
+// the physics/collision component). NOTE: called with true when the caught
+// entity is let go.
+void EntityComponent16Set(void* entity, bool value);
+} // namespace goals
+} // namespace sly

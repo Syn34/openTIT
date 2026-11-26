@@ -559,6 +559,11 @@ public:
     // player, the world posts event 0xD and the active type-0x200 HUD
     // element plays its leave transition (0x002E7694).
     static void OnSafeSessionEnded(entity::Entity* player);
+    // 0x002E70B8: a clue bottle of the current episode was picked up: its
+    // bit goes into the profile, the count is refreshed, the counter shown,
+    // and the first and last bottles of an episode get a notice. NOTE: the
+    // console callback receives (context, bottle index, job manager).
+    void OnBottleCollected(uint32_t bottle);
     // StartJobFromHub for the job named `jobName` (none for 0 or an unknown
     // name), always tracked (0x002E1DB0).
     void StartJobFromHubByName(uint32_t jobName, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
@@ -594,7 +599,9 @@ public:
     uint32_t field_30 = 0;           // +0x30
     uint32_t collectedBottles = 0;   // +0x38 of the current episode, counted at level start
     uint32_t collectedMasks = 0;     // +0x3C over every active episode
-    uint32_t field_40 = 0;           // +0x40
+    // +0x40 NOTE: an object whose word +0x44 (bits 0-2) is a safe state;
+    // copied into the episode record once every clue bottle is found.
+    void* safeSource = nullptr;
     entity::Entity* field_44 = nullptr;   // +0x44 NOTE: an entity whose script is told when a job ends
     Goal* trackedGoal = nullptr;     // +0x48
     Goal* failingGoal = nullptr;     // +0x4C goal whose fail scripts run every update
@@ -760,6 +767,8 @@ void GameWorldSetStateData(const char* message, uint32_t player);
 uint32_t LiveJobId();
 // 0x0029D838 on a targeting component.
 void TargetingSetEnabled(void* targeting, bool enabled);
+// Word +0x44 bits 0-2 of the job manager's object +0x40 (a safe state).
+int SafeSourceState(const void* source);
 
 } // namespace game
 } // namespace sly

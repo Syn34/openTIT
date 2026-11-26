@@ -4,9 +4,11 @@
 // state machine of the common element, with its fields at other offsets
 // and its flag word at +0x214.
 //
-// NOTE: the element's purpose is not identified (a reticle/marker kind,
-// from its callers); its constructor (0x00357DC4) and per-frame update
-// (0x00382308, 7.5 KB) are not ported yet.
+// It is the radar: the constructor names its parts "RadarBlipPlayer_NN",
+// "RadarBlipEnemy_NN", "RadarBlipGoal_NN", "RadarBlipGoalEdge_NN",
+// "RadarBlipHideout", "RadarBlipFollow", "RadarBlipBottle_NN" and
+// "RadarBlipSafe_01". Its per-frame update (0x00382308, 7.5 KB) is not
+// ported yet.
 #pragma once
 
 #include "sly/game/hud/HudManager.h"
@@ -33,7 +35,8 @@ public:
     };
 
     HudType8000() = default;
-    explicit HudType8000(HudObjectDef* def) : HudObject(0, def) {}
+    // 0x00357DC4: copies of the definition's blip instances.
+    explicit HudType8000(HudObjectDef* def);
     // 0x00381AA8 / 0x00381DF8: hidden, the parts released.
     ~HudType8000() override;
 
@@ -70,20 +73,21 @@ public:
     bool Blocked() const { return (stateWord & (kF_Blocked | kF_Suppressed)) != 0; }
 
     uint32_t clips[5] = {};          // +0xA4 clip per state
+    uint32_t alertClips[2] = {};     // +0xB8 "_AlertIntro", "_AlertOutro"
     float defaultFade8000 = 0.0f;    // +0xC0
     float fadeTime8000 = 0.0f;       // +0xC4 requested time (< 0: the default)
     float holdTime8000 = 0.0f;       // +0xC8 time left in the update/idle state
     HudObject* linked8000 = nullptr; // +0xCC
-    // Scene objects of the element's parts (filled by the constructor,
-    // 0x00357DC4). NOTE: what each group shows is not known.
-    ape::world::ApeObj* markers[9] = {};     // +0xD4
-    ape::world::ApeObj* rowA[12] = {};       // +0xF8
-    ape::world::ApeObj* rowB[12] = {};       // +0x128
-    ape::world::ApeObj* rowC[12] = {};       // +0x158
-    ape::world::ApeObj* part188 = nullptr;   // +0x188
-    ape::world::ApeObj* part18C = nullptr;   // +0x18C
-    ape::world::ApeObj* slots[32] = {};      // +0x190
-    ape::world::ApeObj* part210 = nullptr;   // +0x210
+    ape::world::ApeObj* background = nullptr;   // +0xD0 definition +0xA0 (not copied)
+    // Blips (own copies of the definition's instances).
+    ape::world::ApeObj* markers[9] = {};     // +0xD4 players
+    ape::world::ApeObj* rowA[12] = {};       // +0xF8 enemies
+    ape::world::ApeObj* rowB[12] = {};       // +0x128 goals
+    ape::world::ApeObj* rowC[12] = {};       // +0x158 goals beyond the radar's edge
+    ape::world::ApeObj* part188 = nullptr;   // +0x188 hideout
+    ape::world::ApeObj* part18C = nullptr;   // +0x18C followed entity
+    ape::world::ApeObj* slots[32] = {};      // +0x190 clue bottles
+    ape::world::ApeObj* part210 = nullptr;   // +0x210 safe
     uint32_t stateWord = 0;          // +0x214 Flags8000
 
 private:

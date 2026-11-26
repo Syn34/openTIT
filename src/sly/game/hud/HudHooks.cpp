@@ -50,3 +50,18 @@ int ProfileCoinCount(uint8_t profile) { (void)profile; return 0; }
 
 } // namespace hud
 } // namespace sly
+
+namespace sly {
+namespace hud {
+// TODO(0x0049E628 upgrade table query)
+bool UpgradeUnlocked(uint32_t kind, uint32_t item) { (void)kind; (void)item; return true; }
+// TODO(game world +0x178/+0x17C/+0x180)
+uint32_t EquippedUpgrade(uint32_t kind) { (void)kind; return 0; }
+// TODO(game world +0x128164 object, +0x15C4 bit 27)
+bool CostumeChoiceFree() { return true; }
+// TODO(application player block word +0xB4 bit 15)
+static bool s_appInputHeld = false;
+bool AppInputHeld() { return s_appInputHeld; }
+void SetAppInputHeld(bool held) { s_appInputHeld = held; }
+} // namespace hud
+} // namespace sly

@@ -95,6 +95,23 @@ void UnregisterEntity(EntityList list, Entity* entity)
     }
 }
 
+// @func 0x000D64F4 AddToInstanceRenderList
+// Entities go to list B ("s_instRenderList" in the warning); a second add is
+// refused.
+void AddToInstanceRenderList(Entity* entity)
+{
+    std::vector<Entity*>& entries = List(kList_B);
+    for (Entity* existing : entries) {
+        if (existing == entity) {
+            ape::TempFormat("entity '%s' added to s_instRenderList twice.  this may cause a crash on the next "
+                            "frame.",
+                            entity ? entity->GetDebugName() : "NULL");
+            return;
+        }
+    }
+    entries.push_back(entity);
+}
+
 // @func 0x000D6614 AddToInstanceRenderList
 // NOTE: the console list holds objects of several classes; the port keeps
 // them in the shared entity pointer list.

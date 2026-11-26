@@ -8,18 +8,6 @@
 namespace sly {
 namespace hud {
 
-// One line of the list (0x28 bytes, definition +0xA4).
-struct HudTimedLine {
-    uint32_t field = 0;          // +0x00 text field it goes to
-    float time = 0.0f;           // +0x04 seconds after the delay
-    char text[0x20] = {};        // +0x08
-};
-struct HudTimedLines {
-    HudTimedLine* lines = nullptr;   // definition +0xA4
-    int32_t count = 0;               // definition +0xA8
-    float delay = 0.0f;              // definition +0xAC
-};
-
 class HudSubtitle : public HudElement {
 public:
     // Built inline by the element factory (0x0035AC7C).

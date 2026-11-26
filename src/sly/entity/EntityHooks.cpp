@@ -152,6 +152,23 @@ void ScriptInstanceSetState(void* instance, uint32_t stateName)
     static_cast<ape::ApeAnimScriptInstance*>(instance)->SetStateAndUpdate(stateName);
 }
 
+// TODO(0x0036196C LoadHudDefs)
+void LoadHudDefs(ape::xml::XmlElement*, ape::xml::XmlElement*) {}
+// TODO(0x00288728 LoadAnimationDefs)
+void LoadAnimationDefs(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) {}
+// TODO(0x002AD4F4 LoadDefsE452FC60)
+void LoadDefsE452FC60(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) {}
+// TODO(0x00274CDC LoadCombatDefs)
+void LoadCombatDefs(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) {}
+// TODO(0x002AF5F0 LoadDefs1F7B9E20)
+void LoadDefs1F7B9E20(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) {}
+// TODO(0x002C9D0C LoadShootingDefs)
+void LoadShootingDefs(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) {}
+// TODO(0x000D5C00 LoadSpawnDefs)
+void LoadSpawnDefs(ape::xml::XmlElement*, ape::xml::XmlElement*) {}
+// TODO(0x000CA038 LoadEntityDef)
+EntityDef* LoadEntityDef(ape::xml::XmlElement*, ape::xml::XmlElement*, uint8_t) { return nullptr; }
+
 // TODO(0x00490518)
 void PropertySystemForgetDef(EntityDef* def) { (void)def; }
 // TODO(0x00490360)

@@ -3,6 +3,10 @@
 
 #include "ape/core/ApeString.h"
 #include "ape/world/ApeBase.h"
+#include "ape/math/ApeMath.h"
+#include "ape/xml/ApeXml.h"
+
+#include <cstring>
 
 namespace sly {
 namespace entity {
@@ -20,6 +24,50 @@ void AppendAttachments(const EntityAttachmentList& from, EntityAttachmentList*& 
 }
 
 } // namespace
+
+// @func 0x000C9AB8 ParseEntityAttachments
+void ParseEntityAttachments(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, EntityAttachmentList*& list)
+{
+    constexpr uint32_t kElem_Attachment = 0xCCEB9AF9u;
+    constexpr float kDegToRad = 0.017453292f;
+    for (ape::xml::XmlElement* child = elem->FirstChildElement(kElem_Attachment); child;
+         child = child->NextSiblingElement(kElem_Attachment)) {
+        EntityAttachmentDesc record;
+        std::memset(&record, 0, sizeof(record));
+        record.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+        if (const char* name = child->GetString("name"))
+            ape::StrNCopy(record.name, name, sizeof(record.name));
+        if (const char* name = child->GetString("nameOverride"))
+            ape::StrNCopy(record.nameOverride, name, sizeof(record.nameOverride));
+        child->GetHash(0x20C00073u, &record.part, 0);
+        child->GetVec3(0xEF4DDD13u, &record.offset.x, &ape::world::kWorldZero.x);
+        ape::Vec3 euler = ape::world::kWorldZero;
+        child->GetVec3(0xC7400937u, &euler.x, &ape::world::kWorldZero.x);
+        const float hx = euler.x * kDegToRad * 0.5f;
+        const float hy = euler.y * kDegToRad * 0.5f;
+        const float hz = euler.z * kDegToRad * 0.5f;
+        const float cx = ape::FastCos(hx), cy = ape::FastCos(hy), cz = ape::FastCos(hz);
+        const float sx = ape::FastSin(hx), sy = ape::FastSin(hy), sz = ape::FastSin(hz);
+        record.rotation = {sy * sz * cx + cy * cz * sx, cz * sy * cx + cy * sz * sx, cy * sz * cx - cz * sy * sx,
+                           cy * cz * cx - sy * sz * sx};
+        child->GetHash(0xF91B96E2u, &record.field_A8, 0);
+        const struct {
+            uint32_t attr;
+            uint32_t bit;
+        } kFlagAttrs[3] = {{0xD1A6825Eu, EntityAttachmentDesc::kAttach_FlagD1A6825E},
+                           {0x36E7D729u, EntityAttachmentDesc::kAttach_Flag36E7D729},
+                           {0xEAE49DB2u, EntityAttachmentDesc::kAttach_FlagEAE49DB2}};
+        for (const auto& flag : kFlagAttrs) {
+            bool on = false;
+            child->GetBool(flag.attr, &on, false);
+            record.flags = on ? (record.flags | flag.bit) : (record.flags & ~flag.bit);
+        }
+        if (!list)
+            list = new EntityAttachmentList();
+        list->Add(record);
+        ParseEntityAttachments(root, child, (*list)[list->Count() - 1].children);
+    }
+}
 
 // The placement base constructor (inlined into every placement constructor,
 // e.g. 0x000CC188, TriggerPlacement 0x00746148, and into the run-time spawns):
