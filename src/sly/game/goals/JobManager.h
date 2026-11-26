@@ -300,6 +300,11 @@ ape::ApeTSortedMap<CollectibleRecord*>& TreasureTable();
 ape::ApeTSortedMap<CollectibleRecord*>& SafeTable();
 // Default clue bottle count of an episode (0x00F64C24, 30).
 extern int g_defaultBottleCount;
+// Debug switch: every safe opens without the clue bottles (0x010682F0 == 1).
+extern int g_debugOpenSafes;
+// The game world tells a player something (0x00489A60 with a message and its
+// button text).
+void GameWorldShowPlayerMessage(uint32_t player, const char* message, const char* buttons);
 // 0x0049E038: sets the unlock flags tied to a completed job (outside this
 // range).
 void UnlockJobRewards(uint32_t jobId);
@@ -541,6 +546,14 @@ public:
     void OnGoalFailed(Goal* goal, uint8_t player);
     bool StartJobFromHub(Episode* job, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
                          bool levelRequestFlag, bool skipBookkeeping, bool track);
+    // Safe callbacks. The console hands them the safe's cracking session
+    // (player +0x08, state +0x44) and the job manager.
+    // The safe may be opened: enough clue bottles of the current episode (or
+    // the debug switch); otherwise player `player` is told so (0x002E74C8).
+    bool CanOpenSafe(uint32_t player) const;
+    // Keeps the safe state (bits 0-2, 3 = opened) in the current episode's
+    // progress (0x002E7588).
+    void StoreSafeState(int state);
     // StartJobFromHub for the job named `jobName` (none for 0 or an unknown
     // name), always tracked (0x002E1DB0).
     void StartJobFromHubByName(uint32_t jobName, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,

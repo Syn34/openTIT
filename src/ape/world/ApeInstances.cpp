@@ -1,6 +1,7 @@
 // openTIT - Placed world objects: render object base and instance types.
 #include "ape/world/ApeInstances.h"
 
+#include "agl/AglRenderTarget.h"
 #include "ape/math/ApeBounds.h"
 #include "ape/math/ApeMatrixOps.h"
 #include "ape/sys/ApeIff.h"
@@ -601,6 +602,25 @@ void ApeCameraInstance::SetDef(ApeDef* def)
     m_fov = camera->m_fov;
     m_local = camera->m_transform;
     MarkDirty();
+}
+
+// @func 0x005A5EA0 ApeCameraInstance::ApplyToView
+void ApeCameraInstance::ApplyToView(agl::AglRenderTarget& view)
+{
+    UpdateWorld(false, false);
+    // The world transform is orthonormal: the inverse is the transposed
+    // rotation and the translation taken through it.
+    const Matrix34& world = GetWorld();
+    Matrix34 inverse{};
+    inverse.xAxis = { world.xAxis.x, world.yAxis.x, world.zAxis.x, 0.0f };
+    inverse.yAxis = { world.xAxis.y, world.yAxis.y, world.zAxis.y, 0.0f };
+    inverse.zAxis = { world.xAxis.z, world.yAxis.z, world.zAxis.z, 0.0f };
+    const Vec3& t = world.translation;
+    inverse.translation = { -(t.x * inverse.xAxis.x + t.y * inverse.yAxis.x + t.z * inverse.zAxis.x),
+                            -(t.x * inverse.xAxis.y + t.y * inverse.yAxis.y + t.z * inverse.zAxis.y),
+                            -(t.x * inverse.xAxis.z + t.y * inverse.yAxis.z + t.z * inverse.zAxis.z), 0.0f };
+    view.SetViewMatrix(inverse);
+    view.SetFov(m_fov);
 }
 
 // @func 0x005A5DC0 ApeCameraInstance::VirtualSlot15

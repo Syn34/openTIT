@@ -9,6 +9,8 @@
 
 #include <cstdint>
 
+namespace ape { class ApeAnimScriptInstance; }
+
 namespace sly {
 
 class WorldObject;
@@ -32,6 +34,21 @@ enum MinigameRequest : uint32_t {
 class Minigame : public StateMachine {
 public:
     Minigame() : StateMachine(4, 0x100, 0) {}
+
+    // Bits of runFlags (+0x34).
+    enum RunFlags : uint8_t {
+        kRun_HudHidden = 0x20,   // SetHudHidden(true)
+        kRun_Started   = 0x40,   // between Begin and Stop
+        kRun_SavedFlag = 0x80,   // game byte +0x12828C before Begin
+    };
+
+    // Slot 2: enters the first state; the first time also starts the
+    // minigame's director script, hides the HUD (when the minigame drives
+    // it), resets the minigame and saves and clears the game byte +0x12828C.
+    void Begin() override;
+    // Slot 3: leaves the state; a started minigame shows the HUD again,
+    // runs slot 21, ends its script and restores the game byte.
+    void Stop() override;
     // Slot 9: messages are accepted and ignored by default.
     // @func 0x0077D8F8 Minigame::OnMessage
     bool OnMessage(const Message& message) override
@@ -48,8 +65,12 @@ public:
     // Slot 13: adds the minigame's markers to a goal's marker list.
     // @func 0x0077D90C Minigame::CollectMarkers
     virtual void CollectMarkers(goals::GoalMarkerList* list) { (void)list; }
+    // Slot 14: the minigame shows and hides the HUD itself.
     // @func 0x0077D910 Minigame::Slot14
     virtual bool Slot14() { return true; }
+    // Slot 15: records the request and hides (or shows) every HUD element
+    // when the minigame drives the HUD.
+    virtual void SetHudHidden(bool hidden);
     // @func 0x0077D918 Minigame::Slot16
     virtual bool Slot16() { return true; }
     // @func 0x0077D920 Minigame::Slot17
@@ -63,7 +84,11 @@ public:
     virtual void Reset() {}
     virtual void Slot21() {}
 
+    ape::ApeAnimScriptInstance* script = nullptr;   // +0x20 running director script
+    uint32_t scriptName = 0;           // +0x24 script name hash
+    uint32_t scriptLibrary = 0;        // +0x28 library name hash
     SlyGame* game = nullptr;           // +0x30
+    uint8_t runFlags = 0;              // +0x34 RunFlags (top byte of a flag word)
     uint8_t field_36 = 0;              // +0x36 (see PenguinMinigame slots 29/30)
 
     // NOTE: the members below belong to the bartender minigame (0x003A4000..);

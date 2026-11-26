@@ -53,5 +53,12 @@ extern Vec3 g_lodCameraPosition;
 extern float g_defaultMinNearFadeAlpha;
 extern float g_defaultLightFadeDist;
 extern float g_defaultLightFadeRange;
+// Light relinking distances of the running level (EngineConfig 0x010C5A98..
+// 0x010C5AA4 on the console: distances and their squares), set when a level
+// is loaded.
+extern float g_lightNoRescanDist;
+extern float g_lightNoUpdateDist;
+extern float g_lightNoRescanDistSq;
+extern float g_lightNoUpdateDistSq;
 
 } // namespace ape::world

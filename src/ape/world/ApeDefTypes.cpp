@@ -17,6 +17,10 @@ ApeWorldRenderHooks g_worldRenderHooks;
 Vec3 g_lodCameraPosition = {0.0f, 0.0f, 0.0f, 0.0f};
 float g_defaultMinNearFadeAlpha = 0.0f;
 float g_defaultLightFadeDist = 0.0f;
+float g_lightNoRescanDist = 0.0f;
+float g_lightNoUpdateDist = 0.0f;
+float g_lightNoRescanDistSq = 0.0f;
+float g_lightNoUpdateDistSq = 0.0f;
 float g_defaultLightFadeRange = 0.0f;
 
 namespace {

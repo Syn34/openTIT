@@ -124,6 +124,9 @@ public:
 class PenguinMontageMinigame : public Minigame {
 public:
     ~PenguinMontageMinigame() override;
+    // Slot 12 does nothing for this game; slot 15 is the base behaviour.
+    void Slot12() override;
+    void SetHudHidden(bool hidden) override;
     ape::ApeTArray<void*> field_48;    // +0x48
 };
 
@@ -165,6 +168,9 @@ public:
 class PenguinDodgeMinigame : public PenguinMinigame {
 public:
     ~PenguinDodgeMinigame() override;
+    // Slot 12 does nothing for this game; slot 15 is the base behaviour.
+    void Slot12() override;
+    void SetHudHidden(bool hidden) override;
     bool Slot22() override;
     bool Slot25() override;
     bool Slot26() override;
@@ -177,6 +183,9 @@ public:
 class PenguinPunchMinigame : public PenguinMinigame {
 public:
     ~PenguinPunchMinigame() override;
+    // Slot 12 does nothing for this game; slot 15 is the base behaviour.
+    void Slot12() override;
+    void SetHudHidden(bool hidden) override;
     bool Slot22() override;
     bool Slot25() override;
     bool Slot26() override;
@@ -190,6 +199,7 @@ public:
 class PenguinSlingshotMinigame : public PenguinMinigame {
 public:
     ~PenguinSlingshotMinigame() override;
+    void SetHudHidden(bool hidden) override;
     bool Slot22() override;
     bool Slot25() override;
     bool Slot26() override;
@@ -204,17 +214,30 @@ public:
 class PenguinSumoMinigame : public PenguinMinigame {
 public:
     ~PenguinSumoMinigame() override;
+    void Slot31() override;
+    void Slot32() override;
+    // Slot 12 does nothing for this game; slot 15 is the base behaviour.
+    void Slot12() override;
+    void SetHudHidden(bool hidden) override;
     bool Slot25() override;
     bool Slot26() override;
     bool Slot27() override;
+    // Slot 22: more than two seconds into the round with the round flag set.
+    // NOTE: the meaning of the timer and flag (both reset by slot 23) is a guess.
+    bool Slot22() override;
     PenguinSumoRecord penguin;         // +0x6C
     uint8_t flags[3] = {};             // +0x1A8
+    float roundTime = 0.0f;            // +0x1AC
+    uint8_t roundFlag = 0;             // +0x1B0
 };
 
 // Whack-a-penguin (vtable 0x00B20B98, constructor 0x0041BB54).
 class WhackPenguinMinigame : public PenguinMinigame {
 public:
     ~WhackPenguinMinigame() override;
+    // Slot 12 does nothing for this game; slot 15 is the base behaviour.
+    void Slot12() override;
+    void SetHudHidden(bool hidden) override;
     bool Slot22() override;
     bool Slot25() override;
     bool Slot26() override;

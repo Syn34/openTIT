@@ -2080,8 +2080,8 @@ public:
 };
 
 class SlyPropTechnique : public AglTechnique {
-    // TODO(0x005CAE18 SlyPropTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     // @func 0x007ABDDC SlyPropTechnique::~SlyPropTechnique
     // @func 0x007AF5EC SlyPropTechnique::~SlyPropTechnique (deleting)
     ~SlyPropTechnique() override = default;
@@ -2112,8 +2112,8 @@ public:
 };
 
 class SlyTerrainTechnique : public AglTechnique {
-    // TODO(0x005CC240 SlyTerrainTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     // @func 0x007ABDEC SlyTerrainTechnique::~SlyTerrainTechnique
     // @func 0x007AF6A8 SlyTerrainTechnique::~SlyTerrainTechnique (deleting)
     ~SlyTerrainTechnique() override = default;
@@ -2403,6 +2403,91 @@ void SlyPropTechnique::BeginMaterial(AglMaterial* material)
     if (material->anim)
         UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
     UploadMaterialColor(material, MaterialSwitchValue(material));
+}
+
+// @func 0x005CAE18 SlyPropTechnique::Draw
+// Vertex constant 7 = the item's RGB tint bytes / 256 (w = 255 / 256), the
+// usual fog, lights and item alpha. Props always tag stencil bit 0x40 (and
+// write only the bits of their tag); a material with flag 0x08 also skips
+// pixels already tagged 0x40, and restores the "always" test afterwards.
+void SlyPropTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    const float tint[4] = { float(item->field_48[0]) / 256.0f, float(item->field_48[1]) / 256.0f,
+                            float(item->field_48[2]) / 256.0f, 255.0f / 256.0f };
+    Cmd().SetVertexProgramConstants(7, 4, tint);
+    UploadItemLighting(item, 0x10, 1);
+    BeginItemAlpha(item, 2);
+
+    const AglMaterial* material = item->material;
+    AglItemStencil& stencil = GetItemStencil();
+    AglStencilState& front = GetRenderState().stencilFront;
+    gpu::CommandList& cmd = Cmd();
+    const uint8_t base = uint8_t((((item->flags & 0x20) ? 0x80 : 0) | material->field_65) & stencil.writeMask);
+    const uint8_t ref = uint8_t(base | 0x40);
+    const bool skipTagged = (material->flags & AglMaterial::kFlag_08) != 0;
+    if (ref != stencil.ref) {
+        // NOTE: the console caches the reference without bit 0x40, so the
+        // comparison never matches and props always set their reference.
+        stencil.ref = base;
+        front.ref = ref;
+        cmd.SetStencilFunc(front.func, front.ref, front.mask);
+        front.writeMask = base ? base : stencil.writeMask;
+        cmd.SetStencilMask(front.writeMask);
+    }
+    if (skipTagged) {
+        front.func = gpu::CompareFunc::NotEqual;
+        front.mask = 0x40;
+        cmd.SetStencilFunc(front.func, front.ref, front.mask);
+    }
+    DrawItemGeometry(item);
+    EndItemAlpha(item);
+    if (base == 0)
+        front.ref = 0;
+    if (skipTagged) {
+        front.func = gpu::CompareFunc::Always;
+        front.mask = 0;
+    }
+    if (skipTagged || base == 0)
+        cmd.SetStencilFunc(front.func, front.ref, front.mask);
+}
+
+// @func 0x005CC240 SlyTerrainTechnique::Draw
+// Items with light mask bit 0x08 fade two layers with the distance to the
+// eye: t = (constant 3 - distance) / constant 4; fragment constant 0 gets
+// (constant 0 * saturate(2t), constant 1, constant 2 * saturate(2t - 1), 0)
+// for the draw and (constants 0..2, 0) after it. Otherwise the standard lit
+// draw (fog colour 0x20, lights from 0x10, eye 1, alpha 2).
+void SlyTerrainTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    const AglMaterial* material = item->material;
+    const bool distanceFade = (item->lightMask & 0x08) != 0;
+    if (distanceFade) {
+        const ape::Vec3& eye = GetViewConstants().viewRotationT.translation;
+        const float dx = eye.x - item->position[0];
+        const float dy = eye.y - item->position[1];
+        const float dz = eye.z - item->position[2];
+        const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+        const float t = (MaterialConstant(material, 3) - distance) / MaterialConstant(material, 4);
+        const float nearLayer = std::clamp(t * 2.0f, 0.0f, 1.0f);
+        const float farLayer = std::clamp((t - 0.5f) * 2.0f, 0.0f, 1.0f);
+        const float fade[4] = { nearLayer * MaterialConstant(material, 0), MaterialConstant(material, 1),
+                                farLayer * MaterialConstant(material, 2), 0.0f };
+        SetShaderConstant(0, fade);
+    }
+    UploadItemLighting(item, 0x10, 1);
+    BeginItemAlpha(item, 2);
+    ApplyItemStencilRef(item);
+    DrawItemGeometry(item);
+    EndItemAlpha(item);
+    if (distanceFade) {
+        const float layers[4] = { MaterialConstant(material, 0), MaterialConstant(material, 1),
+                                  MaterialConstant(material, 2), 0.0f };
+        SetShaderConstant(0, layers);
+    }
 }
 
 // @func 0x005CC170 SlyTerrainTechnique::BeginMaterial
