@@ -263,6 +263,9 @@ public:
     void ClearArmMarkers();
     // 0x0030EEE0: follows the player (tracking block, arm/rope states). TODO.
     void UpdateTracking(float dt);
+    // 0x003117E0: arm `arm` was destroyed (outer arms count hits and play
+    // voice lines; in the second half their physics part leaves the world).
+    void OnArmDestroyed(uint32_t arm);
     // 0x0030D5C0: a player hanging on rope 0 or 2 close enough to the
     // boss's matching bone starts the shoulder hit.
     void CheckShoulderReach();

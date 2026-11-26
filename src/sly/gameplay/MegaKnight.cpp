@@ -12,6 +12,8 @@
 #include "sly/entity/GameCamera.h"
 #include "sly/game/GameEvent.h"
 #include "sly/game/GameScripts.h"
+#include "sly/game/hud/HudManager.h"
+#include "sly/entity/PhysicsHooks.h"
 #include "sly/game/SpawnManager.h"
 #include "sly/levels/LevelServices.h"
 #include "sly/gameplay/GameplayWorld.h"
@@ -669,6 +671,39 @@ bool MegaKnight::Update(float dt)
 
 // TODO(0x0030EEE0 MegaKnight::UpdateTracking)
 void MegaKnight::UpdateTracking(float dt) { (void)dt; }
+
+// @func 0x003117E0 MegaKnight::OnArmDestroyed
+void MegaKnight::OnArmDestroyed(uint32_t arm)
+{
+    if (arm < 3)
+        armIntact[arm] = false;
+    if (arm == 1)
+        RemoveMarkedTarget(heartTarget);
+    if (arm == 0 || arm == 2) {
+        ++hitCount;
+        if (!secondHalf) {
+            if (hitCount == 1)
+                sly::StartObjectScript(0x533075E0u, nullptr, 0, true);
+            else if (hitCount == 2)
+                sly::StartObjectScript(0x533075E1u, nullptr, 0, true);
+        } else {
+            if (parts && parts->Count() > 1) {
+                void* body = (*parts)[arm == 2 ? 0u : 1u].body;
+                if (body && entity::RigidBodyInWorld(body))
+                    entity::RigidBodyRemoveFromWorld(body);
+            }
+            if (hitCount == 1)
+                sly::StartObjectScript(0x4B7ED081u, nullptr, 0, true);
+            else if (hitCount == 2)
+                sly::StartObjectScript(0x4B7ED082u, nullptr, 0, true);
+        }
+    }
+    if (entity::Entity* e = field_314[arm])
+        hud::PlayHudClip(static_cast<anim::AnimController*>(e->animController), 0x451F0E5Bu, 1.0f, false);
+    if (!armIntact[0] && !armIntact[2] && field_314[1])
+        hud::PlayHudClip(static_cast<anim::AnimController*>(field_314[1]->animController), 0x798D3062u, 1.0f, false);
+    SelectBehavior();
+}
 
 // @func 0x0030D5C0 MegaKnight::CheckShoulderReach
 void MegaKnight::CheckShoulderReach()
