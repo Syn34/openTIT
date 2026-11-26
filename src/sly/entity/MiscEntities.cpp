@@ -64,6 +64,12 @@ void RigidEntityB19198::Detached(float gravityFactor)
     Entity::Detached(gravityFactor);
 }
 
+// @func 0x00206E80 RigidEntityB19198::SetVelocity
+void RigidEntityB19198::SetVelocity(const ape::Vec3& velocity)
+{
+    SetBodyVelocity(rigidBody, velocity);
+}
+
 // @func 0x00206F6C RigidEntityB19198::GetVelocity
 ape::Vec3 RigidEntityB19198::GetVelocity()
 {
