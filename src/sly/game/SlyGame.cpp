@@ -3,12 +3,102 @@
 
 #include "ape/core/ApeSystem.h"
 #include "ape/level/ApeLevelDef.h"
+#include "ape/world/ApeBase.h"
+#include "sly/entity/Entity.h"
 #include "sly/gameplay/Minigame.h"
 #include "sly/game/hud/HudManager.h"
 
 namespace sly {
 
 SlyGame* g_game = nullptr;
+
+// TODO(0x0045CC18 SlyGame::SlyGame): besides the members (default
+// initialisers here), the console constructor creates the render targets
+// ("SplitRender%d", "HUD_3D", "PostHUD_3D", "PostHUD_2D"), registers the
+// script variables and commands (sly::levels::RegisterLevelScriptCommands),
+// the level definition loaders and IFF chunk handlers (GOAF/GOAH/GOAD,
+// ENTF/ENTH/ENTD, LVLF/LVLH/LVLD), the stream types, and creates the job,
+// effect, GUI and AI managers.
+SlyGame::SlyGame(uint8_t initialState)
+    : gameplay::StateMachine(4, 0x80, initialState),
+      previousMainState(initialState),
+      requestedMainState(initialState)
+{
+    field_128230 = ape::world::kWorldIdentity;
+    cutsceneQueue.Init(4, nullptr, true);
+}
+
+// TODO(0x00466860 SlyGame::~SlyGame): saves "save.dat" when requested,
+// ends the dialog, destroys the managers, the scene and the render targets.
+SlyGame::~SlyGame()
+{
+    for (GamePlayer& player : players) {
+        if (player.character) {
+            player.character->Release(false);
+            player.character = nullptr;
+        }
+    }
+}
+
+// @func 0x0046B5DC SlyGame::GetState
+uint8_t SlyGame::GetState(uint32_t layer) const
+{
+    return layer == 0 ? requestedMainState : m_states[layer];
+}
+
+// TODO(0x00491710 SlyGame::OnMessage): the game shell update (front end,
+// menus, loading, in-game, cutscenes).
+bool SlyGame::OnMessage(const Message& message)
+{
+    (void)message;
+    return true;
+}
+
+void SlyGame::RequestMainState(uint8_t state)
+{
+    previousMainState = m_states[0];
+    if (previousMainState == kNoState) {
+        requestedMainState = state;
+        previousMainState = state;
+        gameplay::StateMachine::SetState(0, state);
+        return;
+    }
+    requestedMainState = state;
+    requestedSubState = 0;
+    transition = kTransition_Start;
+    transitionTime = 0.0f;
+}
+
+void SlyGame::RequestSubState(uint8_t state)
+{
+    previousMainState = m_states[0];
+    if (InTransition())
+        requestedSubState = state;
+    else
+        gameplay::StateMachine::SetState(1, state);
+}
+
+// @func 0x004665C0 SlyGame::ChangeState
+bool SlyGame::ChangeState(uint32_t layer, uint8_t state)
+{
+    previousMainState = m_states[0];
+    if (layer == 0 && previousMainState != kNoState && state != kNoState) {
+        requestedMainState = state;
+        requestedSubState = 0;
+        transition = kTransition_Start;
+        transitionTime = 0.0f;
+        return true;
+    }
+    if (layer == 1 && InTransition()) {
+        requestedSubState = state;
+        return true;
+    }
+    if (layer == 0) {
+        requestedMainState = state;
+        previousMainState = state;
+    }
+    return gameplay::StateMachine::SetState(layer, state);
+}
 
 // @func 0x0047C530 SlyGame::SetMinigame
 void SlyGame::SetMinigame(gameplay::Minigame* next)

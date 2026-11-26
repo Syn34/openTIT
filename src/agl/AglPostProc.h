@@ -207,11 +207,22 @@ class AglBlurBase : public AglPostProcEffect {           // vtable 0x00B23514
 public:
     using AglPostProcEffect::AglPostProcEffect;
     ~AglBlurBase() override;
+
+    // Settings written by the game's blur animation (sly::SlyGame).
+    uint8_t quality = 1;           // 0x14 1..5 NOTE: blur passes
+    float amount = 0.0f;           // 0x18 0..1
 };
 class AglDofBase : public AglPostProcEffect {            // vtable 0x00B2356C
 public:
     using AglPostProcEffect::AglPostProcEffect;
     ~AglDofBase() override;
+
+    // Settings written by the game (level defaults, DoF animations).
+    bool nearBlur = false;         // 0x14 NOTE: name guessed
+    float focusDistance = 0.0f;    // 0x18
+    float focusRange = 1.0f;       // 0x1C clamped to 0.01..999 by the game
+    float intensity = 0.0f;        // 0x20
+    uint8_t quality = 1;           // 0x40 1..4 NOTE: sample count
 };
 class AglRadialBlurBase : public AglPostProcEffect {     // vtable 0x00B23590
 public:
@@ -223,6 +234,12 @@ public:
     using AglPostProcEffect::AglPostProcEffect;
     ~AglDesaturationBase() override;
     bool IsActive() const override;
+
+    // Settings written by the game's desaturation fades.
+    float amount = 0.0f;           // 0x14 0..1
+    float color[3] = {};           // 0x20 tint colour, 0..255 per channel
+    uint32_t blendModeA = 0;       // 0x30 NOTE: modes 0..15, meanings unknown
+    uint32_t blendModeB = 0;       // 0x34
 };
 // Bloom (vtable 0x00B234E8): copies its settings from another chain's bloom.
 class AglBloomBase : public AglPostProcEffect {
@@ -259,6 +276,7 @@ public:
     float field_94 = 0.0f;         // 0x94
     float field_98 = 0.0f;         // 0x98
     float field_A0 = 0.0f;         // 0xA0
+    float pulseAmount = 0.0f;      // 0xA4 ramped by the game's noise pulse
 };
 
 // The game's bloom, desaturation and radial blur effects.
