@@ -15,6 +15,17 @@ namespace entity {
 class RigidEntityB19198 : public RigidBodyEntity {
 public:
     ~RigidEntityB19198() override;
+    // Slots 25/26: collision group of the body (kept in `groupBits` while
+    // the body is out of the world).
+    uint32_t GetRenderId() override;
+    void SetRenderId(uint32_t id) override;
+    // Slots 27/28: gravity factor of the body (the attach link's while attached).
+    float GetGravityFactor() override;
+    void Detached(float gravityFactor) override;
+    // Slot 35: linear velocity of the body.
+    ape::Vec3 GetVelocity() override;
+    // Slot 37: the entity's world object answers for its own body.
+    ape::world::ApeObj* ObjectForCollidable(const void* collidable, int32_t* bone) override;
     // Slot 36: the rigid body (see NOTES on slot 36).
     ape::world::ApeObj* GetRenderObject() override;
     // Slot 95: empty. NOTE: no caller known.
@@ -24,6 +35,8 @@ public:
     void Interface17CSlot7() override;
     // Primary slot 98 / +0x180 slot 6.
     void Interface180Slot6(void* body) override;
+
+    uint32_t groupBits = 0;   // +0x190 bits 0-23: collision group
 };
 
 // Entity spawned by EntityDefB19378 (vtable 0x00B193C8, 0x1C0 bytes; plain
