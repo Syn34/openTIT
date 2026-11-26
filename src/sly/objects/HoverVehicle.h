@@ -108,7 +108,7 @@ struct HoverVehicleSettings {
 class HoverVehicleDef : public VehicleDef {
 public:
     ~HoverVehicleDef() override;
-    entity::Entity* Spawn(entity::SpawnParams& params) override;   // slot 7
+    entity::Entity* Spawn(entity::EntityPlacement* placement) override;   // slot 7
 
     // Clones the template body named bodyName from the level's physics world
     // the first time (0x00240AC0).
@@ -128,7 +128,7 @@ public:
     static constexpr uint32_t kTurboState_EndOff = 0x7A29A6B4u;
 
     // 0x002404F0
-    HoverVehicle(HoverVehicleDef* def, const entity::SpawnParams& params);
+    HoverVehicle(HoverVehicleDef* def, const entity::EntityPlacement& placement);
     ~HoverVehicle() override;
 
     bool Update(float dt) override;                       // slot 4

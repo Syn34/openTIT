@@ -270,10 +270,10 @@ void HoverVehicleDef::ResolveBodyTemplate()
 // (0x000DFDF8) and lets the spawn parameters complete it (slot 2); the port
 // passes the parameters straight to the constructor. The physics world's
 // body counter (+0x74, +0x30) is advanced before the template is resolved.
-Entity* HoverVehicleDef::Spawn(entity::SpawnParams& params)
+Entity* HoverVehicleDef::Spawn(entity::EntityPlacement* placement)
 {
     ResolveBodyTemplate();
-    auto* vehicle = new HoverVehicle(this, params);
+    auto* vehicle = new HoverVehicle(this, *placement);
     vehicle->OnSpawn();
     return vehicle;
 }
@@ -282,10 +282,10 @@ Entity* HoverVehicleDef::Spawn(entity::SpawnParams& params)
 // Entity
 
 // @func 0x002404F0 HoverVehicle::HoverVehicle
-HoverVehicle::HoverVehicle(HoverVehicleDef* hoverDef, const entity::SpawnParams& params)
+HoverVehicle::HoverVehicle(HoverVehicleDef* hoverDef, const entity::EntityPlacement& placement)
     : VehicleEntity(hoverDef)
 {
-    (void)params;
+    (void)placement;
     // NOTE: the console copies word +0xC8 of the spawn description here; the
     // port's spawn parameters do not carry it yet.
     skinValue = 0;
