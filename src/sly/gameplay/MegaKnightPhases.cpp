@@ -311,11 +311,21 @@ MKPhaseLaserQuick::~MKPhaseLaserQuick() = default;
 
 const char* MKPhaseLaserQuick::StateName(int state) const { return TableName(kLaserQuickStates, state); }
 
-// TODO(0x00313FA0 MKPhaseLaserQuick::OnEnter)
+// @func 0x00313FA0 MKPhaseLaserQuick::OnEnter
+// Charges up: the charge clip, the glow to full and the laser camera.
 void MKPhaseLaserQuick::OnEnter()
 {
     MegaKnightPhase::OnEnter();
     interrupted = false;
+    MegaKnight* b = boss;
+    b->PlayAnim(0xE8534CE4u, 1.0f, false);
+    // The glow blends up at half a unit per second.
+    b->glow.to = 1.0f;
+    b->glow.from = b->glow.value;
+    b->glow.elapsed = 0.0f;
+    b->glow.SetDuration((1.0f - b->glow.value) * 0.5f);
+    b->SetCamera(0.0f, 0xCB1675F3u, false);
+    SetState(0, 1);
 }
 
 // @func 0x0031417C MKPhaseLaserQuick::OnExit
@@ -823,11 +833,15 @@ void MKPhaseStruggle::OnExit(uint32_t next) { (void)next; }
 // @func 0x0031A32C MKPhaseStruggle::IsDone
 bool MKPhaseStruggle::IsDone() { return GetState(0) == 2; }
 
-// TODO(0x0031A378 MKPhaseStruggle::UpdatePhase)
+// @func 0x0031A378 MKPhaseStruggle::UpdatePhase
+// Done once the boss's 0x220 delayed flag comes up.
 bool MKPhaseStruggle::UpdatePhase(float dt)
 {
     (void)dt;
-    return true;
+    if (GetState(0) != 1 || !DelayedStateGet(boss->tracking.state220))
+        return true;
+    SetState(0, 2);
+    return false;
 }
 
 // ===========================================================================
@@ -867,11 +881,17 @@ void MKPhaseTargetHit::OnExit(uint32_t next) { (void)next; }
 // @func 0x0031A7E8 MKPhaseTargetHit::IsDone
 bool MKPhaseTargetHit::IsDone() { return GetState(0) == 3; }
 
-// TODO(0x0031A834 MKPhaseTargetHit::UpdatePhase)
+// @func 0x0031A834 MKPhaseTargetHit::UpdatePhase
+// Once the hit clip is over the boss struggles (second half) or goes back
+// to the rope.
 bool MKPhaseTargetHit::UpdatePhase(float dt)
 {
     (void)dt;
-    return true;
+    if (GetState(0) != 1 || !MKClipDone(boss))
+        return true;
+    boss->SwitchPhase(boss->secondHalf ? kMKPhase_Struggle : kMKPhase_RopeAttached);
+    SetState(0, 3);
+    return false;
 }
 
 // ===========================================================================
