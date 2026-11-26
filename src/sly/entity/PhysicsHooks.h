@@ -12,6 +12,17 @@
 namespace sly {
 namespace entity {
 
+struct ActorPartDesc;
+// The Havok rigid body of an actor definition's part (inline in the actor
+// definition constructor 0x000C79C0): construction info from the part's named
+// body in the level's physics data (0x0034654C on the game world's physics
+// resource, hkpRigidBodyCinfo 0x0091FB50 / 0x0091D208), a new hkpRigidBody
+// (0x0091E100) carrying the body's name (0x007CE950) and the ten collision
+// properties of the template (0x0093FE00); static nav modes 0x29846DDA and
+// 0x4438A28F add property 0x67E6342B. Null when the part names no body or
+// the body is not found.
+void* ActorPartCreateBody(const ActorPartDesc& part, uint32_t navMode);
+
 // The body is in a physics world (hkpWorldObject::m_world, +0x08).
 bool RigidBodyInWorld(void* body);
 // Moves a body from `from` towards `to` through the world (0x004A41C0):

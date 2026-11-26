@@ -16,10 +16,34 @@ namespace sly::camera { class CameraMode; }
 namespace sly {
 namespace entity {
 
-// Actor definition base (vtable 0x00B12838, destructor 0x000E281C in the
-// entity module; stand-in). Owns a table of 0xA0-byte part records, each
-// holding a Havok object reference at +0x20.
-class ActorDef : public EntityDef {
+// One part of an actor definition as the loader describes it (0xA0 bytes):
+// the same record as ActorDef::Part with the name of the Havok body
+// template where the part keeps its body.
+struct ActorPartDesc {
+    uint8_t field_00[0x20];
+    const char* bodyName;       // +0x20 Havok rigid body of the level's physics data
+    uint8_t field_24[0x58];
+    uint32_t partFlags;         // +0x7C
+    ape::Vec3 aimOffset;        // +0x80
+    uint32_t navMode;           // +0x90
+    uint8_t field_94[0xC];
+};
+
+// Description of actor definitions (ScriptedEntityDefDesc + 0x64 bytes).
+struct ActorDefDesc : ScriptedEntityDefDesc {
+    using ScriptedEntityDefDesc::ScriptedEntityDefDesc;
+    ape::ApeTArray<ActorPartDesc>* parts = nullptr;   // 0x7C
+    uint8_t interactionNeeds[6] = {};       // 0x80
+    uint32_t field_88 = 0;                  // 0x88
+    uint32_t navMode = 0;                   // 0x8C
+    ape::Vec3 navObstacleSize{};            // 0x90
+    float damage[15] = {};                  // 0xA0 ActorDef::impactScale .. interactionPriority
+    uint32_t defFlags = 0;                  // 0xDC bits 22-31
+};
+
+// Actor definition base (vtable 0x00B12838). Owns a table of 0xA0-byte part
+// records, each holding a Havok rigid body at +0x20.
+class ActorDef : public ScriptedEntityDef {
 public:
     struct Part {
         uint8_t field_00[0x20];
@@ -33,6 +57,9 @@ public:
         uint32_t navMode;           // +0x90
         uint8_t field_94[0xC];
     };
+    // Copies the description and builds a Havok body for every part
+    // (0x000C79C0, thunk 0x000E27FC).
+    explicit ActorDef(const ActorDefDesc& desc);
     enum PartFlags : uint32_t {
         // The part's body is held at its bone by a constraint (0x000E2AB0).
         kPartFlag_BoneConstraint = 0x10000000,
@@ -49,6 +76,12 @@ public:
         kDefFlag_KeepListeners  = 1u << 27,  // NOTE: deleted bodies keep the actor as contact listener
     };
     ~ActorDef() override;
+
+protected:
+    // NOTE: for subclasses whose console constructors are not ported yet.
+    ActorDef() = default;
+
+public:
     // Slot 6: the nav mode is one of the four modes that make the actor's
     // parts static obstacles (0x9260C26E "Static", 0x41EB0AA3, 0x29846DDA and
     // 0x4438A28F "Obstacle"). NOTE: two of the names are unknown.
@@ -56,18 +89,21 @@ public:
     ape::ApeTArray<Part>* parts = nullptr;   // 0xC0 allocated on demand
     // Answers to InteractionNeeds by interaction kind. NOTE: the number of
     // kinds is not known (at most 12: the nav mode follows at 0xD0).
-    uint8_t interactionNeeds[12] = {};       // 0xC4
+    uint8_t interactionNeeds[6] = {};        // 0xC4
+    uint32_t field_CC = 0;                   // 0xCC
     uint32_t navMode = 0;                    // 0xD0
     // Size of the nav obstacle box (zero: shaped like each part's body).
     ape::Vec3 navObstacleSize{};             // 0xE0
-    // Damage taken per hit category (0 = immune). NOTE: filled by the
-    // definition parser (not ported).
+    // Damage taken per hit category (0 = immune).
     float impactScale = 0.0f;                // 0xF0 category 1
+    float field_F4 = 0.0f;                   // 0xF4
     float blastScale = 0.0f;                 // 0xF8 category 2
+    float field_FC = 0.0f;                   // 0xFC
     float collisionScale = 0.0f;             // 0x100 category 0, per unit of speed
     float collisionThreshold = 0.0f;         // 0x104 speed below which nothing happens
-    float collisionMax = 0.0f;               // 0x108
+    float collisionMax = 0.0f;               // 0x108 (negative: the scripted default field_8C)
     float meleeScale = 0.0f;                 // 0x10C category 3
+    float field_110 = 0.0f;                  // 0x110
     float projectileScale = 0.0f;            // 0x114 category 4
     float attackerScale[4] = {};             // 0x118 by the attacker's flag bits 22-23
     float interactionPriority = 0.0f;        // 0x128 scales the priority of kinds 0 and 2

@@ -6,6 +6,13 @@
 namespace sly {
 namespace entity {
 
+// TODO(0x0091E100 hkpRigidBody for actor parts; Havok)
+void* ActorPartCreateBody(const ActorPartDesc& part, uint32_t navMode)
+{
+    (void)part; (void)navMode;
+    return nullptr;
+}
+
 bool RigidBodyInWorld(void* body) { (void)body; return false; }
 void RigidBodyRemoveFromWorld(void* body) { (void)body; }
 void RigidBodyAddToWorld(void* body, uint32_t collisionGroup) { (void)body; (void)collisionGroup; }
