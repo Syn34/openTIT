@@ -5,7 +5,13 @@
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
 #include "ape/xml/ApeXml.h"
+#include "ape/math/ApeMatrixOps.h"
+#include "ape/world/ApeObj.h"
+#include "sly/entity/EntityDef.h"
 #include "sly/game/GameMessages.h"
+#include "sly/game/SpawnManager.h"
+#include "sly/game/hud/HudManager.h"
+#include "sly/game/hud/HudMeter.h"
 
 #include <cstdio>
 #include <cstring>
@@ -127,6 +133,119 @@ DragonBoss::~DragonBoss()
 bool DragonBoss::PostUpdate(float dt)
 {
     return ActorEntity::PostUpdate(dt);
+}
+
+namespace {
+// Offset from a head's marker object to where its target entity is shown
+// (0x0106AC80). NOTE: its writer is not identified; zero until then.
+ape::Vec3 s_headTargetOffset{0.0f, 0.0f, 0.0f, 0.0f};
+constexpr uint32_t kState_Reset = 0x0001314F;
+constexpr uint32_t kState_HeadDown = 0x9F60B8DA;
+constexpr uint32_t kProjectileDefAlt = 0x1AA5830E;
+} // namespace
+
+// @func 0x002F9AC0 DragonBoss::SetHeadTargetActive
+void DragonBoss::SetHeadTargetActive(bool active, DragonBodyPart* part)
+{
+    for (int i = 0; i < kHeadCount; ++i) {
+        if (heads[i] != part)
+            continue;
+        entity::Entity* target = headTargets[i];
+        target->SetVisible(active, true, true, true);
+        if (!active) {
+            DragonHeadTargetSet(target, false, nullptr);
+            continue;
+        }
+        ape::Vec3 position{0.0f, 0.0f, 0.0f, 0.0f};
+        if (auto* marker = static_cast<ape::world::ApeObj*>(field_430[i])) {
+            const ape::Vec3& at = marker->GetWorld().translation;
+            position = {at.x + s_headTargetOffset.x, at.y + s_headTargetOffset.y, at.z + s_headTargetOffset.z, 0.0f};
+        }
+        ape::Matrix34 placement;
+        ape::Matrix34FromTranslation(placement, position);
+        DragonHeadTargetSet(target, true, &placement);
+    }
+}
+
+// @func 0x002FEA20 DragonBoss::ResetEncounter
+void DragonBoss::ResetEncounter()
+{
+    for (void* entry : spawners) {
+        auto* spawner = static_cast<Spawner*>(entry);
+        spawner->DespawnAll(false);
+        spawner->Deactivate(false);
+    }
+    for (void* object : objectsB)
+        static_cast<ape::world::ApeObj*>(object)->SetVisible(false, true);
+    for (void* object : objectsA)
+        static_cast<ape::world::ApeObj*>(object)->SetVisible(false, true);
+    for (void* body : bodies)
+        DragonBodyDisable(body);
+
+    for (int i = 0; i < kHeadCount; ++i) {
+        SetHeadTargetActive(false, heads[i]);
+        heads[i]->SetStateAndStep(kState_HeadDown);
+        heads[i]->SetStateAndStep(kState_Idle);
+    }
+    // The laser and the root are wound forward a whole second.
+    for (DragonBodyPart* part : {&laser, &root}) {
+        part->SetState(kState_Reset);
+        StepScript(part->script, 1.0f);
+    }
+}
+
+// @func 0x002FEFB4 DragonBoss::UpdatePhase
+void DragonBoss::UpdatePhase(float dt)
+{
+    if (field_200)
+        return;
+    if (!currentPhase) {
+        int aliveHeads = 0;
+        for (DragonBodyPart* head : heads)
+            if (head->alive)
+                ++aliveHeads;
+        auto* dragonDef = static_cast<DragonBossDef*>(def);
+        for (DragonPhase* phase : dragonDef->phases) {
+            if (phase->mode != mode || phase->headCount != aliveHeads)
+                continue;
+            currentPhase = phase;
+            phase->dragon = this;
+            phase->collectionIndex = 0;
+            phase->current = nullptr;
+            phase->advance = false;
+            break;
+        }
+        if (currentPhase) {
+            char name[64];
+            std::snprintf(name, sizeof(name), "ProjectilePhase%i_NumHeads%i", mode == 1 ? 1 : 2, aliveHeads);
+            entity::EntityDef* found = entity::FindEntityDef(ape::HashNameNoCase(name));
+            if (found && found->IsClass(entity::kDefClass_Physical))
+                projectileDef = found;
+            found = entity::FindEntityDef(kProjectileDefAlt);
+            if (found && found->IsClass(entity::kDefClass_Physical))
+                projectileDefAlt = found;
+        }
+    }
+    if (currentPhase) {
+        currentPhase->Update(dt);
+        field_1F0 = false;
+    }
+}
+
+// @func 0x002FEEA0 DragonBoss::Release
+bool DragonBoss::Release(bool kill)
+{
+    if (kill) {
+        ResetEncounter();
+        for (DragonPhase* phase : static_cast<DragonBossDef*>(def)->phases)
+            phase->Reset(true);
+        hud::SetContext(this, 0);
+        hud::UpdateMeterA();
+        UnregisterListener(this, true);
+        delete ownedObject;
+        ownedObject = nullptr;
+    }
+    return ActorEntity::Release(kill);
 }
 
 // @func 0x00302CCC DragonBoss::OnHitCategory0
@@ -830,8 +949,8 @@ void DragonPhase::Parse(ape::xml::XmlElement* xml)
 {
     if (const char* text = xml->GetString(kAttr_Name))
         std::strncpy(name, text, sizeof(name) - 1);
-    xml->GetInt(0x0489115Bu, &field_20, 0);
-    xml->GetInt(0xBE8976CDu, &field_24, 0);
+    xml->GetInt(0x0489115Bu, &mode, 0);
+    xml->GetInt(0xBE8976CDu, &headCount, 0);
     for (ape::xml::XmlElement* child = xml->FirstChildElement(kElem_Collection); child;
          child = child->NextSiblingElement(kElem_Collection)) {
         auto* collection = new DragonCollection;
@@ -915,6 +1034,15 @@ void DragonPhase::Reset(bool rearm)
 }
 
 // Hooks (the dragon entity and its models are not ported).
+void DragonHeadTargetSet(entity::Entity* target, bool active, const ape::Matrix34* placement)
+{
+    (void)target;
+    (void)active;
+    (void)placement;
+}
+
+void DragonBodyDisable(void* body) { (void)body; }
+
 void DragonModelSetState(void* model, uint32_t state)
 {
     (void)model;
