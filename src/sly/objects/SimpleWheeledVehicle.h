@@ -70,7 +70,7 @@ struct SimpleWheeledVehicleSettings {
 class SimpleWheeledVehicleDef : public VehicleDef {
 public:
     ~SimpleWheeledVehicleDef() override;
-    entity::Entity* Spawn(entity::SpawnParams& params) override;   // slot 7
+    entity::Entity* Spawn(entity::EntityPlacement* placement) override;   // slot 7
 
     // Clones the template body named bodyName from the level's physics world
     // the first time (0x00245DD0).
@@ -110,7 +110,7 @@ public:
     enum DriveMode : uint8_t { kDrive_Idle = 0, kDrive_Forward = 1, kDrive_Backward = 2 };
 
     // 0x00247AB8
-    SimpleWheeledVehicle(SimpleWheeledVehicleDef* def, const entity::SpawnParams& params);
+    SimpleWheeledVehicle(SimpleWheeledVehicleDef* def, const entity::EntityPlacement& placement);
     ~SimpleWheeledVehicle() override;
 
     bool Update(float dt) override;                       // slot 4

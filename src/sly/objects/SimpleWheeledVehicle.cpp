@@ -132,10 +132,10 @@ void SimpleWheeledVehicleDef::ResolveBodyTemplate()
 // @func 0x00247EE4 SimpleWheeledVehicleDef::Spawn
 // NOTE: as for the hover vehicle, the console builds the scripted spawn
 // description first (0x000DFDF8) and lets the parameters complete it.
-Entity* SimpleWheeledVehicleDef::Spawn(entity::SpawnParams& params)
+Entity* SimpleWheeledVehicleDef::Spawn(entity::EntityPlacement* placement)
 {
     ResolveBodyTemplate();
-    auto* vehicle = new SimpleWheeledVehicle(this, params);
+    auto* vehicle = new SimpleWheeledVehicle(this, *placement);
     vehicle->OnSpawn();
     return vehicle;
 }
@@ -227,10 +227,10 @@ bool VehicleHelpText::OnMessage(const Message& message)
 // Entity
 
 // @func 0x00247AB8 SimpleWheeledVehicle::SimpleWheeledVehicle
-SimpleWheeledVehicle::SimpleWheeledVehicle(SimpleWheeledVehicleDef* wheeledDef, const entity::SpawnParams& params)
+SimpleWheeledVehicle::SimpleWheeledVehicle(SimpleWheeledVehicleDef* wheeledDef, const entity::EntityPlacement& placement)
     : VehicleEntity(wheeledDef)
 {
-    (void)params;
+    (void)placement;
     // NOTE: the console copies word +0xC8 of the spawn description into
     // field_1A8; the port's spawn parameters do not carry it yet.
     helpText.owner = nullptr;
