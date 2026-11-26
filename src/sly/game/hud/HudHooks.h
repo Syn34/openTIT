@@ -61,5 +61,8 @@ ape::ApeRefCounted* ObjectScriptRef(ape::world::ApeObj* object);
 ape::ApeRefCounted* GameCameraScriptRef();
 // Game world halfword +0x128214: frame time is frozen.
 bool HudFrameTimeFrozen();
+// Game world virtual slot 8 with 1 reports state 12. NOTE: taken for "a
+// level is loading"; meter B requests wait until it ends.
+bool GameWorldInLoadingState();
 } // namespace hud
 } // namespace sly

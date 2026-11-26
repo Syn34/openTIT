@@ -43,6 +43,8 @@ ape::ApeRefCounted* ObjectScriptRef(ape::world::ApeObj*) { return nullptr; }
 ape::ApeRefCounted* GameCameraScriptRef() { return nullptr; }
 // TODO(game world +0x128214)
 bool HudFrameTimeFrozen() { return false; }
+// TODO(game world virtual slot 8)
+bool GameWorldInLoadingState() { return false; }
 
 } // namespace hud
 } // namespace sly

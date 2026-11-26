@@ -39,8 +39,11 @@ public:
     void Hide();
     // 0x00364C90: sets the fill of both fill geometries (0..1).
     void SetFill(float fraction);
-    // 0x0036DC6C: shows or hides the extra fill part.
-    void SetExtraVisible(bool visible);
+    // 0x0036DC6C: shows or hides the second bar.
+    void SetSecondBarVisible(bool visible);
+    // 0x00369680: fill of the second bar (0..1); filling it up starts a
+    // flash script on the meter's object.
+    void SetSecondFill(float fraction);
 
     // The character the meter follows: the explicit owner, else the player's
     // character if it is a scripted entity (type bit 1).
@@ -56,16 +59,17 @@ private:
     ape::world::ApeObj* fillA_ = nullptr;       // +0xC4
     ape::world::ApeObj* fillB_ = nullptr;       // +0xC8
     ape::world::ApeObj* frame_ = nullptr;       // +0xCC
-    ape::world::ApeObj* extra_ = nullptr;       // +0xD0
-    ape::world::ApeObj* extra2_ = nullptr;      // +0xD4
+    ape::world::ApeObj* secondFillA_ = nullptr; // +0xD0 second bar (shown with meterFlagsC0 bit 7)
+    ape::world::ApeObj* secondFillB_ = nullptr; // +0xD4
     float drainTime_ = 0.0f;                    // +0xE0
     float drainTimer_ = 0.0f;                   // +0xE4
     float drainFrom_ = 0.0f;                    // +0xE8
     float drainTo_ = 0.0f;                      // +0xEC
     float fraction_ = 1.0f;                     // +0xF0 health fraction shown
-    float field_F4 = 1.0f;                      // +0xF4 NOTE: reset with the fraction, never read
+    float secondFraction_ = 1.0f;               // +0xF4 second bar fill
 
     friend void UpdateMeterA();
+    friend void AddMeterFor(entity::Entity*, uint32_t);
 };
 
 class HudPowMeter : public HudObject {
@@ -143,6 +147,15 @@ void UpdatePowMeter();
 void UpdateMeterA();
 // 0x003654C0: (re)builds meter B for the pending screen name.
 void UpdateMeterB();
+// 0x00369910: a meter of definition `name` (0: the entity definition's
+// name) follows `owner`; an owner keeps one meter.
+void AddMeterFor(entity::Entity* owner, uint32_t name);
+// 0x00369A80: retires `owner`'s meter (destroyed by the next HUD update).
+void RemoveMeterOf(entity::Entity* owner);
+// 0x00369C30: second bar fill of `owner`'s meter.
+void SetSecondFillOf(const entity::Entity* owner, float fraction);
+// 0x003697B0: second bar fill of meter B.
+void SetMeterBSecondFill(float fraction);
 
 } // namespace hud
 } // namespace sly

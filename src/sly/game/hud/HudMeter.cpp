@@ -10,6 +10,7 @@
 #include "ape/world/ApeObj.h"
 #include "sly/anim/AnimController.h"
 #include "sly/entity/ScriptedEntity.h"
+#include "sly/game/GameScripts.h"
 #include "sly/game/goals/JobManager.h"
 #include "sly/game/hud/HudHooks.h"
 
@@ -36,6 +37,7 @@ constexpr uint32_t kScriptState_Hurt = 0xA464660Eu;     // NOTE: name unknown; t
 constexpr uint32_t kScriptState_Hidden = 0x95B0708Eu;   // NOTE: name unknown; set when the meter hides
 constexpr uint32_t kScriptState_Normal = 0x009BD94Du;   // NOTE: same pair as SetMeterBVariant
 constexpr uint32_t kScriptState_Variant = 0xDBDDDABDu;
+constexpr uint32_t kScript_SecondBarFull = 0x9C87D029u;   // NOTE: script name unknown
 constexpr uint32_t kLevelVar = 0x044FA364u;             // "Level"
 // State "Level<n>" of the POW meter script is this hash plus n.
 // NOTE: works because the hash of "Level0".."Level9" grows by one per digit.
@@ -123,6 +125,8 @@ void DestroyElement(HudObject*& element)
     element = nullptr;
 }
 
+HudMeter* FindMeterOf(const entity::Entity* owner);
+
 HudObjectDef* FindDef(uint32_t name, uint32_t type)
 {
     HudObjectDef** slot = Hud().defs.Find(name);
@@ -183,8 +187,8 @@ HudMeter::HudMeter(HudObjectDef* def_) : HudObject(0, def_)
     fillA_ = FindFillGeometry(info.fillA);
     fillB_ = FindFillGeometry(info.fillB);
     frame_ = info.frame ? ape::world::FindGeomInstance(info.frame) : nullptr;
-    extra_ = FindFillGeometry(info.extra);
-    extra2_ = FindFillGeometry(info.extra2);
+    secondFillA_ = FindFillGeometry(info.extra);
+    secondFillB_ = FindFillGeometry(info.extra2);
     const char* prefix = ClipPrefix(def);
     const char* suffix = info.healthMeter ? "HealthMeter" : "";
     if (prefix && prefix[0]) {
@@ -312,7 +316,7 @@ void HudMeter::Refresh()
     const float origin[3] = {ape::world::kWorldZero.x, ape::world::kWorldZero.y, ape::world::kWorldZero.z};
     SetStackOffset(origin, true);
     fraction_ = 1.0f;
-    field_F4 = 1.0f;
+    secondFraction_ = 1.0f;
     drainTimer_ = 0.0f;
     meterHoldTimer = 0.0f;
     animState = 1;
@@ -334,8 +338,8 @@ void HudMeter::SetActive(bool active)
     if (object)
         object->SetVisible(active, true);
     UpdateFillVisibility();
-    if (extra_)
-        extra_->SetVisible(ElementObjectVisible(this) && (meterFlagsC0 & 0x80), true);
+    if (secondFillA_)
+        secondFillA_->SetVisible(ElementObjectVisible(this) && (meterFlagsC0 & 0x80), true);
     if (ElementObjectVisible(this))
         RunScriptState(this, (meterFlagsC0 & 0x20) ? kScriptState_Variant : kScriptState_Normal);
     if (!active)
@@ -353,13 +357,24 @@ void HudMeter::SetEnabled(bool enabled, bool /*flag*/)
     EnterStack();
 }
 
-// @func 0x0036DC6C HudMeter::SetExtraVisible
-void HudMeter::SetExtraVisible(bool visible)
+// @func 0x0036DC6C HudMeter::SetSecondBarVisible
+void HudMeter::SetSecondBarVisible(bool visible)
 {
     const bool was = (meterFlagsC0 & 0x80) != 0;
     meterFlagsC0 = uint8_t((meterFlagsC0 & 0x7Fu) | (visible ? 0x80u : 0u));
-    if (was != visible && extra_)
-        extra_->SetVisible(object && object->IsVisible() && visible, true);
+    if (was != visible && secondFillA_)
+        secondFillA_->SetVisible(object && object->IsVisible() && visible, true);
+}
+
+// @func 0x00369680 HudMeter::SetSecondFill
+void HudMeter::SetSecondFill(float fraction)
+{
+    if (!HudFrameTimeFrozen() && fraction >= 1.0f && fraction > secondFraction_)
+        StartObjectScript(kScript_SecondBarFull, ObjectScriptRef(object), 0, true);
+    secondFraction_ = fraction;
+    const float value = fraction * 0.5f + 0.5f;
+    SetFillValue(secondFillA_, value);
+    SetFillValue(secondFillB_, value);
 }
 
 // ---------------------------------------------------------------------------
@@ -608,6 +623,64 @@ void UpdateMeterB()
         DestroyElement(hud.meterB);
     }
     hud.meterB = CreateMeter(hud.pendingScreenName);
+}
+
+HudMeter* FindMeterOf(const entity::Entity* owner)
+{
+    for (HudObject* meter : Hud().meters) {
+        if (meter->meterOwner == owner)
+            return static_cast<HudMeter*>(meter);
+    }
+    return nullptr;
+}
+
+// @func 0x00369910 hud::AddMeterFor
+void AddMeterFor(entity::Entity* owner, uint32_t name)
+{
+    if (!owner || FindMeterOf(owner))
+        return;
+    if (!name && owner->def)
+        name = owner->def->nameHash;
+    HudMeter* meter = CreateMeter(name);
+    if (!meter)
+        return;
+    // NOTE: the bit is named kClass_400000 elsewhere; here it marks an
+    // entity that has a HUD meter.
+    owner->classBits |= entity::kClass_400000;
+    Hud().meters.Add(meter);
+    meter->EnterStack();
+    meter->meterOwner = owner;
+    meter->useOwner_ = true;
+}
+
+// @func 0x00369A80 hud::RemoveMeterOf
+void RemoveMeterOf(entity::Entity* owner)
+{
+    if (!owner)
+        return;
+    owner->classBits &= ~uint64_t(entity::kClass_400000);
+    auto& meters = Hud().meters;
+    for (uint32_t i = 0; i < meters.Count(); ++i) {
+        if (meters[i]->meterOwner == owner) {
+            Hud().retiredMeters.Add(meters[i]);
+            meters.RemoveAtSwap(i);
+            return;
+        }
+    }
+}
+
+// @func 0x00369C30 hud::SetSecondFillOf
+void SetSecondFillOf(const entity::Entity* owner, float fraction)
+{
+    if (HudMeter* meter = FindMeterOf(owner))
+        meter->SetSecondFill(fraction);
+}
+
+// @func 0x003697B0 hud::SetMeterBSecondFill
+void SetMeterBSecondFill(float fraction)
+{
+    if (Hud().meterB)
+        static_cast<HudMeter*>(Hud().meterB)->SetSecondFill(fraction);
 }
 
 } // namespace hud

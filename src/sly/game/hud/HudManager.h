@@ -313,7 +313,9 @@ struct HudManagerState {
     HudObject* meterA = nullptr;                 // 0x00F64CB8
     HudObject* meterB = nullptr;                 // 0x00F64CBC
     HudObject* powMeter = nullptr;               // 0x00F64CC0
-    ape::ApeTArray<HudObject*> meters;           // 0x0106C280 every meter element
+    ape::ApeTArray<HudObject*> meters;           // 0x0106C280 every meter element with an owner
+    ape::ApeTArray<HudObject*> retiredMeters;    // 0x0106C290 destroyed by the next update
+    ape::ApeTSortedMap<void*> defBuffers;        // 0x0106C2A8 NOTE: buffers the definition loader keeps (freed at unload)
     ape::ApeTArray<HudObject*> stacks[kAnchor_Count];   // 0x0106C2D4 elements per corner
 };
 
@@ -410,6 +412,14 @@ void SetMeterBVariant(bool on);
 void SnapMeterOf(const entity::Entity* owner);
 // 0x0035BFB0: every registered element starts its lifetime script.
 void StartLifetimeScripts();
+// 0x003655D0: per-frame HUD update: destroys queued elements, applies the
+// meter requests, runs the text override and updates the enabled
+// elements; elements whose object went away leave their stacks.
+void UpdateHud(float dt);
+// 0x0035B668: level unload: every element and definition is destroyed.
+void UnloadHud();
+// 0x00363B78: animates the text override (TODO).
+void UpdateTextOverride(float dt, HudTextOverride& state);
 void ResetUpdateFlags();                                             // 0x00369500
 bool AnyUpdatingElementVisible();                                    // 0x003695A0
 

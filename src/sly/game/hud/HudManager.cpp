@@ -12,9 +12,11 @@
 #include "ape/world/ApeObj.h"
 #include "sly/anim/AnimController.h"
 #include "sly/game/hud/HudHooks.h"
+#include "sly/game/hud/HudMeter.h"
 #include "sly/entity/GameEntityHooks.h"
 
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <cstdio>
 
@@ -125,6 +127,93 @@ void StartLifetimeScripts()
     auto& objects = Hud().objects;
     for (uint32_t i = 0; i < objects.Count(); ++i)
         objects.Data()[i].value->StartLifetimeScript();
+}
+
+// TODO(0x00363B78 hud::UpdateTextOverride): the restyled label's
+// transform/colour/scale animation is not ported.
+void UpdateTextOverride(float, HudTextOverride&) {}
+
+// @func 0x003655D0 hud::UpdateHud
+void UpdateHud(float dt)
+{
+    HudManagerState& hud = Hud();
+    for (HudObject* meter : hud.retiredMeters) {
+        hud.objects.Remove(meter->RegisteredName());
+        delete meter;
+    }
+    hud.retiredMeters.Clear();
+    for (uint32_t i = 0; i < hud.hideList.Count(); ++i) {
+        const auto& entry = hud.hideList.Data()[i];
+        hud.objects.Remove(entry.key);
+        delete entry.value;
+    }
+    hud.hideList.Clear();
+
+    if (hud.pendingScreen && !HudFrameTimeFrozen() && !GameWorldInLoadingState()) {
+        UpdateMeterB();
+        hud.pendingScreen = false;
+        hud.pendingScreenName = 0;
+    }
+    if (hud.contextName) {
+        UpdateMeterA();
+        hud.contextName = 0;
+        hud.contextEntity = nullptr;
+    }
+    if (hud.powMeterName && !HudFrameTimeFrozen()) {
+        UpdatePowMeter();
+        hud.powMeterName = 0;
+    }
+
+    UpdateTextOverride(dt, TextOverride());
+    for (uint32_t i = 0; i < hud.objects.Count(); ++i) {
+        HudObject* element = hud.objects.Data()[i].value;
+        if (element->animState & 1u)
+            element->Update(dt);
+    }
+    // Elements whose object was hidden or dropped give their place up.
+    for (auto& stack : hud.stacks) {
+        for (uint32_t i = 0; i < stack.Count();) {
+            HudObject* element = stack[i];
+            const uint32_t count = stack.Count();
+            if (!element->object || !ObjectVisible(element->object))
+                element->LeaveStack();   // removes it from `stack`
+            if (stack.Count() == count)
+                ++i;
+        }
+    }
+}
+
+// @func 0x0035B668 hud::UnloadHud
+void UnloadHud()
+{
+    HudManagerState& hud = Hud();
+    for (uint32_t i = 0; i < hud.hideList.Count(); ++i) {
+        const auto& entry = hud.hideList.Data()[i];
+        hud.objects.Remove(entry.key);
+        delete entry.value;
+    }
+    hud.hideList.Clear();
+    for (uint32_t i = 0; i < hud.objects.Count(); ++i)
+        delete hud.objects.Data()[i].value;
+    hud.objects.Clear();
+    for (uint32_t i = 0; i < hud.defs.Count(); ++i)
+        delete hud.defs.Data()[i].value;
+    hud.defs.Clear();
+    for (auto& stack : hud.stacks)
+        stack.Clear();
+    hud.updateList.Clear();
+    hud.meterA = nullptr;
+    hud.meterB = nullptr;
+    hud.powMeter = nullptr;
+    hud.meters.Clear();
+    hud.retiredMeters.Clear();
+    for (uint32_t i = 0; i < hud.defBuffers.Count(); ++i)
+        std::free(hud.defBuffers.Data()[i].value);
+    hud.defBuffers.Clear();
+    HudTextOverride& override = TextOverride();
+    override.owner = nullptr;
+    override.element = nullptr;
+    ResetTextOverride(override);
 }
 
 // @func 0x0036A2FC HudObject::Update
