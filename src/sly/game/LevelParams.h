@@ -91,6 +91,109 @@ struct LevelParams {
         kMechanic_None = 0, kMechanic_Hideout = 1, kMechanic_2 = 2, kMechanic_SystemCracker = 3,
         kMechanic_AlterEgo = 4,
     };
+    // The hideout's mechanic block (parsed by 0x00480E68; on the console it
+    // shares the 0x1528 bytes of Mechanic with the other kinds). Each
+    // station element starts with the same four hashes (attributes
+    // 0xD86FA37C, 0x6BDF55EF, 0x9C990F5D, 0x815D083C). NOTE: names unknown.
+    struct StationView {
+        uint32_t field_00 = 0;
+        uint32_t field_04 = 0;
+        uint32_t field_08 = 0;
+        uint32_t field_0C = 0;
+    };
+    // Element 0xBA3BD856 (0x100-byte records).
+    struct HideoutStation {
+        uint32_t def = 0;                 // +0x00 "Def" (a record without one is dropped)
+        char field_04[0x41] = {};         // +0x04 attribute 0xA9CD8AAA
+        char field_45[0x41] = {};         // +0x45 attribute 0x41FA331E
+        char field_86[0x42] = {};         // +0x86 attribute 0xE9BDFD43
+        uint32_t field_C8 = 0;            // +0xC8 attribute 0x3295FD03
+        uint32_t field_CC = 0;            // +0xCC attribute 0x5745BCC6
+        uint32_t field_D0 = 0;            // +0xD0 attribute 0x3B2EA066
+        uint32_t field_D4 = 0;            // +0xD4 attribute 0xC1168D61
+        uint32_t field_D8 = 0;            // +0xD8 attribute 0xC12B4394
+        uint32_t field_DC = 0;            // +0xDC attribute 0xEF8AB98A
+        uint32_t field_E0 = 0;            // +0xE0 attribute 0xEC96E888
+        uint32_t field_E8 = 0;            // +0xE8 attribute 0x4319F4EF
+        uint32_t field_EC = 0;            // +0xEC attribute 0x82BF101A
+        uint32_t field_F0 = 0;            // +0xF0 attribute 0xBF4244BF
+        uint32_t field_F4 = 0;            // +0xF4 attribute 0x39B44A1D
+        bool field_F8 = false;            // +0xF8 attribute 0x047D4CDD
+        bool field_F9 = false;            // +0xF9 attribute 0xF9B989D5
+        bool field_FA = false;            // +0xFA attribute 0xAE14078B
+        bool field_FB = true;             // +0xFB attribute 0x092E4909
+        bool field_FC = false;            // +0xFC attribute 0x3B757A97
+    };
+    // A "Costume" of the costume station (0x120-byte records).
+    struct CostumeEntry {
+        uint32_t instance = 0;            // +0x00 "instance"
+        uint32_t field_04 = 0;            // +0x04 attribute 0x5A07A589
+        uint32_t field_08 = 0;            // +0x08 attribute 0xE6ED234A
+        uint32_t field_0C = 0;            // +0x0C attribute 0xBB8E19CA
+        uint32_t field_10 = 0;            // +0x10 attribute 0xBB8D028A
+        char uiTitle[0x80] = {};          // +0x14 "uiTitle"
+        char uiDesc[0x80] = {};           // +0x94 "uiDesc"
+        uint32_t field_114 = 0;           // +0x114 attribute 0x79F40122
+        uint32_t lockedScript = 0;        // +0x118 "lockedScript"
+        uint32_t unlockedScript = 0;      // +0x11C "unlockedScript"
+    };
+    struct HideoutMechanic {
+        static constexpr int kMaxStations = 10;
+        static constexpr int kMaxCostumes = 8;
+        static constexpr int kTreasureGroups = 4;
+        static constexpr int kTreasuresPerGroup = 20;
+
+        float field_00 = 0.0f;            // +0x00 attribute 0x52265A94
+        uint32_t field_04 = 0;            // +0x04 attribute 0x49E23F80
+        uint32_t field_08 = 0;            // +0x08 attribute 0xC3905B44
+        uint32_t field_0C = 0;            // +0x0C attribute 0x907E07E3
+        HideoutStation stations[kMaxStations];   // +0x10
+        uint32_t stationCount = 0;        // +0xA10
+        // "CharacterSelect".
+        struct {
+            StationView view;             // +0xA14
+            uint32_t field_10[6] = {};    // +0xA24 attributes 0x7BB427C9, 0x48A1D468, 0x824DD4C6,
+                                          //        0x76CC881F, 0x43BA34BE, 0xBC008CB0
+        } characterSelect;
+        // Element 0x9A62C465: the costume station.
+        struct {
+            StationView view;             // +0xA3C
+            uint8_t count = 0;            // +0xA4C
+            CostumeEntry costumes[kMaxCostumes];   // +0xA50
+        } costumeSelect;
+        // "LevelSelect".
+        struct {
+            StationView view;             // +0x1350
+            uint32_t field_10[10] = {};   // +0x1360 attributes 0x93248323, 0x0E942BDA, 0xDB81D879,
+                                          //   0x85470B15, 0x03EC0451, 0xD0D9B0F0, 0x5EF64B3E,
+                                          //   0xC5A01613, 0x928DC2B2, 0xD8D4CA3C
+        } levelSelect;
+        // Element 0x9AF323B5.
+        struct {
+            StationView view;             // +0x1388
+            uint32_t field_10 = 0;        // +0x1398 attribute 0x5E32A4A0
+            uint32_t field_14 = 0;        // +0x139C attribute 0xD72DF2D3
+            uint32_t field_18 = 0;        // +0x13A0 attribute 0xCCD3652E
+            uint32_t field_1C = 0;        // +0x13A4 attribute 0x0F43FA2B
+            uint32_t field_20 = 0;        // +0x13A8 attribute 0x10B312D6
+        } station9AF3;
+        // Element 0xBCAAEE0F: a two player station.
+        struct {
+            StationView view;             // +0x13AC
+            uint32_t player1 = 0;         // +0x13BC "Player1" (default Sly)
+            uint32_t player2 = 0;         // +0x13C0 "Player2" (default Bentley)
+            float field_18 = 0.0f;        // +0x13C4 attribute 0x7546CE83
+            float field_1C = 0.0f;        // +0x13C8 attribute 0xB1073168
+            int32_t field_20 = 3;         // +0x13CC attribute 0x480B47AE
+        } stationBCAA;
+        // Element 0x8FFEC609: groups (0x2D8478AB) of "treasure" spawners.
+        struct {
+            StationView view;             // +0x13D0
+            uint32_t spawners[kTreasureGroups][kTreasuresPerGroup] = {};   // +0x13E0 "spawner"
+        } treasures;
+        uint32_t field_1520 = 0;          // +0x1520 attribute 0x76522CB5
+        uint32_t field_1524 = 0;          // +0x1524 attribute 0x5449CB0E
+    };
     struct Mechanic {
         uint32_t character = 0;           // +0x00 alter ego: "Character"; system cracker: "camera"
         uint32_t camera = 0;              // +0x04 alter ego: "camera"
@@ -101,8 +204,9 @@ struct LevelParams {
         float field_18 = 0.95f;           // +0x18 attribute 0x313AA3D1
         float field_1C = 0.2f;            // +0x1C attribute 0x00F35D02
         float damping = 0.0f;             // +0x20 "damping"
-        // NOTE: the rest of the block is filled by the hideout parser
-        // (0x00480E68) and the alter ego parser (0x003F0990), not ported.
+        // NOTE: the rest of the alter ego block is filled by 0x003F0990 (not
+        // ported).
+        HideoutMechanic hideout;          // the hideout's block (same bytes on the console)
     };
 
     std::vector<PlayerDef> players;       // +0x00 "player"

@@ -1348,3 +1348,29 @@ void SlyGame::RecordResumePoint()
 }
 
 } // namespace sly
+
+namespace sly {
+
+// @func 0x0047E3CC SlyGame::ClearCutsceneQueue
+void SlyGame::ClearCutsceneQueue()
+{
+    constexpr uint32_t kModalSkip = 0x40000000u;   // modal box data +0x3C bit 30
+    for (size_t i = 0; i < cutsceneQueue.Count(); ++i) {
+        QueuedCutscene* cutscene = cutsceneQueue[i];
+        if (GetState(1) == kSub_Modal) {
+            if (auto* data = reinterpret_cast<ModalBoxData*>(StateData(1)))
+                data->flags |= kModalSkip;
+        }
+        if (mainView)
+            mainView->SetNear(cutscene->savedNearClip);
+        delete cutscene->instance;
+        cutscene->instance = nullptr;
+        delete cutscene;
+    }
+    cutsceneQueue.Clear();
+    resumeAfterCutscenes = false;
+    cutscenePlaying = false;
+    cutsceneSkipRequested = false;
+}
+
+} // namespace sly

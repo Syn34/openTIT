@@ -546,6 +546,10 @@ public:
     // empty, the deferred game events go to the job manager and play
     // resumes (0x0048B810).
     void UpdateCutsceneQueue(float dt);
+    // Drops every queued cutscene (a modal box over one is told it ended,
+    // the main view gets its near plane back) and clears the queue flags
+    // (0x0047E3CC).
+    void ClearCutsceneQueue();
     // Queues script `script` of library `library` as a cutscene (at most
     // four; only while "Game.CutSceneEnable" is set) with its variable
     // bindings and their source instance. `resume` (or a failing goal)
