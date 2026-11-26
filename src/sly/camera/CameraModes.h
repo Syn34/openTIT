@@ -437,6 +437,9 @@ public:
     Entity* GetTarget() const override { return target; }
     // Follows `entity` and takes its camera settings (0x0010DD60).
     void SetTarget(Entity* entity);
+    // Slot 7: restarts the follow state and puts the collision body into the
+    // world, at rest.
+    void Activate() override;
     // Target settings from the vehicle definition, or the tuning defaults (0x0010DA30).
     void LoadTargetSettings();
 
@@ -449,6 +452,7 @@ public:
 
     VehicleChaseSettings targetSettings;    // 0x10
     VehicleChaseSettings current;           // 0xB8
+    uint32_t flags1E4 = 0;             // 0x1E4 bit 31 set on activation. NOTE: meaning unknown
     Entity* target = nullptr;          // 0x250
     void* phantom = nullptr;           // 0x254
     void* body = nullptr;              // 0x258 NOTE: a Havok entity used for camera collision

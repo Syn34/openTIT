@@ -63,6 +63,12 @@ enum ApeSkeletonFlags : uint8_t {
     kSkelFlag_Dirty    = 0x80,   // model matrices need recomputing
 };
 
+struct ApeSkeleton;
+// Debug dump of a posed skeleton's bone tree (the console's text output was
+// compiled out; the walk and its tree-line bookkeeping remain). Bones are
+// listed while 'depth' is positive.
+void DumpSkeleton(const ApeSkeleton* skeleton, int depth);
+
 struct ApeSkeleton {
     Sphere bounds;                 // 0x00 model space bounds of the bone positions
     ApeSkeletonDef* def;           // 0x10

@@ -34,6 +34,9 @@ enum MinigameRequest : uint32_t {
 class Minigame : public StateMachine {
 public:
     Minigame() : StateMachine(4, 0x100, 0) {}
+    // A minigame of 'game' driven by the director script 'scriptName' of
+    // library 'scriptLibrary'; 'owner' is the goal that created it.
+    Minigame(SlyGame* game, uint32_t scriptLibrary, uint32_t scriptName, void* owner);
 
     // Bits of runFlags (+0x34).
     enum RunFlags : uint8_t {
@@ -87,6 +90,7 @@ public:
     ape::ApeAnimScriptInstance* script = nullptr;   // +0x20 running director script
     uint32_t scriptName = 0;           // +0x24 script name hash
     uint32_t scriptLibrary = 0;        // +0x28 library name hash
+    void* owner = nullptr;             // +0x2C goal that created the minigame
     SlyGame* game = nullptr;           // +0x30
     uint8_t runFlags = 0;              // +0x34 RunFlags (top byte of a flag word)
     uint8_t field_36 = 0;              // +0x36 (see PenguinMinigame slots 29/30)

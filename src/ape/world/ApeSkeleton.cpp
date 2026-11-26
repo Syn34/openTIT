@@ -1,6 +1,8 @@
 // openTIT - Skeletons: bone hierarchy definitions and posed skeleton instances.
 #include "ape/world/ApeSkeleton.h"
 
+#include <vector>
+
 #include "ape/core/ApeString.h"
 #include "ape/memory/ApeBucketAlloc.h"
 #include "ape/memory/ApeMem.h"
@@ -80,7 +82,59 @@ Vec3 TransformPoint(const Vec3& p, const Matrix34& m)
             p.x * m.xAxis.z + p.y * m.yAxis.z + p.z * m.zAxis.z + m.translation.z, 0.0f};
 }
 
+// Nesting level of the bone tree dump (0x00F889F4).
+int s_dumpLevel = 0;
+
+// @func 0x0055498C PrintSkeletonBone
+// NOTE: the console's debug text output was compiled out.
+void PrintSkeletonBone(const ApeSkeletonDefBone* /*bone*/)
+{
+}
+
+// Sets bit `level` of the tree-line mask when a later bone shares `parent`.
+void MarkLaterSibling(const ApeSkeleton& skeleton, uint32_t after, int16_t parent, int level, uint32_t* lines)
+{
+    uint32_t& word = lines[level >> 5];
+    const uint32_t bit = 1u << (level & 31);
+    word &= ~bit;
+    for (uint32_t i = after + 1; i < skeleton.numBones; ++i) {
+        if (skeleton.bones[i].def->parent == parent) {
+            word |= bit;
+            return;
+        }
+    }
+}
+
+// @func 0x00583FBC DumpSkeletonBone
+void DumpSkeletonBone(const ApeSkeleton& skeleton, uint32_t bone, int print, uint32_t* lines)
+{
+    ++s_dumpLevel;
+    if (print)
+        PrintSkeletonBone(skeleton.bones[bone].def);
+    for (uint32_t child = 0; child < skeleton.numBones; ++child) {
+        if (skeleton.bones[child].def->parent != int16_t(bone))
+            continue;
+        MarkLaterSibling(skeleton, child, int16_t(bone), s_dumpLevel, lines);
+        DumpSkeletonBone(skeleton, child, print, lines);
+    }
+    --s_dumpLevel;
+}
+
 } // namespace
+
+// @func 0x00584160 DumpSkeleton
+void DumpSkeleton(const ApeSkeleton* skeleton, int depth)
+{
+    if (depth < 1 || skeleton->numBones == 0)
+        return;
+    std::vector<uint32_t> lines((skeleton->numBones + 31) / 32, 0u);
+    for (uint32_t root = 0; root < skeleton->numBones; ++root) {
+        if (skeleton->bones[root].def->parent != -1)
+            continue;
+        MarkLaterSibling(*skeleton, root, -1, 0, lines.data());
+        DumpSkeletonBone(*skeleton, root, depth - 1, lines.data());
+    }
+}
 
 // --- ApeSkeletonDef --------------------------------------------------------------
 

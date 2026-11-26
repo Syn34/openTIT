@@ -129,6 +129,7 @@ ape::Vec4 QuatFromEulerDegrees(const ape::Vec3& degrees)
     return q;
 }
 
+// @func 0x0049EF40 ParseTextFieldList
 void ParseTextFieldList(XmlElement* element, TextFieldList& list, size_t capacity)
 {
     if (!element)

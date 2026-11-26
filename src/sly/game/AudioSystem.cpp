@@ -880,8 +880,6 @@ void UpdateVoiceOverPath()
     Backend().SetStreamRoot(2, path);
 }
 
-// TODO(0x004480D0 LoadSoundZones): parse Audio\Global\SoundZones.xml.
-static void LoadSoundZones(const char* path) { (void)path; }
 
 namespace {
 

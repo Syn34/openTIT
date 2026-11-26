@@ -36,7 +36,14 @@ SLY_ACTOR_DEF(SoundActorB168E0Def, SoundActorDef);   // 0x00B16898
 SLY_ACTOR_DEF(SoundActorB17008Def, SoundActorDef);   // 0x00B16FD0
 SLY_ACTOR_DEF(SoundActorB17270Def, SoundActorDef);   // 0x00B17228
 SLY_ACTOR_DEF(SoundActorB174C0Def, SoundActorDef);   // 0x00B17490
-SLY_ACTOR_DEF(SoundActorB17728Def, SoundActorDef);   // 0x00B176E0
+// 0x00B176E0
+class SoundActorB17728Def : public SoundActorDef {
+public:
+    ~SoundActorB17728Def() override;
+    // 0x198 character (CharacterDef::characterName) a near player must be to
+    // open the actor; 0 for anyone.
+    uint32_t requiredCharacter = 0;
+};
 
 // Plain entity definitions.
 SLY_ACTOR_DEF(EntityDefRope, EntityDef);        // 0x00B16280 ("EntityDefRope"), spawns 0x00B162C8

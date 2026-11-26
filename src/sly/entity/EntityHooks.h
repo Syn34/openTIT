@@ -70,6 +70,8 @@ ape::Vec3 GameCameraPosition();
 // -- game world (0x00F65CA0) -------------------------------------------------
 // Byte +0x1D == 1: the level runs with one player only.
 bool IsSinglePlayerMode();
+// Byte +0x1D: number of players in the level.
+int PlayerCount();
 // Entity of player `index` (world +0x1078 + index * 0x20C80), may be null.
 Entity* PlayerEntity(int index);
 

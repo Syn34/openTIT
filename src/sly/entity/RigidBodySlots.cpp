@@ -97,6 +97,17 @@ void AlterEgoEntity::Interface17CSlot6() {}
 // @func 0x0074F2EC AlterEgoEntity::Interface17CSlot7 (thunk, +0x17C)
 void AlterEgoEntity::Interface17CSlot7() {}
 
+// @func 0x0017BFDC AlterEgoEntity::ObjectForCollidable
+ape::world::ApeObj* AlterEgoEntity::ObjectForCollidable(const void* collidable, int32_t* bone)
+{
+    void* owner = CollidableOwnerBody(collidable);
+    if (owner && owner == rigidBody) {
+        *bone = -1;
+        return object;
+    }
+    return Entity::ObjectForCollidable(collidable, bone);
+}
+
 // @func 0x0074F2F8 AlterEgoEntity::Interface180Slot6
 // @func 0x0074F328 AlterEgoEntity::Interface180Slot6 (thunk, +0x180)
 void AlterEgoEntity::Interface180Slot6(void* body) { StopListeningTo(body); }

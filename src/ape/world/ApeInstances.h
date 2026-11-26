@@ -77,6 +77,8 @@ public:
     // Slot 12: sort offset; slot 13: the byte at 0x0A8 (redraws on change).
     void VirtualSlot12(uint32_t value, bool recurse) override;
     void VirtualSlot13(uint8_t value, bool recurse) override;
+    // Debug walk (slot 15); render objects also dump their skeleton.
+    void VirtualSlot15(int count, int arg) override;
 
     void InitRenderFields();
     void InitFromRecord(const ApeInstanceRecord& record);

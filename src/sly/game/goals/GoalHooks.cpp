@@ -2,6 +2,8 @@
 #include "sly/game/goals/GoalHooks.h"
 
 #include "sly/game/goals/JobManager.h"
+#include "sly/game/SlyGame.h"
+#include "sly/gameplay/Minigame.h"
 
 namespace sly {
 namespace goals {
@@ -145,10 +147,10 @@ bool HudTimerSlotBusy() { return false; }
 uint32_t HudCountdownName() { return 0; }
 
 // Minigames
-gameplay::Minigame* GameActiveMinigame(SlyGame*) { return nullptr; }
-void GameInstallMinigame(SlyGame*, gameplay::Minigame*) {}
-void GameEndActiveMinigame(SlyGame*) {}
-void MinigameStart(gameplay::Minigame*) {}
+gameplay::Minigame* GameActiveMinigame(SlyGame* game) { return game ? game->minigame : nullptr; }
+void GameInstallMinigame(SlyGame* game, gameplay::Minigame* minigame) { if (game) game->SetMinigame(minigame); }
+void GameEndActiveMinigame(SlyGame* game) { if (game) game->EndMinigame(); }
+void MinigameStart(gameplay::Minigame* minigame) { if (minigame) minigame->Begin(); }
 void MinigameCollectMarkers(gameplay::Minigame*, GoalMarkerList*) {}
 void GoalAwardTrophy(uint32_t) {}
 gameplay::Minigame* CreateMinigame(MinigameKind, SlyGame*, const void*, Goal*) { return nullptr; }

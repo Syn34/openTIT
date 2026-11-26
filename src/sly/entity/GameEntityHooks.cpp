@@ -1,6 +1,9 @@
 // openTIT - Stubs for GameEntityHooks.h.
 #include "sly/entity/GameEntityHooks.h"
 
+#include "sly/game/SlyGame.h"
+#include "sly/gameplay/Minigame.h"
+
 namespace sly {
 namespace entity {
 
@@ -9,12 +12,18 @@ void DetachAnimScript(void* script) { (void)script; }
 void OrphanAndReleaseAnimScript(void* script) { (void)script; }
 void SetAnimScriptPaused(void* script, bool paused) { (void)script; (void)paused; }
 ape::world::ApeObj* ComponentRenderObject(EntityComponent* component) { (void)component; return nullptr; }
-bool MinigameFlag30() { return false; }
+bool MinigameFlag30()
+{
+    const gameplay::Minigame* minigame = g_game ? g_game->minigame : nullptr;
+    return minigame && (minigame->runFlags & gameplay::Minigame::kRun_Started);
+}
 GameCamera* MainGameCamera() { return nullptr; }
 uint32_t CharacterDefWord3D4(const EntityDef* def) { (void)def; return 0; }
 uint32_t AnimDriverState(EntityComponent* driver) { (void)driver; return 0; }
 void AnimDriverStop(EntityComponent* driver, bool flag) { (void)driver; (void)flag; }
 void SetComponentWord1C(EntityComponent* component, uint32_t value) { (void)component; (void)value; }
+void TriggerSetEnabled(Entity* trigger, bool enabled) { (void)trigger; (void)enabled; }
+int TriggerOccupantCount(const Entity* trigger) { (void)trigger; return 0; }
 int EntityGetState(const Entity* entity, int layer) { (void)entity; (void)layer; return 0; }
 uint8_t* EntityStateData(Entity* entity, int layer) { (void)entity; (void)layer; return nullptr; }
 

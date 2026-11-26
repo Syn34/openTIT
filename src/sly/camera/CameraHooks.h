@@ -85,6 +85,12 @@ void* CreateSpherePhantom(float radius, uint32_t filterInfo);
 void DestroyPhantom(void* phantom);
 // Removes a Havok entity from its world (0x0092FFC8 via 0x009D19C8) and drops it.
 void DestroyHavokEntity(void* entity);
+// Puts a Havok entity into the game physics world unless it is in one
+// (0x009D19C8, hkpWorld::addEntity 0x0092F2A8 with activation).
+void AddHavokEntityToWorld(void* entity);
+// Wakes a Havok entity (0x0091A4C8) and stops it (linear velocity zero,
+// motion slot 17).
+void StopHavokEntity(void* entity);
 // Takes a Havok entity out of its world but keeps the reference (0x0092FFC8).
 void RemoveHavokEntityFromWorld(void* entity);
 // Drops a Havok reference (0x007D4EA8).

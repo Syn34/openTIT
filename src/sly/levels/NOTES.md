@@ -237,3 +237,16 @@ destructors, Link, debug elements and most Execute functions), priority targets
   EnterState (0x000215D8), FleePoint (0x0001E420), SnapToGround (0x0001D548), the perch
   search (0x00020100) and the NavPower helpers (0x000147B8, 0x00015AAC) are still TODO.
 * `AIController::claimSlot` points at an attack slot record (owner + position at +0x10).
+
+## Level AI, third pass (agent1)
+* `AIManager`: constructor (0x000186CC: knowledge system token, AI anim clip manager with
+  the AI control types 0x00AC000C, proxy point table of 512, nav manager with a 4 MB NavPower
+  arena through `NavPowerInterface::StartWorld`), `ShutdownAISystems` (0x00018B30), `Init`
+  (0x00018DD0: the eight surround directions at +0x50, empty attack volumes).
+* The "sightings" are melee attack volumes: `AddAttack` (0x0001B8C0, from the knowledge rule
+  RStartMeleeAttack) follows a locator or bone of the attacker; `UpdateAttacks` (0x000193C0)
+  sweeps it and sends a category 1 hit (slot 84) to the target. The manager tick 0x00019AF0
+  (which calls it) is not ported.
+* CritterAI: GroundProbe (ray cast hook `PhysicsRayCastStatic`), FleePoint (the parameter
+  points at the threat). FindPerch needs the engine's spline finder (0x005A8CF8) and the
+  spline property table (0x0119458C).

@@ -135,9 +135,11 @@ void BindTechniquePrograms(const AglShader* technique)
 // technique's own set-up.
 // NOTE: stand-in for the material apply function 0x0079CD0C (outside this
 // range, not tagged here): the console version also binds the material's
-// textures and advances its UV animation.
+// textures.
 void ApplyMaterial(AglMaterial* material, AglTechnique* technique)
 {
+    if (material->anim)
+        material->anim->Update();
     MaterialStateCache& c = g_materialCache;
     if (!c.blendValid || c.blendEnable != material->blendEnable || c.blendSrc != material->blendSrc ||
         c.blendDst != material->blendDst || c.blendEquation != material->blendEquation)

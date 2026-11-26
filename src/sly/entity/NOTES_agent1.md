@@ -24,3 +24,31 @@
 ## Hooks
 `GameEntityHooks.*` holds the TODO stubs (entity slots not declared on Entity, audio
 requests, anim script/driver bits, Havok frees, minigame flag, game camera lookup).
+
+## Second pass (agent1, entity/camera/objects)
+* Entity slots 49-52 are on `Entity` now: `PlayClip` (0x000DBE78), `PlayClipByHash`,
+  `PlayClipByName` (children linked with kChild_ForwardAnim play "<link name>_<clip>")
+  and `RootMotionDelta` (0x000DC730; flags2 bits 10/11 scale the step with the object or
+  by `rootMotionScale` (+0xE0) / `rootMotionWeight` (+0xF0)). The anim layer's root track
+  extraction (0x00352F70) is a hook (`AnimLayerRootMotion`). The child link record starts
+  with a name buffer (0x80 bytes assumed). GameCamera's clip slots override the Entity ones;
+  the old `EntityPlayClip` hook is gone.
+* Physical entities: slot 94 `AimAt` (aim frame = the `carriedTransform` at +0x1C0; the
+  carried entity is a marker sitting at the aim point), slot 95 `OnLaunched` (flight time
+  +0x228, script variables, state "Start"), slot 101 `UpdateFromBody`, `SweepTo` (body
+  sweep hook `RigidBodySweep`, 0x004A41C0), launch point +0x200. ProjectileB flies a
+  quadratic Bezier (side/forward scales +0x298/+0x29C, time +0x290/+0x2A0); Projectile
+  lobs (def +0x1A4). Def flags 10 (die on hit) and 22 (face the motion).
+* Placement copies (slot 2 of the placements, `sly/objects/EntityPlacementCopies.cpp`):
+  every scripted/actor/sound actor placement hands its fields to an instance description
+  0x20 bytes lower (placement +0xF0 -> description +0xD0). `EntityPlacement::FillInstanceDesc`
+  (0x000CDB28) is real now; the scripted placement's override lists are 0x4C-byte records.
+  The placement parsers (0x000CBE10, constructor 0x000CC188) still need the objects and
+  entity definition models to meet (two `EntityDef` classes exist).
+* `ActorEntity::GetAimPoint` (slot 71) uses the first definition part's +0x80 offset.
+* Follow camera block (vtable 0x00B14120): Camera.Follow.* tuning (all but Interp); the
+  variable addresses were matched through the camera tuning initialiser's constructor calls.
+* Camera: Strafe update (0x00115FB0), Vehicle activation (0x00111200).
+* Not done: LaunchProjectile 0x000EDE30 (needs a PhysicalEntityPlacement on the stack),
+  Projectile slot 101 0x000F30B8, the SPU-filtered entity update drivers 0x000CE5D4..
+  0x000CFF4C (the filter runs in an SPU program), the Track/Orbit/Shoulder/Spline updates.

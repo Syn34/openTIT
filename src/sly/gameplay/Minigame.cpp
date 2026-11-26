@@ -27,6 +27,14 @@ void EndScript(ape::ApeAnimScriptInstance*& script)
 
 } // namespace
 
+// @func 0x0047C5D8 Minigame::Minigame
+Minigame::Minigame(SlyGame* gameIn, uint32_t library, uint32_t name, void* ownerIn)
+    : StateMachine(4, 0x100, 0), scriptName(name), scriptLibrary(library), owner(ownerIn), game(gameIn)
+{
+    runFlags = uint8_t((runFlags & ~kRun_Started) | kRun_SavedFlag | kRun_HudHidden);
+    flags1C = 0;
+}
+
 // @func 0x00490B80 Minigame::Begin
 void Minigame::Begin()
 {

@@ -211,6 +211,8 @@ public:
 // NOTE: named after the "AlterEgoBit"/"AlterEgoMegabit" names its methods use.
 class AlterEgoEntity : public RigidBodyEntity {
 public:
+    // Slot 37: a contact on the entity's own body names its object (no bone).
+    ape::world::ApeObj* ObjectForCollidable(const void* collidable, int32_t* bone) override;
     ~AlterEgoEntity() override;
     // Sends an event to both anim scripts (0x0017A178).
     void SendScriptEvent(uint32_t event);
