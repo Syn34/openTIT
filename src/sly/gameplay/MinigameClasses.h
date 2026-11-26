@@ -151,6 +151,13 @@ public:
 class PenguinMinigame : public Minigame {
 public:
     ~PenguinMinigame() override;
+    // Slot 20 (0x003F61DC): the three interactable penguin stands of the
+    // level that this game uses are switched off while it runs, and the
+    // player's held animation is dropped.
+    void Reset() override;
+    // Slot 21 (0x003F606C): the stands are switched back on and (unless the
+    // game keeps it hidden) the second health meter comes back.
+    void Slot21() override;
     virtual bool Slot22();
     virtual void Slot23();
     virtual void Slot24();
@@ -164,6 +171,10 @@ public:
     virtual void Slot32();
     virtual void Slot33();
     virtual bool Slot34();
+
+    bool keepMeterHidden = false;      // +0x35 NOTE: name from slot 21
+    bool standDisabled[3] = {};        // +0x51 stands this game switched off
+    bool usesStand[3] = {};            // +0x54 stands the game takes over
 };
 
 // Penguin balance (vtable 0x00B20850, constructor 0x003F834C).

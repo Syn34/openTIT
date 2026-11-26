@@ -9,8 +9,10 @@
 #include "sly/gameplay/GameplayWorld.h"
 
 #include <cstdint>
+#include <vector>
 
 namespace ape { namespace world { class ApeObj; } }
+namespace agl { class AglOcclusionQuery; }
 namespace sly { namespace entity { class Entity; } }
 
 namespace sly {
@@ -23,9 +25,10 @@ public:
     // @func 0x00767A38 FxEffect::~FxEffect
     // @func 0x00767A48 FxEffect::~FxEffect (deleting)
     virtual ~FxEffect() = default;
-    // Slot 2 (+0x08). NOTE: empty in the base; meaning unknown.
+    // Slot 2 (+0x08): per-frame step with the frame time (the delayed
+    // copies record their history, object shakes queue their tick).
     // @func 0x00767A8C FxEffect::Slot2
-    virtual void Slot2() {}
+    virtual void Slot2(float dt) { (void)dt; }
     // @func 0x00767A90 FxEffect::Update
     virtual void Update() {}                                // slot 3 (+0x0C)
     // Slot 4 (+0x10): the effect has ended (the manager drops it).
@@ -51,9 +54,28 @@ using CameraShake = gameplay::CameraShakeParams;
 
 struct FxEffectDesc;
 
+// A record of the effects module with an occlusion query (0x01068818,
+// array of pointers; 0x64+ bytes). NOTE: the code that creates them is not
+// identified; only their release is ported.
+struct FxOcclusionRecord {
+    class agl::AglOcclusionQuery* query = nullptr;   // +0x00
+    ape::ApeTArray<uint32_t> items;                    // +0x60 NOTE: element type unknown
+};
+std::vector<FxOcclusionRecord*>& FxOcclusionRecords();
+// Queues every record's query for release at the end of the frame and frees
+// the records (0x002EE200, level load and manager teardown).
+void ReleaseFxOcclusionRecords();
+
 class FxManager {
 public:
     static constexpr int kMaxShakes = 0x10;
+
+    // Room for 0x80 effects and 16 camera shakes; becomes the manager
+    // GetFxManager returns and adds the (empty) "Effects1" draw callback.
+    FxManager();
+    ~FxManager();
+    // Drops the queued camera shakes (0x002EE458).
+    void ClearShakes();
 
     // Creates the effect a description asks for and keeps it in the effect
     // list; `handle` receives its handle (0x002F0E0C). Null, with the handle
@@ -62,6 +84,9 @@ public:
     // Gives every effect attached to `object` a new time scale
     // (FxEffect::value; 0x002EF7B8, from the entity time scale setter).
     void SetTimeScaleOn(ape::world::ApeObj* object, float timeScale);
+    // Deletes every effect and drops the queued camera shakes (0x002EF13C,
+    // level unload).
+    void DeleteAll();
 
     // Updates every effect unless effects are paused (0x002EF36C).
     void UpdateEffects();

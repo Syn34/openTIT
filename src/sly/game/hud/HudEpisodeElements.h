@@ -42,14 +42,28 @@ public:
     explicit HudType800(HudObjectDef* def);
     // 0x00376F88 / 0x0037726C.
     ~HudType800() override;
-    // Slot 2. TODO(0x00378540).
+    // Slot 2 (0x00378540): requests, label colours, the scroll / buy state
+    // machine and the selected upgrade's description and price state.
     void Update(float dt) override;
     // Slot 3 (0x0037965C).
     void Refresh() override;
     // Slot 5 (0x00376C98).
     void SetActive(bool active) override;
-    // Slot 6. TODO(0x003798D8): needs the show helper 0x003780E0.
+    // Slot 6 (0x003798D8).
     void SetEnabled(bool enabled, bool flag) override;
+    // 0x003780E0: shows the list (or restarts its update animation) and
+    // rebuilds its entries: every upgrade outside a job, else the available
+    // ones with the new ones first, each with the icon of its character.
+    void ShowTimed(float fade, bool flag, HudObject* linkedTo, const uint8_t* color);
+    // 0x0037744C: name and price of the upgrade in each of the six rows.
+    void RefreshRows();
+    // 0x00379960: draws the 3D text frames at their scene objects.
+    void DrawFields();
+    static void DrawFieldsCallback(void* unused, void* context);   // 0x00379B60
+    // 0x00379B90: places the icons, row copies and "new" marks of the
+    // visible rows, the scroll knob and the episode instance.
+    void PlaceRows();
+    static void PlaceRowsCallback(void* unused, void* context);    // 0x0037A560
     // 0x003772C0: starts the intro.
     void BeginShow();
     // 0x00377D18: plays the outro (clearing the "new" mark of the upgrades
@@ -66,7 +80,7 @@ public:
     uint32_t listFlags = 0;            // +0xFC EpisodeListFlags
     uint32_t selected = 0;             // +0x100
     uint32_t cursorRow = 0;            // +0x104
-    uint32_t field_108 = 0;            // +0x108
+    uint32_t lastScroll = 0;           // +0x108 state of the last finished scroll (4 up, 5 down, 0 none)
     ape::world::ApeObj* objects[5] = {};     // +0x10C definition +0x9C..+0xAC
     ape::ApeTArray<ape::world::ApeObj*> entryObjects{4};   // +0x120 released with the entries
     ape::ApeTArray<uint8_t> entryFlags{1};   // +0x134
@@ -77,6 +91,8 @@ public:
 
 private:
     void ReleaseEntryObjects();
+    bool ListAnimDone() const;
+    void PlayScroll(uint32_t state);
 };
 
 // Type bit 0x1000 (vtable 0x00B1F918, 0x1E0 bytes; built by 0x00358B64):

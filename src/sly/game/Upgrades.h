@@ -1,6 +1,7 @@
 // openTIT - Upgrade shop tuning and the table of upgrade records.
 #pragma once
 
+#include "ape/memory/ApeTArray.h"
 #include "ape/tuning/ApeTuning.h"
 
 #include <cstdint>
@@ -133,6 +134,19 @@ void ApplyScriptBindings(ape::ApeAnimScriptInstance* instance, const TextField* 
 
 // Upgrade record by index, null when out of range.
 UpgradeEntry* GetUpgradeEntry(uint32_t index);
+
+// Number of upgrade records loaded (0x010C1A9C; the loader is not ported).
+uint32_t& LoadedUpgradeCount();
+// Per-upgrade state bits of the game world (+0xFBC + index). NOTE: the
+// game world does not model them yet; a stand-in table is used.
+enum UpgradeStateBits : uint8_t {
+    kUpgrade_Available = 0x01,   // offered by the shop (NOTE: name from its use)
+    kUpgrade_Purchased = 0x02,   // the list shows it as sold
+    kUpgrade_New       = 0x04,   // listed first and marked until the list is closed
+};
+uint8_t& UpgradeState(uint32_t index);
+// Appends the index of every available upgrade with a record (0x0049E330).
+void CollectAvailableUpgrades(ape::ApeTArray<uint32_t>& out);
 
 // Appends a binding of an entity / an unsigned value to `list` (nothing
 // when the variable name or the value is zero).

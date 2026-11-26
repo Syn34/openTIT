@@ -247,3 +247,23 @@
   0x00488DF4/0x004890A0/0x00489328/0x00489A60 dialogs), SlyGame ctor/dtor/Begin/Update
   (stubs; the ctor's script command registration exists as RegisterLevelScriptCommands),
   AppTick 0x0045B858, the penguin minigames (0x004003A0-0x0041FB9C).
+
+## agent3, fifth pass
+* `FxEffects.*`: the play request (FxManager::Play 0x002F0E0C) and the effect descriptions
+  (head: kind, owner time scale, object). Kinds: object shake (ctor/dtors/slot 2/tick callback;
+  the vector tick 0x002F4A38 is TODO), motion trail (fully ported against
+  `agl::AglMotionTrailEffect`, effects[8] of the main view's chain; object draw 0x005A1548 is a
+  stub), trail / geometry display / delayed copies ("FXDly%02d_%s") only stubbed constructors.
+  FxEffect::value is the owner's time scale (FxManager::SetTimeScaleOn 0x002EF7B8, called by
+  Entity::SetCullDistance 0x000DAB90, which therefore really sets the time scale).
+* `hud/HudModelSlot.*`: 3D models shown by the HUD (0x0036A504/0x0036A5F0); the "colour style"
+  records are really model styles (Entity / Camera / IdleAnim attributes).
+* HudType8000: SetAlert (0x00384750) and the follow element block toggle (0x0029F428; element
+  name 0x00F64D3C is `g_followElementName`, never set yet).
+* HudType800 (upgrade list): ShowTimed 0x003780E0, RefreshRows 0x0037744C, Update 0x00378540,
+  DrawFields 0x00379960, PlaceRows 0x00379B90 and their callbacks, comparator 0x00389C5C. The
+  icon table 0x00F64D68 maps the upgrade's character (Sly, Bentley, Murray, one unknown) to an
+  icon object. Upgrade state bits (game world +0xFBC + index: 1 available, 2 purchased, 4 new)
+  live in a stand-in table (`UpgradeState`); purchase/afford (0x0049E0DC/0x0049E268) and the
+  coin count (game world +0x70) are HudHooks stubs.
+* Penguin minigame base: Reset 0x003F61DC, Slot21 0x003F606C (slot 9 0x003F63D8 is TODO).

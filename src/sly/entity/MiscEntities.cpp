@@ -1,8 +1,61 @@
 // openTIT - Small overrides of the vtable-only entity classes (see MiscEntities.h).
 #include "sly/entity/MiscEntities.h"
 
+#include "sly/entity/CharacterHooks.h"
+#include "sly/entity/PhysicsHooks.h"
+
 namespace sly {
 namespace entity {
+
+// @func 0x002070E8 RigidEntityB19198::GetRenderId
+uint32_t RigidEntityB19198::GetRenderId()
+{
+    if (RigidBodyInWorld(rigidBody))
+        return RigidBodyFilterInfo(rigidBody) >> 16;
+    return groupBits & 0x00FFFFFFu;
+}
+
+// @func 0x00207114 RigidEntityB19198::SetRenderId
+void RigidEntityB19198::SetRenderId(uint32_t id)
+{
+    groupBits = (groupBits & 0xFF000000u) | (id & 0x00FFFFFFu);
+    if (RigidBodyInWorld(rigidBody))
+        RigidBodySetFilterInfo(rigidBody, (id << 16) | (RigidBodyFilterInfo(rigidBody) & 0x1Fu));
+    Entity::SetRenderId(id);
+}
+
+// @func 0x002071AC RigidEntityB19198::GetGravityFactor
+float RigidEntityB19198::GetGravityFactor()
+{
+    if (attachParent) {
+        const EntityChildLink* link = attachParent->FindChildLink(this);
+        return link ? link->restoreBlend : 0.0f;
+    }
+    return RigidBodyGravityFactor(rigidBody);
+}
+
+// @func 0x00207204 RigidEntityB19198::Detached
+void RigidEntityB19198::Detached(float gravityFactor)
+{
+    RigidBodySetGravityFactor(rigidBody, gravityFactor);
+    Entity::Detached(gravityFactor);
+}
+
+// @func 0x00206F6C RigidEntityB19198::GetVelocity
+ape::Vec3 RigidEntityB19198::GetVelocity()
+{
+    return RigidBodyLinearVelocity(rigidBody);
+}
+
+// @func 0x00208D60 RigidEntityB19198::ObjectForCollidable
+ape::world::ApeObj* RigidEntityB19198::ObjectForCollidable(const void* collidable, int32_t* bone)
+{
+    if (rigidBody && CollidableOwnerBody(collidable) == rigidBody) {
+        *bone = -1;
+        return object;
+    }
+    return Entity::ObjectForCollidable(collidable, bone);
+}
 
 // @func 0x00758FF0 RigidEntityB19198::~RigidEntityB19198
 // @func 0x00759038 RigidEntityB19198::~RigidEntityB19198 (deleting)

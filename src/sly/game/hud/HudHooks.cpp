@@ -1,6 +1,8 @@
 // openTIT - HUD module hooks (stubs).
 #include "sly/game/Upgrades.h"
 #include "sly/game/hud/HudHooks.h"
+
+#include "sly/game/Upgrades.h"
 #include "sly/game/ObjectHelpers.h"
 #include "sly/game/SlyGame.h"
 #include "sly/game/goals/JobManager.h"
@@ -52,6 +54,15 @@ bool HudFrameTimeFrozen() { return false; }
 bool GameWorldInLoadingState() { return game::GameWorldState(1) == 12; }
 
 int ProfileCoinCount(uint8_t profile) { return int(game::ProfileProgress(profile).coins); }
+int ProfileCoinCount(uint8_t profile) { (void)profile; return 0; }
+// TODO(game world +0x70)
+int GameWorldCoins() { return 0; }
+// TODO(0x0049E0DC)
+bool UpgradeBuy(uint32_t id) { (void)id; return false; }
+// TODO(0x0049E268)
+bool UpgradeAffordable(uint32_t id) { (void)id; return false; }
+// TODO(game world +0x1AC bit 1)
+void GameWorldMarkAbilitiesChanged() {}
 
 } // namespace hud
 } // namespace sly
@@ -72,9 +83,8 @@ void SetAppInputHeld(bool held) { s_appInputHeld = held; }
 
 namespace sly {
 namespace hud {
-// TODO(game world +0xFBC upgrade flags)
-bool UpgradeIsNew(uint32_t index) { (void)index; return false; }
-void UpgradeClearNew(uint32_t index) { (void)index; }
+bool UpgradeIsNew(uint32_t index) { return (UpgradeState(index) & kUpgrade_New) != 0; }
+void UpgradeClearNew(uint32_t index) { UpgradeState(index) &= uint8_t(~kUpgrade_New); }
 } // namespace hud
 } // namespace sly
 

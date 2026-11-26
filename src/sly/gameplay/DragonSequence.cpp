@@ -5,6 +5,7 @@
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
 #include "ape/xml/ApeXml.h"
+#include "sly/game/GameMessages.h"
 
 #include <cstdio>
 #include <cstring>
@@ -100,6 +101,65 @@ int DragonBoss::HeadIndex(const DragonBodyPart* part) const
             return i;
     return -1;
 }
+
+// ===========================================================================
+// Dragon entity (the parts of it that are ported)
+
+// @func 0x002FE63C DragonBoss::~DragonBoss
+// @func 0x002FE8E8 DragonBoss::~DragonBoss (deleting)
+// @func 0x002FE9F0 DragonBoss::~DragonBoss (thunk, +0x17C)
+// @func 0x002FE97C DragonBoss::~DragonBoss (deleting thunk, +0x17C)
+// @func 0x002FE9C8 DragonBoss::~DragonBoss (thunk, +0x180)
+// @func 0x002FE930 DragonBoss::~DragonBoss (deleting thunk, +0x180)
+DragonBoss::~DragonBoss()
+{
+    for (int i = kHeadCount - 1; i >= 0; --i) {
+        delete headParts[i].script;
+        headParts[i].script = nullptr;
+    }
+    delete laser.script;
+    laser.script = nullptr;
+    delete root.script;
+    root.script = nullptr;
+}
+
+// @func 0x003011B8 DragonBoss::PostUpdate
+bool DragonBoss::PostUpdate(float dt)
+{
+    return ActorEntity::PostUpdate(dt);
+}
+
+// @func 0x00302CCC DragonBoss::OnHitCategory0
+void DragonBoss::OnHitCategory0(entity::EntityHitRecord& hit) { (void)hit; }
+// @func 0x00302CD4 DragonBoss::OnHitCategory1
+void DragonBoss::OnHitCategory1(entity::EntityHitRecord& hit) { (void)hit; }
+// @func 0x00302CD8 DragonBoss::OnHitCategory2
+void DragonBoss::OnHitCategory2(entity::EntityHitRecord& hit) { (void)hit; }
+// @func 0x00302CDC DragonBoss::OnHitCategory3
+void DragonBoss::OnHitCategory3(entity::EntityHitRecord& hit) { (void)hit; }
+// @func 0x00302CD0 DragonBoss::OnHitCategory4
+void DragonBoss::OnHitCategory4(entity::EntityHitRecord& hit) { (void)hit; }
+
+// @func 0x00302CF0 DragonBoss::NotifyHeadEvent
+bool DragonBoss::NotifyHeadEvent(entity::Entity* head)
+{
+    if (!head)
+        return false;
+    constexpr uint32_t kHeadNames[kHeadCount] = {0x37C9BF3Cu, 0x37C9BF3Du, 0x37C9BF3Eu};
+    uint32_t index = 0x0FFFFFFFu;
+    for (uint32_t i = 0; i < kHeadCount; ++i) {
+        if (head->nameHash == kHeadNames[i]) {
+            index = i;
+            break;
+        }
+    }
+    PostToListeners(head, 0xA07A77E3u, 0x8024237Bu, index);
+    return true;
+}
+
+// @func 0x00302CC4 DragonBoss::Interface17CSlot5
+// @func 0x00302CC8 DragonBoss::Interface17CSlot5 (thunk, +0x17C)
+void DragonBoss::Interface17CSlot5(const void* event) { (void)event; }
 
 // @func 0x002F9424 DragonBodyPart::SetState
 void DragonBodyPart::SetState(uint32_t state)

@@ -52,6 +52,7 @@ const uint32_t kGameEventNames[0x21] = {
     0x77297F71, 0x2B1FBAB8, 0xFB0005EA, 0x5E503067, 0x1DD1C81B,
 };
 
+// @func 0x00321288 GoalCycleEntry::SetText
 void GoalCycleEntry::SetText(const char* value)
 {
     delete[] text;

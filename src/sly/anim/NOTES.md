@@ -51,3 +51,8 @@
 * AnimController: destructor 0x0034BF9C and BindSkeleton 0x0034F690 are ported. The helper
   arrays +0x60..+0x70 only have their record sizes (0xE0 / 0x20 / ? / 0x140 / ?); nothing in
   the port fills them. BuildPose 0x0034D1A8 (pose blending, IK) is still TODO.
+
+## agent3, fifth pass
+* `AnimDefs.cpp`: LoadAnimationDefs 0x00288728 and the parsers of anim trees (0x00347F20),
+  blend maps ("transition from/to/blend/BlendType", 0x003482F8) and channel maps (bone weight
+  lists, 0x00348698). The anim map parser 0x00287FAC is TODO.

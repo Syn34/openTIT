@@ -5,6 +5,7 @@
 #include "sly/game/AppRuntime.h"
 #include "sly/game/ObjectHelpers.h"
 #include "sly/game/SlyGame.h"
+#include "sly/game/Upgrades.h"
 #include "sly/game/goals/JobManager.h"
 #include "sly/game/hud/HudHooks.h"
 #include "sly/anim/AnimController.h"
@@ -274,7 +275,7 @@ HudType800::HudType800(HudObjectDef* def_) : HudObject(0, def_)
     listHoldTime = 0.0f;
     selected = 0;
     cursorRow = info.cursorRow;
-    field_108 = 0;
+    lastScroll = 0;
     typeFlags |= kHud_Type800;
     text[0] = '\0';
     if (info.fieldCount) {
@@ -364,7 +365,7 @@ void HudType800::Refresh()
     if (listFlags & kE_LeaveB)
         QueueDestroy(this);
     selected = 0;
-    field_108 = 0;
+    lastScroll = 0;
     cursorRow = def->list800.cursorRow;
     entries.Clear();
     entryFlags.Clear();
@@ -393,14 +394,493 @@ void HudType800::Hide(bool a, bool b)
     HideList(this, listFlags, clips, def->list800.fields, def->list800.fieldCount, a, b);
 }
 
-// TODO(0x00378540 HudType800::Update)
-void HudType800::Update(float dt) { (void)dt; }
 
-// TODO(0x003798D8 HudType800::SetEnabled)
+// @func 0x003798D8 HudType800::SetEnabled
 void HudType800::SetEnabled(bool enabled, bool flag)
 {
-    (void)enabled;
-    (void)flag;
+    if (!enabled)
+        Hide(flag, false);
+    else if (!(listFlags & kE_Shown))
+        ShowTimed(-1.0f, false, nullptr, kNoTint);
+}
+
+namespace {
+
+// Icon object of an upgrade by the character it belongs to (0x00F64D68).
+struct UpgradeIcon {
+    uint32_t character;
+    uint32_t object;
+};
+const UpgradeIcon kUpgradeIcons[4] = {
+    {0x00014120u /* "Sly" */, 0x9808BBA9u},
+    {0x1D8C2817u /* "Bentley" */, 0x18D13620u},
+    {0x88397820u /* "Murray" */, 0x568604F7u},
+    {0xDF0611F9u, 0xE56342BFu},   // NOTE: character name unknown
+};
+
+// Row text fields (0x00F64DD0): name and price of rows A-F.
+const char* const kRowFields[6][2] = {
+    {"SlotAName", "SlotAPrice"}, {"SlotBName", "SlotBPrice"}, {"SlotCName", "SlotCPrice"},
+    {"SlotDName", "SlotDPrice"}, {"SlotEName", "SlotEPrice"}, {"SlotFName", "SlotFPrice"},
+};
+constexpr uint32_t kField800_Empty = 0x001FF691u;     // shows the "no upgrades" text
+constexpr uint32_t kField800_Cleared = 0x968EF501u;   // emptied with it
+
+} // namespace
+
+// qsort comparator of the upgrade list: new upgrades first, then by index.
+// @func 0x00389C5C CompareUpgradesNewFirst
+int CompareUpgradesNewFirst(const void* a, const void* b)
+{
+    const uint32_t ia = *static_cast<const uint32_t*>(a);
+    const uint32_t ib = *static_cast<const uint32_t*>(b);
+    const bool newA = (UpgradeState(ia) & kUpgrade_New) != 0;
+    const bool newB = (UpgradeState(ib) & kUpgrade_New) != 0;
+    if (newA == newB)
+        return int(ia) - int(ib);
+    return newB ? 1 : -1;
+}
+
+// @func 0x003780E0 HudType800::ShowTimed
+void HudType800::ShowTimed(float fade, bool flag, HudObject* linkedTo, const uint8_t* color)
+{
+    if (ListBlocked(listFlags))
+        return;
+    if (flag)
+        listFlags |= kE_LeaveA;
+    for (int i = 0; i < 4; ++i)
+        tint[i] = color[i];
+    listFadeTime = fade;
+    const uint32_t state = animState >> 1;
+    if (state == kState_Idle || state == kState_Update) {
+        listHoldTime = fade < 0.0f ? listDefaultFade : fade;
+        animState = (animState & 1u) | (kState_Update << 1);
+        PlayListState(this, clips, listFlags, kState_Update);
+    } else if (state == 0 || state == kState_Outro) {
+        listLinked = linkedTo;
+        if (!linkedTo || !linkedTo->object || !linkedTo->object->IsVisible())
+            BeginShow();
+        // NOTE: the console drops the old entry objects without releasing them.
+        entries.Clear();
+        entryFlags.Clear();
+        entryObjects.Clear();
+        game::JobManager* jobs = game::GetJobManager();
+        if (!jobs || !jobs->currentJob) {
+            for (uint32_t i = 0; i < LoadedUpgradeCount(); ++i)
+                entries.PushBack(i);
+        } else {
+            CollectAvailableUpgrades(entries);
+            if (entries.Count() != 0)
+                std::qsort(entries.Data(), entries.Count(), sizeof(uint32_t), CompareUpgradesNewFirst);
+        }
+        for (uint16_t i = 0; i < entries.Count(); ++i) {
+            entryFlags.PushBack(0);
+            ape::world::ApeObj* icon = nullptr;
+            if (const UpgradeEntry* upgrade = GetUpgradeEntry(entries[i])) {
+                uint32_t objectName = 0;
+                for (const UpgradeIcon& entry : kUpgradeIcons) {
+                    if (entry.character == upgrade->field_08) {
+                        objectName = entry.object;
+                        break;
+                    }
+                }
+                if (objectName) {
+                    if (ape::world::ApeObj* source = ape::world::FindGeomInstance(objectName))
+                        icon = HudCloneObject(source);
+                }
+            }
+            entryObjects.PushBack(icon);
+        }
+    }
+    RefreshRows();
+}
+
+// @func 0x0037744C HudType800::RefreshRows
+void HudType800::RefreshRows()
+{
+    const HudObjectDef::List800Def& info = def->list800;
+    const uint32_t count = entries.Count();
+    for (uint32_t row = 0; row < 6; ++row) {
+        const uint32_t nameField = ape::HashNameNoCase(kRowFields[row][0]);
+        const uint32_t priceField = ape::HashNameNoCase(kRowFields[row][1]);
+        const int32_t offset = int32_t(row) - int32_t(cursorRow);
+        const int32_t index = int32_t(selected) + offset;
+        if (count != 0 && ((index >= 0 && index < int32_t(count)) || count > 5)) {
+            // The list wraps around when it has more entries than rows.
+            const uint32_t wrapped = (selected + count + uint32_t(offset)) % count;
+            const uint32_t upgradeIndex = entries[wrapped];
+            if (const UpgradeEntry* upgrade = GetUpgradeEntry(upgradeIndex)) {
+                SetListFieldText(info.fields, info.fieldCount, nameField, upgrade->name);
+                const char* price = (UpgradeState(upgradeIndex) & kUpgrade_Purchased)
+                                        ? "$HIDEOUT_THIEFNET_SOLD"
+                                        : ape::TempFormat("%d", upgrade->field_0C);
+                SetListFieldText(info.fields, info.fieldCount, priceField, price);
+            }
+        } else {
+            SetListFieldText(info.fields, info.fieldCount, nameField, "");
+            SetListFieldText(info.fields, info.fieldCount, priceField, "");
+        }
+    }
+    if (count == 0) {
+        SetListFieldText(info.fields, info.fieldCount, kField800_Empty, "$THIEFNET_NO_UPGRADES_AVAILABLE");
+        SetListFieldText(info.fields, info.fieldCount, kField800_Cleared, "");
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// Type 0x800 update and drawing
+
+namespace {
+
+// Locators of the upgrade icons of the visible rows (0x00F64D50) and the
+// "new" text fields of the rows (0x00F64DB8).
+const uint32_t kIconLocators800[6] = {0x58E93190u, 0x58F74911u, 0x59056092u, 0x59137813u, 0x59218F94u, 0x592FA715u};
+const uint32_t kNewFields800[6] = {0xEDE86C9Du, 0xEDE8E0FCu, 0xEDE9555Bu, 0xEDE9C9BAu, 0xEDEA3E19u, 0xEDEAB278u};
+constexpr uint32_t kField800_Coins = 0x046228A0u;          // the player's coins
+constexpr uint32_t kScript_PurchaseFailed = 0xFAD2F87Eu;   // NOTE: name unknown
+
+} // namespace
+
+bool HudType800::ListAnimDone() const
+{
+    if ((listFlags & kE_AnimOk) && !HudClipDone(animController))
+        return false;
+    if (listFlags & kE_ScriptOk) {
+        auto* script = static_cast<ape::ApeAnimScriptInstance*>(animScript);
+        if (!script || !script->IsFinished(false))
+            return false;
+    }
+    return true;
+}
+
+void HudType800::PlayScroll(uint32_t state)
+{
+    listFlags = SetBit(listFlags, kE_AnimOk, PlayHudClip(animController, clips[state], 2.0f, false));
+    if (auto* script = static_cast<ape::ApeAnimScriptInstance*>(animScript))
+        listFlags = SetBit(listFlags, kE_ScriptOk, script->SetStateAndUpdate(kListStateNames[state]));
+}
+
+// @func 0x00378540 HudType800::Update
+void HudType800::Update(float dt)
+{
+    if (ListBlocked(listFlags))
+        return;
+    if ((animState >> 1) == 0 && !(listFlags & (kE_ShowReq | kE_HideReq)) && !listLinked)
+        return;
+    if (g_game) {
+        g_game->AddCallback(kCallbackList_Draw, reinterpret_cast<void*>(&DrawFieldsCallback), this, nullptr);
+        g_game->AddCallback(kCallbackList_Place, reinterpret_cast<void*>(&PlaceRowsCallback), this, nullptr);
+    }
+    const HudObjectDef::List800Def& info = def->list800;
+
+    // Requests made since the last update.
+    if (listFlags & kE_ShowReq) {
+        ShowTimed(-1.0f, false, nullptr, kNoTint);
+        if (info.fieldCount && info.fields[0].label) {
+            info.fields[0].label->SetText(text, false);
+            info.fields[0].label->Invalidate();
+        }
+        text[0] = '\0';
+        listFlags &= ~kE_ShowReq;
+    } else if (listFlags & kE_HideReq) {
+        Hide((listFlags & kE_LeaveA) != 0, (listFlags & kE_LeaveB) != 0);
+        listFlags &= ~kE_HideReq;
+    }
+
+    // Label colours: the element's tint, else the player's or the field's
+    // own colour; geometry elements pass their alpha on.
+    if (info.fieldCount) {
+        ape::world::ApeObj* geometry =
+            (object && object->GetType() == ape::world::kObjType_GeomInstance) ? object : nullptr;
+        const bool tinted = tint[3] != 0;
+        for (uint32_t i = 0; i < info.fieldCount; ++i) {
+            ape::ApeGuiObject* label = info.fields[i].label;
+            if (!label)
+                continue;
+            const HudObjectDef::ListFieldDef& field = info.fields[i];
+            ape::xml::Color8 color = label->GetColor();
+            if (tinted) {
+                color = {tint[0], tint[1], tint[2], tint[3]};
+            } else if ((field.flags & 0x80000000u) && PlayerHudColorAvailable()) {
+                uint8_t player[4];
+                PlayerHudColor(player);
+                color = {player[0], player[1], player[2], player[3]};
+            } else if (field.color[3]) {
+                color = {field.color[0], field.color[1], field.color[2], field.color[3]};
+            }
+            if (geometry)
+                color.a = geometry->m_byteA8;
+            label->SetColor(color);
+        }
+    }
+
+    const uint32_t count = entries.Count();
+    switch (animState >> 1) {
+    case kState_Outro:
+        if (ListAnimDone()) {
+            HudObject* next = listLinked;
+            Refresh();
+            if (next)
+                BeginShow();
+        }
+        break;
+    case kState_ScrollUp:
+    case kState_ScrollDown: {
+        // Presses during the animation are kept for the next idle frame.
+        const uint32_t pressed = PressedButtons();
+        if (pressed & kInput_Up)
+            listFlags = (listFlags & ~kE_QueuedDown) | kE_QueuedUp;
+        else if (pressed & kInput_Down)
+            listFlags = (listFlags & ~kE_QueuedUp) | kE_QueuedDown;
+        if (HudClipDone(animController)) {
+            lastScroll = animState >> 1;
+            animState = (animState & 1u) | (kState_Idle << 1);
+        }
+        break;
+    }
+    case kState_Idle: {
+        if (!offsetTween.IsFinished()) {
+            offsetTween.Update(dt);
+            if (object) {
+                ape::Matrix34 local = object->GetLocal();
+                local.translation.x = offset.x;
+                local.translation.y = offset.y;
+                local.translation.z = offset.z;
+                object->SetLocal(local);
+                object->MarkDirty();
+            }
+        }
+        if (count == 0)
+            break;
+        const uint32_t pressed = PressedButtons();
+        const uint32_t old = selected;
+        if (pressed & kInput_Accept) {
+            // Buy the selected upgrade.
+            const UpgradeEntry* upgrade = GetUpgradeEntry(entries[old]);
+            auto* script = static_cast<ape::ApeAnimScriptInstance*>(animScript);
+            if (!upgrade || !UpgradeBuy(upgrade->field_00)) {
+                if (script)
+                    script->SetStateAndUpdate(kScript_PurchaseFailed);
+            } else {
+                if (script)
+                    script->SetStateAndUpdate(kScript_Purchase);
+                RefreshRows();
+                if (upgrade->field_94)
+                    GameWorldMarkAbilitiesChanged();
+            }
+        } else if (!(pressed & kInput_Up) && !(listFlags & kE_QueuedUp)) {
+            if (!(pressed & kInput_Down) && !(listFlags & kE_QueuedDown))
+                break;
+            // Down: the list wraps only when it has more entries than rows.
+            if (old == count - 1)
+                selected = count > 5 ? 0 : old;
+            else
+                selected = old + 1;
+            if (old != selected) {
+                animState = (animState & 1u) | (kState_ScrollDown << 1);
+                PlayScroll(kState_ScrollDown);
+                if (lastScroll == kState_ScrollUp)
+                    cursorRow = cursorRow != 5 ? cursorRow + 1 : 0;
+                RefreshRows();
+            }
+            listFlags &= ~kE_QueuedDown;
+        } else {
+            if (lastScroll == kState_ScrollUp) {
+                if (old != 0)
+                    selected = old - 1;
+                else if (count > 5)
+                    selected = count - 1;
+            }
+            RefreshRows();
+            if (lastScroll == kState_ScrollDown || lastScroll == 0) {
+                if (selected != 0)
+                    --selected;
+                else if (entries.Count() > 5)
+                    selected = entries.Count() - 1u;
+            }
+            if (old != selected) {
+                animState = (animState & 1u) | (kState_ScrollUp << 1);
+                PlayScroll(kState_ScrollUp);
+                if (lastScroll == 0 || lastScroll == kState_ScrollDown)
+                    cursorRow = cursorRow != 0 ? cursorRow - 1 : 5;
+            }
+            listFlags &= ~kE_QueuedUp;
+        }
+        break;
+    }
+    case kState_Update:
+    case kState_Intro:
+        if (ListAnimDone()) {
+            const bool intro = (animState >> 1) == kState_Intro;
+            animState = (animState & 1u) | (kState_Idle << 1);
+            listHoldTime = listFadeTime < 0.0f ? listDefaultFade : listFadeTime;
+            listFlags = SetBit(listFlags, kE_AnimOk, PlayHudClip(animController, clips[kState_Idle], 1.0f, true));
+            if (auto* script = static_cast<ape::ApeAnimScriptInstance*>(animScript))
+                listFlags = SetBit(listFlags, kE_ScriptOk, script->SetStateAndUpdate(kListStateNames[kState_Idle]));
+            if (intro) {
+                for (uint32_t i = 0; i < info.fieldCount; ++i) {
+                    if (!info.fields[i].object3d && info.fields[i].object)
+                        info.fields[i].object->SetVisible(true);
+                }
+            }
+        }
+        break;
+    case 0:
+        if (listLinked && (!listLinked->object || !listLinked->object->IsVisible()))
+            BeginShow();
+        break;
+    default:
+        break;
+    }
+
+    // The selected upgrade's description and whether it can be paid for.
+    if (entries.Count() != 0) {
+        const uint32_t index = entries[selected];
+        if (const UpgradeEntry* upgrade = GetUpgradeEntry(index)) {
+            SetListFieldText(info.fields, info.fieldCount, kField800_Empty, upgrade->desc);
+            const char* coins = "";
+            if (!(UpgradeState(index) & kUpgrade_Purchased))
+                coins = UpgradeAffordable(upgrade->field_00) ? "$THIEFNET_COINS_GOOD" : "$THIEFNET_COINS_BAD";
+            SetListFieldText(info.fields, info.fieldCount, kField800_Cleared, coins);
+        }
+    }
+    SetListFieldText(info.fields, info.fieldCount, kField800_Coins, ape::TempFormat("%d", GameWorldCoins()));
+    if (animController)
+        animController->UpdateLayers(dt);
+    if (!object || !object->IsVisible())
+        return;
+    const ape::Vec3& zero = ape::world::kWorldZero;
+    if ((baseOffset.x == zero.x && baseOffset.y == zero.y && baseOffset.z == zero.z) || !HudPlacementEnabled())
+        return;
+    ape::Matrix34 local = object->GetLocal();
+    local.translation.x = zero.x + baseOffset.x + offset.x;
+    local.translation.y = zero.y + baseOffset.y + offset.y;
+    local.translation.z = zero.z + baseOffset.z + offset.z;
+    object->SetLocal(local);
+    object->MarkDirty();
+}
+
+// @func 0x00379960 HudType800::DrawFields
+void HudType800::DrawFields()
+{
+    const HudObjectDef::List800Def& info = def->list800;
+    for (uint32_t i = 0; i < info.fieldCount; ++i) {
+        ape::ApeGuiObject* field = info.fields[i].object3d;
+        const ape::world::ApeObj* anchor = fieldObjects[i];
+        if (!field || !anchor || !anchor->IsVisible())
+            continue;
+        // The GUI's x and y axes point the other way from the scene's.
+        ape::Matrix34 transform = anchor->GetWorld();
+        transform.xAxis = {-transform.xAxis.x, -transform.xAxis.y, -transform.xAxis.z, 0.0f};
+        transform.yAxis = {-transform.yAxis.x, -transform.yAxis.y, -transform.yAxis.z, 0.0f};
+        field->SetTransform(transform);
+        field->Tick(0.0f);
+        field->Draw();
+    }
+}
+
+// @func 0x00379B60 HudType800::DrawFieldsCallback
+void HudType800::DrawFieldsCallback(void* unused, void* context)
+{
+    (void)unused;
+    if (context)
+        static_cast<HudType800*>(context)->DrawFields();
+}
+
+// @func 0x00379B90 HudType800::PlaceRows
+void HudType800::PlaceRows()
+{
+    if (!object || !object->IsVisible())
+        return;
+    const HudObjectDef::List800Def& info = def->list800;
+    auto place = [](ape::world::ApeObj* target, const ape::world::ApeObj* locator) {
+        SetLocalFromWorld(target, locator);
+        target->UpdateWorld(false, false);
+    };
+    for (uint16_t i = 0; i < entryObjects.Count(); ++i)
+        HideObject(entryObjects[i]);
+    const uint32_t count = entries.Count();
+    for (uint32_t row = 0; row < 6; ++row) {
+        HideObject(rows[row]);
+        HideObject(rowExtraA[row]);
+        HideObject(rowExtraB[row]);
+        if (count == 0)
+            continue;
+        const int32_t offsetRow = int32_t(row) - int32_t(cursorRow);
+        const int32_t index = int32_t(selected) + offsetRow;
+        if (!((index >= 0 && index < int32_t(count)) || count > 5))
+            continue;
+        const uint32_t wrapped = (selected + count + uint32_t(offsetRow)) % count;
+        const uint8_t state = UpgradeState(entries[wrapped]);
+        // The upgrade's icon at the row's icon locator.
+        if (wrapped < entryObjects.Count() && entryObjects[wrapped]) {
+            if (const ape::world::ApeObj* locator = FindInHierarchy(object, kIconLocators800[row])) {
+                ape::world::ApeObj* icon = entryObjects[wrapped];
+                SetLocalFromWorld(icon, locator);
+                icon->SetVisible(true, true);
+                icon->UpdateWorld(false, false);
+            }
+        }
+        // Sold upgrades show the row copy and the first extra object.
+        if (rows[row] && row < info.rowCount) {
+            rows[row]->SetVisible((state & kUpgrade_Purchased) != 0, true);
+            if (const ape::world::ApeObj* locator = FindInHierarchy(object, info.rowLocators[row]))
+                place(rows[row], locator);
+        }
+        if (rowExtraA[row])
+            rowExtraA[row]->SetVisible((state & kUpgrade_Purchased) != 0, true);
+        // New upgrades show the second one and the "new" text; they stop
+        // being new once the list is closed.
+        if (rowExtraB[row]) {
+            const bool isNew = (state & kUpgrade_New) != 0;
+            rowExtraB[row]->SetVisible(isNew, true);
+            SetListFieldText(info.fields, info.fieldCount, kNewFields800[row], isNew ? "$HIDEOUT_THIEFNET_NEW" : "");
+            if (isNew)
+                entryFlags[wrapped] = 1;
+        }
+    }
+
+    // The knob slides from the bar's top to its bottom with the selection.
+    ape::world::ApeObj* knob = objects[0];
+    if (knob && objects[1] && objects[2]) {
+        const ape::Vec3& top = objects[1]->GetWorld().translation;
+        const ape::Vec3& bottom = objects[2]->GetWorld().translation;
+        const float step = 1.0f / (float(count) - 1.0f);
+        const float t = float(selected) * step;
+        const ape::Vec3 position{top.x + (bottom.x - top.x) * t, top.y + (bottom.y - top.y) * t,
+                                 top.z + (bottom.z - top.z) * t, 0.0f};
+        ape::Matrix34 world;
+        ape::Matrix34FromRotationTranslation(world, knob->GetWorld(), position);
+        knob->m_world = world;
+        knob->m_flags &= ~ape::world::kObjFlag_Dirty;
+    }
+
+    // The running episode's instance at the element's episode locator.
+    game::JobManager* jobs = game::GetJobManager();
+    const uint32_t period = (jobs && jobs->currentJob) ? jobs->currentJob->field_2D4 : kDefaultPeriod;
+    int periodIndex = 0;
+    for (int i = 0; i < 7; ++i) {
+        if (kEpisodePeriods[i] == period) {
+            periodIndex = i;
+            break;
+        }
+    }
+    if (objects[4]) {
+        if (ape::world::ApeObj* instance = ape::world::FindInstance(kPeriodInstances800[periodIndex], 0)) {
+            SetLocalFromWorld(instance, objects[4]);
+            instance->SetVisible(true, true);
+            instance->UpdateWorld(false, false);
+        }
+    }
+}
+
+// @func 0x0037A560 HudType800::PlaceRowsCallback
+void HudType800::PlaceRowsCallback(void* unused, void* context)
+{
+    (void)unused;
+    if (context)
+        static_cast<HudType800*>(context)->PlaceRows();
 }
 
 // ===========================================================================

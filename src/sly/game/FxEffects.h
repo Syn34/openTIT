@@ -12,7 +12,7 @@
 //   0xD0E940EF geometry display   FxGeoDisplayEffect (vtable 0x00B1D500, 0xD0 bytes)
 //   0x996564D0 motion trail       FxMotionTrailEffect(vtable 0x00B1D578, 0x14 bytes)
 //   0x8733FD75 delayed copies     FxDelayEffect      (vtable 0x00B1D528, 0x9C bytes)
-// The trail, geometry display and delayed-copy kinds are only partly ported.
+// The trail and geometry display kinds are only partly ported.
 #pragma once
 
 #include "sly/game/FxManager.h"
@@ -20,6 +20,7 @@
 #include "ape/math/ApeMath.h"
 
 #include <cstdint>
+#include <vector>
 
 namespace ape { namespace world { class ApeObj; struct ApeSkeletonBone; class ApeGeomDef; } }
 
@@ -67,6 +68,17 @@ enum FxShakeFalloff : uint32_t {
     kShakeFalloff_ToStart     = 0x9F9D6710u,   // NOTE: name unknown; blends towards startMagnitude
 };
 
+// Delayed copies.
+struct FxDelayDesc : FxEffectDesc {
+    ape::world::ApeObj* source = nullptr;   // +0x0C object the copies are made of (needs the same skeleton)
+    bool hideOriginal = false;              // +0x10
+    uint16_t historySize = 0;               // +0x12 frames kept (at least 1)
+    uint16_t copyCount = 0;                 // +0x14 (at most 8)
+    struct Copy { float delay; float alpha; };
+    Copy copies[8] = {};                    // +0x18
+    bool ownGeometry = false;               // +0x58 the copies get their own geometry definition
+};
+
 // Motion trail: the object is drawn into the motion trail post-process.
 struct FxMotionTrailDesc : FxEffectDesc {
     float timeStep = 0.016f;                  // +0x0C clamped to the effect's limits
@@ -89,7 +101,7 @@ public:
     explicit FxObjShakeEffect(const FxObjShakeDesc& desc);
     ~FxObjShakeEffect() override;
     // Slot 2: queues the shake on the game world's callback list 3.
-    void Slot2() override;
+    void Slot2(float dt) override;
     void KillIfAttachedTo(ape::world::ApeObj* object) override;
     void SetValueIfAttachedTo(ape::world::ApeObj* object, float newValue) override;
     // Advances the shake by `dt` and poses the bone (0x002F4A38, TODO).
@@ -131,14 +143,38 @@ public:
 };
 
 // Delayed copies ("FXDly%02d_<name>"): clones of the object that replay its
-// recorded transforms and poses a little later (only the attach overrides
-// are ported).
+// recorded transforms and poses a little later.
 class FxDelayEffect : public FxEffect {
 public:
-    explicit FxDelayEffect(const FxEffectDesc& desc);   // TODO(0x002ED6F4)
+    static constexpr int kMaxCopies = 8;
+
+    explicit FxDelayEffect(const FxDelayDesc& desc);
+    ~FxDelayEffect() override;
+    // Slot 2: records this frame's transform and pose and shows each copy at
+    // the newest record that is at least its delay old.
+    void Slot2(float dt) override;
     void KillIfAttachedTo(ape::world::ApeObj* object) override;
     void SetValueIfAttachedTo(ape::world::ApeObj* object, float newValue) override;
+
     ape::world::ApeObj* attachedTo = nullptr;   // +0x0C
+    ape::world::ApeObj* source = nullptr;       // +0x10 object the copies follow
+    ape::world::ApeGeomDef* ownDef = nullptr;   // +0x14 the copies' own geometry definition
+    bool hideOriginal = false;                  // +0x18 bit 0
+    uint8_t copyCount = 0;                      // +0x18 bits 1-5
+    uint16_t boneCount = 0;                     // +0x18 bits 6-15
+    uint16_t historySize = 1;                   // +0x1A
+    uint16_t writeIndex = 0;                    // +0x1C
+    uint16_t oldestIndex = 0;                   // +0x1E
+    std::vector<ape::Matrix34> transforms;      // +0x24 per record
+    std::vector<ape::Matrix34> poses;           // +0x28 per record and bone
+    std::vector<float> times;                   // +0x2C per record
+    float elapsed = 0.0f;                       // +0x30
+    FxDelayDesc::Copy copySettings[kMaxCopies] = {};   // +0x34
+    ape::world::ApeObj* copies[kMaxCopies] = {};       // +0x74
+    bool ownGeometry = false;                   // +0x94
+
+private:
+    void CreateCopies();
 };
 
 // Motion trail (see FxMotionTrailDesc).
