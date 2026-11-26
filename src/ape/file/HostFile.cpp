@@ -159,6 +159,7 @@ int ReadCache::AcquireBlock(uint64_t offset, int lastBlock)
     return index;
 }
 
+// @func 0x007A5684 ReadCache::StartPrefetch
 bool ReadCache::StartPrefetch(HostFile& file, uint64_t offset, int block)
 {
     Block& b = m_blocks[block];
@@ -172,6 +173,7 @@ bool ReadCache::StartPrefetch(HostFile& file, uint64_t offset, int block)
     return b.pending != nullptr;
 }
 
+// @func 0x007A5840 ReadCache::Read
 uint64_t ReadCache::Read(HostFile& file, void* dst, uint64_t bytes)
 {
     uint8_t* out = static_cast<uint8_t*>(dst);
@@ -307,6 +309,7 @@ uint32_t HostFile::Read(void* dst, uint64_t bytes, bool* completed)
 }
 
 // Appends to the write buffer, writing it out each time it fills up.
+// @func 0x007A5B58 HostFile::WriteBuffered
 uint32_t HostFile::WriteBuffered(const void* src, uint64_t bytes)
 {
     WriteBuffer& wb = *m_writeBuffer;
