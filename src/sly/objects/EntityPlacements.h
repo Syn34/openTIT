@@ -812,6 +812,9 @@ EntityPlacement* ParseTargetableCPlacement(ape::xml::XmlElement* root, ape::xml:
                                            const char* name, EntityDef* def);
 EntityPlacement* ParseRigidEntityB19198Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                  const char* name, EntityDef* def);
+// Breakable chain placement loader (0x001A5C90).
+EntityPlacement* ParseBreakableChainPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                              const char* name, EntityDef* def);
 // Push block placement loader (0x001B55C8).
 EntityPlacement* ParsePushBlockPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                          const char* name, EntityDef* def);

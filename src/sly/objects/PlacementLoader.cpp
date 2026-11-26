@@ -28,11 +28,6 @@ constexpr uint32_t kElem_Attachments = 0xCDA892E2u;
 constexpr uint32_t kElem_Bindings  = 0xC3B709C0u;
 
 // Placement loaders not ported yet.
-// TODO(0x001A5C90 ParseBreakableChainPlacement)
-EntityPlacement* ParseBreakableChainPlacement(ape::xml::XmlElement*, ape::xml::XmlElement*, const char*, EntityDef*)
-{
-    return nullptr;
-}
 // TODO(0x001D7D98 ParseActorB17990Placement)
 EntityPlacement* ParseActorB17990Placement(ape::xml::XmlElement*, ape::xml::XmlElement*, const char*, EntityDef*)
 {

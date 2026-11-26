@@ -1030,5 +1030,45 @@ EntityPlacement* ParsePushBlockPlacement(ape::xml::XmlElement* root, ape::xml::X
     return placement;
 }
 
+// @func 0x001A5C90 ParseBreakableChainPlacement
+// A piece count (attribute 0x2086522B) replaces the definition's pieces with
+// that many pieces of 3.0; piece children (0x048992CE, 1-based index
+// attribute 0x042930B2) override a piece's three values (not below zero).
+// NOTE: the console tests the placement element's own name instead of the
+// child's when looking for piece children (kept), so they are normally
+// ignored.
+EntityPlacement* ParseBreakableChainPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                              const char* name, EntityDef* def)
+{
+    constexpr uint32_t kElem_Piece = 0x048992CEu;
+    static const uint32_t kValueAttrs[3] = {0xEABE8E36u, 0x800ACF3Au, 0xA88C3581u};
+    (void)root;
+    auto* placement = new BreakableChainPlacement(name, static_cast<BreakableChainDef*>(def), nullptr,
+                                                  ape::world::kWorldIdentity, ape::world::kWorldUnitScale, true,
+                                                  false, 0);
+    int32_t count = 0;
+    if (elem->GetInt(0x2086522Bu, &count, 0) == ape::xml::kQuery_Ok && count > 0) {
+        placement->pieces.Clear();
+        for (int32_t i = 0; i < count; ++i)
+            placement->pieces.PushBack(BreakableChainPiece{{3.0f, 3.0f, 3.0f}});
+    }
+    for (ape::xml::XmlElement* child = elem->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        if (elem->GetNameHash() != kElem_Piece)
+            continue;
+        int32_t index = 0;
+        if (child->GetInt(0x042930B2u, &index, 0) != ape::xml::kQuery_Ok)
+            continue;
+        if (index < 1 || index > int32_t(placement->pieces.Count()))
+            continue;   // warning "BreakableChain Piece index is out of range" (stripped)
+        BreakableChainPiece& piece = placement->pieces[size_t(index - 1)];
+        for (int k = 0; k < 3; ++k) {
+            float value = 0.0f;
+            if (child->GetFloat(kValueAttrs[k], &value, piece.values[k]) == ape::xml::kQuery_Ok)
+                piece.values[k] = std::max(value, 0.0f);
+        }
+    }
+    return placement;
+}
+
 } // namespace objects
 } // namespace sly
