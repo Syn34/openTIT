@@ -579,6 +579,27 @@ public:
 
     int32_t phase = 0;         // +0x134
     int32_t counterAttacks = 0;   // +0x138 NOTE: counted down by CheckCounterAttack, never below 0
+    // One glass block of the stage (0x14 bytes): the block and the arm that
+    // raises it ("INST_GlassBlockA<row><column>" / "INST_GlassBlockArmA..").
+    struct GlassBlock {
+        Entity* arm = nullptr;      // +0x00
+        Entity* block = nullptr;    // +0x04
+        float timer = 0.0f;         // +0x08
+        int32_t state = 0;          // +0x0C 3 raising, 4 down
+        uint32_t field_10 = 0;      // +0x10
+        // Finds the block of row `row + rowBase` and column `column` (both
+        // counted from 0) and its arm, marks both busy and hides them; the
+        // block starts down (0x00052080).
+        void Bind(int row, int column, int rowBase);
+    };
+    static constexpr int kGlassRows = 5;
+    static constexpr int kGlassColumns = 7;
+    // +0x14C two sets of blocks (phases up to 1 use the first).
+    GlassBlock glassBlocks[2][kGlassRows][kGlassColumns];
+    // Shows every block of the current set with its arm raised (script
+    // state "Up", arm animation at its end) and starts it raising
+    // (0x00058848).
+    void RaiseGlassBlocks();
     ape::world::ApeSplineInstance* spline = nullptr;   // +0x185C
     ape::world::ApeObj* stretchFrom = nullptr;          // +0x1860
     ape::world::ApeObj* stretchTo = nullptr;            // +0x1864

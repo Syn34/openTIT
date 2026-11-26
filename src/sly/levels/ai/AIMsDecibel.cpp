@@ -4,11 +4,13 @@
 #include "ape/world/ApeInstances.h"
 
 #include "sly/levels/ai/AIHooks.h"
+#include "ape/core/ApeString.h"
 #include "sly/levels/ai/AITuning.h"
 #include "sly/game/hud/HudManager.h"
 #include "sly/entity/Entity.h"
 
 #include <cmath>
+#include <cstdio>
 
 namespace sly {
 namespace levels {
@@ -117,6 +119,50 @@ void MsDecibelAI::OnDamaged(float amount, uint32_t kind, const AIDamageInfo* inf
             dodgeSide = true;
         else if (side == 1)
             dodgeSide = false;
+    }
+}
+
+// @func 0x00052080 MsDecibelAI::GlassBlock::Bind
+void MsDecibelAI::GlassBlock::Bind(int row, int column, int rowBase)
+{
+    char name[64];
+    std::snprintf(name, sizeof name, "INST_GlassBlockA%d%d", row + rowBase + 1, column + 1);
+    const uint32_t blockName = ape::HashNameNoCase(name);
+    std::snprintf(name, sizeof name, "INST_GlassBlockArmA%d%d", row + rowBase + 1, column + 1);
+    const uint32_t armName = ape::HashNameNoCase(name);
+    block = entity::FindEntity(blockName);
+    if (block)
+        block->SetBusyFlag(true);
+    arm = entity::FindEntity(armName);
+    if (arm)
+        arm->SetBusyFlag(true);
+    if (block) {
+        // NOTE: the console does not check the arm here.
+        block->SetVisibilityDeferred(false, false);
+        block->SetVisible(false, true, true, true);
+        arm->SetVisibilityDeferred(false, false);
+        arm->SetVisible(false, true, true, true);
+    }
+    state = 4;
+}
+
+// @func 0x00058848 MsDecibelAI::RaiseGlassBlocks
+void MsDecibelAI::RaiseGlassBlocks()
+{
+    auto& set = glassBlocks[phase > 1 ? 1 : 0];
+    for (auto& row : set) {
+        for (GlassBlock& glass : row) {
+            if (!glass.block)
+                continue;
+            glass.block->SetVisibilityDeferred(true, false);
+            glass.block->SetVisible(true, true, true, true);
+            glass.arm->SetVisibilityDeferred(true, false);
+            glass.arm->SetVisible(true, true, true, true);
+            glass.arm->SetScriptState(0x00000A9Bu);   // "Up"
+            glass.arm->SetAnimElapsed(1.0f, true, 0);
+            glass.state = 3;
+            glass.timer = 0.5f;
+        }
     }
 }
 
