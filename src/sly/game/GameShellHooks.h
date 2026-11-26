@@ -44,6 +44,9 @@ void Component24Restart(entity::EntityComponent* component, bool flag);
 
 // HUD element 0xB7E98FE4 plays its intro (0x004902B8).
 void ShowCharacterHint();
+// Closes the GUI popup over the game and its event handler (0x004645AC,
+// 0x00464804).
+void CloseGuiPopup();
 // Shows or hides the AI entities (0x0048A068).
 void SetAiEntitiesVisible(bool visible);
 

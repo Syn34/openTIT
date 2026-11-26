@@ -9,7 +9,7 @@
 
 #include <cstdint>
 
-namespace ape { class ApeMemStack; class ApeGuiObject; }
+namespace ape { class ApeMemStack; class ApeGuiObject; struct GuiPadInput; }
 namespace ape::input { class ApePadDevice; }
 
 namespace sly {
@@ -39,6 +39,10 @@ struct AppPlayer {
     bool IsPadConnected() const;
 
     uint8_t index = 0;                        // +0xB4 (stride 0x2EC0)
+    // +0xB5 bit 7 (bit 23 of the word at +0xB4): the pointer position
+    // (+0xD0) is valid for the GUI. NOTE: meaning inferred from the GUI pad
+    // filter.
+    uint8_t field_B5 = 0;
     // +0xB6: low half of the word at +0xB4. Bit 15: the pause menu holds
     // the pad (set when a menu opens).
     uint16_t padFlags = 0;
@@ -46,7 +50,7 @@ struct AppPlayer {
     uint32_t inputMask = 0;                   // +0xBC
     uint32_t analogMask = 0xFFFFFFFFu;        // +0xC4 analog values the player may use
     ape::input::ApePadDevice* pad = nullptr;  // +0xCC
-    uint32_t field_D0[2] = {};                // +0xD0
+    uint32_t field_D0[2] = {};                // +0xD0 NOTE: the GUI reads them as the pointer position
 };
 
 struct AppRuntime {
@@ -59,6 +63,10 @@ struct AppRuntime {
 };
 
 AppRuntime& GetAppRuntime();
+
+// GUI pad filter of the game: the held and changed buttons and the pointer
+// of local player `pad` (false for other pads).
+bool GuiPadFilterForPlayers(uint32_t pad, ape::GuiPadInput* input);
 
 // Set when shutdown starts (0x010C5A45).
 bool AppIsShuttingDown();

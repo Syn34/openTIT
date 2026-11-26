@@ -3,7 +3,10 @@
 
 #include "ape/core/ApeSystem.h"
 #include "ape/input/ApeInputDevice.h"
+#include "ape/level/ApeGui.h"
 #include "sly/SlyApp.h"
+
+#include <cstring>
 
 namespace crt {
 [[noreturn]] void ExitImmediate(int code);
@@ -100,6 +103,24 @@ bool AnyPlayerRequestsSkip()
             return true;
     }
     return false;
+}
+
+// @func 0x00464794 GuiPadFilterForPlayers
+bool GuiPadFilterForPlayers(uint32_t pad, ape::GuiPadInput* input)
+{
+    if (pad >= uint32_t(kLocalPlayerCount))
+        return false;
+    const AppPlayer& player = GetAppRuntime().players[pad];
+    input->buttons = player.inputFlags;
+    input->edges = player.inputMask;
+    // NOTE: the word at +0xC4 is handed over as the input flags; the port
+    // calls it the analog mask.
+    input->flags = player.analogMask;
+    std::memcpy(&input->cursor[0], &player.field_D0[0], sizeof(float));
+    std::memcpy(&input->cursor[1], &player.field_D0[1], sizeof(float));
+    if (player.field_B5 & 0x80)
+        input->flags |= ape::kGuiPadInput_Cursor;
+    return true;
 }
 
 } // namespace sly

@@ -83,3 +83,13 @@ void QuatMul(Quat& out, const Quat& a, const Quat& b);
 void QuatMulInPlace(Quat& a, const Quat& b);
 
 } // namespace ape
+
+namespace ape {
+// Screen rectangle covered by a sphere (centre xyz, radius in w) seen
+// through `view` (world to camera; the camera looks down -z) and the
+// projection's x/y scales (`projection` [0][0] and [1][1]). The rectangle
+// is in 0..1 screen units with y going down; a sphere around the camera
+// covers the whole screen.
+void SphereScreenRect(const Vec4& sphere, const Matrix34& view, const Matrix44& projection, float* left,
+                      float* top, float* right, float* bottom);
+} // namespace ape

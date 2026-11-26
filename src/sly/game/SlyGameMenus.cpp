@@ -16,6 +16,7 @@
 #include "sly/game/hud/HudHideoutMenu.h"
 #include "sly/game/hud/HudManager.h"
 #include "sly/gameplay/Minigame.h"
+#include "sly/tuning/GameTuning.h"
 #include "sly/levels/ai/AIController.h"
 
 namespace sly {
@@ -478,6 +479,99 @@ bool SlyGame::HoldsFrame()
     if (menu != 0x0F && menu != 0x0E)
         return false;
     return field_20 != 0 && g_menuBackdropReady != 0;
+}
+
+} // namespace sly
+
+namespace sly {
+
+namespace {
+
+// A GUI popup over the game (system notices): the object shown and what it
+// replaced while it is up (0x010BB9E4..0x010BB9F5; the object is the app's
+// word +0x04 on the console).
+struct GuiPopup {
+    ape::GuiPadFilter savedPadFilter = nullptr;   // 0x010BB9E4
+    void* savedPadUser = nullptr;                 // 0x010BB9E8
+    ape::GuiFilter savedFilter = nullptr;         // 0x010BB9EC
+    void* savedFilterUser = nullptr;              // 0x010BB9F0
+    bool fadeWasVisible = false;                  // 0x010BB9F4
+    bool loadingWasVisible = false;               // 0x010BB9F5
+    ape::ApeGuiObject* object = nullptr;          // app +0x04
+};
+GuiPopup g_guiPopup;
+
+// GUI event sent to the popup when it closes. NOTE: name unknown.
+constexpr uint32_t kGuiEvent_PopupClosed = 0x0E;
+// GUI event of the accept button.
+constexpr uint32_t kGuiEvent_Accept = 5;
+
+void SetGuiObjectVisible(const char* path, bool visible)
+{
+    if (ape::ApeGuiObject* object = ape::FindGuiObject(path, nullptr))
+        object->SetVisible(visible);
+}
+
+} // namespace
+
+// @func 0x004645AC CloseGuiPopup
+// Takes the popup down: the front end and in-game screens come back, the
+// fade and loading screens get their earlier visibility, the audio pause
+// follows the pause menu again and the GUI handlers are restored.
+void CloseGuiPopup()
+{
+    GuiPopup& popup = g_guiPopup;
+    SetGuiObjectVisible("FrontEnd", true);
+    SetGuiObjectVisible("InGame", true);
+    SetGuiObjectVisible("Common.Fade", popup.fadeWasVisible);
+    SetGuiObjectVisible("Common.Loading", popup.loadingWasVisible);
+    if (popup.object)
+        popup.object->SetVisible(false);
+    audio::SetPauseAll(g_game && g_game->menu != 0);
+    // NOTE: the console also clears the word 0x010BA024 here (its readers
+    // are not ported).
+    ape::SendGuiEvent(kGuiEvent_PopupClosed, 0xFFFFFFFFu, popup.object, 0);
+    ape::SetGuiFilter(popup.savedFilter, popup.savedFilterUser);
+    ape::SetGuiPadFilter(popup.savedPadFilter, popup.savedPadUser);
+    popup.object = nullptr;
+}
+
+// @func 0x00464804 GuiPopupEventFilter
+// GUI handler while a popup is up: accepting on any object closes it.
+bool GuiPopupEventFilter(const ape::GuiEvent* event)
+{
+    if (g_guiPopup.object && event->type == kGuiEvent_Accept && event->object)
+        CloseGuiPopup();
+    return true;
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x00466678 SlyGame::EndDialog
+void SlyGame::EndDialog(bool toFrontEnd)
+{
+    constexpr uint32_t kDialogBusy = 0x40000000u;
+    if (!(dialog.flags & kDialogBusy))
+        return;
+    dialog.flags &= ~kDialogBusy;
+    ChangeState(1, toFrontEnd ? 0x0B : 2);
+    ChangeState(2, 0);
+    if (dialog.mixState)
+        audio::RemoveMixState(dialog.mixState, g_audioFreezeScreenCrossfadeDuration.Get());
+    dialog.text[0] = '\0';
+    dialog.field_98 = 0;
+    dialog.sound[0] = '\0';
+    dialog.field_8C = 0;
+    dialog.screenHash = 0;
+    dialog.field_A0 = 0;
+    dialog.field_A4 = 0;
+    dialog.field_A8 = 0;
+    dialog.field_AC = 0;
+    dialog.field_B0 = 0;
+    dialog.flags &= 0x1FFFFFFFu;
+    dialog.mixState = nullptr;
 }
 
 } // namespace sly
