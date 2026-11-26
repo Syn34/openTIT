@@ -10,6 +10,8 @@
 #include "sly/entity/GameCamera.h"
 #include "sly/game/AppRuntime.h"
 #include "sly/game/GameShellHooks.h"
+#include "sly/game/LevelParams.h"
+#include "sly/entity/Awards.h"
 #include "sly/game/goals/JobManager.h"
 #include "sly/game/AudioSystem.h"
 #include "sly/game/hud/HudElement.h"
@@ -572,6 +574,100 @@ void SlyGame::EndDialog(bool toFrontEnd)
     dialog.field_B0 = 0;
     dialog.flags &= 0x1FFFFFFFu;
     dialog.mixState = nullptr;
+}
+
+} // namespace sly
+
+namespace sly {
+
+// Debug switch: the level headline shows on every visit (0x010B9CD8).
+// NOTE: its tuning name is not known; it stays off.
+bool g_debugRepeatHeadlines = false;
+
+// @func 0x00482B20 SlyGame::ShowLevelHeadline
+// The running level's headline (the running job's override when there is
+// one), once per profile and level unless forced; the profile's unlock
+// entry of the level records that it was shown.
+void SlyGame::ShowLevelHeadline(bool force)
+{
+    constexpr uint32_t kDefaultHeadlineElement = 0x633E5DF3u;   // 0x00F64CEC. NOTE: name unknown
+    if (pendingLevelHash == 0 || !levelParams || localPlayerCount == 0)
+        return;
+    game::PlayerProgress::UnlockEntry* entry = nullptr;
+    for (game::PlayerProgress::UnlockEntry& unlock : progress.unlocks) {
+        if (unlock.name == 0)
+            break;
+        if (unlock.name == pendingLevelHash)
+            entry = &unlock;
+    }
+    if (!entry)
+        return;
+    // The first byte of the entry's state word: headline shown.
+    uint8_t shown = uint8_t(entry->state >> 24);
+    if (shown != 0 && !g_debugRepeatHeadlines && !force)
+        return;
+    shown = 1;
+    entry->state = (entry->state & 0x00FFFFFFu) | (uint32_t(shown) << 24);
+
+    const char* text = levelParams->headline[0] != '\0'
+                           ? levelParams->headline
+                           : "<unknown headline string! Check level params for level!>";
+    game::JobManager* jobs = game::GetJobManager();
+    if (game::Episode* job = jobs ? jobs->instance : nullptr) {
+        for (const LevelParams::JobHeadline& headline : levelParams->jobHeadlines) {
+            if (headline.jobName == job->nameHash) {
+                text = headline.text;
+                break;
+            }
+        }
+    }
+    const uint32_t element = levelParams->hash1584 ? levelParams->hash1584 : kDefaultHeadlineElement;
+    static const uint8_t kNoTint[4] = {0, 0, 0, 0};   // 0x01164CA4
+    hud::ShowTextByName(-1.0f, element, text, true, true, nullptr, kNoTint);
+}
+
+} // namespace sly
+
+namespace sly {
+
+namespace {
+
+// The levels that count for the "visit everything" trophy (0x00AE91E8).
+// NOTE: level names unknown; the hashes are their name hashes.
+constexpr uint32_t kTrophyLevels[] = {
+    0xA70C9716u, 0xE3DEF6B5u, 0x467B8C48u, 0x2E01E5EBu, 0x95841725u, 0x2291A3C2u, 0x59CC1B15u,
+    0xBF4B1637u, 0x350D543Bu, 0x63910843u, 0x716016C8u, 0x85EA7462u, 0xDE07516Fu, 0x2986D493u,
+    0xF285665Bu, 0xC25ED889u, 0xF4596EECu, 0x4A2AD4EAu, 0xFCA16EEFu, 0xAEAE3F00u, 0xBC676503u,
+    0xACAA7E76u, 0x1D17219Bu, 0xD44B7705u, 0x29E1A78Cu, 0xA3907718u, 0xE3541252u, 0x3FEEDCAFu,
+    0xFAC4F502u, 0xC7B84D81u, 0x4192876Du, 0x1AD96E63u, 0x40556837u, 0xA0355EFBu, 0x0C44F02Du,
+};
+constexpr uint32_t kTrophyLevelCount = sizeof(kTrophyLevels) / sizeof(kTrophyLevels[0]);
+// Award of the trophy. NOTE: award name unknown.
+constexpr uint32_t kAward_AllLevels = 0x0023FE97u;
+
+} // namespace
+
+// @func 0x0048BF28 SlyGame::RecordLevelVisit
+// Marks the running level as visited in the profile (one bit per level of
+// the trophy list, progress +0x138); visiting the last one awards the
+// trophy.
+void SlyGame::RecordLevelVisit()
+{
+    const uint64_t before = progress.field_138;
+    for (uint32_t i = 0; i < kTrophyLevelCount; ++i) {
+        if (kTrophyLevels[i] == pendingLevelHash) {
+            progress.field_138 |= uint64_t(1) << i;
+            break;
+        }
+    }
+    const uint64_t visited = progress.field_138;
+    if (visited == before || visited == 0)
+        return;
+    uint32_t count = 0;
+    for (uint64_t bits = visited; bits; bits &= bits - 1)
+        ++count;
+    if (count >= kTrophyLevelCount)
+        AwardTrophyByName(kAward_AllLevels);
 }
 
 } // namespace sly

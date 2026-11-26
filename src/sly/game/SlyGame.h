@@ -503,6 +503,10 @@ public:
     void EndDialog(bool toFrontEnd);
     // The screen shows a held picture instead of the running game.
     bool HoldsFrame();
+    // Shows the running level's headline (see SlyGameMenus.cpp).
+    void ShowLevelHeadline(bool force);
+    // Marks the running level visited for the all-levels trophy.
+    void RecordLevelVisit();
     // Full screen vertical colour gradient behind everything.
     void DrawScreenGradient(agl::AglRenderTarget* view, const uint8_t top[4], const uint8_t bottom[4]);
 

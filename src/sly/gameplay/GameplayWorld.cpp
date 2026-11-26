@@ -66,7 +66,11 @@ WorldFlags& GetWorldFlags()
 int GameMode() { return 0; }
 void SetLetterbox(bool on) { SlyGame::SetLetterbox(on); }
 void SetHudVisible(bool) {}
-void ShowLevelHeadline() {}
+void ShowLevelHeadline()
+{
+    if (g_game)
+        g_game->ShowLevelHeadline(false);
+}
 void RequestGameTransition(uint32_t) {}
 
 namespace {
