@@ -26,7 +26,7 @@ namespace ape { class ApeAnimScriptInstance; class ApeAnimScriptObjectVar; class
 namespace ape::setting { class Setting; }
 namespace ape::world { class ApeObj; class ApeSplineInstance; }
 namespace sly::audio { struct SoundName; }
-namespace sly::entity { class Entity; }
+namespace sly::entity { class Entity; class EntityDef; }
 
 namespace sly {
 
@@ -187,8 +187,12 @@ struct LaserField {
     // 0x0039D32C: enables or disables the field; `applyNow` also applies
     // the state when the field waits for its activation trigger.
     void SetEnabled(bool enabled, bool force, bool applyNow);
-    // 0x0039FEE0: triangulates the field outline.
+    // 0x0039FEE0: replaces the drawn shape by the triangulated `polygon`
+    // (none: back to the outline spline's).
     void SetOutline(const ape::ApeTArray<ape::Vec3>* polygon);
+    // 0x0039D620: a joint entity of definition `def` at `position`, its
+    // script started on or off.
+    void SpawnJoint(entity::EntityDef* def, const ape::Vec3& position);
     // 0x0039FF34: a state of the lifetime script and of every joint's script.
     void SetScriptState(uint32_t state);
     // 0x0039FEBC: the name of the field's point instance.
@@ -196,8 +200,8 @@ struct LaserField {
 
     ape::ApeTArray<ape::world::ApeObj*> outlines{0x10};   // +0x00 outline geometry
     ape::ApeTArray<entity::Entity*> joints{0x10};         // +0x14 joint entities at the corners
-    ape::ApeTArray<ape::Vec3> polygon{0x10};              // +0x28 outline points
-    ape::ApeTArray<ape::Vec3> triangles{0x10};            // +0x3C triangulated outline
+    ape::ApeTArray<ape::Vec3> triangles{0x10};            // +0x28 the outline spline, triangulated
+    ape::ApeTArray<ape::Vec3> altTriangles{0x10};         // +0x3C an outline set at run time, triangulated
     MaterialSet materialSets[3];          // +0x50
     uint8_t color[4] = {};                // +0x134 vertex colour
     ape::setting::Setting* setting = nullptr;   // +0x138
@@ -313,8 +317,12 @@ void LaserTestCharacter(LaserManager& manager, entity::Entity* character);
 void LaserSetupFixed(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point);
 void LaserSetupAnchor(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point);
 void LaserSetupSpline(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point);
-// 0x0039F3D8 (TODO): builds a field from its setting (outline, joints,
-// materials, phantoms, scripts).
+// 0x0039F3D8: builds a field from its setting (trigger, outline, init type,
+// lifetime script, phantoms, visuals) and applies the start state.
 void LaserFieldSetup(LaserField& field);
+// 0x0039E6F8 (TODO): the field's damage and FX phantoms (Havok).
+void LaserFieldBuildPhantoms(LaserField& field);
+// 0x0039DA30 (TODO): materials, outline geometry and joints along `outline`.
+void LaserFieldBuildVisuals(LaserField& field, const ape::ApeTArray<ape::Vec3>& outline);
 
 } // namespace sly

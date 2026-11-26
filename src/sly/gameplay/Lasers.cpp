@@ -13,6 +13,8 @@
 #include "ape/world/ApeInstances.h"
 #include "ape/world/ApeObj.h"
 #include "sly/entity/Entity.h"
+#include "sly/entity/EntityDef.h"
+#include "ape/spline/ApeSpline.h"
 #include "sly/entity/GameEntityHooks.h"
 #include "sly/game/AudioSystem.h"
 #include "sly/game/GameMath.h"
@@ -40,6 +42,8 @@ constexpr uint32_t kLifetime_FlickerStart = 0x066F8774u;
 constexpr uint32_t kLifetime_On = 0xCADB1721u;
 constexpr uint32_t kLifetime_Off = 0x3ECC2A7Cu;
 constexpr uint32_t kJoint_Disabled = 0xF13F8BB2u;
+constexpr uint32_t kJoint_StartOn = 0xB9B6CDA1u;      // NOTE: names from the hover vehicle's turbo script
+constexpr uint32_t kJoint_StartOff = 0x7D22E5CDu;
 constexpr uint32_t kLifetime_FlickerDelayOver = 0x06FEE56Au;
 constexpr uint32_t kLifetime_FlickerOver = 0xCBCB4FE3u;
 constexpr uint32_t kJoint_DisabledAgain = 0xA86F8ED1u;
@@ -448,8 +452,8 @@ void LaserField::Release()
 {
     if (point)
         TagObject(point, kLaserFieldObjectTag, nullptr);
-    polygon.Clear();
     triangles.Clear();
+    altTriangles.Clear();
     damagePhantom = nullptr;
     fxPhantom = nullptr;
     if (lifetimeScript) {
@@ -557,9 +561,24 @@ void LaserField::SetEnabled(bool enabled, bool force, bool applyNow)
 // @func 0x0039FEE0 LaserField::SetOutline
 void LaserField::SetOutline(const ape::ApeTArray<ape::Vec3>* outline)
 {
-    triangles.Clear();
+    altTriangles.Clear();
     if (outline && outline->Count() != 0)
-        TriangulatePolygonXZ(*outline, triangles);
+        TriangulatePolygonXZ(*outline, altTriangles);
+}
+
+// @func 0x0039D620 LaserField::SpawnJoint
+void LaserField::SpawnJoint(entity::EntityDef* def, const ape::Vec3& position)
+{
+    if (!def)
+        return;
+    entity::EntityPlacement placement(nullptr, def);
+    ape::Matrix34FromTranslation(placement.transform, position);
+    entity::Entity* joint = entity::SpawnFromDef(def, placement);
+    if (!joint)
+        return;
+    if (ape::ApeAnimScriptInstance* script = EntityScript(joint))
+        script->SetStateAndUpdate(initType == 1 ? kJoint_StartOff : kJoint_StartOn);
+    joints.PushBack(joint);
 }
 
 // @func 0x0039FF34 LaserField::SetScriptState
@@ -829,7 +848,7 @@ void LaserManager::UpdateFieldMaterials()
         LaserField& field = fields[i];
         if (!(field.flags & LaserField::kFlag_Shown))
             continue;
-        const ape::ApeTArray<ape::Vec3>& points = field.triangles.Count() == 0 ? field.polygon : field.triangles;
+        const ape::ApeTArray<ape::Vec3>& points = field.altTriangles.Count() == 0 ? field.triangles : field.altTriangles;
         for (LaserField::MaterialSet& set : field.materialSets)
             LaserFieldColorMaterials(points, field.color, set);
     }
@@ -1371,10 +1390,65 @@ void LaserSetupAnchor(Laser& laser, ape::setting::Setting* setting, ape::world::
     FinishSetup(laser, setting, LaserAnchorCommon, scripts);
 }
 
-// TODO(0x0039F3D8 LaserFieldSetup)
+// @func 0x0039F3D8 LaserFieldSetup
 void LaserFieldSetup(LaserField& field)
 {
+    using namespace sai_params;
+    field.flickerDelay = 0.0f;
+    field.flickerTime = 0.0f;
+    field.field_160 = 0.0f;
+    field.flags &= ~(LaserField::kFlag_Occupied | LaserField::kFlag_Started | LaserField::kFlag_Flickering);
+    const ape::setting::Setting* setting = field.setting;
+    if (!setting) {
+        field.SetEnabled(true, true, false);
+        return;
+    }
+    if (const char* triggerName = SettingString(setting, FieldActivationTrigger)) {
+        if (entity::Entity* found = entity::FindEntity(ape::HashNameNoCase(triggerName)))
+            field.trigger = (found->typeBits[0] & kTriggerTypeBit) ? found : nullptr;
+    }
+
+    // The outline: the control points of the point's child spline in world space.
+    ape::ApeTArray<ape::Vec3> outline;
+    if (auto* spline = static_cast<ape::world::ApeSplineInstance*>(field.outlineSpline)) {
+        const ape::ApeSpline& path = static_cast<const ape::world::ApeSplineDef*>(spline->GetDef())->m_spline;
+        const ape::Matrix34& m = spline->GetWorld();
+        for (uint32_t i = 0; i < path.GetNumPoints(); ++i) {
+            const ape::Vec3& p = path.GetPoint(i).position;
+            outline.PushBack({m.xAxis.x * p.x + m.yAxis.x * p.y + m.zAxis.x * p.z + m.translation.x,
+                              m.xAxis.y * p.x + m.yAxis.y * p.y + m.zAxis.y * p.z + m.translation.y,
+                              m.xAxis.z * p.x + m.yAxis.z * p.y + m.zAxis.z * p.z + m.translation.z, 0.0f});
+        }
+    }
+    field.initType = EnumIndex(setting->Value(FieldInitType).u, kInitTypeNames);
+    TriangulatePolygonXZ(outline, field.triangles);
+
+    if (field.lifetimeScript) {
+        ReleaseScript(field.lifetimeScript);
+        field.lifetimeScript = nullptr;
+    }
+    if (const char* scriptName = SettingString(setting, LifetimeScript)) {
+        if (ape::ApeAnimScript* script = ape::ApeAnimScriptLibrary::FindScriptAnywhere(ape::HashNameNoCase(scriptName), 0, true)) {
+            field.lifetimeScript = new ape::ApeAnimScriptInstance(script);
+            field.lifetimeScript->SetRemoveWhenFinished(false);
+        }
+    }
+    LaserFieldBuildPhantoms(field);
+    LaserFieldBuildVisuals(field, outline);
+    field.SetEnabled(field.trigger != nullptr || setting->Value(FieldStartEnabled).b, true, false);
+}
+
+// TODO(0x0039E6F8 LaserFieldBuildPhantoms)
+void LaserFieldBuildPhantoms(LaserField& field)
+{
     (void)field;
+}
+
+// TODO(0x0039DA30 LaserFieldBuildVisuals)
+void LaserFieldBuildVisuals(LaserField& field, const ape::ApeTArray<ape::Vec3>& outline)
+{
+    (void)field;
+    (void)outline;
 }
 
 } // namespace sly
