@@ -255,6 +255,16 @@ public:
     uint32_t ChooseNextPhase();
     // 0x00304298: stops the arm marker spawners and releases the marker objects.
     void ClearArmMarkers();
+    // 0x0030EBF0: runs the current phase (switching to the next one when it
+    // is done) and the scripts of finished phases; false once the fight was
+    // reset.
+    bool UpdatePhases(float dt);
+    // 0x0030D8E0 / 0x0030DD50: put the arena back (stamps, spawns, ropes,
+    // markers, camera) and tell the level (event 0x58516C64 / 0x5850F805).
+    // The second also hides five level entities and restarts in the idle
+    // phase. NOTE: which reset is which half of the fight is not known.
+    void ResetFight();
+    void RestartFight();
     // 0x003059EC: the tracking block follows the game camera and the
     // tracking bone.
     void BindTracking();
@@ -283,7 +293,7 @@ public:
     uint32_t currentAnim = 0;                          // 0x29C
     uint32_t currentCamera = 0;                        // 0x2A0
     bool armIntact[3] = {true, true, true};            // 0x2A4 arms 0..2
-    bool field_2A7 = false;                            // 0x2A7
+    bool resetRequested = false;                       // 0x2A7 NOTE: name from UpdatePhases
     int32_t field_2A8 = 0;                             // 0x2A8
     int32_t hitCount = 0;                              // 0x2AC
     bool field_2B0 = false;                            // 0x2B0

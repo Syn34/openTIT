@@ -10,7 +10,9 @@
 #include "sly/entity/ScriptedEntity.h"
 #include "sly/camera/CameraModes.h"
 #include "sly/entity/GameCamera.h"
+#include "sly/game/GameEvent.h"
 #include "sly/game/SpawnManager.h"
+#include "sly/levels/LevelServices.h"
 #include "sly/gameplay/GameplayWorld.h"
 #include "sly/gameplay/MegaKnightHooks.h"
 #include "sly/tuning/MegaKnightDragonTuning.h"
@@ -594,6 +596,103 @@ void MegaKnight::ClearArmMarkers()
 bool MegaKnight::PostUpdate(float dt)
 {
     return ActorEntity::PostUpdate(dt);
+}
+
+// @func 0x0030EBF0 MegaKnight::UpdatePhases
+bool MegaKnight::UpdatePhases(float dt)
+{
+    if (CurrentPhaseIndex() != kMKPhase_None) {
+        if (MegaKnightPhase* phase = CurrentPhase()) {
+            phase->Update(dt);
+            if (phase == CurrentPhase() && phase->IsDone()) {
+                skipBlend = true;
+                SwitchPhase(ChooseNextPhase());
+            }
+        }
+    }
+    // Phases that are not running keep playing their "Done" / "Spawn" states.
+    for (uint32_t i = 0; i < kMKPhase_Count; ++i) {
+        MegaKnightPhase* phase = phases[i];
+        if (!phase || int(i) == CurrentPhaseIndex())
+            continue;
+        ape::ApeAnimScriptInstance* script = phase->script;
+        if (script && script->GetState()) {
+            const uint32_t state = script->GetState()->GetNameHash();
+            if (state == 0x00201B82u /* "Done" */ || state == 0x04B6FB5Bu /* "Spawn" */)
+                script->Update(dt);
+        }
+    }
+    if (!resetRequested)
+        return true;
+    if (!secondHalf)
+        ResetFight();
+    else
+        RestartFight();
+    return false;
+}
+
+namespace {
+
+// The arena part both resets share (inline twice on the console).
+void ResetArena(MegaKnight* boss, uint32_t eventName)
+{
+    MegaKnightPlatform* platform = boss->platform;
+    platform->field_40 = 0.0f;
+    platform->Reset(false);
+    boss->stampManager->Reset();
+    for (uint32_t i = 0; i < boss->spawned.Count(); ++i) {
+        entity::Entity* e = boss->spawned[i];
+        e->Release(false);
+        if (e->IsAlive())
+            e->Release(true);
+    }
+    boss->spawned.Clear();
+    boss->ResetRopes();
+    for (entity::Entity* rope : boss->ropes)
+        if (rope)
+            MKRopeRelease(rope);
+    boss->ClearArmMarkers();
+    if (eventName == 0x5850F805u) {
+        for (entity::Entity* rope : boss->ropes)
+            if (rope)
+                MKSetInteractionState(rope, 4);
+    }
+    boss->field_298 = false;
+    while (boss->markedTargets.Count() != 0)
+        boss->RemoveMarkedTarget(boss->markedTargets[0]);
+    boss->heartTarget->SetVisible(false, true, true, true);
+    if (MegaKnightCamera* camera = boss->cameraController) {
+        camera->SetCamera(0.0f, nullptr, true);
+        MKCameraRemoveMode(camera->gameCamera, camera->mode);
+    }
+    GameEvent event;
+    InitEvent1C(event, eventName, 0, 0);
+    levels::GameWorldPostEvent(0, event);
+}
+
+} // namespace
+
+// @func 0x0030D8E0 MegaKnight::ResetFight
+void MegaKnight::ResetFight()
+{
+    ResetArena(this, 0x58516C64u);
+}
+
+// @func 0x0030DD50 MegaKnight::RestartFight
+void MegaKnight::RestartFight()
+{
+    for (uint32_t i = 0; i < 5; ++i) {
+        if (entity::Entity* e = entity::FindEntity(0x7001C018u + i)) {
+            e->SetVisible(false, true, true, true);
+            e->Release(true);
+        }
+    }
+    if (MegaKnightPhase* idle = phases[kMKPhase_Idle]) {
+        SwitchPhase(kMKPhase_Idle);
+        static_cast<MKPhaseIdle*>(idle)->duration = g_megaKnightStartIdle.Get();
+        SetCamera(1.0f, 0, false);
+    }
+    ResetArena(this, 0x5850F805u);
 }
 
 // @func 0x003059EC MegaKnight::BindTracking
