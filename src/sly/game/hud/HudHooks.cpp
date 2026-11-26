@@ -1,5 +1,7 @@
 // openTIT - HUD module hooks (stubs).
 #include "sly/game/hud/HudHooks.h"
+
+#include "sly/game/Upgrades.h"
 #include "sly/game/ObjectHelpers.h"
 #include "sly/game/goals/JobManager.h"
 
@@ -68,9 +70,8 @@ void SetAppInputHeld(bool held) { s_appInputHeld = held; }
 
 namespace sly {
 namespace hud {
-// TODO(game world +0xFBC upgrade flags)
-bool UpgradeIsNew(uint32_t index) { (void)index; return false; }
-void UpgradeClearNew(uint32_t index) { (void)index; }
+bool UpgradeIsNew(uint32_t index) { return (UpgradeState(index) & kUpgrade_New) != 0; }
+void UpgradeClearNew(uint32_t index) { UpgradeState(index) &= uint8_t(~kUpgrade_New); }
 } // namespace hud
 } // namespace sly
 

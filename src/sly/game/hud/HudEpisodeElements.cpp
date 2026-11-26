@@ -5,6 +5,7 @@
 #include "sly/game/AppRuntime.h"
 #include "sly/game/ObjectHelpers.h"
 #include "sly/game/SlyGame.h"
+#include "sly/game/Upgrades.h"
 #include "sly/game/goals/JobManager.h"
 #include "sly/game/hud/HudHooks.h"
 #include "sly/anim/AnimController.h"
@@ -396,11 +397,136 @@ void HudType800::Hide(bool a, bool b)
 // TODO(0x00378540 HudType800::Update)
 void HudType800::Update(float dt) { (void)dt; }
 
-// TODO(0x003798D8 HudType800::SetEnabled)
+// @func 0x003798D8 HudType800::SetEnabled
 void HudType800::SetEnabled(bool enabled, bool flag)
 {
-    (void)enabled;
-    (void)flag;
+    if (!enabled)
+        Hide(flag, false);
+    else if (!(listFlags & kE_Shown))
+        ShowTimed(-1.0f, false, nullptr, kNoTint);
+}
+
+namespace {
+
+// Icon object of an upgrade by the character it belongs to (0x00F64D68).
+struct UpgradeIcon {
+    uint32_t character;
+    uint32_t object;
+};
+const UpgradeIcon kUpgradeIcons[4] = {
+    {0x00014120u /* "Sly" */, 0x9808BBA9u},
+    {0x1D8C2817u /* "Bentley" */, 0x18D13620u},
+    {0x88397820u /* "Murray" */, 0x568604F7u},
+    {0xDF0611F9u, 0xE56342BFu},   // NOTE: character name unknown
+};
+
+// Row text fields (0x00F64DD0): name and price of rows A-F.
+const char* const kRowFields[6][2] = {
+    {"SlotAName", "SlotAPrice"}, {"SlotBName", "SlotBPrice"}, {"SlotCName", "SlotCPrice"},
+    {"SlotDName", "SlotDPrice"}, {"SlotEName", "SlotEPrice"}, {"SlotFName", "SlotFPrice"},
+};
+constexpr uint32_t kField800_Empty = 0x001FF691u;     // shows the "no upgrades" text
+constexpr uint32_t kField800_Cleared = 0x968EF501u;   // emptied with it
+
+} // namespace
+
+// qsort comparator of the upgrade list: new upgrades first, then by index.
+// @func 0x00389C5C CompareUpgradesNewFirst
+int CompareUpgradesNewFirst(const void* a, const void* b)
+{
+    const uint32_t ia = *static_cast<const uint32_t*>(a);
+    const uint32_t ib = *static_cast<const uint32_t*>(b);
+    const bool newA = (UpgradeState(ia) & kUpgrade_New) != 0;
+    const bool newB = (UpgradeState(ib) & kUpgrade_New) != 0;
+    if (newA == newB)
+        return int(ia) - int(ib);
+    return newB ? 1 : -1;
+}
+
+// @func 0x003780E0 HudType800::ShowTimed
+void HudType800::ShowTimed(float fade, bool flag, HudObject* linkedTo, const uint8_t* color)
+{
+    if (ListBlocked(listFlags))
+        return;
+    if (flag)
+        listFlags |= kE_LeaveA;
+    for (int i = 0; i < 4; ++i)
+        tint[i] = color[i];
+    listFadeTime = fade;
+    const uint32_t state = animState >> 1;
+    if (state == kState_Idle || state == kState_Update) {
+        listHoldTime = fade < 0.0f ? listDefaultFade : fade;
+        animState = (animState & 1u) | (kState_Update << 1);
+        PlayListState(this, clips, listFlags, kState_Update);
+    } else if (state == 0 || state == kState_Outro) {
+        listLinked = linkedTo;
+        if (!linkedTo || !linkedTo->object || !linkedTo->object->IsVisible())
+            BeginShow();
+        // NOTE: the console drops the old entry objects without releasing them.
+        entries.Clear();
+        entryFlags.Clear();
+        entryObjects.Clear();
+        game::JobManager* jobs = game::GetJobManager();
+        if (!jobs || !jobs->currentJob) {
+            for (uint32_t i = 0; i < LoadedUpgradeCount(); ++i)
+                entries.PushBack(i);
+        } else {
+            CollectAvailableUpgrades(entries);
+            if (entries.Count() != 0)
+                std::qsort(entries.Data(), entries.Count(), sizeof(uint32_t), CompareUpgradesNewFirst);
+        }
+        for (uint16_t i = 0; i < entries.Count(); ++i) {
+            entryFlags.PushBack(0);
+            ape::world::ApeObj* icon = nullptr;
+            if (const UpgradeEntry* upgrade = GetUpgradeEntry(entries[i])) {
+                uint32_t objectName = 0;
+                for (const UpgradeIcon& entry : kUpgradeIcons) {
+                    if (entry.character == upgrade->field_08) {
+                        objectName = entry.object;
+                        break;
+                    }
+                }
+                if (objectName) {
+                    if (ape::world::ApeObj* source = ape::world::FindGeomInstance(objectName))
+                        icon = HudCloneObject(source);
+                }
+            }
+            entryObjects.PushBack(icon);
+        }
+    }
+    RefreshRows();
+}
+
+// @func 0x0037744C HudType800::RefreshRows
+void HudType800::RefreshRows()
+{
+    const HudObjectDef::List800Def& info = def->list800;
+    const uint32_t count = entries.Count();
+    for (uint32_t row = 0; row < 6; ++row) {
+        const uint32_t nameField = ape::HashNameNoCase(kRowFields[row][0]);
+        const uint32_t priceField = ape::HashNameNoCase(kRowFields[row][1]);
+        const int32_t offset = int32_t(row) - int32_t(cursorRow);
+        const int32_t index = int32_t(selected) + offset;
+        if (count != 0 && ((index >= 0 && index < int32_t(count)) || count > 5)) {
+            // The list wraps around when it has more entries than rows.
+            const uint32_t wrapped = (selected + count + uint32_t(offset)) % count;
+            const uint32_t upgradeIndex = entries[wrapped];
+            if (const UpgradeEntry* upgrade = GetUpgradeEntry(upgradeIndex)) {
+                SetListFieldText(info.fields, info.fieldCount, nameField, upgrade->name);
+                const char* price = (UpgradeState(upgradeIndex) & kUpgrade_Purchased)
+                                        ? "$HIDEOUT_THIEFNET_SOLD"
+                                        : ape::TempFormat("%d", upgrade->field_0C);
+                SetListFieldText(info.fields, info.fieldCount, priceField, price);
+            }
+        } else {
+            SetListFieldText(info.fields, info.fieldCount, nameField, "");
+            SetListFieldText(info.fields, info.fieldCount, priceField, "");
+        }
+    }
+    if (count == 0) {
+        SetListFieldText(info.fields, info.fieldCount, kField800_Empty, "$THIEFNET_NO_UPGRADES_AVAILABLE");
+        SetListFieldText(info.fields, info.fieldCount, kField800_Cleared, "");
+    }
 }
 
 // ===========================================================================

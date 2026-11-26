@@ -48,8 +48,14 @@ public:
     void Refresh() override;
     // Slot 5 (0x00376C98).
     void SetActive(bool active) override;
-    // Slot 6. TODO(0x003798D8): needs the show helper 0x003780E0.
+    // Slot 6 (0x003798D8).
     void SetEnabled(bool enabled, bool flag) override;
+    // 0x003780E0: shows the list (or restarts its update animation) and
+    // rebuilds its entries: every upgrade outside a job, else the available
+    // ones with the new ones first, each with the icon of its character.
+    void ShowTimed(float fade, bool flag, HudObject* linkedTo, const uint8_t* color);
+    // 0x0037744C: name and price of the upgrade in each of the six rows.
+    void RefreshRows();
     // 0x003772C0: starts the intro.
     void BeginShow();
     // 0x00377D18: plays the outro (clearing the "new" mark of the upgrades
