@@ -5,6 +5,7 @@
 #include "sly/objects/ObjectsHooks.h"
 
 #include "sly/game/AudioSystem.h"
+#include "sly/game/SlyGame.h"
 #include "sly/game/SoundZones.h"
 
 #include "ape/world/ApeBase.h"
@@ -143,7 +144,7 @@ void PostTriggerEvent(TriggerEventKind kind, Entity* trigger, uint8_t playerInde
     (void)trigger;
     (void)playerIndex;
 }
-int GetPlayerCount() { return 1; }
+int GetPlayerCount() { return g_game ? g_game->localPlayerCount : 1; }
 
 // --- characters, jobs, world lookups ----------------------------------------
 // TODO(0x00129894)

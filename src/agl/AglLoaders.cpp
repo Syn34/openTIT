@@ -115,6 +115,28 @@ int MemoryBlockChunkHandler(ape::iff::IffReader* reader, void* /*arg*/)
     return 1;
 }
 
+// @func 0x0051D210 TextureChunkHandler
+// A texture record: the header child creates the texture (or, in a resolve
+// pass, only looks it up), the image children fill it. A texture that ends
+// up with an image is announced to the create hook and entered in the name
+// dictionary.
+int TextureChunkHandler(ape::iff::IffReader* reader, void* /*arg*/)
+{
+    AglTexture* texture = nullptr;
+    if (reader->flags & kReaderResolveOnly) {
+        reader->ParseChunks(&texture);
+        return 1;
+    }
+    if (reader->ParseChunks(&texture) && texture && texture->HasImage()) {
+        if (g_textureCreateHook)
+            g_textureCreateHook(texture, g_textureCreateUserdata, 1);
+        // NOTE: the console appends the texture to the dictionary array and
+        // marks it unsorted; the PC dictionary is a map.
+        RegisterTextureName(texture);
+    }
+    return 1;
+}
+
 // @func 0x0051D4B4 TextureHeaderChunkHandler
 int TextureHeaderChunkHandler(ape::iff::IffReader* reader, void* arg)
 {
@@ -306,6 +328,14 @@ bool AglTexture::LoadExternal(const char* path)
     return false;
 }
 
+// TODO(0x00525E40 MeshChunkHandler): creates a topology and parses its
+// header, submesh and include children. Skipped until the topology mesh
+// list allocation (0x00508B94) is ported.
+int MeshChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+{
+    return 1;
+}
+
 // @func 0x00525E18 MeshIncludeChunkHandler
 int MeshIncludeChunkHandler(ape::iff::IffReader* reader, void* /*arg*/)
 {
@@ -465,6 +495,29 @@ int VertexDataChunkHandler(ape::iff::IffReader* reader, void* arg)
     reader->Read(mesh->vertices.data, size);
     if (reader->flags & ape::iff::kIffReader_Flag02)
         SwapVertexData(mesh);
+    return 1;
+}
+
+// TODO(0x00524500 SubMeshChunkHandler): takes a submesh from the pool, adds it
+// to the topology passed in 'arg' (0x00508B94) and parses its children with
+// the submesh as their argument. Skipped for now.
+int SubMeshChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+{
+    return 1;
+}
+
+// TODO(0x00524B68 SubMeshHeaderChunkHandler): submesh header (material,
+// primitive, vertex/index counts, vertex declaration). Skipped for now.
+int SubMeshHeaderChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+{
+    return 1;
+}
+
+// @func 0x00525A1C VertexDescChunkHandler
+// The stored vertex description is not needed: the submesh header already
+// selected the declaration. The chunk is accepted unread.
+int VertexDescChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+{
     return 1;
 }
 

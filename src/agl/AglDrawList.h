@@ -99,7 +99,12 @@ public:
         uint32_t spare;
     };
 
-    explicit AglDrawList(size_t packetBytes = 0x40000, uint32_t vertexCapacity = 0x4000, uint8_t vertexBuffers = 2);
+    // 'packetBytes' of packet stream (rounded up to 16), 'vertexBuffers'
+    // vertex areas of 'vertexCapacity' vertices each (one per frame in
+    // flight; none for lists that only record state), 'ring' for a list
+    // whose packet stream wraps around instead of restarting every frame.
+    explicit AglDrawList(size_t packetBytes = 0x40000, uint32_t vertexCapacity = 0x4000, uint8_t vertexBuffers = 2,
+                         bool ring = false);
 
     // Starts a new frame: the next vertex area, and (for a ring list) an
     // empty packet stream.
@@ -193,6 +198,8 @@ private:
 
 // The game's draw list (0x010DDBB4).
 AglDrawList& GetDrawList();
+// Creates the game's draw list with the configured sizes (Agl start-up).
+void CreateMainDrawList(size_t packetBytes, uint32_t vertexCapacity);
 // Render thread: replays the game's draw list from its read position.
 void ReplayMainDrawList();
 

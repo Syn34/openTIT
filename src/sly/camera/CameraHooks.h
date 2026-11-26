@@ -11,6 +11,8 @@
 namespace ape::world { class ApeObj; }
 namespace agl { class AglPostProcEffect; class AglRenderTarget; }
 
+namespace ape::world { class ApeSplineInstance; }
+
 namespace sly {
 namespace entity { class Entity; }
 
@@ -149,6 +151,15 @@ bool IsGameTimeFrozen();
 // NOTE: the level-state object at 0x00F64C20 +0x48 has state 0x17538BF3 at
 // +0xA00; the shooter camera then jumps to the end of its spline.
 bool IsShooterSplineForcedToEnd();
+
+// -- helpers outside the camera module ----------------------------------------
+// Value approaching `target` with a critically damped spring (0x004A8778);
+// `damping` holds the spring constants (stiffness, unused, tolerance?).
+// NOTE: parameter meanings from the Track camera's use.
+float DampedApproach(float value, float target, float dt, const float damping[3], float* velocity);
+// The spline a character is attached to (climbing along a track) and its
+// parameter (0x0012919C), or null.
+ape::world::ApeSplineInstance* CharacterAttachedSpline(entity::Entity* character, float* t);
 
 } // namespace camera
 } // namespace sly

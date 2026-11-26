@@ -1,7 +1,10 @@
 // openTIT - Shader sets of the Agl post-processing and shadow passes.
 #include "agl/AglPostProcShaders.h"
 
+#include "agl/AglDisplay.h"
+#include "agl/AglPostProc.h"
 #include "agl/AglShaderClass.h"
+#include "agl/AglState.h"
 
 namespace agl {
 
@@ -45,6 +48,24 @@ const AglGlobalShaderParam kBloomNoiseParams[] = {      // 0x00F67790
 const AglGlobalShaderParam kDarkScreenParams[] = {      // 0x00F670C0
     { "gps_vDepthParams", 0 }, { "gps_vParams", 1 }, { nullptr, 0 },
 };
+const AglGlobalShaderParam kColorParams[] = {           // 0x00F6757C / 0x00F67590
+    { "vColor", 0 }, { nullptr, 0 },
+};
+const AglGlobalShaderParam kBlur11Params[] = {          // 0x00F675C4 / 0x00F67628
+    { "gvTexelKernel[0]", 0 }, { "gvTexelKernel[1]", 1 }, { "gvTexelKernel[2]", 2 },
+    { "gvTexelKernel[3]", 3 }, { "gvTexelKernel[4]", 4 }, { "gvTexelKernel[5]", 5 },
+    { "gvTexelKernel[6]", 6 }, { "gvTexelKernel[7]", 7 }, { "gvTexelKernel[8]", 8 },
+    { "gvTexelKernel[9]", 9 }, { "gvTexelKernel[10]", 10 }, { nullptr, 0 },
+};
+const AglGlobalShaderParam kBlur3Params[] = {           // 0x00F6768C / 0x00F676B0
+    { "gvTexelKernel[0]", 0 }, { "gvTexelKernel[1]", 1 }, { "gvTexelKernel[2]", 2 }, { nullptr, 0 },
+};
+const AglGlobalShaderParam kSampleModeParams[] = {      // 0x00F676D0
+    { "gps_gfSampleMode", 0 }, { nullptr, 0 },
+};
+const AglGlobalShaderParam kColorScaleParams[] = {      // 0x00F67550
+    { "gps_vColorScale", 0 }, { nullptr, 0 },
+};
 const AglGlobalShaderParam kNoParams[] = {               // 0x00F67720, 0x00F67830, 0x00F67838
     { nullptr, 0 },
 };
@@ -67,6 +88,29 @@ const char* const kDeferredShadowNames[kDeferredShadowVariants] = {
     nullptr,
     nullptr,
 };
+
+// Tap positions of the 11-tap blurs in quarter-resolution texels
+// (0x00F679A4 horizontal, 0x00F6794C vertical).
+constexpr int kBlur11Taps = 11;
+
+// Makes 'fp' the current fragment program and sets its kernel constants to
+// the tap offsets scaled to texture coordinates of a quarter size buffer.
+void UploadBlurKernel(AglFragmentProgram* fp, float stepX, float stepY)
+{
+    AglRenderState& state = GetRenderState();
+    if (state.fragmentProgram != fp) {
+        state.fragmentProgramDirty = true;
+        state.fragmentProgram = fp;
+    }
+    const AglDisplaySettings& display = GetDisplaySettings();
+    const float texelU = 1.0f / float(display.width >> 2);
+    const float texelV = 1.0f / float(display.height >> 2);
+    for (int tap = 0; tap < kBlur11Taps; ++tap) {
+        const float offset = float(tap - kBlur11Taps / 2);
+        const float value[4] = { offset * stepX * texelU, offset * stepY * texelV, 0.0f, 0.0f };
+        SetShaderConstant(uint32_t(tap), value);
+    }
+}
 
 void LoadPair(AglShaderPair* pair, const char* name, const AglGlobalShaderParam* extra)
 {
@@ -249,6 +293,52 @@ void LoadBloomNoiseShaders()
     EnsureFragmentRegisters(g_shaders.bloomNoiseDownSample.fragment, 32);
     EnsureFragmentRegisters(g_shaders.bloomNoiseNoBloomFP, 32);
     EnsureFragmentRegisters(g_shaders.bloomNoiseFP, 32);
+}
+
+// @func 0x00546F6C AglPostProc::LoadCommonPostProcShaders
+void LoadCommonPostProcShaders()
+{
+    InitPostProcShaders();
+    LoadPair(&g_shaders.copy, "PostProc_Copy", kNoParams);
+    LoadPair(&g_shaders.fill, "PostProc_Fill", kNoParams);
+    LoadPair(&g_shaders.renderTxr, "PostProc_RenderTxr", kColorParams);
+    LoadPair(&g_shaders.renderAlphaTxr, "PostProc_RenderAlphaTxr", kColorParams);
+    LoadPair(&g_shaders.downSample4x, "PostProc_DownSample4x", kNoParams);
+    LoadPair(&g_shaders.upSample4x, "PostProc_UpSample4x", kAlphaParams);
+    // (sic: the shader files are named "Guassian")
+    LoadPair(&g_shaders.blur11H, "PostProc_GuassianBlur11H", kBlur11Params);
+    LoadPair(&g_shaders.blur11V, "PostProc_GuassianBlur11V", kBlur11Params);
+    LoadPair(&g_shaders.blur3H, "PostProc_GuassianBlur03H", kBlur3Params);
+    LoadPair(&g_shaders.blur3V, "PostProc_GuassianBlur03V", kBlur3Params);
+    LoadPair(&g_shaders.downSampleDepth, "PostProc_DownSampleDepth", kSampleModeParams);
+    LoadPair(&g_shaders.copyScale, "PostProc_CopyScale", kColorScaleParams);
+
+    EnsureFragmentRegisters(g_shaders.copy.fragment, 32);
+    EnsureFragmentRegisters(g_shaders.renderTxr.fragment, 32);
+    EnsureFragmentRegisters(g_shaders.renderAlphaTxr.fragment, 32);
+    EnsureFragmentRegisters(g_shaders.downSample4x.fragment, 43);
+    EnsureFragmentRegisters(g_shaders.upSample4x.fragment, 8);
+    EnsureFragmentRegisters(g_shaders.blur3H.fragment, 32);
+    EnsureFragmentRegisters(g_shaders.blur3V.fragment, 32);
+    EnsureFragmentRegisters(g_shaders.blur11H.fragment, 8);
+    EnsureFragmentRegisters(g_shaders.blur11V.fragment, 8);
+    EnsureFragmentRegisters(g_shaders.downSampleDepth.fragment, 32);
+    EnsureFragmentRegisters(g_shaders.copyScale.fragment, 32);
+
+    UploadBlurKernelH();
+    UploadBlurKernelV();
+}
+
+// @func 0x0053CFD0 AglPostProc::UploadBlurKernelH
+void UploadBlurKernelH()
+{
+    UploadBlurKernel(g_shaders.blur11H.fragment, 1.0f, 0.0f);
+}
+
+// @func 0x0053CE00 AglPostProc::UploadBlurKernelV
+void UploadBlurKernelV()
+{
+    UploadBlurKernel(g_shaders.blur11V.fragment, 0.0f, 1.0f);
 }
 
 void LoadDarkScreenShaders()

@@ -89,9 +89,9 @@ void CullManagerUpdate(ape::world::ApeObj*) {}
 // TODO: game world +0x128168 camera, position at +0x360.
 ape::Vec3 GameCameraPosition() { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
 
-// TODO: game world byte +0x1D.
-bool IsSinglePlayerMode() { return true; }
-int PlayerCount() { return 1; }
+// The game's local player count (byte +0x1D).
+bool IsSinglePlayerMode() { return !g_game || g_game->localPlayerCount == 1; }
+int PlayerCount() { return g_game ? g_game->localPlayerCount : 1; }
 // TODO: game world player blocks (+0x1078, stride 0x20C80).
 Entity* PlayerEntity(int) { return nullptr; }
 

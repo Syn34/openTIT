@@ -2,6 +2,7 @@
 #include "sly/entity/GameEntityHooks.h"
 
 #include "sly/game/SlyGame.h"
+#include "sly/objects/Trigger.h"
 #include "sly/gameplay/Minigame.h"
 
 namespace sly {
@@ -22,8 +23,16 @@ uint32_t CharacterDefWord3D4(const EntityDef* def) { (void)def; return 0; }
 uint32_t AnimDriverState(EntityComponent* driver) { (void)driver; return 0; }
 void AnimDriverStop(EntityComponent* driver, bool flag) { (void)driver; (void)flag; }
 void SetComponentWord1C(EntityComponent* component, uint32_t value) { (void)component; (void)value; }
-void TriggerSetEnabled(Entity* trigger, bool enabled) { (void)trigger; (void)enabled; }
-int TriggerOccupantCount(const Entity* trigger) { (void)trigger; return 0; }
+// The attached entities are trigger volumes (TriggerBase slot 76 / the
+// occupant list).
+void TriggerSetEnabled(Entity* trigger, bool enabled)
+{
+    static_cast<objects::TriggerBase*>(trigger)->SetEnabled(enabled);
+}
+int TriggerOccupantCount(const Entity* trigger)
+{
+    return static_cast<const objects::TriggerBase*>(trigger)->OccupantCount();
+}
 int EntityGetState(const Entity* entity, int layer) { (void)entity; (void)layer; return 0; }
 uint8_t* EntityStateData(Entity* entity, int layer) { (void)entity; (void)layer; return nullptr; }
 

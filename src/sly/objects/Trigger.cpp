@@ -123,7 +123,7 @@ bool TriggerPlacementSkips(const EntityPlacement* placement, bool typeMatches)
     return trig->skipOptional && !typeMatches;
 }
 
-// @func 0x0020CEA0 TriggerDef::Create
+// @func 0x0020CEA0 TriggerDef::Spawn
 Entity* TriggerDef::Spawn(EntityPlacement* placement)
 {
     TriggerInstanceDesc desc(InstanceName(placement), this);

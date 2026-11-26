@@ -140,7 +140,7 @@ DamageTriggerInstanceDesc::DamageTriggerInstanceDesc(const char* instanceName, D
     flags[4] = p.flags[3];
 }
 
-// @func 0x0021A6E8 DamageTriggerDef::Create
+// @func 0x0021A6E8 DamageTriggerDef::Spawn
 Entity* DamageTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kDefClass_DamageTrigger) != 0))
@@ -383,7 +383,7 @@ EntityDef* CreateWindTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElement
     return new WindTriggerDef(desc);
 }
 
-// @func 0x00224720 WindTriggerDef::Create
+// @func 0x00224720 WindTriggerDef::Spawn
 Entity* WindTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->typeBits & kTrigType_Wind) != 0))

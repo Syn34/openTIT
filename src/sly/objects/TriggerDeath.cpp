@@ -73,7 +73,7 @@ DeathTriggerInstanceDesc::DeathTriggerInstanceDesc(const char* instanceName, Dea
     flags[4] = ownerDef->flag1;
 }
 
-// @func 0x0021BD90 DeathTriggerDef::Create
+// @func 0x0021BD90 DeathTriggerDef::Spawn
 Entity* DeathTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kTrigType_Death) != 0))

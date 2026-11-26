@@ -86,5 +86,20 @@ bool IsShooterSplineForcedToEnd() { return false; }
 
 void DebugDrawSpline(ape::world::ApeObj* spline, const uint8_t color[4]) { (void)spline; (void)color; }
 
+// TODO(0x004A8778 DampedApproach)
+float DampedApproach(float value, float target, float dt, const float damping[3], float* velocity)
+{
+    (void)target; (void)dt; (void)damping;
+    if (velocity)
+        *velocity = 0.0f;
+    return value;
+}
+// TODO(0x0012919C CharacterAttachedSpline)
+ape::world::ApeSplineInstance* CharacterAttachedSpline(entity::Entity* character, float* t)
+{
+    (void)character; (void)t;
+    return nullptr;
+}
+
 } // namespace camera
 } // namespace sly
