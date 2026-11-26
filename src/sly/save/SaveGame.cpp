@@ -398,6 +398,7 @@ int32_t LoadSettings(void* out)
 
 SaveFailReason GetLastSaveFailReason() { return g_failReason; }
 bool IsSaveInProgress() { return g_saveInProgress; }
+int32_t SaveSystemState() { return g_state.load(); }
 bool HasSavedThisSession() { return g_savedThisSession; }
 const char* GetCurrentSaveFolder() { return g_currentFolder; }
 

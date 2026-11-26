@@ -233,6 +233,11 @@ void StopAllSounds();
 
 // The music voice and its sound reference (0x010AFEA4 / 0x00F65B70).
 void SetMusicVoice(VoiceId id, SoundName* name);
+VoiceId MusicVoice();
+// Not ported (they drive the sound middleware): the playback rate of every
+// voice (0x0044D740) and a voice's low-pass cut-off in Hz (0x0044CCF8).
+void SetGlobalPlaybackRate(float rate);
+void SetVoiceLowPass(VoiceId voice, float frequency);
 void StopMusic(bool release);
 
 // Per-category live voice counters (0x010B00E0).

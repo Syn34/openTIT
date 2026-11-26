@@ -23,6 +23,15 @@
 #include "sly/game/SoundZones.h"
 #include "sly/entity/Awards.h"
 #include "sly/game/goals/JobManager.h"
+#include "sly/game/goals/Goal.h"
+#include "sly/game/FileStreaming.h"
+#include "sly/save/SaveGame.h"
+#include "sly/game/GameMessages.h"
+#include "ape/level/ApeLevelScene.h"
+#include "ape/level/ApeLevelDef.h"
+#include <cstring>
+#include <cmath>
+#include <algorithm>
 #include "sly/game/AudioSystem.h"
 #include "sly/game/hud/HudElement.h"
 #include "sly/game/hud/HudHideoutMenu.h"
@@ -1273,6 +1282,250 @@ ape::ApeGuiObject* ActiveHideoutMenuGui()
     // The active type-0x200 element is always a hideout menu.
     auto* menu = static_cast<hud::HudHideoutMenu*>(hud::FindActiveType200());
     return menu ? menu->gui : nullptr;
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x00475C28 SlyGame::OnFinalGoal
+bool SlyGame::OnFinalGoal() const
+{
+    game::JobManager* jobs = game::GetJobManager();
+    game::Job* job = jobs ? jobs->currentJob : nullptr;
+    if (!job)
+        return false;
+    for (uint32_t i = job->episode + 1u; i < jobs->jobCount; ++i) {
+        if (jobs->jobs[i].active)
+            return false;
+    }
+
+    (void)job->CurrentStage();    // NOTE: result unused on the console
+    uint32_t stagesDone = 0;
+    for (uint32_t i = 0; i < job->stageCount; ++i) {
+        if (job->stages[i].State() == 2)
+            ++stagesDone;
+    }
+    if (job->stageCount > stagesDone + 1)
+        return false;
+
+    const GamePlayer& player = players[0];
+    const uint32_t goalCount = player.goals.Count();
+    uint32_t goalsDone = 0;
+    goals::Goal* open = nullptr;
+    for (uint32_t i = 0; i < goalCount; ++i) {
+        goals::Goal* goal = player.goals[i];
+        uint32_t word = 0;
+        std::memcpy(&word, &player.field_20074[goal->saveSlot * 4], sizeof(word));
+        if ((word >> 28) == goals::kGoal_Complete)
+            ++goalsDone;
+        else
+            open = goal;
+    }
+    if (goalCount > goalsDone + 1)
+        return false;
+    if (goalsDone + 1 != goalCount || !open)
+        return true;
+    return !open->BlocksNextScripts();
+}
+
+// @func 0x00475E20 SlyGame::RecordResumePoint
+void SlyGame::RecordResumePoint()
+{
+    game::JobManager* jobs = game::GetJobManager();
+    if (!jobs)
+        return;
+    if (game::IsInJob()) {
+        if (game::Job* job = jobs->FindJobById(progress.currentJobValue)) {
+            progress.lastJobId = progress.currentJobValue;
+            progress.lastLevel = job->nameHash;
+        } else {
+            progress.lastJobId = 0;
+            progress.lastLevel = 0;
+        }
+        progress.lastEpisodeName = 0;
+        progress.lastGoalName = 0;
+        return;
+    }
+    progress.lastJobId = jobs->currentJob ? jobs->currentJob->field_2D4 : 0;
+    progress.lastLevel = jobs->currentJob ? jobs->currentJob->nameHash : 0;
+    const bool final = OnFinalGoal();
+    progress.lastEpisodeName = (!final && jobs->instance) ? jobs->instance->nameHash : 0;
+    progress.lastGoalName = (!final && jobs->trackedGoal) ? jobs->trackedGoal->nameHash : 0;
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x0047E3CC SlyGame::ClearCutsceneQueue
+void SlyGame::ClearCutsceneQueue()
+{
+    constexpr uint32_t kModalSkip = 0x40000000u;   // modal box data +0x3C bit 30
+    for (size_t i = 0; i < cutsceneQueue.Count(); ++i) {
+        QueuedCutscene* cutscene = cutsceneQueue[i];
+        if (GetState(1) == kSub_Modal) {
+            if (auto* data = reinterpret_cast<ModalBoxData*>(StateData(1)))
+                data->flags |= kModalSkip;
+        }
+        if (mainView)
+            mainView->SetNear(cutscene->savedNearClip);
+        delete cutscene->instance;
+        cutscene->instance = nullptr;
+        delete cutscene;
+    }
+    cutsceneQueue.Clear();
+    resumeAfterCutscenes = false;
+    cutscenePlaying = false;
+    cutsceneSkipRequested = false;
+}
+
+} // namespace sly
+
+namespace sly {
+namespace entity { void ClearInstanceRenderLists(); }
+
+// @func 0x0047C2B8 SlyGame::UpdateWorld
+void SlyGame::UpdateWorld(float dt)
+{
+    constexpr int kFrameList = 0;
+    constexpr int kWorldList = 12;
+    if (!levelWorld)
+        return;
+    if (dt <= 0.0f)
+        dt = 1.0f / 60.0f;
+    game::UpdateFileStreaming();
+    callbackLists[kFrameList].Clear();
+    HudFrameBegin(dt);
+    RunCallbacks(kFrameList, dt, true);
+    entity::ClearInstanceRenderLists();
+    // NOTE: the console hands these callbacks no frame time.
+    RunCallbacks(kWorldList, 0.0f, false);
+    HudFrameEnd(dt);
+    levelWorld->Update(dt, nullptr);
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x0048888C SlyGame::AutoSaveAfterJob
+void SlyGame::AutoSaveAfterJob()
+{
+    constexpr uint16_t kEpisodeStateMask = 0x18;
+    constexpr uint16_t kEpisodeFinished = 0x10;
+    constexpr uint8_t kJobComplete = 2;
+    if (OnFinalGoal()) {
+        game::JobManager* jobs = game::GetJobManager();
+        game::Job* job = jobs ? jobs->currentJob : nullptr;
+        if (job && jobs->instance) {
+            progress.jobStates[jobs->instance->index] = kJobComplete;
+            progress.lastLevel = job->nameHash;
+            progress.lastEpisodeName = 0;
+            progress.lastGoalName = 0;
+            uint16_t& flags = progress.episodes[job->episode].flags;
+            flags = uint16_t((flags & ~kEpisodeStateMask) | kEpisodeFinished);
+            game::UnlockByKey(ape::HashNameNoCase(job->endMovie));
+            game::UnlockByKey(ape::HashNameNoCase(job->endMovie2));
+            (void)CountUnlockedTrophies();   // NOTE: results unused on the console
+            (void)TrophyTotal();
+            if (TrophyTotal() == CountUnlockedTrophies())
+                game::UnlockByKey(ape::HashNameNoCase(job->endMovie3));
+        }
+    }
+    // A busy save system gets one more try.
+    if (AutoSaveGame(&progress, sizeof(progress)) != kSave_Busy)
+        AutoSaveGame(&progress, sizeof(progress));
+}
+
+// @func 0x0047E1D4 SlyGame::ReleaseLevelParams
+void SlyGame::ReleaseLevelParams()
+{
+    if ((flags1C >> 6) != 0)
+        return;
+    delete levelParams;
+    levelParams = nullptr;
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x0047DFC8 SlyGame::ResumeFromPause
+void SlyGame::ResumeFromPause()
+{
+    // NOTE: key and message names unknown.
+    constexpr uint32_t kResumeKey = 0x846AF162u;
+    constexpr uint32_t kResumeMessage = 0x560A2252u;
+    constexpr uint32_t kResumeAllGroupsButMenu = 0xFFBFFFFFu;
+
+    SetEngineUpdateMasks(0xFF);
+    PostToListeners(nullptr, kResumeKey, kResumeMessage, 0);
+    if (minigame)
+        minigame->Slot10();
+    hud::ResumeHud();
+    if (SaveSystemState() != kSave_Busy)
+        hud::HideBusyElement();
+    flags2D |= 0x08;
+    OpenMenu(0, 0);
+    audio::ResumeGroups(kResumeAllGroupsButMenu);
+    SetGadgetsPaused(false);
+    const bool vibration = (settings.flags & GameSettings::kFlag_Vibration) != 0;
+    for (AppPlayer& player : GetAppRuntime().players)
+        player.SetRumblePaused(!vibration);
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x00468A38 SlyGame::UpdateSlowTimeAudio
+void SlyGame::UpdateSlowTimeAudio(float dt)
+{
+    constexpr float kEpsilon = 1e-5f;
+    constexpr float kOpenCutoff = 23999.0f;
+    if (std::fabs(dt) < kEpsilon)
+        return;
+    const float rate = audioRamp.active ? audioRamp.value : 1.0f;
+    audio::SetGlobalPlaybackRate(rate);
+    const audio::VoiceId music = audio::MusicVoice();
+    if (!audio::IsVoiceValid(music))
+        return;
+
+    const float slowCutoff = g_audioSlowTimeMusicLPFFrequency.Get();
+    const float fade = g_audioSlowTimeMusicLPFCrossfadeDuration.Get();
+    if (std::fabs(rate - 1.0f) < kEpsilon) {
+        if (musicFilterCutoff >= kOpenCutoff)
+            return;
+        if (std::fabs(fade) < kEpsilon)
+            musicFilterCutoff = kOpenCutoff;
+        else
+            musicFilterCutoff = std::min(kOpenCutoff, musicFilterCutoff + (kOpenCutoff - slowCutoff) / fade * dt);
+    } else {
+        if (musicFilterCutoff <= slowCutoff)
+            return;
+        if (std::fabs(fade) < kEpsilon)
+            musicFilterCutoff = fade;   // NOTE: the console stores the duration here, not the cut-off
+        else
+            musicFilterCutoff = std::max(slowCutoff, musicFilterCutoff + (slowCutoff - kOpenCutoff) / fade * dt);
+    }
+    audio::SetVoiceLowPass(music, musicFilterCutoff);
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x0047C68C SlyGame::VisitIncludedLevels
+void SlyGame::VisitIncludedLevels(const ape::ApeLevelDef* level)
+{
+    if (!level)
+        return;
+    for (uint32_t name : level->includedLevels) {
+        // NOTE: the console looks the level up twice.
+        if (const ape::ApeLevelDef* included = ape::FindLevelDef(name))
+            VisitIncludedLevels(included);
+    }
 }
 
 } // namespace sly

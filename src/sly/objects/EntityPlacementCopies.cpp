@@ -392,6 +392,14 @@ void TargetableCPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
     desc.field_FC = field_11C;
 }
 
+// @func 0x001FF404 TargetableCLinkedPlacement::FillInstanceDesc
+// NOTE: the console repeats the TargetableC copy inline.
+void TargetableCLinkedPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
+{
+    TargetableCPlacement::FillInstanceDesc(baseDesc);
+    static_cast<TargetableCLinkedInstanceDesc&>(baseDesc).field_FD = field_11D;
+}
+
 // @func 0x001F6238 InteractivePropBPlacement::FillInstanceDesc
 void InteractivePropBPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
 {

@@ -143,6 +143,35 @@ float BismarqueAI::GravitySpeed()
     return 0.0f;
 }
 
+// @func 0x000447E8 BismarqueAI::PickRetreatPoint
+BismarqueAI::RetreatPoint* BismarqueAI::PickRetreatPoint()
+{
+    const uint32_t count = retreatPoints.Count();
+    if (count == 0)
+        return nullptr;
+    static const ape::Vec3 kOrigin = {0.0f, 0.0f, 0.0f, 0.0f};
+    Entity* player = PlayerCharacter();
+    const ape::Vec3& playerPos = player ? player->transform.translation : kOrigin;
+    const ape::Vec3& self = Position();
+    const ape::Vec3& forward = transform.zAxis;
+    float bestScore = -3.4028235e38f;
+    int best = -1;
+    for (uint32_t i = 0; i < count; ++i) {
+        const ape::world::ApeObj* object = retreatPoints[i].object;
+        const ape::Vec3& p = object ? object->GetWorld().translation : kOrigin;
+        const float px = p.x - playerPos.x, pz = p.z - playerPos.z;
+        const float sx = p.x - self.x, sz = p.z - self.z;
+        const float score = sz * sz + sx * sx + pz * pz + px * px;
+        if (score > bestScore && forward.z * sz + forward.x * sx >= 0.0f) {
+            bestScore = score;
+            best = int(i);
+        }
+    }
+    if (best < 0)
+        best = ape::RandomInt(ape::g_gameRandom, 0, int(count) - 1);
+    return &retreatPoints[size_t(best)];
+}
+
 } // namespace ai
 } // namespace levels
 } // namespace sly

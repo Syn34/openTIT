@@ -295,7 +295,19 @@ public:
     float field_118 = 3.4028235e38f;    // +0x118 attribute 0xCEDD379A
     bool field_11C = false;             // +0x11C
 };
-SLY_PLACEMENT(TargetableCLinkedPlacement, ScriptedEntityPlacement); // 0x00B18F48
+// Vtable 0x00B18F48: the TargetableC placement with one more flag.
+class TargetableCLinkedPlacement : public TargetableCPlacement {
+public:
+    using TargetableCPlacement::TargetableCPlacement;
+    ~TargetableCLinkedPlacement() override;
+    // Slot 2 (0x001FF404): the TargetableC copy and the flag.
+    void FillInstanceDesc(EntityInstanceDesc& desc) const override;
+    bool field_11D = false;             // +0x11D (bit 7 of the word at +0x11C)
+};
+struct TargetableCLinkedInstanceDesc : TargetableCInstanceDesc {
+    using TargetableCInstanceDesc::TargetableCInstanceDesc;
+    bool field_FD = false;              // 0xFD (bit 7 of the word at 0xFC)
+};
 // Instance description of the rigid entity of vtable 0x00B19198.
 struct RigidEntityB19198InstanceDesc : ScriptedInstanceDesc {
     using ScriptedInstanceDesc::ScriptedInstanceDesc;

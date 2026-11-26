@@ -66,6 +66,9 @@ void Projectile(ScriptedEntity& self, const PropDamageSettings& settings, Entity
 void SetFatal(EntityHitRecord& hit, bool alive);
 } // namespace propdamage
 
+// The running minigame hears that one of its figures was hit (0x001882F8).
+void MinigameFlagFigureHit();
+
 // Base of the scripted entities that own one Havok rigid body built from
 // their definition's collision object (RigidProp, CompoundEntity,
 // AlterEgoEntity, TargetableA/B). Each class has its own copy of the
@@ -456,6 +459,8 @@ public:
     ~TargetableCBase() override;
     bool Release(bool kill) override;                 // slot 10
     // Slot 36: the rigid body.
+    // Slot 37: the rigid body stands for the world object (no bone).
+    ape::world::ApeObj* ObjectForCollidable(const void* collidable, int32_t* bone) override;
     ape::world::ApeObj* GetRenderObject() override;
     // Slots 41/42: the definition's navigation type is not "None" / is
     // 0xA970EC1F (AddNavObstacle asks slot 42).
@@ -764,6 +769,11 @@ public:
     using Part = AlterEgoBentleyState;
     // Enters power-ups 0..`level` and records the level (0x00175B60).
     void SetPartLevel(uint32_t level);
+    // The minigame is over (prop state 16, once): a minigame with flags1C
+    // bit 5 grants trophy 0xB2308356 while its byte +0x105 is clear
+    // (0x00175CF0). NOTE: name from the state; the caller sets buffFlags
+    // bit 24 first.
+    void FinishMinigame();
     // Clears `object` from the first Havok pointer array (0x0016DCF0).
     void ForgetHavokObject(void* object);
     // Runs the scale pulse (+0x2B8 timer of +0x2BC seconds): the entity

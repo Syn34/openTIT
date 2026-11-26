@@ -118,6 +118,9 @@ public:
     WorldObject* player = nullptr;     // +0xF8
     // NOTE: cleared when the Bentley alter ego dies while flags1C bit 5 is set.
     uint8_t field_105 = 0;             // +0x105
+    // NOTE: set by the minigame figures (TargetableA) when flags1C bit 8 is
+    // set; read by a subclass not identified yet.
+    uint8_t field_135 = 0;             // +0x135
     uint32_t resetRequests = 0;        // +0x1A8 MinigameRequest bits
 };
 

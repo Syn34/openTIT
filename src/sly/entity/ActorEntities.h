@@ -198,9 +198,9 @@ public:
     uint32_t solvedNames[3] = {};       // 0x148 shown once the dial is solved
     uint32_t openObjectName = 0;        // 0x154 NOTE: only ever hidden
     float tolerance = 0.0f;             // 0x158 degrees around 0 that solve a dial
-    ape::Vec3 field_160{};              // 0x160
-    float field_170 = 55.0f;            // 0x170 NOTE: unused by the safe's own code
-    float field_174 = 0.5f;             // 0x174 NOTE: unused by the safe's own code
+    ape::Vec3 cameraOffset{};           // 0x160 safe camera position in the safe's frame (x and z mirrored)
+    float cameraFov = 55.0f;            // 0x170 field of view of the safe camera
+    float cameraBlend = 0.5f;           // 0x174 seconds the camera blends in
     float timeLimit = 0.0f;             // 0x178 seconds to crack the safe
     float openDelay = 0.0f;             // 0x17C seconds of the opening state before the reward
     float dialSmoothing[3] = {};        // 0x180 share of the remaining turn each dial makes per frame
@@ -495,7 +495,8 @@ public:
     uint32_t attachedDef = 0;                 // 0x230 definition name of the attached entity
 };
 
-// Interactive prop with two phantoms (vtable 0x00B17DF8; destructor
+// The player turret ("Entity.PlayerTurret.*" tuning): an interactive prop
+// with two phantoms (vtable 0x00B17DF8; destructor
 // 0x00756758). NOTE: its definition is the class at
 // 0x00B17DB0, which ActorEntities.h calls InteractivePropADef.
 class InteractivePropC : public ActorEntity {
@@ -519,9 +520,22 @@ public:
     // (or of the prop).
     ape::Vec3 GetAimPoint() override;
 
+    // Takes the turret camera off the game camera (over
+    // Entity.PlayerTurret.Camera.EaseOutTime) and deletes it (0x001DEC60).
+    void ReleaseCamera();
+
     ape::world::ApeObj* frameObject = nullptr; // 0x1AC
     Entity* keyObject = nullptr;              // 0x1B0
     uint8_t propFlags = 0;                    // 0x1B4 bit 7: anyone may interact
+    // The aim frame: the base frame turned by the yaw about the world's y
+    // axis (translation included), then pitched about its own x axis, with
+    // normalised axes (0x001DC988).
+    void UpdateAimFrame();
+    ape::Matrix34 baseFrame{};                // 0x1C0 the frame object's (or the prop's) transform at spawn
+    ape::Matrix34 aimFrame{};                 // 0x200
+    float pitch = 0.0f;                       // 0x240 radians
+    float yaw = 0.0f;                         // 0x244 radians
+    camera::CameraMode* cameraMode = nullptr; // 0x26C the turret camera
     void* phantomA = nullptr;                 // 0x270
     void* phantomB = nullptr;                 // 0x274
 };
@@ -1053,6 +1067,10 @@ public:
     explicit Safe(const objects::SafeInstanceDesc& desc);
     ~Safe() override;
     bool Release(bool kill) override;                 // slot 10
+    // The user starts cracking: the safe camera (a fixed view behind the
+    // definition's camera offset) takes over, the user hides, the timer
+    // starts and the first dial's control is drawn (state 1).
+    bool InteractionBegin(Entity* user) override;     // slot 62
     // Leaves the safe camera and shows the user again.
     void InteractionCancel() override;                // slot 63
     // Offers interaction kind 1 again.
@@ -1077,6 +1095,20 @@ public:
     void UpdatePrompt();
     // Turns dial `index` to `angle` degrees about +Z, keeping its position.
     void PoseDial(int index, float angle);
+    // Slot 4: while a user cracks the safe (interaction state 2): state 0
+    // keeps the dials spinning, state 1 runs the timer and the active dial,
+    // state 2 opens the safe after SafeDef::openDelay. The shown dial angles
+    // always ease toward their targets.
+    bool Update(float dt) override;
+    // Turns `target` by the input of the user's pad for the current control
+    // (0x001E7588).
+    void ReadInput(float& target);
+    // Spawns the definition's reward at the reward offset of the safe object.
+    void SpawnReward();
+    // Draws the next dial's control out of the bag (-1 once it is empty).
+    int32_t DrawControl();
+    // The cracking state (1) of Update; false once the time ran out.
+    bool UpdateCracking(float dt);
 
     ape::ApeTArray<int32_t> controlBag{3, nullptr, true};   // 0x1A8 controls not drawn yet
     ape::world::ApeObj* dials[3] = {};        // 0x1BC
