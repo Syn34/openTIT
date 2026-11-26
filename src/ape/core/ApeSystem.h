@@ -26,6 +26,10 @@ struct EngineConfig {
     bool     field_025 = false;       // +0x025
     float    field_038 = 0.0f;        // +0x038
     uint32_t field_05C = 0;           // +0x05C
+    // Light relinking distance defaults for levels without a Light element
+    // (SystemInit forces 40/75 when zero).
+    float    lightNoRescanDist = 0.0f;   // +0x070
+    float    lightNoUpdateDist = 0.0f;   // +0x074
     float    field_088 = 0.0f;        // +0x088
     float    field_08C = 0.0f;        // +0x08C
     uint8_t  field_099 = 0;           // +0x099

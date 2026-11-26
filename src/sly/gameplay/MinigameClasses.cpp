@@ -191,6 +191,8 @@ PenguinSumoMinigame::~PenguinSumoMinigame() = default;
 void PenguinSumoMinigame::Slot12() {}
 // @func 0x00418E68 PenguinSumoMinigame::SetHudHidden
 void PenguinSumoMinigame::SetHudHidden(bool hidden) { Minigame::SetHudHidden(hidden); }
+// @func 0x00419C78 PenguinSumoMinigame::Slot22
+bool PenguinSumoMinigame::Slot22() { return roundTime > 2.0f && roundFlag != 0; }
 // @func 0x0041A09C PenguinSumoMinigame::Slot31
 void PenguinSumoMinigame::Slot31() {}
 // @func 0x0041A0A0 PenguinSumoMinigame::Slot32

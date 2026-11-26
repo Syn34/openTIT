@@ -17,6 +17,8 @@ namespace ape::iff {
 struct IffReader;
 }
 
+namespace agl { class AglRenderTarget; }
+
 namespace ape::world {
 
 struct AglLightLink;
@@ -245,6 +247,10 @@ public:
     void OnWorldTransformUpdated(bool /*moved*/) override {}
     // Takes the definition's field of view and transform.
     void SetDef(ApeDef* def) override;
+    // Points a render target through this camera: its view matrix becomes
+    // the inverse of the camera's (refreshed) world transform, its field of
+    // view the camera's.
+    void ApplyToView(agl::AglRenderTarget& view);
     // NOTE: slot 15 is a debug walk; cameras also dump their skeleton.
     void VirtualSlot15(int count, int arg) override;
 
