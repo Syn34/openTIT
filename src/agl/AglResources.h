@@ -139,6 +139,25 @@ public:
 // mesh records are loaded.
 void RegisterTopology(AglTopology* topology);
 AglTopology* FindTopology(uint32_t nameHash);
+// Per-object light selection state of a render object ("AglLight", 0xF0
+// bytes, pooled; the world module creates one per lit instance). Only the
+// set-up fields are known.
+struct AglLight {
+    uint8_t field_00[0xD4] = {};
+    uint8_t flags = 0;              // +0xD4 bit 7 cleared on creation
+    // +0xD5: frame slot in which the object's lights are re-evaluated
+    // (objects are spread over EngineConfig +0x99 frames).
+    uint8_t updatePhase = 0;
+    uint8_t field_D6 = 0;
+    uint8_t field_D7 = 0;
+    int32_t field_D8 = -1;
+    uint8_t field_DC[0xF0 - 0xDC] = {};
+};
+AglLight* CreateLight();
+void FreeLight(AglLight* light);
+
+// The placeholder mesh used for missing meshes.
+AglTopology* GetDefaultMesh();
 
 class AglShaderClass;
 // UV animation of a material (0x98 bytes): scroll in U, scroll in V and a

@@ -7,9 +7,11 @@
 #include "agl/AglShaderClass.h"
 #include "agl/AglState.h"
 
+#include "ape/core/ApeSystem.h"
 #include "ape/memory/ApeMem.h"
 #include "ape/memory/ApeTFreeList.h"
 
+#include <algorithm>
 #include <map>
 #include <mutex>
 
@@ -265,6 +267,44 @@ void AglTopology::AddMesh(AglSubMesh* mesh, AglMaterial* material)
     AssignRef(entry.material, material);
     ++meshCount;
     mesh->name = name;
+}
+
+// @func 0x00526494 CreateLight
+AglLight* CreateLight()
+{
+    static uint8_t nextPhase = 0;   // 0x011DE4BC
+    AglLight* light = ape::ApeTListAllocator<AglLight>::GetAllocator().New();
+    if (!light)
+        return nullptr;
+    light->flags &= 0x7F;
+    const uint32_t phases = std::max<uint32_t>(1, ape::g_engineConfig.field_099);
+    light->updatePhase = static_cast<uint8_t>(nextPhase++ % phases);
+    light->field_D6 = 0;
+    light->field_D7 = 0;
+    light->field_D8 = -1;
+    return light;
+}
+
+// @func 0x0050CAE8 FreeLight
+void FreeLight(AglLight* light)
+{
+    ape::ApeTListAllocator<AglLight>::GetAllocator().Delete(light);
+}
+
+// @func 0x00526300 GetDefaultMesh
+// Stand-in for meshes a level is missing: a small sphere drawn with the
+// default shader class. Created on first use.
+AglTopology* GetDefaultMesh()
+{
+    static AglTopology* mesh = nullptr;   // 0x00F671B8
+    if (!mesh) {
+        mesh = AglTopology::Create();
+        AglMaterial* material = AglMaterial::Create();
+        material->shaderClass = FindShaderClass(0x03DE9E33u);
+        AglSubMesh* sphere = CreateIndexedSphereMesh(material, 4, 4);
+        mesh->AddMesh(sphere, static_cast<AglMaterial*>(sphere->owner));
+    }
+    return mesh;
 }
 
 void RegisterTopology(AglTopology* topology)

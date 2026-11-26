@@ -78,6 +78,9 @@ void InstallWorldRenderHooks()
 {
     ape::world::ApeWorldRenderHooks& hooks = ape::world::g_worldRenderHooks;
     hooks.findMesh = [](uint32_t nameHash) { return ToMesh(FindTopology(nameHash)); };
+    hooks.getDefaultMesh = []() { return ToMesh(GetDefaultMesh()); };
+    hooks.createLightLink = []() { return reinterpret_cast<ape::world::AglLightLink*>(CreateLight()); };
+    hooks.freeLightLink = [](ape::world::AglLightLink* link) { FreeLight(reinterpret_cast<AglLight*>(link)); };
     hooks.setMeshOwnerName = [](ape::world::AglMesh* mesh, const char* name) { ToTopology(mesh)->SetName(name); };
     hooks.releaseMesh = [](ape::world::AglMesh* mesh) { ToTopology(mesh)->Release(); };
     hooks.enableMeshShadows = [](ape::world::AglMesh* mesh) { ToTopology(mesh)->SetFlags(true, false, false); };
