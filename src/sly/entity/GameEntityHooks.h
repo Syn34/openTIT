@@ -4,6 +4,8 @@
 // GameEntityHooks.cpp; each names the console function or slot.
 #pragma once
 
+#include <vector>
+
 #include "ape/math/ApeMath.h"
 #include "sly/game/AudioSystem.h"
 
@@ -87,6 +89,40 @@ struct HkArray {
         capacityAndFlags = kDontFree;
     }
 };
+
+// -- entity selection jobs (see EntityUpdateJobs.cpp) ---------------------------
+// Inputs of the suspension job.
+struct EntitySuspendJobParams {
+    float distanceSq = 0.0f;   // squared suspension distance
+    ape::Matrix34 camera{};    // view transform of the game camera
+    ape::Matrix34 player{};    // transform of the local player (the camera without one)
+};
+// The SPU selection programs (0x00456918, 0x00456A60, 0x00456BA8,
+// 0x00456CF0): indices (into the global entity list) of the entities to
+// suspend and to resume, of the dead entities to destroy, and the entities
+// to run the update / post-update steps on.
+void EntityJobSelectSuspended(const EntitySuspendJobParams& params, std::vector<uint16_t>& suspend,
+                              std::vector<uint16_t>& resume);
+void EntityJobSelectDead(std::vector<uint16_t>& dead);
+void EntityJobSelectForUpdate(std::vector<Entity*>& out);
+void EntityJobSelectForPostUpdate(std::vector<Entity*>& out);
+// Trigger enter/exit reports queued during the frame (0x0020F400).
+void FlushTriggerReports();
+// After the post-update pass (0x0026F798). NOTE: purpose unknown.
+void EntityPostUpdateDone();
+// Rest of the entity module's level start (0x0028BDB0, and the byte
+// 0x01056F1E it clears). NOTE: purpose unknown.
+void EntityModuleLevelStartHooks();
+
+// After the instance render lists ran (0x0028D7B0) and before list D runs
+// (0x0028E320). NOTE: purposes unknown.
+void InstanceRenderPassDone(void* renderContext);
+void ListDPassBegin();
+
+// Queues a render data refresh of a geometry instance (or kind 10 object)
+// on the render call buffer, optionally for its child objects too
+// (0x004A6DF0).
+void QueueObjectRenderRefresh(ape::world::ApeObj* object, bool recurse);
 
 } // namespace entity
 } // namespace sly

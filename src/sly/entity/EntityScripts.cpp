@@ -60,5 +60,23 @@ ape::ApeAnimScriptInstance* Entity::StartScriptByName(const char* scriptName, ui
     return StartScript(ape::HashNameNoCase(scriptName), bone, autoRun);
 }
 
+// @func 0x000DCECC StartScriptAt
+// An anim script that belongs to no entity, with its matrix variable set
+// to `transform`.
+ape::ApeAnimScriptInstance* StartScriptAt(ape::ApeAnimScript* script, const ape::Matrix34& transform, bool autoRun)
+{
+    if (!script)
+        return nullptr;
+    auto* instance = new ape::ApeAnimScriptInstance(script);
+    ape::ApeAnimScriptVar* matrix = instance->FindVar(kVar_Transform);
+    if (matrix && matrix->GetType() == ape::AnimScriptVarType::Matrix)
+        static_cast<ape::ApeAnimScriptMatrixVar*>(matrix)->SetMatrix(transform);
+    if (autoRun) {
+        instance->SetRemoveWhenFinished(true);
+        ape::ApeAnimScriptInstance::Register(instance);
+    }
+    return instance;
+}
+
 } // namespace entity
 } // namespace sly

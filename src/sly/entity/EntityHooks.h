@@ -79,6 +79,8 @@ void CullManagerUpdate(ape::world::ApeObj* object);
 // -- camera ------------------------------------------------------------------
 // World position of the active game camera (game world +0x128168, +0x360).
 ape::Vec3 GameCameraPosition();
+// Transform of the active game camera's view (game world +0x128168, +0x330).
+ape::Matrix34 GameCameraTransform();
 
 // -- game world (0x00F65CA0) -------------------------------------------------
 // Byte +0x1D == 1: the level runs with one player only.

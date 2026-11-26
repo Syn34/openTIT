@@ -9,6 +9,7 @@
 #include "ape/anim/ApeAnimScript.h"
 
 #include "ape/world/ApeObj.h"
+#include "ape/world/ApeBase.h"
 
 namespace sly {
 namespace entity {
@@ -88,6 +89,7 @@ void CullManagerUpdate(ape::world::ApeObj*) {}
 
 // TODO: game world +0x128168 camera, position at +0x360.
 ape::Vec3 GameCameraPosition() { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
+ape::Matrix34 GameCameraTransform() { return ape::world::kWorldIdentity; }
 
 // The game's local player count (byte +0x1D).
 bool IsSinglePlayerMode() { return !g_game || g_game->localPlayerCount == 1; }

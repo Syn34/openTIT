@@ -230,6 +230,12 @@ bool HasSpawner(const Entity* entity);
 // Where the entity's spawner places its spawns (translation of the spawn
 // transform, 0x00452024 +0x30).
 ape::Vec3 SpawnerSpawnPosition(const Entity* entity);
+// Forward axis of that spawn transform (+0x20).
+ape::Vec3 SpawnerSpawnForward(const Entity* entity);
+// Game event kind 1 from `entity` with the attacker and an argument (the
+// hit's), posted to every listener (0x00464ED4 + 0x00482D14 on the game
+// event queue 0x00F65CA0).
+void PostEntityKilledEvent(Entity* entity, Entity* attacker, uint32_t argument);
 // The spawner that created an entity (entity +0xDC), opaque here, and its
 // list of live spawned objects (spawner +0x14/+0x18).
 struct SpawnerRef;
@@ -357,6 +363,10 @@ void NavAgentDestroy(NavAgent* agent);
 // to `goal`; 0x006C1B94: the goal it settled on (nearest reachable point).
 void NavAgentRequestGoal(NavAgent* agent, const ape::Vec3& goal);
 ape::Vec3 NavAgentGoal(NavAgent* agent);
+// 0x006C0BE4: moves the agent to `position`; 0x006C1CC0: the next point of
+// its path.
+void NavAgentSetPosition(NavAgent* agent, const ape::Vec3& position);
+ape::Vec3 NavAgentNextPoint(NavAgent* agent);
 
 // 0x004705F8: sends a game event from one entity to another.
 void SendGameEvent(Entity* sender, Entity* receiver, uint32_t event, uint32_t data, bool immediate);

@@ -221,8 +221,9 @@ public:
     virtual void UpdateTargetInfo(float dt);
     // Slot 71 (+0x11C).
     virtual void SetTarget(Entity* target);
-    // Slot 72 (+0x120): a state change may interrupt `state`.
-    virtual bool IsStateInterruptible(int state);
+    // Slot 72 (+0x120): the line of sight passes through collision layer
+    // `layer` (the base blocks on layers 1-4, 8, 12 and 28).
+    virtual bool IsSeeThroughLayer(int layer);
     // Slot 73 (+0x124): turning, root motion and body velocity.
     virtual void UpdateMovement(float dt);
     // Slot 74 (+0x128): vertical speed added when gravity applies.
@@ -303,6 +304,11 @@ public:
     // the state form replaces the controller's state script.
     void StartOneShotScript(uint32_t scriptHash);
     void StartStateScript(uint32_t scriptHash);
+    // Starts moving towards homePosition: leashed, facing the current
+    // forward direction (flattened unless the controller may pitch), and with
+    // a nav agent a path request whose goal replaces homePosition
+    // (0x00014DA8).
+    void BeginMove();
     // Creates the NavPower agent (needs a loaded nav graph).
     void CreateNavAgent();
     // Pushes a state on the state stack (at most four deep).
@@ -318,8 +324,7 @@ public:
     bool TargetReachable();
     // Re-tests the line of sight to the target if needed.
     bool IsTargetVisible();
-    // Line of sight test between two points. TODO(0x000138B0): Ghidra reports
-    // bad instruction data; not ported (reports "not visible").
+    // Line of sight test between two points (physics ray cast).
     bool TestLineOfSight(const ape::Vec3& from, const ape::Vec3& to, Entity* other);
 
     Entity* GetEntity() const { return entity; }
