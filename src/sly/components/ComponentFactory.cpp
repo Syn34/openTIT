@@ -11,6 +11,7 @@
 #include "sly/components/OffscreenMarker.h"
 #include "sly/components/FacePlayer.h"
 #include "sly/components/ProcEyes.h"
+#include "sly/components/ReceptacleComponent.h"
 #include "sly/components/PulseField.h"
 #include "sly/components/SystemCracker.h"
 #include "sly/components/TrackerComponent.h"
@@ -84,6 +85,8 @@ EntityComponent* CreateComponent(ComponentDesc* desc)
         return new InventoryComponent(static_cast<InventoryComponentDesc*>(desc));
     case kCompDesc_RadarBlip:
         return new RadarBlipComponent(static_cast<RadarBlipComponentDesc*>(desc));
+    case kCompDesc_Receptacle:
+        return new ReceptacleComponent(static_cast<ReceptacleComponentDesc*>(desc));
     case kCompDesc_Mover:
         return new MoverComponent(static_cast<MoverComponentDesc*>(desc));
     case kCompDesc_OffscreenMarker:
