@@ -5,12 +5,15 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
+#include "ape/world/ApeBase.h"
+#include "ape/world/ApeInstances.h"
 #include "sly/entity/GameCamera.h"
 #include "sly/game/GameScripts.h"
 #include "sly/gameplay/MegaKnightHooks.h"
 #include "sly/gameplay/Sequencer.h"
 #include "sly/tuning/MegaKnightDragonTuning.h"
 
+#include <cmath>
 #include <cstring>
 
 namespace sly {
@@ -585,7 +588,7 @@ bool MKPhaseShootPlatform::UpdatePhase(float dt)
 MKPhaseRopeAttached::MKPhaseRopeAttached(MegaKnight* owner)
     : MegaKnightPhase(owner, kScript_RopeAttached, kRopeStates, 6)
 {
-    spline = MKFindSplineDef(kSpline_RopeLaser);
+    spline = MKFindSplineInstance(kSpline_RopeLaser);
 }
 
 // @func 0x003170C0 MKPhaseRopeAttached::~MKPhaseRopeAttached
@@ -594,11 +597,60 @@ MKPhaseRopeAttached::~MKPhaseRopeAttached() = default;
 
 const char* MKPhaseRopeAttached::StateName(int state) const { return TableName(kRopeStates, state); }
 
-// TODO(0x00317228 MKPhaseRopeAttached::OnEnter): picks the held rope and
-// the laser path (spline evaluation and the boss's laser point 0x0030D434).
+// @func 0x00317228 MKPhaseRopeAttached::OnEnter
+// Picks the held rope, measures the player's distance to the matching
+// bone, starts the laser at the rope's end of its path and charges up.
 void MKPhaseRopeAttached::OnEnter()
 {
     MegaKnightPhase::OnEnter();
+    MegaKnight* b = boss;
+    if (b->ropes[0] && MKRopeHeld(b->ropes[0]))
+        rope = 0;
+    else if (b->ropes[2] && MKRopeHeld(b->ropes[2]))
+        rope = 2;
+    else
+        rope = 0;
+    for (uint32_t arm = 0; arm < 3; ++arm)
+        b->SetArmMarker(arm, false);
+    field_74 = rope == 0 ? b->field_3BC : (rope == 2 ? b->field_3C0 : -1);
+    if (field_74 != -1) {
+        ape::Matrix34 m = ape::world::kWorldIdentity;
+        b->BoneWorldTransform(field_74, m);
+        const ape::Vec3& a = b->tracking.anchor;
+        const float dx = a.x - m.translation.x, dy = a.y - m.translation.y, dz = a.z - m.translation.z;
+        distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+    }
+    // The current camera framing values.
+    field_9C = b->cameraController->blends[0].value;
+    field_A0 = b->cameraController->blends[1].value;
+    field_A4 = b->cameraController->blends[2].value;
+    eventB = false;
+    field_61 = false;
+    field_68 = 0.0f;
+    reversed = rope == 2;
+    if (spline)
+        spline->EvaluatePosition(rope == 2 ? 1.0f : 0.0f, laserPoint, false);
+    // Cutting speed by fight half and number of outer arms standing.
+    const float speeds[3] = {
+        b->secondHalf ? g_megaKnightStateValuesLaserCutterPhase1Arm0.Get() : g_megaKnightStateValuesLaserCutterPhase2Arm0.Get(),
+        b->secondHalf ? g_megaKnightStateValuesLaserCutterPhase1Arm1.Get() : g_megaKnightStateValuesLaserCutterPhase2Arm1.Get(),
+        b->secondHalf ? g_megaKnightStateValuesLaserCutterPhase1Arm2.Get() : g_megaKnightStateValuesLaserCutterPhase2Arm2.Get(),
+    };
+    const uint32_t standing = (b->armIntact[0] ? 1u : 0u) + (b->armIntact[2] ? 1u : 0u);
+    field_6C = speeds[standing];
+    b->glow.to = 1.0f;
+    b->glow.from = b->glow.value;
+    b->glow.elapsed = 0.0f;
+    b->glow.SetDuration((1.0f - b->glow.value) * 0.5f);
+    b->lookAt.target = {laserPoint.x, laserPoint.y, laserPoint.z, b->lookAt.target.pad};
+    b->lookAt.current = {laserPoint.x, laserPoint.y, laserPoint.z, b->lookAt.current.pad};
+    field_B0 = false;
+    field_B4 = 0.0f;
+    b->PlayAnim(rope == 0 ? 0xAB00CE2Eu : 0x87E1289Bu, 1.0f, false);
+    for (entity::Entity* r : b->ropes)
+        if (r)
+            MKSetInteractionState(r, 4);
+    SetState(0, 1);
 }
 
 // @func 0x0031771C MKPhaseRopeAttached::OnExit

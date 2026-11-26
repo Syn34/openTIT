@@ -23,7 +23,7 @@
 #include <cstdint>
 
 namespace ape { class ApeAnimScriptInstance; }
-namespace ape::world { class ApeObj; }
+namespace ape::world { class ApeObj; class ApeSplineInstance; }
 namespace sly { class Spawner; }
 namespace sly::camera { class FixedCameraMode; }
 namespace sly::entity { class GameCamera; }
@@ -521,7 +521,7 @@ public:
     bool UpdatePhase(float dt) override;
 
     int32_t rope = -1;            // +0x40 rope the player holds (0 or 2)
-    void* spline = nullptr;       // +0x44 the laser's path
+    ape::world::ApeSplineInstance* spline = nullptr;   // +0x44 the laser's path
     ape::Vec3 laserPoint{};       // +0x50
     bool reversed = false;        // +0x60
     bool field_61 = false;        // +0x61

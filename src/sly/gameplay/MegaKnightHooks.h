@@ -11,6 +11,7 @@
 namespace ape { class ApeRefCounted; }
 namespace ape::world { class ApeObj; }
 
+namespace ape::world { class ApeSplineInstance; }
 namespace sly {
 namespace entity { class Entity; class GameCamera; }
 namespace gameplay {
@@ -50,8 +51,8 @@ ape::ApeRefCounted* MKObjectScriptRef(ape::world::ApeObj* object);
 
 namespace sly {
 namespace gameplay {
-// Spline definition by name (ApeTDefList<ApeSplineDef>::Find on 0x00F8F158).
-void* MKFindSplineDef(uint32_t nameHash);
+// Spline instance of the level by name (instance list 0x00F8F158).
+ape::world::ApeSplineInstance* MKFindSplineInstance(uint32_t nameHash);
 // 0x0046C3B8 on the game world: queues the cut-scene sequence `name`.
 void MKQueueSequence(uint32_t name);
 // Same with variable bindings (built through 0x0049FE90).

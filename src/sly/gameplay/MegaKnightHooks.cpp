@@ -22,7 +22,7 @@ ape::ApeRefCounted* MKObjectScriptRef(ape::world::ApeObj*) { return nullptr; }
 
 namespace sly {
 namespace gameplay {
-void* MKFindSplineDef(uint32_t) { return nullptr; }
+ape::world::ApeSplineInstance* MKFindSplineInstance(uint32_t) { return nullptr; }
 void MKQueueSequence(uint32_t) {}
 } // namespace gameplay
 } // namespace sly
