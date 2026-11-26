@@ -81,6 +81,10 @@ MinigameB20748::~MinigameB20748() = default;
 // @func 0x0077D75C PenguinMontageMinigame::~PenguinMontageMinigame
 // @func 0x0077F4E8 PenguinMontageMinigame::~PenguinMontageMinigame (deleting)
 PenguinMontageMinigame::~PenguinMontageMinigame() = default;
+// @func 0x00421468 PenguinMontageMinigame::Slot12
+void PenguinMontageMinigame::Slot12() {}
+// @func 0x00421440 PenguinMontageMinigame::SetHudHidden
+void PenguinMontageMinigame::SetHudHidden(bool hidden) { Minigame::SetHudHidden(hidden); }
 
 // -- penguin minigames ---------------------------------------------------------------
 
@@ -133,6 +137,10 @@ bool PenguinBalanceMinigame::Slot29() { return field_36 != 0; }
 // @func 0x0077D2C4 PenguinDodgeMinigame::~PenguinDodgeMinigame
 // @func 0x0077F0F0 PenguinDodgeMinigame::~PenguinDodgeMinigame (deleting)
 PenguinDodgeMinigame::~PenguinDodgeMinigame() = default;
+// @func 0x00404438 PenguinDodgeMinigame::Slot12
+void PenguinDodgeMinigame::Slot12() {}
+// @func 0x00404410 PenguinDodgeMinigame::SetHudHidden
+void PenguinDodgeMinigame::SetHudHidden(bool hidden) { Minigame::SetHudHidden(hidden); }
 // @func 0x0077F0D0 PenguinDodgeMinigame::Slot25
 bool PenguinDodgeMinigame::Slot25() { return flags[0] != 0; }
 // @func 0x0077F0D8 PenguinDodgeMinigame::Slot26
@@ -145,6 +153,10 @@ bool PenguinDodgeMinigame::Slot22() { return flags[3] != 0; }
 // @func 0x0077D338 PenguinPunchMinigame::~PenguinPunchMinigame
 // @func 0x0077F19C PenguinPunchMinigame::~PenguinPunchMinigame (deleting)
 PenguinPunchMinigame::~PenguinPunchMinigame() = default;
+// @func 0x00409ED4 PenguinPunchMinigame::Slot12
+void PenguinPunchMinigame::Slot12() {}
+// @func 0x00409EAC PenguinPunchMinigame::SetHudHidden
+void PenguinPunchMinigame::SetHudHidden(bool hidden) { Minigame::SetHudHidden(hidden); }
 // @func 0x0077F17C PenguinPunchMinigame::Slot25
 bool PenguinPunchMinigame::Slot25() { return flags[0] != 0; }
 // @func 0x0077F184 PenguinPunchMinigame::Slot26
@@ -169,10 +181,20 @@ bool PenguinSlingshotMinigame::Slot26() { return flags[1] != 0; }
 bool PenguinSlingshotMinigame::Slot27() { return flags[2] != 0; }
 // @func 0x0077F240 PenguinSlingshotMinigame::Slot22
 bool PenguinSlingshotMinigame::Slot22() { return flags[3] != 0; }
+// @func 0x004125F0 PenguinSlingshotMinigame::SetHudHidden
+void PenguinSlingshotMinigame::SetHudHidden(bool hidden) { Minigame::SetHudHidden(hidden); }
 
 // @func 0x0077D484 PenguinSumoMinigame::~PenguinSumoMinigame
 // @func 0x0077F350 PenguinSumoMinigame::~PenguinSumoMinigame (deleting)
 PenguinSumoMinigame::~PenguinSumoMinigame() = default;
+// @func 0x00418E90 PenguinSumoMinigame::Slot12
+void PenguinSumoMinigame::Slot12() {}
+// @func 0x00418E68 PenguinSumoMinigame::SetHudHidden
+void PenguinSumoMinigame::SetHudHidden(bool hidden) { Minigame::SetHudHidden(hidden); }
+// @func 0x0041A09C PenguinSumoMinigame::Slot31
+void PenguinSumoMinigame::Slot31() {}
+// @func 0x0041A0A0 PenguinSumoMinigame::Slot32
+void PenguinSumoMinigame::Slot32() {}
 // @func 0x0077F338 PenguinSumoMinigame::Slot25
 bool PenguinSumoMinigame::Slot25() { return flags[0] != 0; }
 // @func 0x0077F340 PenguinSumoMinigame::Slot26
@@ -183,6 +205,10 @@ bool PenguinSumoMinigame::Slot27() { return flags[2] != 0; }
 // @func 0x0077D558 WhackPenguinMinigame::~WhackPenguinMinigame
 // @func 0x0077F45C WhackPenguinMinigame::~WhackPenguinMinigame (deleting)
 WhackPenguinMinigame::~WhackPenguinMinigame() = default;
+// @func 0x0041E690 WhackPenguinMinigame::Slot12
+void WhackPenguinMinigame::Slot12() {}
+// @func 0x0041E668 WhackPenguinMinigame::SetHudHidden
+void WhackPenguinMinigame::SetHudHidden(bool hidden) { Minigame::SetHudHidden(hidden); }
 // @func 0x0077F43C WhackPenguinMinigame::Slot25
 bool WhackPenguinMinigame::Slot25() { return flags[0] != 0; }
 // @func 0x0077F444 WhackPenguinMinigame::Slot26

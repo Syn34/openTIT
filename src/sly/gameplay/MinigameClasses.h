@@ -124,6 +124,9 @@ public:
 class PenguinMontageMinigame : public Minigame {
 public:
     ~PenguinMontageMinigame() override;
+    // Slot 12 does nothing for this game; slot 15 is the base behaviour.
+    void Slot12() override;
+    void SetHudHidden(bool hidden) override;
     ape::ApeTArray<void*> field_48;    // +0x48
 };
 
@@ -165,6 +168,9 @@ public:
 class PenguinDodgeMinigame : public PenguinMinigame {
 public:
     ~PenguinDodgeMinigame() override;
+    // Slot 12 does nothing for this game; slot 15 is the base behaviour.
+    void Slot12() override;
+    void SetHudHidden(bool hidden) override;
     bool Slot22() override;
     bool Slot25() override;
     bool Slot26() override;
@@ -177,6 +183,9 @@ public:
 class PenguinPunchMinigame : public PenguinMinigame {
 public:
     ~PenguinPunchMinigame() override;
+    // Slot 12 does nothing for this game; slot 15 is the base behaviour.
+    void Slot12() override;
+    void SetHudHidden(bool hidden) override;
     bool Slot22() override;
     bool Slot25() override;
     bool Slot26() override;
@@ -190,6 +199,7 @@ public:
 class PenguinSlingshotMinigame : public PenguinMinigame {
 public:
     ~PenguinSlingshotMinigame() override;
+    void SetHudHidden(bool hidden) override;
     bool Slot22() override;
     bool Slot25() override;
     bool Slot26() override;
@@ -204,6 +214,11 @@ public:
 class PenguinSumoMinigame : public PenguinMinigame {
 public:
     ~PenguinSumoMinigame() override;
+    void Slot31() override;
+    void Slot32() override;
+    // Slot 12 does nothing for this game; slot 15 is the base behaviour.
+    void Slot12() override;
+    void SetHudHidden(bool hidden) override;
     bool Slot25() override;
     bool Slot26() override;
     bool Slot27() override;
@@ -215,6 +230,9 @@ public:
 class WhackPenguinMinigame : public PenguinMinigame {
 public:
     ~WhackPenguinMinigame() override;
+    // Slot 12 does nothing for this game; slot 15 is the base behaviour.
+    void Slot12() override;
+    void SetHudHidden(bool hidden) override;
     bool Slot22() override;
     bool Slot25() override;
     bool Slot26() override;
