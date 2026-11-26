@@ -411,6 +411,12 @@ void SetMusicVoice(VoiceId id, SoundName* name)
     g_musicVoice = id;
 }
 
+VoiceId TrackedVoiceId(uint32_t key)
+{
+    const TrackedVoice* tracked = FindTracked(key);
+    return tracked ? tracked->voice : 0;
+}
+
 // @func 0x00449E10 StopMusic
 void StopMusic(bool release)
 {

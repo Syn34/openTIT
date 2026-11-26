@@ -50,6 +50,8 @@ public:
     virtual int SubVoiceCount(SoundHandle h) { (void)h; return 0; }
     virtual uint32_t SubVoice(SoundHandle h, int index) { (void)h; (void)index; return 0; }
     virtual float SubVoiceLevel(uint32_t subVoice) { (void)subVoice; return 0.0f; }
+    // True while a voice group (bus) has voices playing.
+    virtual bool IsGroupActive(uint32_t group) { (void)group; return false; }
 };
 
 AudioBackend& Backend();
@@ -183,6 +185,15 @@ bool SetVoicePosition(VoiceId id, const float position[3], float volume, uint32_
 // Highest output level of the library voices of a sound (0 if none).
 float VoiceLevel(VoiceId id);
 
+// Something of the category is playing (dialog covers two voice groups).
+bool IsCategoryPlaying(SoundCategory category);
+bool IsCategoryPlayingByHash(uint32_t nameHash);
+// The voice tracked under 'key' still exists.
+bool IsTrackedVoicePlaying(uint32_t key);
+// Replaces the audio heap (0x00F65B58) with a new one of 'kilobytes' KB
+// (none for 0).
+void SetAudioHeapSize(int kilobytes);
+
 // Pausing: everything (e.g. the pause menu) and individual pause groups.
 void SetPauseAll(bool paused);
 bool IsPauseAll();
@@ -200,6 +211,8 @@ void StopMusic(bool release);
 // Per-category live voice counters (0x010B00E0).
 int32_t CategoryVoiceCount(int index);
 void TrackVoice(uint32_t key, VoiceId id);
+// Voice registered under 'key' (0 when none).
+VoiceId TrackedVoiceId(uint32_t key);
 
 // ---------------------------------------------------------------------------
 // Mix states: up to four modifiers applied on top of the base mix. Each mix

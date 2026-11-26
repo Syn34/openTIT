@@ -2,6 +2,9 @@
 // (0x00444108, 0x0044A78C-0x0044D9C0).
 #include "sly/game/AudioSystem.h"
 
+#include "ape/memory/ApeMem.h"
+#include "ape/memory/ApeRegionHeap.h"
+
 #include <cmath>
 
 namespace sly {
@@ -45,6 +48,15 @@ void ApplyPauseMask()
         g_appliedPauseMask = mask;
     }
 }
+
+// Voice groups of the categories (0x00F65AB0); dialog also plays on the
+// second dialog group (0x00F65B28).
+constexpr uint32_t kCategoryGroups[3] = { 0, 1, 2 };
+constexpr uint32_t kDialogGroup2 = 0x1E;
+
+// Audio heap and its memory (0x00F65B58 / 0x00F65B5C).
+ape::ApeRegionHeap* g_audioHeap = nullptr;
+void* g_audioHeapMemory = nullptr;
 
 Voice* LiveVoice(VoiceId id)
 {
@@ -157,6 +169,52 @@ void FadeBusVolume(uint32_t bus, float volume, float seconds)
     } else {
         fade.rate = (volume - fade.current) / seconds;
     }
+}
+
+// @func 0x0044D2E0 IsCategoryPlaying
+bool IsCategoryPlaying(SoundCategory category)
+{
+    if (category == kCategory_None || !AudioEnabled())
+        return false;
+    if (category == kCategory_Dialog)
+        return Backend().IsGroupActive(kCategoryGroups[kCategory_Dialog]) || Backend().IsGroupActive(kDialogGroup2);
+    return Backend().IsGroupActive(kCategoryGroups[category]);
+}
+
+// @func 0x0044D3AC IsCategoryPlayingByHash
+bool IsCategoryPlayingByHash(uint32_t nameHash)
+{
+    if (!AudioEnabled())
+        return false;
+    return IsCategoryPlaying(CategoryFromHash(nameHash));
+}
+
+// @func 0x0044D4C8 IsTrackedVoicePlaying
+bool IsTrackedVoicePlaying(uint32_t key)
+{
+    return IsVoiceValid(TrackedVoiceId(key));
+}
+
+// @func 0x0044D880 SetAudioHeapSize
+void SetAudioHeapSize(int kilobytes)
+{
+    if (g_audioHeap) {
+        g_audioHeap->Destroy();
+        delete g_audioHeap;
+        g_audioHeap = nullptr;
+    }
+    if (g_audioHeapMemory) {
+        ape::MemFree(g_audioHeapMemory);
+        g_audioHeapMemory = nullptr;
+    }
+    if (kilobytes <= 0)
+        return;
+    const size_t bytes = static_cast<size_t>(kilobytes & 0x3FFFFF) << 10;
+    g_audioHeapMemory = ape::MemAlloc(bytes, ape::kMemClass_Default, 16);
+    if (!g_audioHeapMemory)
+        return;
+    g_audioHeap = new ape::ApeRegionHeap();
+    g_audioHeap->Init(g_audioHeapMemory, bytes, false);
 }
 
 } // namespace audio
