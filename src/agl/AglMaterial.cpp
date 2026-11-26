@@ -486,4 +486,22 @@ const char* AglMaterial::GetName() const
     return textures[0] ? textures[0]->GetName() : nullptr;
 }
 
+// TODO(0x0051C640 MaterialChunkHandler): material record container. Skipped.
+int MaterialChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+{
+    return 1;
+}
+
+// TODO(0x0051C704 MaterialHeaderChunkHandler): material settings. Skipped.
+int MaterialHeaderChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+{
+    return 1;
+}
+
+// TODO(0x0051CD48 MaterialClassChunkHandler): shader class parameters. Skipped.
+int MaterialClassChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+{
+    return 1;
+}
+
 } // namespace agl

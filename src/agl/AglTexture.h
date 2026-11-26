@@ -142,6 +142,8 @@ AglTexture* TextureLoadFile(const char* path, bool useDefaultOnFailure);
 int TextureHeaderChunkHandler(ape::iff::IffReader* reader, void* arg);
 int TextureFileChunkHandler(ape::iff::IffReader* reader, void* arg);
 int TextureDefaultChunkHandler(ape::iff::IffReader* reader, void* arg);
+// Texture container chunk ("TEXR"): its children describe one texture.
+int TextureChunkHandler(ape::iff::IffReader* reader, void* arg);
 // Texture image chunks: a GTF image ("TGTF") or a DDS image ("DXTN").
 int TextureGtfChunkHandler(ape::iff::IffReader* reader, void* arg);
 int TextureDdsChunkHandler(ape::iff::IffReader* reader, void* arg);

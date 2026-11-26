@@ -79,6 +79,23 @@ void InitStencilShadowQuad()
     }
 }
 
+std::vector<AglStencilShadowGroup*>& GetStencilShadowGroups()
+{
+    static std::vector<AglStencilShadowGroup*> groups;   // 0x010DFA24
+    return groups;
+}
+
+// @func 0x00527484 InitStencilShadowSystem
+void InitStencilShadowSystem()
+{
+    InitStencilShadowQuad();
+    BuildStencilShadowCircle();
+    auto* group = new AglStencilShadowGroup();
+    GetStencilShadowGroups().push_back(group);
+    group->active = true;
+    group->edges = new AglStencilShadowEdges();
+}
+
 // @func 0x00527650 SetRenderSettingInt
 void SetRenderSettingInt(int32_t value)
 {

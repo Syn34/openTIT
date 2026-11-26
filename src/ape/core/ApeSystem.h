@@ -9,8 +9,8 @@ namespace ape {
 enum SystemInitFlags : uint32_t {
     kInit_Core     = 0x1,  // thread ids, memory, file system
     kInit_Graphics = 0x2,  // NOTE: the world object module (0x00588828); Agl is flag 4
-    kInit_Audio    = 0x4,  // NOTE: inferred from call order, unverified
-    kInit_Input    = 0x8,  // NOTE: inferred from call order, unverified
+    kInit_Agl      = 0x4,  // the Agl graphics layer (0x0050F520)
+    kInit_Debug    = 0x8,  // debug drawing (ApeDebug::Init 0x0056A944)
     kInit_AllButCore = ~kInit_Core,
 };
 
@@ -27,6 +27,10 @@ struct EngineConfig {
     float    field_038 = 0.0f;        // +0x038
     float    lodYInfluence = 1.0f;    // +0x03C weight of height differences in LOD distances
     bool     debugDrawEnabled = false;   // +0x052 world debug shapes (regions, occluders)
+    // Shader archive: an already open stream (+0x054) or a path (+0x058,
+    // "System\\Shaders.Zip" when null). Read by the Agl start-up.
+    void*    shaderArchiveStream = nullptr;  // +0x054 (an ape::file::File*)
+    const char* shaderArchivePath = nullptr; // +0x058
     uint32_t field_05C = 0;           // +0x05C
     // Light relinking distance defaults for levels without a Light element
     // (SystemInit forces 40/75 when zero).
@@ -45,12 +49,19 @@ struct EngineConfig {
     uint32_t field_0A4 = 0;           // +0x0A4
     uint32_t field_0A8 = 0;           // +0x0A8
     float    field_0AC = 0.0f;        // +0x0AC
-    uint32_t field_144 = 0;           // +0x144
-    uint32_t field_148 = 0;           // +0x148
-    uint32_t field_14C = 0;           // +0x14C
-    uint32_t field_150 = 0;           // +0x150
+    uint32_t field_144 = 0;           // +0x144 Agl render thread scratch size (0x40000)
+    uint32_t field_148 = 0;           // +0x148 Agl second (IO mapped) scratch size
+    uint32_t field_14C = 0;           // +0x14C draw list vertex count (0x6000)
+    uint32_t field_150 = 0;           // +0x150 draw list packet bytes (0x20000)
     uint32_t field_154 = 0;           // +0x154
-    uint32_t field_158 = 0;           // +0x158
+    uint32_t field_158 = 0;           // +0x158 particle vertex buffer size in vertices (0x5000)
+    // Agl resource pool sizes (0 selects the default, 0x100 materials, 0x400 others).
+    uint16_t materialCapacity = 0;        // +0x15C
+    uint16_t textureCapacity = 0;         // +0x15E
+    uint16_t subMeshCapacity = 0;         // +0x160
+    uint16_t renderTargetCapacity = 0;    // +0x162 NOTE: pool 0x00F8F110, guessed to be the render targets
+    uint16_t topologyCapacity = 0;        // +0x164
+    uint16_t emitterPropsCapacity = 0;    // +0x166
     // World object pool sizes (0 selects the module default).
     uint16_t geomInstanceCapacity = 0;    // +0x168
     uint16_t emitterInstanceCapacity = 0; // +0x16A
@@ -65,8 +76,8 @@ struct EngineConfig {
     uint16_t field_17E = 0;               // +0x17E
     uint16_t cameraDefCapacity = 0;       // +0x180
     uint16_t splineDefCapacity = 0;       // +0x182
-    uint16_t field_18E = 0;           // +0x18E
-    uint32_t field_1A4 = 0;           // +0x1A4 size of the general purpose heap created by SystemInit
+    uint16_t field_18E = 0;           // +0x18E Agl pool 0x010DDC84 size (0x80)
+    uint32_t field_1A4 = 0;           // +0x1A4 size of the scratch memory stack SystemInit creates (0x8000)
     uint32_t field_1A8 = 0;           // +0x1A8
     uint16_t capacities_1AC[15] = {}; // +0x1AC..0x1C8 object pool capacities
     uint32_t field_1CC = 0;           // +0x1CC

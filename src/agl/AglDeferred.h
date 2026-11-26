@@ -18,6 +18,8 @@ void ScheduleDestroy(void* object, DestroyFn destroy);
 // Returns true when nothing is left queued.
 bool ProcessDeferredDestruction();
 void SetDeferredDestructionEnabled(bool enabled);
+// Agl start-up: creates the record pool, enables deferral and starts at frame 1.
+void StartDeferredDestruction();
 uint32_t GetDeferredDestructionFrame();
 
 // Common base of reference counted Agl resources (count stored as a

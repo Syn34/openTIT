@@ -297,12 +297,14 @@ int SlyMain(int argc, char** argv)
         return 0;
 
     ape::file::File* ramDisk = ape::file::CreateMemoryFile(shaders, shadersSize, "RamDisk");
+    ape::g_engineConfig.shaderArchiveStream = ramDisk;
     ape::SystemInit(ape::kInit_AllButCore);
     if (!PollSystemState())
         return 0;
 
     if (ramDisk)
         ramDisk->Close();
+    ape::g_engineConfig.shaderArchiveStream = nullptr;
     ape::file::FreeFileData(shaders);
 
     agl::RenderThreadCreate(RenderFrame, nullptr);

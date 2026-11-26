@@ -16,6 +16,7 @@ struct AglDisplaySettings {
     uint16_t width = 1280;                  // 0x010C5A24
     uint16_t height = 720;                  // 0x010C5A26
     float aspect = 16.0f / 9.0f;            // 0x010C5A30
+    bool widescreen = true;                 // 0x010C5A41: 16:9 output (else 4:3)
     bool stereoOutput = false;              // 0x010C5A42: frame packed 3D output active
     bool stereoAvailable = false;           // 0x010C5A43: the TV supports 3D
     uint16_t maxLights = 63;                // 0x010C5A4C
