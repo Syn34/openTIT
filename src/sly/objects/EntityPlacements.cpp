@@ -109,6 +109,25 @@ TweenActorPlacement::~TweenActorPlacement() = default;
 // @func 0x00757604 InteractivePropBPlacement::~InteractivePropBPlacement (deleting)
 InteractivePropBPlacement::~InteractivePropBPlacement() = default;
 
+// NOTE: the console reads the definition's pieces without a null check.
+// @func 0x0074F680 BreakableChainPlacement::BreakableChainPlacement
+BreakableChainPlacement::BreakableChainPlacement(const char* placementName, BreakableChainDef* ownerDef,
+                                                 uint32_t field70, const ape::Matrix34& placementTransform,
+                                                 const ape::Vec3& offset, bool bit31, bool bit30,
+                                                 uint32_t field74)
+    : EntityPlacement(placementName, ownerDef, field70, placementTransform, offset, bit31, bit30, field74)
+{
+    typeBits |= 0x400;
+    if (!ownerDef)
+        return;
+    for (const BreakableChainPiece& piece : ownerDef->pieces)
+        pieces.PushBack(piece);
+}
+
+// @func 0x0074F9D8 BreakableChainPlacement::~BreakableChainPlacement
+// @func 0x00750F94 BreakableChainPlacement::~BreakableChainPlacement (deleting)
+BreakableChainPlacement::~BreakableChainPlacement() = default;
+
 // @func 0x0074FA80 ChainPlacement::ChainPlacement
 ChainPlacement::ChainPlacement(const char* placementName, EntityDef* ownerDef, uint32_t field70,
                                const ape::Matrix34& placementTransform, const ape::Vec3& offset, bool bit31,

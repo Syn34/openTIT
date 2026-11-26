@@ -64,6 +64,33 @@ SLY_PLACEMENT(InteractivePropBPlacement, ActorPlacement);           // 0x00B188F
 // Placements built straight on the base placement. NOTE: the meanings of
 // their own fields are not known; their parsers are not ported.
 
+// One piece of a breakable chain definition (12 bytes). NOTE: three floats
+// of unknown meaning.
+struct BreakableChainPiece {
+    float values[3];
+};
+
+// Stand-in for the breakable chain definition (not ported): only the piece
+// list its placements copy (+0x8C).
+class BreakableChainDef : public EntityDef {
+public:
+    using EntityDef::EntityDef;
+
+    ape::ApeTArray<BreakableChainPiece> pieces;   // +0x8C
+};
+
+// Placement of a breakable chain (vtable 0x00B15008, 0xD0 bytes; type bit
+// 0x400): its own copy of the definition's pieces.
+class BreakableChainPlacement : public EntityPlacement {
+public:
+    BreakableChainPlacement(const char* placementName, BreakableChainDef* ownerDef, uint32_t field70,
+                            const ape::Matrix34& placementTransform, const ape::Vec3& offset, bool bit31,
+                            bool bit30, uint32_t field74);
+    ~BreakableChainPlacement() override;
+
+    ape::ApeTArray<BreakableChainPiece> pieces{16, nullptr, true};   // +0xB4
+};
+
 // Vtable 0x00B15180; type bit 0x800.
 class ChainPlacement : public EntityPlacement {
 public:
