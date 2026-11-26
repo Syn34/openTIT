@@ -74,7 +74,7 @@ uint8_t* ProfileNotifyPair(uint8_t profile)
     static uint8_t pairs[8][2] = {};
     return pairs[profile & 7];
 }
-void GameWorldReloadLevel() {}
+void GameWorldReloadLevel() { sly::RequestLevelRestart(); }
 void GameWorldSetState(int, int) {}
 void GameWorldSetStateData(const char*, uint32_t) {}
 bool CurrentLevelJobValue(uint32_t*) { return false; }

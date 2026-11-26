@@ -13,8 +13,15 @@ struct MixState;
 // game code touches are modelled.
 struct SoundZone {
     float radius = 0.0f;              // +0x00
-    float fadeCurve = 1.0f;           // +0x04 exponent of the trigger fade-in curve. NOTE: default assumed
-    float fadeDistance = 0.0f;        // +0x10
+    float fadeCurve = 1.0f;           // +0x04 exponent of the trigger fade-in curve
+    float field_08 = 1.0f;            // +0x08 NOTE: spreadsheet column 10, meaning unknown
+    float field_0C = 23999.0f;        // +0x0C NOTE: spreadsheet column 11, meaning unknown
+    float fadeDistance = -1.0f;       // +0x10
+    int32_t field_14 = -1;            // +0x14
+    uint32_t mixHash = 0;             // +0x18 mix state the zone applies
+    char mixName[32] = {};            // +0x1C
+    bool field_3C = false;            // +0x3C NOTE: spreadsheet column 6 (a non-zero integer)
+    char name[32] = {};               // +0x3D
     float weight = 0.0f;              // +0x60 blend weight set by triggers
     bool active = false;              // +0x64 linked in the active list
     SoundZone* older = nullptr;       // +0x68 next zone towards the list tail
@@ -39,6 +46,8 @@ void RegisterSoundZone(uint32_t nameHash, SoundZone* zone);
 void RegisterMixState(uint32_t nameHash, MixState* state);
 SoundZone* FindSoundZone(uint32_t nameHash);
 MixState* FindMixState(uint32_t nameHash);
+// Loads the sound zones of an Excel XML spreadsheet (one zone per row).
+void LoadSoundZones(const char* path);
 
 } // namespace audio
 } // namespace sly

@@ -6,6 +6,7 @@
 #include "sly/game/AppRuntime.h"
 #include "sly/game/AudioSystem.h"
 #include "sly/game/SlyGame.h"
+#include "sly/gameplay/Minigame.h"
 #include "sly/game/WorldInterface.h"
 
 namespace sly {
@@ -120,7 +121,7 @@ void PlayMusicStream(audio::SoundName*, bool) {}
 bool StreamSystemIdle(audio::SoundRequest* request) { return audio::IsRequestReady(request); }
 
 // -- misc ----------------------------------------------------------------------
-Minigame* ActiveMinigame() { return nullptr; }
+Minigame* ActiveMinigame() { return g_game ? g_game->minigame : nullptr; }
 void GuiPlayAnimation(float, void*, const void*, bool) {}
 void EntityActivate(WorldObject*) {}
 void* FindHudElement(uint32_t) { return nullptr; }
@@ -239,7 +240,7 @@ int NetReceive(int, void*, size_t) { return -1; }
 int NetSend(int, const void*, size_t) { return -1; }
 int NetSendTo(int, const void*, size_t, const NetAddress&) { return -1; }
 void NetClose(int) {}
-const char* CurrentLevelName() { return ""; }
+const char* CurrentLevelName() { return g_game ? g_game->CurrentLevelName() : ""; }
 uint8_t GoalOwnerState(const WorldObject*) { return 0; }
 void EntityMarkForRemoval(WorldObject*) {}
 void ListenerLeaveAllGroups(void*) {}
