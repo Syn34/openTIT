@@ -295,7 +295,33 @@ public:
     float FindClosestParam(const Vec3& worldPoint, uint32_t* outSegment, float* outDistance) const;
 
     ApeSplineDef* GetSplineDef() const;
+
+    // Kind of the spline from its property record (0x005A8BA8), 0 without one.
+    uint8_t GetKind() const;
+    // Bit 6 of the property record's flag byte (0x005A8BE4). NOTE: meaning
+    // unknown (critters may perch on such a spline under a hidden parent).
+    bool GetPropertyFlag6() const;
+
+    // 0x11C index into the spline property table, -1 for none. NOTE: set
+    // by the level loader (not ported).
+    int32_t m_propertyIndex = -1;
 };
+
+// One record of the spline property table (0x0119458C, 0x60 bytes each).
+// NOTE: only the two bytes read by the spline queries are named.
+struct ApeSplineProperty {
+    uint8_t field_00[0x5E];
+    uint8_t kind;           // 0x5E
+    uint8_t flags;          // 0x5F
+};
+// The table (filled by the level loader, not ported).
+ApeTArray<ApeSplineProperty>& GetSplinePropertyTable();
+
+// The spline instance closest to `point` among those `filter` accepts (all
+// without a filter); its parameter and distance at the closest point go to
+// `outParam` / `outDistance` (0x005A8CF8). Null when there is none.
+ApeSplineInstance* FindClosestSpline(const Vec3& point, float* outParam, float* outDistance,
+                                     bool (*filter)(ApeSplineInstance* spline, void* user), void* user);
 
 // New instances of a definition (one reference each), named after it. A
 // geometry instance created with `cloneDef` gets its own copy of the
