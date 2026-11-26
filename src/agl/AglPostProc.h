@@ -160,7 +160,35 @@ public:
     void LoadTuning() override;
 };
 
+// The post-process work buffers (0x01164038..0x0116407C, 0x011640D0..
+// 0x011640D8): a quarter resolution surface holding four stacked buffers,
+// an eighth resolution one holding two, their texture images and views, a
+// quarter resolution depth buffer and a half resolution colour/depth pair.
+struct AglPostProcBuffers {
+    AglSurface* quarterSurface = nullptr;      // 0x01164038
+    AglSurface* eighthSurface = nullptr;       // 0x0116403C
+    AglTextureImage quarterImages[4];          // 0x01164590, 0x01164550, 0x01164510, 0x011644D0
+    AglSurface* quarterViews[4] = {};          // 0x01164044.. (pointers at 0x01164040 + 8 * i)
+    AglTextureImage eighthImages[2];           // 0x01164490, 0x01164450
+    AglSurface* eighthViews[2] = {};           // 0x01164064, 0x0116406C
+    AglTextureImage eighthOfQuarterImage;      // 0x01164410
+    AglSurface* eighthOfQuarterView = nullptr; // 0x01164074: first quarter buffer at eighth size
+    AglSurface* quarterDepth = nullptr;        // 0x01164078
+    AglSurface* eighthDepthView = nullptr;     // 0x0116407C
+    AglTextureImage halfImage;                 // 0x011643D0 (pointer 0x011640D0)
+    AglSurface* halfSurface = nullptr;         // 0x011640D4
+    AglSurface* halfDepth = nullptr;           // 0x011640D8
+};
+AglPostProcBuffers& GetPostProcBuffers();
+// Creates the buffers for the current display size.
+void CreatePostProcBuffers();
+// Start-up of the post-process buffers (once).
+void InitPostProcBuffers();
+
 // Game tunables read by the effects (0x01164040..0x0116407C).
+// NOTE: 0x005467DC stores the post-process buffer pointers (AglPostProcBuffers)
+// in this range, so the effects' LoadTuning functions most likely copy
+// buffer pointers, not tunables.
 struct AglPostProcTuning {
     float values[16] = {};
 };
