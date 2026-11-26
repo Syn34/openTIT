@@ -649,6 +649,20 @@ int ActorEntity::Slot41() { return Def()->navMode != ActorDef::kNavMode_None ? 1
 // @func 0x00747B68 ActorEntity::Slot42
 int ActorEntity::Slot42() { return Def()->navMode == ActorDef::kNavMode_Obstacle ? 1 : 0; }
 
+// @func 0x000E96A0 ActorEntity::FirstBodyCollisionLayer
+bool ActorEntity::FirstBodyCollisionLayer(uint32_t& layer) const
+{
+    if (!PhysicsWorldPresent() || !parts)
+        return false;
+    for (const Part& part : *parts) {
+        if (part.body) {
+            layer = RigidBodyFilterInfo(part.body) & 0x1F;
+            return true;
+        }
+    }
+    return false;
+}
+
 // @func 0x00747584 ActorDef::DefSlot6
 uint32_t ActorDef::DefSlot6() const
 {

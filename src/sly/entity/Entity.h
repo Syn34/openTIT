@@ -580,6 +580,8 @@ void UnregisterEntity(EntityList list, Entity* entity);
 // Adds a component to the instance render list (list C, "s_instRenderList");
 // a second add is refused with a warning (0x000D6614).
 void AddToInstanceRenderList(EntityComponent* component);
+// The same for an entity (list B, 0x000D64F4).
+void AddToInstanceRenderList(Entity* entity);
 uint32_t EntityCount(EntityList list);
 Entity* EntityAt(EntityList list, uint32_t index);
 

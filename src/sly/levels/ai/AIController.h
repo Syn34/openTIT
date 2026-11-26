@@ -337,7 +337,10 @@ public:
     float stateRandom = 0.0f;                    // +0x28 random [0,1] picked on entering a state
     int32_t stateRepeat = 0;                     // +0x2C times the same state was re-entered
     Entity* entity = nullptr;                    // +0x30
-    AIController* partner = nullptr;             // +0x34 NOTE: another controller this one follows
+    // +0x34 nearest other updated controller (picked by the manager's tick
+    // each frame) and its squared distance.
+    AIController* partner = nullptr;
+    float partnerDistSq = 0.0f;                  // +0x38
     Entity* character = nullptr;                 // +0x3C the entity if it is a character (type bit 3)
     EntityComponent* characterComp = nullptr;    // +0x40 entity slot 15
     EntityComponent* body = nullptr;             // +0x44 entity slot 16
@@ -447,6 +450,13 @@ public:
     // Set-up before a level runs: counters and the player sighting state
     // cleared, the eight surround directions, empty sightings (0x00018DD0).
     void Init();
+    // The frame's work (0x00019AF0): render distances for a new render
+    // zoom, timers, the list of controllers to update, the surround
+    // records, the allies' places and targets around the player, nearest
+    // partners, a few controllers' slot 6 in turn, the alert flag, the
+    // player's last known position, the attack volumes and the player's nav
+    // mesh tracker.
+    void Tick(float dt);
     // Looks up the objects of the platform jump links (0x00019210).
     void ResolveJumpLinks();
     // Starts a melee attack of `attacker` on `target` from the attach point
@@ -478,9 +488,12 @@ public:
     int32_t controllerCount = 0;                       // +0x00
     int32_t activeCount = 0;                           // +0x04
     int32_t allyCount = 0;                             // +0x10
-    int32_t field_0C = 0;                              // +0x0C NOTE: cleared by Init
+    int32_t updateCount = 0;                           // +0x08 controllers updated this frame
+    int32_t thinkCursor = 0;                           // +0x0C round-robin index into `updating`
     int32_t sightingCount = 0;                         // +0x18
-    bool field_1C = false;                             // +0x1C NOTE: cleared by Init
+    // +0x1C some listed, living controller is engaged (kept while one of
+    // them still answers slot 23). NOTE: name assumed.
+    bool alert = false;
     float killHeight = 0.0f;                           // +0x20 below this the AI snaps back to its entity
     uint32_t field_24 = 0;                             // +0x24 NOTE: cleared by Init
     float targetingPause = 0.0f;                       // +0x28 no new targets while positive
@@ -492,12 +505,19 @@ public:
     Record50 records50[kRecord50Count];                // +0x50 (0x40 bytes apart)
     AIController* controllers[kMaxControllers] = {};   // +0x250
     AIController* active[kMaxControllers] = {};        // +0x650
+    AIController* updating[kMaxControllers] = {};      // +0xA50 rebuilt by every tick
     Entity* allies[kMaxAllies] = {};                   // +0xE50
     AIPriorityTargets priorityTargets;                 // +0x14 / +0xE74
     AISighting* sightings[kMaxSightings] = {};         // +0xE94 in use first, then free
     AISighting sightingPool[kMaxSightings];            // +0xEE0
 private:
     void ResetSightings();
+    // Places the allies around the player and hands them targets (part of Tick).
+    void AssignAllies(Entity* player);
+    // Pairs every updated controller with its nearest updated neighbour.
+    void PairPartners();
+    // One surround record's update (0x000182C0).
+    void UpdateRecord50(Record50& record, float dt);
 };
 
 // The level's AI manager (null between levels).

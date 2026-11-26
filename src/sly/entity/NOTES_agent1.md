@@ -71,3 +71,25 @@ requests, anim script/driver bits, Havok frees, minigame flag, game camera looku
   placement +0x60 / description +0x70 is the instance scale; +0x70 the source object.
 * Entity type bits as the triggers test them: 1 scripted (ScriptedEntity::IsDead is slot 80),
   3 character, 4 excluded from update-enable tracking, 49 pushable.
+* Definitions ported on the new model: ScriptedEntityDef (0x000C2E8C, description
+  `ScriptedEntityDefDesc`), ActorDef (0x000C79C0; now derives from ScriptedEntityDef; the Havok
+  body of each part comes from the hook `ActorPartCreateBody`), ChainDef (desc parser 0x001A7878,
+  loader entry 0x001A7AB0). The definition loader 0x000CA038 and the big shared description
+  parsers (physical 0x000C4020, actor 0x000C85A8) are still TODO; MegaKnightDef (gameplay)
+  should derive from ActorDef once its loader is ported.
+* Placements (sly/objects/EntityPlacements.cpp, PlacementLoader.cpp): scripted placement
+  constructor/parser (0x000CC188/0x000CBE10; the 0x4C-byte override records are script variable
+  bindings = `TextField`), every class loader called by the placement loader 0x000CC920 except
+  the input mover (0x001D7D98, its parser 0x001D7470 reuses the record block per kind) and the
+  loader itself (element dispatch table, common attributes, placement map 0x01013B1C,
+  attachment records 0x000C9AB8). Placement and instance description fields were retyped from
+  word arrays to the floats/hashes/bools the parsers read.
+* `GetPlayerCount`/`PlayerCount`/`IsSinglePlayerMode` read the game's local player count;
+  `TriggerSetEnabled`/`TriggerOccupantCount` go to TriggerBase.
+* Camera: Track update (0x001139C0). The console passes dt and Camera.Track.Interp to the
+  approach helpers in swapped positions (kept). Hooks: `DampedApproach` (0x004A8778),
+  `CharacterAttachedSpline` (0x0012919C).
+* AI: manager tick (0x00019AF0, sly/levels/ai/AIManagerTick.cpp), critter FindPerch (0x00020100)
+  with its spline filter (0x000239E4) and the engine's closest-spline query (0x005A8CF8) plus the
+  spline property table accessors (0x005A8BA8/0x005A8BE4; the table itself is filled by the
+  level loader, not ported). The surround record update 0x000182C0 is TODO.

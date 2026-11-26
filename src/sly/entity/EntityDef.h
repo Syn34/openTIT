@@ -22,6 +22,8 @@
 #include <cstdint>
 
 namespace ape::world { class ApeDef; class ApeObj; }
+namespace ape::xml { class XmlElement; }
+namespace ape::file { class File; }
 
 namespace sly {
 namespace entity {
@@ -31,12 +33,31 @@ class EntityPlacement;
 struct ComponentDesc;
 
 // Attachment record a definition hands to every placement made from it and
-// the placement to its instance (0xC0 bytes on the console). NOTE: contents
-// not decoded; copied as a whole.
-struct EntityAttachmentDesc {
-    uint8_t data[0xC0];
-};
+// the placement to its instance (0xC0 bytes on the console; elements
+// 0xCCEB9AF9, nested). NOTE: copies share the nested list, as on the console.
+struct EntityAttachmentDesc;
 using EntityAttachmentList = ape::ApeTArray<EntityAttachmentDesc>;
+struct EntityAttachmentDesc {
+    // Flags (+0xB0).
+    enum Flags : uint32_t {
+        kAttach_Flag36E7D729 = 0x80000000u,   // attribute 0x36E7D729
+        kAttach_FlagD1A6825E = 0x10000000u,   // attribute 0xD1A6825E
+        kAttach_FlagEAE49DB2 = 0x01000000u,   // attribute 0xEAE49DB2
+    };
+    char name[0x40];                  // 0x00 "name": entity definition / object attached
+    char nameOverride[0x40];          // 0x40 "nameOverride": instance name to give it
+    ape::Vec3 offset;                 // 0x80 attribute 0xEF4DDD13
+    ape::Vec4 rotation;               // 0x90 quaternion (attribute 0xC7400937, Euler degrees)
+    uint32_t part;                    // 0xA0 attribute 0x20C00073 (hash): attach part
+    uint32_t field_A4;                // 0xA4
+    uint32_t field_A8;                // 0xA8 attribute 0xF91B96E2 (hash)
+    uint32_t field_AC;                // 0xAC
+    uint32_t flags;                   // 0xB0 Flags
+    EntityAttachmentList* children;   // 0xB4 attachments of the attached entity
+};
+// Reads the attachment records under `elem` into `list` (created on the
+// first), recursing into each record's own attachment records (0x000C9AB8).
+void ParseEntityAttachments(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, EntityAttachmentList*& list);
 
 // Class bits of a definition (EntityDefDesc::classBits, EntityDef::classBits).
 // Each concrete definition class sets its own combination; a "from" parent is
@@ -302,6 +323,16 @@ public:
 // Placements loaded from the level files, by name hash (0x01013B1C).
 void RegisterEntityPlacement(uint32_t nameHash, EntityPlacement* placement);
 EntityPlacement* FindEntityPlacement(uint32_t nameHash);
+
+// -- entity files ---------------------------------------------------------------
+// Scope value that asks for a new load scope.
+constexpr uint8_t kLoadScopeNew = 0xFE;
+// Loads the "Entities" content of a document / file / stream (definitions,
+// placements, component templates, game tables, included files) under
+// `scope` (a new one for kLoadScopeNew); returns the scope used.
+uint8_t LoadEntityDocument(ape::xml::XmlElement* root, const char* path, uint8_t scope);
+uint8_t LoadEntityFile(const char* path, uint8_t scope);
+uint8_t LoadEntityFileFromStream(ape::file::File& file, uint8_t scope);
 
 // Spawns through the definition's slot 7 (0x000D6CC0); null without one.
 Entity* SpawnFromDef(EntityDef* def, EntityPlacement& placement);

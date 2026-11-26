@@ -12,6 +12,8 @@
 
 #include <cstdint>
 
+namespace ape { struct Matrix34; }
+
 namespace agl {
 
 struct AglFragmentProgram;
@@ -94,6 +96,10 @@ void ResetRenderState();
 void InvalidateRenderState();
 // Particles that only draw where stencil bit 0x20 is set (masked emitters).
 void ApplyParticleStencilMask(bool masked);
+// Uploads 'viewSpace' (an object to view transform, e.g. of camera aligned
+// particles) times the current projection, transposed, to vertex constants
+// 0..3.
+void UploadViewSpaceMatrix(const ape::Matrix34& viewSpace);
 
 // Points the vertex attributes of 'decl' at the vertex data at 'base'
 // (cached: nothing is emitted when the same data is bound again).

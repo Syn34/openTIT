@@ -15,6 +15,8 @@
 namespace ape::world { class ApeObj; struct AglMesh; }
 namespace ape { class ApeAnimScriptInstance; class ApeRefCounted; }
 
+namespace ape::xml { class XmlElement; }
+
 namespace sly {
 namespace entity {
 
@@ -169,6 +171,21 @@ void EntityObjectDCStart(void* object);
 void EntityObjectDCStop(void* object);
 // ApeAnimScriptInstance::SetStateAndUpdate by state name.
 void ScriptInstanceSetState(void* instance, uint32_t stateName);
+
+// Loaders of the entity file sections outside this module (see
+// LoadEntityDocument): HUD definitions (0x0036196C), animation sets
+// (0x00288728), section 0xE452FC60 (0x002AD4F4), combat tables
+// (0x00274CDC), section 0x1F7B9E20 (0x002AF5F0), shooting tables
+// (0x002C9D0C), spawn settings (0x000D5C00) and the entity definition
+// loader (0x000CA038).
+void LoadHudDefs(ape::xml::XmlElement* root, ape::xml::XmlElement* elem);
+void LoadAnimationDefs(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+void LoadDefsE452FC60(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+void LoadCombatDefs(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+void LoadDefs1F7B9E20(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+void LoadShootingDefs(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
+void LoadSpawnDefs(ape::xml::XmlElement* root, ape::xml::XmlElement* elem);
+EntityDef* LoadEntityDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, uint8_t scope);
 
 // 0x00490518: drops whatever the game property system keeps for a definition.
 void PropertySystemForgetDef(EntityDef* def);

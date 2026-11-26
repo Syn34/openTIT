@@ -1014,9 +1014,9 @@ void AIManager::Init()
         g_aiAnimClips->LoadAnimSetFiles();
     controllerCount = 0;
     activeCount = 0;
-    field_0C = 0;
+    thinkCursor = 0;
     allyCount = 0;
-    field_1C = false;
+    alert = false;
     field_44 = 0;
     field_48 = 0;
     timeSinceSeen = 900.0f;

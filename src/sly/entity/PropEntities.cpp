@@ -5,6 +5,7 @@
 
 #include "ape/world/ApeDef.h"
 #include "ape/world/ApeObj.h"
+#include "ape/xml/ApeXml.h"
 #include "sly/camera/CameraHooks.h"
 #include "sly/entity/CharacterHooks.h"
 #include "sly/entity/EntityHooks.h"
@@ -118,6 +119,62 @@ PushBlockDef::~PushBlockDef()
 {
     if (collisionShape)
         ReleaseCollisionShape(collisionShape);
+}
+
+// @func 0x001A7878 ChainDefDesc::Parse
+void ChainDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                         const EntityDef* parent)
+{
+    (void)root;   // only used for the warning about a parent of another class (stripped)
+    InheritDefDesc(loader, *this);
+    flags[1] = true;
+    ChainDefDesc defaults;
+    if (parent && (parent->typeBits & 0x800)) {
+        const auto* chain = static_cast<const ChainDef*>(parent);
+        defaults.field_4C = chain->field_8C;
+        defaults.linkCount = chain->linkCount;
+        defaults.field_54 = chain->field_94;
+        defaults.field_58 = chain->field_98;
+        defaults.field_5C = chain->field_9C;
+        defaults.field_60 = chain->field_A0;
+        defaults.field_64 = chain->field_A4;
+        defaults.field_68 = chain->field_A8;
+    }
+    elem->GetHash(0x3559A5ABu, &field_4C, defaults.field_4C);
+    elem->GetInt(0xBEC3D7F3u, &linkCount, defaults.linkCount);
+    elem->GetFloat(0x75DF19EEu, &field_54, defaults.field_54);
+    elem->GetFloat(0x807548E2u, &field_58, defaults.field_58);
+    elem->GetFloat(0x9E18283Eu, &field_5C, defaults.field_5C);
+    elem->GetFloat(0x9E2E88C2u, &field_60, defaults.field_60);
+    elem->GetFloat(0x05F9141Fu, &field_64, defaults.field_64);
+    elem->GetHash(0x10E70B4Du, &field_68, defaults.field_68);
+}
+
+// The chain's five sounds (0x00AD1410; the third is unused).
+// NOTE: the sound names behind the hashes are not known.
+ChainDef::ChainDef(const ChainDefDesc& desc)
+    : EntityDef(desc), field_8C(desc.field_4C), linkCount(desc.linkCount), field_94(desc.field_54),
+      field_98(desc.field_58), field_9C(desc.field_5C), field_A0(desc.field_60), field_A4(desc.field_64),
+      field_A8(desc.field_68)
+{
+    static const uint32_t kSounds[5] = {0x63D977D8u, 0x63D977D8u, 0x00000000u, 0x170F1CD3u, 0xEB5155EFu};
+    for (int i = 0; i < 5; ++i)
+        sounds[i] = audio::CreateSoundName(kSounds[i], 0);
+}
+
+// @func 0x001A7AB0 CreateChainDef
+// The ChainDef constructor is inlined here.
+EntityDef* CreateChainDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                          const EntityDef* parent)
+{
+    ChainDefDesc desc;
+    desc.typeBits = 0x800;
+    desc.name = loader.name;
+    desc.geomName = loader.geomName;
+    desc.templateName = loader.templateName;
+    desc.flags[1] = true;
+    desc.Parse(root, elem, loader, parent);
+    return new ChainDef(desc);
 }
 
 // @func 0x001A7058 ChainDef::~ChainDef

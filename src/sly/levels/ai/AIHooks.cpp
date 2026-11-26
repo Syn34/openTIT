@@ -4,6 +4,7 @@
 #include "sly/game/hud/HudManager.h"
 
 #include "sly/entity/Entity.h"
+#include "ape/world/ApeInstances.h"
 #include "sly/game/GameMessages.h"
 #include "sly/game/goals/JobManager.h"
 #include "sly/knowledge/Knowledge.h"
@@ -158,7 +159,15 @@ WorldObject* WorldObjectFirstChild(const WorldObject*) { return nullptr; }
 WorldObject* WorldObjectNextSibling(const WorldObject*) { return nullptr; }
 AIProxyPoint* ProxyPointOf(const WorldObject*) { return nullptr; }
 int ProxyPointIndexFromSpawner(const Entity*) { return -1; }
-void EntityApplyRenderZoom(Entity*, float) {}
+void EntityApplyRenderZoom(Entity* entity, float zoom)
+{
+    ape::world::ApeObj* object = entity->object;
+    if (!object || object->GetType() != ape::world::kObjType_GeomInstance)
+        return;
+    const float distance = static_cast<ape::world::ApeRenderObj*>(object)->m_drawDistSq / (zoom * zoom);
+    if (entity->field_D0 != 0.0f && distance > entity->field_D0)
+        entity->field_D0 = distance;
+}
 float LevelFloorDepth() { return 0.0f; }
 
 } // namespace ai

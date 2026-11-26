@@ -3,6 +3,8 @@
 
 #include "agl/AglDisplay.h"
 #include "agl/AglPostProc.h"
+#include "agl/AglPrimitives.h"
+#include "agl/AglResources.h"
 #include "agl/AglShaderClass.h"
 #include "agl/AglState.h"
 
@@ -244,6 +246,24 @@ void LoadStencilShadowShaders()
     LoadPair(&g_shaders.stencilShadowDrawQuad, "StencilShadow_DrawQuad", kNoParams);
 }
 
+// Technique of the thermal vision object class (vtable 0x00B24190).
+class ThermalObjectTechnique : public AglTechnique {
+public:
+    // TODO(0x0054CE80 ThermalObjectTechnique::BeginMaterial)
+    // TODO(0x0054D23C ThermalObjectTechnique::Draw): world x view-projection
+    // upload and the object space eye position ("gps_vObjSpcEyePos").
+};
+
+// Programs of the thermal object class (0x00F67508): plain and with
+// normals, each with a skinned vertex program.
+const AglShaderVariant kThermalObjectVariants[] = {
+    { "PostProc_ThermalObject", "PostProc_ThermalObject_SK", "PostProc_ThermalObject" },
+    { "PostProc_ThermalObject_N", "PostProc_ThermalObject_N_SK", "PostProc_ThermalObject_N" },
+};
+const AglGlobalShaderParam kThermalObjectParams[] = {    // 0x00F67520
+    { "gps_vObjSpcEyePos", 0 }, { nullptr, 0 },
+};
+
 // The material class objects of the thermal vision pass draw with
 // ("PostProc_ThermalObject", static object 0x011640F0, vtable 0x00B241B0).
 class ThermalObjectClass : public AglShaderClass {
@@ -252,9 +272,33 @@ public:
     // @func 0x007A2BA4 ThermalObjectClass::~ThermalObjectClass
     // @func 0x007A3D44 ThermalObjectClass::~ThermalObjectClass (deleting)
     ~ThermalObjectClass() override = default;
-    // TODO(0x0054D4C0 ThermalObjectClass::CreateTechniques)
-    void CreateTechniques() override {}
+    void CreateTechniques() override;
+    AglTechnique* SelectTechnique(AglMaterial* material, AglRenderItem* item) override;
 };
+
+// @func 0x0054D4C0 ThermalObjectClass::CreateTechniques
+void ThermalObjectClass::CreateTechniques()
+{
+    AddVariants<ThermalObjectTechnique>(kThermalObjectVariants, 0, 2, true, kThermalObjectParams);
+}
+
+// @func 0x0054DAB4 ThermalObjectClass::SelectTechnique
+// Skinned geometry takes the "_SK" program; geometry with normals the "_N"
+// pair. The pass uses no lights.
+AglTechnique* ThermalObjectClass::SelectTechnique(AglMaterial* /*material*/, AglRenderItem* item)
+{
+    const AglSubMesh* mesh = item->geometry;
+    const uint32_t skinned = (mesh->platformData && mesh->skinMatrices) ? 1 : 0;
+    uint32_t normals = 0;
+    for (const AglVertexStream* stream = mesh->vertexDecl->streams; stream->size != 0; ++stream) {
+        if (stream->attribute == 2 && stream->attributeOffset == 0) {
+            normals = 2;
+            break;
+        }
+    }
+    item->lightMask = 0;
+    return GetTechnique(skinned + normals);
+}
 
 ThermalObjectClass g_thermalObjectClass;
 

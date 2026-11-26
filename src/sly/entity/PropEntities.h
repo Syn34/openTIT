@@ -15,6 +15,8 @@
 
 namespace ape::world { class ApeObj; }
 
+namespace ape::xml { class XmlElement; }
+
 namespace sly {
 namespace entity {
 
@@ -335,8 +337,13 @@ public:
     // without one.
     void GetBounds(ape::Aabb& out) const override;
     ~PushBlockDef() override;
-    ape::ApeTArray<void*> field_C0;    // 0xC0
+    // A 2D point of the definition (copied into its placements).
+    struct Point {
+        float xy[2];
+    };
+    ape::ApeTArray<Point> points;      // 0xC0
     void* collisionShape = nullptr;    // 0xE4
+    float field_E8 = 0.0f;             // 0xE8 placement default
 };
 
 // Push block (vtable 0x00B160A8; spawned by PushBlockDef, destructor
@@ -384,11 +391,41 @@ public:
 
 // Chain definition (vtable 0x00B15150, 0xC0 bytes; derives from the plain
 // definition base; spawns 0x001A7180, which builds "Spline_Chain_%s").
+// Description of chain definitions (EntityDefDesc + 0x20 bytes).
+struct ChainDefDesc : EntityDefDesc {
+    uint32_t field_4C = 0;          // 0x4C attribute 0x3559A5AB (hash)
+    int32_t linkCount = 4;          // 0x50 attribute 0xBEC3D7F3
+    float field_54 = -1.0f;         // 0x54 attribute 0x75DF19EE
+    float field_58 = -1.0f;         // 0x58 attribute 0x807548E2
+    float field_5C = 0.0f;          // 0x5C attribute 0x9E18283E
+    float field_60 = 3.0f;          // 0x60 attribute 0x9E2E88C2
+    float field_64 = 1.0f;          // 0x64 attribute 0x05F9141F
+    uint32_t field_68 = 0;          // 0x68 attribute 0x10E70B4D (hash)
+
+    // Reads the chain attributes; the defaults come from a "from" chain
+    // definition when there is one (0x001A7878).
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// Definition of chains (vtable 0x00B15150, 0xC0 bytes; type bit 0x800).
 class ChainDef : public EntityDef {
 public:
+    explicit ChainDef(const ChainDefDesc& desc);
     ~ChainDef() override;
+    uint32_t field_8C = 0;             // 0x8C
+    int32_t linkCount = 4;             // 0x90
+    float field_94 = -1.0f;            // 0x94
+    float field_98 = -1.0f;            // 0x98
+    float field_9C = 0.0f;             // 0x9C
+    float field_A0 = 3.0f;             // 0xA0
+    float field_A4 = 1.0f;             // 0xA4
+    uint32_t field_A8 = 0;             // 0xA8
     audio::SoundName* sounds[5] = {};  // 0xAC
 };
+// Definition loader entry of chains (0x001A7AB0).
+EntityDef* CreateChainDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                          const EntityDef* parent);
 
 // A physics chain built from ChainDef (vtable 0x00B151A0, 0x780 bytes;
 // constructor 0x001A7180 builds the "Spline_Chain_%s" spline and one world

@@ -28,24 +28,11 @@ constexpr uint32_t kElem_Attachments = 0xCDA892E2u;
 constexpr uint32_t kElem_Bindings  = 0xC3B709C0u;
 
 // Placement loaders not ported yet.
-// TODO(0x001A5C90 ParseBreakableChainPlacement)
-EntityPlacement* ParseBreakableChainPlacement(ape::xml::XmlElement*, ape::xml::XmlElement*, const char*, EntityDef*)
-{
-    return nullptr;
-}
-// TODO(0x001B55C8 ParsePlacementB16088)
-EntityPlacement* ParsePlacementB16088(ape::xml::XmlElement*, ape::xml::XmlElement*, const char*, EntityDef*)
-{
-    return nullptr;
-}
 // TODO(0x001D7D98 ParseActorB17990Placement)
 EntityPlacement* ParseActorB17990Placement(ape::xml::XmlElement*, ape::xml::XmlElement*, const char*, EntityDef*)
 {
     return nullptr;
 }
-// TODO(0x000C9AB8 ParseAttachmentRecords): the attachment records of a
-// placement (0xC0 bytes each, children 0xCCEB9AF9, nested).
-void ParseAttachmentRecords(ape::xml::XmlElement*, ape::xml::XmlElement*, EntityAttachmentList*&) {}
 
 // Inline in the loader (element 0xEBE54755).
 EntityPlacement* ParsePlacementB138E8(ape::xml::XmlElement* elem, const char* name, EntityDef* def)
@@ -120,7 +107,7 @@ const ClassEntry kClassLoaders[] = {
     {0x70542137u, ParseActorB17990Placement, kWord_Registry, 0x1},
     {0x6927A078u, ParseInteractivePropBPlacement, kWord_Registry, 0x10},
     {0x633A7385u, ParseSoundActorB17728Placement, kWord_Type, 0x4000000},
-    {0x786E8593u, ParsePlacementB16088, kWord_Type, 0x20000},
+    {0x786E8593u, ParsePushBlockPlacement, kWord_Type, 0x20000},
     {0x71FE40F4u, ParseTargetableAPlacement, kWord_Class, 0x100},
 };
 
@@ -216,7 +203,7 @@ EntityPlacement* LoadEntityPlacement(ape::xml::XmlElement* root, ape::xml::XmlEl
         placement->bits84 = (placement->bits84 & ~0x20000000u) | (bit29 ? 0x20000000u : 0u);
         entity::RegisterEntityPlacement(nameHash, placement);
         if (ape::xml::XmlElement* attachments = elem->FirstChildElement(kElem_Attachments))
-            ParseAttachmentRecords(root, attachments, placement->attachments);
+            entity::ParseEntityAttachments(root, attachments, placement->attachments);
     }
     return placement;
 }
