@@ -1443,6 +1443,23 @@ void UnpackMaterialColor(const AglMaterial* material, uint32_t index, float out[
     out[3] = float(packed >> 24) * (1.0f / 255.0f);
 }
 
+// The engine's parabolic sine approximation (valid in [-pi, pi]) and the
+// cosine taken as the sine of x + pi/2, wrapped once.
+float ParabolicSin(float x)
+{
+    const float y = x * 1.2732395f + x * -0.40528473f * std::fabs(x);
+    return (y * std::fabs(y) - y) * 0.225f + y;
+}
+
+void ParabolicSinCos(float x, float& s, float& c)
+{
+    s = ParabolicSin(x);
+    float shifted = x + 1.5707964f;
+    if (shifted > 3.1415927f)
+        shifted -= 6.2831855f;
+    c = ParabolicSin(shifted);
+}
+
 // The item's RGBA byte colour (render item +0x40) as floats; white when
 // the item has none (the constant at 0x01164BB0).
 void ItemColor(const AglRenderItem* item, float out[4])
@@ -1577,8 +1594,8 @@ void SimpleColorTxrUVTechnique::Draw(AglRenderItem* item)
 }
 
 class TextureWarpTechnique : public AglTechnique {
-    // TODO(0x005AEB00 TextureWarpTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     // @func 0x005AF07C TextureWarpTechnique::End
     void End(AglMaterial* /*material*/) override {}
@@ -1996,9 +2013,9 @@ public:
 };
 
 class SlyDecal4Technique : public AglTechnique {
-    // TODO(0x005C49C0 SlyDecal4Technique::BeginMaterial)
-    // TODO(0x005C4C3C SlyDecal4Technique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
+    void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABD7C SlyDecal4Technique::~SlyDecal4Technique
     // @func 0x007AF180 SlyDecal4Technique::~SlyDecal4Technique (deleting)
     ~SlyDecal4Technique() override = default;
@@ -2106,9 +2123,9 @@ public:
 };
 
 class SlyTerrainSnowTechnique : public AglTechnique {
-    // TODO(0x005CE508 SlyTerrainSnowTechnique::BeginMaterial)
     // TODO(0x005CE6A0 SlyTerrainSnowTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABE1C SlyTerrainSnowTechnique::~SlyTerrainSnowTechnique
     // @func 0x007AFD0C SlyTerrainSnowTechnique::~SlyTerrainSnowTechnique (deleting)
     ~SlyTerrainSnowTechnique() override = default;
@@ -2117,9 +2134,9 @@ public:
 };
 
 class SlyTerrainSnowDecalTechnique : public AglTechnique {
-    // TODO(0x005CFA68 SlyTerrainSnowDecalTechnique::BeginMaterial)
     // TODO(0x005CFDC0 SlyTerrainSnowDecalTechnique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     // @func 0x007ABE2C SlyTerrainSnowDecalTechnique::~SlyTerrainSnowDecalTechnique
     // @func 0x007AFDC8 SlyTerrainSnowDecalTechnique::~SlyTerrainSnowDecalTechnique (deleting)
     ~SlyTerrainSnowDecalTechnique() override = default;
@@ -2128,8 +2145,8 @@ public:
 };
 
 class SlyTextureWarpTechnique : public AglTechnique {
-    // TODO(0x005D17E8 SlyTextureWarpTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABE3C SlyTextureWarpTechnique::~SlyTextureWarpTechnique
@@ -2148,9 +2165,9 @@ public:
 };
 
 class SlyWater2Technique : public AglTechnique {
-    // TODO(0x005D33C8 SlyWater2Technique::BeginMaterial)
     // TODO(0x005D3750 SlyWater2Technique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABE5C SlyWater2Technique::~SlyWater2Technique
     // @func 0x007AFFF0 SlyWater2Technique::~SlyWater2Technique (deleting)
@@ -2158,9 +2175,9 @@ public:
 };
 
 class SlyWater3Technique : public AglTechnique {
-    // TODO(0x005D4C80 SlyWater3Technique::BeginMaterial)
     // TODO(0x005D5220 SlyWater3Technique::Draw)
 public:
+    void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABE6C SlyWater3Technique::~SlyWater3Technique
     ~SlyWater3Technique() override = default;
@@ -2175,8 +2192,8 @@ public:
 };
 
 class ShoTextureWarpTechnique : public AglTechnique {
-    // TODO(0x005D7598 ShoTextureWarpTechnique::Draw)
 public:
+    void Draw(AglRenderItem* item) override;
     void BeginMaterial(AglMaterial* material) override;
     void End(AglMaterial* material) override;
     // @func 0x007ABE8C ShoTextureWarpTechnique::~ShoTextureWarpTechnique
@@ -4451,6 +4468,89 @@ AglTechnique* SelectWaterTechnique(AglMaterial* material, AglRenderItem* item, i
     return Pick(material, index & 0xFF);
 }
 
+// @func 0x005D3180 UploadWaterWaves (SlyWater2 copy)
+// @func 0x005D4A38 UploadWaterWaves (SlyWater3 copy)
+// Two directional waves of the SlyWater2/3 vertex programs. Material
+// constants 0/1 and 3/4 are the x/z directions (normalised unless
+// shorter than 1e-5); from 'first' come amplitude, wavelength and speed of
+// wave A, then of wave B, then one extra value each. Vertex constants
+// reg = (2pi / wavelengthA, amplitudeA, phaseA, extraA), reg+1 likewise
+// for B (phase = 2pi / wavelength * speed * animation time), reg+2 and
+// reg+3 = (direction, 1).
+void UploadWaterWaves(const AglMaterial* material, int first, uint32_t reg)
+{
+    constexpr float kTwoPi = 6.2831855f;
+    constexpr float kEpsilon = 1e-5f;
+    auto direction = [material](int xIndex, int zIndex, float out[4]) {
+        float x = MaterialConstant(material, xIndex);
+        float z = MaterialConstant(material, zIndex);
+        float y = 0.0f;
+        const float length = std::sqrt(y * y + x * x + z * z);
+        if (std::fabs(length) >= kEpsilon) {
+            x /= length;
+            y /= length;
+            z /= length;
+        }
+        out[0] = x;
+        out[1] = y;
+        out[2] = z;
+        out[3] = 1.0f;
+    };
+    float dirA[4], dirB[4];
+    direction(0, 1, dirA);
+    direction(3, 4, dirB);
+    const float time = GetAnimationClock().time;
+    float waves[2][4];
+    for (int i = 0; i < 2; ++i) {
+        const float amplitude = MaterialConstant(material, first + 3 * i);
+        const float waveNumber = kTwoPi / MaterialConstant(material, first + 3 * i + 1);
+        const float speed = MaterialConstant(material, first + 3 * i + 2);
+        waves[i][0] = waveNumber;
+        waves[i][1] = amplitude;
+        waves[i][2] = waveNumber * speed * time;
+        waves[i][3] = MaterialConstant(material, first + 6 + i);
+    }
+    gpu::CommandList& cmd = Cmd();
+    cmd.SetVertexProgramConstants(reg, 4, waves[0]);
+    cmd.SetVertexProgramConstants(reg + 1, 4, waves[1]);
+    cmd.SetVertexProgramConstants(reg + 2, 4, dirA);
+    cmd.SetVertexProgramConstants(reg + 3, 4, dirB);
+}
+
+// BeginMaterial of SlyWater2/3 (separate copies on the console that differ
+// only in register numbers): branch bit 0 from constant 15, constant 16
+// splatted into vertex constant 'splatReg', the UV animation in 0xD, the
+// colour in 0x21, (constants 12, 13, 0, 0) in 0x22, the waves (see
+// UploadWaterWaves), the warp parameters in fragment constant 0,
+// (constant 17, constant 20, 1, 1) in fragment constant 'paramSlot', the
+// two warp transforms in vertex constants rowReg..rowReg+5 and
+// (0, constant 10, constant 11, constant 14) in fragment constant 1.
+void BeginWaterMaterial(AglMaterial* material, uint32_t splatReg, int firstWave, uint32_t waveReg,
+                        uint32_t paramSlot, uint32_t rowReg)
+{
+    SetTransformBranchBit0(MaterialConstantBitsSet(material, 15));
+    gpu::CommandList& cmd = Cmd();
+    const float splat = MaterialConstant(material, 16);
+    const float splat4[4] = { splat, splat, splat, splat };
+    cmd.SetVertexProgramConstants(splatReg, 4, splat4);
+    UploadUVTransform(material->anim, 0xD, 1.0f, 1.0f);
+    cmd.SetVertexProgramConstants(0x21, 4, material->color0);
+    const float scale[4] = { MaterialConstant(material, 12), MaterialConstant(material, 13), 0.0f, 0.0f };
+    cmd.SetVertexProgramConstants(0x22, 4, scale);
+    UploadWaterWaves(material, firstWave, waveReg);
+    ape::Matrix34 a{}, b{};
+    float params[4];
+    BuildWarpMatrices(material, a, b, params);
+    const float extra[4] = { MaterialConstant(material, 17), MaterialConstant(material, 20), 1.0f, 1.0f };
+    SetShaderConstant(paramSlot, extra);
+    SetShaderConstant(0, params);
+    UploadWarpRowsVertex(a, rowReg);
+    UploadWarpRowsVertex(b, rowReg + 3);
+    const float tail[4] = { 0.0f, MaterialConstant(material, 10), MaterialConstant(material, 11),
+                            MaterialConstant(material, 14) };
+    SetShaderConstant(1, tail);
+}
+
 // @func 0x005D47A0 SlyWater2Class::SelectTechnique
 AglTechnique* SlyWater2Class::SelectTechnique(AglMaterial* material, AglRenderItem* item)
 {
@@ -5789,6 +5889,135 @@ void SlyCharacterFakeFurTechnique::Draw(AglRenderItem* item)
     BeginItemAlpha(item, 2);
     ApplyItemStencilRef(item, 0x40);
     DrawItemGeometry(item);
+    EndItemAlpha(item);
+}
+
+// @func 0x005C49C0 SlyDecal4Technique::BeginMaterial
+// Three texture layers, each rotated by a material angle (constants 6, 7,
+// 8) and scaled by a pair of constants (0/1, 2/3, 4/5): vertex constants
+// 4..6 = (cos*su, -sin*sv, sin*su, cos*sv). The angles go through the
+// engine's parabolic sine without range reduction.
+void SlyDecal4Technique::BeginMaterial(AglMaterial* material)
+{
+    float layers[3][4];
+    for (int i = 0; i < 3; ++i) {
+        const float angle = MaterialConstant(material, 6 + i);
+        const float su = MaterialConstant(material, 2 * i);
+        const float sv = MaterialConstant(material, 2 * i + 1);
+        float s, c;
+        ParabolicSinCos(angle, s, c);
+        layers[i][0] = c * su;
+        layers[i][1] = -(s * sv);
+        layers[i][2] = s * su;
+        layers[i][3] = c * sv;
+    }
+    for (uint32_t i = 0; i < 3; ++i)
+        Cmd().SetVertexProgramConstants(4 + i, 4, layers[i]);
+}
+
+// @func 0x005C4C3C SlyDecal4Technique::Draw
+// Per-vertex lights for lit items, no item alpha.
+void SlyDecal4Technique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    if (item->lightMask & kItemLight_Lit)
+        UploadLightBlock(item, false, 0);
+    ApplyItemStencilRef(item);
+    item->geometry->Draw(item);
+}
+
+// @func 0x005CE508 SlyTerrainSnowTechnique::BeginMaterial
+// UV animation in vertex constant 4; the two snow colours (RGB bytes of
+// material constants 3 and 4, w = 0) in vertex constants 6 and 7.
+void SlyTerrainSnowTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    float colors[2][4];
+    for (int i = 0; i < 2; ++i) {
+        UnpackMaterialColor(material, 3 + i, colors[i]);
+        colors[i][3] = 0.0f;
+    }
+    Cmd().SetVertexProgramConstants(6, 4, colors[0]);
+    Cmd().SetVertexProgramConstants(7, 4, colors[1]);
+}
+
+// @func 0x005CFA68 SlyTerrainSnowDecalTechnique::BeginMaterial
+// UV animation in vertex constant 4, the snow colours (RGB bytes of
+// constants 0 and 1, w = 0) in 6 and 7, and two rotated texture layers
+// (angles 12 and 13, scales 8/9 and 10/11, laid out as for SlyDecal4) in 8
+// and 9.
+void SlyTerrainSnowDecalTechnique::BeginMaterial(AglMaterial* material)
+{
+    if (material->anim)
+        UploadUVTransform(material->anim, 4, 1.0f, 1.0f);
+    gpu::CommandList& cmd = Cmd();
+    for (int i = 0; i < 2; ++i) {
+        float color[4];
+        UnpackMaterialColor(material, uint32_t(i), color);
+        color[3] = 0.0f;
+        cmd.SetVertexProgramConstants(6 + uint32_t(i), 4, color);
+    }
+    for (int i = 0; i < 2; ++i) {
+        float s, c;
+        ParabolicSinCos(MaterialConstant(material, 12 + i), s, c);
+        const float su = MaterialConstant(material, 8 + 2 * i);
+        const float sv = MaterialConstant(material, 9 + 2 * i);
+        const float layer[4] = { c * su, -(s * sv), s * su, c * sv };
+        Cmd().SetVertexProgramConstants(8 + uint32_t(i), 4, layer);
+    }
+}
+
+// @func 0x005D33C8 SlyWater2Technique::BeginMaterial
+void SlyWater2Technique::BeginMaterial(AglMaterial* material)
+{
+    BeginWaterMaterial(material, 0x28, 25, 0x24, 4, 0x29);
+}
+
+// @func 0x005D4C80 SlyWater3Technique::BeginMaterial
+void SlyWater3Technique::BeginMaterial(AglMaterial* material)
+{
+    BeginWaterMaterial(material, 0x27, 27, 0x23, 5, 0x28);
+}
+
+// @func 0x005D17E8 SlyTextureWarpTechnique::Draw
+// Per-vertex lights for lit materials; item alpha in fragment constant 2;
+// mirrored items are not special-cased.
+void SlyTextureWarpTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    UploadMaterialVertexLights(item);
+    BeginItemAlpha(item, 2);
+    ApplyItemStencilRef(item);
+    item->geometry->Draw(item);
+    EndItemAlpha(item);
+}
+
+// @func 0x005D7598 ShoTextureWarpTechnique::Draw
+// Per-vertex lights for lit materials and the item alpha in fragment
+// constant 8; no stencil tag.
+void ShoTextureWarpTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFogCached(item, 0x20);
+    UploadMaterialVertexLights(item);
+    BeginItemAlpha(item, 8);
+    item->geometry->Draw(item);
+    EndItemAlpha(item);
+}
+
+// @func 0x005AEB00 TextureWarpTechnique::Draw
+// Per-vertex lights for lit materials and the item alpha in fragment
+// constant 8; no stencil tag.
+void TextureWarpTechnique::Draw(AglRenderItem* item)
+{
+    UploadWorldViewProj(item, 0);
+    ApplyItemFog(item, 0x20);
+    UploadMaterialVertexLights(item);
+    BeginItemAlpha(item, 8);
+    item->geometry->Draw(item);
     EndItemAlpha(item);
 }
 
