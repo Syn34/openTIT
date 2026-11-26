@@ -1,6 +1,8 @@
 // openTIT - Placement destructors (see EntityPlacements.h). Each class has its
 // own copy of the scripted entity placement's destructor body on the console.
 #include "sly/objects/EntityPlacements.h"
+#include "sly/entity/ScriptedEntity.h"
+#include "ape/xml/ApeXml.h"
 
 namespace sly {
 namespace objects {
@@ -174,6 +176,116 @@ RopePlacement::~RopePlacement() = default;
 // @func 0x007592B8 PlacementB193A8::~PlacementB193A8
 // @func 0x007593B0 PlacementB193A8::~PlacementB193A8 (deleting)
 PlacementB193A8::~PlacementB193A8() = default;
+
+} // namespace objects
+} // namespace sly
+
+namespace sly {
+namespace objects {
+
+namespace {
+
+// Attributes and child elements of the scripted placements.
+constexpr uint32_t kAttr_Field_DC  = 0xA7D74568u;
+constexpr uint32_t kAttr_Field_E0  = 0xF89FDD94u;
+constexpr uint32_t kAttr_Field_E4  = 0x7973EFA5u;
+constexpr uint32_t kAttr_Field_E8  = 0x2243757Fu;
+constexpr uint32_t kElem_BindingsA = 0xC3B709C0u;
+constexpr uint32_t kElem_BindingsB = 0xB921AB51u;
+constexpr uint32_t kAttr_PhysicalVecA = 0xADDC2CDDu;
+constexpr uint32_t kAttr_PhysicalVecB = 0x0948D097u;   // in degrees
+constexpr float kDegToRad = 0.017453292f;
+
+// Every binding the element's children describe, up to the list's capacity
+// (the console helper 0x0049EF40 on an ApeArray of 0x4C-byte records).
+void ParseBindings(ape::xml::XmlElement* elem, ape::ApeTArray<ScriptPropertyOverride>& list)
+{
+    for (ape::xml::XmlElement* child = elem->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        ScriptPropertyOverride binding;
+        if (!ParseScriptBinding(child, &binding))
+            continue;
+        if (list.Count() >= list.Capacity())
+            return;
+        list.PushBack(binding);
+    }
+}
+
+} // namespace
+
+// @func 0x000CC188 ScriptedEntityPlacement::ScriptedEntityPlacement
+// @func 0x000CC4D4 ScriptedEntityPlacement::ScriptedEntityPlacement (thunk)
+ScriptedEntityPlacement::ScriptedEntityPlacement(float defaultField_DC, const char* placementName,
+                                                 EntityDef* ownerDef, ape::world::ApeObj* source,
+                                                 const ape::Matrix34& placementTransform, const ape::Vec3& scale,
+                                                 bool bit31, bool bit30, uint32_t field74)
+    : EntityPlacement(placementName, ownerDef, source, placementTransform, scale, bit31, bit30, field74)
+{
+    // NOTE: the definition is taken to be a scripted one, as on the console.
+    const auto* scriptDef = static_cast<const entity::ScriptedEntityDef*>(ownerDef);
+    field_DC = scriptDef ? scriptDef->field_8C : defaultField_DC;
+    field_E0 = scriptDef ? scriptDef->lifetimeScriptName : 0;
+    field_E4 = scriptDef ? scriptDef->field_98 : 0;
+    field_E8 = scriptDef ? (scriptDef->damageFlags & 0x8000u) != 0 : true;
+    flags |= kPlace_Scripted;
+}
+
+// @func 0x000CBE10 ScriptedEntityPlacement::Parse
+void ScriptedEntityPlacement::Parse(ape::xml::XmlElement* elem)
+{
+    elem->GetFloat(kAttr_Field_DC, &field_DC, field_DC);
+    elem->GetHash(kAttr_Field_E0, &field_E0, field_E0);
+    elem->GetHash(kAttr_Field_E4, &field_E4, field_E4);
+    elem->GetBool(kAttr_Field_E8, &field_E8, field_E8);
+    for (ape::xml::XmlElement* child = elem->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        if (child->GetNameHash() == kElem_BindingsA)
+            ParseBindings(child, overridesA);
+        else if (child->GetNameHash() == kElem_BindingsB)
+            ParseBindings(child, overridesB);
+    }
+}
+
+// @func 0x000CBF88 PhysicalEntityPlacement::Parse
+void PhysicalEntityPlacement::Parse(ape::xml::XmlElement* elem)
+{
+    ScriptedEntityPlacement::Parse(elem);
+    elem->GetVec3(kAttr_PhysicalVecA, &settings.field_00.x, &settings.field_00.x);
+    elem->GetVec3(kAttr_PhysicalVecB, &settings.field_10.x, &settings.field_10.x);
+    settings.field_10.x *= kDegToRad;
+    settings.field_10.y *= kDegToRad;
+    settings.field_10.z *= kDegToRad;
+}
+
+// @func 0x000CC728 ParseScriptedEntityPlacement
+EntityPlacement* ParseScriptedEntityPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                              const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new ScriptedEntityPlacement(name, def);
+    placement->Parse(elem);
+    return placement;
+}
+
+// @func 0x000CC510 ParseActorPlacement
+EntityPlacement* ParseActorPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
+                                     EntityDef* def)
+{
+    (void)root;
+    auto* placement = new ActorPlacement(name, def);
+    placement->flags |= EntityPlacement::kPlace_Actor;
+    placement->Parse(elem);
+    return placement;
+}
+
+// Inline in the placement loader (0x000CC920).
+EntityPlacement* ParsePhysicalEntityPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                              const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new PhysicalEntityPlacement(name, def);
+    placement->flags |= EntityPlacement::kPlace_Physical;
+    placement->Parse(elem);
+    return placement;
+}
 
 } // namespace objects
 } // namespace sly

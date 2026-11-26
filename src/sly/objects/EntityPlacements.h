@@ -9,16 +9,16 @@
 
 #include "sly/objects/ObjectsBase.h"
 #include "ape/memory/ApeTArray.h"
+#include "sly/game/Upgrades.h"
+#include "ape/world/ApeBase.h"
 
 namespace sly {
 namespace objects {
 
-// One script property override of a scripted placement (0x4C-byte records;
-// read by 0x0049EF40 from the placement's override elements). NOTE: the
-// contents are not decoded; 0x4A bytes of each record are meaningful.
-struct ScriptPropertyOverride {
-    uint8_t data[0x4C];
-};
+// One script variable binding of a scripted placement (0x4C-byte records,
+// read by 0x0049EF40 from the placement's binding elements): the value the
+// entity's anim script variable starts with.
+using ScriptPropertyOverride = TextField;
 
 // Instance description of scripted entities (base description + 0x38
 // bytes); the classes' own parts follow from +0xC8.
@@ -37,14 +37,26 @@ struct ScriptedInstanceDesc : EntityInstanceDesc {
 // guesses.
 class ScriptedEntityPlacement : public EntityPlacement {
 public:
-    using EntityPlacement::EntityPlacement;
+    // 0x000CC188 (thunk 0x000CC4D4): the base placement, then the scripted
+    // defaults from the definition (`defaultField_DC` without one).
+    ScriptedEntityPlacement(float defaultField_DC, const char* placementName, EntityDef* ownerDef,
+                            ape::world::ApeObj* source, const ape::Matrix34& placementTransform,
+                            const ape::Vec3& scale, bool bit31, bool bit30, uint32_t field74 = 0);
+    // The placement the loaders build: identity transform, unit scale.
+    ScriptedEntityPlacement(const char* placementName, EntityDef* ownerDef)
+        : ScriptedEntityPlacement(100.0f, placementName, ownerDef, nullptr, ape::world::kWorldIdentity,
+                                  ape::world::kWorldUnitScale, true, false)
+    {
+    }
     ~ScriptedEntityPlacement() override;
+    // Reads the scripted attributes and the two binding lists (0x000CBE10).
+    void Parse(ape::xml::XmlElement* elem);
     // Slot 2 (0x000DFBFC): the base fields, the four scalars and both
     // override lists (appended).
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
 
-    ape::ApeTArray<ScriptPropertyOverride> overridesA;   // +0xB4 (child element 0xC3B709C0)
-    ape::ApeTArray<ScriptPropertyOverride> overridesB;   // +0xC8 (child element 0xB921AB51)
+    ape::ApeTArray<ScriptPropertyOverride> overridesA{16, nullptr, true};   // +0xB4 (child element 0xC3B709C0)
+    ape::ApeTArray<ScriptPropertyOverride> overridesB{16, nullptr, true};   // +0xC8 (child element 0xB921AB51)
     float field_DC = 100.0f;            // +0xDC attribute 0xA7D74568
     uint32_t field_E0 = 0;              // +0xE0 attribute 0xF89FDD94 (hash)
     uint32_t field_E4 = 0;              // +0xE4 attribute 0x7973EFA5 (hash)
@@ -57,6 +69,7 @@ public:
     using ScriptedEntityPlacement::ScriptedEntityPlacement;
     ~ActorPlacement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
+    uint32_t field_EC = 0;              // +0xEC
 };
 
 // The scripted descriptions of the classes below. Field names keep the
@@ -75,6 +88,9 @@ public:
     using ScriptedEntityPlacement::ScriptedEntityPlacement;
     ~PhysicalEntityPlacement() override;
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;   // 0x000EB080
+    // The scripted attributes, then the two vectors (the second given in
+    // degrees) (0x000CBF88).
+    void Parse(ape::xml::XmlElement* elem);
     PhysicalSettings settings;          // +0xF0
     uint32_t field_114 = 0;             // +0x114
 };
@@ -558,5 +574,18 @@ public:
     bool field_B8 = false;             // +0xB8
 };
 
+} // namespace objects
+} // namespace sly
+
+namespace sly {
+namespace objects {
+// Placement loaders of the plain scripted / actor / physical entity elements
+// (0x000CC728, 0x000CC510, and inline in 0x000CC920).
+EntityPlacement* ParseScriptedEntityPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                              const char* name, EntityDef* def);
+EntityPlacement* ParseActorPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
+                                     EntityDef* def);
+EntityPlacement* ParsePhysicalEntityPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                              const char* name, EntityDef* def);
 } // namespace objects
 } // namespace sly
