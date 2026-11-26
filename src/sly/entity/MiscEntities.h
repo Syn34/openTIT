@@ -69,7 +69,11 @@ public:
 class EntityB15028 : public Entity {
 public:
     ~EntityB15028() override;
+    // Slot 10: a kill drops the two referenced objects first.
+    bool Release(bool kill) override;
     ape::ApeTArray<void*> field_158;   // +0x158 NOTE: element type unknown
+    ape::world::ApeObj* object_170 = nullptr;   // +0x170 counted reference
+    ape::world::ApeObj* object_174 = nullptr;   // +0x174 counted reference
 };
 
 } // namespace entity
