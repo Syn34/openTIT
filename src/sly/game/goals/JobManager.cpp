@@ -829,6 +829,14 @@ void JobManager::SelectGoalByName(uint32_t nameHash, bool keepPlayers, bool requ
     SelectGoal(goal, keepPlayers, requestLevel);
 }
 
+// @func 0x002E1DB0 JobManager::StartJobFromHubByName
+void JobManager::StartJobFromHubByName(uint32_t jobName, uint32_t goalName, bool toHub, bool toHideout,
+                                       bool forceReload, bool levelRequestFlag, bool skipBookkeeping)
+{
+    Episode* job = jobName ? FindEpisode(jobName) : nullptr;
+    StartJobFromHub(job, goalName, toHub, toHideout, forceReload, levelRequestFlag, skipBookkeeping, true);
+}
+
 // @func 0x002E0930 JobManager::StartJobFromHub
 bool JobManager::StartJobFromHub(Episode* job, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
                                  bool levelRequestFlag, bool skipBookkeeping, bool track)

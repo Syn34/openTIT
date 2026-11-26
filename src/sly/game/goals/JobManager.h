@@ -541,6 +541,10 @@ public:
     void OnGoalFailed(Goal* goal, uint8_t player);
     bool StartJobFromHub(Episode* job, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
                          bool levelRequestFlag, bool skipBookkeeping, bool track);
+    // StartJobFromHub for the job named `jobName` (none for 0 or an unknown
+    // name), always tracked (0x002E1DB0).
+    void StartJobFromHubByName(uint32_t jobName, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
+                               bool levelRequestFlag, bool skipBookkeeping);
     // Ends the running job instance, first updating its episode's flag 0x20
     // (0x002E5060).
     void FinishJobInstance();

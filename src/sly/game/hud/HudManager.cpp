@@ -3,6 +3,8 @@
 
 #include "ape/core/ApeString.h"
 #include "ape/anim/ApeAnimScript.h"
+#include "ape/anim/ApeAnimScriptVars.h"
+#include "sly/game/GameScripts.h"
 #include "ape/level/ApeGuiScript.h"
 #include "ape/level/ApeGuiTypes.h"
 #include "sly/anim/AnimLayer.h"
@@ -10,9 +12,12 @@
 #include "ape/world/ApeObj.h"
 #include "sly/anim/AnimController.h"
 #include "sly/game/hud/HudHooks.h"
+#include "sly/game/hud/HudElement.h"
+#include "sly/game/hud/HudMeter.h"
 #include "sly/entity/GameEntityHooks.h"
 
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <cstdio>
 
@@ -92,6 +97,191 @@ HudObject::~HudObject()
         delete animController;
         animController = nullptr;
     }
+}
+
+// @func 0x0035BD08 HudObject::StartLifetimeScript
+void HudObject::StartLifetimeScript()
+{
+    if (!field_10)
+        return;
+    // NOTE: the console also hands the animation controller to "this" (the
+    // object variable's +0x24 word); the port's variable keeps 32 bits there.
+    ape::ApeAnimScriptInstance* script = StartObjectScript(field_10, ObjectScriptRef(object), 0, true);
+    animScript = script;
+    if (!script)
+        return;
+    if (ape::ApeRefCounted* camera = GameCameraScriptRef()) {
+        ape::ApeAnimScriptVar* var = script->FindVar(0x760CB725u);   // "camera"
+        if (var && var->GetType() == ape::AnimScriptVarType::Object)
+            static_cast<ape::ApeAnimScriptObjectVar*>(var)->SetObject(camera);
+    }
+    // The element owns the script: it is not dropped when it finishes.
+    script->SetRemoveWhenFinished(false);
+    script->Update(1.0f / 60.0f);
+    // NOTE: the console warns here when the script has no commands
+    // ("hud object '%s' lifetime script '%s' has no commands").
+}
+
+// @func 0x0035BFB0 hud::StartLifetimeScripts
+void StartLifetimeScripts()
+{
+    auto& objects = Hud().objects;
+    for (uint32_t i = 0; i < objects.Count(); ++i)
+        objects.Data()[i].value->StartLifetimeScript();
+}
+
+// TODO(0x00363B78 hud::UpdateTextOverride): the restyled label's
+// transform/colour/scale animation is not ported.
+void UpdateTextOverride(float, HudTextOverride&) {}
+
+// @func 0x003655D0 hud::UpdateHud
+void UpdateHud(float dt)
+{
+    HudManagerState& hud = Hud();
+    for (HudObject* meter : hud.retiredMeters) {
+        hud.objects.Remove(meter->RegisteredName());
+        delete meter;
+    }
+    hud.retiredMeters.Clear();
+    for (uint32_t i = 0; i < hud.hideList.Count(); ++i) {
+        const auto& entry = hud.hideList.Data()[i];
+        hud.objects.Remove(entry.key);
+        delete entry.value;
+    }
+    hud.hideList.Clear();
+
+    if (hud.pendingScreen && !HudFrameTimeFrozen() && !GameWorldInLoadingState()) {
+        UpdateMeterB();
+        hud.pendingScreen = false;
+        hud.pendingScreenName = 0;
+    }
+    if (hud.contextName) {
+        UpdateMeterA();
+        hud.contextName = 0;
+        hud.contextEntity = nullptr;
+    }
+    if (hud.powMeterName && !HudFrameTimeFrozen()) {
+        UpdatePowMeter();
+        hud.powMeterName = 0;
+    }
+
+    UpdateTextOverride(dt, TextOverride());
+    for (uint32_t i = 0; i < hud.objects.Count(); ++i) {
+        HudObject* element = hud.objects.Data()[i].value;
+        if (element->animState & 1u)
+            element->Update(dt);
+    }
+    // Elements whose object was hidden or dropped give their place up.
+    for (auto& stack : hud.stacks) {
+        for (uint32_t i = 0; i < stack.Count();) {
+            HudObject* element = stack[i];
+            const uint32_t count = stack.Count();
+            if (!element->object || !ObjectVisible(element->object))
+                element->LeaveStack();   // removes it from `stack`
+            if (stack.Count() == count)
+                ++i;
+        }
+    }
+}
+
+namespace {
+// Elements SuspendHud leaves alone (0x00F64CE4, 0x00F64CE8, 0x00F64CFC; the
+// last is the pause screen element). NOTE: names unknown.
+constexpr uint32_t kSuspendExemptA = 0xB4D251F9u;
+constexpr uint32_t kSuspendExemptB = 0x8182782Eu;
+constexpr uint32_t kSuspendExemptPause = 0xC2AB44C8u;
+} // namespace
+
+// @func 0x00366E20 hud::SuspendHud
+void SuspendHud()
+{
+    HudManagerState& hud = Hud();
+    hud.suspended.Clear();
+    for (uint32_t i = 0; i < hud.objects.Count(); ++i) {
+        HudObject* element = hud.objects.Data()[i].value;
+        if (!element->object || !ObjectVisible(element->object))
+            continue;
+        const uint32_t name = element->RegisteredName();
+        if (name == g_busyElementName || name == kSuspendExemptA || name == kSuspendExemptB ||
+            name == kSuspendExemptPause)
+            continue;
+        element->SetActive(false);
+        hud.suspended.Add(element);
+    }
+    hud.hudSuspended = true;
+}
+
+// @func 0x00367018 hud::ResumeHud
+void ResumeHud()
+{
+    HudManagerState& hud = Hud();
+    if (hud.suspended.Count() != 0) {
+        for (int32_t priority = 0; priority < 4; ++priority) {
+            for (int32_t i = int32_t(hud.suspended.Count()) - 1; i >= 0; --i) {
+                HudObject* element = hud.suspended[size_t(i)];
+                if ((element->def ? element->def->priority : 0) != priority)
+                    continue;
+                element->SetActive(true);
+                element->EnterStack();
+            }
+        }
+    }
+    hud.suspended.Clear();
+    hud.hudSuspended = false;
+}
+
+// @func 0x003677C4 hud::CloneElement
+HudObject* CloneElement(HudObject* source, uint32_t name)
+{
+    if (!source || !name || !source->def)
+        return nullptr;
+    auto* element = new HudPlainElement(source->def);
+    element->typeFlags |= kHud_Object;
+    Hud().objects.Add(name, element);
+    element->name = name;
+    return element;
+}
+
+// @func 0x00367900 hud::CloneElementByName
+HudObject* CloneElementByName(uint32_t sourceName, uint32_t name)
+{
+    if (!sourceName || !name)
+        return nullptr;
+    // NOTE: the console warns (with the source's name) when nothing was made.
+    return CloneElement(Find(sourceName), name);
+}
+
+// @func 0x0035B668 hud::UnloadHud
+void UnloadHud()
+{
+    HudManagerState& hud = Hud();
+    for (uint32_t i = 0; i < hud.hideList.Count(); ++i) {
+        const auto& entry = hud.hideList.Data()[i];
+        hud.objects.Remove(entry.key);
+        delete entry.value;
+    }
+    hud.hideList.Clear();
+    for (uint32_t i = 0; i < hud.objects.Count(); ++i)
+        delete hud.objects.Data()[i].value;
+    hud.objects.Clear();
+    for (uint32_t i = 0; i < hud.defs.Count(); ++i)
+        delete hud.defs.Data()[i].value;
+    hud.defs.Clear();
+    for (auto& stack : hud.stacks)
+        stack.Clear();
+    hud.updateList.Clear();
+    hud.meterA = nullptr;
+    hud.meterB = nullptr;
+    hud.powMeter = nullptr;
+    hud.meters.Clear();
+    hud.retiredMeters.Clear();
+    for (uint32_t i = 0; i < hud.defBuffers.Count(); ++i)
+        std::free(hud.defBuffers.Data()[i].value);
+    hud.defBuffers.Clear();
+    HudTextOverride& override = TextOverride();
+    override.owner = nullptr;
+    override.element = nullptr;
+    ResetTextOverride(override);
 }
 
 // @func 0x0036A2FC HudObject::Update
@@ -790,17 +980,17 @@ int CountElementsAtAnchor(int32_t anchor)
 }
 
 // @func 0x00369D00 hud::SetContext
-void SetContext(uint32_t value, uint32_t name)
+void SetContext(entity::Entity* owner, uint32_t name)
 {
     Hud().contextName = name;
-    Hud().contextValue = value;
+    Hud().contextEntity = owner;
 }
 
 // @func 0x00369D14 hud::SetContextByString
-void SetContextByString(uint32_t value, const char* name)
+void SetContextByString(entity::Entity* owner, const char* name)
 {
     Hud().contextName = ape::HashNameNoCase(name);
-    Hud().contextValue = value;
+    Hud().contextEntity = owner;
 }
 
 // @func 0x0036960C hud::RequestScreen
@@ -824,14 +1014,14 @@ void SetPowMeterPrefix(const char* prefix)
 void SnapMeterA()
 {
     if (HudObject* meter = Hud().meterA)
-        meter->shownValue = meter->targetValue;
+        meter->meterHoldTimer = meter->meterHoldTime;
 }
 
 // @func 0x00369658 hud::SnapMeterB
 void SnapMeterB()
 {
     if (HudObject* meter = Hud().meterB)
-        meter->shownValue = meter->targetValue;
+        meter->meterHoldTimer = meter->meterHoldTime;
 }
 
 namespace {
@@ -859,11 +1049,11 @@ void SetMeterBVariant(bool on)
 }
 
 // @func 0x00369BC8 hud::SnapMeterOf
-void SnapMeterOf(uint32_t owner)
+void SnapMeterOf(const entity::Entity* owner)
 {
     for (HudObject* meter : Hud().meters) {
         if (meter->meterOwner == owner) {
-            meter->shownValue = meter->targetValue;
+            meter->meterHoldTimer = meter->meterHoldTime;
             return;
         }
     }
