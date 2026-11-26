@@ -38,7 +38,7 @@ public:
     // @func 0x00767AA8 FxEffect::KillIfAttachedTo
     virtual void KillIfAttachedTo(ape::world::ApeObj* object) { (void)object; }   // slot 6 (+0x18)
     // Slot 7 (+0x1C): attached effects take `value` (+0x04) when attached to
-    // `object`. NOTE: meaning of the value unknown.
+    // `object`. The value is the owner's time scale (FxManager::SetTimeScaleOn).
     // @func 0x00767AAC FxEffect::SetValueIfAttachedTo
     virtual void SetValueIfAttachedTo(ape::world::ApeObj* object, float value) { (void)object; (void)value; }
 
@@ -49,9 +49,19 @@ public:
 // One queued camera shake (0x60 bytes).
 using CameraShake = gameplay::CameraShakeParams;
 
+struct FxEffectDesc;
+
 class FxManager {
 public:
     static constexpr int kMaxShakes = 0x10;
+
+    // Creates the effect a description asks for and keeps it in the effect
+    // list; `handle` receives its handle (0x002F0E0C). Null, with the handle
+    // untouched, when the list is full or the kind is unknown.
+    FxEffect* Play(const FxEffectDesc& desc, uint32_t* handle);
+    // Gives every effect attached to `object` a new time scale
+    // (FxEffect::value; 0x002EF7B8, from the entity time scale setter).
+    void SetTimeScaleOn(ape::world::ApeObj* object, float timeScale);
 
     // Updates every effect unless effects are paused (0x002EF36C).
     void UpdateEffects();

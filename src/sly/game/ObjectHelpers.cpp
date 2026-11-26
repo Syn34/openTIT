@@ -54,6 +54,7 @@ struct NameSearch {
 // @func 0x004AFCB4 FindByNameVisitor
 // @func 0x00099FE0 FindByNameVisitor (copy 2)
 // @func 0x0009A074 FindByNameVisitor (copy 3)
+// @func 0x002F5D6C FindByNameVisitor (copy 4)
 bool FindByNameVisitor(ape::world::ApeObj* object, void* arg)
 {
     auto* search = static_cast<NameSearch*>(arg);
