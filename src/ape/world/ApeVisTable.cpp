@@ -2,6 +2,7 @@
 #include "ape/world/ApeVisTable.h"
 
 #include "ape/core/ApeSystem.h"
+#include "ape/world/ApeDefTypes.h"
 #include "ape/world/ApeInstances.h"
 #include "ape/world/ApeRenderNode.h"
 
@@ -127,6 +128,65 @@ void ApeRenderObj::SyncVisRecord()
 ApeGeomInstance::~ApeGeomInstance()
 {
     ReleaseVisRecord(*this);
+}
+
+uint32_t g_lightChangeStamp = 0;
+uint32_t g_localLightsChanged = 0;
+uint32_t g_globalLightsChanged = 0;
+
+ApeLightTable& GetLightTable()
+{
+    static ApeLightTable s_table;
+    if (s_table.records.empty()) {
+        // NOTE: the console sizes this table outside the ported code; the
+        // record count of the draw record table is used here.
+        const uint32_t count = g_engineConfig.field_154 ? g_engineConfig.field_154 : kDefaultVisRecords;
+        s_table.records.resize(count);
+        s_table.localCount = 0;
+        s_table.globalNext = static_cast<uint16_t>(count - 1);
+    }
+    return s_table;
+}
+
+// @func 0x005A2024 MoveLightRecord
+void MoveLightRecord(uint16_t index, uint16_t from)
+{
+    ApeLightTable& table = GetLightTable();
+    ApeLightRecord& record = table.records[index];
+    if (record.owner)
+        record.owner->m_visSlot = 0xFFFF;
+    if (index == from) {
+        record.field_00 = {};
+        record.field_2C = 0;
+        record.owner = nullptr;
+        return;
+    }
+    const uint8_t keptFlags = record.flags3E & 0x7F;
+    record = table.records[from];
+    record.flags3E = static_cast<uint8_t>((record.flags3E & 0x80) | keptFlags);
+    if (record.owner)
+        record.owner->m_visSlot = index;
+}
+
+// @func 0x005A21B4 ApeLightInstance::~ApeLightInstance
+// @func 0x005A22AC ApeLightInstance::~ApeLightInstance (deleting)
+ApeLightInstance::~ApeLightInstance()
+{
+    if (m_visSlot != 0xFFFF) {
+        ApeLightTable& table = GetLightTable();
+        if (m_lightType == 2) {
+            MoveLightRecord(m_visSlot, static_cast<uint16_t>(table.localCount - 1));
+            --table.localCount;
+        } else if (m_lightType == 0 || m_lightType == 1) {
+            MoveLightRecord(m_visSlot, static_cast<uint16_t>(table.globalNext + 1));
+            ++table.globalNext;
+        }
+    }
+    const auto* def = static_cast<const ApeLightDef*>(GetDef());
+    if (def && def->m_lightType < 2)
+        g_globalLightsChanged = g_lightChangeStamp;
+    else
+        g_localLightsChanged = g_lightChangeStamp;
 }
 
 // @func 0x005A3DC0 ApeEmitterInstance::~ApeEmitterInstance

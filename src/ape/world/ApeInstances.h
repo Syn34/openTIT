@@ -204,6 +204,8 @@ class ApeLightInstance : public ApeRenderObj {
 public:
     static constexpr uint32_t kInstanceType = kObjType_LightInstance;
     ApeLightInstance() : ApeRenderObj(kInstanceType) {}
+    // Gives the light record back (ApeVisTable.h).
+    ~ApeLightInstance() override;
     void Release() override;
 
     // Takes the light parameters of the definition (defaults without one).

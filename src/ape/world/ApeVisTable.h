@@ -40,6 +40,36 @@ struct ApeVisTable {
 // by default).
 ApeVisTable& GetVisTable();
 
+// Light records (0x011945A0): 0x40 bytes each, local lights packed at the
+// front, ambient and directional lights at the back.
+struct alignas(16) ApeLightRecord {
+    Vec4 field_00 = {};             // NOTE: renderer data, zero when the record is set up
+    uint8_t field_10[0x1C] = {};
+    uint32_t field_2C = 0;
+    ApeRenderObj* owner = nullptr;  // 0x30
+    uint32_t field_34 = 0;
+    uint32_t field_38 = 0;
+    uint8_t field_3C = 0;
+    uint8_t field_3D = 0;
+    uint8_t flags3E = 0;            // bit 7 travels with the record, the rest stays with the slot
+};
+
+struct ApeLightTable {
+    std::vector<ApeLightRecord> records;
+    uint16_t localCount = 0;        // 0x011945A4
+    uint16_t globalNext = 0;        // 0x011945A6 (counts down)
+};
+ApeLightTable& GetLightTable();
+// Replaces light record 'index' with record 'from' (or clears it).
+void MoveLightRecord(uint16_t index, uint16_t from);
+
+// Frame stamps of the last change to the local / global lights (0x010C5A84
+// and 0x010C5A88), set from the current stamp (0x010C5A80) when a light of
+// that kind goes away. NOTE: names inferred from the light destructor.
+extern uint32_t g_lightChangeStamp;
+extern uint32_t g_localLightsChanged;
+extern uint32_t g_globalLightsChanged;
+
 // Gives a geometry or emitter instance its record (other types get none).
 void AllocVisRecord(ApeRenderObj& obj);
 // Points the owner's render node at record 'index' (geometry and emitters).
