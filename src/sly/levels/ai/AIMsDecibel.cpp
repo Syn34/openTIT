@@ -5,6 +5,7 @@
 
 #include "sly/levels/ai/AIHooks.h"
 #include "sly/levels/ai/AITuning.h"
+#include "sly/game/hud/HudManager.h"
 #include "sly/entity/Entity.h"
 
 #include <cmath>
@@ -91,6 +92,32 @@ void MsDecibelAI::CheckCounterAttack()
     if (counterAttacks > 0)
         --counterAttacks;
     SetState(9);
+}
+
+// @func 0x000575F0 MsDecibelAI::OnDamaged
+void MsDecibelAI::OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info)
+{
+    (void)kind;
+    const bool open = state == 5 || (state == 12 && stateTime > 3.0f);
+    if (!open || amount <= 0.0f)
+        return;
+    if (!(info->flags & 0x1000) || (info->flags >> 13) != 1)
+        return;
+    ++hitsTaken;
+    if (phase != 9) {
+        EntityDamage(character, amount, info->source, 0);
+        hud::SnapMeterA();
+    }
+    flags1 |= 0x80;
+    dodgeSide = (ape::g_gameRandom.seed & 1u) != 0;
+    ape::RandomUnit(ape::g_gameRandom);
+    if (info->attack) {
+        const uint32_t side = info->attack->flags48 >> 30;
+        if (side == 2)
+            dodgeSide = true;
+        else if (side == 1)
+            dodgeSide = false;
+    }
 }
 
 } // namespace ai

@@ -3,6 +3,8 @@
 
 #include "ape/world/ApeObj.h"
 #include "sly/levels/ai/AIHooks.h"
+#include "ape/anim/ApeAnimScript.h"
+#include "sly/game/SlyGame.h"
 #include "sly/levels/ai/AITuning.h"
 
 #include <cmath>
@@ -170,6 +172,21 @@ BismarqueAI::RetreatPoint* BismarqueAI::PickRetreatPoint()
     if (best < 0)
         best = ape::RandomInt(ape::g_gameRandom, 0, int(count) - 1);
     return &retreatPoints[size_t(best)];
+}
+
+// @func 0x00041A08 BismarqueAI::SetFightVisualsHidden
+void BismarqueAI::SetFightVisualsHidden(bool hidden)
+{
+    if (g_game->cutsceneQueue.Count() != 0 || state != 0x19)
+        return;
+    for (ape::world::ApeObj* marker : markers) {
+        if (marker)
+            marker->SetVisible(!hidden, true);
+    }
+    for (AttackRecord& attack : attacks) {
+        if (attack.script)
+            attack.script->SetStateAndUpdate(hidden ? 0x8C3F8D2Eu : 0x28298107u);
+    }
 }
 
 } // namespace ai

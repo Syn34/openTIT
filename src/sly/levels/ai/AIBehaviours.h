@@ -476,7 +476,18 @@ public:
     // Lists whose element types are not decoded (records of the sizes the
     // constructor gives).
     template <size_t N> struct Record { uint8_t bytes[N]; };
-    ape::ApeTArray<Record<0x70>> list134{0x10};          // +0x134
+    // +0x134 the boss's attack records (0x70 bytes); only the effect
+    // script at +0x50 is known.
+    struct AttackRecord {
+        uint8_t field_00[0x50];
+        ape::ApeAnimScriptInstance* script;   // +0x50
+        uint8_t field_54[0x1C];
+    };
+    ape::ApeTArray<AttackRecord> attacks{0x10};          // +0x134
+    // In state 0x19 and with no cutscene queued: hides (or shows) the two
+    // ground markers and switches the attack effect scripts to their hidden
+    // (0x8C3F8D2E) or shown (0x28298107) state (0x00041A08).
+    void SetFightVisualsHidden(bool hidden);
     ape::ApeTArray<Record<4>> list148{0x40, nullptr, true};   // +0x148
     ape::ApeTArray<Record<4>> list15C{0x40, nullptr, true};   // +0x15C
     ape::ApeTArray<Record<0x30>> list170{0x40, nullptr, true}; // +0x170
@@ -546,6 +557,11 @@ public:
     float GravitySpeed() override;
     void OnTauntChance() override;
     void OnScriptCommand(uint32_t command, uint32_t arg1, uint32_t arg2, float value) override;
+    // Slot 49: hits only count while she is open to them (state 5, or state
+    // 12 after three seconds) and come from the right attack (flag bit 12,
+    // category 1); outside phase 9 they hurt her character. The side she
+    // dodges to next is drawn at random unless the attack says.
+    void OnDamaged(float amount, uint32_t kind, const AIDamageInfo* info) override;
 
     // Starts the fight (called by a level script command) (0x0005BB08).
     void Start();
@@ -568,6 +584,8 @@ public:
     ape::world::ApeObj* stretchTo = nullptr;            // +0x1864
     float stretchStart = 0.0f;                          // +0x1868
     float stretchEnd = 1.0f;                            // +0x186C
+    int32_t hitsTaken = 0;     // +0x181C
+    bool dodgeSide = false;    // +0x1820
     bool started = false;      // +0x1870
 };
 class ParadoxAI : public AIController {

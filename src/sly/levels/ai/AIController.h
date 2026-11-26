@@ -400,6 +400,12 @@ public:
     const PropertyBlock* settings = nullptr;
 };
 
+// The attack a hit came from, as far as the AI reads it. NOTE: class unknown.
+struct AIAttackDesc {
+    uint8_t field_00[0x48];
+    uint32_t flags48;            // +0x48 bits 30-31: Ms Decibel's dodge side (2 one way, 1 the other)
+};
+
 // Damage description handed to OnDamaged.
 struct AIDamageInfo {
     uint32_t field_00 = 0;
@@ -408,6 +414,8 @@ struct AIDamageInfo {
     uint16_t field_0C = 0;       // +0x0C NOTE: bit 8 marks a hit with a position
     uint16_t flags = 0;          // +0x0E NOTE: bit 12 makes sentries react; bits 13-15 a category
     ape::Vec3 position{};        // +0x10 where the hit landed (see field_0C)
+    uint8_t field_20[0x2C] = {}; // +0x20
+    const AIAttackDesc* attack = nullptr;   // +0x4C
 };
 
 // One active melee attack volume (0x50 bytes on the console; sixteen in a
