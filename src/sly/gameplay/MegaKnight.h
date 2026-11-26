@@ -94,6 +94,8 @@ struct MegaKnightPlatform {
     // 0x00308F5C: stops the scripts and switches the boss's platform script
     // state; `full` also shows the object and resets the motion values.
     void Reset(bool full);
+    // 0x0030A53C: per-frame motion of the platform. TODO.
+    void Update(float dt);
 
     ape::world::ApeObj* object = nullptr;            // +0x00
     MegaKnight* boss = nullptr;                      // +0x04
@@ -173,6 +175,9 @@ struct MegaKnightStampManager {
     // Idle phase test: nothing falling, at most `count` stamps landed, none
     // queued.
     bool Settled(uint32_t count) const;
+    // 0x0030B6D8: drops the queued stamps when due and lands the falling
+    // ones. TODO.
+    void Update(float dt);
     void ClearPending();
 
     MegaKnight* boss = nullptr;                          // +0x00
@@ -216,6 +221,7 @@ struct MegaKnightTracking {
 class MegaKnight : public entity::ActorEntity {
 public:
     ~MegaKnight() override;
+    bool Update(float dt) override;                         // slot 4
     bool PostUpdate(float dt) override;                     // slot 5
     bool Release(bool kill) override;                       // slot 10
     // The boss takes no hits through the hit categories.
@@ -255,6 +261,10 @@ public:
     uint32_t ChooseNextPhase();
     // 0x00304298: stops the arm marker spawners and releases the marker objects.
     void ClearArmMarkers();
+    // 0x0030EEE0: follows the player (tracking block, arm/rope states). TODO.
+    void UpdateTracking(float dt);
+    // 0x0030D5C0: aims the boss (look-at and IK). TODO.
+    void UpdateAim(float dt);
     // 0x0030EBF0: runs the current phase (switching to the next one when it
     // is done) and the scripts of finished phases; false once the fight was
     // reset.
@@ -321,11 +331,13 @@ public:
     ape::ApeAnimScriptInstance* scripts3B0[3] = {};    // 0x3B0
     int32_t field_3BC = -1;                            // 0x3BC
     int32_t field_3C0 = -1;                            // 0x3C0
-    ApproachVec3 lookAt;                               // 0x3D0 (current at +0x3D0)
-    ape::Vec3 focus{};                                 // 0x3E0 point the boss looks at
+    ApproachVec3 lookAt;                               // 0x3D0 target (+0x3E0): point the boss looks at; rate (+0x3F0) IKBlend
     FloatTween glow;                                   // 0x400 NOTE: name assumed (0..1 blend)
     int32_t targetArm = 0;                             // 0x424
     bool field_428 = false;                            // 0x428
+    bool tooCloseLinePlayed = false;                   // 0x42C
+    bool fightLinePlayed = false;                      // 0x42D
+    float offPlatformTimer = 0.0f;                     // 0x430 counts down to the "off the platform" line
 
     // Placeholder for the layer 0 state of the console's state machine base
     // (the entity port does not model it).

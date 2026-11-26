@@ -153,9 +153,9 @@ void MegaKnightPhase::OnEventD() {}
 // The boss looks at its tracking anchor.
 void MegaKnightPhase::UpdateFocus()
 {
-    boss->focus.x = boss->tracking.anchor.x;
-    boss->focus.y = boss->tracking.anchor.y;
-    boss->focus.z = boss->tracking.anchor.z;
+    boss->lookAt.target.x = boss->tracking.anchor.x;
+    boss->lookAt.target.y = boss->tracking.anchor.y;
+    boss->lookAt.target.z = boss->tracking.anchor.z;
 }
 
 // ===========================================================================
@@ -282,9 +282,9 @@ void MKPhaseLaser::OnEventA() { interrupted = true; }
 void MKPhaseLaser::UpdateFocus()
 {
     const ape::Vec3& p = boss->platform->position;
-    boss->focus.x = p.x;
-    boss->focus.y = p.y;
-    boss->focus.z = p.z;
+    boss->lookAt.target.x = p.x;
+    boss->lookAt.target.y = p.y;
+    boss->lookAt.target.z = p.z;
 }
 
 // @func 0x0031321C MKPhaseLaser::IsDone
@@ -342,9 +342,9 @@ void MKPhaseLaserQuick::OnEventA() { interrupted = true; }
 void MKPhaseLaserQuick::UpdateFocus()
 {
     const ape::Vec3& p = boss->platform->position;
-    boss->focus.x = p.x;
-    boss->focus.y = p.y;
-    boss->focus.z = p.z;
+    boss->lookAt.target.x = p.x;
+    boss->lookAt.target.y = p.y;
+    boss->lookAt.target.z = p.z;
 }
 
 // @func 0x003141A8 MKPhaseLaserQuick::IsDone
@@ -493,9 +493,9 @@ void MKPhaseMonitorPlatform::OnEventC() { eventC = true; }
 // @func 0x00315788 MKPhaseMonitorPlatform::UpdateFocus
 void MKPhaseMonitorPlatform::UpdateFocus()
 {
-    boss->focus.x = boss->tracking.anchor.x;
-    boss->focus.y = boss->tracking.anchor.y;
-    boss->focus.z = boss->tracking.anchor.z;
+    boss->lookAt.target.x = boss->tracking.anchor.x;
+    boss->lookAt.target.y = boss->tracking.anchor.y;
+    boss->lookAt.target.z = boss->tracking.anchor.z;
 }
 
 // @func 0x003157C0 MKPhaseMonitorPlatform::Query17
@@ -558,9 +558,9 @@ void MKPhaseShootPlatform::OnEventC() {}
 void MKPhaseShootPlatform::UpdateFocus()
 {
     const ape::Vec3& p = boss->platform->position;
-    boss->focus.x = p.x;
-    boss->focus.y = p.y;
-    boss->focus.z = p.z;
+    boss->lookAt.target.x = p.x;
+    boss->lookAt.target.y = p.y;
+    boss->lookAt.target.z = p.z;
 }
 
 // @func 0x00316618 MKPhaseShootPlatform::Query17
@@ -624,13 +624,13 @@ void MKPhaseRopeAttached::UpdateFocus()
 {
     const uint32_t state = GetState(0);
     if (state > 0 && state < 5) {
-        boss->focus.x = laserPoint.x;
-        boss->focus.y = laserPoint.y;
-        boss->focus.z = laserPoint.z;
+        boss->lookAt.target.x = laserPoint.x;
+        boss->lookAt.target.y = laserPoint.y;
+        boss->lookAt.target.z = laserPoint.z;
     } else {
-        boss->focus.x = boss->tracking.anchor.x;
-        boss->focus.y = boss->tracking.anchor.y;
-        boss->focus.z = boss->tracking.anchor.z;
+        boss->lookAt.target.x = boss->tracking.anchor.x;
+        boss->lookAt.target.y = boss->tracking.anchor.y;
+        boss->lookAt.target.z = boss->tracking.anchor.z;
     }
 }
 

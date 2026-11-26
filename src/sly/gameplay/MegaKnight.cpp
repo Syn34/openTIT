@@ -11,6 +11,7 @@
 #include "sly/camera/CameraModes.h"
 #include "sly/entity/GameCamera.h"
 #include "sly/game/GameEvent.h"
+#include "sly/game/GameScripts.h"
 #include "sly/game/SpawnManager.h"
 #include "sly/levels/LevelServices.h"
 #include "sly/gameplay/GameplayWorld.h"
@@ -258,6 +259,9 @@ void MegaKnightStampManager::Reset()
     Clear();
 }
 
+// TODO(0x0030B6D8 MegaKnightStampManager::Update)
+void MegaKnightStampManager::Update(float dt) { (void)dt; }
+
 void MegaKnightStampManager::ClearPending()
 {
     for (uint32_t i = 0; i < pending.Count(); ++i)
@@ -302,7 +306,7 @@ constexpr uint32_t kBossPlatform_Idle = 0x0590D9BBu;
 constexpr uint32_t kBossPlatform_Full = 0xD6E3A3F3u;
 
 // A script instance bound to `object` through the object variable 0x0027469E.
-ape::ApeAnimScriptInstance* StartObjectScript(uint32_t scriptName, ape::world::ApeObj* object)
+ape::ApeAnimScriptInstance* StartPlatformScript(uint32_t scriptName, ape::world::ApeObj* object)
 {
     ape::ApeAnimScript* found = ape::ApeAnimScriptLibrary::FindScriptAnywhere(scriptName, 0, true);
     if (!found)
@@ -345,8 +349,8 @@ MegaKnightPlatform::MegaKnightPlatform(MegaKnight* owner)
         if (height <= 0.0f)
             height = 1.0f;
     }
-    scriptA = StartObjectScript(kScript_PlatformA, object);
-    scriptB = StartObjectScript(kScript_PlatformB, object);
+    scriptA = StartPlatformScript(kScript_PlatformA, object);
+    scriptB = StartPlatformScript(kScript_PlatformB, object);
 }
 
 MegaKnightPlatform::~MegaKnightPlatform()
@@ -362,6 +366,10 @@ MegaKnightPlatform::~MegaKnightPlatform()
 }
 
 // @func 0x00308F5C MegaKnightPlatform::Reset
+// TODO(0x0030A53C MegaKnightPlatform::Update): moves the platform along the
+// arms and runs the laser hits (vector code).
+void MegaKnightPlatform::Update(float dt) { (void)dt; }
+
 void MegaKnightPlatform::Reset(bool full)
 {
     field_40 = 0.0f;
@@ -480,7 +488,7 @@ void MegaKnight::PhaseEventA()
 {
     if (MegaKnightPhase* current = CurrentPhase())
         current->OnEventA();
-    gameplay::ShowButtonHint(0xEB4F48A0u);
+    sly::StartObjectScript(0xEB4F48A0u, nullptr, 0, true);
 }
 
 // @func 0x0030C3F0 MegaKnight::AddMarkedTarget
@@ -591,6 +599,79 @@ void MegaKnight::ClearArmMarkers()
         retiredArmObjects.PopBack();
     }
 }
+
+// @func 0x0030F798 MegaKnight::Update
+bool MegaKnight::Update(float dt)
+{
+    if (!ActorEntity::Update(dt))
+        return false;
+    if (!field_298)
+        return true;
+    if (script3AC)
+        script3AC->Update(dt);
+    for (ape::ApeAnimScriptInstance* script : scripts3B0)
+        if (script)
+            script->Update(dt);
+    UpdateTracking(dt);
+    if (!UpdatePhases(dt))
+        return true;
+    UpdateAim(dt);
+
+    // Voice lines: off the platform for a while, the fight is on, standing
+    // too close to the boss.
+    if (!DelayedStateGet(tracking.state220)) {
+        offPlatformTimer = g_megaKnightTimeOffPlatformVODelay.Get();
+    } else {
+        offPlatformTimer -= dt;
+        if (offPlatformTimer < 0.0f) {
+            sly::StartObjectScript(0x9B7C880Au, nullptr, 0, true);
+            offPlatformTimer = g_megaKnightTimeOffPlatformVODelay.Get();
+        }
+    }
+    if (DelayedStateGet(tracking.fightActive) && !fightLinePlayed) {
+        sly::StartObjectScript(0x5B7849AFu, nullptr, 0, true);
+        fightLinePlayed = true;
+    }
+    const entity::Entity* player = MKPlayerCharacter();
+    const ape::Vec3& p = player->transform.translation;
+    if (p.x * p.x + p.z * p.z + 0.0f <= g_megaKnightTooClosetoBossVODistSqr.Get() && !tooCloseLinePlayed) {
+        sly::StartObjectScript(0xBE8FED4Cu, nullptr, 0, true);
+        tooCloseLinePlayed = true;
+    }
+
+    // The shoulder targets of fallen arms go; the heart shows once both
+    // outer arms are down. NOTE: while an arm stands the console shows a
+    // hidden heart and hides a visible one (as compiled).
+    if (!armIntact[0])
+        pair32C.Show(false, secondHalf);
+    if (!armIntact[2])
+        pair338.Show(false, secondHalf);
+    const bool heartVisible = (heartTarget->flags & entity::kEnt_Visible) != 0;
+    if ((!armIntact[0] && !armIntact[2]) || !heartVisible) {
+        if (!heartVisible)
+            heartTarget->SetVisible(true, true, true, true);
+    } else {
+        heartTarget->SetVisible(false, true, true, true);
+    }
+
+    platform->Update(dt);
+    if (lookAt.rate != g_megaKnightIKBlend.Get())
+        lookAt.rate = g_megaKnightIKBlend.Get();
+    lookAt.Update(dt);
+    glow.Update(dt);
+    floorRipple.Update(dt);
+    if (stampManager)
+        stampManager->Update(dt);
+    if (cameraController)
+        cameraController->Update(dt);
+    return true;
+}
+
+// TODO(0x0030EEE0 MegaKnight::UpdateTracking)
+void MegaKnight::UpdateTracking(float dt) { (void)dt; }
+
+// TODO(0x0030D5C0 MegaKnight::UpdateAim)
+void MegaKnight::UpdateAim(float dt) { (void)dt; }
 
 // @func 0x0030FB94 MegaKnight::PostUpdate
 bool MegaKnight::PostUpdate(float dt)
