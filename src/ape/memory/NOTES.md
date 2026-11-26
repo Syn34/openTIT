@@ -59,3 +59,11 @@ Suggest moving them (the lead decides):
 - `BucketFree(nullptr, n)` is a no-op (console would crash).
 - Global operator new/delete (0x007A3DD8 etc.) is not overridden; engine objects
   that need engine memory derive from `ape::ApeMemObject`.
+
+## agent2
+* `ApeRegionHeap` (0x00565A88..0x00565C50): the dlmalloc mspace wrapper with byte statistics
+  (base, size, mspace, used, available, peak) used by the audio banks; the PC version serves
+  blocks from the host allocator.
+* `Matrix34PreMultiply` 0x005541F0 (m = pre * m) is in ape/math/ApeMatrixOps.
+* `StrSPrintf` 0x00551540 is in ape/core/ApeString.
+* ApeDebug primitives now live in two alternating pools (see agl/NOTES.md, debug drawing).

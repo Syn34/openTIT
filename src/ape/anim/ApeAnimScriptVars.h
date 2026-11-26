@@ -9,7 +9,11 @@
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/math/ApeMath.h"
 
+namespace ape::input { class ApeInputDevice; }
+
 namespace ape {
+
+using input::ApeInputDevice;
 
 // Name hash value ("val" as a hash).
 class ApeAnimScriptHashVar : public ApeAnimScriptVar {
@@ -195,9 +199,12 @@ public:
     ApeAnimScriptVar* Create(xml::XmlElement* element) const override;
 
     int32_t GetControllerIndex() const { return m_controller; }
+    // Pad the variable stands for (used by Rumble).
+    ApeInputDevice* GetDevice() const { return m_device; }
+    void SetDevice(ApeInputDevice* device) { m_device = device; }
 
 private:
-    uint32_t m_field14 = 0;     // NOTE: copied by Clone, never set from data
+    ApeInputDevice* m_device = nullptr;   // +0x14 NOTE: copied by Clone, never set from data
     int32_t m_controller = -1;
 };
 
