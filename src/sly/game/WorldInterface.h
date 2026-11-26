@@ -34,6 +34,11 @@ void SpawnedKill(WorldObject* object);
 // Virtual slot 10: return the object to its pool.
 void SpawnedRelease(WorldObject* object);
 
+// Parent object of a placed instance (ApeObj +0x104) and whether an object
+// is a spawn group object (ApeBase type 0x0C).
+WorldObject* WorldObjectParent(const WorldObject* object);
+bool WorldObjectIsGroup(const WorldObject* object);
+
 // Looks up a level object instance by name hash in the loaded level.
 WorldObject* FindLevelInstance(uint32_t nameHash);
 

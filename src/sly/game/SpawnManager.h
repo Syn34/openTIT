@@ -82,8 +82,9 @@ public:
     virtual bool IsCharacterSpawner() const;    // slot 5 NOTE: guessed meaning
     virtual bool Activate();                    // slot 6
     virtual void Deactivate(bool immediate);    // slot 7
-    // Slot 10: name of the entity definition to spawn (base 0x004562B8: the
-    // setting's EntityDefName).
+    // Slot 10: name of the entity definition to spawn (the setting's
+    // EntityDefName).
+    // @func 0x004562B8 Spawner::SpawnDefName
     virtual const char* SpawnDefName() const { return settings ? settings->entityDefName : nullptr; }
     // Slot 11: name of an object to spawn instead (none by default).
     // @func 0x0077E8A4 Spawner::SpawnObjectName
@@ -184,12 +185,15 @@ public:
     static constexpr int kMaxSpawners = 0x200;
     static constexpr int kMaxGroups = 0x32;
 
-    SpawnManager() = default;
+    SpawnManager();
     ~SpawnManager();
 
     void Start();
     void Clear();
+    void Unload();
     void Reset();
+    void LinkGroups();
+    void PrepareLevel();
     bool AddSpawner(Spawner* spawner);
     bool AddGroup(SpawnGroup* group);
     // Reactivates spawners deactivated by DeactivateOutOfRange().
