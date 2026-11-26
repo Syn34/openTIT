@@ -5,7 +5,7 @@
 
 #include "sly/entity/ActorEntities.h"
 
-namespace sly::objects { struct ActorGroupInstanceDesc; struct HitCounterActorInstanceDesc; struct ActorInstanceDesc; }
+namespace sly::objects { struct ActorGroupInstanceDesc; struct HitCounterActorInstanceDesc; struct ActorInstanceDesc; struct SignalActorInstanceDesc; }
 namespace ape { class ApeAnimScriptVar; }
 
 namespace sly {
@@ -121,8 +121,19 @@ public:
     // @func 0x001B06CC SignalActor::Release
     bool Release(bool kill) override { return ActorEntity::Release(kill); }
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
+    // The body of the part the definition names (flags_174 top byte) and
+    // that part's +0x68 value, the placement values (0x001AF6A0).
+    explicit SignalActor(const objects::SignalActorInstanceDesc& desc);
 
-    uint32_t field_1D0 = 0;              // 0x1D0 cleared by the signal
+    void* partBody = nullptr;            // 0x1A8
+    uint32_t field_1AC = 0, field_1B0 = 0, field_1B4 = 0, field_1B8 = 0;
+    float field_1BC = 3.4028235e38f;     // 0x1BC the part's field_60[2]
+    uint32_t field_1C0 = 0;              // 0x1C0
+    float field_1C4 = 0.0f;              // 0x1C4 placement field_F0[0] (radians)
+    float field_1C8 = 0.0f;              // 0x1C8 placement field_F0[1] (radians)
+    uint32_t field_1CC = 0;              // 0x1CC
+    float field_1D0 = 0.0f;              // 0x1D0 placement field_F0[2]; cleared by the signal
+    uint32_t signalFlags = 0;            // 0x1D4 bits 30/31 from the placement
 };
 
 // vtable 0x00B15E60 (destructor 0x00752CB0).

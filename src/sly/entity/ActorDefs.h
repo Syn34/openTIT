@@ -58,6 +58,7 @@ public:
     // Copies the class fields of the description (0x001AF598).
     explicit SignalActorDef(const struct SignalActorDefDesc& desc);
     ~SignalActorDef() override;
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7
     ape::Vec3 direction{0.0f, 0.0f, 1.0f, 0.0f};   // 0x130 unit vector
     float field_140[7] = {1.0f, 6.0f, 3.5f, 2.0f, 0.5f, 6.0f, 3.5f};   // 0x140..0x158
     float field_15C = 18.849556f;       // 0x15C radians

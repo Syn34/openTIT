@@ -297,13 +297,38 @@ void WatchActor::HandleMessage(const EntityMessage& msg)
 
 // -- SignalActor -------------------------------------------------------------------------
 
+// @func 0x001AF6A0 SignalActor::SignalActor
+SignalActor::SignalActor(const objects::SignalActorInstanceDesc& desc)
+    : ActorEntity(desc), field_1C4(desc.field_D0[0]), field_1C8(desc.field_D0[1]), field_1D0(desc.field_D0[2])
+{
+    signalFlags = (signalFlags & 0x1FFFFFFFu) | (desc.flags_DC & 0xC0000000u);
+    const auto* signalDef = static_cast<const SignalActorDef*>(def);
+    const uint32_t index = signalDef->flags_174 >> 24;
+    if (parts && index < parts->Count())
+        partBody = (*parts)[index].body;
+    // NOTE: the console reads the definition part without checking the index.
+    if (signalDef->parts && index < signalDef->parts->Count())
+        field_1BC = (*signalDef->parts)[index].field_60[2];
+    EntitySetState(this, 0, 0);
+}
+
+// @func 0x001AF830 SignalActorDef::Spawn
+Entity* SignalActorDef::Spawn(EntityPlacement* placement)
+{
+    objects::SignalActorInstanceDesc desc(InstanceName(placement), this);
+    placement->FillInstanceDesc(desc);
+    auto* actor = new SignalActor(desc);
+    actor->OnSpawn();
+    return actor;
+}
+
 // @func 0x001B17F4 SignalActor::HandleMessage
 void SignalActor::HandleMessage(const EntityMessage& msg)
 {
     if (msg.id == kMsg_Signal) {
         if (animScript)
             animScript->SetStateAndUpdate(kState_Signalled);
-        field_1D0 = 0;
+        field_1D0 = 0.0f;
         EntitySetState(this, 0, 2);
     }
     ActorEntity::HandleMessage(msg);
