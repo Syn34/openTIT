@@ -244,11 +244,23 @@ struct TargetableBInstanceDesc : ScriptedInstanceDesc {
         ~Name() override;                         \
     }
 
-// Vtable 0x00B18B30. NOTE: its copy (slot 2) is not ported.
+// Instance description of TargetableDefC entities.
+struct TargetableCInstanceDesc : ScriptedInstanceDesc {
+    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+    PhysicalSettings settings;          // 0xD0
+    float field_F4 = 0.0f;              // 0xF4
+    float field_F8 = 0.0f;              // 0xF8
+    bool field_FC = false;              // 0xFC
+};
+
+// Vtable 0x00B18B30.
 class TargetableCPlacement : public ScriptedEntityPlacement {
 public:
     using ScriptedEntityPlacement::ScriptedEntityPlacement;
     ~TargetableCPlacement() override;
+    // Slot 2 (0x001FAD7C): the scripted copy, the physical settings and the
+    // two limits; placement bit 30 decides description flag 12 again.
+    void FillInstanceDesc(EntityInstanceDesc& desc) const override;
     PhysicalSettings settings;          // +0xF0
     float field_114 = -1.0f;            // +0x114 attribute 0x0023FEF4
     float field_118 = 3.4028235e38f;    // +0x118 attribute 0xCEDD379A
@@ -586,11 +598,27 @@ struct TweenActorInstanceDesc : ScriptedInstanceDesc {
         ~Name() override;                         \
     }
 
-// Vtable 0x00B188F0. NOTE: its copy (slot 2) is not ported.
+// Instance description of InteractivePropB (the placement's fields 0x20
+// bytes lower).
+struct InteractivePropBInstanceDesc : ScriptedInstanceDesc {
+    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+    uint32_t field_D0 = 0;              // 0xD0
+    ape::Vec3 field_E0{};               // 0xE0
+    ape::Vec4 rotation{0.0f, 0.0f, 0.0f, 1.0f};   // 0xF0
+    float field_100 = 0.0f;             // 0x100
+    float field_104 = 0.0f;             // 0x104
+    float field_108 = 0.0f;             // 0x108
+    uint32_t field_10C = 0;             // 0x10C
+    bool field_110 = false;             // 0x110
+};
+
+// Vtable 0x00B188F0.
 class InteractivePropBPlacement : public ActorPlacement {
 public:
     using ActorPlacement::ActorPlacement;
     ~InteractivePropBPlacement() override;
+    // Slot 2 (0x001F6238).
+    void FillInstanceDesc(EntityInstanceDesc& desc) const override;
     // The scripted attributes and the prop's own (0x001F5E50).
     void Parse(ape::xml::XmlElement* elem);
     uint32_t field_F0 = 0;              // +0xF0 attribute 0x2899600F (hash)

@@ -356,6 +356,21 @@ float CharacterHealth(const Entity* character);
 // Point handles (0x0062E164 valid, 0x0062E094 release) and agents
 // (0x006C0D24 destroy).
 bool NavPointIsValid(void* point);
+// Nav query settings built from a controller's search radius and filter
+// (slots 60/61).
+struct NavQuery {
+    float searchRadius = 0.0f;
+    int filter = 0;
+};
+// A point handle on the nav mesh nearest to `position` (0x00630F94,
+// 0x0062D414, 0x0062D08C), null when there is none.
+void* NavCreatePoint(const ape::Vec3& position, const NavQuery& query);
+// A path exists from `from` to the player's last nav mesh point (the nav
+// manager's tracker) (0x006320AC).
+bool NavPathToPlayerExists(void* from, const NavQuery& query);
+// Ground position of the nav mesh under a point handle (0x006308AC with the
+// query settings 0x011AD1AC, then 0x0062D25C); false when there is none.
+bool NavPointGroundPosition(void* point, ape::Vec3& out);
 void NavPointRelease(void* point);
 struct NavAgent;
 void NavAgentDestroy(NavAgent* agent);

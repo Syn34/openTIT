@@ -243,6 +243,9 @@ public:
 // combat settings.
 class EnemyAI : public AIController {
 public:
+    // The target is within the longer of the ranged and far attack ranges
+    // and, when the settings ask for it, in sight (0x00034444).
+    bool TargetInAttackRange();
     void TickEntity(float dt) override;
     float AgentRadius() override;
     float Slot16() override;
@@ -311,13 +314,25 @@ public:
     // Calls nearby enemies for help (0x00035D44).
     void CallForHelp();
 
+    // Two patrolling enemies may play an interaction clip with each other:
+    // `other` is close enough (between PatrolInteractionMinDist and MaxDist),
+    // enough time has passed, the character has the clip and is in one of
+    // the calm states (0x00039314).
+    bool CanStartPatrolInteraction(AIController* other, uint32_t clip);
+    // Turns to `other` and enters the interaction state (13), after a turn
+    // in place when it is more than 45 degrees off (0x00039178).
+    void StartPatrolInteraction(AIController* other, uint32_t clip);
+
+    int32_t stateAfterTurn = 0;       // +0x144 state entered once a turn in place ends
     uint8_t field_180 = 0;            // +0x180
     uint8_t field_181 = 0;            // +0x181
     uint32_t proxyClip = 0;           // +0x184 clip named by the reached proxy point
     float attackTimer = 0.0f;         // +0x198 (InitialAttackTime on activation)
     ape::Vec3 field_19C{};            // +0x19C
     float field_1B0 = 0.0f;           // +0x1B0 NOTE: interactions are refused while positive
-    uint32_t field_1B4 = 0;           // +0x1B4
+    // +0x1B4 NOTE: compared with PatrolInteractionMinTime (seconds since the
+    // last patrol interaction).
+    float patrolInteractionTime = 0.0f;
     uint32_t field_1B8 = 0;           // +0x1B8
     ape::Vec3 field_1BC{};            // +0x1BC
     float field_1A8 = 0.0f;           // +0x1A8 NOTE: slot 46 reports it being positive

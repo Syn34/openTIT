@@ -101,3 +101,38 @@ requests, anim script/driver bits, Havok frees, minigame flag, game camera looku
   (`AglFrustum::soa`, margin 1). The line of sight test 0x000138B0 is a Havok ray cast on the
   level physics world (not ported) and still reports "not visible"; who fills `controller` and
   `radius` is not found yet.
+
+## Fourth pass (agent1)
+* `EntityDefLoader.cpp`: the definition loader (0x000CA038): shared attributes, "from" parent
+  defaults, component template names, attachment records, then a table of class factories by
+  element hash (unported factories are listed with their console address and leave the
+  definition out). The actor class is built in place (`ActorDefDesc(loader)` = the console
+  initialiser 0x00745D88 with its constant arguments); `ActorDefDesc::Parse` (0x000C85A8) is
+  still a TODO that reads only the scripted attributes; the physical definition
+  (0x000C4020/0x000C30E8) is not ported. `EntityDefDesc` +0x2C is the load scope, +0x3C a float,
+  +0x44 the attachment records.
+* `ScriptedEntityDefDesc::Parse` (0x000C3910, used by 14 parsers) and the scripted entity
+  constructor (0x000E01C0, lifetime script start 0x000E0000). Def class bits: 2 scripted, 4 actor,
+  0x2000 physical (`kDefClass_*`).
+* `sly/physics/PhysicsQuery.*`: ray casts against the game physics world resolved to entities
+  (stubs until a physics layer exists). The AI line of sight (0x000138B0) uses it; controller
+  slot 72 is `IsSeeThroughLayer(layer)` (was misnamed IsStateInterruptible).
+* `EntityUpdateJobs.cpp`: the per-frame selection job drivers (suspend/resume, delete, update,
+  post-update; 0x000CE5D4..0x000CFF4C) and the module's level start (0x000CE0A8). The SPU
+  selection programs are hooks (`EntityJobSelect*`); the update ones select every live entity.
+* `EntityRenderLists.cpp`: instance render lists B/C (fade pass + component placement), list D
+  ("s_compSyncList"), the end-of-frame visibility restore (type bit 3 characters keep their fade
+  copy, type bit 77 is SimpleWheeledVehicle).
+* `RopeEntity.*` (vtable 0x00B162C8): destructor, slots 5/10/12/22, segment helpers. Segments are
+  0x60-byte records (axis +0x10, push +0x40, object +0x50); NOTE: ChainEntity's links share that
+  layout (its `Link` array really starts at +0x160, not +0x1B0; count at +0x762 is read by the
+  chain push 0x001A97D8).
+* AI: CritterAI::EnterState (0x000215D8) and ClampToWanderArea (0x000212B8),
+  AIController::BeginMove (0x00014DA8), TargetReachable/IsAtNavPoint/ClipEndsAtNavPoint
+  (NavPower behind `NavCreatePoint`/`NavPathToPlayerExists`/`NavPointGroundPosition` hooks), EnemyAI
+  TargetInAttackRange and the patrol interaction pair.
+* Not done (looked at): ActorEntity constructor 0x000E38F0 (part body cloning, NavPower
+  obstacles), ActorDef::Spawn 0x000E4314 and the actor instance description 0x000E40E0 (layer 4,
+  0x80 bytes of state, type bits 0-2, C8/CC from the caller), the spawn definition loader
+  0x000D5C00 (Ghidra drops the map inserts), entity sound play 0x000DB348/0x000DBA84 (SoundParams
+  layout), the Spline camera constructor 0x00108AF8 (per-spline tag table lookups).

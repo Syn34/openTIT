@@ -115,6 +115,9 @@ float CharacterHealth(const Entity*) { return 0.0f; }
 
 bool NavPointIsValid(void* point) { return point != nullptr; }
 void NavPointRelease(void*) {}
+void* NavCreatePoint(const ape::Vec3&, const NavQuery&) { return nullptr; }
+bool NavPathToPlayerExists(void*, const NavQuery&) { return true; }
+bool NavPointGroundPosition(void*, ape::Vec3&) { return false; }
 void NavAgentDestroy(NavAgent*) {}
 void NavAgentRequestGoal(NavAgent*, const ape::Vec3&) {}
 ape::Vec3 NavAgentGoal(NavAgent*) { return {}; }
