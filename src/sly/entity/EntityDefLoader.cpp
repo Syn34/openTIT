@@ -157,7 +157,7 @@ const DefClass kDefClasses[] = {
     {0x57CCFDA0u, objects::CreateWindTriggerDef},
     {0x5697EEFBu, objects::CreatePushBlockTriggerDef},
     {0x55B67D7Cu, CreateTweenActorDef},
-    {0x554FC0D9u, nullptr},                              // 0x001BD668
+    {0x554FC0D9u, CreateScriptObjectActorDef},
     {0x6E2FB705u, objects::CreateJobTriggerDef},
     {0x6927A078u, CreateInteractivePropBDef},
     {0x633A7385u, CreateSoundActorB17728Def},

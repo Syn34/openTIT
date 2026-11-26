@@ -1106,5 +1106,26 @@ EntityDef* CreateSoundActorB16B48Def(ape::xml::XmlElement* root, ape::xml::XmlEl
     return def;
 }
 
+// @func 0x001BD668 CreateScriptObjectActorDef
+// The class attributes are read in place: a float (the parent's as default)
+// and a vector (no parent default).
+EntityDef* CreateScriptObjectActorDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                      const EntityDefDesc& loader, const EntityDef* parent)
+{
+    constexpr uint32_t kType_ScriptObject = 0x200;
+    ClassDefDesc desc(loader, kType_ScriptObject);
+    desc.Parse(root, elem, loader, parent);
+    const auto* other = SameClassParent<ScriptObjectActorDef>(parent, kType_ScriptObject);
+    float value = 0.0f;
+    ape::Vec3 vector{};
+    elem->GetFloat(0x7DDB32EAu, &value, other ? other->field_130 : 0.0f);
+    elem->GetVec3(0x7DDB2524u, &vector.x, &vector.x);
+    auto* def = new ScriptObjectActorDef(desc);
+    def->field_130 = value;
+    def->field_140 = vector;
+    delete desc.parts;
+    return def;
+}
+
 } // namespace entity
 } // namespace sly

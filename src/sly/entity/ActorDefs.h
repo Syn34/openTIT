@@ -78,9 +78,10 @@ public:
 // 0x00B163F0, spawns ScriptObjectActor. NOTE: only the placement defaults.
 class ScriptObjectActorDef : public ActorDef {
 public:
+    explicit ScriptObjectActorDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~ScriptObjectActorDef() override;
-    float field_130 = 0.0f;             // 0x130
-    ape::Vec3 field_140{};              // 0x140
+    float field_130 = 0.0f;             // 0x130 attribute 0x7DDB32EA
+    ape::Vec3 field_140{};              // 0x140 attribute 0x7DDB2524
 };
 SLY_ACTOR_DEF(ActorB17990Def, ActorDef);        // 0x00B17948, spawns ActorB17990
 // 0x00B18680, spawns TweenActor (0x1B0 bytes). NOTE: field names unknown;
