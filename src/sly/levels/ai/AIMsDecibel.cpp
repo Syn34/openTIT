@@ -4,6 +4,10 @@
 #include "ape/world/ApeInstances.h"
 
 #include "sly/levels/ai/AIHooks.h"
+#include "sly/levels/ai/AITuning.h"
+#include "sly/entity/Entity.h"
+
+#include <cmath>
 
 namespace sly {
 namespace levels {
@@ -70,6 +74,23 @@ void MsDecibelAI::SetSplineStretch(uint32_t from, uint32_t to)
 void MsDecibelAI::SetPhase(int newPhase)
 {
     phase = newPhase;
+}
+
+// @func 0x000544B8 MsDecibelAI::CheckCounterAttack
+void MsDecibelAI::CheckCounterAttack()
+{
+    if (state == 9 || state == 5 || state == 11 || state == 12)
+        return;
+    Entity* player = PlayerCharacter();
+    if (!player)
+        return;
+    const float dx = player->transform.translation.x - Position().x;
+    const float dz = player->transform.translation.z - Position().z;
+    if (std::sqrt(dz * dz + dx * dx) >= g_msDecibelPlatformCounterAttackDist)
+        return;
+    if (counterAttacks > 0)
+        --counterAttacks;
+    SetState(9);
 }
 
 } // namespace ai

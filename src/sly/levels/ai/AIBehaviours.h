@@ -536,8 +536,14 @@ public:
     void SetSplineStretch(uint32_t from, uint32_t to);
     // Switches the fight phase. TODO(0x00053A80): not ported.
     void SetPhase(int phase);
+    // A player that comes within Entity.MsDecibel.Platform.CounterAttackDist
+    // (on the ground plane) while Ms Decibel is not in states 5, 9, 11 or 12
+    // triggers the counter attack (state 9), using up one of the counted
+    // ones (0x000544B8).
+    void CheckCounterAttack();
 
     int32_t phase = 0;         // +0x134
+    int32_t counterAttacks = 0;   // +0x138 NOTE: counted down by CheckCounterAttack, never below 0
     ape::world::ApeSplineInstance* spline = nullptr;   // +0x185C
     ape::world::ApeObj* stretchFrom = nullptr;          // +0x1860
     ape::world::ApeObj* stretchTo = nullptr;            // +0x1864
