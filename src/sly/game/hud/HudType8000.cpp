@@ -284,6 +284,12 @@ void HudType8000::HideParts()
     hide(part210);
 }
 
+// @func 0x00381E48 HudType8000::PlayAlert
+void HudType8000::PlayAlert(bool intro)
+{
+    PlayHudClip(animController, alertClips[intro ? 0 : 1], 1.0f, false);
+}
+
 // @func 0x003817E0 HudType8000::SetActive
 void HudType8000::SetActive(bool active)
 {
