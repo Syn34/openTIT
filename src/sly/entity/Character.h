@@ -46,6 +46,8 @@ public:
     // The Camera.Default.* values except the field-of-view rate, the
     // heading rate and the look-ahead mode, which keep their own (0x00119C00).
     void LoadDefaults() override;
+    ~CameraSettingsBlock() override;
+    bool Reload() override;
 
     camera::CameraSettings settings;   // +0x10
 };
