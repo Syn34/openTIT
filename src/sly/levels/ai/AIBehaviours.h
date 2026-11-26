@@ -478,14 +478,31 @@ public:
     // Lists whose element types are not decoded (records of the sizes the
     // constructor gives).
     template <size_t N> struct Record { uint8_t bytes[N]; };
-    // +0x134 the boss's attack records (0x70 bytes); only the effect
-    // script at +0x50 is known.
-    struct AttackRecord {
-        uint8_t field_00[0x50];
-        ape::ApeAnimScriptInstance* script;   // +0x50
-        uint8_t field_54[0x1C];
+    // +0x134 the buttons of the QTE game (0x70 bytes each). NOTE: only the
+    // fields used by the ported code are named.
+    struct QteKey {
+        uint32_t field_00;
+        float time;                           // +0x04 when the button is due
     };
-    ape::ApeTArray<AttackRecord> attacks{0x10};          // +0x134
+    struct QteButton {
+        ape::Vec3 position;                   // +0x00 where it starts moving
+        uint8_t field_10[0x20];
+        ape::Vec3 target;                     // +0x30 where it moves to
+        const QteKey* key;                    // +0x40
+        ape::world::ApeObj* object;           // +0x44 the button's object
+        uint8_t field_48[8];
+        ape::ApeAnimScriptInstance* script;   // +0x50
+        float interpTime;                     // +0x54
+        float delay;                          // +0x58
+        uint8_t field_5C[8];
+        bool done;                            // +0x64
+        uint8_t field_65[0xB];
+    };
+    ape::ApeTArray<QteButton> qteButtons{0x10};          // +0x134
+    // Sends the buttons not done yet back to the start line beside the
+    // first anchor (their targets along the detect bar by their key time),
+    // one after another (the last first, `skip` buttons fewer) (0x00043784).
+    void RestartQteButtons(int skip);
     // In state 0x19 and with no cutscene queued: hides (or shows) the two
     // ground markers and switches the attack effect scripts to their hidden
     // (0x8C3F8D2E) or shown (0x28298107) state (0x00041A08).

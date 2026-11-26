@@ -184,9 +184,9 @@ void BismarqueAI::SetFightVisualsHidden(bool hidden)
         if (marker)
             marker->SetVisible(!hidden, true);
     }
-    for (AttackRecord& attack : attacks) {
-        if (attack.script)
-            attack.script->SetStateAndUpdate(hidden ? 0x8C3F8D2Eu : 0x28298107u);
+    for (QteButton& button : qteButtons) {
+        if (button.script)
+            button.script->SetStateAndUpdate(hidden ? 0x8C3F8D2Eu : 0x28298107u);
     }
 }
 
@@ -234,6 +234,32 @@ void BismarqueAI::ThrowBarriers()
     Entity* player = PlayerCharacter();
     if (player && player->HasTypeBit(3))
         static_cast<entity::Character*>(player)->SetReference1AC(nullptr);
+}
+
+// @func 0x00043784 BismarqueAI::RestartQteButtons
+void BismarqueAI::RestartQteButtons(int skip)
+{
+    static const ape::Vec3 kOrigin = {0.0f, 0.0f, 0.0f, 0.0f};
+    const int count = int(qteButtons.Count());
+    int placed = 0;
+    for (QteButton& button : qteButtons) {
+        if (!button.object || button.done)
+            continue;
+        button.interpTime = g_bismarqueQTEButtonToGrizzIntroInterpTimeMax;
+        button.delay = g_bismarqueQTEButtonToGrizzIntroDelayTimeMax * float(count - skip - placed - 1);
+        const ape::Vec3& anchor = anchors[0] ? anchors[0]->GetWorld().translation : kOrigin;
+        button.target = {anchor.x, anchor.y, anchor.z, button.target.pad};
+        button.position = {anchor.x + g_bismarqueQTEButtonToGrizzStartXOffset, anchor.y, anchor.z,
+                           button.position.pad};
+        button.target.x += (g_bismarqueQTEGameGrizzTimeDelay + button.key->time) * g_bismarqueQTEGameDetectBarMoveSpeed;
+        ape::Matrix34 local = button.object->GetLocal();
+        local.translation = {button.position.x, button.position.y, button.position.z, local.translation.pad};
+        button.object->SetLocalTransform(local);
+        button.object->UpdateWorld(false, false);
+        if (button.script)
+            button.script->SetStateAndUpdate(0x9020A4D6u);
+        ++placed;
+    }
 }
 
 } // namespace ai
