@@ -16,11 +16,13 @@
 #include "ape/memory/ApeTArray.h"
 #include "ape/xml/ApeXml.h"
 #include "sly/game/GamePlayer.h"
+#include "sly/save/GameSettings.h"
 #include "sly/gameplay/StateMachine.h"
 
 #include <cstdint>
 #include <cstring>
 
+namespace ape::file { class File; }
 namespace ape { class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeGuiObject; }
 namespace agl { class AglRenderTarget; }
 
@@ -31,6 +33,7 @@ class SpawnManager;
 namespace goals { class Goal; }
 namespace gameplay { class Minigame; }
 namespace entity { class Entity; class GameCamera; }
+struct LevelParams;
 
 // A deferred call queued on one of the world callback lists: the game
 // calls function(owner, context) when it runs the list.
@@ -145,6 +148,8 @@ struct DesaturationQueue {
 // 0x00468EF8): ramps the blur effect's amount between two values.
 struct BlurAnimation {
     void Update(float dt);   // 0x00468EF8
+    // Starts a ramp (0x00470560).
+    void Start(float fromAmount, float toAmount, float time, uint32_t passes, bool disableAtEnd);
 
     float from = 0.0f;           // +0x00
     float to = 1.0f;             // +0x04
@@ -153,6 +158,20 @@ struct BlurAnimation {
     float elapsed = 0.0f;        // +0x10
     bool disableWhenDone = false;// +0x14 bit 31
     bool active = false;         // +0x14 bit 30
+};
+
+// A cutscene waiting in the game's queue (+0x12820C). NOTE: only the
+// fields the game shell reads are named.
+struct QueuedCutscene {
+    uint32_t field_00[5] = {};                  // +0x00
+    uint32_t scriptName = 0;                    // +0x14
+    void* script = nullptr;                     // +0x18
+    ape::ApeAnimScriptInstance* instance = nullptr; // +0x1C
+    float time = 0.0f;                          // +0x20
+    float savedNearClip = 0.0f;                 // +0x24 main view near plane while it plays
+    uint32_t sequence = 0;                      // +0x28
+    uint32_t field_2C = 0;                      // +0x2C
+    uint32_t flags = 0;                         // +0x30 bit 30: hide player, bit 29: finished
 };
 
 struct DialogSpeakerEntry {
@@ -306,13 +325,7 @@ public:
     // @func 0x00787CCC SlyGame::RequestBlend
     void RequestBlend(float a, float b, float c, uint32_t word, bool flag)
     {
-        blur.from = a;
-        blur.to = b;
-        blur.duration = c;
-        blur.quality = word;
-        blur.elapsed = 0.0f;
-        blur.active = true;
-        blur.disableWhenDone = flag;
+        blur.Start(a, b, c, word, flag);
     }
 
     // -- post effects of the main view ----------------------------------------
@@ -326,6 +339,33 @@ public:
     // The running level's depth of field ("dofEnable" ...), unless the game
     // camera applies its own post effects.
     void ApplyLevelDof();
+
+    // -- options -----------------------------------------------------------------
+    // Display gamma from the brightness option (0x0046C8D0).
+    void ApplyBrightness() const;
+    // Stereo 3D depth and switch from the display options, when the TV
+    // supports 3D (0x0046C830).
+    void ApplyStereoOptions() const;
+    // The fourth volume option scaled to 0..32768 by the master volume.
+    int32_t ScaledVolume3() const;
+    // A queued cutscene plays `sequence` (+0x28 of the queue entries).
+    bool IsSequenceQueued(uint32_t sequence) const;
+    // Shows or hides the cutscene letterbox ("InGame.Cutscene.Letterbox").
+    static void SetLetterbox(bool on);
+    // Frame time of the game: the frame clock's (or the time source's while
+    // one is installed), scaled by the slow-motion ramp while it runs.
+    float FrameTime() const;
+    // Weight of the camera in the audio listener position (0: the player,
+    // 1: the camera), set at once or blended over `time` seconds along
+    // `curve`.
+    void SetListenerCameraWeight(float weight, float time, float curve);
+    // Reads the level parameters from the level data document (the first
+    // "LevelParams" element; once per level, not in the front end).
+    void LoadLevelParams(ape::file::File& file);
+    // The level parameters select the special mode 1.
+    bool LevelParamsMode1() const;
+    // The power meter of a player on the HUD (second bar of meter B).
+    void ShowPlayerPower(uint32_t player) const;
 
     // -- data ------------------------------------------------------------------
     uint8_t flags1C = 0;                        // +0x1C bit 5: autosave allowed
@@ -351,9 +391,8 @@ public:
     uint32_t field_40 = 0;                      // +0x40
     uint8_t field_44 = 1;                       // +0x44
     uint32_t subState = 0;                      // +0x48
-    // +0x50: save data (0xFE0 bytes written as "save.dat") followed by the
-    // options block (+0x1030, sly/save/GameSettings).
-    float field_1048 = 0.0f;                    // +0x1048 NOTE: an option scaled to 0..32768
+    // +0x50: save data (0xFE0 bytes written as "save.dat").
+    GameSettings settings;                      // +0x1030 the options block
     uint8_t field_1054[4] = {};                 // +0x1054
     uint8_t field_1058 = 0;                     // +0x1058
     uint32_t field_105C = 0;                    // +0x105C
@@ -367,7 +406,7 @@ public:
     char pendingLevelName[0x40] = {};           // +0x12811C
     uint32_t field_12815C = 0;                  // +0x12815C
     uint32_t field_128160 = 0;                  // +0x128160
-    agl::AglRenderTarget* field_128164 = nullptr;   // +0x128164
+    LevelParams* levelParams = nullptr;         // +0x128164
     agl::AglRenderTarget* mainView = nullptr;       // +0x128168 the game camera's render target
     agl::AglRenderTarget* hud3dView = nullptr;      // +0x12816C "HUD_3D"
     agl::AglRenderTarget* postHud3dView = nullptr;  // +0x128170 "PostHUD_3D"
@@ -387,14 +426,25 @@ public:
     void* guiScene = nullptr;                   // +0x128200 GUI/GUI_Common.san
     void* guiScreens = nullptr;                 // +0x128204 front end / in-game GUI resource
     float field_128208 = 0.0f;                  // +0x128208
-    ape::ApeTArray<void*> cutsceneQueue;        // +0x12820C queued cutscenes (count +0x128214)
+    ape::ApeTArray<QueuedCutscene*> cutsceneQueue; // +0x12820C queued cutscenes (count +0x128214)
     bool resumeAfterCutscenes = false;          // +0x128220
     bool cutscenePlaying = false;               // +0x128221
     bool cutsceneSkipRequested = false;         // +0x128222
-    void* field_128224 = nullptr;               // +0x128224 NOTE: holds an entity at +0x15C
+    // +0x128224 NOTE: an object that overrides the frame time (+0x3C) and
+    // tracks an entity (+0x158..+0x160); class unknown.
+    struct TimeSource {
+        uint8_t field_00[0x3C];
+        float deltaTime;                        // +0x3C
+    };
+    TimeSource* timeSource = nullptr;           // +0x128224
     ape::Matrix34 field_128230;                 // +0x128230 identity
-    float field_128270 = 1.0f;                  // +0x128270
-    float field_128280 = 0.0f;                  // +0x128280
+    ape::Vec3 listenerPos = {0.0f, 0.0f, 0.0f, 0.0f}; // +0x128260 audio listener position
+    float listenerCameraWeight = 1.0f;          // +0x128270
+    float listenerWeightTarget = 0.0f;          // +0x128274
+    float listenerWeightStart = 0.0f;           // +0x128278
+    float listenerWeightProgress = 0.0f;        // +0x12827C 0..1
+    float listenerWeightTime = 0.0f;            // +0x128280 0: no blend running
+    float listenerWeightCurve = 0.0f;           // +0x128284
     float musicFilterCutoff = 23999.0f;         // +0x128288 slow-time music low-pass frequency
     // NOTE: saved and cleared while a minigame runs, restored when it stops.
     uint8_t field_12828C = 1;                   // +0x12828C
@@ -438,6 +488,15 @@ public:
 extern SlyGame* g_game;
 // The "Common.Fade" GUI object the screen fade drives (0x00F65C88).
 extern ape::ApeGuiObject* g_fadeObject;
+
+// GUI helpers of the menus (0x004704A8, 0x0046E7B0).
+void ShowLanguageMenu(ape::ApeGuiObject* screen, bool visible);
+ape::ApeGuiObject* FindFocusableGuiObject(ape::ApeGuiObject* object);
+// The HUD uses its corrected (SD 4:3) layouts (0x0046C7B0).
+bool IsSdHudLayout();
+// Contextual marker definition of a playable character (by the hash of its
+// name, "Game.Contextual.<name>"); Sly's for any other.
+uint32_t ContextualMarkerFor(uint32_t characterHash);
 
 // Requests a plain reload of the running level.
 void RequestLevelRestart();
