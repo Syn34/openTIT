@@ -5,6 +5,8 @@
 
 #include "ape/memory/ApeTArray.h"
 
+namespace ape { class ApeLevelDef; }
+
 #include <cstdint>
 
 namespace sly {
@@ -12,6 +14,7 @@ namespace sly {
 class WorldObject;   // world entities, reconstructed by the world module
 class SpawnManager;
 namespace goals { class Goal; }
+namespace gameplay { class Minigame; }
 namespace entity { class Entity; }
 
 // Small clock block the game points at from +0x0C; the first word is used
@@ -52,6 +55,17 @@ public:
     // Calls every callback of list 'list' (in the order queued); with
     // 'clear' the list is emptied afterwards.
     void RunCallbacks(int list, float dt, bool clear);
+
+    // -- the level's game mode (+0x1281F4) ------------------------------------
+    // Stops and destroys the running minigame, then installs 'next' (may be
+    // null). The new minigame is not started.
+    void SetMinigame(gameplay::Minigame* next);
+    // Stops and destroys the running minigame.
+    void EndMinigame();
+    // Shows or hides the HUD through the running minigame (if any).
+    void SetMinigameHudVisible(bool visible);
+    // Name of the running level ("" before a level is loaded).
+    const char* CurrentLevelName() const;
 
     // Timestamp stamped into every game event.
     uint32_t EventTime() const { return clock ? clock->now : 0; }
@@ -112,6 +126,8 @@ public:
     WorldObject* playerObject = nullptr;        // +0x1078 the controlled player character
     ape::ApeTArray<goals::Goal*> goals;         // +0x10C0 the running job's goals (count +0x10C8)
     SpawnManager* spawnManager = nullptr;       // NOTE: owner of the spawner groups; slot unknown
+    ape::ApeLevelDef* levelDef = nullptr;       // +0x1281C0 the running level
+    gameplay::Minigame* minigame = nullptr;     // +0x1281F4 the level's game mode
     // NOTE: saved and cleared while a minigame runs, restored when it stops.
     uint8_t field_12828C = 0;                   // +0x12828C
     uint32_t flags1282A0 = 0;                   // +0x1282A0

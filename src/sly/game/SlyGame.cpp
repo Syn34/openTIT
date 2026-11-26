@@ -1,9 +1,45 @@
 // openTIT - Game world object: the parts owned by the game shell.
 #include "sly/game/SlyGame.h"
 
+#include "ape/level/ApeLevelDef.h"
+#include "sly/gameplay/Minigame.h"
+
 namespace sly {
 
 SlyGame* g_game = nullptr;
+
+// @func 0x0047C530 SlyGame::SetMinigame
+void SlyGame::SetMinigame(gameplay::Minigame* next)
+{
+    if (minigame) {
+        minigame->Stop();
+        delete minigame;
+    }
+    minigame = next;
+}
+
+// @func 0x0047C490 SlyGame::EndMinigame
+void SlyGame::EndMinigame()
+{
+    if (!minigame)
+        return;
+    minigame->Stop();
+    delete minigame;
+    minigame = nullptr;
+}
+
+// @func 0x004897AC SlyGame::SetMinigameHudVisible
+void SlyGame::SetMinigameHudVisible(bool visible)
+{
+    if (minigame)
+        minigame->SetHudHidden(!visible);
+}
+
+// @func 0x0047C46C SlyGame::CurrentLevelName
+const char* SlyGame::CurrentLevelName() const
+{
+    return levelDef ? levelDef->name : "";
+}
 
 // @func 0x00458B50 SlyGame::ResetFrameLists
 void SlyGame::ResetFrameLists()
