@@ -43,11 +43,11 @@ void GameWorldRestartState()
 // 0x00486460, 0x0012BF70, 0x00487670, 0x00484BE0, 0x00488178): the players
 // block, the playable characters and the level instances are not modelled.
 int PlayerCharacterSlot() { return 0; }
-entity::Entity* PlayerEntity() { return nullptr; }
+entity::Entity* PlayerEntity() { return g_game ? g_game->PlayerCharacter(0) : nullptr; }
 ape::Matrix34& PlayerSpawnTransform()
 {
     static ape::Matrix34 transform{};
-    return transform;
+    return g_game ? g_game->Player(0).spawnTransform : transform;
 }
 entity::Entity* PlayableCharacter(int) { return nullptr; }
 void DefaultSpawnTransform(int, ape::Matrix34*) {}
@@ -61,10 +61,14 @@ void CharacterSnapToGround(entity::Entity*) {}
 void GameCameraReset() {}
 void GameWorldUseAssociatedPlayer(Goal*) {}
 void GameWorldSwitchPlayerCharacter(uint32_t) {}
-void GameWorldRespawnPlayer(const ape::Matrix34&) {}
+void GameWorldRespawnPlayer(const ape::Matrix34& transform)
+{
+    if (g_game)
+        g_game->PlacePlayer(0u, transform);
+}
 uint32_t RunningLevel() { return 0; }
-uint8_t PlayerBlockProfile(int) { return 0; }
-entity::Entity* PlayerEntityOf(int) { return nullptr; }
+uint8_t PlayerBlockProfile(int player) { return g_game ? g_game->Player(player).index : 0; }
+entity::Entity* PlayerEntityOf(int player) { return g_game ? g_game->PlayerCharacter(player) : nullptr; }
 // TODO(0x0029A40C / 0x0029F26C / 0x00276558): gadget, targeting and anim
 // driver components live in sly/components.
 bool GadgetAllowsStop(entity::EntityComponent*) { return true; }
@@ -73,7 +77,7 @@ void AnimDriverStopScript(entity::EntityComponent*) {}
 uint8_t& ProfilePendingCount(uint8_t profile)
 {
     static uint8_t counts[8] = {};
-    return counts[profile & 7];
+    return g_game ? g_game->pendingCounts[profile & 7] : counts[profile & 7];
 }
 uint8_t* ProfileNotifyPair(uint8_t profile)
 {

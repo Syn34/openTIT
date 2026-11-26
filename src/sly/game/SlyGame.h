@@ -414,6 +414,11 @@ public:
     // state flag bit 0. NOTE: name from use.
     void AnswerYes();
     void AnswerNo();
+    // Moves a player's character to a transform: entity and world object
+    // transforms, state reset, and for characters the settle/restore-point
+    // updates.
+    void PlacePlayer(GamePlayer& player, const ape::Matrix34& transform);
+    void PlacePlayer(uint32_t player, const ape::Matrix34& transform);
     // Aims the physics of a player's character at a point (characters only).
     void SetPlayerPhysicsTarget(uint32_t player, const ape::Vec3& point);
     // The power meter of a player on the HUD (second bar of meter B).

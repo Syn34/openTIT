@@ -14,6 +14,8 @@
 #include "sly/game/AudioSystem.h"
 #include "sly/entity/Character.h"
 #include "sly/entity/GameEntityHooks.h"
+#include "sly/entity/CharacterHooks.h"
+#include "ape/world/ApeObj.h"
 #include "sly/game/LevelParams.h"
 #include "sly/gameplay/ReturnTreasure.h"
 #include "ape/xml/ApeXml.h"
@@ -413,6 +415,37 @@ void SlyGame::SetPlayerPhysicsTarget(uint32_t player, const ape::Vec3& point)
     entity::Entity* character = players[player].character;
     if (character && character->HasTypeBit(3))
         static_cast<entity::Character*>(character)->SetPhysicsTarget(point);
+}
+
+namespace {
+
+void PlaceCharacter(entity::Entity* character, const ape::Matrix34& transform)
+{
+    if (!character)
+        return;
+    character->SetTransform(transform);
+    character->SetLocalTransform(transform);
+    if (character->object)
+        character->object->UpdateWorld(false, false);
+    character->ResetState();
+    if (character->HasTypeBit(3)) {
+        entity::CharacterSettleAfterMove(character, 0.5f, -1, -1);
+        entity::CharacterStoreRestorePoint(character);
+    }
+}
+
+} // namespace
+
+// @func 0x00488178 SlyGame::PlacePlayer
+void SlyGame::PlacePlayer(GamePlayer& player, const ape::Matrix34& transform)
+{
+    PlaceCharacter(player.character, transform);
+}
+
+// @func 0x00488298 SlyGame::PlacePlayer(index)
+void SlyGame::PlacePlayer(uint32_t player, const ape::Matrix34& transform)
+{
+    PlaceCharacter(players[player].character, transform);
 }
 
 // @func 0x0048C6EC SetDarkScreen
