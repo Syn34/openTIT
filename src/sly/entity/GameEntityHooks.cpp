@@ -78,5 +78,10 @@ void EntityPostUpdateDone() {}
 // TODO(0x0028BDB0)
 void EntityModuleLevelStartHooks() {}
 
+// TODO(0x0028D7B0)
+void InstanceRenderPassDone(void* renderContext) { (void)renderContext; }
+// TODO(0x0028E320)
+void ListDPassBegin() {}
+
 } // namespace entity
 } // namespace sly

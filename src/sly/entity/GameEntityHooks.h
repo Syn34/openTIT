@@ -114,5 +114,10 @@ void EntityPostUpdateDone();
 // 0x01056F1E it clears). NOTE: purpose unknown.
 void EntityModuleLevelStartHooks();
 
+// After the instance render lists ran (0x0028D7B0) and before list D runs
+// (0x0028E320). NOTE: purposes unknown.
+void InstanceRenderPassDone(void* renderContext);
+void ListDPassBegin();
+
 } // namespace entity
 } // namespace sly

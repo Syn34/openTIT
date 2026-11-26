@@ -586,6 +586,7 @@ uint32_t EntityCount(EntityList list);
 Entity* EntityAt(EntityList list, uint32_t index);
 // Drops entry `index` by moving the last entry into its place.
 void RemoveEntityAt(EntityList list, uint32_t index);
+void ClearEntityList(EntityList list);
 
 // Listener the entities install on their animation controller: forwards
 // an event to the entity (`user`) (0x000DD4A0).
