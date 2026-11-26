@@ -3,7 +3,11 @@
 // bloom noise effects of the main view's post-process chain.
 #include "sly/game/SlyGame.h"
 
+#include "agl/AglDrawList.h"
+#include "agl/AglResources.h"
 #include "agl/AglPostProc.h"
+#include "agl/gpu/GpuTypes.h"
+#include "ape/world/ApeBase.h"
 #include "agl/AglRenderTarget.h"
 #include "ape/level/ApeGui.h"
 #include "ape/level/ApeLevelDef.h"
@@ -411,6 +415,37 @@ void SlyGame::ApplyLevelDof()
     const uint8_t passes = levelDef->dofPasses;
     effect->quality = passes < 1 ? 1 : (passes > 4 ? 4 : passes);
     effect->SetEnabled(levelDef->dofEnable);
+}
+
+// @func 0x004583F8 SlyGame::DrawScreenGradient
+// A full screen quad at the far end of the depth range, `top` colour at
+// the top edge, `bottom` at the bottom, drawn with the built-in vertex
+// colour material into the frame's draw list.
+// NOTE: the console also unprojects the four screen corners through the
+// view's inverse view-projection but then draws in clip space; the result
+// is unused and the view only matters for that.
+void SlyGame::DrawScreenGradient(agl::AglRenderTarget* view, const uint8_t top[4], const uint8_t bottom[4])
+{
+    (void)view;
+    constexpr float kFarZ = 0.9999f;
+    agl::AglDrawList& list = agl::GetDrawList();   // NOTE: the game world's frame list (+0x1285E4)
+    list.SetMaterial(agl::GetBuiltinMaterial(3), 0);
+    list.SetWorldMatrix(ape::world::kWorldIdentity, 0);
+    agl::AglDrawPrimitive primitive;
+    list.AllocPrimitive(&primitive, static_cast<uint8_t>(agl::gpu::PrimitiveType::TriangleFan), 4, 0);
+    const struct {
+        float x, y;
+        const uint8_t* color;
+    } corners[4] = {{-1.0f, -1.0f, bottom}, {1.0f, -1.0f, bottom}, {1.0f, 1.0f, top}, {-1.0f, 1.0f, top}};
+    for (int i = 0; i < 4; ++i) {
+        agl::AglDrawVertex& v = primitive.vertices[i];
+        v.position[0] = corners[i].x;
+        v.position[1] = corners[i].y;
+        v.position[2] = kFarZ;
+        for (int c = 0; c < 4; ++c)
+            v.color[c] = corners[i].color[c];
+    }
+    list.EndPrimitive();
 }
 
 } // namespace sly

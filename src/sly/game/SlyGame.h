@@ -496,6 +496,10 @@ public:
     // The camera follows a player block's character again (0x00484858).
     void AttachCameraTo(GamePlayer& player);
     void AttachCameraToPlayer(uint32_t player);
+    // The screen shows a held picture instead of the running game.
+    bool HoldsFrame();
+    // Full screen vertical colour gradient behind everything.
+    void DrawScreenGradient(agl::AglRenderTarget* view, const uint8_t top[4], const uint8_t bottom[4]);
 
     // -- data ------------------------------------------------------------------
     uint8_t flags1C = 0;                        // +0x1C bit 5: autosave allowed
