@@ -130,6 +130,64 @@ void HudPrompt::SetActive(bool active)
 // @func 0x0036FAC8 HudPrompt::SetEnabled
 void HudPrompt::SetEnabled(bool, bool) {}
 
+// @func 0x0036FAD0 HudPrompt::Show
+void HudPrompt::Show(const char* text_)
+{
+    constexpr uint32_t kScript_Intro = 0x04296E4Cu;   // "Intro"
+    if ((animState >> 1) == 1)
+        return;
+    step = 0;
+    animState = (animState & 1u) | (1u << 1);
+    if (object)
+        object->SetVisible(true, true);
+    for (ape::ApeGuiObject* gui : guiObjects) {
+        if (gui)
+            gui->SetVisible(true);
+    }
+    if (guiObjects[1] && guiObjects[1]->GetType() == ape::kGuiObject_Text) {
+        guiObjects[1]->SetText(text_, false);
+        guiObjects[1]->Invalidate();
+    }
+    PlayHudClip(animController, introClip, 1.0f, false);
+    if (animScript)
+        static_cast<ape::ApeAnimScriptInstance*>(animScript)->SetStateAndUpdate(kScript_Intro);
+}
+
+namespace {
+
+void DrawAt(ape::ApeGuiObject* gui, const ape::world::ApeObj* anchor)
+{
+    // The GUI's x and y axes point the other way from the scene's.
+    ape::Matrix34 transform = anchor->GetWorld();
+    transform.xAxis = {-transform.xAxis.x, -transform.xAxis.y, -transform.xAxis.z, 0.0f};
+    transform.yAxis = {-transform.yAxis.x, -transform.yAxis.y, -transform.yAxis.z, 0.0f};
+    gui->SetTransform(transform);
+    gui->Tick(0.0f);
+    gui->Draw();
+    gui->Invalidate();
+}
+
+} // namespace
+
+// @func 0x0036FCD0 HudPrompt::Draw
+void HudPrompt::Draw()
+{
+    if (guiObjects[0] && sceneObjects[0])
+        DrawAt(guiObjects[0], sceneObjects[0]);
+    if (guiObjects[1] && sceneObjects[1])
+        DrawAt(guiObjects[1], sceneObjects[1]);
+    // NOTE: the console tests the first GUI object for the third pair.
+    if (guiObjects[0] && sceneObjects[2] && guiObjects[2])
+        DrawAt(guiObjects[2], sceneObjects[2]);
+}
+
+// @func 0x00370104 HudPrompt::DrawCallback
+void HudPrompt::DrawCallback(void* unused, void* context)
+{
+    (void)unused;
+    if (context)
+        static_cast<HudPrompt*>(context)->Draw();
+}
+
 } // namespace hud
 } // namespace sly
-

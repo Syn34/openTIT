@@ -12,6 +12,8 @@
 #include "sly/game/hud/HudTracker.h"
 #include "sly/game/hud/HudType8000.h"
 
+#include "ape/anim/ApeAnimScript.h"
+
 namespace sly {
 namespace hud {
 
@@ -90,6 +92,51 @@ void BuildHudElements()
     hud.coinCounter = FindObjectElement(kCoinCounter);
     hud.hudSuspended = false;
     hud.flagF64CC8 = false;
+}
+
+// @func 0x0035B984 hud::ResetHudElements
+void ResetHudElements(bool flagMap)
+{
+    constexpr uint32_t kScript_Reset = 0x25F79944u;   // NOTE: state name unknown
+    constexpr uint32_t kMapElement = 0x5CB6389Bu;     // 0x00F64D48. NOTE: name unknown
+    HudManagerState& hud = Hud();
+    for (uint32_t i = 0; i < hud.objects.Count(); ++i) {
+        HudObject* element = hud.objects.Data()[i].value;
+        if (!element)
+            continue;
+        if (element->typeFlags & kHud_Type2)
+            static_cast<HudScreen*>(element)->locked = true;
+        if (element->animScript)
+            static_cast<ape::ApeAnimScriptInstance*>(element->animScript)->SetStateAndUpdate(kScript_Reset);
+        element->Refresh();
+    }
+    hud.suspended.Clear();
+    for (auto& stack : hud.stacks)
+        stack.Clear();
+    // Meters made for an owner go away with the level. NOTE: the console
+    // advances its index after each swap-remove, so it deletes only every
+    // other meter before emptying the list; the port deletes them all.
+    while (hud.meters.Count() != 0) {
+        HudObject* meter = hud.meters[0];
+        hud.objects.Remove(meter ? meter->RegisteredName() : 0);
+        delete meter;
+        hud.meters.RemoveAtSwap(0);
+    }
+    hud.retiredMeters.Clear();
+    for (uint32_t i = 0; i < hud.hideList.Count(); ++i) {
+        HudObject* element = hud.hideList.Data()[i].value;
+        hud.objects.Remove(hud.hideList.Data()[i].key);
+        delete element;
+    }
+    hud.hideList.Clear();
+    ResetTextOverride(TextOverride());
+    hud.hudSuspended = false;
+    hud.flagF64CC8 = false;
+    if (flagMap) {
+        HudObject** found = hud.objects.Find(kMapElement);
+        if (found && *found && ((*found)->typeFlags & kHud_Type10000))
+            static_cast<HudType10000*>(*found)->mapFlags |= 0x00100000u;
+    }
 }
 
 } // namespace hud

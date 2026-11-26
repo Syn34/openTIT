@@ -244,6 +244,7 @@ HudObjectDef::~HudObjectDef()
         std::free(menu.pages);
     }
     std::free(timedLines.lines);
+    std::free(map.fields);
 }
 
 // The attributes every definition has: name, clip prefix, scene object (and
@@ -805,17 +806,96 @@ HudObjectDef* CreateRadarDef(XmlElement* e)
     return ParseRadarDef(def, e);
 }
 
-namespace {
+// The map's block: up to 40 text records, the corner points, the names of
+// its parts and the blip objects (the radar's attributes).
+// @func 0x0035CA00 hud::ParseMapDef
+HudObjectDef* ParseMapDef(HudObjectDef* def, XmlElement* e)
+{
+    constexpr int kMaxMapFields = 40;
+    HudObjectDef::MapFieldDef fields[kMaxMapFields];
+    for (HudObjectDef::MapFieldDef& f : fields) {
+        f.introScript = kDefaultIntroScript;
+        f.outroScript = kDefaultOutroScript;
+    }
+    ParseDefCommon(def, e);
+    HudObjectDef::MapDef& map = def->map;
+    map.fields = nullptr;
+    map.fieldCount = 0;
+    int count = 0;
+    for (XmlElement* t = e->FirstChildElement("3DTextObject"); t && count < kMaxMapFields;
+         t = t->NextSiblingElement("3DTextObject")) {
+        HudObjectDef::MapFieldDef& field = fields[count++];
+        uint32_t objectName = 0;
+        if (t->GetHash(attr::kTextObjectName, &objectName, 0) != 0)
+            continue;
+        field.objectName = objectName;
+        TextObjectGui gui;
+        if (!ReadTextObjectGui(t, gui))
+            continue;
+        field.object = gui.frame;
+        field.textFrame = gui.textFrame;
+        field.label = gui.label;
+        ReadColor(t, attr::kColor, field.color);
+        t->GetHash(attr::kIntroScript, &field.introScript, field.introScript);
+        t->GetHash(attr::kOutroScript, &field.outroScript, field.outroScript);
+        ReadFlagBit(t, attr::kCloneText, field.flags, 0x80000000u);
+        ReadFlagBit(t, attr::kPlayerColor, field.flags, 0x40000000u);
+        t->GetHash(attr::kId, &field.id, field.id);
+    }
+    if (count) {
+        map.fields = AllocArray<HudObjectDef::MapFieldDef>(count);
+        std::memcpy(map.fields, fields, sizeof(HudObjectDef::MapFieldDef) * size_t(count));
+        map.fieldCount = uint32_t(count);
+    }
+    e->GetFloat(attr::kDisplayTime, &map.defaultFade, map.defaultFade);
+    e->GetBool(attr::kStartActive, &map.startActive, map.startActive);
+    const char* const corners[4] = {"TLPoint", "TRPoint", "BLPoint", "BRPoint"};
+    for (int i = 0; i < 4; ++i) {
+        map.corners[i] = HudObjectDef::MapDef::Corner();
+        if (XmlElement* point = e->FirstChildElement(corners[i])) {
+            point->GetHash(attr::kName, &map.corners[i].name, map.corners[i].name);
+            ReadColor(point, 0x5399A8B2u, map.corners[i].color);
+        }
+    }
+    e->GetHash(0x5A63486Cu, &map.field_A4, map.field_A4);
+    e->GetHash(0xA3DAD21Cu, &map.field_C8, map.field_C8);
+    e->GetHash(0xFC3E33C2u, &map.field_CC, map.field_CC);
+    if (const char* text = e->GetString(0x654B8263u))
+        ape::StrCopyBounded(map.text_D0, text, sizeof map.text_D0);
+    ReadColor(e, 0x39887387u, map.color_F0);
+    const uint32_t hashes[4] = {0x624CED18u, 0x624CED1Eu, 0x624CEAEAu, 0x624CEAF0u};
+    for (int i = 0; i < 4; ++i)
+        e->GetHash(hashes[i], &map.field_F4[i], map.field_F4[i]);
+    const uint32_t names[4] = {0xC86B54EDu, 0x05D0B873u, 0x7A962D3Fu, 0xB7FB90C5u};
+    for (int i = 0; i < 4; ++i) {
+        if (const char* text = e->GetString(names[i]))
+            ape::StrCopyBounded(map.names[i], text, sizeof map.names[i]);
+    }
+    e->GetHash(0x5CCAD404u, &map.playerBlip, map.playerBlip);
+    e->GetHash(0x1395597Cu, &map.enemyBlip, map.enemyBlip);
+    e->GetHash(0x4853B1E7u, &map.goalBlip, map.goalBlip);
+    e->GetHash(0x2D45A764u, &map.goalEdgeBlip, map.goalEdgeBlip);
+    e->GetHash(0x429F935Au, &map.bottleBlip, map.bottleBlip);
+    e->GetHash(0x08B994E1u, &map.safeBlip, map.safeBlip);
+    e->GetFloat(0xEA68DF12u, &map.field_19C, map.field_19C);
+    e->GetFloat(0xC9037FF5u, &map.field_1A0, map.field_1A0);
+    e->GetHash(0x62AA4B26u, &map.glowName, map.glowName);
+    ReadColor(e, 0x894AC0DBu, map.colors[0]);
+    ReadColor(e, 0xAFE4553Du, map.colors[1]);
+    ReadColor(e, 0x62E42FD6u, map.colors[2]);
+    return def;
+}
 
-// TODO(0x0035D4B0 / 0x0035CA00 "HudMap"): the map definition block is not
-// ported; the definition only gets the common attributes and its type bit.
+// "HudMap" (type 0x10000).
+// @func 0x0035D4B0 hud::CreateMapDef
 HudObjectDef* CreateMapDef(XmlElement* e)
 {
     auto* def = new HudObjectDef();
     def->typeMask |= kHud_Type10000;
-    ParseDefCommon(def, e);
-    return def;
+    return ParseMapDef(def, e);
 }
+
+namespace {
 
 // A colour style; kept unless its name is missing or already used.
 void ReadColorStyle(XmlElement* e)
@@ -849,6 +929,24 @@ void ReadColorStyle(XmlElement* e)
 }
 
 } // namespace
+
+// @func 0x0036AA04 hud::ColorStyleColorA
+ape::xml::Color8 ColorStyleColorA(HudColorStyle* const* found)
+{
+    const HudColorStyle* style = found ? *found : nullptr;
+    if (!style)
+        return ape::xml::Color8(0, 0, 0, 0xFF);   // 0x01164CA8
+    return ape::xml::Color8(style->colors[0][0], style->colors[0][1], style->colors[0][2], style->colors[0][3]);
+}
+
+// @func 0x0036AA68 hud::ColorStyleColorB
+ape::xml::Color8 ColorStyleColorB(HudColorStyle* const* found)
+{
+    const HudColorStyle* style = found ? *found : nullptr;
+    if (!style)
+        return ape::xml::Color8(0, 0, 0, 0xFF);   // 0x01164CA8
+    return ape::xml::Color8(style->colors[1][0], style->colors[1][1], style->colors[1][2], style->colors[1][3]);
+}
 
 // @func 0x0036196C hud::LoadHudDefinitions
 void LoadHudDefinitions(XmlElement* root)

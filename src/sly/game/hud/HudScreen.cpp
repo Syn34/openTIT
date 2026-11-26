@@ -209,5 +209,38 @@ void HudScreen::SetLabelText(const char* text, uint32_t key)
     }
 }
 
+// @func 0x0036CEA0 HudScreen::Draw
+void HudScreen::Draw()
+{
+    if (object->IsVisible()) {
+        HideSubObjects();
+        HudQueueObjectDraw2(object, false);
+        for (ape::world::ApeObj* child = object->GetFirstChild(); child; child = child->GetNextSibling()) {
+            if (child->IsVisible())
+                HudQueueObjectDraw2(child, true);
+        }
+    }
+    for (uint32_t i = 0; i < def->textFieldCount; ++i) {
+        const HudTextField& field = fields[i];
+        if (!field.field_08 || !field.sceneObject || !field.sceneObject->IsVisible())
+            continue;
+        // The GUI's x and y axes point the other way from the scene's.
+        ape::Matrix34 transform = field.sceneObject->GetWorld();
+        transform.xAxis = {-transform.xAxis.x, -transform.xAxis.y, -transform.xAxis.z, 0.0f};
+        transform.yAxis = {-transform.yAxis.x, -transform.yAxis.y, -transform.yAxis.z, 0.0f};
+        field.field_08->SetTransform(transform);
+        field.field_08->Tick(0.0f);
+        field.field_08->Draw();
+    }
+}
+
+// @func 0x0036D0EC HudScreen::DrawCallback
+void HudScreen::DrawCallback(void* unused, void* context)
+{
+    (void)unused;
+    if (context)
+        static_cast<HudScreen*>(context)->Draw();
+}
+
 } // namespace hud
 } // namespace sly
