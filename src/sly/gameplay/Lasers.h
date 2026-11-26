@@ -57,7 +57,7 @@ struct LaserEndpoint {
     ape::Matrix34 transform{};            // +0x00 the point's frame (translation = position)
     ape::world::ApeSplineInstance* spline = nullptr;   // +0x40 spline the point follows
     int32_t splineSegment = 0;            // +0x44 last evaluated segment
-    uint32_t field_48 = 0;                // +0x48
+    ape::world::ApeObj* object = nullptr; // +0x48 moveable object the point follows
     ape::ApeAnimScriptInstance* script = nullptr;      // +0x4C direction script
     ape::ApeAnimScriptObjectVar* scriptObject = nullptr;   // +0x50 its object variable 0x0027469E
     float speed = 1.0f;                   // +0x54 movement speed along the spline
@@ -210,7 +210,7 @@ struct LaserField {
     ape::ApeAnimScriptInstance* lifetimeScript = nullptr;   // +0x154
     float flickerDelay = 0.0f;            // +0x158
     float flickerTime = 0.0f;             // +0x15C
-    float field_160 = 0.0f;               // +0x160
+    float field_160 = 0.0f;               // +0x160 time to the next flicker toggle
     uint32_t flags = kFlag_Shown;         // +0x164 Flags
 };
 
@@ -262,7 +262,18 @@ public:
     ape::ApeTFixedArray<LaserField> fields;       // +0x20
     ape::ApeTArray<Laser*> updated{0x100};        // +0x30 lasers that moved this frame
     ape::ApeTSortedMap<int16_t> groupNames{kMaxGroups, nullptr, int16_t(-1)};   // +0x44 name -> group index
-    ape::ApeTArray<void*> field_5C{8};            // +0x5C NOTE: element type unknown
+    // One-frame beam query: `callback(user, start, end)` for every live
+    // beam (8-byte records; the list is emptied by DispatchBeamQueries).
+    struct BeamQuery {
+        void* user;
+        void (*callback)(void* user, const ape::Vec3& start, const ape::Vec3& end);
+    };
+    ape::ApeTArray<BeamQuery> beamQueries{8};     // +0x5C
+
+    // 0x003A11A8: tests the local players against the beams, then answers
+    // the queued beam queries with every enabled beam of the enabled groups
+    // in view (every beam with Entity.Laser.AlwaysUpdate).
+    void DispatchBeamQueries();
 };
 
 // The level's laser manager (0x00F657FC), null without one.
@@ -283,15 +294,19 @@ void AssociateLaserField(ape::setting::Setting* setting, const char* objectName,
 // Hooks into modules that are not ported yet.
 // Phantom of a laser field (+0x148 / +0x14C): its slot 76 switches it.
 void LaserPhantomSetEnabled(void* phantom, bool enabled);
-// 0x0039C1C8 (TODO): moves a laser's end points and checks its beam for
-// hits; true when the beam must be placed again this frame.
+// 0x0039C1C8: flicker of a flickering laser and movement of its end points
+// (along their splines or with their objects); true when the beam must be
+// placed again this frame.
 bool LaserUpdate(Laser& laser, float dt);
-// 0x0039FBD8 (TODO): the per-frame part of a field (flicker, damage, FX).
+// 0x0039FBD8: the flicker of a field.
 void LaserFieldUpdate(LaserField& field, float dt);
 // 0x0039F840 (TODO): vertex colours of a field material set over the
 // outline (or its triangles).
 void LaserFieldColorMaterials(const ape::ApeTArray<ape::Vec3>& points, const uint8_t color[4],
                               LaserField::MaterialSet& set);
+// 0x003A09C0 (TODO): a player character against the beams (vector code
+// past the decompiler).
+void LaserTestCharacter(LaserManager& manager, entity::Entity* character);
 // Set-up of a laser from its setting by kind (0x0039A2B8 fixed, 0x0039AD48
 // anchor, 0x0039B5A0 spline; TODO).
 void LaserSetupFixed(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point);

@@ -40,6 +40,8 @@ constexpr uint32_t kLifetime_FlickerStart = 0x066F8774u;
 constexpr uint32_t kLifetime_On = 0xCADB1721u;
 constexpr uint32_t kLifetime_Off = 0x3ECC2A7Cu;
 constexpr uint32_t kJoint_Disabled = 0xF13F8BB2u;
+constexpr uint32_t kLifetime_FlickerDelayOver = 0x06FEE56Au;
+constexpr uint32_t kLifetime_FlickerOver = 0xCBCB4FE3u;
 constexpr uint32_t kJoint_DisabledAgain = 0xA86F8ED1u;
 constexpr uint32_t kTriggerTypeBit = 0x00400000u;      // NOTE: entity type bit of the trigger classes
 constexpr float kFirstScriptStep = 0.0177f;            // NOTE: 0x3F9119CE as a float
@@ -572,6 +574,141 @@ void LaserField::SetScriptState(uint32_t state)
             script->SetStateAndUpdate(state);
 }
 
+// @func 0x0039C1C8 LaserUpdate
+bool LaserUpdate(Laser& laser, float dt)
+{
+    auto showPoints = [&laser](bool show) {
+        for (LaserEndpoint& p : laser.points) {
+            if (!p.script || !p.scriptObject)
+                continue;
+            if (ape::world::ApeObj* object = ScriptVarObject(p.scriptObject))
+                object->SetVisible(show, true);
+        }
+    };
+
+    bool moved = false;
+    if (laser.initType == Laser::kInit_Flicker && laser.flickerTime > 0.0f) {
+        laser.flickerDelay -= dt;
+        if (laser.flickerDelay <= 0.0f) {
+            laser.flickerDelay = 0.0f;
+            laser.flickerTime -= dt;
+            laser.flickerToggle -= dt;
+            if (laser.flickerTime <= 0.0f) {
+                // Flicker over: the beam takes the state it was switched to.
+                laser.flickerTime = 0.0f;
+                laser.flickerToggle = 0.0f;
+                const bool off = (laser.flags & Laser::kFlag_80000000) != 0;
+                laser.flags = off ? (laser.flags & ~Laser::kFlag_Visible) : (laser.flags | Laser::kFlag_Visible);
+                if (laser.geometry)
+                    laser.geometry->SetVisible(!off, true);
+                showPoints((laser.flags & Laser::kFlag_ShowPoints) != 0 || !off);
+                if (audio::SoundNameHasDef(laser.sound)) {
+                    audio::StopVoice(laser.voice, true);
+                    laser.voice = 0;
+                    if (!off)
+                        laser.voice = entity::PlayEntitySound(laser.sound, &laser.beam.translation, nullptr);
+                }
+            } else if (laser.flickerToggle <= 0.0f) {
+                const bool visible = !(laser.flags & Laser::kFlag_Visible);
+                laser.flags = visible ? (laser.flags | Laser::kFlag_Visible) : (laser.flags & ~Laser::kFlag_Visible);
+                laser.flickerToggle = ape::RandomRange(g_laserFlickerMinToggleTime.Get(),
+                                                       g_laserFlickerMaxToggleTime.Get(), ape::g_gameRandom);
+                if (laser.geometry)
+                    laser.geometry->SetVisible(visible, true);
+                showPoints((laser.flags & Laser::kFlag_ShowPoints) != 0 || visible);
+            }
+        }
+        moved = true;
+    }
+
+    if (!g_laserAlwaysUpdate.Get() && !(laser.flags & Laser::kFlag_Enabled) && !moved)
+        return moved;
+    for (LaserEndpoint& p : laser.points) {
+        const uint32_t moveType = p.flags >> LaserEndpoint::kMoveTypeShift;
+        const bool splineMoves = p.spline && ((p.flags & LaserEndpoint::kMoveable) || moveType == 2 ||
+                                              (moveType == 1 && p.speed > 0.0f));
+        if (!p.object && !splineMoves)
+            continue;
+        if (!p.object) {
+            // Type 1 wraps around the spline, the other types reflect at its ends.
+            const float direction = (p.flags & LaserEndpoint::kReverse) ? -1.0f : 1.0f;
+            const float pos = dt * p.speed * direction + p.splinePos;
+            const float whole = std::trunc(pos);
+            p.splinePos = pos;
+            if (moveType == 1) {
+                if (pos > 1.0f)
+                    p.splinePos = pos - whole;
+                else if (pos < 0.0f)
+                    p.splinePos = (pos - whole) + 1.0f;
+            } else if (pos > 1.0f) {
+                p.splinePos = 1.0f - (pos - whole);
+            } else if (pos < 0.0f) {
+                p.splinePos = whole - pos;
+            }
+        } else {
+            LaserGroup* group = laser.group;
+            ape::AabbAddPoint(group->bounds, p.object->GetWorld().translation);
+            ape::SphereFromAabb(group->sphere, group->bounds);
+        }
+        if (!(laser.flags & Laser::kFlag_Visible) && !moved)
+            continue;
+        moved = true;
+        if (p.object) {
+            p.transform = p.object->GetWorld();
+        } else if (p.spline) {
+            const bool reverse = (p.flags & LaserEndpoint::kReverse) != 0;
+            p.splineSegment = p.spline->EvaluatePosition(p.splinePos, p.transform.translation,
+                                                         uint32_t(p.splineSegment), reverse);
+        }
+        if (p.script && p.scriptObject)
+            if (ape::world::ApeObj* object = ScriptVarObject(p.scriptObject))
+                object->SetLocalTransform(p.transform);
+    }
+    return moved;
+}
+
+// @func 0x0039FBD8 LaserFieldUpdate
+// Flickering fields: after the delay the outline blinks at random intervals
+// until the flicker time is over, then the field takes its final state.
+void LaserFieldUpdate(LaserField& field, float dt)
+{
+    if (field.initType != 1 || !(field.flickerTime > 0.0f))
+        return;
+    field.flickerDelay -= dt;
+    if (field.flickerDelay <= 0.0f) {
+        field.flickerDelay = 0.0f;
+        if (field.lifetimeScript)
+            field.lifetimeScript->SetStateAndUpdate(kLifetime_FlickerDelayOver);
+    }
+    if (field.flickerDelay > 0.0f)
+        return;
+    field.flickerTime -= dt;
+    field.field_160 -= dt;
+    if (field.flickerTime <= 0.0f) {
+        field.flickerDelay = 0.0f;
+        field.flickerTime = 0.0f;
+        field.field_160 = 0.0f;
+        if (field.lifetimeScript)
+            field.lifetimeScript->SetStateAndUpdate(kLifetime_FlickerOver);
+        // A field flickering out ends switched off.
+        const bool flickeringOut = (field.flags & LaserField::kFlag_Flickering) != 0;
+        field.SetActive(!flickeringOut);
+        if (flickeringOut) {
+            for (entity::Entity* joint : field.joints)
+                if (ape::ApeAnimScriptInstance* script = EntityScript(joint))
+                    script->SetStateAndUpdate(kJoint_Disabled);
+        }
+    } else if (field.field_160 <= 0.0f) {
+        const bool shown = !(field.flags & LaserField::kFlag_Shown);
+        field.flags = shown ? (field.flags | LaserField::kFlag_Shown) : (field.flags & ~LaserField::kFlag_Shown);
+        field.field_160 = ape::RandomRange(g_laserFlickerMinToggleTime.Get(), g_laserFlickerMaxToggleTime.Get(),
+                                           ape::g_gameRandom);
+        for (ape::world::ApeObj* outline : field.outlines)
+            if (outline)
+                outline->SetVisible(shown, true);
+    }
+}
+
 // ===========================================================================
 // Manager
 
@@ -730,6 +867,31 @@ void LaserManager::Unload()
     lasers.SetUsed(0);
     fields.SetUsed(0);
     groupNames.Clear();
+}
+
+// @func 0x003A11A8 LaserManager::DispatchBeamQueries
+void LaserManager::DispatchBeamQueries()
+{
+    if (lasers.Used() == 0 && groups.Used() == 0)
+        return;
+    for (uint8_t i = 0; i < g_game->localPlayerCount; ++i)
+        LaserTestCharacter(*this, g_game->players[i].character);
+    const bool always = g_laserAlwaysUpdate.Get();
+    for (const BeamQuery& query : beamQueries) {
+        for (uint16_t g = 0; g < groups.Used(); ++g) {
+            LaserGroup& group = groups[g];
+            const uint32_t live = LaserGroup::kFlag_Enabled | LaserGroup::kFlag_InView;
+            if (!always && (group.flags & live) != live)
+                continue;
+            for (uint16_t j = 0; j < group.lasers.Count(); ++j) {
+                Laser& laser = lasers[size_t(group.lasers.Data()[j].value)];
+                if (always || (laser.flags & Laser::kFlag_Enabled))
+                    query.callback(query.user, laser.points[0].transform.translation,
+                                   laser.points[1].transform.translation);
+            }
+        }
+    }
+    beamQueries.Clear();
 }
 
 // @func 0x003A1808 UnloadLasers
@@ -896,19 +1058,11 @@ void LaserPhantomSetEnabled(void* phantom, bool enabled)
     (void)enabled;
 }
 
-// TODO(0x0039C1C8 LaserUpdate): end point movement and beam hits.
-bool LaserUpdate(Laser& laser, float dt)
+// TODO(0x003A09C0 LaserTestCharacter)
+void LaserTestCharacter(LaserManager& manager, entity::Entity* character)
 {
-    (void)laser;
-    (void)dt;
-    return false;
-}
-
-// TODO(0x0039FBD8 LaserFieldUpdate)
-void LaserFieldUpdate(LaserField& field, float dt)
-{
-    (void)field;
-    (void)dt;
+    (void)manager;
+    (void)character;
 }
 
 // TODO(0x0039F840 LaserFieldColorMaterials)
