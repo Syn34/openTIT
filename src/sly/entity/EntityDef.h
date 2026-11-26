@@ -246,6 +246,7 @@ public:
     // Flags (+0x04).
     enum Flags : uint32_t {
         kPlace_Scripted     = 0x00000002,   // a ScriptedEntityPlacement
+        kPlace_Actor        = 0x00000004,   // an ActorPlacement
         kPlace_Physical     = 0x00002000,   // a PhysicalEntityPlacement
         kPlace_Trigger      = 0x00400000,   // a TriggerPlacement
         kPlace_ForceCreate  = 0x02000000,   // NOTE: overrides a placement's "skip" bit

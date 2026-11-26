@@ -19,8 +19,51 @@
 #include "sly/entity/ActorVariants.h"
 #include "sly/entity/EntityHits.h"
 
+#include <cstring>
+
 namespace sly {
 namespace entity {
+
+// @func 0x000C79C0 ActorDef::ActorDef
+// @func 0x000E27FC ActorDef::ActorDef (thunk)
+// NOTE: the Havok side of each part (rigid body construction info from the
+// named body of the level's physics data, the new hkpRigidBody, its name
+// and collision properties) is built by ActorPartCreateBody.
+ActorDef::ActorDef(const ActorDefDesc& desc)
+    : ScriptedEntityDef(desc), field_CC(desc.field_88), navMode(desc.navMode),
+      navObstacleSize(desc.navObstacleSize)
+{
+    float* const damage[15] = {&impactScale, &field_F4, &blastScale, &field_FC, &collisionScale,
+                               &collisionThreshold, &collisionMax, &meleeScale, &field_110, &projectileScale,
+                               &attackerScale[0], &attackerScale[1], &attackerScale[2], &attackerScale[3],
+                               &interactionPriority};
+    for (int i = 0; i < 15; ++i)
+        *damage[i] = desc.damage[i];
+    defFlags = desc.defFlags & 0xFFC00000u;
+    for (int i = 0; i < 6; ++i)
+        interactionNeeds[i] = desc.interactionNeeds[i];
+    if (collisionMax < 0.0f)
+        collisionMax = desc.field_4C;
+
+    if (!desc.parts)
+        return;
+    for (const ActorPartDesc& partDesc : *desc.parts) {
+        void* body = ActorPartCreateBody(partDesc, navMode);
+        if (!body)
+            continue;
+        Part part;
+        std::memcpy(part.field_00, partDesc.field_00, sizeof(part.field_00));
+        part.havokObject = body;
+        std::memcpy(part.field_24, partDesc.field_24, sizeof(part.field_24));
+        part.partFlags = partDesc.partFlags;
+        part.aimOffset = partDesc.aimOffset;
+        part.navMode = partDesc.navMode;
+        std::memcpy(part.field_94, partDesc.field_94, sizeof(part.field_94));
+        if (!parts)
+            parts = new ape::ApeTArray<Part>();
+        parts->Add(part);
+    }
+}
 
 // @func 0x000E281C ActorDef::~ActorDef
 // @func 0x000E29EC ActorDef::~ActorDef (deleting)
