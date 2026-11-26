@@ -5,9 +5,8 @@
 // not identified beyond that, so they keep their type bits as names.
 //
 // Each runs its own copy of the show/hide state machine (flag word +0xFC
-// for 0x800 / 0x1000, +0x3C0 for 0x10000). Only the construction,
-// destruction, SetActive and Refresh are ported; the per-frame updates and
-// the show/hide helpers are TODO.
+// for 0x800 / 0x1000, +0x3C0 for 0x10000). The 0x1000 kind is complete;
+// the 0x800 update / show helper and the 0x10000 constructor are TODO.
 #pragma once
 
 #include "sly/game/hud/HudManager.h"
