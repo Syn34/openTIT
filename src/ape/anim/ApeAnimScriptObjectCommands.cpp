@@ -3,6 +3,8 @@
 
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
+#include "ape/level/ApeGui.h"
+#include "ape/level/ApeGuiScript.h"
 #include "ape/math/ApeMatrixOps.h"
 #include "ape/xml/ApeXml.h"
 #include "ape/input/ApeInputDevice.h"
@@ -684,7 +686,22 @@ ApeAnimScriptCommand* ApeAnimScriptPlayGuiScriptCommand::Create(xml::XmlElement*
     return command;
 }
 
-// TODO(0x004CC3F4 ApeAnimScriptPlayGuiScriptCommand::Execute) plays a GUI animation.
+// @func 0x004CC3F4 ApeAnimScriptPlayGuiScriptCommand::Execute
+// Restarts a GUI script on the object of a GUI variable: every script of
+// the object is stopped, then `m_script` plays (deleted when it ends).
+void ApeAnimScriptPlayGuiScriptCommand::Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState*)
+{
+    if (!m_object)
+        return;
+    ApeAnimScriptVar* var = instance->FindVar(m_object);
+    if (!var || var->GetType() != AnimScriptVarType::Gui)
+        return;
+    auto* gui = static_cast<ApeGuiObject*>(static_cast<ApeAnimScriptGuiVar*>(var)->Resolve());
+    if (!gui)
+        return;
+    StopGuiScripts("", gui);
+    PlayGuiScript(m_script, gui, true, false);
+}
 
 // ---------------------------------------------------------------------------
 // AttachObject

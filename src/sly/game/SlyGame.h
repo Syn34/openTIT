@@ -389,6 +389,12 @@ public:
     void PauseReturnTreasure(bool paused);
     void RefreshReturnTreasureHud();
     void SetReturnTreasureHudActive(bool active);
+    // A game event happened to `player`: during play (main state 1, sub state
+    // 2 or 3, no queued cutscene) it goes to the player's event log and the
+    // job manager; while cutscenes are queued it waits in player 0's
+    // deferred log. Event 1 about the entity the time source tracks stops
+    // the tracking.
+    void RecordEvent(uint32_t player, const GameEvent& event);
     // The running job ended: the job manager records it, then the game
     // restarts the episode, shows the job-complete screen (sub state 7, the
     // completion in sub state data +0x48) or returns to play (sub state 2).
@@ -485,6 +491,10 @@ public:
     struct TimeSource {
         uint8_t field_00[0x3C];
         float deltaTime;                        // +0x3C
+        uint8_t field_40[0x118];
+        uint32_t field_158;                     // +0x158
+        entity::Entity* trackedEntity;          // +0x15C
+        bool tracking;                          // +0x160 bit 31
     };
     TimeSource* timeSource = nullptr;           // +0x128224
     ape::Matrix34 field_128230;                 // +0x128230 identity

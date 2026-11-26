@@ -264,6 +264,7 @@ class ApeAnimScriptPlayGuiScriptCommand : public ApeAnimScriptCommand {
 public:
     ~ApeAnimScriptPlayGuiScriptCommand() override;
     ApeAnimScriptCommand* Create(xml::XmlElement* element) const override;
+    void Execute(ApeAnimScriptInstance* instance, ApeAnimScriptState* state) override;
 
 private:
     uint32_t m_script = 0;        // "script"

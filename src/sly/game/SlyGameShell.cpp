@@ -334,6 +334,30 @@ bool SlyGame::OnJobFinished()
     return false;
 }
 
+// @func 0x00482D14 SlyGame::RecordEvent
+void SlyGame::RecordEvent(uint32_t player, const GameEvent& event)
+{
+    if (event.type == kEvent_01 && timeSource) {
+        entity::Entity* tracked = timeSource->trackedEntity;
+        if (tracked && (tracked->flags & (1u << 18)) && tracked->nameHash == event.objectId) {
+            timeSource->field_158 = 0;
+            timeSource->trackedEntity = nullptr;
+            timeSource->tracking = false;
+        }
+    }
+
+    const bool playing = transition != 2 && GetState(0) == 1 && (GetState(1) == 2 || GetState(1) == 3);
+    if (playing && cutsceneQueue.Count() == 0) {
+        if (player < localPlayerCount)
+            players[player].eventLog.Push(event);
+        if (game::JobManager* jobs = game::GetJobManager())
+            jobs->OnGameEvent(int(player), event);
+        return;
+    }
+    if (cutsceneQueue.Count() != 0 && (flags2D & 0x04))
+        players[0].deferredEvents.Push(event);
+}
+
 // @func 0x0048A57C SlyGame::QuitToFrontEnd
 void SlyGame::QuitToFrontEnd()
 {
