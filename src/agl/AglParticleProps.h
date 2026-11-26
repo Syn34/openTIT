@@ -9,6 +9,8 @@
 // path. The particle system that evaluates them is not ported yet.
 #pragma once
 
+#include "ape/spline/ApeSpline.h"
+
 #include <cstdint>
 
 namespace ape::iff { struct IffReader; }
@@ -134,6 +136,33 @@ struct AglEmitterRecord {
     uint32_t emitMeshHash[3] = {};
 };
 
+// Spin around an axis (console class 0x00B23240, 0xC0 bytes). The rate
+// keys are in degrees; angles[] holds the running total at each key in
+// radians, with one more entry than there are keys.
+class AglRotationProperty : public AglParticleProperty {
+public:
+    // Which unit axis the rotation is about (kAxis_Any for other axes).
+    enum Axis : uint8_t { kAxis_X = 0, kAxis_Y = 1, kAxis_Z = 2, kAxis_Any = 3 };
+    static constexpr uint32_t kMaxKeys = 16;
+
+    ape::Vec3 axis = {};                 // +0x10 normalised
+    float variance = 0.0f;               // +0x20 in [-1, 1]
+    uint32_t keyCount = 0;               // +0x24 entries of angles[]
+    float angles[kMaxKeys] = {};         // +0x28
+    float rates[kMaxKeys] = {};          // +0x68
+    float lifetime = 0.0f;               // +0xA8 the properties' ttl
+    float initialAngleRange = 0.0f;      // +0xAC in turns
+    Axis axisType = kAxis_Any;           // +0xB0
+    bool randomDirection = false;        // +0xB1
+};
+
+// Path the particles follow: a Bezier spline (console class 0x00B232C0;
+// the spline sits at +0x10).
+class AglPathProperty : public AglParticleProperty {
+public:
+    ape::ApeSpline spline;              // +0x10
+};
+
 // The emitter properties (0x8C bytes, pooled; console AglEmitProperties).
 // NOTE: the meaning of most scalar fields comes from the emitter record,
 // whose consumer (0x004FF4C0) is not ported; they keep their offsets.
@@ -174,10 +203,10 @@ public:
     AglColorProperty* color = nullptr;         // +0x70
     AglSizeProperty* size = nullptr;           // +0x74
     AglForceProperty* force = nullptr;         // +0x78
-    AglParticleProperty* rotation = nullptr;   // +0x7C
+    AglRotationProperty* rotation = nullptr;   // +0x7C
     AglTexAnimProperty* texAnim = nullptr;     // +0x80
     AglCollisionProperty* collision = nullptr; // +0x84
-    AglParticleProperty* path = nullptr;       // +0x88
+    AglPathProperty* path = nullptr;           // +0x88
 };
 
 // Load callback run for each new emitter properties object (phase 0 before
@@ -195,6 +224,8 @@ int LoadShadedColorChunk(ape::iff::IffReader* reader, void* arg);
 int LoadSizeChunk(ape::iff::IffReader* reader, void* arg);
 int LoadTexAnimChunk(ape::iff::IffReader* reader, void* arg);         // "EPUV"
 int LoadCollisionChunk(ape::iff::IffReader* reader, void* arg);       // "EPCP"
+int LoadPathChunk(ape::iff::IffReader* reader, void* arg);            // "EPSP"
+int LoadRotationChunk(ape::iff::IffReader* reader, void* arg);        // "EPTR"
 // Registers the handlers above (part of the particle system start-up 0x0050E614).
 void RegisterParticleChunkHandlers();
 
