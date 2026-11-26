@@ -26,7 +26,7 @@
 #include <vector>
 
 namespace ape::file { class File; }
-namespace ape { class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeAnimScript; class ApeGuiObject; }
+namespace ape { struct GuiEvent; class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeAnimScript; class ApeGuiObject; }
 namespace agl { class AglRenderTarget; }
 
 namespace sly {
@@ -36,7 +36,7 @@ class SpawnManager;
 namespace goals { class Goal; }
 namespace gameplay { class Minigame; class ReturnTreasureMicrogame; }
 namespace entity { class Entity; class GameCamera; }
-namespace audio { struct MixState; }
+namespace audio { struct MixState; struct SoundName; }
 namespace camera { class CameraMode; }
 struct LevelParams;
 
@@ -187,10 +187,11 @@ struct QueuedCutscene {
     ape::ApeAnimScript* script = nullptr;       // +0x18
     ape::ApeAnimScriptInstance* instance = nullptr; // +0x1C
     float time = 0.0f;                          // +0x20
-    float savedNearClip = 0.0f;                 // +0x24 main view near plane while it plays
-    uint32_t sequence = 0;                      // +0x28
-    uint32_t field_2C = 0;                      // +0x2C
-    uint32_t flags = 0;                         // +0x30 bit 30: player back to Sly, bit 29: finished
+    float savedNearClip = 1.0f;                 // +0x24 main view near plane while it plays
+    uint32_t sequence = 0;                      // +0x28 the script's name (its sequence has it too)
+    int32_t field_2C = 0;                       // +0x2C caller's value. NOTE: a spawn point index for scripts
+    // +0x30: bit 31 caller's flag, bit 30 player back to Sly, bit 29 finished.
+    uint32_t flags = 0x80000000u;
 };
 
 // A speaker of the dialog (12 bytes on the console: name, entity, flags).
@@ -415,6 +416,11 @@ public:
     // After skipping a cinematic: the "Audio.PostCinematicSkipMusic" track
     // (or silence) and the state flags of a skipped cutscene.
     void OnCinematicSkipped();
+    // After the save data loaded: extras not earned are locked again, the
+    // job the save was made in is started again (or the level of its save
+    // point asked for, or the first job), and the "Audio.PostSaveDataLoadMusic"
+    // track starts.
+    void ResumeSavedGame();
     // A player is down: meter B snaps and a running return-treasure
     // microgame loses the treasure if the player carried it.
     void OnPlayerDown(uint32_t player);
@@ -532,6 +538,13 @@ public:
     // empty, the deferred game events go to the job manager and play
     // resumes (0x0048B810).
     void UpdateCutsceneQueue(float dt);
+    // Queues script `script` of library `library` as a cutscene (at most
+    // four; only while "Game.CutSceneEnable" is set) with its variable
+    // bindings and their source instance. `resume` (or a failing goal)
+    // resumes play when the queue empties; `playing` marks a cutscene as
+    // playing at once (0x0046C3B8).
+    void QueueCutscene(uint32_t script, uint32_t library, bool flag, const TextField* bindings, size_t count,
+                       int32_t value, ape::ApeAnimScriptInstance* source, bool resume, bool becomeSly, bool playing);
     // Pops every camera mode (followed targets dropped), deleting the
     // player camera mode (0x004845F0). NOTE: the console passes a player
     // block it does not use.
@@ -545,6 +558,24 @@ public:
     void EndDialog(bool toFrontEnd);
     // The screen shows a held picture instead of the running game.
     bool HoldsFrame();
+    // Option menu pages: the labels and sliders of a page's "Menu" object
+    // show the current settings (SlyGameOptionPages.cpp).
+    void RefreshControlsPage(ape::ApeGuiObject* screen);
+    void RefreshAudioPage(ape::ApeGuiObject* screen);
+    void RefreshDisplayPage(ape::ApeGuiObject* screen);
+    // Accept on the controls page: the camera X/Y inversion or vibration
+    // option of the chosen object toggles, the toggle sound plays and the
+    // page is asked to refresh (GUI event 0x10).
+    void OnControlsPageAccept(const ape::GuiEvent& event);
+    // Moves page: left/right (GUI events 11/10) switch the move category
+    // (wrapping over four), the page refreshes and the focus moves to the
+    // first focusable object near the chosen one, the pointers with it.
+    void OnMovesPageEvent(const ape::GuiEvent& event);
+    // Audio page: left/right (GUI events 11/10) on a slider moves its volume
+    // by one "UI.Slider.NumSteps" step (the effect/voice/music scales follow
+    // at once), on a choice cycles the speaker format, centre speaker size or
+    // dynamic range; the page refreshes.
+    void OnAudioPageEvent(const ape::GuiEvent& event);
     // Shows the running level's headline (see SlyGameMenus.cpp).
     void ShowLevelHeadline(bool force);
     // Marks the running level visited for the all-levels trophy.
@@ -619,7 +650,7 @@ public:
     ape::ApeTArray<QueuedCutscene*> cutsceneQueue; // +0x12820C queued cutscenes (count +0x128214)
     bool resumeAfterCutscenes = false;          // +0x128220
     bool cutscenePlaying = false;               // +0x128221
-    bool cutsceneSkipRequested = false;         // +0x128222
+    bool cutsceneSkipRequested = false;         // +0x128222 NOTE: set when the first cutscene is queued (the HUD switches over)
     // +0x128224 NOTE: an object that overrides the frame time (+0x3C) and
     // tracks an entity (+0x158..+0x160); class unknown.
     struct TimeSource {
@@ -665,15 +696,22 @@ public:
     uint8_t field_1285A4 = 0;                   // +0x1285A4
     bool cutsceneHudLocked = false;             // +0x1285A5 NOTE: cutscene HUD changes are skipped while set
     uint32_t finishedJobName = 0;               // +0x1285A8 name of the job that ended last
-    uint32_t field_1285AC[2] = {};              // +0x1285AC
+    ape::ApeGuiObject* menuFocus = nullptr;     // +0x1285AC GUI object with the menu focus
     uint32_t field_1285B0[4] = {};              // +0x1285B0
-    int32_t field_1285C0 = -1;                  // +0x1285C0
-    uint8_t field_1285C4[6] = {};               // +0x1285C4
+    int32_t menuFocusPad = -1;                  // +0x1285C0 pad that has the menu focus
+    uint8_t field_1285C4 = 0;                   // +0x1285C4
+    uint8_t movesCategory = 0;                  // +0x1285C5 moves page: category (0..3)
+    uint8_t movesPage = 0;                      // +0x1285C6 moves page: page of five moves
+    uint8_t field_1285C7 = 0;                   // +0x1285C7
+    uint8_t field_1285C8[2] = {};               // +0x1285C8
     uint32_t field_1285CC[6] = {};              // +0x1285CC
     void* field_1285E4 = nullptr;               // +0x1285E4
     uint32_t field_1285EC = 0;                  // +0x1285EC
     uint32_t pauseSound = 0;                    // +0x1285F0
     uint32_t resumeSound = 0;                   // +0x1285F4
+    audio::SoundName* toggleSound = nullptr;    // +0x128604 menu option toggle sound
+    audio::SoundName* sliderSound = nullptr;    // +0x128608 a slider moved
+    audio::SoundName* sliderStopSound = nullptr; // +0x12860C a slider is already at its end
     // Entities borrowed for the split views (+0x128610 count, 0x24-byte
     // records from +0x128614 holding up to four entities at +0x14).
     // NOTE: the rest of a record is not read by the game shell.
@@ -690,6 +728,24 @@ public:
 
 // The single game world (0x00F65CA0).
 extern SlyGame* g_game;
+// Set at start-up when the pre-order unlock key file is present (0x010BB849;
+// 0x00467E68 reads "/Preorder/UnlockKey.txt.edat").
+extern bool g_preorderUnlocked;
+
+// The extras ("$EXTRA_PARAGLIDER_MONKEY" ... "$EXTRA_COLE_AMP", table
+// 0x00AE6A60): each is earned with a number of masks (5, 10, ... 60); the
+// pre-order ones (0, 1 and 4) come with the unlock key too.
+constexpr int kExtraCount = 8;
+struct ExtraDef {
+    uint32_t masksNeeded;
+    const char* name;
+    const char* desc;
+};
+extern const ExtraDef kExtras[kExtraCount];
+// Extra `index` is earned with `masks` masks of `needed` (0x0046C7E0).
+bool ExtraEarned(int index, uint32_t masks, uint32_t needed);
+// GUI of the active hideout menu (its +0x154), or null (0x0046E760).
+ape::ApeGuiObject* ActiveHideoutMenuGui();
 // The "Common.Fade" GUI object the screen fade drives (0x00F65C88).
 extern ape::ApeGuiObject* g_fadeObject;
 

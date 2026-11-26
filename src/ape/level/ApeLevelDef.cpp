@@ -24,6 +24,9 @@ float g_levelNoUpdateDistDefault = 75.0f;
 namespace {
 
 // Handler tree roots and the level registry (0x010C2BC0 / 0x010C2CAC).
+// @func 0x004F32A4 StaticInit_LevelDefTrees
+// Compiler-generated initialiser of the two trees (empty, with their
+// header nodes linked to themselves).
 AVL<uint32_t, ApeLevelDefXMLLoader*> s_rootLoaders;
 AVL<uint32_t, ApeLevelDef*> s_levelDefs;
 

@@ -279,6 +279,13 @@ struct AudioVolumeSettings {
     // (0x010AED44); the game world scales option volume 3 by it.
     float option44 = 1.0f;
 };
+// Output settings of the audio options page. The speaker format and the
+// centre speaker size are not used by the shipping build (empty functions);
+// the dynamic range is only remembered.
+void SetSpeakerFormat(uint8_t format);          // 0x0044D9B8
+void SetCenterSpeakerSize(uint8_t size);        // 0x0044D9BC
+void SetDynamicRange(uint8_t range);            // 0x0044D9C0
+uint8_t DynamicRange();
 // The volume scales (0x00F65B40.., option volumes 0x010AECF8..).
 extern AudioVolumeSettings g_volumeSettings;
 // Bus volumes handed to the sound library (it re-reads the dirty ones).
