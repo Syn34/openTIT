@@ -156,12 +156,17 @@ void CritterAI::SnapToGround(bool fromSpawnHeight)
         transform.translation = fromSpawnHeight ? bottom : lastPosition;
 }
 
-// TODO(0x0001D1E0 CritterAI::GroundProbe): ray cast against the level
-// collision (bad instruction data in the reference).
+// @func 0x0001D1E0 CritterAI::GroundProbe
+// The ground under the critter: the first static surface between `top` and
+// `bottom`.
 bool CritterAI::GroundProbe(const ape::Vec3& top, const ape::Vec3& bottom, ape::Vec3& hit)
 {
-    (void)top; (void)bottom; (void)hit;
-    return false;
+    float fraction = 1.0f;
+    if (!PhysicsRayCastStatic(top, bottom, fraction))
+        return false;
+    hit = {(bottom.x - top.x) * fraction + top.x, (bottom.y - top.y) * fraction + top.y,
+           (bottom.z - top.z) * fraction + top.z, hit.pad};
+    return true;
 }
 
 // TODO(0x0001E420 CritterAI::FleePoint)

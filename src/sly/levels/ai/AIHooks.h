@@ -259,6 +259,11 @@ void EntityResetAnimMode(Entity* entity);
 // Entity virtual slot 52 (+0xD0): steps the root motion of the playing
 // animation by `dt`, giving the delta transform.
 void EntityRootMotion(Entity* entity, float dt, ape::Matrix34& delta);
+// Casts a ray from `from` to `to` through the game physics world and gives
+// the fraction along it of the nearest hit on static geometry: shapes of the
+// plain kinds (types 1-4), or bodies that are fixed or keyframed (other
+// collidables are skipped). False when nothing static is hit.
+bool PhysicsRayCastStatic(const ape::Vec3& from, const ape::Vec3& to, float& fraction);
 // Scale of the entity's world object (object +0x90), (1,1,1) without one.
 ape::Vec3 EntityObjectScale(const Entity* entity);
 // Animation controller (+0xA4) flag word +0x28: bit 10 "free", bit 12
