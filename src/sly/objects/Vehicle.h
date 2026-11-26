@@ -70,6 +70,17 @@ public:
     void OnHitCategory4(entity::EntityHitRecord& hit) override;
     bool Damage(float amount, entity::Entity* source, uint32_t type) override;   // slot 88
     float ProjectileDamageScale() const override;                       // slot 89
+    // Slots 94-99 (NOTE: meanings unknown; the vehicle kinds override some).
+    // Slot 94: the local position of the world object.
+    virtual ape::Vec3 Slot94();
+    // Slot 95: zero.
+    virtual ape::Vec3 Slot95();
+    virtual void Slot96();
+    virtual void Slot97();
+    // Slot 98: zero.
+    virtual float Slot98();
+    // Slot 99: sets or clears kVehicle_Flag80000000.
+    virtual void SetFlag80000000(bool on);
     // Slot 100 (+0x190): the destruction starts.
     virtual void OnDestroyed();
     // Slot 101 (+0x194): reaction to a hit that did not destroy the vehicle.

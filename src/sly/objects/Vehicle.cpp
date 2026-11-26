@@ -2,6 +2,7 @@
 #include "sly/objects/Vehicle.h"
 
 #include "ape/anim/ApeAnimScript.h"
+#include "ape/world/ApeObj.h"
 #include "sly/entity/CharacterHooks.h"
 #include "sly/entity/EntityHooks.h"
 #include "sly/entity/GameEntityHooks.h"
@@ -320,6 +321,31 @@ void VehicleEntity::OnHitReaction()
 bool VehicleEntity::IsPlayerTeamVehicle() const
 {
     return (classBits & kClass_00000020) && TeamOf(this) == 1;
+}
+
+// @func 0x0075D624 VehicleEntity::Slot94
+ape::Vec3 VehicleEntity::Slot94()
+{
+    const ape::Vec3& p = object->GetLocal().translation;
+    return { p.x, p.y, p.z, 0.0f };
+}
+
+// @func 0x0075D64C VehicleEntity::Slot95
+ape::Vec3 VehicleEntity::Slot95() { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
+
+// @func 0x0075D670 VehicleEntity::Slot96
+void VehicleEntity::Slot96() {}
+
+// @func 0x0075D674 VehicleEntity::Slot97
+void VehicleEntity::Slot97() {}
+
+// @func 0x0075D680 VehicleEntity::Slot98
+float VehicleEntity::Slot98() { return 0.0f; }
+
+// @func 0x0075D690 VehicleEntity::SetFlag80000000
+void VehicleEntity::SetFlag80000000(bool on)
+{
+    vehicleFlags = on ? (vehicleFlags | kVehicle_Flag80000000) : (vehicleFlags & ~uint32_t(kVehicle_Flag80000000));
 }
 
 } // namespace objects
