@@ -143,33 +143,7 @@ void AglSubMesh::Draw(const AglRenderItem* item)
         return;
     }
 
-    AglRenderState& state = GetRenderState();
-    const AglVertexDecl* decl = vertexDecl;
-    if (state.boundVertexDecl != decl)
-        state.boundVertexBuffer = nullptr;
-    state.boundVertexDecl = decl;
-    if (decl && state.boundVertexBuffer != vertices.data) {
-        state.boundVertexBuffer = vertices.data;
-        // Only the attributes both the layout and the bound program use.
-        const uint16_t programInputs = state.vertexProgram ? state.vertexProgram->attributeInputMask : 0xFFFF;
-        const uint16_t used = uint16_t(programInputs & decl->attributeMask);
-        for (const AglVertexStream* stream = decl->streams; stream->size != 0; ++stream) {
-            const uint32_t attribute = stream->attribute + stream->attributeOffset;
-            if (stream->skip || !(used & (1u << attribute)))
-                continue;
-            cmd.SetVertexAttribute(uint8_t(attribute), 0, uint8_t(decl->stride), stream->size,
-                                   static_cast<gpu::VertexAttribType>(stream->type), vertices.Ptr(stream->offset));
-        }
-        // Attributes the previous mesh enabled that this one does not use.
-        uint16_t stale = uint16_t((state.meshAttributes | used) ^ used);
-        state.meshAttributes = used;
-        for (int attribute = gpu::kMaxVertexAttributes - 1; stale != 0 && attribute >= 0; --attribute) {
-            if (stale & (1u << attribute)) {
-                stale = uint16_t(stale & ~(1u << attribute));
-                cmd.DisableVertexAttribute(uint8_t(attribute));
-            }
-        }
-    }
+    BindVertexArrays(vertexDecl, vertices.Ptr());
 
     CommitFragmentProgram();
     const auto prim = static_cast<gpu::PrimitiveType>(primitive);

@@ -60,15 +60,26 @@ AglDrawList& GetDrawList()
     return list;
 }
 
+size_t AglDrawList::PlaceBlock(size_t cursor, size_t bytes, size_t align) const
+{
+    const size_t at = (cursor + align - 1) & ~(align - 1);
+    // Blocks never straddle the end: one that does not fit restarts at the
+    // beginning (the console list is a ring).
+    return at + bytes > m_packets.size() ? 0 : at;
+}
+
 void AglDrawList::Write(const void* data, size_t bytes, size_t align)
 {
-    size_t at = (m_cursor + align - 1) & ~(align - 1);
-    // Packets never straddle the end: a packet that does not fit restarts
-    // at the beginning (the console list is a ring).
-    if (at + bytes > m_packets.size())
-        at = 0;
+    const size_t at = PlaceBlock(m_cursor, bytes, align);
     std::memcpy(m_packets.data() + at, data, bytes);
     m_cursor = at + bytes;
+}
+
+const void* AglDrawList::Read(size_t bytes, size_t align) const
+{
+    const size_t at = PlaceBlock(m_readCursor, bytes, align);
+    m_readCursor = at + bytes;
+    return m_packets.data() + at;
 }
 
 void AglDrawList::WriteHeader(uint8_t op, uint32_t tag, uint32_t argument, uint32_t spare, uint8_t low)
@@ -85,9 +96,12 @@ void AglDrawList::WriteHeader(uint8_t op, uint32_t tag, uint32_t argument, uint3
 void AglDrawList::BeginFrame()
 {
     m_currentBuffer = static_cast<uint8_t>((m_currentBuffer + 1) % m_vertexBuffers.size());
+    m_replayBuffer = m_currentBuffer;
     m_vertexUsed = 0;
-    if (m_ring)
+    if (m_ring) {
         m_cursor = 0;
+        m_readCursor = 0;
+    }
 }
 
 void AglDrawList::InvalidateCache()
@@ -213,13 +227,13 @@ void AglDrawList::SetState(uint8_t value, uint32_t tag)
     Write(&value, 1, 4);
 }
 
-// @func 0x00523584 AglDrawList::AddCallback
-void AglDrawList::AddCallback(Callback fn, void* arg, uint32_t tag)
+// @func 0x00523584 AglDrawList::AppendList
+void AglDrawList::AppendList(const AglDrawList* list, uint32_t start, uint32_t tag)
 {
-    WriteHeader(kAglDraw_Callback, tag, tag & 0xFFFF);
-    Write(&fn, sizeof(fn), 4);
-    Write(&arg, sizeof(arg), 4);
-    // The callback may change any state.
+    WriteHeader(kAglDraw_AppendList, tag, tag & 0xFFFF);
+    Write(&list, sizeof(list), 4);
+    Write(&start, sizeof(start), 4);
+    // The appended packets may change any state.
     InvalidateCache();
 }
 

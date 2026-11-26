@@ -95,6 +95,10 @@ void InvalidateRenderState();
 // Particles that only draw where stencil bit 0x20 is set (masked emitters).
 void ApplyParticleStencilMask(bool masked);
 
+// Points the vertex attributes of 'decl' at the vertex data at 'base'
+// (cached: nothing is emitted when the same data is bound again).
+void BindVertexArrays(const struct AglVertexDecl* decl, gpu::GpuPtr base);
+
 // Binds the color and depth surfaces of a render surface (the back buffer
 // picks the buffers of the current eye) and optionally clears them.
 void BindRenderSurface(const class AglRenderSurface* surface, bool clear);

@@ -15,42 +15,53 @@ namespace {
 AglItemDrawState g_itemDraw;
 uint32_t g_bucketDrawCounter = 0;   // 0x010C5A6C
 
+// Last fixed-function state applied from a material or from the draw list
+// (0x010DD598: blend word, 0x010DD5A0: depth word with the cull face at
+// 0x010DD5A4). A material whose state matches is not applied again.
 struct MaterialStateCache {
-    bool blendValid = false;    // 0x010DD598 != -1
-    bool depthValid = false;    // 0x010DD5A0 != -1
+    bool blendValid = false;
+    bool blendEnable = false;
+    gpu::BlendFactor blendSrc = gpu::BlendFactor::One;
+    gpu::BlendFactor blendDst = gpu::BlendFactor::Zero;
+    gpu::BlendEquation blendEquation = gpu::BlendEquation::Add;
+
+    bool depthValid = false;
+    bool depthWrite = false;
+    gpu::CompareFunc depthFunc = gpu::CompareFunc::LEqual;
+    uint16_t cullFrontFace = 0;
 };
 MaterialStateCache g_materialCache;
 
-// Fixed-function state of a material, then the technique's own set-up.
-// NOTE: stand-in for the material apply function 0x0079CD0C (outside this
-// range, not tagged here): the console version also binds the textures and
-// uploads the UV animation.
-void ApplyMaterialState(AglMaterial* material, AglTechnique* technique)
+void EmitBlendState(bool enable, gpu::BlendFactor src, gpu::BlendFactor dst, gpu::BlendEquation equation)
 {
     gpu::CommandList& cmd = Cmd();
-    if (!g_materialCache.blendValid) {
-        cmd.SetBlendEnable(material->blendEnable);
-        if (material->blendEnable) {
-            cmd.SetBlendFunc(material->blendSrc, material->blendDst, material->blendSrc, material->blendDst);
-            cmd.SetBlendEquation(material->blendEquation, material->blendEquation);
-        }
-        g_materialCache.blendValid = true;
+    cmd.SetBlendEnable(enable);
+    if (enable) {
+        cmd.SetBlendFunc(src, dst, src, dst);
+        cmd.SetBlendEquation(equation, equation);
     }
-    if (!g_materialCache.depthValid) {
-        const AglRenderState& st = GetRenderState();
-        cmd.SetDepthTestEnable(st.depthEnabled);
-        cmd.SetDepthFunc(material->depthFunc);
-        cmd.SetDepthMask(material->depthTest && st.depthEnabled);
-        if (material->cullFrontFace == 0) {
-            cmd.SetCullFaceEnable(false);
-        } else {
-            cmd.SetCullFaceEnable(true);
-            const bool cullCw = material->cullFrontFace == static_cast<uint16_t>(gpu::FrontFace::CW);
-            cmd.SetFrontFace(cullCw ? gpu::FrontFace::CCW : gpu::FrontFace::CW);
-        }
-        g_materialCache.depthValid = true;
+}
+
+void EmitDepthState(gpu::CompareFunc func, bool write)
+{
+    gpu::CommandList& cmd = Cmd();
+    const bool depthEnabled = GetRenderState().depthEnabled;
+    cmd.SetDepthTestEnable(depthEnabled);
+    cmd.SetDepthFunc(func);
+    cmd.SetDepthMask(write && depthEnabled);
+}
+
+void EmitCullState(uint16_t cullFrontFace)
+{
+    gpu::CommandList& cmd = Cmd();
+    if (cullFrontFace == 0) {
+        cmd.SetCullFaceEnable(false);
+        return;
     }
-    technique->BeginMaterial(material);
+    cmd.SetCullFaceEnable(true);
+    // The value names the face that is culled; the front face is the other one.
+    const bool cullCw = cullFrontFace == static_cast<uint16_t>(gpu::FrontFace::CW);
+    cmd.SetFrontFace(cullCw ? gpu::FrontFace::CCW : gpu::FrontFace::CW);
 }
 
 void EndCurrentTechnique()
@@ -70,6 +81,78 @@ void InvalidateMaterialStateCache()
 {
     g_materialCache.blendValid = false;
     g_materialCache.depthValid = false;
+}
+
+void SetBlendStateCached(bool enable, gpu::BlendFactor src, gpu::BlendFactor dst, gpu::BlendEquation equation)
+{
+    EmitBlendState(enable, src, dst, equation);
+    MaterialStateCache& c = g_materialCache;
+    c.blendValid = true;
+    c.blendEnable = enable;
+    c.blendSrc = src;
+    c.blendDst = dst;
+    c.blendEquation = equation;
+}
+
+void SetDepthStateCached(gpu::CompareFunc func, bool write)
+{
+    EmitDepthState(func, write);
+    MaterialStateCache& c = g_materialCache;
+    c.depthValid = true;
+    c.depthFunc = func;
+    c.depthWrite = write;
+}
+
+void SetCullStateCached(uint16_t cullFrontFace)
+{
+    EmitCullState(cullFrontFace);
+    g_materialCache.cullFrontFace = cullFrontFace;
+}
+
+// NOTE: equivalent of the program binding in the material apply function
+// 0x0079CD0C (outside this range): the technique's vertex program block is
+// called when it changes and its fragment program is committed with the
+// next draw.
+void BindTechniquePrograms(const AglShader* technique)
+{
+    AglRenderState& st = GetRenderState();
+    AglVertexProgram* vp = technique->vertexProgram;
+    if (st.vertexProgram != vp) {
+        st.boundVertexBuffer = nullptr;
+        st.vertexProgram = vp;
+        if (vp && st.vertexProgramBlock != &vp->commands) {
+            st.vertexProgramBlock = &vp->commands;
+            Cmd().Call(vp->commands);
+        }
+    }
+    if (st.fragmentProgram != technique->fragmentProgram) {
+        st.fragmentProgramDirty = true;
+        st.fragmentProgram = technique->fragmentProgram;
+    }
+}
+
+// Fixed-function state of a material, the technique's programs, then the
+// technique's own set-up.
+// NOTE: stand-in for the material apply function 0x0079CD0C (outside this
+// range, not tagged here): the console version also binds the material's
+// textures and advances its UV animation.
+void ApplyMaterial(AglMaterial* material, AglTechnique* technique)
+{
+    MaterialStateCache& c = g_materialCache;
+    if (!c.blendValid || c.blendEnable != material->blendEnable || c.blendSrc != material->blendSrc ||
+        c.blendDst != material->blendDst || c.blendEquation != material->blendEquation)
+        SetBlendStateCached(material->blendEnable, material->blendSrc, material->blendDst, material->blendEquation);
+    if (!c.depthValid || c.depthFunc != material->depthFunc || c.depthWrite != material->depthTest ||
+        c.cullFrontFace != material->cullFrontFace) {
+        SetDepthStateCached(material->depthFunc, material->depthTest);
+        SetCullStateCached(material->cullFrontFace);
+    }
+    if (!technique && material->shaderClass && material->shaderClass->GetTechniqueCount() != 0)
+        technique = material->shaderClass->GetTechnique(0);
+    if (!technique)
+        return;
+    BindTechniquePrograms(technique);
+    technique->BeginMaterial(material);
 }
 
 uint32_t BucketDrawCounter()
@@ -127,7 +210,7 @@ void DrawRenderItem(AglRenderItem* item)
         if (g_itemDraw.material)
             EndCurrentTechnique();
         g_itemDraw.material = material;
-        ApplyMaterialState(material, technique);
+        ApplyMaterial(material, technique);
     }
     technique->Draw(item);
 }
