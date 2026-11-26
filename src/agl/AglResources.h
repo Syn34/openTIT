@@ -92,6 +92,7 @@ public:
 class AglTopology : public AglResource {
 public:
     AglTopology();
+    ~AglTopology() override;
     static AglTopology* Create();
     static void Destroy(void* object);
     void Release() override;
