@@ -1,6 +1,8 @@
 // openTIT - Racer behaviour (vtable 0x00B0E428) and the spawner race tracker.
 #include "sly/levels/ai/AIBehaviours.h"
 
+#include <cmath>
+
 #include "ape/world/ApeInstances.h"
 #include "sly/game/hud/HudManager.h"
 #include "sly/levels/ai/AIHooks.h"
@@ -163,6 +165,19 @@ bool RacerAI::Think(float dt)
 
 // @func 0x0002E4F8 RacerAI::ExitState
 void RacerAI::ExitState() {}
+
+// @func 0x0002D8C8 RacerAI::AlignMoveHeading
+void RacerAI::AlignMoveHeading()
+{
+    const ape::Vec3& forward = entity->transform.zAxis;
+    const float len = std::sqrt(forward.z * forward.z + forward.x * forward.x + 0.0f);
+    if (!(len > 0.001f))
+        return;
+    const float inv = 1.0f / len;
+    const float heading = std::atan2(forward.x * inv, forward.z * inv);
+    if (entity && entity->HasTypeBit(9))
+        EntitySetMoveHeading(entity, heading, 1.0f);
+}
 
 } // namespace ai
 } // namespace levels

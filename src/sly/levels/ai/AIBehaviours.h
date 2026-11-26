@@ -219,6 +219,9 @@ public:
     void ExitState() override;
     // Slot 75: place in the race (0 = first).
     virtual void SetRacePosition(float position);
+    // The entity (type bit 9) moves the way it faces: its heading follows
+    // the direction of its z axis (0x0002D8C8).
+    void AlignMoveHeading();
 
     float progress = 0.0f;            // +0x14C position along the race track
     uint32_t field_138 = 0;           // +0x138
