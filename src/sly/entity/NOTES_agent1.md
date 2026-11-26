@@ -93,3 +93,11 @@ requests, anim script/driver bits, Havok frees, minigame flag, game camera looku
   with its spline filter (0x000239E4) and the engine's closest-spline query (0x005A8CF8) plus the
   spline property table accessors (0x005A8BA8/0x005A8BE4; the table itself is filled by the
   level loader, not ported). The surround record update 0x000182C0 is TODO.
+* Scripted instance description (0x000DFDF8, `objects::ScriptedInstanceDesc`): base description
+  without placement defaults, type bits 0/1, defaults read from the ScriptedEntityDef.
+* AI surround records (0x000182C0, `AIManager::UpdateRecord50`): the record's spot (last player
+  position + direction * radius) is snapped onto the nav mesh; the point counts as good while it
+  is near the spot, the target is visible from it and it lies inside the main view frustum
+  (`AglFrustum::soa`, margin 1). The line of sight test 0x000138B0 is a Havok ray cast on the
+  level physics world (not ported) and still reports "not visible"; who fills `controller` and
+  `radius` is not found yet.
