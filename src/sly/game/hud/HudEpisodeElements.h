@@ -21,9 +21,13 @@ namespace hud {
 
 // Flag word bits shared by the 0x800 and 0x1000 kinds (+0xFC).
 enum EpisodeListFlags : uint32_t {
+    kE_QueuedDown = 0x00080000,   // bit 19: a down press during a scroll animation
+    kE_QueuedUp   = 0x00100000,   // bit 20: an up press during a scroll animation
     kE_ScriptOk   = 0x00800000,   // bit 23
     kE_AnimOk     = 0x01000000,   // bit 24
     kE_Suppressed = 0x02000000,   // bit 25
+    kE_HideReq    = 0x04000000,   // bit 26: hide at the next update
+    kE_ShowReq    = 0x08000000,   // bit 27: show at the next update
     kE_LeaveB     = 0x10000000,   // bit 28: destroyed once hidden
     kE_LeaveA     = 0x20000000,   // bit 29
     kE_Shown      = 0x40000000,   // bit 30
@@ -84,7 +88,9 @@ public:
     explicit HudType1000(HudObjectDef* def);
     // 0x0037A93C / 0x0037AC20.
     ~HudType1000() override;
-    // Slot 2. TODO(0x0037CCA8).
+    // Slot 2 (0x0037CCA8): requests, label colours, the scroll / accept
+    // state machine (accept travels to the episode's hideout level) and the
+    // description of the selected episode.
     void Update(float dt) override;
     // Slot 3 (0x0037DC70).
     void Refresh() override;
@@ -102,6 +108,15 @@ public:
     // 0x0037AE00: fills the title, completion and collectible rows from the
     // episode records (both parts summed for a two-part episode).
     void RefreshRows();
+    // 0x0037DED8: draws the 3D text frames at their scene objects (world
+    // callback 0x0037E0D8, list 8).
+    void DrawFields();
+    static void DrawFieldsCallback(void* unused, void* context);
+    // 0x0037E108: places the row copies, the per-episode objects of the two
+    // title slots and the visible rows, and the scroll knob (world callback
+    // 0x0037EC94, list 3).
+    void PlaceRows();
+    static void PlaceRowsCallback(void* unused, void* context);
 
     uint32_t clips[7] = {};            // +0xC8
     uint8_t tint[4] = {};              // +0xE4
@@ -112,9 +127,9 @@ public:
     HudObject* listLinked = nullptr;   // +0xF8
     uint32_t listFlags = 0;            // +0xFC EpisodeListFlags
     uint32_t selected = 0;             // +0x100 episode under the cursor (0..5)
-    uint32_t field_104 = 0;            // +0x104
+    uint32_t field_104 = 0;            // +0x104 NOTE: counts down scrolls started from rest; never read here
     uint32_t cursorRow = 0;            // +0x108
-    uint32_t field_10C = 0;            // +0x10C
+    uint32_t lastScroll = 0;           // +0x10C state of the last finished scroll (4 up, 5 down, 0 none)
     ape::world::ApeObj* objects[4] = {};     // +0x110 definition +0x9C..+0xA8
     ape::world::ApeObj* rows[4] = {};        // +0x120 own copies of the row geometry
     ape::world::ApeObj* episodeA[6] = {};    // +0x130 instances 0x00F64E58
@@ -126,6 +141,11 @@ public:
     ape::world::ApeObj* copiesA[6] = {};     // +0x198 copies of instance 0xEF3B431E
     ape::world::ApeObj* copiesB[6] = {};     // +0x1B0 copies of instance 0x04DABC6F
     ape::world::ApeObj* copiesC[6] = {};     // +0x1C8 copies of instance 0x15AA444A
+
+private:
+    bool ListAnimDone() const;
+    // Clip (at double speed) and script state of scroll state `state`.
+    void PlayScroll(uint32_t state);
 };
 
 // Type bit 0x10000 (vtable 0x00B1FA08, 0x3D0 bytes): the map / status
