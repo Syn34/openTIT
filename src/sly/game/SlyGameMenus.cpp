@@ -65,6 +65,8 @@ constexpr uint32_t kPadPause = 0x4000;
 
 // Component type of the AI controllers that show the contextual marker.
 constexpr uint32_t kComp_ContextualMarker = 0x1B;
+// Entity type bit of the vehicles (type word +0xC8 bit 10).
+constexpr uint32_t kType_Vehicle = 74;
 // Component type reset when the AI entities are shown or hidden.
 constexpr uint32_t kComp_24 = 0x24;
 
@@ -387,8 +389,8 @@ void SlyGame::RefreshCamera()
         return;
     camera->PostUpdate(0.0f);
     camera->RefreshView();
-    if (cutsceneCameraMode)
-        cutsceneCameraMode->Activate();
+    if (playerCameraMode)
+        playerCameraMode->Activate();
 }
 
 // @func 0x00488078 SlyGame::ThrowPlayer
@@ -419,11 +421,60 @@ void SlyGame::SwitchPlayerCharacter(uint32_t player, uint32_t def, const ape::Ma
     SwitchPlayerCharacter(players[player], def, transform, a, b, c, d);
 }
 
-// TODO(0x00484858 SlyGame::AttachCameraTo): the game camera's follow mode
-// targets the block's character and restarts its blend.
+// @func 0x00484858 SlyGame::AttachCameraTo
 void SlyGame::AttachCameraTo(GamePlayer& player)
 {
-    (void)player;
+    if (!camera)
+        return;
+    ClearCameraModes();
+    playerCameraMode = nullptr;
+    entity::Entity* character = player.character;
+    if (!character)
+        return;
+    // NOTE: the console constructors of the default, vehicle and Havok
+    // vehicle modes (0x000FF0D8, 0x0010DE30, 0x00111410) take the target;
+    // the port's modes get it through SetTarget.
+    camera::CameraMode* mode = nullptr;
+    if (character->HasTypeBit(kType_Vehicle)) {
+        switch (VehicleDefCameraKind(character->def)) {
+        case 0: {
+            auto* vehicle = new camera::VehicleCameraMode(camera);
+            vehicle->SetTarget(character);
+            mode = vehicle;
+            break;
+        }
+        case 1: {
+            auto* follow = new camera::DefaultCameraMode(camera);
+            follow->SetTarget(character);
+            mode = follow;
+            break;
+        }
+        case 2: {
+            auto* havok = new camera::HavokVehicleCameraMode(camera);
+            havok->SetTarget(character);
+            mode = havok;
+            break;
+        }
+        case 3:
+            mode = new camera::OrthoCameraMode(VehicleDefCameraFov(character->def), camera, character);
+            break;
+        default:
+            return;
+        }
+    } else {
+        if (!character->HasTypeBit(3))
+            return;
+        if (g_cameraDefaultOrbit.Get()) {
+            mode = new camera::OrbitCameraMode(camera, character, camera::kOrbit_Standard);
+        } else {
+            auto* follow = new camera::DefaultCameraMode(camera);
+            follow->SetTarget(character);
+            mode = follow;
+        }
+    }
+    playerCameraMode = mode;
+    camera->PushMode(-1.0f, mode, false);
+    RefreshCamera();
 }
 
 // @func 0x00488A78 SlyGame::AttachCameraToPlayer
@@ -1028,7 +1079,7 @@ void SlyGame::UpdateCutsceneQueue(float dt)
             }
             resumeAfterCutscenes = false;
             ClearCameraModes();
-            cutsceneCameraMode = nullptr;
+            playerCameraMode = nullptr;
             if (camera) {
                 camera->SetVisibilityDeferred(false, false);
                 camera->SetRenderEnabled(false);
@@ -1071,9 +1122,9 @@ void SlyGame::ClearCameraModes()
         if (mode == camera->animMode)
             camera->animMode = nullptr;
         camera->RemoveMode(-1.0f, mode);
-        if (mode == cutsceneCameraMode) {
+        if (mode == playerCameraMode) {
             delete mode;
-            cutsceneCameraMode = nullptr;
+            playerCameraMode = nullptr;
         }
     }
 }

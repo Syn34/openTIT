@@ -48,6 +48,10 @@ void ShowCharacterHint();
 // Closes the GUI popup over the game and its event handler (0x004645AC,
 // 0x00464804).
 void CloseGuiPopup();
+// Camera of a vehicle definition: its kind (definition +0xF0: 0 vehicle, 1
+// follow, 2 Havok vehicle, 3 orthographic) and field of view (+0x2B0).
+int VehicleDefCameraKind(const void* def);
+float VehicleDefCameraFov(const void* def);
 // Default start transform of a character slot (0x00486460).
 void DefaultSpawnTransform(int slot, ape::Matrix34* out);
 // Shows or hides the AI entities (0x0048A068).

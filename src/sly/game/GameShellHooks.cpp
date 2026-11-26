@@ -16,5 +16,7 @@ void CameraMode1SetTarget(void*, entity::Entity*) {}
 void CharacterThrowTowards(entity::Entity*, const ape::Vec3&) {}
 void CharacterDropTowards(entity::Entity*, const ape::Vec3&) {}
 void Component24Restart(entity::EntityComponent*, bool) {}
+int VehicleDefCameraKind(const void*) { return 1; }
+float VehicleDefCameraFov(const void*) { return 55.0f; }
 
 } // namespace sly

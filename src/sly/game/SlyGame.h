@@ -491,7 +491,7 @@ public:
     // (variant on while it is not in the idle state 0/6 or a debug switch
     // forces it).
     void SetPlayerMeterVariant(uint32_t player, bool on);
-    // The camera updates once more and re-applies its view; the cutscene
+    // The camera updates once more and re-applies its view; the player
     // camera mode (+0x128584) activates again.
     void RefreshCamera();
     // Throws or drops (`drop`) a player's character towards `target`.
@@ -501,7 +501,10 @@ public:
                                bool b, bool c, bool d);
     void SwitchPlayerCharacter(uint32_t player, uint32_t def, const ape::Matrix34* transform, bool a, bool b,
                                bool c, bool d);
-    // The camera follows a player block's character again (0x00484858).
+    // The camera follows a player block's character: the camera modes are
+    // cleared and a mode for the character is pushed (vehicles pick theirs
+    // from their definition; "Camera.DefaultOrbit" selects the orbit mode
+    // for characters) (0x00484858).
     void AttachCameraTo(GamePlayer& player);
     void AttachCameraToPlayer(uint32_t player);
     // Modal message box (sub state 0x0C) with one text, or a series of text
@@ -530,7 +533,7 @@ public:
     // resumes (0x0048B810).
     void UpdateCutsceneQueue(float dt);
     // Pops every camera mode (followed targets dropped), deleting the
-    // cutscene camera mode (0x004845F0). NOTE: the console passes a player
+    // player camera mode (0x004845F0). NOTE: the console passes a player
     // block it does not use.
     void ClearCameraModes();
     // Leaves for the hideout of the current episode (ending the running
@@ -651,7 +654,7 @@ public:
     DialogState dialog;                         // +0x1283C0
     gameplay::ReturnTreasureMicrogame* returnTreasure = nullptr; // +0x12847C
     ape::ApeTArray<WorldCallback> callbackLists[kCallbackListCount]; // +0x128480
-    camera::CameraMode* cutsceneCameraMode = nullptr; // +0x128584 camera mode of the cutscenes (owned)
+    camera::CameraMode* playerCameraMode = nullptr; // +0x128584 the camera mode following the player (owned)
     float timeScaleA = 1.0f;                    // +0x128588
     float timeScaleATarget = -1.0f;             // +0x12858C
     uint8_t field_128590 = 0;                   // +0x128590
