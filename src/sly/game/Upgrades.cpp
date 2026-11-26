@@ -5,6 +5,15 @@
 #include "ape/core/ApeString.h"
 #include "ape/xml/ApeXml.h"
 #include "sly/entity/Awards.h"
+#include "ape/world/ApeObj.h"
+#include "sly/entity/Entity.h"
+#include "sly/game/SpawnManager.h"
+#include "sly/game/hud/HudHooks.h"
+#include "sly/game/hud/HudManager.h"
+#include "sly/entity/EntityHooks.h"
+#include "sly/gameplay/Sequencer.h"
+#include "sly/levels/LevelServices.h"
+#include "sly/levels/script/ScriptVars.h"
 #include "sly/game/goals/JobManager.h"
 
 #include <cstring>
@@ -188,6 +197,180 @@ void CopyScriptVarToBinding(TextField& out, const ape::ApeAnimScriptVar* var)
     default:
         break;
     }
+}
+
+// ---------------------------------------------------------------------------
+// Applying bindings to a script instance
+// ---------------------------------------------------------------------------
+namespace {
+
+using ape::AnimScriptVarType;
+using ape::ApeAnimScriptVar;
+
+// Object variables hold the entity's (or HUD element's) world object.
+// NOTE: the console also stores the animation controller pointer in the
+// variable's word +0x24; 64-bit pointers do not fit there, it stays 0.
+void SetObjectVar(ApeAnimScriptVar* var, ape::ApeRefCounted* object)
+{
+    auto* objectVar = static_cast<ape::ApeAnimScriptObjectVar*>(var);
+    objectVar->SetObject(object);
+    objectVar->SetField24(0);
+}
+
+template <class Var, class T>
+bool SetHandleVar(ApeAnimScriptVar* var, int type, T value)
+{
+    if (!value || int(var->GetType()) != type)
+        return false;
+    static_cast<Var*>(var)->SetValue(value);
+    return true;
+}
+
+// The entity of an entity / trigger binding: the stored one, else found by
+// name (among the sequence's entities when `sequence` is set).
+WorldObject* BindingEntity(const TextField& binding, bool sequence)
+{
+    if (binding.entity.object)
+        return binding.entity.object;
+    if (sequence)
+        return gameplay::FindSequenceEntity(binding.entity.name);
+    return reinterpret_cast<WorldObject*>(entity::FindEntity(binding.entity.name));
+}
+
+// A `var` binding: the value of variable `binding.hash` of `source`.
+void CopyFromSource(ApeAnimScriptVar* var, const ApeAnimScriptVar* from)
+{
+    const AnimScriptVarType type = from->GetType();
+    if (type != var->GetType())
+        return;
+    switch (type) {
+    case AnimScriptVarType::Object:
+        static_cast<ape::ApeAnimScriptObjectVar*>(var)->CopyReference(
+            *static_cast<const ape::ApeAnimScriptObjectVar*>(from));
+        break;
+    case AnimScriptVarType::Int:
+        static_cast<ape::ApeAnimScriptIntVar*>(var)->SetInt(from->GetInt());
+        break;
+    case AnimScriptVarType::Float:
+        static_cast<ape::ApeAnimScriptFloatVar*>(var)->SetFloat(from->GetFloat());
+        break;
+    default:
+        if (int(type) == levels::kVarType_String)
+            static_cast<levels::ScriptStringVar*>(var)->SetString(
+                static_cast<const levels::ScriptStringVar*>(from)->GetString());
+        break;
+    }
+}
+
+} // namespace
+
+// @func 0x0049F080 ApplyScriptBinding
+void ApplyScriptBinding(ape::ApeAnimScriptInstance* instance, const TextField& binding,
+                        ape::ApeAnimScriptInstance* source, bool sequenceEntities, bool quiet)
+{
+    if (!instance || binding.flagA == kBinding_None)
+        return;
+    ApeAnimScriptVar* var = instance->FindVar(binding.id);
+    if (!var)
+        return;
+    const int type = int(var->GetType());
+    bool bound = true;
+    switch (binding.flagA) {
+    case kBinding_Var:
+        if (source) {
+            if (const ApeAnimScriptVar* from = source->FindVar(binding.hash))
+                CopyFromSource(var, from);
+        }
+        break;
+    case kBinding_Entity: {
+        auto* entity = reinterpret_cast<entity::Entity*>(BindingEntity(binding, sequenceEntities));
+        bound = entity && type == int(AnimScriptVarType::Object);
+        if (bound)
+            SetObjectVar(var, entity::EntityWorldObjectRef(entity));
+        break;
+    }
+    case kBinding_Trigger: {
+        WorldObject* trigger = BindingEntity(binding, sequenceEntities);
+        auto* entity = reinterpret_cast<entity::Entity*>(trigger);
+        // Only trigger entities (type bit 22) fit a trigger variable.
+        bound = entity && entity->HasTypeBit(22) &&
+                SetHandleVar<levels::ScriptTriggerVar>(var, levels::kVarType_Trigger, trigger);
+        break;
+    }
+    case kBinding_Spawner:
+        bound = g_spawnManager && SetHandleVar<levels::ScriptSpawnerVar>(var, levels::kVarType_Spawner,
+                                                                         g_spawnManager->FindSpawner(binding.hash));
+        break;
+    case kBinding_SpawnerGroup:
+        bound = g_spawnManager && SetHandleVar<levels::ScriptSpawnGroupVar>(var, levels::kVarType_SpawnGroup,
+                                                                            g_spawnManager->FindGroup(binding.hash));
+        break;
+    case kBinding_Laser:
+        bound = binding.hash != 0 &&
+                SetHandleVar<levels::ScriptLaserVar>(var, levels::kVarType_Laser, levels::FindLaser(binding.hash));
+        break;
+    case kBinding_LaserField:
+        bound = binding.hash != 0 && SetHandleVar<levels::ScriptLaserFieldVar>(
+                                         var, levels::kVarType_LaserField, levels::FindLaserField(binding.hash));
+        break;
+    case kBinding_LaserGroup:
+        bound = binding.hash != 0 && SetHandleVar<levels::ScriptLaserGroupVar>(
+                                         var, levels::kVarType_LaserGroup, levels::FindLaserGroup(binding.hash));
+        break;
+    case 9: {
+        // A HUD element by name: its scene object.
+        if (binding.hash != 0 && type == int(AnimScriptVarType::Object)) {
+            if (hud::HudObject** element = hud::Hud().objects.Find(binding.hash); element && *element)
+                SetObjectVar(var, hud::ObjectScriptRef((*element)->object));
+        }
+        break;
+    }
+    case kBinding_Hash:
+    case kBinding_UInt:
+        if (type == int(AnimScriptVarType::Int))
+            static_cast<ape::ApeAnimScriptIntVar*>(var)->SetInt(int32_t(binding.uintValue));
+        break;
+    case kBinding_Bool:
+        if (type == int(AnimScriptVarType::Int))
+            static_cast<ape::ApeAnimScriptIntVar*>(var)->SetInt(binding.boolValue ? 1 : 0);
+        break;
+    case kBinding_String:
+        if (type == levels::kVarType_String)
+            static_cast<levels::ScriptStringVar*>(var)->SetString(binding.text);
+        break;
+    case kBinding_Float:
+        if (type == int(AnimScriptVarType::Float))
+            static_cast<ape::ApeAnimScriptFloatVar*>(var)->SetFloat(binding.floatValue);
+        break;
+    case kBinding_Vec3:
+        if (type == int(AnimScriptVarType::Vec3))
+            static_cast<ape::ApeAnimScriptVec3Var*>(var)->SetVec3(
+                ape::Vec3{binding.vec3[0], binding.vec3[1], binding.vec3[2], 0.0f});
+        break;
+    case kBinding_Matrix:
+        if (type == int(AnimScriptVarType::Matrix)) {
+            ape::Matrix34 m;
+            ape::Vec3* rows[4] = {&m.xAxis, &m.yAxis, &m.zAxis, &m.translation};
+            for (int r = 0; r < 4; ++r)
+                *rows[r] = ape::Vec3{binding.matrix[r * 4], binding.matrix[r * 4 + 1], binding.matrix[r * 4 + 2], 0.0f};
+            static_cast<ape::ApeAnimScriptMatrixVar*>(var)->SetMatrix(m);
+        }
+        break;
+    default:
+        break;
+    }
+    if (!bound && !quiet)
+        (void)ape::TempHexString(binding.hash);   // compiled-out warning about the unresolved binding
+}
+
+// @func 0x0049FCC0 ApplyScriptBindings
+void ApplyScriptBindings(ape::ApeAnimScriptInstance* instance, const TextField* bindings, size_t count,
+                         ape::ApeAnimScriptInstance* source, bool sequenceEntities, bool quiet)
+{
+    if (!instance)
+        return;
+    for (size_t i = 0; i < count; ++i)
+        ApplyScriptBinding(instance, bindings[i], source, sequenceEntities, quiet);
 }
 
 // qsort comparator of string pointers, case-insensitive.

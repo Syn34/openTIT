@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace ape::xml { class XmlElement; }
-namespace ape { class ApeAnimScriptVar; }
+namespace ape { class ApeAnimScriptVar; class ApeAnimScriptInstance; }
 
 namespace sly {
 
@@ -121,6 +121,15 @@ bool UpgradeOwned(uint32_t type, uint32_t item);
 void CopyScriptVarToBinding(TextField& out, const ape::ApeAnimScriptVar* var);
 // qsort comparator of string pointers (case-insensitive).
 int CompareStringPointers(const void* a, const void* b);
+
+// Hands a binding's value to the variable it names in `instance` (types
+// must match): `var` bindings copy from `source`, entity/trigger bindings
+// resolve names among the sequence's entities when `sequenceEntities` is
+// set; `quiet` silences the warning about unresolved names.
+void ApplyScriptBinding(ape::ApeAnimScriptInstance* instance, const TextField& binding,
+                        ape::ApeAnimScriptInstance* source, bool sequenceEntities, bool quiet);
+void ApplyScriptBindings(ape::ApeAnimScriptInstance* instance, const TextField* bindings, size_t count,
+                         ape::ApeAnimScriptInstance* source, bool sequenceEntities, bool quiet);
 
 // Upgrade record by index, null when out of range.
 UpgradeEntry* GetUpgradeEntry(uint32_t index);
