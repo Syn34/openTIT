@@ -76,8 +76,10 @@ public:
     virtual void SetHudHidden(bool hidden);
     // @func 0x0077D918 Minigame::Slot16
     virtual bool Slot16() { return true; }
-    // @func 0x0077D920 Minigame::Slot17
-    virtual bool Slot17() { return true; }
+    // Slot 17: whether the pause menu (or, with `forPrompt`, a prompt) may
+    // open now. NOTE: name from the game world's use.
+    // @func 0x0077D920 Minigame::AllowsPause
+    virtual bool AllowsPause(bool forPrompt) { (void)forPrompt; return true; }
     // @func 0x0077D928 Minigame::Slot18
     virtual void Slot18() {}
     // Slot 19: the game the minigame was built for (+0x30).

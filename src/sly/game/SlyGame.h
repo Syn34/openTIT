@@ -424,12 +424,86 @@ public:
     // The power meter of a player on the HUD (second bar of meter B).
     void ShowPlayerPower(uint32_t player) const;
 
+    // -- level requests, menus and prompts (SlyGameMenus.cpp) -------------------
+    // Asks for level `level`: main state 1 (loading) through a transition,
+    // sub states 0. `flag` goes to state flag bit 1. NOTE: the meaning of
+    // that bit is not known; nearly every caller passes false.
+    void RequestLevel(uint32_t level, bool flag);
+    // Opens pause menu page `menu` (0x00470750; the page names are in the
+    // table 0x00F65E70). `arg` is kept in +0x21.
+    void OpenMenu(int menu, uint8_t arg);
+    void OpenMenu(int menu);
+    // Re-sends event 0x17 to the open menu. NOTE: name from use.
+    void RefreshOpenMenu();
+    // Whether a menu or a prompt (`forPrompt`) may open now: no time source,
+    // no modal sub state, no updating HUD element, no cutscene, no job
+    // transition, no blocking HUD element, (menus only) no screen fade, the
+    // gadgets and the minigame allow it.
+    bool CanOpenMenu(bool forPrompt) const;
+    // Opens the pause menu when the active player presses start (pad
+    // flags bit 14) and nothing blocks it. Always true.
+    bool CheckPauseRequest();
+    // Yes/no prompt for `player` (its pad becomes the active one): texts of
+    // the prompt element's two fields, the answer callbacks with their user
+    // data and two option flags. In game it opens as menu page 3; the front
+    // end variant (ShowFrontEndPrompt) switches to sub state 7 then 0x1C.
+    using PromptCallback = void (*)(void* user);
+    bool ShowPrompt(entity::Entity* player, const char* text, const char* buttons, PromptCallback onYes,
+                    void* yesUser, PromptCallback onNo, void* noUser, bool optionA, bool optionB);
+    bool ShowFrontEndPrompt(entity::Entity* player, const char* text, const char* buttons, PromptCallback onYes,
+                            void* yesUser, PromptCallback onNo, void* noUser, bool optionA, bool optionB);
+    // Makes `player` the one whose pad drives the menus and opens menu
+    // page 4 on the hideout menu's start page.
+    void SetActivePlayer(uint8_t player);
+    // After a prompt of the hideout menu: sub state 6 with its data byte 1
+    // set, the menu GUI cleared.
+    void ContinueAfterPrompt();
+    // Sub state 2 (play), after telling the entity the travel dialog
+    // targets (sub state data +0x5C) that it was declined.
+    static void DeclineTravel();
+    // Travel dialog accepted: ends the running job when the hideout of its
+    // episode is the target, requests the level (sub state data +0x48), the
+    // respawn point (+0x4C) and, when +0x58 is set, keeps the name of the
+    // character's definition as the pending level name.
+    static void AcceptTravel();
+    // The front end volume value: option volume 3 scaled to 0..32768.
+    // (declared above as ScaledVolume3)
+    // Releases the entities the update borrowed for the split views
+    // (+0x128610 records): hidden, released, killed when flagged.
+    void ReleaseBorrowedEntities();
+    // A player's HUD screen (`name`; the HUD keeps player 0's only), with
+    // the contextual marker refreshed when `refreshMarker` is set.
+    void ShowPlayerHudScreen(uint32_t player, const char* name, bool refreshMarker);
+    // The contextual marker of player 0's character (its definition's
+    // marker instance) is handed to every AI controller of type 0x1B.
+    void RefreshContextualMarker(uint32_t player);
+    // Every HUD element back to its start; player 0's gadget is put away.
+    void ResetPlayerHud();
+    // Meter B variant of a player; a character also tells its gadget
+    // (variant on while it is not in the idle state 0/6 or a debug switch
+    // forces it).
+    void SetPlayerMeterVariant(uint32_t player, bool on);
+    // The camera updates once more and re-applies its view; the frame
+    // object (+0x128584) is told (slot 7).
+    void RefreshCamera();
+    // Throws or drops (`drop`) a player's character towards `target`.
+    void ThrowPlayer(uint32_t player, const ape::Vec3& target, bool drop);
+    // A player block switches to another character (0x00484BE0).
+    void SwitchPlayerCharacter(GamePlayer& player, uint32_t def, const ape::Matrix34* transform, bool a,
+                               bool b, bool c, bool d);
+    void SwitchPlayerCharacter(uint32_t player, uint32_t def, const ape::Matrix34* transform, bool a, bool b,
+                               bool c, bool d);
+    // The camera follows a player block's character again (0x00484858).
+    void AttachCameraTo(GamePlayer& player);
+    void AttachCameraToPlayer(uint32_t player);
+
     // -- data ------------------------------------------------------------------
     uint8_t flags1C = 0;                        // +0x1C bit 5: autosave allowed
     uint8_t localPlayerCount = 1;               // +0x1D
     uint8_t activePlayer = 0xFF;                // +0x1E player whose pad drives the menus
-    bool audioPaused = false;                   // +0x1F
-    uint8_t field_20 = 0;                       // +0x20
+    uint8_t menu = 0;                           // +0x1F open pause menu page (0: none)
+    uint8_t field_20 = 0;                       // +0x20 cleared when a menu page opens
+    uint8_t menuArg = 0;                        // +0x21 argument of the open page
     uint8_t field_22 = 0;                       // +0x22
     ape::StringTable* strings = nullptr;        // +0x24 GUI/Strings_<language>.str
     uint32_t worldFlags = 0;                    // +0x28
@@ -525,7 +599,7 @@ public:
     DialogState dialog;                         // +0x1283C0
     gameplay::ReturnTreasureMicrogame* returnTreasure = nullptr; // +0x12847C
     ape::ApeTArray<WorldCallback> callbackLists[kCallbackListCount]; // +0x128480
-    uint32_t field_128584 = 0;                  // +0x128584
+    void* field_128584 = nullptr;               // +0x128584 NOTE: object refreshed with the camera (slot 7)
     float timeScaleA = 1.0f;                    // +0x128588
     float timeScaleATarget = -1.0f;             // +0x12858C
     uint8_t field_128590 = 0;                   // +0x128590
@@ -544,7 +618,15 @@ public:
     uint32_t field_1285EC = 0;                  // +0x1285EC
     uint32_t pauseSound = 0;                    // +0x1285F0
     uint32_t resumeSound = 0;                   // +0x1285F4
-    uint8_t field_128610 = 0;                   // +0x128610
+    // Entities borrowed for the split views (+0x128610 count, 0x24-byte
+    // records from +0x128614 holding up to four entities at +0x14).
+    // NOTE: the rest of a record is not read by the game shell.
+    struct BorrowedEntities {
+        uint8_t field_00[0x14];
+        entity::Entity* entities[4];
+    };
+    uint8_t borrowedCount = 0;                  // +0x128610
+    BorrowedEntities borrowed[4] = {};          // +0x128614 NOTE: capacity unknown
     void* frameObject = nullptr;                // +0x1286A4 updated first every frame (slot 2)
 
     SpawnManager* spawnManager = nullptr;       // NOTE: owner of the spawner groups; slot unknown

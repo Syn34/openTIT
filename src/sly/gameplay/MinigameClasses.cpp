@@ -71,8 +71,8 @@ bool MinigameB20630::Slot16() { return g_value10854AC <= 0.0f; }
 // @func 0x0077ED4C MinigameB206A8::~MinigameB206A8 (deleting)
 MinigameB206A8::~MinigameB206A8() = default;
 
-// @func 0x0077ED30 MinigameB206A8::Slot17
-bool MinigameB206A8::Slot17() { return field_917 == 0; }
+// @func 0x0077ED30 MinigameB206A8::AllowsPause
+bool MinigameB206A8::AllowsPause(bool) { return field_917 == 0; }
 
 // @func 0x0077D178 MinigameB20748::~MinigameB20748
 // @func 0x0077EDD8 MinigameB20748::~MinigameB20748 (deleting)
