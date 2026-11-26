@@ -13,6 +13,8 @@
 #include "sly/game/goals/GoalHooks.h"
 #include "sly/game/hud/HudManager.h"
 
+#include <cstdio>
+
 namespace sly {
 namespace game {
 
@@ -82,6 +84,8 @@ void GameWorldSetState(int, int) {}
 void GameWorldSetStateData(const char*, uint32_t) {}
 bool CurrentLevelJobValue(uint32_t*) { return false; }
 void TargetingSetEnabled(void*, bool) {}
+// TODO(job manager +0x40 object, word +0x44)
+int SafeSourceState(const void*) { return 0; }
 
 // @func 0x002E1220 JobManager::FindEpisode
 Episode* JobManager::FindEpisode(uint32_t nameHash) const
@@ -862,6 +866,68 @@ void JobManager::OnSafeSessionEnded(entity::Entity* player)
     GameWorldSetActivePlayer(uint8_t(player->flags >> 24));
     GameWorldPostEvent(kEvent_SafeClosed);
     HudType200Transition(hud::FindActiveType200());
+}
+
+namespace {
+
+int CountBits32(uint32_t bits)
+{
+    int count = 0;
+    for (; bits; bits &= bits - 1)
+        ++count;
+    return count;
+}
+
+// Hides the timer element (0x00F64CD0, "Timer") while it shows, then puts a
+// notice in the "Tip" element for six seconds.
+void ShowBottleNotice(const char* text)
+{
+    constexpr uint32_t kHud_Timer = 0x04C20F25u;   // "Timer"
+    constexpr uint32_t kHud_Tip = 0x0001447Bu;     // "Tip"
+    static const uint8_t kWhite[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+    if (hud::HudObject* timer = hud::Find(kHud_Timer)) {
+        if (timer->object && hud::ObjectVisible(timer->object))
+            timer->Show(false, true, false);
+    }
+    hud::ShowTextByName(6.0f, kHud_Tip, text, true, false, nullptr, kWhite);
+}
+
+} // namespace
+
+// @func 0x002E70B8 JobManager::OnBottleCollected
+void JobManager::OnBottleCollected(uint32_t bottle)
+{
+    constexpr uint32_t kNotify_FirstBottle = 0x200;
+    Job* episode = CurrentEpisode();
+    if (!episode || episode->bottleSlot == 0xFF)
+        return;
+    PlayerProgress& progress = CurrentProgress();
+    const uint8_t slot = episode->bottleSlot;
+    if (slot >= PlayerProgress::kEpisodeSlots) {
+        std::printf("Episode Index is out of bounds '%i'! Range is [0 - %i]!\n", slot, PlayerProgress::kEpisodeSlots);
+        collectedBottles = 0;
+    } else {
+        if (bottle < 32)
+            progress.bottleBits[slot] |= 1u << bottle;
+        collectedBottles = uint32_t(CountBits32(progress.bottleBits[slot]));
+    }
+    if (g_defaultBottleCount != 0 && uint32_t(g_defaultBottleCount) <= collectedBottles) {
+        // Every bottle found: the safe's state is copied into the record.
+        if (safeSource) {
+            EpisodeProgress& record = progress.episodes[episode->episode];
+            record.flags = uint16_t((record.flags & ~7u) | (uint32_t(SafeSourceState(safeSource)) & 7u));
+        }
+        if (entity::Entity* player = PlayerEntity()) {
+            if (entity::EntityComponent* targeting = entity::EntityTargeting(player))
+                TargetingSetEnabled(targeting, false);
+        }
+        ShowBottleNotice("$STR_NOTIFY_LAST_BOTTLE");
+    }
+    UpdateBottleHud(true);
+    if (!(progress.notifyBits & kNotify_FirstBottle)) {
+        progress.notifyBits |= kNotify_FirstBottle;
+        ShowBottleNotice("$STR_NOTIFY_FIRST_BOTTLE");
+    }
 }
 
 // @func 0x002E1DB0 JobManager::StartJobFromHubByName
