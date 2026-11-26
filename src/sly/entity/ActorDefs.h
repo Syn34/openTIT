@@ -35,6 +35,7 @@ class HitCounterActorDef : public ActorDef {
 public:
     explicit HitCounterActorDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~HitCounterActorDef() override;
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7
     float field_130[5] = {};            // 0x130
     int32_t field_144 = -1;             // 0x144 zero-based index (-1: none)
     uint32_t flags_148 = 0x80000000u;   // 0x148 bits 30/31: placement defaults
@@ -44,6 +45,7 @@ class WatchActorDef : public ActorDef {
 public:
     explicit WatchActorDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~WatchActorDef() override;
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7
     uint32_t field_130 = 0;             // 0x130 hash
     uint32_t field_134 = 0;             // 0x134 hash
     float field_138 = 0.0f;             // 0x138

@@ -5,7 +5,7 @@
 
 #include "sly/entity/ActorEntities.h"
 
-namespace sly::objects { struct ActorGroupInstanceDesc; }
+namespace sly::objects { struct ActorGroupInstanceDesc; struct HitCounterActorInstanceDesc; struct ActorInstanceDesc; }
 namespace ape { class ApeAnimScriptVar; }
 
 namespace sly {
@@ -63,6 +63,9 @@ public:
     // @func 0x00751DD4 HitCounterActor::~HitCounterActor (thunk, +0x180)
     // @func 0x00751C2C HitCounterActor::~HitCounterActor (deleting thunk, +0x180)
     ~HitCounterActor() override = default;
+    // Placement values, the two script variables (cleared) and, as the key,
+    // the body of the part the definition names (0x001AACEC).
+    explicit HitCounterActor(const objects::HitCounterActorInstanceDesc& desc);
     // @func 0x001ABAF8 HitCounterActor::Release
     bool Release(bool kill) override { return ActorEntity::Release(kill); }
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
@@ -70,8 +73,15 @@ public:
     // Slot 88: takes no damage; counts the player hits instead.
     bool Damage(float amount, Entity* source, uint32_t type) override;
 
+    float field_1A8[5] = {};             // 0x1A8 placement field_F0
+    ape::ApeAnimScriptVar* var1BC = nullptr;   // 0x1BC script variable 0xBBBC16FF
+    ape::ApeAnimScriptVar* var1C0 = nullptr;   // 0x1C0 script variable 0x3F5805D6
     uint32_t hits = 0;                   // 0x1C4
-    uint32_t key = 0;                    // 0x1D0 message argument that counts as a hit
+    uint32_t field_1C8 = 0;              // 0x1C8
+    uint32_t field_1CC = 0;              // 0x1CC
+    // 0x1D0 message argument that counts as a hit: the rigid body of the
+    // definition's part (HitCounterActorDef::field_144), 0 for none.
+    uint32_t key = 0;
     uint32_t counterFlags = 0;           // 0x1D4 bit 30 shields projectiles of damage bit 5, bit 29 shielded one
 };
 
@@ -86,11 +96,16 @@ public:
     // @func 0x00752304 WatchActor::~WatchActor (thunk, +0x180)
     // @func 0x0075215C WatchActor::~WatchActor (deleting thunk, +0x180)
     ~WatchActor() override = default;
+    // Waits (state 1) once the definition it watches for exists, else idles
+    // in state 0 (0x001AC1E8).
+    explicit WatchActor(const objects::ActorInstanceDesc& desc);
     // @func 0x001ACA78 WatchActor::Release
     bool Release(bool kill) override { return ActorEntity::Release(kill); }
     void HandleMessage(const EntityMessage& msg) override;   // slot 43
 
+    EntityDef* watchedDef = nullptr;     // 0x1A8 WatchActorDef::field_134
     Entity* watched = nullptr;           // 0x1AC
+    ape::ApeAnimScriptVar* var1B0 = nullptr;   // 0x1B0 script variable 0xBBBC16FF
 };
 
 // Plays a state when told to (vtable 0x00B15C20; destructor 0x007526AC).

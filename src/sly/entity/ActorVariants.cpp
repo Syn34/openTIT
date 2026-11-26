@@ -44,12 +44,18 @@ constexpr uint32_t kVar_Group = 0xBBBC16FFu;
 // Event listener group every actor group joins. NOTE: name unknown.
 constexpr uint32_t kListenerGroup_ActorGroups = 0xBD27942Du;
 
-ape::ApeAnimScriptVar* TakeGroupVar(ape::ApeAnimScriptInstance* script)
+// A float variable of the script, or null.
+ape::ApeAnimScriptVar* FindFloatVar(ape::ApeAnimScriptInstance* script, uint32_t name)
 {
-    ape::ApeAnimScriptVar* var = script->FindVar(kVar_Group);
-    if (!var || var->GetType() != ape::AnimScriptVarType::Float)
-        return nullptr;
-    GroupVarSetValue(var, 0.0f);
+    ape::ApeAnimScriptVar* var = script->FindVar(name);
+    return var && var->GetType() == ape::AnimScriptVarType::Float ? var : nullptr;
+}
+
+ape::ApeAnimScriptVar* TakeGroupVar(ape::ApeAnimScriptInstance* script, uint32_t name = kVar_Group)
+{
+    ape::ApeAnimScriptVar* var = FindFloatVar(script, name);
+    if (var)
+        GroupVarSetValue(var, 0.0f);
     return var;
 }
 } // namespace
@@ -188,6 +194,34 @@ void ActorGroup::ResetState()
 
 // -- HitCounterActor ---------------------------------------------------------------------
 
+// @func 0x001AACEC HitCounterActor::HitCounterActor
+HitCounterActor::HitCounterActor(const objects::HitCounterActorInstanceDesc& desc) : ActorEntity(desc)
+{
+    for (int i = 0; i < 5; ++i)
+        field_1A8[i] = desc.field_D0[i];
+    counterFlags = (counterFlags & 0x1FFFFFFFu) | (desc.flags_E4 & 0xC0000000u);
+    if (animScript) {
+        var1BC = TakeGroupVar(animScript);
+        var1C0 = TakeGroupVar(animScript, 0x3F5805D6u);
+    }
+    const auto* counterDef = static_cast<const HitCounterActorDef*>(def);
+    const uint32_t index = uint32_t(counterDef->field_144);
+    if (parts && index < parts->Count())
+        key = uint32_t(reinterpret_cast<uintptr_t>((*parts)[index].body));   // NOTE: a 32-bit pointer on the console
+    EntityJoinListenerGroup(this, 0x5924BAFAu, true);
+    EntitySetState(this, 0, 0);
+}
+
+// @func 0x001AAF38 HitCounterActorDef::Spawn
+Entity* HitCounterActorDef::Spawn(EntityPlacement* placement)
+{
+    objects::HitCounterActorInstanceDesc desc(InstanceName(placement), this);
+    placement->FillInstanceDesc(desc);
+    auto* actor = new HitCounterActor(desc);
+    actor->OnSpawn();
+    return actor;
+}
+
 // @func 0x001AC060 HitCounterActor::HandleMessage
 void HitCounterActor::HandleMessage(const EntityMessage& msg)
 {
@@ -219,6 +253,35 @@ bool HitCounterActor::Damage(float amount, Entity* source, uint32_t type)
 }
 
 // -- WatchActor --------------------------------------------------------------------------
+
+// @func 0x001AC1E8 WatchActor::WatchActor
+WatchActor::WatchActor(const objects::ActorInstanceDesc& desc) : ActorEntity(desc)
+{
+    const auto* watchDef = static_cast<const WatchActorDef*>(def);
+    watchedDef = FindEntityDef(watchDef->field_134);
+    if (!watchedDef) {
+        EntitySetState(this, 0, 0);
+        return;
+    }
+    if (watchDef->flags_13C & 0x80000000u)
+        EntityJoinListenerGroup(this, 0x600AE700u, true);
+    EntityJoinListenerGroup(this, 0xABB250AEu, true);
+    if (animScript)
+        var1B0 = FindFloatVar(animScript, kVar_Group);
+    watched = nullptr;
+    EntitySetState(this, 0, 1);
+    EntitySetState(this, 1, 0);
+}
+
+// @func 0x001AC38C WatchActorDef::Spawn
+Entity* WatchActorDef::Spawn(EntityPlacement* placement)
+{
+    objects::ActorInstanceDesc desc(InstanceName(placement), this);
+    placement->FillInstanceDesc(desc);
+    auto* actor = new WatchActor(desc);
+    actor->OnSpawn();
+    return actor;
+}
 
 // @func 0x001AD044 WatchActor::HandleMessage
 void WatchActor::HandleMessage(const EntityMessage& msg)
