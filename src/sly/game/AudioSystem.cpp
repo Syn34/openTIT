@@ -411,6 +411,16 @@ void SetMusicVoice(VoiceId id, SoundName* name)
     g_musicVoice = id;
 }
 
+// @func 0x00449950 StopAllSounds
+void StopAllSounds()
+{
+    if (!g_audioEnabled)
+        return;
+    for (VoiceId id : g_voices.Ids())
+        StopVoice(id, false);
+    g_trackedVoices.clear();
+}
+
 VoiceId TrackedVoiceId(uint32_t key)
 {
     const TrackedVoice* tracked = FindTracked(key);

@@ -148,16 +148,16 @@ void GameWorldCall482B20(bool force) { (void)force; }
 
 void HudShowText(void* hud, const char* text, float displayTime, bool forceStart, bool flag) { (void)hud; (void)text; (void)displayTime; (void)forceStart; (void)flag; }
 void HudStopByName(uint32_t hudName, bool flag, bool forceStop) { (void)hudName; (void)flag; (void)forceStop; }
-void AudioStopTrackedVoice(uint32_t exclusivityGroup) { (void)exclusivityGroup; }
-void AudioStopCategory(uint32_t category, bool flag) { (void)category; (void)flag; }
-void AudioStopAll() {}
+void AudioStopTrackedVoice(uint32_t exclusivityGroup) { audio::StopTrackedVoice(exclusivityGroup); }
+void AudioStopCategory(uint32_t category, bool flag) { audio::StopCategoryByHash(category, flag); }
+void AudioStopAll() { audio::StopAllSounds(); }
 
 void SoundVarStop(ape::ApeAnimScriptVar* var, bool flag) { (void)var; (void)flag; }
 void AudioSetVoiceRegister(uint32_t voice, int32_t reg, int8_t value) { audio::SetVoiceRegister(voice, reg, value); }
 void AudioSetGlobalRegister(int32_t reg, int8_t value) { audio::SetGlobalRegister(reg, value); }
 // TODO(0x010AFEA4): the audio port keeps the music voice private.
 uint32_t AudioMusicVoice() { return 0; }
-void MusicStop(bool flag) { (void)flag; }
+void MusicStop(bool flag) { audio::StopMusic(flag); }
 void CharacterSwapBinocucom(WorldObject* character, uint32_t componentDef) { (void)character; (void)componentDef; }
 void EntitySwapInventory(WorldObject* entity, uint32_t componentDef) { (void)entity; (void)componentDef; }
 void EntitySwapMarker(WorldObject* entity, uint32_t componentDef) { (void)entity; (void)componentDef; }

@@ -111,7 +111,7 @@ bool PadPressed(int padIndex, uint32_t mask)
 
 uint32_t CharacterAcceptedButtons(WorldObject*, uint32_t) { return 0; }
 
-void StopAllSounds() {}
+void StopAllSounds() { audio::StopAllSounds(); }
 bool IsSoundCategoryPlaying(int category) { return audio::IsCategoryPlaying(static_cast<audio::SoundCategory>(category)); }
 bool IsTrackedVoicePlaying(uint32_t key) { return audio::IsTrackedVoicePlaying(key); }
 void PlayMusicStream(audio::SoundName*, bool) {}

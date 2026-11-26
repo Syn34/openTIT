@@ -215,6 +215,9 @@ int OutputChannelCount();
 // Starts fading bus 'bus' (0..3) to 'volume' over 'seconds' (at once for 0).
 void FadeBusVolume(uint32_t bus, float volume, float seconds);
 
+// Stops every voice at once and forgets the tracked voices.
+void StopAllSounds();
+
 // The music voice and its sound reference (0x010AFEA4 / 0x00F65B70).
 void SetMusicVoice(VoiceId id, SoundName* name);
 void StopMusic(bool release);
