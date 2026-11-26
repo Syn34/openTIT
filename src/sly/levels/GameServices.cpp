@@ -4,6 +4,7 @@
 #include "sly/game/goals/JobManager.h"
 
 #include "sly/game/AudioSystem.h"
+#include "sly/game/GameMessages.h"
 #include "sly/game/SoundZones.h"
 #include "sly/levels/script/ScriptVars.h"
 
@@ -95,17 +96,21 @@ void KillSequence(uint32_t name) { (void)name; }
 uint32_t CurrentLevelName() { return 0; }
 void RestartLevel() {}
 void ChangeLevel(uint32_t levelName) { (void)levelName; }
+// World objects here are entities (opaque to this module).
 void SendGameEvent(WorldObject* sender, WorldObject* receiver, uint32_t event, uintptr_t data, bool immediate)
 {
-    (void)sender; (void)receiver; (void)event; (void)data; (void)immediate;
+    PostGameMessage(reinterpret_cast<entity::Entity*>(sender), receiver, event, static_cast<uint32_t>(data),
+                    immediate);
 }
 void BroadcastGameEvent(WorldObject* sender, uint32_t group, uint32_t event, uintptr_t data)
 {
-    (void)sender; (void)group; (void)event; (void)data;
+    PostToListeners(reinterpret_cast<entity::Entity*>(sender), group, event, static_cast<uint32_t>(data));
 }
 void BroadcastGameEventInRange(WorldObject* sender, uint32_t group, uint32_t event, uintptr_t data, float range)
 {
-    (void)sender; (void)group; (void)event; (void)data; (void)range;
+    if (sender)
+        PostToListenersInRange(range, reinterpret_cast<entity::Entity*>(sender), group, event,
+                               static_cast<uint32_t>(data));
 }
 WorldObject* EntityFindChild(WorldObject* entity, uint32_t childName) { (void)entity; (void)childName; return nullptr; }
 WorldObject* EntityVarValue(ape::ApeAnimScriptVar* var)

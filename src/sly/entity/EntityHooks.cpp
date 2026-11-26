@@ -1,6 +1,8 @@
 // openTIT - Entity layer calls into systems that are not ported yet (see EntityHooks.h).
 #include "sly/entity/EntityHooks.h"
 #include "sly/entity/Entity.h"
+#include "sly/game/GameMessages.h"
+#include "sly/game/SlyGame.h"
 #include "sly/anim/AnimController.h"
 #include "sly/anim/AnimLayer.h"
 
@@ -36,9 +38,15 @@ void AnimControllerSetRunning(void* controller, bool running)
     else
         ctl->flags &= ~anim::AnimController::kFlag_Running;
 }
-// TODO(0x004705F8 / 0x00470660 / 0x00482D14): game events live in sly/game.
-void EntitySendGameEvent(Entity*, Entity*, uint32_t, uint32_t, bool) {}
-void EntityPostScriptMessage(Entity*, uint32_t, uint32_t, uint32_t) {}
+void EntitySendGameEvent(Entity* sender, Entity* receiver, uint32_t event, uint32_t data, bool immediate)
+{
+    PostGameMessage(sender, receiver, event, data, immediate);
+}
+void EntityPostScriptMessage(Entity* sender, uint32_t key, uint32_t message, uint32_t argument)
+{
+    PostToListeners(sender, key, message, argument);
+}
+// TODO(0x00482D14): game events live in sly/game.
 void GameWorldPostEntityEvent(uint8_t, uint32_t, Entity*) {}
 // TODO(spawner slot 9 0x00456258)
 void SpawnerEntityKilled(void*, Entity*) {}
@@ -48,12 +56,14 @@ void ApplyPlacementToScript(ape::ApeAnimScriptInstance*, ape::world::ApeObj*) {}
 bool ListenerIsAlly(EntityListener*) { return false; }
 // TODO(scripted entity +0x16C record)
 void DamageRecordSetType(void*, uint32_t) {}
-// TODO(EntityMessage +0x00): messages carry no sender pointer in the port yet.
-Entity* MessageSenderEntity(const EntityMessage&) { return nullptr; }
+Entity* MessageSenderEntity(const EntityMessage& msg) { return msg.sender; }
 // TODO(0x01032148 physics step flag)
 bool PhysicsStepInProgress() { return false; }
-// TODO(0x0046B6CC GameWorld::ForgetEntity)
-void GameWorldForgetEntity(Entity*) {}
+void GameWorldForgetEntity(Entity* entity)
+{
+    if (g_game)
+        g_game->ForgetEntity(entity);
+}
 // TODO(watcher slot 74): the watcher classes are not ported.
 void WatcherEntityReleased(void*, Entity*) {}
 // TODO(spawner slot 8 0x00455F54): sly::Spawner is reached as an opaque pointer here.
@@ -115,8 +125,10 @@ bool ForwardVisibilityToComponents() { return false; }
 bool ComponentHidesRender(EntityComponent*) { return false; }
 
 void AnimControllerDestroy(void* controller) { delete static_cast<anim::AnimController*>(controller); }
-// TODO(0x0048F298)
-void EntityLeaveListenerGroup(Entity* entity) { (void)entity; }
+void EntityLeaveListenerGroup(Entity* entity)
+{
+    UnregisterListener(entity, true);
+}
 void WorldObjectSetUserData(ape::world::ApeObj* object, uint32_t tag, uint32_t value)
 {
     object->field_114 = reinterpret_cast<void*>(static_cast<uintptr_t>(tag));

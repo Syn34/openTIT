@@ -379,6 +379,42 @@ int BoneTableChunkHandler(ape::iff::IffReader* reader, void* arg)
     return 1;
 }
 
+// @func 0x00525A24 SkinWeightChunkHandler
+// Per-vertex bone indices and weights of a skinned submesh. The chunk holds
+// either the packed runtime layout (four index bytes, four weight bytes) or
+// the older 12-byte layout with 16-bit weights, of which only the high byte
+// is kept. At most three influences survive.
+int SkinWeightChunkHandler(ape::iff::IffReader* reader, void* arg)
+{
+    AglSubMesh* mesh = static_cast<AglSubMesh*>(arg);
+    const uint32_t vertexCount = mesh->vertexCount;
+    mesh->skinWeights = static_cast<uint8_t*>(ape::MemAlloc(vertexCount * 8, ape::kMemClass_Default, 16));
+    const uint32_t size = reader->GetChunkSize();
+    if (size == vertexCount * 12) {
+        struct WideInfluences {
+            uint8_t bones[4];
+            uint16_t weights[4];
+        };
+        std::vector<WideInfluences> wide(vertexCount);
+        reader->Read(wide.data(), size);
+        const bool swap = (reader->flags & ape::iff::kIffReader_Flag02) != 0;
+        for (uint32_t v = 0; v < vertexCount; ++v) {
+            uint8_t* out = mesh->skinWeights + v * 8;
+            for (int i = 0; i < 4; ++i) {
+                uint16_t weight = wide[v].weights[i];
+                if (swap)
+                    weight = static_cast<uint16_t>((weight >> 8) | (weight << 8));
+                out[i] = wide[v].bones[i];
+                out[4 + i] = static_cast<uint8_t>(weight >> 8);
+            }
+        }
+    } else if (size == vertexCount * 8) {
+        reader->Read(mesh->skinWeights, size);
+    }
+    mesh->LimitBoneInfluences(3);
+    return 1;
+}
+
 // @func 0x00548CD4 RegisterMemoryBlockChunk
 void RegisterMemoryBlockChunk()
 {

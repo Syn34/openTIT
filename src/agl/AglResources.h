@@ -56,6 +56,9 @@ public:
     uint8_t AddVertexStream() { return vertexStreamCount++; }
     // Total GPU memory of the buffers, in 16-byte units.
     uint32_t GetMemoryUnits() const;
+    // Keeps at most 'maxInfluences' (1..3; 4 leaves the data alone) bones per
+    // vertex, drops weights below 4 and renormalises the rest to 255.
+    void LimitBoneInfluences(int maxInfluences);
 
     uint16_t resourceFlags = 0;
     uint32_t id = 0;
@@ -68,7 +71,9 @@ public:
     uint32_t field_3C = 1;                  // index format (1: 16-bit)
     uint32_t indexCount = 0;                // 0x40
     const struct AglVertexDecl* vertexDecl = nullptr;   // 0x44
-    void* field_48 = nullptr;               // engine heap block owned by the submesh
+    // 0x48: per-vertex skinning data, 8 bytes per vertex: four bone
+    // indices then four weights (0..255, summing to 255).
+    uint8_t* skinWeights = nullptr;
     uint32_t primitive = 6;                 // gpu::PrimitiveType (triangle strips by default)
     uint32_t serial = 0;                    // creation order
     void* skinMatrices = nullptr;           // 0x54: bone table, null when not skinned

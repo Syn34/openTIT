@@ -569,12 +569,14 @@ public:
     ape::ApeTArray<EntityChildLink>* children = nullptr;      // 0x154 (records of 0xF0 bytes)
 };
 
-// Message delivered to entities (id at +0x08, argument at +0x0C).
+// Message delivered to entities and game event listeners: the record of the
+// game message queue (0x14 bytes on the console, see sly/game/GameMessages.h).
 struct EntityMessage {
-    uint32_t field_00 = 0;
-    uint32_t field_04 = 0;
-    uint32_t id = 0;          // +0x08
-    uint32_t argument = 0;    // +0x0C
+    Entity* sender = nullptr;  // +0x00
+    void* receiver = nullptr;  // +0x04 entity or GameEventListener
+    uint32_t id = 0;           // +0x08
+    uint32_t argument = 0;     // +0x0C NOTE: some senders pass a 32-bit pointer here
+    bool toEntity = false;     // +0x10 the receiver is an entity
 };
 
 // Receives the entity's messages (+0xF4, virtual slot 12).

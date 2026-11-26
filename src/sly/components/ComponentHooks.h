@@ -12,6 +12,7 @@ namespace ape::world { class ApeObj; }
 namespace ape::anim { class AnimClipManager; }
 namespace agl { class AglMaterial; }
 namespace sly { namespace anim { class AnimController; } }
+namespace sly { class GameEventListener; }
 namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; class ApeRefCounted; }
 
 namespace sly {
@@ -77,7 +78,7 @@ uint32_t GadgetMode(entity::EntityComponent* gadget);
 // Game-side listener object embedded in components (base 0x0048F27C,
 // destructor 0x0048F6B0): members of a listener group receive the messages
 // posted to it (0x00470660). 0x0048FA54 joins a group, 0x0048F298 leaves all.
-void ListenerJoinGroup(void* listener, uint32_t group);
+void ListenerJoinGroup(GameEventListener* listener, uint32_t group);
 // What a listener receives (sender entity, group key, message, argument).
 struct ListenerMessage {
     entity::Entity* sender = nullptr;   // +0x00
@@ -85,7 +86,7 @@ struct ListenerMessage {
     uint32_t message = 0;               // +0x08
     uint32_t argument = 0;              // +0x0C
 };
-void ListenerLeaveGroups(void* listener);
+void ListenerLeaveGroups(GameEventListener* listener);
 // Entity world object (slot 36) word +0x2C: render layer.
 void EntitySetRenderLayer(entity::Entity* entity, uint32_t layer);
 

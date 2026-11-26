@@ -12,6 +12,7 @@ namespace sly {
 class WorldObject;   // world entities, reconstructed by the world module
 class SpawnManager;
 namespace goals { class Goal; }
+namespace entity { class Entity; }
 
 // Small clock block the game points at from +0x0C; the first word is used
 // as the timestamp of game events. NOTE: probably a frame or tick counter.
@@ -19,23 +20,35 @@ struct GameClock {
     uint32_t now = 0;
 };
 
-// Per-frame list cleared at the end of every render frame (+0x1284EC,
-// stride 0x14, seven of them).
-struct FrameList {
-    void* items = nullptr;
-    uint16_t capacity = 0;
-    uint16_t count = 0;
-    uint32_t field_08 = 0;
-    uint32_t field_0C = 0;
-    uint32_t field_10 = 0;
+// A deferred call queued on one of the world callback lists: the game
+// calls function(owner, context) when it runs the list.
+// NOTE: on the console 'function' is a function descriptor; the callers
+// pass static functions of their modules.
+struct WorldCallback {
+    void* function = nullptr;
+    void* context = nullptr;
+    entity::Entity* owner = nullptr;
 };
 
 class SlyGame {
 public:
+    // Thirteen callback lists (+0x128480, 0x14-byte arrays). Lists 5..11
+    // only live for one frame: they are emptied at the end of every render
+    // frame.
+    static constexpr int kCallbackListCount = 13;
+    static constexpr int kFirstFrameList = 5;
     static constexpr int kFrameListCount = 7;
 
     // Resets the per-frame lists filled during rendering.
     void ResetFrameLists();
+    // Queues function(owner, context) on callback list 'list'.
+    void AddCallback(int list, void* function, void* context, entity::Entity* owner);
+    // Removes every entry of list 'list' with this context and owner.
+    // NOTE: the console passes the function too but does not compare it.
+    void RemoveCallback(int list, void* context, entity::Entity* owner);
+    // Drops every callback owned by 'owner' from all the lists (entity
+    // teardown).
+    void ForgetEntity(entity::Entity* owner);
 
     // Timestamp stamped into every game event.
     uint32_t EventTime() const { return clock ? clock->now : 0; }
@@ -106,7 +119,7 @@ public:
         uint32_t field_10 = 0;
         uint32_t flags = 0;                     // bit 31: flag, bit 30: pending
     } blendRequest;                             // +0x1283A8
-    FrameList frameLists[kFrameListCount];      // +0x1284EC
+    ape::ApeTArray<WorldCallback> callbackLists[kCallbackListCount]; // +0x128480
     float timeScaleA = 1.0f;                    // +0x128588
     float timeScaleB = 1.0f;                    // +0x128594
 };
