@@ -6,6 +6,7 @@
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
 #include "sly/entity/GameCamera.h"
+#include "sly/game/GameScripts.h"
 #include "sly/gameplay/MegaKnightHooks.h"
 #include "sly/gameplay/Sequencer.h"
 #include "sly/tuning/MegaKnightDragonTuning.h"
@@ -704,11 +705,67 @@ void MKPhaseGroundSmash::OnExit(uint32_t next) { (void)next; }
 // @func 0x00318BD8 MKPhaseGroundSmash::IsDone
 bool MKPhaseGroundSmash::IsDone() { return GetState(0) == 4; }
 
-// TODO(0x00318C30 MKPhaseGroundSmash::UpdatePhase)
+// @func 0x00318C30 MKPhaseGroundSmash::UpdatePhase
+// State 1: the first smash; 2: the next smashes of the pattern ('F' plays
+// the far variant); 3: the recovery clip. A player who reaches the fight
+// area sends the boss to watch the platform.
 bool MKPhaseGroundSmash::UpdatePhase(float dt)
 {
     (void)dt;
-    return true;
+    const bool playerInFight = DelayedStateGet(boss->tracking.fightActive) != 0;
+    MegaKnight* b = boss;
+    auto checkSmash = [&]() {
+        if (playerInFight) {
+            field_58 = false;
+            b->SwitchPhase(kMKPhase_MonitorPlatform);
+            SetState(0, 4);
+            return false;
+        }
+        if (!MKClipDone(b))
+            return true;
+        SetState(0, 2);
+        return false;
+    };
+    switch (GetState(0)) {
+    case 1:
+        if (TimeInState(0) == 0.0f)
+            sly::StartObjectScript(0xE594F012u, nullptr, 0, true);
+        return checkSmash();
+    case 2:
+        if (TimeInState(0) != 0.0f)
+            return checkSmash();
+        ++patternIndex;
+        if (uint32_t(patternIndex) < pattern.Count()) {
+            if (!field_59) {
+                const bool far = pattern[uint32_t(patternIndex)] == 'F';
+                field_5B = far;
+                const uint32_t clip = far ? (mirrored ? 0x57EA75C5u : 0x76D24A8Cu)
+                                          : (mirrored ? 0xECD237EAu : 0x7EE2CD07u);
+                b->currentAnim = 0;
+                b->PlayAnim(clip, 1.0f, false);
+                return checkSmash();
+            }
+        } else {
+            field_59 = true;
+        }
+        SetState(0, 3);
+        return false;
+    case 3: {
+        if (TimeInState(0) == 0.0f) {
+            const uint32_t clip = field_5B ? (mirrored ? 0xB3A038D1u : 0xF962F16Au)
+                                           : (mirrored ? 0xAE3330CCu : 0x512EF8CFu);
+            b->PlayAnim(clip, 1.0f, false);
+        }
+        if (!MKClipDone(b))
+            return true;
+        if (enterCount == 0 && field_58)
+            sly::StartObjectScript(0xB99A192Du, nullptr, 0, true);
+        SetState(0, 4);
+        return false;
+    }
+    default:
+        return true;
+    }
 }
 
 // ===========================================================================
