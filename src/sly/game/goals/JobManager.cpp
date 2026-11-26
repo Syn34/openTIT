@@ -23,8 +23,9 @@ PlayerProgress g_progressStandIn;
 constexpr uint32_t kNoIndex = 0xFFFFFFFFu;
 } // namespace
 
-PlayerProgress& CurrentProgress() { return g_progressStandIn; }
-PlayerProgress& ProfileProgress(uint8_t) { return g_progressStandIn; }
+// The game world keeps the profile's record in its save data.
+PlayerProgress& CurrentProgress() { return g_game ? g_game->progress : g_progressStandIn; }
+PlayerProgress& ProfileProgress(uint8_t) { return CurrentProgress(); }
 uint32_t PlayerGoalCount() { return g_game ? g_game->Player(0).goals.Count() : 0; }
 Goal* PlayerGoalListAt(uint32_t index) { return index < PlayerGoalCount() ? g_game->Player(0).goals[index] : nullptr; }
 uint32_t LiveJobId() { return 0; }
@@ -33,8 +34,11 @@ void PlayerResetJobState(int) {}
 // TODO(0x00489A60): the game world message box is not ported.
 void GameWorldShowPlayerMessage(uint32_t, const char*, const char*) {}
 int g_debugOpenSafes = 0;
-// TODO(0x00488D68): the game world state machine is not ported.
-void GameWorldRestartState() {}
+void GameWorldRestartState()
+{
+    if (g_game)
+        g_game->RestartLevelState();
+}
 // TODO(game world +0x1070 / +0x1280F0 / +0x128160 / +0x1281E0 / +0x128114,
 // 0x00486460, 0x0012BF70, 0x00487670, 0x00484BE0, 0x00488178): the players
 // block, the playable characters and the level instances are not modelled.
