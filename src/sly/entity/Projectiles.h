@@ -60,7 +60,7 @@ public:
     // Slot 101: flies along the curve from the launch point to the aim point
     // (past the end it keeps the last step), facing along it with
     // definition flag 22.
-    void UpdateFlight(float dt);
+    void UpdateFromBody(float dt) override;
     // Point of the flight curve at `t` (0..1): a quadratic Bezier from the
     // launch point to the aim point whose control point lies sideScale along
     // `side` and forwardScale of the distance towards the aim (0x000F4448).

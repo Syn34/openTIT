@@ -139,8 +139,8 @@ ape::Vec3 ProjectileB::FlightPoint(float t) const
             end.z * t * t + start.z * u * u + control.z * 2.0f * u * t, 0.0f};
 }
 
-// @func 0x000F45E0 ProjectileB::UpdateFlight
-void ProjectileB::UpdateFlight(float dt)
+// @func 0x000F45E0 ProjectileB::UpdateFromBody
+void ProjectileB::UpdateFromBody(float dt)
 {
     const float duration = field_2A0;
     float time = field_290 <= duration ? field_290 : duration;

@@ -38,6 +38,7 @@ public:
     };
 
     float gravityScale = 0.0f;               // 0xC0
+    float rollRate = 0.0f;                   // 0x100 radians per second about the forward axis (flag 22)
     float launchValue = 0.0f;                // 0x12C handed to the anim script on launch. NOTE: meaning unknown
     // Damage taken per hit category (0 = immune). NOTE: filled by the
     // definition parser (not ported).
@@ -105,6 +106,10 @@ public:
     // eased towards the direction of motion (Entity.Projectile.OrientDampening)
     // (0x000EB420).
     void SweepTo(const ape::Matrix34& from, const ape::Vec3& to, ape::Matrix34& out, bool orient);
+    // Slot 101: takes the body's frame over: as it is, or (definition flag
+    // 22) facing along the body's velocity and rolled by the definition's
+    // roll rate.
+    virtual void UpdateFromBody(float dt);
     // Slot 99: empty. NOTE: no caller known.
     virtual void Slot99();
     // Primary slot 100 / +0x180 slot 6: stops listening to the body's contacts.

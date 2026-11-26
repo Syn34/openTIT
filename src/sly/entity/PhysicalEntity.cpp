@@ -10,6 +10,7 @@
 
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/sys/ApeGeometry.h"
+#include "ape/math/ApeMatrixOps.h"
 #include "sly/entity/EntityTuning.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 
@@ -366,6 +367,59 @@ void PhysicalEntity::SweepTo(const ape::Matrix34& from, const ape::Vec3& to, ape
     out.yAxis = cross(forward, side);
     out.zAxis = {forward.x, forward.y, forward.z, out.zAxis.pad};
     out.translation = at;
+}
+
+// @func 0x000F1E00 PhysicalEntity::UpdateFromBody
+void PhysicalEntity::UpdateFromBody(float dt)
+{
+    if (!body)
+        return;
+    const ape::Matrix34 bodyFrame = RigidBodyTransform(body);
+    if (!(Def()->defFlags & PhysicalEntityDef::kDefFlag_FaceMotion)) {
+        transform.xAxis = {bodyFrame.xAxis.x, bodyFrame.xAxis.y, bodyFrame.xAxis.z, transform.xAxis.pad};
+        transform.yAxis = {bodyFrame.yAxis.x, bodyFrame.yAxis.y, bodyFrame.yAxis.z, transform.yAxis.pad};
+        transform.zAxis = {bodyFrame.zAxis.x, bodyFrame.zAxis.y, bodyFrame.zAxis.z, transform.zAxis.pad};
+        transform.translation = {bodyFrame.translation.x, bodyFrame.translation.y, bodyFrame.translation.z,
+                                 transform.translation.pad};
+        return;
+    }
+    auto isZero = [](const ape::Vec3& v) {
+        return std::fabs(v.x) < 1e-05f && std::fabs(v.y) < 1e-05f && std::fabs(v.z) < 1e-05f;
+    };
+    auto cross = [](const ape::Vec3& a, const ape::Vec3& b) {
+        return ape::Vec3{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x, 0.0f};
+    };
+    // Forward along the velocity (the current forward when at rest), upright
+    // to the current up axis.
+    ape::Vec3 forward = RigidBodyLinearVelocity(body);
+    if (isZero(forward))
+        forward = transform.zAxis;
+    ape::Vec3 side = cross(transform.yAxis, forward);
+    if (isZero(side)) {
+        ape::Vec3 helper;
+        const float ax = std::fabs(forward.x), ay = std::fabs(forward.y), az = std::fabs(forward.z);
+        if (ay > az && ax > az)
+            helper = {0.0f, 0.0f, 1.0f, 0.0f};
+        else if (ax > ay)
+            helper = {0.0f, 1.0f, 0.0f, 0.0f};
+        else
+            helper = {1.0f, 0.0f, 0.0f, 0.0f};
+        side = cross(helper, forward);
+    }
+    ape::Matrix34 frame;
+    frame.xAxis = side;
+    frame.yAxis = cross(forward, side);
+    frame.zAxis = forward;
+    frame.translation = bodyFrame.translation;
+    ape::Matrix34NormalizeAxes(frame);
+    ape::Matrix34 roll;
+    ape::Matrix34RotationZ(Def()->rollRate * dt, roll);
+    ape::Matrix34PreMultiply(frame, roll);
+    transform.xAxis = {frame.xAxis.x, frame.xAxis.y, frame.xAxis.z, transform.xAxis.pad};
+    transform.yAxis = {frame.yAxis.x, frame.yAxis.y, frame.yAxis.z, transform.yAxis.pad};
+    transform.zAxis = {frame.zAxis.x, frame.zAxis.y, frame.zAxis.z, transform.zAxis.pad};
+    transform.translation = {frame.translation.x, frame.translation.y, frame.translation.z,
+                             transform.translation.pad};
 }
 
 // @func 0x000EDD74 PhysicalEntity::SetCarriedTransform
