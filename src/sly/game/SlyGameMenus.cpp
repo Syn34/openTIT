@@ -25,6 +25,7 @@
 #include "sly/game/goals/JobManager.h"
 #include "sly/game/goals/Goal.h"
 #include "sly/game/FileStreaming.h"
+#include "sly/save/SaveGame.h"
 #include "ape/level/ApeLevelScene.h"
 #include <cstring>
 #include "sly/game/AudioSystem.h"
@@ -1398,6 +1399,48 @@ void SlyGame::UpdateWorld(float dt)
     RunCallbacks(kWorldList, 0.0f, false);
     HudFrameEnd(dt);
     levelWorld->Update(dt, nullptr);
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x0048888C SlyGame::AutoSaveAfterJob
+void SlyGame::AutoSaveAfterJob()
+{
+    constexpr uint16_t kEpisodeStateMask = 0x18;
+    constexpr uint16_t kEpisodeFinished = 0x10;
+    constexpr uint8_t kJobComplete = 2;
+    if (OnFinalGoal()) {
+        game::JobManager* jobs = game::GetJobManager();
+        game::Job* job = jobs ? jobs->currentJob : nullptr;
+        if (job && jobs->instance) {
+            progress.jobStates[jobs->instance->index] = kJobComplete;
+            progress.lastLevel = job->nameHash;
+            progress.lastEpisodeName = 0;
+            progress.lastGoalName = 0;
+            uint16_t& flags = progress.episodes[job->episode].flags;
+            flags = uint16_t((flags & ~kEpisodeStateMask) | kEpisodeFinished);
+            game::UnlockByKey(ape::HashNameNoCase(job->endMovie));
+            game::UnlockByKey(ape::HashNameNoCase(job->endMovie2));
+            (void)CountUnlockedTrophies();   // NOTE: results unused on the console
+            (void)TrophyTotal();
+            if (TrophyTotal() == CountUnlockedTrophies())
+                game::UnlockByKey(ape::HashNameNoCase(job->endMovie3));
+        }
+    }
+    // A busy save system gets one more try.
+    if (AutoSaveGame(&progress, sizeof(progress)) != kSave_Busy)
+        AutoSaveGame(&progress, sizeof(progress));
+}
+
+// @func 0x0047E1D4 SlyGame::ReleaseLevelParams
+void SlyGame::ReleaseLevelParams()
+{
+    if ((flags1C >> 6) != 0)
+        return;
+    delete levelParams;
+    levelParams = nullptr;
 }
 
 } // namespace sly

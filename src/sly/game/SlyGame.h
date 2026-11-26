@@ -430,6 +430,13 @@ public:
     // left, and the player's goals are all complete but at most one, which
     // does not hold back the next scripts (0x00475C28).
     bool OnFinalGoal() const;
+    // Autosave at the end of a job. After the game's last goal the episode
+    // is marked finished, its job complete, play resumes in its hideout and
+    // its end movies unlock (the third only with every trophy) (0x0048888C).
+    void AutoSaveAfterJob();
+    // Frees the level's parameters unless the level stays loaded (+0x1C
+    // bits 6-7) (0x0047E1D4).
+    void ReleaseLevelParams();
     // A player is down: meter B snaps and a running return-treasure
     // microgame loses the treasure if the player carried it.
     void OnPlayerDown(uint32_t player);
