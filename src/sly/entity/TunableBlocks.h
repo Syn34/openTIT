@@ -127,12 +127,52 @@ public:
     float disguiseExpirationRate = 0.0f;   // +0xC8
 };
 
-// Settings block of vtable 0x00B14120 (loader 0x00119D8C, not ported).
+// Follow camera settings (vtable 0x00B14120): the Camera.Follow.* tuning
+// (every variable but Camera.Follow.Interp).
 class SettingsBlockB14120 : public TunableBlock {
 public:
     ~SettingsBlockB14120() override;
     void LoadDefaults() override;
     bool Reload() override;
+
+    float stepTimeMax = 0.0f;      // +0x04 Camera.Follow.StepTimeMax
+    float fOV = 0.0f;              // +0x08 Camera.Follow.FOV
+    float offsetZ = 0.0f;          // +0x0C Camera.Follow.OffsetZ
+    float offsetY = 0.0f;          // +0x10 Camera.Follow.OffsetY
+    float nearClip = 0.0f;         // +0x14 Camera.Follow.NearClip
+    float colRadius = 0.0f;        // +0x18 Camera.Follow.ColRadius
+    float colFractHS = 0.0f;       // +0x1C Camera.Follow.ColFractHS
+    float colInterp = 0.0f;        // +0x20 Camera.Follow.ColInterp
+    float colConeMin = 0.0f;       // +0x24 Camera.Follow.ColConeMin
+    float colMomentMax = 0.0f;     // +0x28 Camera.Follow.ColMomentMax
+    float colRetract = 0.0f;       // +0x2C Camera.Follow.ColRetract
+    float spring = 0.0f;           // +0x30 Camera.Follow.Spring
+    float damping = 0.0f;          // +0x34 Camera.Follow.Damping
+    float springEnd = 0.0f;        // +0x38 Camera.Follow.SpringEnd
+    float targetXZ = 0.0f;         // +0x3C Camera.Follow.TargetXZ
+    float targetYUp = 0.0f;        // +0x40 Camera.Follow.TargetYUp
+    float targetYDown = 0.0f;      // +0x44 Camera.Follow.TargetYDown
+    float targetYMinSoft = 0.0f;   // +0x48 Camera.Follow.TargetYMinSoft
+    float targetYMaxSoft = 0.0f;   // +0x4C Camera.Follow.TargetYMaxSoft
+    float targetYMinHard = 0.0f;   // +0x50 Camera.Follow.TargetYMinHard
+    float targetYMaxHard = 0.0f;   // +0x54 Camera.Follow.TargetYMaxHard
+    int32_t targetYMode = 0;       // +0x58 Camera.Follow.TargetYMode
+    float yShift = 0.0f;           // +0x5C Camera.Follow.YShift
+    float lookAheadXZ = 0.0f;      // +0x60 Camera.Follow.LookAheadXZ
+    float lookAheadY = 0.0f;       // +0x64 Camera.Follow.LookAheadY
+    float rotateScalar = 0.0f;     // +0x68 Camera.Follow.RotateScalar
+    float rotateInterp = 0.0f;     // +0x6C Camera.Follow.RotateInterp
+    float gimbalRadius = 0.0f;     // +0x70 Camera.Follow.GimbalRadius
+    float gimbalMin = 0.0f;        // +0x74 Camera.Follow.GimbalMin
+    float gimbalMax = 0.0f;        // +0x78 Camera.Follow.GimbalMax
+    float gimbalShift = 0.0f;      // +0x7C Camera.Follow.GimbalShift
+    float gimbalOffsetY = 0.0f;    // +0x80 Camera.Follow.GimbalOffsetY
+    float gimbalOffsetZ = 0.0f;    // +0x84 Camera.Follow.GimbalOffsetZ
+    float gimbalScalar = 0.0f;     // +0x88 Camera.Follow.GimbalScalar
+    float gimbalInterpV = 0.0f;    // +0x8C Camera.Follow.GimbalInterpV
+    float gimbalInterpD = 0.0f;    // +0x90 Camera.Follow.GimbalInterpD
+    float gimbalInterpReturn = 0.0f; // +0x94 Camera.Follow.GimbalInterpReturn
+    int32_t gimbalReturn = 0;      // +0x98 Camera.Follow.GimbalReturn
 };
 
 } // namespace entity

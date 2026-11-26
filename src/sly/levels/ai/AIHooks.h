@@ -227,6 +227,9 @@ bool SpawnerIsSpawnField(const Entity* entity);
 // The spawner's alternative spawn object itself (0x00451E08), or null.
 ape::world::ApeObj* SpawnerAltObject(const Entity* entity);
 bool HasSpawner(const Entity* entity);
+// Where the entity's spawner places its spawns (translation of the spawn
+// transform, 0x00452024 +0x30).
+ape::Vec3 SpawnerSpawnPosition(const Entity* entity);
 // The spawner that created an entity (entity +0xDC), opaque here, and its
 // list of live spawned objects (spawner +0x14/+0x18).
 struct SpawnerRef;
@@ -259,6 +262,11 @@ void EntityResetAnimMode(Entity* entity);
 // Entity virtual slot 52 (+0xD0): steps the root motion of the playing
 // animation by `dt`, giving the delta transform.
 void EntityRootMotion(Entity* entity, float dt, ape::Matrix34& delta);
+// Casts a ray from `from` to `to` through the game physics world and gives
+// the fraction along it of the nearest hit on static geometry: shapes of the
+// plain kinds (types 1-4), or bodies that are fixed or keyframed (other
+// collidables are skipped). False when nothing static is hit.
+bool PhysicsRayCastStatic(const ape::Vec3& from, const ape::Vec3& to, float& fraction);
 // Scale of the entity's world object (object +0x90), (1,1,1) without one.
 ape::Vec3 EntityObjectScale(const Entity* entity);
 // Animation controller (+0xA4) flag word +0x28: bit 10 "free", bit 12

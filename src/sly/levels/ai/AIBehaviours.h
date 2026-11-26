@@ -85,8 +85,8 @@ public:
     // points (0x0001D1E0, TODO).
     void SnapToGround(bool fromSpawnHeight);
     bool GroundProbe(const ape::Vec3& top, const ape::Vec3& bottom, ape::Vec3& hit);
-    // Point to run to, away from `away`. TODO(0x0001E420): bad instruction data.
-    ape::Vec3 FleePoint(const ape::Vec3& away);
+    // Point to run to, away from the threat `toThreat` points at (0x0001E420).
+    ape::Vec3 FleePoint(const ape::Vec3& toThreat);
     // Quick turn while fleeing (part of Think) and a perch point on a rail
     // (TODO 0x00020100).
     void QuickTurn(const Entity& player);

@@ -49,13 +49,22 @@ ape::Matrix34 EntityBoneTransform(Entity* entity, uint32_t boneHash)
 {
     return entity ? entity->BoneTransformByName(boneHash, true, true) : ape::Matrix34{};
 }
-void EntityRootMotion(Entity*, float, ape::Matrix34&) {}
+void EntityRootMotion(Entity* entity, float dt, ape::Matrix34& delta) { entity->RootMotionDelta(delta, false, 0, dt); }
 void* EntityRigidBody(Entity*) { return nullptr; }
 void* FindSpawnerByName(uint32_t) { return nullptr; }
 bool CrittersMayNotCharge() { return false; }
 ape::world::ApeObj* SpawnerAltObject(const Entity*) { return nullptr; }
+ape::Vec3 SpawnerSpawnPosition(const Entity*) { return {0.0f, 0.0f, 0.0f, 0.0f}; }
 float CharacterClipProgress(EntityComponent*) { return 0.0f; }
 ape::Vec3 EntityObjectScale(const Entity*) { return {1.0f, 1.0f, 1.0f, 0.0f}; }
+// TODO(physics ray cast: hkpWorld::castRay 0x0092E510 with an all-hits
+// collector of eight, hits sorted 0x00887E28): nothing is hit until the
+// physics layer exists.
+bool PhysicsRayCastStatic(const ape::Vec3&, const ape::Vec3&, float& fraction)
+{
+    fraction = 1.0f;
+    return false;
+}
 void AnimControllerSetEngaged(Entity*, bool) {}
 void CharacterClearAIHold(Entity* character)
 {

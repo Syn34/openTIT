@@ -26,7 +26,9 @@ public:
         void* havokObject;          // +0x20
         uint8_t field_24[0x58];
         uint32_t partFlags;         // +0x7C PartFlags
-        uint8_t field_80[0x10];
+        // +0x80 the first part's offset is where the actor is aimed at
+        // (slot 71). NOTE: role for the other parts unknown.
+        ape::Vec3 aimOffset;
         // Nav obstacle mode of the part (0 = the definition's mode).
         uint32_t navMode;           // +0x90
         uint8_t field_94[0xC];
@@ -189,6 +191,10 @@ public:
     // itself when the actor has no parts.
     void PartTransform(ape::Matrix34& out, int index, const ape::Matrix34& frame) const;
 
+    // Slot 71: an interactive actor is aimed at at its position; any other
+    // at its first definition part's offset from its first part (or from
+    // its object).
+    ape::Vec3 GetAimPoint() override;
     uint32_t InteractionNeeds(int kind, Entity* other) override;
     bool Damage(float amount, Entity* source, uint32_t type) override;
     void OnHitCategory0(EntityHitRecord& hit) override;
@@ -288,6 +294,8 @@ public:
 class SearchlightActor : public ActorEntity {
 public:
     ~SearchlightActor() override;
+    // Slot 71: the actor's own copy of the actor aim point.
+    ape::Vec3 GetAimPoint() override;
     bool Release(bool kill) override;
     // Offers interaction kind 4 (bit value 0x10) to everyone.
     uint32_t InteractionOffer(int kind, Entity* other) override;
@@ -552,7 +560,11 @@ public:
     // Both wait while something occupies the actor, depending on flag bit 29.
     bool AdvanceTo2(float elapsed, float duration) override;
     bool AdvanceTo5(float elapsed, float duration) override;
+    // Slot 5: the tracked triggers report while the actor is in state 4
+    // past the definition's delay, or (flag bit 26) in state 6.
+    bool PostUpdate(float dt) override;
     bool IsOccupied() const;
+    static constexpr uint32_t kOccupancy_Bit26 = 1u << 26;
     static constexpr uint32_t kOccupancy_Bit29 = 1u << 29;
 
     struct Tracked {
@@ -571,6 +583,7 @@ public:
 class SoundActorB16DB0Def : public SoundActorDef {
 public:
     ~SoundActorB16DB0Def() override;
+    float triggerDelay = 0.0f;     // 0x1A4 time in state 4 before the triggers report
     uint32_t options = 0;          // 0x1BC bit 28: close even when occupied
 };
 
@@ -588,6 +601,8 @@ public:
     bool Release(bool kill) override;
     bool AdvanceTo2(float elapsed, float duration) override;
     bool AdvanceTo5(float elapsed, float duration) override;
+    // Slot 5: the tracked triggers report while the actor is in state 4.
+    bool PostUpdate(float dt) override;
 
     struct Tracked {               // 0x10-byte records
         void* phantom = nullptr;   // +0x00 Havok phantom
@@ -620,11 +635,19 @@ public:
     // @func 0x001D4B84 SoundActorB17728::AdvanceTo6
     bool AdvanceTo6(float, float) override { return true; }
     bool AdvanceWrap(float elapsed, float duration) override;
+    // Slot 5: opens (slot 2) or closes (slot 6) when holdWrap changes, except
+    // in state 5.
+    bool PostUpdate(float dt) override;
+    // Whether the actor stands open: its attached entity's +0x160 is set,
+    // or a player is within range (and, when the definition asks for one,
+    // is the right character) (0x001D48B8).
+    void UpdateOpen(bool& open);
 
     Entity* attached = nullptr;    // 0x22C counted
     uint32_t attachedName = 0;     // 0x230
+    float rangeSq = 0.0f;          // 0x234 squared player distance (<= 0: open without one)
     uint8_t lookupFlags = 0;       // 0x238 bit 7: looked up
-    bool holdWrap = false;         // 0x239
+    bool holdWrap = false;         // 0x239 open
 };
 
 // Gadget turret (vtable 0x00B17270, 0x360 bytes; entity type bit 57).

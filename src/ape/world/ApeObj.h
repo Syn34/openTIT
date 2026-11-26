@@ -183,6 +183,7 @@ public:
     ApeObj* GetNextSibling() const { return m_nextSibling; }
     bool IsVisible() const { return (m_flags & kObjFlag_Visible) != 0; }
     bool IsDirty() const { return (m_flags & kObjFlag_Dirty) != 0; }
+    bool HasScale() const { return (m_flags & kObjFlag_HasScale) != 0; }
     uint16_t GetRenderNodeIndex() const { return m_renderNode; }
     void SetRenderNodeIndex(uint16_t index) { m_renderNode = index; }
     void SetRoot(ApeObj* root) { m_root = root; }

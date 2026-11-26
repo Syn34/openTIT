@@ -14,6 +14,8 @@
 #include "sly/entity/GameCamera.h"
 #include "sly/camera/CameraModes.h"
 #include "sly/entity/GameEntityHooks.h"
+#include "sly/entity/ActorDefs.h"
+#include "sly/entity/Character.h"
 #include "sly/entity/ActorVariants.h"
 #include "sly/entity/EntityHits.h"
 
@@ -74,6 +76,9 @@ bool InteractivePropA::Update(float dt)
 // @func 0x001EA830 SearchlightActor::~SearchlightActor (thunk, +0x180)
 // @func 0x001EA8EC SearchlightActor::~SearchlightActor (thunk, +0x17C)
 SearchlightActor::~SearchlightActor() = default;
+
+// @func 0x001EB078 SearchlightActor::GetAimPoint
+ape::Vec3 SearchlightActor::GetAimPoint() { return ActorEntity::GetAimPoint(); }
 
 // @func 0x001EA9A8 SearchlightActor::Release
 bool SearchlightActor::Release(bool kill)
@@ -614,6 +619,22 @@ bool SoundActorB16DB0::IsOccupied() const
     return attached || field_234 || holdTime > 0.0f;
 }
 
+// @func 0x001C7B38 SoundActorB16DB0::PostUpdate
+bool SoundActorB16DB0::PostUpdate(float dt)
+{
+    if (!ActorEntity::PostUpdate(dt))
+        return false;
+    const int state = EntityGetState(this, 0);
+    const auto* d = static_cast<const SoundActorB16DB0Def*>(def);
+    const bool enabled = (state == 4 && d->triggerDelay < EntityStateTime(this, 0)) ||
+                         ((occupancyFlags & kOccupancy_Bit26) && state == 6);
+    for (Tracked& record : tracked) {
+        if (record.entity)
+            TriggerSetEnabled(record.entity, enabled);
+    }
+    return true;
+}
+
 // @func 0x001C70C8 SoundActorB16DB0::Release
 bool SoundActorB16DB0::Release(bool kill)
 {
@@ -644,6 +665,19 @@ bool SoundActorB16DB0::AdvanceTo5(float elapsed, float duration)
     if (IsOccupied() && (occupancyFlags & kOccupancy_Bit29) && !(d->options & (1u << 28)))
         return true;
     return SoundActor::AdvanceTo5(elapsed, duration);
+}
+
+// @func 0x001C9B3C SoundActorB17008::PostUpdate
+bool SoundActorB17008::PostUpdate(float dt)
+{
+    if (!ActorEntity::PostUpdate(dt))
+        return false;
+    const bool enabled = EntityGetState(this, 0) == 4;
+    for (Tracked& record : tracked) {
+        if (record.entity)
+            TriggerSetEnabled(record.entity, enabled);
+    }
+    return true;
 }
 
 // @func 0x001C98C4 SoundActorB17008::Release
@@ -685,6 +719,58 @@ bool SoundActorB17728::Update(float dt)
             attached->AddRef();
         lookupFlags |= 0x80;
     }
+    return true;
+}
+
+// @func 0x001D48B8 SoundActorB17728::UpdateOpen
+void SoundActorB17728::UpdateOpen(bool& open)
+{
+    const auto* d = static_cast<const SoundActorB17728Def*>(def);
+    if (!d)
+        return;
+    if (attached) {
+        // The attached entity is a trigger (occupant count at +0x160).
+        open = TriggerOccupantCount(attached) != 0;
+        return;
+    }
+    open = rangeSq <= 0.0f;
+    for (int i = 0; i < PlayerCount(); ++i) {
+        Entity* player = PlayerEntity(i);
+        if (!player)
+            continue;
+        const ape::Vec3& p = player->Position();
+        const ape::Vec3& at = Position();
+        const float dx = p.x - at.x, dy = p.y - at.y, dz = p.z - at.z;
+        if (dz * dz + dx * dx + dy * dy > rangeSq)
+            continue;
+        open = true;
+        if (!d->requiredCharacter)
+            return;
+        const EntityDef* playerDef = player->def;
+        if (!playerDef || !(playerDef->optionFlags & 0x08))
+            return;
+        const auto* character = static_cast<const CharacterDef*>(playerDef);
+        open = character->characterName == d->requiredCharacter || character->field_3D4 != 0;
+        return;
+    }
+}
+
+// @func 0x001D4A28 SoundActorB17728::PostUpdate
+bool SoundActorB17728::PostUpdate(float dt)
+{
+    if (!ActorEntity::PostUpdate(dt))
+        return false;
+    if (!def)
+        return true;
+    const int state = EntityGetState(this, 0);
+    if (state == 5)
+        return true;
+    const bool wasOpen = holdWrap && state != 1;
+    UpdateOpen(holdWrap);
+    const bool opened = !wasOpen && holdWrap;
+    const bool closed = wasOpen && !holdWrap;
+    if (opened || closed)
+        PlaySlot(opened ? 2 : 6, false);
     return true;
 }
 

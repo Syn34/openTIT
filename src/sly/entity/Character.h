@@ -404,6 +404,9 @@ public:
     };
     HudPrompt hudPrompts[4] = {};   // 0x318
     uint32_t hudPromptCount = 0;    // 0x3C8
+    // 0x3D4 non-zero: opens the character-restricted sound actors
+    // (SoundActorB17728) whoever the character is. NOTE: name from use.
+    uint32_t field_3D4 = 0;
     CameraSettingsBlock cameraBlock;   // 0x3E0 (settings at +0x3F0)
     TunableBlock block_470;         // 0x470
     TunableBlock block_510;         // 0x510

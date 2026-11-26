@@ -72,6 +72,26 @@ void ActorEntity::PartTransform(ape::Matrix34& out, int index, const ape::Matrix
     PlacePart(out, (*parts)[index], frame);
 }
 
+// @func 0x000E7DC4 ActorEntity::GetAimPoint
+ape::Vec3 ActorEntity::GetAimPoint()
+{
+    if (GetComponent(kComp_Interaction))
+        return Position();
+    const auto* actorDef = static_cast<const ActorDef*>(def);
+    const ape::Matrix34& base = object ? object->GetWorld() : ape::world::kWorldIdentity;
+    ape::Matrix34 frame;
+    if (parts && parts->Count() != 0)
+        PlacePart(frame, (*parts)[0], base);
+    else
+        frame = base;
+    if (!actorDef->parts || actorDef->parts->Count() == 0)
+        return frame.translation;
+    const ape::Vec3& o = (*actorDef->parts)[0].aimOffset;
+    return {o.x * frame.xAxis.x + o.y * frame.yAxis.x + o.z * frame.zAxis.x + frame.translation.x,
+            o.x * frame.xAxis.y + o.y * frame.yAxis.y + o.z * frame.zAxis.y + frame.translation.y,
+            o.x * frame.xAxis.z + o.y * frame.yAxis.z + o.z * frame.zAxis.z + frame.translation.z, 0.0f};
+}
+
 // @func 0x000E5EF0 ActorEntity::SetTransform
 // Bodies in the world follow their parts; a body is only moved (and woken)
 // when its place actually changes.

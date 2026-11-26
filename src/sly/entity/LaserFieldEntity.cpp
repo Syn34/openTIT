@@ -1,5 +1,6 @@
 // openTIT - The laser field entity's small overrides (see LaserFieldEntity.h).
 #include "sly/entity/LaserFieldEntity.h"
+#include "sly/entity/PhysicsHooks.h"
 
 #include "sly/entity/CharacterHooks.h"
 #include "sly/entity/GameEntityHooks.h"
@@ -13,6 +14,14 @@ constexpr int kField_Idle = 0;
 constexpr int kField_Armed = 1;
 constexpr int kField_Tripped = 2;
 } // namespace
+
+// @func 0x000C0F08 LaserFieldDef::~LaserFieldDef
+// @func 0x000C0F68 LaserFieldDef::~LaserFieldDef (deleting)
+LaserFieldDef::~LaserFieldDef()
+{
+    if (collisionShape)
+        HavokRelease(collisionShape);
+}
 
 // @func 0x00744358 LaserFieldEntity::~LaserFieldEntity
 // @func 0x00744394 LaserFieldEntity::~LaserFieldEntity (deleting)

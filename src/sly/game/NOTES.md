@@ -158,3 +158,30 @@
 * `AudioControls.cpp`: voice registers/position/level, pause groups, output channel count, bus
   fades, category/tracked voice queries, audio heap (0x0044D880). New AudioBackend virtuals for
   the library calls; Voice gained the volume/position fields 0x5C..0xD0.
+
+## HUD meters, frame update, physics memory (agent3, third pass)
+* `hud/HudMeter.*`: health meter (type 8, vtable 0x00B1F758) and POW meter (type 0x10,
+  0x00B1F790) with their manager functions (CreateMeter, meter A/B/POW rebuilds, owner meters,
+  second bar), global anim script helpers (0x00364408 / 0x0036E568). The meter fill is the U
+  scroll of the fill geometry's first material: `agl::AglMaterialAnim` is now laid out in
+  AglResources.h (three 0x30-byte channels).
+* HudObject: `targetValue/shownValue` were really the meter hold time/timer (renamed
+  `meterHoldTime/meterHoldTimer`); `meterOwner` and the HUD context value are entity pointers
+  (`hud::SetContext(entity::Entity*, name)`, wired from the AI hooks).
+* HudManager: lifetime scripts (0x0035BD08/0x0035BFB0), per-frame update 0x003655D0
+  (`UpdateHud`), unload 0x0035B668 (`UnloadHud`), suspend/resume 0x00366E20/0x00367018,
+  element cloning 0x003677C4/0x00367900. `hideList` is really a destroy-at-end-of-frame queue.
+  The definition map (0x0106C210) and HudObjectDef::typeMask (+0x50) and the meter definition
+  overlays are new; nothing fills them until the definition loader (0x0036196C) is ported.
+* Still TODO: the text override animation 0x00363B78 (stub `UpdateTextOverride`), the type
+  factory 0x0035AC7C (needs the seven element classes 0x00356BA0..0x00359E08), the 0x214-state
+  element family (0x003686D0..0x00368D78), callers of UpdateHud/UnloadHud in the game update.
+* `HavokMemory.*`: the physics block router ("gmHkMemory", 0x00354F60-0x003554D4). Blocks carry
+  a small header on PC (the region heap does not own an address range).
+* Save: `save/GameSettings.*` (options block at game world +0x1030: page defaults, save system
+  start-up/shut-down), BuildSaveDescription 0x000AE78C. PlayerProgress gained +0x24/+0x2C (last
+  episode id / last job name, used for the save subtitle).
+* Job manager: StartJobFromHubByName 0x002E1DB0, safe callbacks 0x002E74C8/0x002E7588 (the
+  console passes the safe's cracking session; the port takes the player / state directly).
+  0x002E7694 and 0x002E70B8 (the other safe callbacks) and 0x002E5C68 (mask counter text; the
+  pointer passed where HudObject::ShowText has `flag` needs checking) are not done.

@@ -102,11 +102,46 @@ EntityPlacement::~EntityPlacement()
     }
 }
 
+EntityInstanceDesc::~EntityInstanceDesc()
+{
+    if (attachments) {
+        attachments->Release();
+        delete attachments;
+    }
+}
+
+// @func 0x000CDB28 EntityPlacement::FillInstanceDesc
 void EntityPlacement::FillInstanceDesc(EntityInstanceDesc& desc) const
 {
-    desc.transform = transform;
+    desc.transform.xAxis = {transform.xAxis.x, transform.xAxis.y, transform.xAxis.z, desc.transform.xAxis.pad};
+    desc.transform.yAxis = {transform.yAxis.x, transform.yAxis.y, transform.yAxis.z, desc.transform.yAxis.pad};
+    desc.transform.zAxis = {transform.zAxis.x, transform.zAxis.y, transform.zAxis.z, desc.transform.zAxis.pad};
+    desc.transform.translation = {transform.translation.x, transform.translation.y, transform.translation.z,
+                                  desc.transform.translation.pad};
+    desc.field_70 = {field_60.x, field_60.y, field_60.z, desc.field_70.pad};
+    desc.field_24 = field_70;
+    desc.field_80 = field_74;
+    desc.def = def;
+    // Placement bits 29-31 become description flags 11-13.
+    desc.flags = (desc.flags & ~(EntityInstanceDesc::kDesc_PlacementBit29 | EntityInstanceDesc::kDesc_PlacementBit30 |
+                                 EntityInstanceDesc::kDesc_PlacementBit31)) |
+                 ((bits84 >> 18) & (EntityInstanceDesc::kDesc_PlacementBit29 | EntityInstanceDesc::kDesc_PlacementBit30 |
+                                    EntityInstanceDesc::kDesc_PlacementBit31));
+    desc.field_18 = uint8_t(bits84 >> 21);
     desc.field_84 = field_7C;
     desc.field_88 = field_80;
+    if (field_88 != 0)
+        desc.field_8C = field_88;
+    // The placement's attachment records replace the description's.
+    if (ownedArray && ownedArray->Count() != 0) {
+        if (desc.attachments)
+            desc.attachments->Clear();
+        for (const DefAttachment& attachment : *ownedArray) {
+            if (!desc.attachments)
+                desc.attachments = new ape::ApeTArray<DefAttachment>();
+            desc.attachments->Add(attachment);
+        }
+    }
 }
 
 ObjEntity::ObjEntity(const EntityInstanceDesc& desc)

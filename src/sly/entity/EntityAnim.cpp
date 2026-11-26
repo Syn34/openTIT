@@ -6,6 +6,11 @@
 #include "sly/anim/AnimLayer.h"
 
 #include "ape/core/ApeString.h"
+#include "ape/math/ApeMatrixOps.h"
+#include "ape/world/ApeObj.h"
+#include "sly/entity/EntityHooks.h"
+
+#include <cmath>
 
 namespace sly {
 namespace entity {
@@ -58,6 +63,41 @@ bool Entity::PlayClipByName(float speed, float blend, float duration, const char
     }
     const char* fullName = prefix ? ape::TempFormat("%s%s", prefix, clip) : clip;
     return PlayClip(speed, blend, duration, FindAnimClipByName(fullName), layer, loop, listener);
+}
+
+// @func 0x000DC730 Entity::RootMotionDelta
+void Entity::RootMotionDelta(ape::Matrix34& out, bool consume, uint32_t layer, float dt)
+{
+    (void)consume;
+    void* playing = FindPlayingAnim(layer);
+    if (!playing)
+        return;
+    AnimLayerRootMotion(playing, dt, out);
+    if ((flags2 & kEnt2_RootMotionObjectScale) && object && object->HasScale()) {
+        const ape::Vec3& scale = object->GetScale();
+        out.translation.x *= scale.x;
+        out.translation.y *= scale.y;
+        out.translation.z *= scale.z;
+    }
+    if (!(flags2 & kEnt2_RootMotionDamped))
+        return;
+    // Scale the translation and keep only part of the rotation (blended
+    // towards no rotation along the shorter way).
+    const ape::Vec3 move = {out.translation.x * rootMotionScale.x, out.translation.y * rootMotionScale.y,
+                            out.translation.z * rootMotionScale.z, 0.0f};
+    ape::Quat turn;
+    ape::QuatFromMatrix34(turn, out);
+    if (turn.w < 0.0f) {
+        turn.x = -turn.x;
+        turn.y = -turn.y;
+        turn.z = -turn.z;
+        turn.w = -turn.w;
+    }
+    const float w = rootMotionWeight;
+    ape::Quat kept = {turn.x * w, turn.y * w, turn.z * w, (turn.w - 1.0f) * w + 1.0f};
+    const float inv = 1.0f / std::sqrt(kept.y * kept.y + kept.x * kept.x + kept.z * kept.z + kept.w * kept.w);
+    kept = {kept.x * inv, kept.y * inv, kept.z * inv, kept.w * inv};
+    ape::Matrix34FromQuat(out, kept, move);
 }
 
 } // namespace entity

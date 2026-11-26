@@ -22,6 +22,8 @@ uint32_t CharacterDefWord3D4(const EntityDef* def) { (void)def; return 0; }
 uint32_t AnimDriverState(EntityComponent* driver) { (void)driver; return 0; }
 void AnimDriverStop(EntityComponent* driver, bool flag) { (void)driver; (void)flag; }
 void SetComponentWord1C(EntityComponent* component, uint32_t value) { (void)component; (void)value; }
+void TriggerSetEnabled(Entity* trigger, bool enabled) { (void)trigger; (void)enabled; }
+int TriggerOccupantCount(const Entity* trigger) { (void)trigger; return 0; }
 int EntityGetState(const Entity* entity, int layer) { (void)entity; (void)layer; return 0; }
 uint8_t* EntityStateData(Entity* entity, int layer) { (void)entity; (void)layer; return nullptr; }
 

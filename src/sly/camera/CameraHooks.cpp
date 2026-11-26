@@ -48,6 +48,9 @@ const VehicleCameraDesc* VehicleCameraData(entity::Entity* vehicle) { (void)vehi
 void* CreateSpherePhantom(float radius, uint32_t filterInfo) { (void)radius; (void)filterInfo; return nullptr; }
 void DestroyPhantom(void* phantom) { (void)phantom; }
 void DestroyHavokEntity(void* entity) { (void)entity; }
+// TODO(Havok world: 0x0092F2A8 addEntity, 0x0091A4C8 activate)
+void AddHavokEntityToWorld(void* entity) { (void)entity; }
+void StopHavokEntity(void* entity) { (void)entity; }
 void RemoveHavokEntityFromWorld(void* entity) { (void)entity; }
 void HavokRemoveReference(void* object) { (void)object; }
 bool EntityCollisionFilter(entity::Entity* entity, uint32_t& filter) { (void)entity; (void)filter; return false; }
