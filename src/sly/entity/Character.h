@@ -125,6 +125,14 @@ public:
     // layers go back to state 0 (0x0012D290). NOTE: the state's name is not
     // known; the users of interactive objects call it when a use ends.
     void LeaveInteractState();
+    // A takedown the AI did not notice (no controller alerted) counts toward
+    // the takedown trophy (0x0013D530).
+    void CountStealthTakedown();
+    // While both state layers are in state 0 (idle): the second word of the
+    // idle state's data, when `requireFlag` is clear or the data's flag bit
+    // 17 is set; 0 otherwise (0x001293C0). NOTE: the word's meaning is not
+    // known (a component of 0x002794F0 asks for it).
+    uint32_t IdleStateValue(bool requireFlag);
     // Stops the animation driver (component 0x17) when it is playing a
     // script (state 7) (0x00129BC0).
     void StopScriptedAnimation();

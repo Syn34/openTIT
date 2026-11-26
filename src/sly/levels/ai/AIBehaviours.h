@@ -514,6 +514,9 @@ public:
     Entity* spawned[kMaxSpawned] = {};  // +0x71C entities the fight spawned
     AICameraMode* camera = nullptr;     // +0x91C
 };
+// Switches off the two trigger volumes of El Jefe's arena (0x000496CC).
+void ElJefeDisableArenaTriggers();
+
 class MsDecibelAI : public AIController {
 public:
     ~MsDecibelAI() override;

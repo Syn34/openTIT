@@ -495,7 +495,8 @@ public:
     uint32_t attachedDef = 0;                 // 0x230 definition name of the attached entity
 };
 
-// Interactive prop with two phantoms (vtable 0x00B17DF8; destructor
+// The player turret ("Entity.PlayerTurret.*" tuning): an interactive prop
+// with two phantoms (vtable 0x00B17DF8; destructor
 // 0x00756758). NOTE: its definition is the class at
 // 0x00B17DB0, which ActorEntities.h calls InteractivePropADef.
 class InteractivePropC : public ActorEntity {
@@ -519,9 +520,14 @@ public:
     // (or of the prop).
     ape::Vec3 GetAimPoint() override;
 
+    // Takes the turret camera off the game camera (over
+    // Entity.PlayerTurret.Camera.EaseOutTime) and deletes it (0x001DEC60).
+    void ReleaseCamera();
+
     ape::world::ApeObj* frameObject = nullptr; // 0x1AC
     Entity* keyObject = nullptr;              // 0x1B0
     uint8_t propFlags = 0;                    // 0x1B4 bit 7: anyone may interact
+    camera::CameraMode* cameraMode = nullptr; // 0x26C the turret camera
     void* phantomA = nullptr;                 // 0x270
     void* phantomB = nullptr;                 // 0x274
 };
