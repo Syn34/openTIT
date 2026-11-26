@@ -47,6 +47,17 @@ void FxManager::SetTimeScaleOn(ape::world::ApeObj* object, float timeScale)
         effects.At(i)->SetValueIfAttachedTo(object, timeScale);
 }
 
+// @func 0x002EF13C FxManager::DeleteAll
+void FxManager::DeleteAll()
+{
+    for (int32_t i = effects.FirstIndex(); i != effects.kNone; i = effects.NextIndex(i)) {
+        delete effects.At(i);
+        effects.At(i) = nullptr;
+    }
+    effects.Clear();
+    shakes.Clear();
+}
+
 // @func 0x002F0E0C FxManager::Play
 FxEffect* FxManager::Play(const FxEffectDesc& desc, uint32_t* handle)
 {
@@ -67,7 +78,7 @@ FxEffect* FxManager::Play(const FxEffectDesc& desc, uint32_t* handle)
         effect = new FxMotionTrailEffect(static_cast<const FxMotionTrailDesc&>(desc));
         break;
     case kFx_Delay:
-        effect = new FxDelayEffect(desc);
+        effect = new FxDelayEffect(static_cast<const FxDelayDesc&>(desc));
         break;
     default:
         return nullptr;

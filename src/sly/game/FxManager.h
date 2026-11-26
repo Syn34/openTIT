@@ -23,9 +23,10 @@ public:
     // @func 0x00767A38 FxEffect::~FxEffect
     // @func 0x00767A48 FxEffect::~FxEffect (deleting)
     virtual ~FxEffect() = default;
-    // Slot 2 (+0x08). NOTE: empty in the base; meaning unknown.
+    // Slot 2 (+0x08): per-frame step with the frame time (the delayed
+    // copies record their history, object shakes queue their tick).
     // @func 0x00767A8C FxEffect::Slot2
-    virtual void Slot2() {}
+    virtual void Slot2(float dt) { (void)dt; }
     // @func 0x00767A90 FxEffect::Update
     virtual void Update() {}                                // slot 3 (+0x0C)
     // Slot 4 (+0x10): the effect has ended (the manager drops it).
@@ -62,6 +63,9 @@ public:
     // Gives every effect attached to `object` a new time scale
     // (FxEffect::value; 0x002EF7B8, from the entity time scale setter).
     void SetTimeScaleOn(ape::world::ApeObj* object, float timeScale);
+    // Deletes every effect and drops the queued camera shakes (0x002EF13C,
+    // level unload).
+    void DeleteAll();
 
     // Updates every effect unless effects are paused (0x002EF36C).
     void UpdateEffects();

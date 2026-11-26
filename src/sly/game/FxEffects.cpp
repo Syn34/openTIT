@@ -5,6 +5,7 @@
 #include "agl/AglRenderTarget.h"
 #include "agl/AglResources.h"
 #include "agl/AglShaderClass.h"
+#include "ape/core/ApeString.h"
 #include "ape/world/ApeDefTypes.h"
 #include "ape/world/ApeInstances.h"
 #include "ape/world/ApeObj.h"
@@ -125,8 +126,9 @@ FxObjShakeEffect::~FxObjShakeEffect()
 }
 
 // @func 0x002F4998 FxObjShakeEffect::Slot2
-void FxObjShakeEffect::Slot2()
+void FxObjShakeEffect::Slot2(float dt)
 {
+    (void)dt;
     if (g_game)
         g_game->AddCallback(kCallbackList_Shake, reinterpret_cast<void*>(&ShakeTickCallback), this, nullptr);
 }
@@ -162,7 +164,7 @@ void FxObjShakeEffect::SetValueIfAttachedTo(ape::world::ApeObj* object, float ne
 }
 
 // ===========================================================================
-// Trail / geometry display / delayed copies
+// Trail / geometry display
 //
 // Their constructors are not ported: the stubs keep the head of the
 // description and end at once, so the manager drops them.
@@ -181,11 +183,148 @@ FxGeoDisplayEffect::FxGeoDisplayEffect(const FxEffectDesc& desc)
     finished = true;
 }
 
-// TODO(0x002ED6F4 FxDelayEffect::FxDelayEffect)
-FxDelayEffect::FxDelayEffect(const FxEffectDesc& desc)
+// @func 0x002ED6F4 FxDelayEffect::FxDelayEffect
+FxDelayEffect::FxDelayEffect(const FxDelayDesc& desc)
 {
     value = desc.timeScale;
-    finished = true;
+    for (int i = 0; i < kMaxCopies; ++i)
+        copySettings[i] = desc.copies[i];
+    copyCount = uint8_t(desc.copyCount & 0x1F);
+    hideOriginal = desc.hideOriginal;
+    ownGeometry = desc.ownGeometry;
+    attachedTo = desc.object;
+    if (attachedTo) {
+        attachedTo->AddRef();
+        if (ape::world::ApeSkeleton* skeleton = attachedTo->GetSkeleton())
+            boneCount = skeleton->numBones;
+        if (hideOriginal)
+            attachedTo->SetVisible(false, false);
+        source = attachedTo;
+        // Another object may stand in for the copies when its skeleton
+        // matches (NOTE: a mismatch only fed a compiled-out warning).
+        if (desc.source) {
+            ape::world::ApeSkeleton* skeleton = desc.source->GetSkeleton();
+            if (skeleton && skeleton->numBones == boneCount)
+                source = desc.source;
+        }
+        source->AddRef();
+        if (ownGeometry && source->GetType() == ape::world::kObjType_GeomInstance) {
+            auto* def = static_cast<ape::world::ApeGeomDef*>(source->GetDef());
+            ownDef = def->Clone();
+            ownDef->SetName("", true);
+            // NOTE: the console clears byte +0x0B of the block each LOD
+            // topology points at (+0x5C); its meaning is unknown and the
+            // port's topology does not model it.
+        }
+    }
+    historySize = desc.historySize ? desc.historySize : 1;
+    transforms.assign(historySize, ape::Matrix34{});
+    poses.assign(size_t(historySize) * boneCount, ape::Matrix34{});
+    times.assign(historySize, 0.0f);
+    CreateCopies();
+}
+
+// @func 0x002ED468 FxDelayEffect::CreateCopies
+void FxDelayEffect::CreateCopies()
+{
+    for (ape::world::ApeObj*& copy : copies) {
+        if (copy) {
+            copy->Release();
+            copy = nullptr;
+        }
+    }
+    if (source) {
+        for (int i = 0; i < copyCount; ++i) {
+            ape::world::ApeObj* copy =
+                ownDef ? ape::world::CreateGeomInstance(ownDef, false) : source->Clone(ape::world::kClone_04 | ape::world::kClone_NoProcAnim);
+            if (!copy)
+                continue;
+            copy->SetName(ape::TempFormat("FXDly%02d_%s", i + 1, source->GetName()), true);
+            copy->SetVisible(false, false);
+            copy->VirtualSlot13(uint8_t(int(copySettings[i].alpha * 255.0f) & 0xFF), false);
+            if (copy->GetType() >= ape::world::kObjType_FirstInstance &&
+                copy->GetType() < ape::world::kObjType_EndRenderable) {
+                auto* render = static_cast<ape::world::ApeRenderObj*>(copy);
+                if (render->m_flags142 & 0x80) {
+                    render->m_flags142 &= uint8_t(~0x80);
+                    render->OnBoundsChanged();
+                }
+            }
+            copies[i] = copy;
+        }
+    }
+    writeIndex = 0;
+    oldestIndex = 0;
+    elapsed = 0.0f;
+}
+
+// @func 0x002EDB10 FxDelayEffect::~FxDelayEffect
+// @func 0x002EDCA8 FxDelayEffect::~FxDelayEffect (deleting)
+FxDelayEffect::~FxDelayEffect()
+{
+    for (int i = 0; i < copyCount; ++i) {
+        if (copies[i])
+            copies[i]->Release();
+    }
+    if (!attachedTo)
+        return;
+    if (ownDef)
+        ownDef->Release();
+    source->Release();
+    if (hideOriginal)
+        attachedTo->SetVisible(true, false);
+    attachedTo->Release();
+}
+
+// @func 0x002EDCF0 FxDelayEffect::Slot2
+void FxDelayEffect::Slot2(float dt)
+{
+    elapsed += dt;
+    times[writeIndex] = elapsed;
+    if (source) {
+        transforms[writeIndex] = source->GetLocal();
+        if (ape::world::ApeSkeleton* skeleton = source->GetSkeleton()) {
+            for (uint16_t b = 0; b < boneCount; ++b)
+                poses[size_t(writeIndex) * boneCount + b] = *skeleton->bones[b].local;
+        }
+    }
+    if (++writeIndex >= historySize)
+        writeIndex = 0;
+    if (writeIndex == oldestIndex)
+        ++oldestIndex;
+    if (oldestIndex >= historySize)
+        oldestIndex = 0;
+
+    for (int i = 0; i < copyCount; ++i) {
+        ape::world::ApeObj* copy = copies[i];
+        if (!copy)
+            continue;
+        // The newest record at least `delay` old (or the oldest one).
+        const float target = elapsed - copySettings[i].delay;
+        int index = int(writeIndex) - 1;
+        float time = 0.0f;
+        for (;;) {
+            if (index < 0)
+                index = historySize - 1;
+            time = times[index];
+            if (time <= target || index == oldestIndex)
+                break;
+            --index;
+        }
+        if (time > target)
+            continue;
+        copy->SetLocal(transforms[index]);
+        copy->MarkDirty();
+        if (boneCount) {
+            if (ape::world::ApeSkeleton* skeleton = copy->GetSkeleton()) {
+                for (uint16_t b = 0; b < boneCount; ++b)
+                    *skeleton->bones[b].local = poses[size_t(index) * boneCount + b];
+                skeleton->flags |= ape::world::kSkelFlag_Dirty;
+            }
+        }
+        copy->MarkDirty();
+        copy->SetVisible(true, false);
+    }
 }
 
 // @func 0x00767AB0 FxDelayEffect::KillIfAttachedTo
