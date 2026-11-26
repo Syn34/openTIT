@@ -318,10 +318,8 @@ void InitView(AglRenderTarget* rt)
     ape::StrCopyBounded(rt->name, "RenderTarget", sizeof(rt->name));
     rt->callbacks[0].count = 0;
     rt->callbacks[1].count = 0;
-    rt->field_298 = 0;
-    rt->postProc = new AglViewPostProcChain();
     rt->techniqueOverride = nullptr;
-    rt->postProc = new AglPostProcChain();
+    rt->postProc = new AglViewPostProcChain();
     rt->drawScene = nullptr;
     rt->field_100 = -1;
 }
