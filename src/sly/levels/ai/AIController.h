@@ -26,6 +26,7 @@
 #include <cstdint>
 
 namespace ape { class ApeAnimScriptInstance; }
+namespace ape::anim { class AnimClipManager; }
 
 namespace sly {
 namespace levels {
@@ -434,6 +435,15 @@ public:
     // the player and the allies (0x0001AC80).
     Entity* PickTarget(const AIController* controller) const;
 
+    // Eight records at +0x50 the constructor clears. NOTE: users not found
+    // yet; the two vectors start at the shared zero vector.
+    struct Record50 {
+        uint32_t field_00 = 0;                         // +0x00
+        ape::Vec3 field_10{};                          // +0x10
+        ape::Vec3 field_20{};                          // +0x20
+    };
+    static constexpr int kRecord50Count = 8;
+
     int32_t controllerCount = 0;                       // +0x00
     int32_t activeCount = 0;                           // +0x04
     int32_t allyCount = 0;                             // +0x10
@@ -442,6 +452,8 @@ public:
     float targetingPause = 0.0f;                       // +0x28 no new targets while positive
     float timeSinceSeen = 0.0f;                        // +0x2C
     ape::Vec3 lastPlayerPosition{};                    // +0x30
+    float field_40 = 1.0f;                             // +0x40 NOTE: meaning unknown
+    Record50 records50[kRecord50Count];                // +0x50 (0x40 bytes apart)
     AIController* controllers[kMaxControllers] = {};   // +0x250
     AIController* active[kMaxControllers] = {};        // +0x650
     Entity* allies[kMaxAllies] = {};                   // +0xE50
@@ -455,6 +467,12 @@ private:
 // The level's AI manager (null between levels).
 AIManager* GetAIManager();
 void SetAIManager(AIManager* manager);
+// Takes down what the AI manager's constructor brought up: the nav
+// manager, the proxy point table, the AI anim clip manager and the
+// knowledge system; the manager itself is no longer current (0x00018B30).
+void ShutdownAISystems();
+// The AI anim clip manager (console object 0x00F557F8, the manager at +4).
+ape::anim::AnimClipManager* AIAnimClips();
 
 // Noise the enemies may hear (AlertEnemies kinds).
 enum AINoise : int {

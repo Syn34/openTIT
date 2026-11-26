@@ -1,6 +1,7 @@
 // openTIT - Level AI controller base class and AI manager.
 #include "sly/levels/ai/AIController.h"
 
+#include "ape/anim/ApeAnimClip.h"
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/anim/ApeAnimScriptVars.h"
 #include "ape/core/ApeString.h"
@@ -9,10 +10,12 @@
 #include "ape/world/ApeObj.h"
 #include "sly/entity/EntityHooks.h"
 #include "sly/game/WorldInterface.h"
+#include "sly/levels/ai/AIAnimEventKnowledge.h"
 #include "sly/levels/ai/AIHooks.h"
 #include "sly/levels/ai/AIProxyPoints.h"
 #include "sly/levels/ai/AITuning.h"
 #include "sly/levels/nav/NavGraph.h"
+#include "sly/knowledge/Knowledge.h"
 
 #include <cmath>
 #include <limits>
@@ -24,6 +27,35 @@ namespace ai {
 namespace {
 
 AIManager* g_aiManager = nullptr;
+
+// The object the knowledge system is created with (console 0x00F6578C, a
+// one-byte object). NOTE: it carries no state.
+struct KnowledgeSystemToken;
+KnowledgeSystemToken* g_knowledgeToken = nullptr;
+struct KnowledgeSystemToken {
+    KnowledgeSystemToken() { g_knowledgeToken = this; }
+};
+ape::anim::AnimClipManager* g_aiAnimClips = nullptr;   // 0x00F557F8 (+4)
+
+// Control types of the AI anim sets (0x00AC000C) and their sync type (0x00AC0080).
+const ape::anim::AnimNamedType kAIControlTypes[] = {
+    {"Custom", 0x77297F71u},
+    {"AISpeed", 0xEFBDD8FFu},
+    {"AITargetAngle", 0xC519BC9Au},
+    {"AIJumpProgress", 0xC86A9C83u},
+    {"AIJumpLaunchDegree", 0x54D87795u},
+    {"AITurnDegree", 0xA861BFB1u},
+    {"AIStrafeDegree", 0xBCCE5CC3u},
+    {"AITargetDist", 0xA34430DFu},
+    {"AIHitCount", 0x2E515184u},
+    {"AITargetAtkTypeCount", 0xE6F2F0B6u},
+    {"AngleFromTarget", 0x07D00AAEu},
+    {"DistFromTarget", 0x30B83BE1u},
+};
+constexpr uint32_t kAIControlTypeCount = sizeof(kAIControlTypes) / sizeof(kAIControlTypes[0]);
+const ape::anim::AnimNamedType kAISyncTypes[] = {
+    {"AITargetAnim", 0xA342E54Au},
+};
 
 constexpr float kRadToDeg = 57.2957763671875f;
 constexpr float kDegToRad = 0.01745329238474369f;
@@ -116,6 +148,7 @@ AIController::~AIController()
 // -- geometry helpers -----------------------------------------------------------------
 
 // @func 0x00013E40 ClosestPointOnSegment
+// @func 0x00019248 ClosestPointOnSegment (copy 2)
 ape::Vec3 ClosestPointOnSegment(const ape::Vec3& a, const ape::Vec3& b, const ape::Vec3& p)
 {
     ape::Vec3 dir = {b.x - a.x, b.y - a.y, b.z - a.z, 0.0f};
@@ -930,14 +963,44 @@ void AIController::UpdateMovement(float dt)
 
 // -- AIManager ---------------------------------------------------------------------------
 
+// @func 0x000186CC AIManager::AIManager
 AIManager::AIManager()
 {
-    // TODO(0x000186CC AIManager::AIManager): the console constructor also
-    // creates the knowledge system (0x00F6578C), the proxy point table
-    // (0x00F557F4), the object pool 0x00F557F8 and the nav manager
-    // (0x00F557EC, NavPower world with a 4 MB arena and 512 obstacles).
+    SetAIManager(this);
+    // The knowledge system is a token object; the knowledge module keeps it.
+    knowledge::CreateKnowledgeSystem(new KnowledgeSystemToken());
+    // Anim sets of the AI: 256 slots, the AI control types and one sync type,
+    // with the anim event knowledge callbacks.
+    // NOTE: the console also installs an empty callback (field 0x11C) and the
+    // slot release 0x000653CC (not ported).
+    g_aiAnimClips = new ape::anim::AnimClipManager(0x100, kAIControlTypes, kAIControlTypeCount, kAISyncTypes, 1,
+                                                   AnimEventKnowledgeUserData, nullptr,
+                                                   AnimEventKnowledgeAcquireSlot, nullptr);
+    SetAIProxyPointTable(new AIProxyPointTable(0x200));
+    CreateNavManager();
     SetAIPriorityTargets(&priorityTargets);
 }
+
+// @func 0x00018B30 ShutdownAISystems
+void ShutdownAISystems()
+{
+    SetAIManager(nullptr);
+    DestroyNavManager();
+    if (AIProxyPointTable* table = GetAIProxyPointTable()) {
+        SetAIProxyPointTable(nullptr);
+        delete table;
+    }
+    delete g_aiAnimClips;
+    g_aiAnimClips = nullptr;
+    if (g_knowledgeToken) {
+        knowledge::DestroyKnowledgeSystem();
+        delete g_knowledgeToken;
+        g_knowledgeToken = nullptr;
+    }
+}
+
+ape::anim::AnimClipManager* AIAnimClips() { return g_aiAnimClips; }
+
 
 // @func 0x000191B0 AIManager::OnLevelLoaded
 void AIManager::OnLevelLoaded()
