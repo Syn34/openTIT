@@ -173,7 +173,7 @@ void AglMaterial::CopyFrom(const AglMaterial& source)
     if (source.anim) {
         if (!anim)
             anim = ape::ApeTListAllocator<AglMaterialAnim>::GetAllocator().New();
-        *anim = *source.anim;
+        anim->CopyFrom(*source.anim);
     }
 }
 
@@ -406,6 +406,22 @@ AglMaterialAnim::AglMaterialAnim()
         channel->range = 1.0f;
         channel->pivot[0] = channel->pivot[1] = 0.5f;
         channel->flags = (channel->flags & 0xFFF) | (uint32_t(Channel::kPhase_Active) << Channel::kPhaseShift);
+    }
+}
+
+// @func 0x00508FBC AglMaterialAnim::CopyFrom
+// Copies settings and state; each channel keeps the low 12 bits of its own
+// flag word.
+void AglMaterialAnim::CopyFrom(const AglMaterialAnim& source)
+{
+    frameStamp = source.frameStamp;
+    wrapU = source.wrapU;
+    Channel* to[3] = { &u, &v, &rotation };
+    const Channel* from[3] = { &source.u, &source.v, &source.rotation };
+    for (int i = 0; i < 3; ++i) {
+        const uint32_t ownBits = to[i]->flags & 0xFFF;
+        *to[i] = *from[i];
+        to[i]->flags = (from[i]->flags & ~0xFFFu) | ownBits;
     }
 }
 
@@ -733,7 +749,7 @@ int MaterialClassChunkHandler(ape::iff::IffReader* reader, void* arg)
     reader->ReadU8(&params.channel);
     reader->ReadU8(&params.flags);
     if (!material->anim)
-        material->anim = new AglMaterialAnim();
+        material->anim = ape::ApeTListAllocator<AglMaterialAnim>::GetAllocator().New();
     material->anim->Configure(params);
     return 1;
 }

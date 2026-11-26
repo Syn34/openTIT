@@ -210,6 +210,7 @@ struct AglMaterialAnim {
     // Configures one channel. When both scrolls are stepped and V is the
     // slower one, U is driven by V instead (flip book frames in rows).
     void Configure(const ChannelParams& params);
+    void CopyFrom(const AglMaterialAnim& source);
     // Advances the three channels once per rendered frame.
     void Update();
     // The quantised U and V offsets.
