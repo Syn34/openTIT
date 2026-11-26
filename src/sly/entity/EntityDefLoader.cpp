@@ -167,7 +167,7 @@ const DefClass kDefClasses[] = {
     {0x75F206BDu, objects::CreateCameraTriggerDef},
     {0x71FE40F4u, nullptr},                              // 0x0017D640
     {0x707C673Cu, objects::CreateWeatherTriggerDef},
-    {0x70542137u, nullptr},                              // 0x001D71D8
+    {0x70542137u, CreateActorB17990Def},                 // the input mover
     {0x6F429D34u, CreateSearchlightDef},
     {0x7F6CE46Au, objects::CreateFxTriggerDef},
     {0x7CDC084Cu, CreateSoundActorDef},

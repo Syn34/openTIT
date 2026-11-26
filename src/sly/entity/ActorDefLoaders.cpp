@@ -4,6 +4,7 @@
 // constructs the definition. The loader (EntityDefLoader.cpp) calls them by
 // element name hash.
 #include "sly/entity/ActorDefLoaders.h"
+#include "ape/core/ApeString.h"
 
 #include "sly/entity/ActorDefs.h"
 
@@ -503,6 +504,206 @@ SafeDef::SafeDef(const SafeDefDesc& desc) : ActorDef(desc)
     timerHudName = desc.hashes180[1];
     promptHudName = desc.hashes180[2];
     turnSpeed = desc.field_18C;
+}
+
+// -- ActorB17990 (the input mover) -------------------------------------------------
+namespace {
+constexpr uint32_t kType2_InputMover = 0x1;
+} // namespace
+
+struct ActorB17990DefDesc : ClassDefDesc {
+    explicit ActorB17990DefDesc(const EntityDefDesc& loader)
+        : ClassDefDesc(loader, kType2_InputMover, SecondWord{})
+    {
+    }
+    char hudPrompt[0x20] = {};          // 0xDE
+    ape::Vec3 field_100{};              // 0x100
+    ape::Vec3 field_110{};              // 0x110
+    ape::Vec3 field_120{};              // 0x120
+    ape::Vec3 field_130{};              // 0x130
+    float floats140[5] = {50.0f, 0.0f, 0.5f, 0.5f, -1.0f};   // 0x140..0x150
+    InputMoverControl control;          // 0x154
+    uint32_t field_198 = 0;             // 0x198
+    uint32_t moverFlags = 0x06000000u;  // 0x19C
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+    // One control child element (buttons, stick or the third mode).
+    void ParseControl(ape::xml::XmlElement* child, const InputMoverControl& defaults);
+};
+
+// @func 0x001D6164 InputButtonMask
+uint32_t InputButtonMask(uint32_t buttonName)
+{
+    switch (buttonName) {
+    case 0x788F788Au: return 0x0001;
+    case 0x928BCAD1u: return 0x0002;
+    case 0x928F4636u: return 0x0004;
+    case 0xBFAFE1ADu: return 0x0008;
+    case 0x87EBFA08u: return 0x0010;
+    case 0x923F4D1Du: return 0x0020;
+    case 0x767FB0D0u: return 0x0040;
+    case 0x03D6A020u: return 0x0080;
+    case 0x00000965u: return 0x0100;
+    case 0x00000A1Fu: return 0x0200;
+    case 0x00000966u: return 0x0400;
+    case 0x00000A20u: return 0x0800;
+    case 0x00000967u: return 0x1000;
+    case 0x00000A21u: return 0x2000;
+    default:          return 0x0040;
+    }
+}
+
+void ActorB17990DefDesc::ParseControl(ape::xml::XmlElement* child, const InputMoverControl& defaults)
+{
+    auto setBit = [](uint32_t& word, uint32_t bit, bool on) { word = on ? (word | bit) : (word & ~bit); };
+    switch (child->GetNameHash()) {
+    case 0x3257217Bu: {   // buttons
+        control.press.buttons = defaults.press.buttons;
+        uint32_t button = 0;
+        if (child->GetHash(0x3257B96Cu, &button, 0) == ape::xml::kQuery_Ok)
+            control.press.buttons = InputButtonMask(button);
+        control.mode = InputMoverControl::kMode_Buttons;
+        child->GetFloat(0xE1555935u, &control.press.field_14, defaults.press.field_14);
+        child->GetFloat(0x636A522Bu, &control.press.field_18, defaults.press.field_18);
+        child->GetFloat(0xE18D39E5u, &control.press.field_1C, defaults.press.field_1C);
+        bool flag = false;
+        child->GetBool(0x0E0CA78Cu, &flag, (defaults.press.flags24 & 0x80000000u) != 0);
+        setBit(control.press.flags24, 0x80000000u, flag);
+        control.press.field_18 = std::max(control.press.field_18, 0.0f);
+        child->GetFloat(0x0C28FD40u, &control.press.field_20, defaults.press.field_20);
+        break;
+    }
+    case 0x89F23F47u: {   // the third mode
+        control.mode = InputMoverControl::kMode_Mode3;
+        float range = 0.0f;
+        child->GetFloat(0x82E789DBu, &range, 0.0f);
+        control.mode3.rangeSq = range * range;
+        child->GetFloat(0x02D738DFu, &control.mode3.field_14, defaults.mode3.field_14);
+        setBit(control.mode3.flags18, 0x80000000u, (defaults.mode3.flags18 & 0x80000000u) != 0);
+        uint32_t value = 0;
+        if (child->GetHash(0x04B8E870u, &value, 0) == ape::xml::kQuery_Ok) {
+            if (value == 0x00239807u)
+                control.mode3.flags18 &= ~0x80000000u;
+            else if (value == 0x04A5C9FCu)
+                control.mode3.flags18 |= 0x80000000u;
+        }
+        setBit(control.mode3.flags18, 0x40000000u, (defaults.mode3.flags18 & 0x40000000u) != 0);
+        if (child->GetHash(0x906DDB56u, &value, 0) == ape::xml::kQuery_Ok) {
+            if (value == 0x00000874u)
+                control.mode3.flags18 |= 0x40000000u;
+            else if (value == 0x000103F7u)
+                control.mode3.flags18 &= ~0x40000000u;
+        }
+        break;
+    }
+    case 0x89F1FF19u: {   // stick
+        control.stick.stick = defaults.stick.stick;
+        uint32_t stickName = 0;
+        if (child->GetHash(0xB456B7AAu, &stickName, 0) == ape::xml::kQuery_Ok) {
+            switch (stickName) {
+            case 0x46BDBD35u: control.stick.stick = 1; break;
+            case 0x842320BBu: control.stick.stick = 3; break;
+            case 0x842320BAu: control.stick.stick = 2; break;
+            default:          control.stick.stick = 0; break;
+            }
+        }
+        control.mode = InputMoverControl::kMode_Stick;
+        static constexpr uint32_t kValueAttrs[11] = {0x82E789DBu, 0x0BF5ADB7u, 0x96CB0082u, 0x3CE11DA0u,
+                                                     0x46FFF512u, 0x31D7B193u, 0x036A8EAFu, 0x4C005DE1u,
+                                                     0xA4D3EB03u, 0x57557B45u, 0x8C06F037u};
+        for (int i = 0; i < 11; ++i)
+            child->GetFloat(kValueAttrs[i], &control.stick.values[i], defaults.stick.values[i]);
+        static constexpr uint32_t kFlagAttrs[3] = {0xF6866423u, 0x2443C7A5u, 0x153912A7u};
+        for (int i = 0; i < 3; ++i) {
+            const uint32_t bit = 0x80000000u >> i;
+            bool flag = false;
+            child->GetBool(kFlagAttrs[i], &flag, (defaults.stick.flags40 & bit) != 0);
+            setBit(control.stick.flags40, bit, flag);
+        }
+        control.stick.values[0] = std::max(control.stick.values[0], 0.0f);
+        control.stick.values[1] = std::max(control.stick.values[1], 0.0f);
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+// @func 0x001D62A8 ActorB17990DefDesc::Parse
+// An input mover parent passes on its floats, control block, hash and flag
+// bits 26-31 (not its vectors or prompt). The control comes from the last
+// control child element.
+void ActorB17990DefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                               const EntityDef* parent)
+{
+    ActorDefDesc::Parse(root, elem, loader, parent);
+    ActorB17990DefDesc defaults(loader);
+    if (const auto* mover = SameClassParent2<ActorB17990Def>(parent, kType2_InputMover)) {
+        defaults.floats140[0] = mover->field_190;
+        defaults.floats140[1] = mover->field_194;
+        defaults.floats140[2] = mover->field_198;
+        defaults.floats140[3] = mover->field_19C;
+        defaults.floats140[4] = mover->field_1A0;
+        defaults.field_198 = mover->field_1E8;
+        defaults.control = mover->control;
+        defaults.moverFlags = (defaults.moverFlags & 0x03FFFFFFu) | (mover->moverFlags & 0xFC000000u);
+    }
+    auto readBit = [&](uint32_t attr, uint32_t bit) {
+        bool on = false;
+        elem->GetBool(attr, &on, (defaults.moverFlags & bit) != 0);
+        moverFlags = on ? (moverFlags | bit) : (moverFlags & ~bit);
+    };
+    constexpr float kDegToRad = 0.017453292f;
+    elem->GetVec3(0x3665776Au, &field_100.x, &defaults.field_100.x);
+    elem->GetVec3(0xA21F9D02u, &field_120.x, &defaults.field_120.x);
+    static constexpr uint32_t kFloatAttrs[5] = {0x760CBA9Eu, 0x176EDFCFu, 0x440242A6u, 0x7D51873Bu, 0x36EF44EBu};
+    for (int i = 0; i < 5; ++i)
+        elem->GetFloat(kFloatAttrs[i], &floats140[i], defaults.floats140[i]);
+    elem->GetFloat(0x11AA6429u, &control.field_00, defaults.control.field_00);
+    elem->GetFloat(0x26A56A39u, &control.field_04, defaults.control.field_04);
+    elem->GetFloat(0xCB13F34Du, &control.field_08, defaults.control.field_08);
+    control.field_08 = std::max(control.field_08, 0.0f);
+    elem->GetHash(0xCC4EF294u, &field_198, defaults.field_198);
+    readBit(0x65AFACDFu, 0x80000000u);
+    readBit(0x59C5087Eu, 0x40000000u);
+    readBit(0xB9AB0DC3u, 0x20000000u);
+    moverFlags = (moverFlags & ~0x18000000u) | (defaults.moverFlags & 0x18000000u);
+    uint32_t kind = 0;
+    if (elem->GetHash(0xA50A23DFu, &kind, 0) == ape::xml::kQuery_Ok) {
+        const uint32_t value = kind == 0x03FCEF54u ? 1u : kind == 0xFF4019A3u ? 2u : 0u;
+        moverFlags = (moverFlags & ~0x18000000u) | (value << 27);
+    }
+    readBit(0x73D6C6F2u, 0x04000000u);
+    const char* prompt = elem->GetString("hudPromptMsg");
+    if (prompt && prompt[0])
+        ape::StrCopyBounded(hudPrompt, prompt, sizeof hudPrompt);
+    if (elem->GetVec3(0xA5936640u, &field_110.x, &defaults.field_110.x) == ape::xml::kQuery_Ok) {
+        field_110.x *= kDegToRad;
+        field_110.y *= kDegToRad;
+        field_110.z *= kDegToRad;
+    }
+    if (elem->GetVec3(0x760CE7A8u, &field_130.x, &defaults.field_130.x) == ape::xml::kQuery_Ok) {
+        field_130.x *= kDegToRad;
+        field_130.y *= kDegToRad;
+        field_130.z *= kDegToRad;
+    }
+    readBit(0x57DA11C3u, 0x02000000u);
+    control.field_00 = std::max(control.field_00, 0.0f);
+    for (ape::xml::XmlElement* child = elem->FirstChildElement(); child; child = child->NextSiblingElement())
+        ParseControl(child, defaults.control);
+}
+
+// @func 0x001D5A40 ActorB17990Def::ActorB17990Def
+ActorB17990Def::ActorB17990Def(const ActorB17990DefDesc& desc)
+    : ActorDef(desc), field_150(desc.field_100), field_160(desc.field_110), field_170(desc.field_120),
+      field_180(desc.field_130), field_190(desc.floats140[0]), field_194(desc.floats140[1]),
+      field_198(desc.floats140[2]), field_19C(desc.floats140[3]), field_1A0(desc.floats140[4]),
+      control(desc.control), field_1E8(desc.field_198)
+{
+    moverFlags = (moverFlags & 0x01FFFFFFu) | (desc.moverFlags & 0xFE000000u);
+    if (desc.hudPrompt[0])
+        ape::StrCopyBounded(hudPrompt, desc.hudPrompt, sizeof hudPrompt);
 }
 
 // -- SoundActor (and the base of the sound actor classes) --------------------------
@@ -1469,6 +1670,17 @@ EntityDef* CreateSoundActorB16DB0Def(ape::xml::XmlElement* root, ape::xml::XmlEl
     SoundActorB16DB0DefDesc desc(loader);
     desc.Parse(root, elem, loader, parent);
     auto* def = new SoundActorB16DB0Def(desc);
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001D71D8 CreateActorB17990Def
+EntityDef* CreateActorB17990Def(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                                const EntityDef* parent)
+{
+    ActorB17990DefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new ActorB17990Def(desc);
     delete desc.parts;
     return def;
 }
