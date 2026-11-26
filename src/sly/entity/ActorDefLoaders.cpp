@@ -791,6 +791,126 @@ SoundActorB16B48Def::SoundActorB16B48Def(const SoundActorB16B48DefDesc& desc)
         bodyParts.PushBack(part);
 }
 
+// -- SoundActorB16DB0 (six tracked volumes) --------------------------------------
+constexpr uint32_t kType_SoundActorB16DB0 = 0x400000;
+
+struct SoundActorB16DB0DefDesc : SoundActorDefDesc {
+    explicit SoundActorB16DB0DefDesc(const EntityDefDesc& loader) : SoundActorDefDesc(loader)
+    {
+        typeBits |= kType_SoundActorB16DB0;
+    }
+    ape::Vec3 angles{};                 // 0x140
+    float field_150 = 0.0f;             // 0x150
+    float field_154 = -1.0f;            // 0x154
+    float field_158 = 0.0f;             // 0x158
+    uint32_t field_15C = 0;             // 0x15C
+    uint32_t field_160 = 0;             // 0x160
+    float field_164 = -1.0f;            // 0x164
+    float field_168 = -1.0f;            // 0x168
+    bool flag16C = false;               // 0x16C
+    bool flag16D = false;               // 0x16D
+    bool options[9] = {};               // 0x16E bits 30..22 of the definition's options
+    SoundActorB16DB0Def::Volume volumes[SoundActorB16DB0Def::kVolumeCount];   // 0x180
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001C49E8 SoundActorB16DB0DefDesc::Parse
+// Option 27 (the fourth) keeps the description's volumes; otherwise they
+// start as the parent's (or the defaults). Each "Trigger" child then
+// updates the next volume.
+void SoundActorB16DB0DefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                    const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorDefDesc::Parse(root, elem, loader, parent);
+    float defaultFloats[3] = {0.0f, -1.0f, 0.0f};
+    uint32_t defaultHashes[2] = {};
+    float default164 = -1.0f, default168 = -1.0f;
+    bool defaultOptions[9] = {};
+    SoundActorB16DB0Def::Volume defaultVolumes[SoundActorB16DB0Def::kVolumeCount];
+    if (const auto* other = SameClassParent<SoundActorB16DB0Def>(parent, kType_SoundActorB16DB0)) {
+        defaultFloats[0] = other->field_1A0;
+        defaultFloats[1] = other->triggerDelay;
+        defaultFloats[2] = other->field_1A8;
+        defaultHashes[0] = other->field_1AC;
+        defaultHashes[1] = other->field_1B0;
+        default164 = other->field_1B4;
+        default168 = other->field_1B8;
+        for (int i = 0; i < 9; ++i)
+            defaultOptions[i] = (other->options >> (30 - i)) & 1;
+        for (int i = 0; i < SoundActorB16DB0Def::kVolumeCount; ++i)
+            defaultVolumes[i] = other->volumes[i];
+    }
+    constexpr float kDegToRad = 0.017453292f;
+    const ape::Vec3 zero{};
+    if (elem->GetVec3(0x3C6AE50Bu, &angles.x, &zero.x) == ape::xml::kQuery_Ok) {
+        angles.x *= kDegToRad;
+        angles.y *= kDegToRad;
+        angles.z *= kDegToRad;
+    }
+    elem->GetFloat(0x7D873487u, &field_150, defaultFloats[0]);
+    elem->GetFloat(0x7BC2B446u, &field_154, defaultFloats[1]);
+    elem->GetFloat(0x1B75F0DAu, &field_158, defaultFloats[2]);
+    elem->GetHash(0x2DF2E2B5u, &field_15C, defaultHashes[0]);
+    elem->GetHash(0x53FFAFC2u, &field_160, defaultHashes[1]);
+    elem->GetFloat(0x667AB4F5u, &field_164, default164);
+    elem->GetFloat(0x7A392528u, &field_168, default168);
+    elem->GetBool(0xBC50985Bu, &flag16C, false);
+    elem->GetBool(0xCD7DD617u, &flag16D, false);
+    static constexpr uint32_t kOptionAttrs[9] = {0xA4AC4BB2u, 0xC56C09B3u, 0x9698E4BFu, 0xA8F641D7u, 0xC53B9DE4u,
+                                                 0xF7C51457u, 0x013BDD92u, 0x23872185u, 0xA8DB95B1u};
+    for (int i = 0; i < 9; ++i)
+        elem->GetBool(kOptionAttrs[i], &options[i], defaultOptions[i]);
+    if (!options[3]) {
+        for (int i = 0; i < SoundActorB16DB0Def::kVolumeCount; ++i)
+            volumes[i] = defaultVolumes[i];
+    }
+
+    constexpr uint32_t kElem_Trigger = 0xEB9EE198u;   // "Trigger"
+    int index = 0;
+    for (ape::xml::XmlElement* child = elem->FirstChildElement(kElem_Trigger); child;
+         child = child->NextSiblingElement(kElem_Trigger), ++index) {
+        if (index >= SoundActorB16DB0Def::kVolumeCount)
+            continue;
+        SoundActorB16DB0Def::Volume& volume = volumes[index];
+        child->GetHash(0x75849CFEu, &volume.field_00, volume.field_00);
+        child->GetVec3(0x2B7B3EB4u, &volume.field_10.x, &volume.field_10.x);
+        child->GetVec3(0x313AB0C1u, &volume.field_20.x, &volume.field_20.x);
+        ape::Vec3 degrees{};
+        if (child->GetVec3(0x313AB844u, &degrees.x, &zero.x) == ape::xml::kQuery_Ok)
+            volume.rotation =
+                QuatFromEuler({degrees.x * kDegToRad, degrees.y * kDegToRad, degrees.z * kDegToRad, 0.0f});
+        child->GetHash(0x632DA119u, &volume.field_40, volume.field_40);
+        child->GetBool(0x8141EC8Au, &volume.field_44, volume.field_44);
+        child->GetBool(0xF8E455ACu, &volume.field_45, volume.field_45);
+    }
+
+    field_150 = std::max(field_150, 0.0f);
+    field_158 = std::max(field_158, 0.0f);
+    // The first two options exclude each other.
+    if (options[0] && options[1])
+        options[0] = options[1] = false;
+}
+
+// @func 0x001C463C SoundActorB16DB0Def::SoundActorB16DB0Def
+SoundActorB16DB0Def::SoundActorB16DB0Def(const SoundActorB16DB0DefDesc& desc)
+    : SoundActorDef(desc), angles(desc.angles), field_1A0(desc.field_150), triggerDelay(desc.field_154),
+      field_1A8(desc.field_158), field_1AC(desc.field_15C), field_1B0(desc.field_160), field_1B4(desc.field_164),
+      field_1B8(desc.field_168)
+{
+    desc.CopyTo(*this);
+    options &= 0x8000FFFFu;
+    for (int i = 0; i < 9; ++i)
+        options |= uint32_t(desc.options[i]) << (30 - i);
+    for (int i = 0; i < kVolumeCount; ++i)
+        volumes[i] = desc.volumes[i];
+    if (desc.flag16D)
+        options = (options & 0xFFC0FFFFu) | 0x00050000u;
+    else if (desc.flag16C)
+        options = (options & 0xFFC0FFFFu) | 0x00030000u;
+}
+
 // -- SignalActor -----------------------------------------------------------------
 constexpr uint32_t kType_Signal = 0x40000;
 
@@ -1127,6 +1247,17 @@ EntityDef* CreateScriptObjectActorDef(ape::xml::XmlElement* root, ape::xml::XmlE
     auto* def = new ScriptObjectActorDef(desc);
     def->field_130 = value;
     def->field_140 = vector;
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001C5408 CreateSoundActorB16DB0Def
+EntityDef* CreateSoundActorB16DB0Def(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                     const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorB16DB0DefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new SoundActorB16DB0Def(desc);
     delete desc.parts;
     return def;
 }

@@ -704,15 +704,35 @@ public:
 // Definition of SoundActorB16DB0. NOTE: only the flag its timer reads.
 class SoundActorB16DB0Def : public SoundActorDef {
 public:
+    // One tracked trigger volume (0x50 bytes; "Trigger" children).
+    struct Volume {
+        uint32_t field_00 = 0;                      // +0x00 hash 0x75849CFE
+        ape::Vec3 field_10{};                       // +0x10 attribute 0x2B7B3EB4
+        ape::Vec3 field_20{};                       // +0x20 attribute 0x313AB0C1
+        ape::Vec4 rotation{0.0f, 0.0f, 0.0f, 1.0f}; // +0x30 from attribute 0x313AB844 (degrees)
+        uint32_t field_40 = 0;                      // +0x40 hash 0x632DA119
+        bool field_44 = true;                       // +0x44 attribute 0x8141EC8A
+        bool field_45 = false;                      // +0x45 attribute 0xF8E455AC
+    };
+    static constexpr int kVolumeCount = 6;
+    // The sound actor fields, then its own (0x001C463C).
+    explicit SoundActorB16DB0Def(const struct SoundActorB16DB0DefDesc& desc);
     ~SoundActorB16DB0Def() override;
-    float triggerDelay = 0.0f;     // 0x1A4 time in state 4 before the triggers report
+    ape::Vec3 angles{};            // 0x190 attribute 0x3C6AE50B (degrees in the file)
+    float field_1A0 = 0.0f;        // 0x1A0 attribute 0x7D873487 (not negative)
+    float triggerDelay = -1.0f;    // 0x1A4 time in state 4 before the triggers report (0x7BC2B446)
+    float field_1A8 = 0.0f;        // 0x1A8 attribute 0x1B75F0DA (not negative)
     // Placement defaults (SoundActorB16DB0Placement +0x110..+0x11C).
-    uint32_t field_1AC = 0;        // 0x1AC
-    uint32_t field_1B0 = 0;        // 0x1B0
-    float field_1B4 = -1.0f;       // 0x1B4
-    float field_1B8 = -1.0f;       // 0x1B8
-    // 0x1BC bit 28: close even when occupied; bit 22: placement default.
+    uint32_t field_1AC = 0;        // 0x1AC hash 0x2DF2E2B5
+    uint32_t field_1B0 = 0;        // 0x1B0 hash 0x53FFAFC2
+    float field_1B4 = -1.0f;       // 0x1B4 attribute 0x667AB4F5
+    float field_1B8 = -1.0f;       // 0x1B8 attribute 0x7A392528
+    // 0x1BC bits 30-22 from nine attributes (bit 28: close even when
+    // occupied; bit 27: keep the default volumes; bit 22: placement
+    // default); bits 16-21: 5 or 3 from the attributes 0xCD7DD617 /
+    // 0xBC50985B.
     uint32_t options = 0;
+    Volume volumes[kVolumeCount];  // 0x1C0
 };
 
 // Like SoundActorB16DB0 with the records at +0x22C (vtable 0x00B17008;
