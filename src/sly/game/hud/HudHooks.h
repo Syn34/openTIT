@@ -89,3 +89,12 @@ bool AppInputHeld();
 void SetAppInputHeld(bool held);
 } // namespace hud
 } // namespace sly
+
+namespace sly {
+namespace hud {
+// Upgrade table entry `index` (game world flag byte +0xFBC + index) is
+// marked new (bit 2) / the mark is cleared.
+bool UpgradeIsNew(uint32_t index);
+void UpgradeClearNew(uint32_t index);
+} // namespace hud
+} // namespace sly

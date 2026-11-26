@@ -7,6 +7,7 @@
 #include "sly/game/goals/JobManager.h"
 #include "sly/game/hud/HudHooks.h"
 
+#include "ape/anim/ApeAnimScript.h"
 #include "ape/core/ApeString.h"
 #include "ape/level/ApeGui.h"
 #include "ape/world/ApeBase.h"
@@ -98,7 +99,7 @@ ape::world::ApeObj* CopyInstance(ape::world::ApeObj* source)
     return copy;
 }
 
-void Hide(ape::world::ApeObj* object)
+void HideObject(ape::world::ApeObj* object)
 {
     if (object)
         object->SetVisible(false, true);
@@ -138,6 +139,75 @@ void SetListFieldText(const HudObjectDef::ListFieldDef* fields, uint32_t count, 
     }
 }
 
+// Anim script states of the list states (0x00F64FC4 / 0x00F64FE0): "NONE",
+// "Intro", "OnUpdate", "Idle", "ScrollUp", "ScrollDown", "Outro".
+const uint32_t kListStateNames[7] = {
+    0x0024A738u, 0x04296E4Cu, 0xC2361368u, 0x002237D4u, 0x16AD6628u, 0x20E4C8EFu, 0x048129EBu,
+};
+constexpr uint32_t kState_Intro = 1;
+constexpr uint32_t kState_Update = 2;
+constexpr uint32_t kState_Idle = 3;
+constexpr uint32_t kState_Outro = 6;
+
+uint32_t SetBit(uint32_t word, uint32_t bit, bool on) { return on ? (word | bit) : (word & ~bit); }
+
+// Clip and script state of `state` for the list kinds.
+void PlayListState(HudObject* element, const uint32_t clips[7], uint32_t& flags, uint32_t state)
+{
+    flags = SetBit(flags, kE_AnimOk, PlayHudClip(element->animController, clips[state], 1.0f, false));
+    if (element->animScript) {
+        auto* script = static_cast<ape::ApeAnimScriptInstance*>(element->animScript);
+        flags = SetBit(flags, kE_ScriptOk, script->SetStateAndUpdate(kListStateNames[state]));
+    }
+}
+
+void ShowFieldFrames(const HudObjectDef::ListFieldDef* fields, uint32_t count)
+{
+    for (uint32_t i = 0; i < count; ++i) {
+        if (ape::ApeGuiObject* frame = fields[i].object)
+            frame->SetVisible(fields[i].object3d != nullptr);
+    }
+}
+
+// The intro of the list kinds.
+void BeginListShow(HudObject* element, const uint32_t clips[7], uint32_t& flags,
+                   const HudObjectDef::ListFieldDef* fields, uint32_t count)
+{
+    flags |= kE_Shown;
+    element->animState = (element->animState & 1u) | (kState_Intro << 1);
+    if (element->object)
+        element->object->SetVisible(true, true);
+    PlayListState(element, clips, flags, kState_Intro);
+    ShowFieldFrames(fields, count);
+}
+
+// The hide request of the list kinds; false when the element is blocked.
+template <typename List>
+void HideList(List* element, uint32_t& flags, const uint32_t clips[7], const HudObjectDef::ListFieldDef* fields,
+              uint32_t count, bool a, bool b)
+{
+    const uint32_t state = element->animState >> 1;
+    if (state == kState_Outro || state == 0) {
+        if ((!(flags & kE_LeaveA) && !a) || state != 0) {
+            if (((flags & kE_LeaveB) || b) && state == 0)
+                QueueDestroy(element);
+        } else {
+            element->Refresh();
+        }
+    } else {
+        flags = (flags & ~(kE_LeaveA | kE_LeaveB)) | (a ? kE_LeaveA : 0u) | (b ? kE_LeaveB : 0u);
+        element->listFadeTime = -1.0f;
+        element->animState = (element->animState & 1u) | (kState_Outro << 1);
+        PlayListState(element, clips, flags, kState_Outro);
+        if (element->object)
+            element->object->SetVisible(true, true);
+        ShowFieldFrames(fields, count);
+    }
+    element->listLinked = nullptr;
+}
+
+bool ListBlocked(uint32_t flags) { return (flags & kE_Suppressed) || !(flags & kE_Shown); }
+
 } // namespace
 
 // ===========================================================================
@@ -168,9 +238,9 @@ HudType800::HudType800(HudObjectDef* def_) : HudObject(0, def_)
     for (int i = 0; i < 6; ++i) {
         rows[i] = CopyGeometry(info.rowGeometry);
         rowExtraA[i] = FindInHierarchy(object, kRowExtraA[i]);
-        Hide(rowExtraA[i]);
+        HideObject(rowExtraA[i]);
         rowExtraB[i] = FindInHierarchy(object, kRowExtraB[i]);
-        Hide(rowExtraB[i]);
+        HideObject(rowExtraB[i]);
     }
     for (int i = 0; i < 5; ++i)
         objects[i] = FindInHierarchy(object, info.objectNames[i]);
@@ -211,11 +281,11 @@ void HudType800::SetActive(bool active)
             field->SetVisible(active);
     }
     for (uint16_t i = 0; i < entryObjects.Count(); ++i)
-        Hide(entryObjects[i]);
+        HideObject(entryObjects[i]);
     for (int i = 0; i < 6; ++i) {
-        Hide(rows[i]);
-        Hide(rowExtraA[i]);
-        Hide(rowExtraB[i]);
+        HideObject(rows[i]);
+        HideObject(rowExtraA[i]);
+        HideObject(rowExtraB[i]);
     }
     // The running episode's instance goes with the element.
     game::JobManager* jobs = game::GetJobManager();
@@ -252,6 +322,27 @@ void HudType800::Refresh()
     entryFlags.Clear();
     ReleaseEntryObjects();
     entryObjects.Clear();
+}
+
+// @func 0x003772C0 HudType800::BeginShow
+void HudType800::BeginShow()
+{
+    BeginListShow(this, clips, listFlags, def->list800.fields, def->list800.fieldCount);
+}
+
+// @func 0x00377D18 HudType800::Hide
+void HudType800::Hide(bool a, bool b)
+{
+    if (ListBlocked(listFlags))
+        return;
+    // The upgrades the list showed are no longer new.
+    if (entryFlags.Count() != 0 && entryFlags.Count() == entries.Count()) {
+        for (uint16_t i = 0; i < entries.Count(); ++i) {
+            if (UpgradeIsNew(entries[i]) && entryFlags[i])
+                UpgradeClearNew(entries[i]);
+        }
+    }
+    HideList(this, listFlags, clips, def->list800.fields, def->list800.fieldCount, a, b);
 }
 
 // TODO(0x00378540 HudType800::Update)
@@ -347,17 +438,17 @@ void HudType1000::SetActive(bool active)
             field->SetVisible(active);
     }
     if (selected < 6)
-        Hide(episodeD[selected]);
+        HideObject(episodeD[selected]);
     for (ape::world::ApeObj* row : rows)
-        Hide(row);
+        HideObject(row);
     for (int i = 0; i < 6; ++i) {
-        Hide(episodeA[i]);
-        Hide(episodeB[i]);
-        Hide(episodeC[i]);
-        Hide(episodeD[i]);
-        Hide(copiesA[i]);
-        Hide(copiesB[i]);
-        Hide(copiesC[i]);
+        HideObject(episodeA[i]);
+        HideObject(episodeB[i]);
+        HideObject(episodeC[i]);
+        HideObject(episodeD[i]);
+        HideObject(copiesA[i]);
+        HideObject(copiesB[i]);
+        HideObject(copiesC[i]);
     }
     if (!active && g_game)
         g_game->RemoveCallback(kCallbackList_Place, this, nullptr);
@@ -382,11 +473,54 @@ void HudType1000::Refresh()
 // TODO(0x0037CCA8 HudType1000::Update)
 void HudType1000::Update(float dt) { (void)dt; }
 
-// TODO(0x0037DE50 HudType1000::SetEnabled)
+// @func 0x0037AC70 HudType1000::BeginShow
+void HudType1000::BeginShow()
+{
+    BeginListShow(this, clips, listFlags, def->list.fields, def->list.fieldCount);
+}
+
+// @func 0x0037C7E0 HudType1000::Hide
+void HudType1000::Hide(bool a, bool b)
+{
+    if (ListBlocked(listFlags))
+        return;
+    HideList(this, listFlags, clips, def->list.fields, def->list.fieldCount, a, b);
+}
+
+// @func 0x0037CB10 HudType1000::ShowTimed
+void HudType1000::ShowTimed(float fade, const char* text_, bool flag, HudObject* linkedTo, const uint8_t* color)
+{
+    (void)text_;
+    if (ListBlocked(listFlags))
+        return;
+    if (flag)
+        listFlags |= kE_LeaveA;
+    for (int i = 0; i < 4; ++i)
+        tint[i] = color[i];
+    listFadeTime = fade;
+    const uint32_t state = animState >> 1;
+    if (state == kState_Idle || state == kState_Update) {
+        listHoldTime = fade < 0.0f ? listDefaultFade : fade;
+        animState = (animState & 1u) | (kState_Update << 1);
+        PlayListState(this, clips, listFlags, kState_Update);
+    } else if (state == 0 || state == kState_Outro) {
+        listLinked = linkedTo;
+        if (!linkedTo || !linkedTo->object || !linkedTo->object->IsVisible())
+            BeginShow();
+    }
+    RefreshRows();
+}
+
+// TODO(0x0037AE00 HudType1000::RefreshRows)
+void HudType1000::RefreshRows() {}
+
+// @func 0x0037DE50 HudType1000::SetEnabled
 void HudType1000::SetEnabled(bool enabled, bool flag)
 {
-    (void)enabled;
-    (void)flag;
+    if (!enabled)
+        Hide(flag, false);
+    else if (!(listFlags & kE_Shown))
+        ShowTimed(-1.0f, nullptr, false, nullptr, kNoTint);
 }
 
 // ===========================================================================
