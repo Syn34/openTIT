@@ -26,7 +26,7 @@
 #include <vector>
 
 namespace ape::file { class File; }
-namespace ape { class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeAnimScript; class ApeGuiObject; }
+namespace ape { struct GuiEvent; class ApeLevelDef; class StringTable; class ApeAnimScriptInstance; class ApeAnimScript; class ApeGuiObject; }
 namespace agl { class AglRenderTarget; }
 
 namespace sly {
@@ -36,7 +36,7 @@ class SpawnManager;
 namespace goals { class Goal; }
 namespace gameplay { class Minigame; class ReturnTreasureMicrogame; }
 namespace entity { class Entity; class GameCamera; }
-namespace audio { struct MixState; }
+namespace audio { struct MixState; struct SoundName; }
 namespace camera { class CameraMode; }
 struct LevelParams;
 
@@ -550,6 +550,10 @@ public:
     void RefreshControlsPage(ape::ApeGuiObject* screen);
     void RefreshAudioPage(ape::ApeGuiObject* screen);
     void RefreshDisplayPage(ape::ApeGuiObject* screen);
+    // Accept on the controls page: the camera X/Y inversion or vibration
+    // option of the chosen object toggles, the toggle sound plays and the
+    // page is asked to refresh (GUI event 0x10).
+    void OnControlsPageAccept(const ape::GuiEvent& event);
     // Shows the running level's headline (see SlyGameMenus.cpp).
     void ShowLevelHeadline(bool force);
     // Marks the running level visited for the all-levels trophy.
@@ -679,6 +683,7 @@ public:
     uint32_t field_1285EC = 0;                  // +0x1285EC
     uint32_t pauseSound = 0;                    // +0x1285F0
     uint32_t resumeSound = 0;                   // +0x1285F4
+    audio::SoundName* toggleSound = nullptr;    // +0x128604 menu option toggle sound
     // Entities borrowed for the split views (+0x128610 count, 0x24-byte
     // records from +0x128614 holding up to four entities at +0x14).
     // NOTE: the rest of a record is not read by the game shell.

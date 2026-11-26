@@ -8,6 +8,8 @@
 #include "agl/AglDisplay.h"
 #include "sly/game/Localization.h"
 #include "sly/levels/ARServer.h"
+#include "sly/game/hud/HudHideoutMenu.h"
+#include "sly/game/hud/HudHooks.h"
 
 #include <algorithm>
 #include <cmath>
@@ -162,6 +164,36 @@ void SlyGame::RefreshDisplayPage(ape::ApeGuiObject* screen)
         DimControl(ape::FindGuiObject("Strength", data));
         DimControl(ape::FindGuiObject("State", data));
     }
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x0046F944 SlyGame::OnControlsPageAccept
+void SlyGame::OnControlsPageAccept(const ape::GuiEvent& event)
+{
+    // Option objects of the controls page. NOTE: their names are unknown.
+    constexpr uint32_t kObj_Vibration = 0xA1370272u;
+    constexpr uint32_t kObj_CameraX = 0x4B8A2DD3u;
+    constexpr uint32_t kObj_CameraY = 0x4B8A2DD4u;
+    constexpr uint32_t kGuiEvent_Refresh = 0x10;
+    if (!event.object)
+        return;
+    uint32_t flag = 0;
+    switch (event.object->nameHash) {
+    case kObj_Vibration: flag = GameSettings::kFlag_Vibration; break;
+    case kObj_CameraX: flag = GameSettings::kFlag_InvertCameraX; break;
+    case kObj_CameraY: flag = GameSettings::kFlag_InvertCameraY; break;
+    default: return;
+    }
+    settings.flags ^= flag;
+    hud::PlayHudSound(toggleSound);
+    field_1054[0] = 1;   // the options changed
+    ape::ApeGuiObject* menuGui = nullptr;
+    if (auto* hideout = static_cast<hud::HudHideoutMenu*>(hud::FindActiveType200()))
+        menuGui = hideout->gui;
+    ape::SendGuiEvent(kGuiEvent_Refresh, event.pad, menuGui, 0);
 }
 
 } // namespace sly
