@@ -3,8 +3,6 @@
 #include "ape/xml/ApeXml.h"
 #include "sly/game/SoundZones.h"
 
-#include <algorithm>
-#include <mutex>
 #include <vector>
 
 #include "ape/core/ApeString.h"
