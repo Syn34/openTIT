@@ -192,6 +192,24 @@ struct AglMaterialAnim {
     Channel v;                             // +0x38
     Channel rotation;                      // +0x68
 
+    // Settings of one channel as stored in a material animation chunk.
+    struct ChannelParams {
+        float speed = 0.0f;       // 0 switches the channel off
+        float steps = 0.0f;
+        float limit = 0.0f;
+        float delayMin = 0.0f;
+        float delayMax = 0.0f;
+        float playTime = 0.0f;
+        float pivot[2] = {};      // rotation channel only
+        uint8_t mode = 0;         // Channel::kMode_*
+        uint8_t channel = 0;      // 0 U, 1 V, 2 rotation
+        uint8_t flags = 0;
+    };
+
+    AglMaterialAnim();
+    // Configures one channel. When both scrolls are stepped and V is the
+    // slower one, U is driven by V instead (flip book frames in rows).
+    void Configure(const ChannelParams& params);
     // Advances the three channels once per rendered frame.
     void Update();
     // The quantised U and V offsets.
@@ -232,6 +250,10 @@ public:
     void CopyFrom(const AglMaterial& source);
     // A new material with the same class and settings.
     static AglMaterial* Clone(const AglMaterial& source);
+    // Fills the material from a material header (texture, colours, blend,
+    // cull, wrap, depth and sort settings) and lets the shader class named
+    // there set it up, falling back to the default class.
+    void Setup(struct AglMaterialDesc* desc);
 
     enum BlendMode {
         kBlend_None = 0,         // opaque (or an unrecognised combination)

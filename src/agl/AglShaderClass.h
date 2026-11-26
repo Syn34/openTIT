@@ -105,13 +105,28 @@ void ApplyFog(int layer, bool enable, uint32_t colorConstant);
 void ApplyItemFog(const AglRenderItem* item, uint32_t colorConstant);
 
 // Description of a material as stored in level data (the parts SetupMaterial reads).
+// NOTE: the material header chunk ("MTLH", 0x0051C704) names the texture
+// slots diffuse (0x00), envMap (0x04), normalMap (0x08), specularMap (0x0C)
+// and decalMap (0x10), and 0x4C envMapBlendMode; the member names below
+// follow how the shader classes use the slots.
 struct AglMaterialDesc {
-    uint32_t field_0 = 0;
+    uint32_t field_0 = 0;                    // 0x00 the diffuse texture
     uint32_t diffuseHash = 0;                // 0x04
     uint32_t detailHash = 0;                 // 0x08 detail layer texture
     uint32_t detail2Hash = 0;                // 0x0C second detail layer texture
     uint32_t textureHash = 0;                // 0x10
-    uint8_t field_14[0x38] = {};
+    uint32_t nameHash = 0;                   // 0x14
+    char name[32] = {};                      // 0x18
+    uint8_t blendMode = 0;                   // 0x38 0 opaque .. 4 subtractive
+    uint8_t cullMode = 0;                    // 0x39 2: no culling
+    uint8_t flags = 0;                       // 0x3A
+    uint8_t diffuseColor[4] = {};            // 0x3B RGBA
+    uint8_t specColor[4] = {};               // 0x3F
+    float specPower = 0.0f;                  // 0x44
+    uint8_t clampModeU = 0;                  // 0x48
+    uint8_t clampModeV = 0;                  // 0x49
+    uint8_t sortLayer = 0;                   // 0x4A
+    uint8_t envMapType = 0;                  // 0x4B
     uint8_t wrapMode = 0;                    // 0x4C
     uint8_t field_4D[3] = {};
     // 0x50: set by retired classes to the name hash of the class that should
