@@ -1,6 +1,8 @@
 // openTIT - Setting classes of the AI settings level objects.
 #include "sly/levels/ai/AISettingClasses.h"
 
+#include "sly/levels/ai/AISettingParams.h"
+
 namespace sly {
 namespace levels {
 namespace ai {
@@ -11,8 +13,16 @@ namespace {
 constexpr uint32_t kAISettingGroup = 0xC9D7446Au;
 } // namespace
 
-// @func 0x0001CE40 CritterSettingClass::RegisterProperties
-void CritterSettingClass::RegisterProperties()
+void AISettingClass::AddProperty(AIProp prop)
+{
+    // Properties of other modules (proxy points, jump links) have no
+    // descriptor here.
+    if (const ape::setting::SettingParam* param = AIPropParam(prop))
+        AddParam(const_cast<ape::setting::SettingParam&>(*param));
+}
+
+// @func 0x0001CE40 CritterSettingClass::InitParams
+void CritterSettingClass::InitParams()
 {
     static const AIProp kProps[] = {
         AIProp::Critter_BoundingRadius,
@@ -54,8 +64,8 @@ void CritterSettingClass::RegisterProperties()
         AddProperty(prop);
 }
 
-// @func 0x00023F3C BuddySettingClass::RegisterProperties
-void BuddySettingClass::RegisterProperties()
+// @func 0x00023F3C BuddySettingClass::InitParams
+void BuddySettingClass::InitParams()
 {
     static const AIProp kProps[] = {
         AIProp::Buddy_FollowDist,
@@ -67,8 +77,8 @@ void BuddySettingClass::RegisterProperties()
         AddProperty(prop);
 }
 
-// @func 0x0002E4FC EnemySettingClass::RegisterProperties
-void EnemySettingClass::RegisterProperties()
+// @func 0x0002E4FC EnemySettingClass::InitParams
+void EnemySettingClass::InitParams()
 {
     static const AIProp kProps[] = {
         AIProp::Enemy_EntityDefName,
@@ -157,8 +167,8 @@ void EnemySettingClass::RegisterProperties()
         AddProperty(prop);
 }
 
-// @func 0x0003BE60 SentrySettingClass::RegisterProperties
-void SentrySettingClass::RegisterProperties()
+// @func 0x0003BE60 SentrySettingClass::InitParams
+void SentrySettingClass::InitParams()
 {
     static const AIProp kProps[] = {
         AIProp::Sentry_SpawnAnimClip,
@@ -185,36 +195,32 @@ void SentrySettingClass::RegisterProperties()
         AddProperty(prop);
 }
 
-// @func 0x0001D10C CritterSettingClass::CreateInstance
-AISettingInstance* CritterSettingClass::CreateInstance(const void* source, const void* owner)
+// @func 0x0001D10C CritterSettingClass::CreateSetting
+ape::setting::Setting* CritterSettingClass::CreateSetting(const char* name)
 {
-    (void)owner;
     // NOTE: the console instance is 0x28 bytes; its own fields are not used here.
-    return new CritterSettingInstance(source, this);
+    return new CritterSettingInstance(this, name);
 }
 
-// @func 0x00023FB0 BuddySettingClass::CreateInstance
-AISettingInstance* BuddySettingClass::CreateInstance(const void* source, const void* owner)
+// @func 0x00023FB0 BuddySettingClass::CreateSetting
+ape::setting::Setting* BuddySettingClass::CreateSetting(const char* name)
 {
-    (void)owner;
     // NOTE: the console instance is 0x24 bytes; its own fields are not used here.
-    return new BuddySettingInstance(source, this);
+    return new BuddySettingInstance(this, name);
 }
 
-// @func 0x0002EB74 EnemySettingClass::CreateInstance
-AISettingInstance* EnemySettingClass::CreateInstance(const void* source, const void* owner)
+// @func 0x0002EB74 EnemySettingClass::CreateSetting
+ape::setting::Setting* EnemySettingClass::CreateSetting(const char* name)
 {
-    (void)owner;
     // NOTE: the console instance is 0x28 bytes; its own fields are not used here.
-    return new EnemySettingInstance(source, this);
+    return new EnemySettingInstance(this, name);
 }
 
-// @func 0x0003C000 SentrySettingClass::CreateInstance
-AISettingInstance* SentrySettingClass::CreateInstance(const void* source, const void* owner)
+// @func 0x0003C000 SentrySettingClass::CreateSetting
+ape::setting::Setting* SentrySettingClass::CreateSetting(const char* name)
 {
-    (void)owner;
     // NOTE: the console instance is 0x24 bytes; its own fields are not used here.
-    return new SentrySettingInstance(source, this);
+    return new SentrySettingInstance(this, name);
 }
 
 // ---------------------------------------------------------------------------

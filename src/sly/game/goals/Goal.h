@@ -213,7 +213,7 @@ struct GoalCycleEntry {
 
 // A message sent to a goal through slot 2 (0x00321BE4): an id and two words.
 struct GoalMessage {
-    uint32_t sender = 0;   // +0x00
+    void* sender = nullptr;   // +0x00 the object sending it
     uint32_t field_04 = 0;
     uint32_t id = 0;       // +0x08 message name hash (table 0x00F65BF8)
     uint32_t arg = 0;      // +0x0C
