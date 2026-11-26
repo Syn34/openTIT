@@ -116,10 +116,26 @@ public:
 
 };
 
+// Description of scripted definitions (EntityDefDesc + 0x30 bytes).
+struct ScriptedEntityDefDesc : EntityDefDesc {
+    using EntityDefDesc::EntityDefDesc;
+    float field_4C = 100.0f;        // 0x4C NOTE: default of the scripted placements' +0xDC
+    uint32_t lifetimeScript = 0;    // 0x50 script started for each entity (hash)
+    uint32_t field_54 = 0;          // 0x54
+    float stageHealth[5] = {};      // 0x58 health thresholds of the damage stages
+    float invulnerableTime = 0.0f;  // 0x6C after each hit
+    uint32_t field_70 = 0;          // 0x70 (definition slot 4)
+    uint32_t field_74 = 0;          // 0x74 (definition slot 5)
+    uint16_t damageFlags = 0;       // 0x78 bits 4-15 (see ScriptedEntityDef::damageFlags)
+    uint16_t hitMask = 0;           // 0x7A
+};
+
 // Scripted entity definition (vtable 0x00B11D98, slot 7 Spawn is pure).
-// Destructor with no body of its own.
 class ScriptedEntityDef : public EntityDef {
 public:
+    // Copies the description and looks the lifetime script up in every
+    // library (0x000C2E8C).
+    explicit ScriptedEntityDef(const ScriptedEntityDefDesc& desc);
     // @func 0x007437D0 ScriptedEntityDef::~ScriptedEntityDef
     // @func 0x00743800 ScriptedEntityDef::~ScriptedEntityDef (deleting)
     ~ScriptedEntityDef() override = default;
@@ -127,13 +143,23 @@ public:
     uint32_t DefSlot4() const override { return field_B4; }
     // @func 0x007376E0 ScriptedEntityDef::DefSlot5
     uint32_t DefSlot5() const override { return field_B8; }
-    uint32_t field_B4 = 0;   // 0xB4 (returned by slot 4)
-    uint32_t field_B8 = 0;   // 0xB8 (returned by slot 5)
-    // Damage settings. NOTE: filled by the definition parser (not ported).
-    float stageHealth[5] = {};  // 0x9C health thresholds of the damage stages
-    float invulnerableTime = 0.0f;  // 0xB0 after each hit
-    uint16_t damageFlags = 0;   // 0xBC bits 4-7 stage count, 11 message, 12 busy on hit, 14 hit counting
-    uint16_t hitMask = 0;    // 0xBE damage bits a hit must carry to count
+
+    float field_8C = 100.0f;                    // 0x8C
+    ape::ApeAnimScript* lifetimeScript = nullptr;   // 0x90
+    uint32_t lifetimeScriptName = 0;            // 0x94
+    uint32_t field_98 = 0;                      // 0x98
+    float stageHealth[5] = {};                  // 0x9C health thresholds of the damage stages
+    float invulnerableTime = 0.0f;              // 0xB0 after each hit
+    uint32_t field_B4 = 0;                      // 0xB4 (returned by slot 4)
+    uint32_t field_B8 = 0;                      // 0xB8 (returned by slot 5)
+    // 0xBC bits 4-7 stage count, 11 message, 12 busy on hit, 14 hit counting,
+    // 15 default of the scripted placements' +0xE8.
+    uint16_t damageFlags = 0;
+    uint16_t hitMask = 0;                       // 0xBE damage bits a hit must carry to count
+
+protected:
+    // NOTE: for subclasses whose console constructors are not ported yet.
+    ScriptedEntityDef() = default;
 };
 
 } // namespace entity
