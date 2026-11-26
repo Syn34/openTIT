@@ -141,14 +141,14 @@ DamageTriggerInstanceDesc::DamageTriggerInstanceDesc(const char* instanceName, D
 }
 
 // @func 0x0021A6E8 DamageTriggerDef::Create
-ObjEntity* DamageTriggerDef::Create(EntityPlacement* placement)
+Entity* DamageTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kDefClass_DamageTrigger) != 0))
         return nullptr;
-    DamageTriggerInstanceDesc desc(GetInstanceName(placement), this);
+    DamageTriggerInstanceDesc desc(InstanceName(placement), this);
     placement->FillInstanceDesc(desc);
     DamageTrigger* trigger = new DamageTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -201,7 +201,7 @@ DamageTrigger::DamageTrigger(const DamageTriggerInstanceDesc& desc)
 // @func 0x0021B088 DamageTrigger::~DamageTrigger (deleting)
 DamageTrigger::~DamageTrigger() = default;
 
-uint32_t DamageTrigger::OccupantBit(const ObjEntity* entity) const
+uint32_t DamageTrigger::OccupantBit(const Entity* entity) const
 {
     // The console shifts by the index as a 64-bit amount, so "not found" (-1)
     // and slots past 31 give no bit in the 32-bit mask.
@@ -214,11 +214,11 @@ uint32_t DamageTrigger::OccupantBit(const ObjEntity* entity) const
 // when it has an orientation (or flag 2 asks for it). Flag 0 makes that axis
 // two-sided: targets behind it get the axis turned half a turn about Y.
 // @func 0x0021B0E0 DamageTrigger::ApplyDamage
-bool DamageTrigger::ApplyDamage(ObjEntity* target, float amount, uint32_t reactType)
+bool DamageTrigger::ApplyDamage(Entity* target, float amount, uint32_t reactType)
 {
     if (!target || amount <= 0.0f)
         return false;
-    if (!(target->flags2 & kEntFlag2_Highlightable))
+    if (!target->HasTypeBit(kType_Scripted))
         return false;
 
     const ape::Vec3 up = {0.0f, 1.0f, 0.0f, 0.0f};   // console global 0x01164B60
@@ -267,7 +267,7 @@ bool DamageTrigger::ApplyDamage(ObjEntity* target, float amount, uint32_t reactT
     hit.source = this;
     hit.reactType = reactType;
     hit.kind = 3;
-    hit.fromPlayer = IsPlayer();
+    hit.fromPlayer = EntityIsPlayer(this);
     hit.flag11 = m_flags[3];
     hit.flag10 = m_flags[4];
     hit.direction = dir;
@@ -278,27 +278,27 @@ bool DamageTrigger::ApplyDamage(ObjEntity* target, float amount, uint32_t reactT
 }
 
 // @func 0x0021B5E0 DamageTrigger::Update
-void DamageTrigger::Update(float dt)
+bool DamageTrigger::Update(float dt)
 {
-    // NOTE: the console skips the rest when the base update reports failure;
-    // the ported base does not report one.
-    TriggerBase::Update(dt);
-    if (!m_enabled)
-        return;
+    // Nothing more when the base update reports failure.
+    const bool result = TriggerBase::Update(dt);
+    if (!result || !m_enabled)
+        return result;
     float perFrame = m_value2 * dt;   // damage per second
     for (int i = 0; i < OccupantCount(); ++i) {
         uint32_t bit = i < 32 ? (1u << i) : 0u;
-        ObjEntity* occupant = Occupant(i);
+        Entity* occupant = Occupant(i);
         if ((m_pendingHits & bit) && ApplyDamage(occupant, m_amount, m_reactType))
             m_pendingHits &= ~bit;
         if (perFrame > 0.0f)
             ApplyDamage(occupant, perFrame, m_reactType);
     }
+    return result;
 }
 
 // The entry hit is owed until a frame where the target accepts it.
 // @func 0x0021B738 DamageTrigger::OnEnter
-void DamageTrigger::OnEnter(ObjEntity* entity)
+void DamageTrigger::OnEnter(Entity* entity)
 {
     TriggerBase::OnEnter(entity);
     if (m_amount > 0.0f)
@@ -306,7 +306,7 @@ void DamageTrigger::OnEnter(ObjEntity* entity)
 }
 
 // @func 0x0021B7F4 DamageTrigger::OnExit
-void DamageTrigger::OnExit(ObjEntity* entity)
+void DamageTrigger::OnExit(Entity* entity)
 {
     m_pendingHits &= ~OccupantBit(entity);
     TriggerBase::OnExit(entity);
@@ -384,14 +384,14 @@ EntityDef* CreateWindTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElement
 }
 
 // @func 0x00224720 WindTriggerDef::Create
-ObjEntity* WindTriggerDef::Create(EntityPlacement* placement)
+Entity* WindTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->typeBits & kTrigType_Wind) != 0))
         return nullptr;
-    TriggerInstanceDesc desc(GetInstanceName(placement), this);
+    TriggerInstanceDesc desc(InstanceName(placement), this);
     placement->FillInstanceDesc(desc);
     WindTrigger* trigger = new WindTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -451,22 +451,22 @@ WindTrigger::~WindTrigger()
 }
 
 // @func 0x00224B48 WindTrigger::Release
-void WindTrigger::Release(bool immediate)
+bool WindTrigger::Release(bool immediate)
 {
     if (immediate && m_wind) {
         WindFieldDestroy(m_wind);
         m_wind = nullptr;
     }
-    TriggerBase::Release(immediate);
+    return TriggerBase::Release(immediate);
 }
 
-bool WindTrigger::AffectsEntity(const ObjEntity* entity) const
+bool WindTrigger::AffectsEntity(const Entity* entity) const
 {
     return !m_restricted || (entity->classBits & kClassWindAffected) != 0;
 }
 
 // @func 0x00224BC8 WindTrigger::Update
-void WindTrigger::Update(float dt)
+bool WindTrigger::Update(float dt)
 {
     if (m_spawnPending) {
         m_spawnPending = false;
@@ -474,9 +474,9 @@ void WindTrigger::Update(float dt)
             ScriptSetState(m_script, kScriptStateSpawn);
     }
     WindFieldUpdate(m_wind, dt);
-    TriggerBase::Update(dt);
+    const bool result = TriggerBase::Update(dt);
     // Keep the field's entity set in step with the occupants that are alive.
-    for (ObjEntity* occupant : m_occupants) {
+    for (Entity* occupant : m_occupants) {
         if (!occupant->IsAlive())
             continue;
         const bool wanted = AffectsEntity(occupant);
@@ -486,18 +486,21 @@ void WindTrigger::Update(float dt)
         else if (!present && wanted)
             WindFieldAddEntity(m_wind, occupant);
     }
+    return result;
 }
 
 // @func 0x00224D50 WindTrigger::SetTransform
-void WindTrigger::SetTransform()
+void WindTrigger::SetTransform(const ape::Matrix34& m)
 {
-    // NOTE: the base part (0x0020D7E8, trigger SetTransform) is not ported.
+    // NOTE: the trigger base part (0x0020D7E8, which also moves the phantom)
+    // is not ported; the entity transform is set instead.
+    Entity::SetTransform(m);
     if (m_wind)
         WindFieldSetTransform(m_wind, VolumeTransform());
 }
 
 // @func 0x00224E20 WindTrigger::OnEnter
-void WindTrigger::OnEnter(ObjEntity* entity)
+void WindTrigger::OnEnter(Entity* entity)
 {
     TriggerBase::OnEnter(entity);
     if (AffectsEntity(entity) && m_wind && WindFieldAddEntity(m_wind, entity) && m_onEnter)
@@ -511,7 +514,7 @@ void WindTrigger::OnEnter(ObjEntity* entity)
 }
 
 // @func 0x00224F48 WindTrigger::OnExit
-void WindTrigger::OnExit(ObjEntity* entity)
+void WindTrigger::OnExit(Entity* entity)
 {
     if (m_wind)
         WindFieldRemoveEntity(m_wind, entity, false);
@@ -525,7 +528,7 @@ void WindTrigger::OnExit(ObjEntity* entity)
 }
 
 // @func 0x00225010 WindTrigger::RemoveOccupant
-void WindTrigger::RemoveOccupant(ObjEntity* entity)
+void WindTrigger::RemoveOccupant(Entity* entity)
 {
     if (m_wind)
         WindFieldRemoveEntity(m_wind, entity, true);

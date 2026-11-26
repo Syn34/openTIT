@@ -54,12 +54,12 @@ void VolumeAddProperty(TriggerVolume* volume, uint32_t key, uint64_t value)
     (void)value;
 }
 // TODO(0x00928828/0x009288D8 hkpPhantom remove/addPhantomListener)
-void VolumeInstallListener(TriggerVolume* volume, ObjEntity* trigger)
+void VolumeInstallListener(TriggerVolume* volume, Entity* trigger)
 {
     (void)volume;
     (void)trigger;
 }
-void VolumeRemoveListener(TriggerVolume* volume, ObjEntity* trigger)
+void VolumeRemoveListener(TriggerVolume* volume, Entity* trigger)
 {
     (void)volume;
     (void)trigger;
@@ -123,13 +123,13 @@ NavObstacleHandle NavAddObstacle(const ape::Matrix34& transform, const ape::Vec3
 // TODO(0x000112D8 RemoveNavObstacle)
 void NavRemoveObstacle(NavObstacleHandle& handle) { handle.obstacle = nullptr; }
 // TODO(0x0012E824)
-void EntityTrackTrigger(ObjEntity* entity, ObjEntity* trigger)
+void EntityTrackTrigger(Entity* entity, Entity* trigger)
 {
     (void)entity;
     (void)trigger;
 }
 // TODO(0x0012E8B0)
-void EntityUntrackTrigger(ObjEntity* entity, ObjEntity* trigger)
+void EntityUntrackTrigger(Entity* entity, Entity* trigger)
 {
     (void)entity;
     (void)trigger;
@@ -137,7 +137,7 @@ void EntityUntrackTrigger(ObjEntity* entity, ObjEntity* trigger)
 
 // --- game events -------------------------------------------------------------
 // TODO(0x0046502C/0x00465124/0x004650A8 trigger events, 0x00482D14 post)
-void PostTriggerEvent(TriggerEventKind kind, ObjEntity* trigger, uint8_t playerIndex)
+void PostTriggerEvent(TriggerEventKind kind, Entity* trigger, uint8_t playerIndex)
 {
     (void)kind;
     (void)trigger;
@@ -147,7 +147,7 @@ int GetPlayerCount() { return 1; }
 
 // --- characters, jobs, world lookups ----------------------------------------
 // TODO(0x00129894)
-bool IsCharacterDisguised(const ObjEntity* character)
+bool IsCharacterDisguised(const Entity* character)
 {
     (void)character;
     return false;
@@ -189,7 +189,7 @@ void SetVoice3D(uint32_t voice, const ape::Vec3& position, float volume)
     (void)volume;
 }
 ape::Vec3 GetListenerPosition() { return ape::world::kWorldZero; }
-ObjEntity* GetPlayerEntity() { return nullptr; }
+Entity* GetPlayerEntity() { return nullptr; }
 
 SoundZone* FindSoundZone(uint32_t nameHash) { return audio::FindSoundZone(nameHash); }
 MixState* FindMixState(uint32_t nameHash) { return audio::FindMixState(nameHash); }
@@ -215,7 +215,7 @@ void MixStatePop(MixState* mix, float fadeTime)
 }
 
 // TODO(0x000DCA20) entity script instances live in the entity module.
-void* EntityStartScript(ObjEntity* entity, void* script)
+void* EntityStartScript(Entity* entity, void* script)
 {
     (void)entity;
     (void)script;
@@ -228,10 +228,10 @@ void ScriptInstanceSetPaused(void* instance, bool paused)
     (void)paused;
 }
 
-ObjEntity* ScriptGetEntityVar(void* instance, uint32_t varName) { (void)instance; (void)varName; return nullptr; }
-void ScriptSetEntityVar(void* instance, uint32_t varName, ObjEntity* entity) { (void)instance; (void)varName; (void)entity; }
+Entity* ScriptGetEntityVar(void* instance, uint32_t varName) { (void)instance; (void)varName; return nullptr; }
+void ScriptSetEntityVar(void* instance, uint32_t varName, Entity* entity) { (void)instance; (void)varName; (void)entity; }
 void ScriptSetState(void* instance, uint32_t stateName) { (void)instance; (void)stateName; }
-void ScriptSetTriggerVar(void* instance, ObjEntity* trigger) { (void)instance; (void)trigger; }
+void ScriptSetTriggerVar(void* instance, Entity* trigger) { (void)instance; (void)trigger; }
 int VolumeShapeType(const TriggerVolume* volume) { (void)volume; return -1; }
 ape::Matrix34 VolumeWorldTransform(const TriggerVolume* volume)
 {
@@ -243,32 +243,32 @@ WindSystem* WindFieldCreate(const ape::Matrix34& transform, const EntityDef* def
 void WindFieldDestroy(WindSystem* field) { (void)field; }
 void WindFieldSetTransform(WindSystem* field, const ape::Matrix34& transform) { (void)field; (void)transform; }
 void WindFieldUpdate(WindSystem* field, float dt) { (void)field; (void)dt; }
-bool WindFieldAddEntity(WindSystem* field, ObjEntity* entity) { (void)field; (void)entity; return false; }
-void WindFieldRemoveEntity(WindSystem* field, ObjEntity* entity, bool immediate) { (void)field; (void)entity; (void)immediate; }
-bool WindFieldHasEntity(const WindSystem* field, const ObjEntity* entity) { (void)field; (void)entity; return false; }
+bool WindFieldAddEntity(WindSystem* field, Entity* entity) { (void)field; (void)entity; return false; }
+void WindFieldRemoveEntity(WindSystem* field, Entity* entity, bool immediate) { (void)field; (void)entity; (void)immediate; }
+bool WindFieldHasEntity(const WindSystem* field, const Entity* entity) { (void)field; (void)entity; return false; }
 void WindFieldSetEnabled(WindSystem* field, bool enabled) { (void)field; (void)enabled; }
 uint16_t WindTriggerCapacity() { return 0x20; }
 
-void EntitySetVisibilityDeferred(ObjEntity* entity, bool visible, bool deferred) { (void)entity; (void)visible; (void)deferred; }
-float EntityHealth(const ObjEntity* entity) { (void)entity; return 0.0f; }
+void EntitySetVisibilityDeferred(Entity* entity, bool visible, bool deferred) { (void)entity; (void)visible; (void)deferred; }
+float EntityHealth(const Entity* entity) { (void)entity; return 0.0f; }
 
 int JobState(const void* job) { (void)job; return 0; }
 bool GameStateHasActiveJob() { return false; }
 bool GameStateJobsBlocked() { return false; }
-bool GameStateCanStartJob(ObjEntity* entity, void* job) { (void)entity; (void)job; return false; }
-void GameStateStartJob(ObjEntity* entity, void* job, uint32_t startGoal) { (void)entity; (void)job; (void)startGoal; }
-uint8_t CharacterAbilityState(const ObjEntity* character, int ability) { (void)character; (void)ability; return 0; }
-void ShowJobPrompt(ObjEntity* entity, const char* text, const char* buttons) { (void)entity; (void)text; (void)buttons; }
+bool GameStateCanStartJob(Entity* entity, void* job) { (void)entity; (void)job; return false; }
+void GameStateStartJob(Entity* entity, void* job, uint32_t startGoal) { (void)entity; (void)job; (void)startGoal; }
+uint8_t CharacterAbilityState(const Entity* character, int ability) { (void)character; (void)ability; return 0; }
+void ShowJobPrompt(Entity* entity, const char* text, const char* buttons) { (void)entity; (void)text; (void)buttons; }
 
 bool TextDisplayHasSeen(uint32_t messageId) { (void)messageId; return false; }
 
-uint32_t EntityClass2(const ObjEntity* entity) { (void)entity; return 0; }
+uint32_t EntityClass2(const Entity* entity) { (void)entity; return 0; }
 
 void CameraRemoveMode(void* mode, float blendTime) { (void)mode; (void)blendTime; }
 void CameraModeDelete(void* mode) { (void)mode; }
 
 // TODO(0x0021B2FC) entity virtual slot 86 (hit reaction) not ported.
-void EntityTakeHit(ObjEntity* target, EntityHit& hit) { (void)target; (void)hit; }
+void EntityTakeHit(Entity* target, EntityHit& hit) { (void)target; (void)hit; }
 
 } // namespace objects
 } // namespace sly

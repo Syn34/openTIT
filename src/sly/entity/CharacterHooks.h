@@ -19,7 +19,7 @@ namespace entity {
 
 class Entity;
 class EntityComponent;
-struct SpawnParams;
+class EntityPlacement;
 
 // -- character component (Entity slot 15 / 16) ----------------------------------
 // Model (geometry definition name) the component shows (0x00297E3C), its
@@ -57,6 +57,8 @@ void CharacterCompSendAnimEvent(EntityComponent* component, uint32_t event);
 // 28-30: ground, water, wall climbing through component 0x2C) (0x0026A42C /
 // 0x0026D8F4).
 ape::Vec3 PhysicsCompUpVector(EntityComponent* component);
+// The movement mode itself (+0x1A0 bits 28-30).
+int PhysicsCompMovementMode(const EntityComponent* component);
 ape::Vec3 PhysicsCompSideVector(EntityComponent* component);
 // Animation map component (0x0E): clip registered under a name (0x00288974).
 void* AnimMapFindClip(EntityComponent* animMap, uint32_t name);
@@ -266,7 +268,7 @@ void CullManagerRelease(uint32_t handle);
 void PhysicsCompSetTarget(EntityComponent* component, const ape::Vec3& point);
 // Attaches the entity a spawn produced with the attach record the spawn
 // parameters carry (Entity::AttachChild 0x000D15C0).
-void EntityAttachSpawned(Entity* parent, SpawnParams& params, Entity* child);
+void EntityAttachSpawned(Entity* parent, EntityPlacement& placement, Entity* child);
 
 } // namespace entity
 } // namespace sly

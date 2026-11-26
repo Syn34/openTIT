@@ -20,7 +20,7 @@ class CameraBehaviorTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
     ~CameraBehaviorTriggerDef() override;
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
 
 private:
     // Camera module parameter blocks the parser allocates (0xB4..0xC0).
@@ -33,8 +33,8 @@ public:
     explicit CameraBehaviorTrigger(const TriggerInstanceDesc& desc) : TriggerBase(desc, 0x20, true) {}
     ~CameraBehaviorTrigger() override;
 
-    void Update(float dt) override;
-    void OnEnter(ObjEntity* entity) override;
+    bool Update(float dt) override;
+    void OnEnter(Entity* entity) override;
     bool IsDebugDisplayed() const override;
     // TODO(0x002194DC CameraBehaviorTrigger::OnExit): hands the camera back to
     // the next behaviour trigger the character is in, or resets the camera
@@ -42,7 +42,7 @@ public:
 
 private:
     // TODO(0x00218DD8): applies the definition's behaviour to the camera.
-    void ApplyBehavior(ObjEntity* entity) { (void)entity; }
+    void ApplyBehavior(Entity* entity) { (void)entity; }
 };
 
 } // namespace objects

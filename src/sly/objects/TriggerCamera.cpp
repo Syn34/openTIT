@@ -96,12 +96,12 @@ CameraTriggerInstanceDesc::CameraTriggerInstanceDesc(const char* instanceName, C
 }
 
 // @func 0x00215128 CameraTriggerDef::Create
-ObjEntity* CameraTriggerDef::Create(EntityPlacement* placement)
+Entity* CameraTriggerDef::Spawn(EntityPlacement* placement)
 {
     bool typed = (placement->flags & kPlace_Camera) != 0;
     if (TriggerPlacementSkips(placement, typed))
         return nullptr;
-    CameraTriggerInstanceDesc desc(GetInstanceName(placement), this);
+    CameraTriggerInstanceDesc desc(InstanceName(placement), this);
     const char* objectName = TriggerPlacementObjectName(placement);
     placement->FillInstanceDesc(desc);
     // Spline cameras default to "Spline_Camera_Pos<suffix>"/"Spline_Camera_Tgt<suffix>".
@@ -113,7 +113,7 @@ ObjEntity* CameraTriggerDef::Create(EntityPlacement* placement)
             desc.splineTgt = ape::HashNameNoCase(ape::TempFormat("Spline_Camera_Tgt%s", suffix));
     }
     CameraTrigger* trigger = new CameraTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -216,17 +216,17 @@ CameraTrigger::CameraTrigger(const CameraTriggerInstanceDesc& desc)
 CameraTrigger::~CameraTrigger() = default;
 
 // @func 0x0021686C CameraTrigger::OnEnter
-void CameraTrigger::OnEnter(ObjEntity* entity)
+void CameraTrigger::OnEnter(Entity* entity)
 {
     TriggerBase::OnEnter(entity);
     ActivateCamera(entity);
 }
 
 // @func 0x0021690C CameraTrigger::OnExit
-void CameraTrigger::OnExit(ObjEntity* entity)
+void CameraTrigger::OnExit(Entity* entity)
 {
     // With "NoDeadExit" a dead character keeps the camera of the volume it died in.
-    if (g_triggerCameraNoDeadExit.Get() && entity && (entity->flags2 & 0x08) && entity->IsEventSuppressed())
+    if (g_triggerCameraNoDeadExit.Get() && entity && entity->HasTypeBit(kType_Character) && EntityIsDead(entity))
         return;
     DeactivateCamera(entity);
     TriggerBase::OnExit(entity);

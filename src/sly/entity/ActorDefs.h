@@ -58,7 +58,7 @@ SLY_ACTOR_DEF(TargetableCLinkedDef, TargetableDefC);
 class ObjectActorDef : public ActorDef {
 public:
     ~ObjectActorDef() override;
-    Entity* Spawn(SpawnParams& params) override;   // slot 7
+    Entity* Spawn(EntityPlacement* placement) override;   // slot 7
 };
 
 // Definition with one array of 12-byte records (vtable 0x00B14FD8; spawn

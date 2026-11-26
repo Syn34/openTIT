@@ -747,7 +747,7 @@ void SoundActorB17728::UpdateOpen(bool& open)
         if (!d->requiredCharacter)
             return;
         const EntityDef* playerDef = player->def;
-        if (!playerDef || !(playerDef->optionFlags & 0x08))
+        if (!playerDef || !(playerDef->classBits & 0x08))
             return;
         const auto* character = static_cast<const CharacterDef*>(playerDef);
         open = character->characterName == d->requiredCharacter || character->field_3D4 != 0;

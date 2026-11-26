@@ -51,7 +51,7 @@ struct DamageTriggerDefDesc : TriggerDefDesc {
 class DamageTriggerDef : public TriggerDef {
 public:
     explicit DamageTriggerDef(const DamageTriggerDefDesc& desc);
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
     // tagged there); the deleting variant returns the block to the bucket
     // allocator.
@@ -85,17 +85,17 @@ public:
     explicit DamageTrigger(const DamageTriggerInstanceDesc& desc);
     ~DamageTrigger() override;
 
-    void Update(float dt) override;
-    void OnEnter(ObjEntity* entity) override;
-    void OnExit(ObjEntity* entity) override;
+    bool Update(float dt) override;
+    void OnEnter(Entity* entity) override;
+    void OnExit(Entity* entity) override;
 
     const ape::Vec4& PushOrientation() const { return m_orientation; }
 
 private:
     // Sends one hit of `amount` to an occupant; true when the target took it.
-    bool ApplyDamage(ObjEntity* target, float amount, uint32_t reactType);
+    bool ApplyDamage(Entity* target, float amount, uint32_t reactType);
     // Bit of an occupant's slot in m_pendingHits (0 when it is not an occupant).
-    uint32_t OccupantBit(const ObjEntity* entity) const;
+    uint32_t OccupantBit(const Entity* entity) const;
 
     ape::Vec4 m_orientation{};   // 0x1B0 quaternion from the rotation angles
     uint32_t m_pendingHits = 0;  // 0x1C0 occupants still owed the entry hit (bit per slot)
@@ -153,7 +153,7 @@ struct WindTriggerDefDesc : TriggerDefDesc {
 class WindTriggerDef : public TriggerDef {
 public:
     explicit WindTriggerDef(const WindTriggerDefDesc& desc);
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
     // tagged there); the deleting variant returns the block to the bucket
     // allocator.
@@ -175,17 +175,18 @@ public:
 class WindTrigger : public TriggerBase {
 public:
     // Called for every entity the wind field accepts (+0x1B8).
-    using EnterCallback = void (*)(WindTrigger* trigger, ObjEntity* entity);
+    using EnterCallback = void (*)(WindTrigger* trigger, Entity* entity);
 
     explicit WindTrigger(const TriggerInstanceDesc& desc);
     ~WindTrigger() override;
 
-    void Update(float dt) override;
-    void Release(bool immediate) override;
-    void SetTransform();
-    void OnEnter(ObjEntity* entity) override;
-    void OnExit(ObjEntity* entity) override;
-    void RemoveOccupant(ObjEntity* entity) override;
+    bool Update(float dt) override;
+    bool Release(bool immediate) override;
+    // Slot 21: the wind field follows the volume.
+    void SetTransform(const ape::Matrix34& m) override;
+    void OnEnter(Entity* entity) override;
+    void OnExit(Entity* entity) override;
+    void RemoveOccupant(Entity* entity) override;
     void SetEnabled(bool enabled) override;
 
 private:
@@ -193,7 +194,7 @@ private:
     ape::Matrix34 VolumeTransform() const;
     // Whether the wind applies to `entity` (only flagged entities when the
     // definition restricts it).
-    bool AffectsEntity(const ObjEntity* entity) const;
+    bool AffectsEntity(const Entity* entity) const;
 
     uint32_t m_scriptLifetime = 0;     // 0x1AC
     void* m_script = nullptr;          // 0x1B0 lifetime script instance

@@ -61,7 +61,7 @@ struct FxTriggerDefDesc : TriggerDefDesc {
 class FxTriggerDef : public TriggerDef {
 public:
     explicit FxTriggerDef(const FxTriggerDefDesc& desc) : TriggerDef(desc), params(desc.params) {}
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     FxTriggerParams params;      // 0xB0..0xCB
 };
 
@@ -87,7 +87,7 @@ public:
     explicit FxTrigger(const FxTriggerInstanceDesc& desc);
     ~FxTrigger() override;
 
-    void OnStay(ObjEntity* entity) override;
+    void OnStay(Entity* entity) override;
     void SetEnabled(bool enabled) override;
     bool IsDebugDisplayed() const override;
     // Slot 68: the lifetime script is the trigger's anim script.
@@ -129,7 +129,7 @@ EntityPlacement* ParseFxTriggerPlacement(ape::xml::XmlElement* root, ape::xml::X
 class PushBlockTriggerDef : public FxTriggerDef {
 public:
     using FxTriggerDef::FxTriggerDef;
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
     // tagged there); the deleting variant returns the block to the bucket
     // allocator.
@@ -141,8 +141,8 @@ class PushBlockTrigger : public FxTrigger {
 public:
     explicit PushBlockTrigger(const FxTriggerInstanceDesc& desc);
     ~PushBlockTrigger() override;
-    void OnEnter(ObjEntity* entity) override;
-    void OnExit(ObjEntity* entity) override;
+    void OnEnter(Entity* entity) override;
+    void OnExit(Entity* entity) override;
 };
 
 EntityDef* CreatePushBlockTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,

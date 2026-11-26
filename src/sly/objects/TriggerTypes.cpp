@@ -1,6 +1,8 @@
 // openTIT - Trigger subclasses with little behaviour of their own: alert, crawl,
 // filtered (physics state), job, jump direction and update-enable volumes.
 #include "sly/objects/TriggerTypes.h"
+#include "sly/entity/CharacterHooks.h"
+#include "sly/entity/GameEntityHooks.h"
 
 #include "sly/entity/Abilities.h"
 
@@ -77,14 +79,14 @@ EntityDef* CreateAlertTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElemen
 }
 
 // @func 0x00212828 AlertTriggerDef::Create
-ObjEntity* AlertTriggerDef::Create(EntityPlacement* placement)
+Entity* AlertTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->typeBits & kTrigType_Alert) != 0))
         return nullptr;
-    TriggerInstanceDesc desc(GetInstanceName(placement), this);
+    TriggerInstanceDesc desc(InstanceName(placement), this);
     PrepareDesc(desc, placement);
     AlertTrigger* trigger = new AlertTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -92,20 +94,20 @@ ObjEntity* AlertTriggerDef::Create(EntityPlacement* placement)
 AlertTrigger::~AlertTrigger() = default;
 
 // @func 0x00212C28 AlertTrigger::OnEnter
-void AlertTrigger::OnEnter(ObjEntity* entity)
+void AlertTrigger::OnEnter(Entity* entity)
 {
     // Undisguised players (not riding anything: class bit 3) raise the alarm.
-    if (entity && (entity->flags2 & kEntFlag2_Character) && entity->IsPlayer() &&
+    if (entity && entity->HasTypeBit(kType_Character) && EntityIsPlayer(entity) &&
         !(entity->classBits & 8)) {
         const AlertTriggerDef* alertDef = static_cast<const AlertTriggerDef*>(def);
         if (alertDef->ignoreDisguise || !IsCharacterDisguised(entity))
-            PostTriggerEvent(kTriggerEvent_Alert, this, entity->playerIndex);
+            PostTriggerEvent(kTriggerEvent_Alert, this, EntityPlayerIndex(entity));
     }
     TriggerBase::OnEnter(entity);
 }
 
 // @func 0x00212D58 AlertTrigger::OnExit
-void AlertTrigger::OnExit(ObjEntity* entity)
+void AlertTrigger::OnExit(Entity* entity)
 {
     TriggerBase::OnExit(entity);
 }
@@ -131,14 +133,14 @@ EntityDef* CreateCrawlTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElemen
 }
 
 // @func 0x00219A10 CrawlTriggerDef::Create
-ObjEntity* CrawlTriggerDef::Create(EntityPlacement* placement)
+Entity* CrawlTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->typeBits & kTrigType_Crawl) != 0))
         return nullptr;
-    TriggerInstanceDesc desc(GetInstanceName(placement), this);
+    TriggerInstanceDesc desc(InstanceName(placement), this);
     PrepareDesc(desc, placement);
     CrawlTrigger* trigger = new CrawlTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -146,22 +148,22 @@ ObjEntity* CrawlTriggerDef::Create(EntityPlacement* placement)
 CrawlTrigger::~CrawlTrigger() = default;
 
 // @func 0x00219E10 CrawlTrigger::OnEnter
-void CrawlTrigger::OnEnter(ObjEntity* entity)
+void CrawlTrigger::OnEnter(Entity* entity)
 {
-    if (!entity || !(entity->flags2 & kEntFlag2_Character))
+    if (!entity || !entity->HasTypeBit(kType_Character))
         return;
     TriggerBase::OnEnter(entity);
 }
 
 // @func 0x00219E84 CrawlTrigger::OnExit
-void CrawlTrigger::OnExit(ObjEntity* entity)
+void CrawlTrigger::OnExit(Entity* entity)
 {
     // A character still in the crawl idle (state 0/10/2) is moved on to the
     // stand-up state when it leaves.
-    ObjEntity* character = (entity && (entity->flags2 & kEntFlag2_Character)) ? entity : nullptr;
-    if (character && character->GetState(0) == 0 && character->GetState(1) == 10 &&
-        character->GetState(2) == 2)
-        character->SetState(2, 3);
+    Entity* character = (entity && entity->HasTypeBit(kType_Character)) ? entity : nullptr;
+    if (character && entity::EntityGetState(character, 0) == 0 && entity::EntityGetState(character, 1) == 10 &&
+        entity::EntityGetState(character, 2) == 2)
+        entity::EntitySetState(character, 2, 3);
     TriggerBase::OnExit(entity);
 }
 
@@ -196,14 +198,14 @@ EntityDef* CreateFilteredTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlEle
 }
 
 // @func 0x0021D5B0 FilteredTriggerDef::Create
-ObjEntity* FilteredTriggerDef::Create(EntityPlacement* placement)
+Entity* FilteredTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->typeBits & kTrigType_Filtered) != 0))
         return nullptr;
-    FilteredTriggerInstanceDesc desc(GetInstanceName(placement), this);
+    FilteredTriggerInstanceDesc desc(InstanceName(placement), this);
     PrepareDesc(desc, placement);
     FilteredTrigger* trigger = new FilteredTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -245,18 +247,16 @@ void FilteredTriggerPlacement::FillInstanceDesc(EntityInstanceDesc& baseDesc) co
 // @func 0x0021DCC0 FilteredTrigger::~FilteredTrigger (deleting)
 FilteredTrigger::~FilteredTrigger() = default;
 
-int CharacterPhysicsState(ObjEntity* entity)
+int CharacterPhysicsState(Entity* entity)
 {
-    // The physics component keeps the state in bits 28..30 of its word +0x1A0.
-    const uint8_t* component = static_cast<const uint8_t*>(entity->GetPhysicsComponent());
+    // The physics component's movement mode.
+    const entity::EntityComponent* component = entity->GetComponent00();
     if (!component)
         return -1;
-    uint32_t word;
-    std::memcpy(&word, component + 0x1A0, sizeof(word));
-    return (int)((word >> 28) & 7);
+    return entity::PhysicsCompMovementMode(component);
 }
 
-bool FilteredTrigger::Accepts(ObjEntity* entity)
+bool FilteredTrigger::Accepts(Entity* entity)
 {
     if (m_physicsState == -1)
         return true;
@@ -265,23 +265,23 @@ bool FilteredTrigger::Accepts(ObjEntity* entity)
 }
 
 // @func 0x0021DD08 FilteredTrigger::Update
-void FilteredTrigger::Update(float dt)
+bool FilteredTrigger::Update(float dt)
 {
     if (m_physicsState != -1) {
         size_t i = 0;
         while (i < m_occupants.size()) {
-            ObjEntity* occupant = m_occupants[i];
+            Entity* occupant = m_occupants[i];
             if (Accepts(occupant))
                 ++i;
             else
                 OnExit(occupant);
         }
     }
-    TriggerBase::Update(dt);
+    return TriggerBase::Update(dt);
 }
 
 // @func 0x0021DE08 FilteredTrigger::OnEnter
-void FilteredTrigger::OnEnter(ObjEntity* entity)
+void FilteredTrigger::OnEnter(Entity* entity)
 {
     if (!Accepts(entity))
         return;
@@ -308,14 +308,14 @@ EntityDef* CreateJobTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElement*
 }
 
 // @func 0x00220560 JobTriggerDef::Create
-ObjEntity* JobTriggerDef::Create(EntityPlacement* placement)
+Entity* JobTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kPlace_Job) != 0))
         return nullptr;
-    JobTriggerInstanceDesc desc(GetInstanceName(placement), this);
+    JobTriggerInstanceDesc desc(InstanceName(placement), this);
     PrepareDesc(desc, placement);
     JobTrigger* trigger = new JobTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -378,9 +378,9 @@ JobTrigger::JobTrigger(const JobTriggerInstanceDesc& desc)
 JobTrigger::~JobTrigger() = default;
 
 // @func 0x00220DF0 JobTrigger::Release
-void JobTrigger::Release(bool immediate)
+bool JobTrigger::Release(bool immediate)
 {
-    TriggerBase::Release(immediate);
+    return TriggerBase::Release(immediate);
 }
 
 uint32_t JobField1E8(const void* job)
@@ -406,16 +406,16 @@ bool JobTrigger::IsJobAvailable() const
 // Offers the job to a living entity when none is running: either through a
 // yes/no prompt (when the trigger names an ability the character has), or by
 // starting it straight away.
-void JobTrigger::OnEnter(ObjEntity* entity)
+void JobTrigger::OnEnter(Entity* entity)
 {
     TriggerBase::OnEnter(entity);
     if (!IsJobAvailable() || GameStateHasActiveJob())
         return;
     if (!GameStateCanStartJob(entity, m_job) || GameStateJobsBlocked())
         return;
-    if ((entity->flags2 & 0x02) && entity->IsEventSuppressed())
+    if (EntityIsDead(entity))
         return;
-    if (m_promptId != 0 && (entity->flags2 & 0x08)) {
+    if (m_promptId != 0 && entity->HasTypeBit(kType_Character)) {
         const int ability = entity::FindAbility(m_promptId);
         if (ability != -1) {
             const uint8_t state = CharacterAbilityState(entity, ability);
@@ -477,12 +477,12 @@ EntityDef* CreateJumpDirTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElem
 }
 
 // @func 0x00221238 JumpDirTriggerDef::Create
-ObjEntity* JumpDirTriggerDef::Create(EntityPlacement* placement)
+Entity* JumpDirTriggerDef::Spawn(EntityPlacement* placement)
 {
     bool typed = (placement->typeBits & kTrigType_JumpDir) != 0;
     if (TriggerPlacementSkips(placement, typed))
         return nullptr;
-    TriggerInstanceDesc desc(GetInstanceName(placement), this);
+    TriggerInstanceDesc desc(InstanceName(placement), this);
     // The direction spline is "Spline_JumpDir_<suffix of the object name>".
     uint32_t splineHash = 0;
     if (!typed) {
@@ -491,7 +491,7 @@ ObjEntity* JumpDirTriggerDef::Create(EntityPlacement* placement)
     }
     PrepareDesc(desc, placement);
     JumpDirTrigger* trigger = new JumpDirTrigger(desc, splineHash);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -544,14 +544,14 @@ EntityDef* CreateUpdateEnableTriggerDef(ape::xml::XmlElement* root, ape::xml::Xm
 }
 
 // @func 0x00225348 UpdateEnableTriggerDef::Create
-ObjEntity* UpdateEnableTriggerDef::Create(EntityPlacement* placement)
+Entity* UpdateEnableTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->typeBits & kTrigType_UpdateEnable) != 0))
         return nullptr;
-    TriggerInstanceDesc desc(GetInstanceName(placement), this);
+    TriggerInstanceDesc desc(InstanceName(placement), this);
     PrepareDesc(desc, placement);
     UpdateEnableTrigger* trigger = new UpdateEnableTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -566,37 +566,34 @@ UpdateEnableTrigger::UpdateEnableTrigger(const TriggerInstanceDesc& desc)
 UpdateEnableTrigger::~UpdateEnableTrigger() = default;
 
 namespace {
-constexpr uint8_t kDefOption_SleepsAway = 0x08;   // EntityDef::options bit 3
-constexpr uint32_t kFlags2_Killable = 0x02;
-constexpr uint32_t kFlags2_Character = 0x08;
-constexpr uint32_t kFlags2_10 = 0x10;              // NOTE: excludes characters from tracking
+constexpr uint32_t kType_10 = 4;                   // NOTE: type bit 4 excludes characters from tracking
 
-bool SleepsAway(const ObjEntity* entity)
+bool SleepsAway(const Entity* entity)
 {
-    return entity->def && (entity->def->options & kDefOption_SleepsAway) != 0;
+    return entity->def && entity->def->HasFlag(EntityDef::kDefFlag_SleepsAway);
 }
 
 // Characters that could turn into the player are tracked even when they are not one.
-bool IsTrackedCharacter(const ObjEntity* entity)
+bool IsTrackedCharacter(const Entity* entity)
 {
-    return (entity->flags2 & kFlags2_Character) && !(entity->flags2 & kFlags2_10);
+    return entity->HasTypeBit(kType_Character) && !entity->HasTypeBit(kType_10);
 }
 } // namespace
 
 void UpdateEnableTrigger::WakeOccupants()
 {
-    for (ObjEntity* occupant : m_occupants) {
+    for (Entity* occupant : m_occupants) {
         if (SleepsAway(occupant))
             EntitySetVisibilityDeferred(occupant, true, false);
     }
 }
 
 // @func 0x002257B4 UpdateEnableTrigger::PlayerLeft
-void UpdateEnableTrigger::PlayerLeft(ObjEntity* leaving)
+void UpdateEnableTrigger::PlayerLeft(Entity* leaving)
 {
     if (--m_playerCount != 0)
         return;
-    for (ObjEntity* occupant : m_occupants) {
+    for (Entity* occupant : m_occupants) {
         if (occupant != leaving && SleepsAway(occupant))
             EntitySetVisibilityDeferred(occupant, false, false);
     }
@@ -605,10 +602,10 @@ void UpdateEnableTrigger::PlayerLeft(ObjEntity* leaving)
 // @func 0x00225870 UpdateEnableTrigger::Update
 // Characters that became (or stopped being) the player since last frame enter
 // (or leave) the trigger's player bookkeeping.
-void UpdateEnableTrigger::Update(float dt)
+bool UpdateEnableTrigger::Update(float dt)
 {
     for (Tracked& tracked : m_tracked) {
-        const bool isPlayer = tracked.entity->IsPlayer();
+        const bool isPlayer = EntityIsPlayer(tracked.entity);
         if (tracked.isPlayer == isPlayer)
             continue;
         tracked.isPlayer = isPlayer;
@@ -621,13 +618,13 @@ void UpdateEnableTrigger::Update(float dt)
             PlayerLeft(tracked.entity);
         }
     }
-    TriggerBase::Update(dt);
+    return TriggerBase::Update(dt);
 }
 
 // @func 0x002259EC UpdateEnableTrigger::OnEnter
-void UpdateEnableTrigger::OnEnter(ObjEntity* entity)
+void UpdateEnableTrigger::OnEnter(Entity* entity)
 {
-    const bool isPlayer = entity->IsPlayer();
+    const bool isPlayer = EntityIsPlayer(entity);
     const bool character = IsTrackedCharacter(entity);
     if (isPlayer || character) {
         bool known = false;
@@ -642,7 +639,7 @@ void UpdateEnableTrigger::OnEnter(ObjEntity* entity)
     TriggerBase::OnEnter(entity);
     if (!isPlayer) {
         if (SleepsAway(entity)) {
-            entity->SetBusy(true);
+            entity->SetBusyFlag(true);
             EntitySetVisibilityDeferred(entity, m_playerCount != 0, false);
         }
     } else if (m_playerCount++ == 0) {
@@ -651,10 +648,10 @@ void UpdateEnableTrigger::OnEnter(ObjEntity* entity)
 }
 
 // @func 0x00225C88 UpdateEnableTrigger::OnExit
-void UpdateEnableTrigger::OnExit(ObjEntity* entity)
+void UpdateEnableTrigger::OnExit(Entity* entity)
 {
     TriggerBase::OnExit(entity);
-    if (IsTrackedCharacter(entity) || entity->IsPlayer()) {
+    if (IsTrackedCharacter(entity) || EntityIsPlayer(entity)) {
         for (size_t i = 0; i < m_tracked.size(); ++i) {
             if (m_tracked[i].entity == entity) {
                 m_tracked[i] = m_tracked.back();
@@ -663,16 +660,16 @@ void UpdateEnableTrigger::OnExit(ObjEntity* entity)
             }
         }
     }
-    if (entity->IsPlayer()) {
+    if (EntityIsPlayer(entity)) {
         PlayerLeft(entity);
         return;
     }
     if (!SleepsAway(entity))
         return;
     // Dead killables keep their state.
-    if ((entity->flags2 & kFlags2_Killable) && EntityHealth(entity) <= 0.0f)
+    if (entity->HasTypeBit(kType_Scripted) && EntityHealth(entity) <= 0.0f)
         return;
-    entity->SetBusy(false);
+    entity->SetBusyFlag(false);
 }
 
 // @func 0x00225E50 UpdateEnableTrigger::IsDebugDisplayed

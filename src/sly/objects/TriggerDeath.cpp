@@ -74,14 +74,14 @@ DeathTriggerInstanceDesc::DeathTriggerInstanceDesc(const char* instanceName, Dea
 }
 
 // @func 0x0021BD90 DeathTriggerDef::Create
-ObjEntity* DeathTriggerDef::Create(EntityPlacement* placement)
+Entity* DeathTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kTrigType_Death) != 0))
         return nullptr;
-    DeathTriggerInstanceDesc desc(GetInstanceName(placement), this);
+    DeathTriggerInstanceDesc desc(InstanceName(placement), this);
     placement->FillInstanceDesc(desc);
     DeathTrigger* trigger = new DeathTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -178,12 +178,12 @@ DeathTrigger::~DeathTrigger()
 
 // @func 0x0021C774 DeathTrigger::Update
 // Occupants that left the required physics state stop counting as inside.
-void DeathTrigger::Update(float dt)
+bool DeathTrigger::Update(float dt)
 {
     if (m_physicsState != -1) {
         size_t i = 0;
         while (i < m_occupants.size()) {
-            ObjEntity* occupant = m_occupants[i];
+            Entity* occupant = m_occupants[i];
             const int state = CharacterPhysicsState(occupant);
             if (state == -1 || state == m_physicsState)
                 ++i;
@@ -191,7 +191,7 @@ void DeathTrigger::Update(float dt)
                 OnExit(occupant);
         }
     }
-    TriggerBase::Update(dt);
+    return TriggerBase::Update(dt);
 }
 
 // @func 0x0021D300 DeathTrigger::SetEnabled

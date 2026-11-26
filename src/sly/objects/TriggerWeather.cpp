@@ -55,14 +55,14 @@ EntityDef* CreateWeatherTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElem
 }
 
 // @func 0x002222F0 WeatherTriggerDef::Create
-ObjEntity* WeatherTriggerDef::Create(EntityPlacement* placement)
+Entity* WeatherTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kDefClass_WeatherTrigger) != 0))
         return nullptr;
-    TriggerInstanceDesc desc(GetInstanceName(placement), this);
+    TriggerInstanceDesc desc(InstanceName(placement), this);
     placement->FillInstanceDesc(desc);
     WeatherTrigger* trigger = new WeatherTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -73,7 +73,7 @@ WeatherTrigger::WeatherTrigger(const TriggerInstanceDesc& desc) : TriggerBase(de
 }
 
 // @func 0x002225B0 WeatherTrigger::Release
-void WeatherTrigger::Release(bool immediate)
+bool WeatherTrigger::Release(bool immediate)
 {
     if (immediate) {
         for (auto& plane : m_scripts)
@@ -82,7 +82,7 @@ void WeatherTrigger::Release(bool immediate)
                     if (script)
                         ScriptInstanceSetPaused(script, true);
     }
-    TriggerBase::Release(immediate);
+    return TriggerBase::Release(immediate);
 }
 
 // @func 0x00223C60 WeatherTrigger::IsDebugDisplayed

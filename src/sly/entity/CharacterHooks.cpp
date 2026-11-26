@@ -28,6 +28,7 @@ void Component24Reset(EntityComponent* component) { (void)component; }
 void Component15Reset(EntityComponent* component) { (void)component; }
 void EntityAttachChild(Entity* parent, const EntityChildLink& link) { (void)parent; (void)link; }
 void EntitySetState(Entity* entity, int layer, int state) { (void)entity; (void)layer; (void)state; }
+int PhysicsCompMovementMode(const EntityComponent* component) { (void)component; return 0; }
 bool ListenerIsHeavy(EntityListener* listener) { (void)listener; return false; }
 void ListenerOnDropped(EntityListener* listener, const uint8_t* dropSettings) { (void)listener; (void)dropSettings; }
 void ObjectApplyAlphaBuffer(ape::world::ApeObj* object, const void* buffer, uint8_t alpha) { (void)object; (void)buffer; (void)alpha; }
@@ -134,7 +135,7 @@ bool WorldFlag(uint32_t name) { (void)name; return false; }
 bool PhysicsWorldPresent() { return false; }
 
 void EntityPlayDirectorScript(Entity* entity, uint32_t script) { (void)entity; (void)script; }
-void EntityAttachSpawned(Entity* parent, SpawnParams& params, Entity* child) { (void)parent; (void)params; (void)child; }
+void EntityAttachSpawned(Entity* parent, EntityPlacement& placement, Entity* child) { (void)parent; (void)placement; (void)child; }
 
 } // namespace entity
 } // namespace sly

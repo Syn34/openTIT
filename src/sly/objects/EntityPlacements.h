@@ -489,8 +489,8 @@ public:
 // 0x400): its own copy of the definition's pieces.
 class BreakableChainPlacement : public EntityPlacement {
 public:
-    BreakableChainPlacement(const char* placementName, BreakableChainDef* ownerDef, uint32_t field70,
-                            const ape::Matrix34& placementTransform, const ape::Vec3& offset, bool bit31,
+    BreakableChainPlacement(const char* placementName, BreakableChainDef* ownerDef, ape::world::ApeObj* source,
+                            const ape::Matrix34& placementTransform, const ape::Vec3& scale, bool bit31,
                             bool bit30, uint32_t field74);
     ~BreakableChainPlacement() override;
     // Slot 2 (0x001A5FF4): the base copy and the pieces (appended).
@@ -506,8 +506,8 @@ struct BreakableChainInstanceDesc : EntityInstanceDesc {
 // Vtable 0x00B15180; type bit 0x800.
 class ChainPlacement : public EntityPlacement {
 public:
-    ChainPlacement(const char* placementName, EntityDef* ownerDef, uint32_t field70,
-                   const ape::Matrix34& placementTransform, const ape::Vec3& offset, bool bit31, bool bit30,
+    ChainPlacement(const char* placementName, EntityDef* ownerDef, ape::world::ApeObj* source,
+                   const ape::Matrix34& placementTransform, const ape::Vec3& scale, bool bit31, bool bit30,
                    uint32_t field74, uint32_t valueB4);
     ~ChainPlacement() override;
     // Slot 2 (0x001A7D48): the base copy and the word.
@@ -523,8 +523,8 @@ struct ChainInstanceDesc : EntityInstanceDesc {
 // Vtable 0x00B162B0; type bit 0x1000.
 class RopePlacement : public EntityPlacement {
 public:
-    RopePlacement(const char* placementName, EntityDef* ownerDef, uint32_t field70,
-                  const ape::Matrix34& placementTransform, const ape::Vec3& offset, bool bit31, bool bit30,
+    RopePlacement(const char* placementName, EntityDef* ownerDef, ape::world::ApeObj* source,
+                  const ape::Matrix34& placementTransform, const ape::Vec3& scale, bool bit31, bool bit30,
                   uint32_t field74, uint32_t valueE0, const ape::Vec3& pointC0, const ape::Vec3& pointD0,
                   uint32_t valueE4, bool flagE8);
     ~RopePlacement() override;

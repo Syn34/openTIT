@@ -228,18 +228,18 @@ void Character::AttachWeapon(uint32_t defName)
     if (!weaponDef)
         return;
 
-    SpawnParams params;
-    ape::StrCopyBounded(params.name, ape::TempFormat("%s_Weapon", object ? object->GetName() : "<unknown>"), sizeof(params.name));
+    EntityPlacement placement;
+    ape::StrCopyBounded(placement.name, ape::TempFormat("%s_Weapon", object ? object->GetName() : "<unknown>"),
+                        sizeof(placement.name));
     if (weaponDef->attachments && weaponDef->attachments->Count() != 0) {
-        for (const SpawnAttachmentDesc& desc : *weaponDef->attachments) {
-            if (!params.attachments)
-                params.attachments = new ape::ApeTArray<SpawnAttachmentDesc>(4);
-            params.attachments->PushBack(desc);
+        for (const EntityAttachmentDesc& desc : *weaponDef->attachments) {
+            if (!placement.attachments)
+                placement.attachments = new EntityAttachmentList(4);
+            placement.attachments->PushBack(desc);
         }
     }
-    if (Entity* weapon = weaponDef->Spawn(params))
-        EntityAttachSpawned(this, params, weapon);
-    delete params.attachments;
+    if (Entity* weapon = weaponDef->Spawn(&placement))
+        EntityAttachSpawned(this, placement, weapon);
 }
 
 // @func 0x0011F7B8 Character::ApplyProfileCostume

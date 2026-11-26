@@ -16,6 +16,7 @@
 #include "ape/math/ApeBounds.h"
 #include "ape/math/ApeMath.h"
 #include "ape/memory/ApeTArray.h"
+#include "sly/entity/EntityDef.h"
 
 #include <cstdint>
 
@@ -179,6 +180,7 @@ enum EntityFlags : uint32_t {
     kEnt_Active     = 0x00000002,  // slot 44
     kEnt_Suspended  = 0x00000004,
     kEnt_08         = 0x00000008,  // transform owned by someone else (no child update)
+    kEnt_NotListed  = 0x00000010,  // kept out of the global entity list (EntityInstanceDesc::kDesc_NotListed)
     kEnt_80         = 0x00000080,  // slot 23
     kEnt_Visible    = 0x00000100,
     kEnt_RestoreObject = 0x00000400,  // restore the world object's transform when destroyed
@@ -205,6 +207,7 @@ enum EntityFlags2 : uint16_t {
     kEnt2_VisibilityPending = 0x0100,
     kEnt2_NoUpdate        = 0x1000,
     kEnt2_InListenerGroup = 0x2000,  // registered in an event listener group (0x0048F298 removes it)
+    kEnt2_4000            = 0x4000,  // the definition's kDefFlag_Field20
 };
 
 // Class bits (+0xB8, 64 bits on the console).
@@ -221,66 +224,6 @@ struct EntitySoundSlot {
     void* attachObject = nullptr;   // world object it follows without a bone (else the entity)
 };
 
-// Attachment record a definition adds to every spawn (0xC0 bytes on the
-// console). NOTE: contents not decoded; copied as a whole.
-struct SpawnAttachmentDesc {
-    uint8_t data[0xC0];
-};
-
-// Parameters of one spawn (filled by the caller, completed from the definition).
-struct SpawnParams {
-    ape::ApeTArray<SpawnAttachmentDesc>* attachments = nullptr;   // 0x10
-    ape::world::ApeObj* sourceObject = nullptr;   // 0x70 placed object the entity is built from, or null
-    char name[0x40] = {};                         // 0x8C requested instance name (may be empty)
-    class EntityDef* def = nullptr;          // 0x78
-    uint32_t defField24 = 0;                 // 0x7C
-    uint32_t defField28 = 0;                 // 0x80
-    bool flag20000000 = false;               // 0x84 bit 29, from the definition's option bit 2
-};
-
-// Entity definition (registered by name in the definition map 0x01013B04).
-class EntityDef {
-public:
-    virtual ~EntityDef();
-    // Slot 2: name shown for the definition.
-    // @func 0x007435C0 EntityDef::GetDisplayName
-    virtual const char* GetDisplayName() const { return name; }
-    // Slots 4-6. NOTE: meanings unknown; scripted definitions return their
-    // words at +0xB4/+0xB8 from slots 4/5.
-    // @func 0x00746F4C EntityDef::DefSlot4
-    virtual uint32_t DefSlot4() const { return 0; }
-    // @func 0x00746F54 EntityDef::DefSlot5
-    virtual uint32_t DefSlot5() const { return 0; }
-    // @func 0x007372F4 EntityDef::DefSlot6
-    virtual uint32_t DefSlot6() const { return 0; }
-    virtual Entity* Spawn(SpawnParams& params) { (void)params; return nullptr; }   // slot 7 (+0x1C)
-
-    // Name for a new instance: the requested name, else the source object's
-    // name, else "<def name>_instNNNNN".
-    const char* InstanceName(const SpawnParams& params);
-    const char* MakeInstanceName();
-    // Component description of `type` after `after` (or from the start).
-    ComponentDesc* FindComponentDesc(uint32_t type, ComponentDesc* after = nullptr) const;
-
-    int32_t instanceCounter = 0;             // 0x0C
-    ape::ApeTArray<ComponentDesc*>* componentDescs = nullptr;   // 0x10
-    uint32_t optionFlags = 0;                // 0x14 NOTE: bit 0x200000 = "loot/drop" type (see users)
-    uint8_t options = 0;                     // 0x20
-    uint32_t field_24 = 0;                   // 0x24
-    uint32_t field_28 = 0;                   // 0x28
-    uint32_t nameHash = 0;                   // 0x34
-    char name[0x20] = {};                    // 0x38
-    char* field_80 = nullptr;                // 0x80 NOTE: owned buffer, contents unknown
-    ape::ApeTArray<SpawnAttachmentDesc>* attachments = nullptr;   // 0x88
-    // 0x08: world object the definition was made from (its geometry gives
-    // the default bounds). NOTE: filled by the definition loader (not ported).
-    ape::world::ApeObj* templateObject = nullptr;
-};
-void UnregisterEntityDef(EntityDef* def);
-// Bounds of a definition (EntityDef slot 3 base): its template object's
-// geometry box scaled by the object's scale, a point at the origin without
-// one.
-void EntityDefBaseBounds(const EntityDef* def, ape::Aabb& out);
 // Draws a flash/fade colour (RGBA) over the entity's geometry this frame
 // and over every attached child's (0x000D8F08); `additive` selects the
 // renderer's additive variant (NOTE: the name of the flag is a guess).
@@ -289,6 +232,10 @@ void EntityApplyFade(Entity* entity, const uint8_t* color, bool additive);
 class Entity {
 public:
     Entity();
+    // Builds the entity an instance description describes (0x000D3578):
+    // transform, name, flags from the description's options, the world
+    // object, the definition's components, and joins the entity list.
+    explicit Entity(const EntityInstanceDesc& desc);
     virtual ~Entity();
 
     // -- virtual interface (console vtable 0x00B12550) --------------------------
@@ -456,8 +403,10 @@ public:
     // current target); none by default.
     // @func 0x007374C8 Entity::GetTrackedTarget
     virtual Entity* GetTrackedTarget() { return nullptr; }
+    // Slot 70 (+0x118): one of the entity's physics bodies by name hash
+    // (the vehicles answer for their body); none by default.
     // @func 0x007374D0 Entity::Slot70
-    virtual int Slot70() { return 0; }
+    virtual void* Slot70(uint32_t nameHash) { (void)nameHash; return nullptr; }
     // Slot 71 (+0x11C): centre of mass (the position by default).
     // @func 0x00743754 Entity::GetAimPoint
     virtual ape::Vec3 GetAimPoint() { return transform.translation; }
@@ -584,6 +533,7 @@ public:
     uint64_t classBits = 0;                        // 0xB8 EntityClassBits
     uint32_t typeBits[3] = {};                     // 0xC0 bitset of entity types (words +0xC0..+0xC8)
     uint32_t renderId = 0;                         // 0xCC
+    float field_D0 = -1.0f;                        // 0xD0 square of EntityInstanceDesc::field_84 (-1: none)
     float cullDistance = 0.0f;                     // 0xD4
     EntityDef* def = nullptr;                      // 0xD8
     void* field_DC = nullptr;                      // 0xDC NOTE: object driven by messages 0x21595665/0x00C73980
@@ -696,12 +646,6 @@ namespace entity {
 void RegisterComponentTemplate(uint32_t name, ComponentDesc* desc);
 ComponentDesc* FindComponentTemplate(uint32_t name);
 void UnregisterComponentTemplate(uint32_t name);
-
-// -- definitions ------------------------------------------------------------------
-void RegisterEntityDef(EntityDef* def);
-EntityDef* FindEntityDef(uint32_t nameHash);
-Entity* SpawnFromDef(EntityDef* def, SpawnParams& params);
-Entity* SpawnEntity(uint32_t defName, SpawnParams& params);
 
 // Deferred entity events, processed once per frame (0x01013B84).
 struct DeferredEntityEvent {

@@ -22,7 +22,6 @@ constexpr uint32_t kScriptStateEnabled = 0xA6CB0022;
 // Collision filter of push-block volumes.
 constexpr uint32_t kPushBlockFilter = 0x15;
 // Entity type bit (+0xC4) of push blocks.
-constexpr uint32_t kFlags3_PushBlock = 0x20000;
 
 // One "X" value sets min and max; otherwise "XMin"/"XMax" are read.
 void ReadRange(ape::xml::XmlElement* elem, uint32_t single, uint32_t minAttr, uint32_t maxAttr,
@@ -103,14 +102,14 @@ FxTriggerInstanceDesc::FxTriggerInstanceDesc(const char* instanceName, FxTrigger
 }
 
 // @func 0x0021E620 FxTriggerDef::Create
-ObjEntity* FxTriggerDef::Create(EntityPlacement* placement)
+Entity* FxTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->flags & kDefClass_FxTrigger) != 0))
         return nullptr;
-    FxTriggerInstanceDesc desc(GetInstanceName(placement), this);
+    FxTriggerInstanceDesc desc(InstanceName(placement), this);
     placement->FillInstanceDesc(desc);
     FxTrigger* trigger = new ScriptedFxTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -192,7 +191,7 @@ FxTrigger::~FxTrigger()
 }
 
 // @func 0x00220024 FxTrigger::OnStay
-void FxTrigger::OnStay(ObjEntity* entity)
+void FxTrigger::OnStay(Entity* entity)
 {
     if (!m_script)
         return;
@@ -258,14 +257,14 @@ EntityDef* CreatePushBlockTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlEl
 }
 
 // @func 0x002219A8 PushBlockTriggerDef::Create
-ObjEntity* PushBlockTriggerDef::Create(EntityPlacement* placement)
+Entity* PushBlockTriggerDef::Spawn(EntityPlacement* placement)
 {
     if (TriggerPlacementSkips(placement, (placement->typeBits & kTrigType_PushBlock) != 0))
         return nullptr;
-    FxTriggerInstanceDesc desc(GetInstanceName(placement), this);
+    FxTriggerInstanceDesc desc(InstanceName(placement), this);
     placement->FillInstanceDesc(desc);
     PushBlockTrigger* trigger = new PushBlockTrigger(desc);
-    trigger->OnCreated();
+    trigger->OnSpawn();
     return trigger;
 }
 
@@ -280,16 +279,16 @@ PushBlockTrigger::PushBlockTrigger(const FxTriggerInstanceDesc& desc) : FxTrigge
 PushBlockTrigger::~PushBlockTrigger() = default;
 
 // @func 0x00221DD0 PushBlockTrigger::OnEnter
-void PushBlockTrigger::OnEnter(ObjEntity* entity)
+void PushBlockTrigger::OnEnter(Entity* entity)
 {
-    if (entity && (entity->flags3 & kFlags3_PushBlock))
+    if (entity && (entity->HasTypeBit(kType_Pushable)))
         FxTrigger::OnEnter(entity);
 }
 
 // @func 0x00221E44 PushBlockTrigger::OnExit
-void PushBlockTrigger::OnExit(ObjEntity* entity)
+void PushBlockTrigger::OnExit(Entity* entity)
 {
-    if (!entity || !(entity->flags3 & kFlags3_PushBlock))
+    if (!entity || !(entity->HasTypeBit(kType_Pushable)))
         return;
     // NOTE: the console runs the FX leave helper (0x0021FB38, not ported)
     // unless the message has already been seen; only the base part remains.

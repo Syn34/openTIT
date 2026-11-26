@@ -45,7 +45,7 @@ struct AlertTriggerDefDesc : TriggerDefDesc {
 class AlertTriggerDef : public TriggerDef {
 public:
     explicit AlertTriggerDef(const AlertTriggerDefDesc& desc);
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
     // tagged there); the deleting variant returns the block to the bucket
     // allocator.
@@ -58,8 +58,8 @@ class AlertTrigger : public TriggerBase {
 public:
     explicit AlertTrigger(const TriggerInstanceDesc& desc) : TriggerBase(desc, 0x20, true) {}
     ~AlertTrigger() override;
-    void OnEnter(ObjEntity* entity) override;
-    void OnExit(ObjEntity* entity) override;
+    void OnEnter(Entity* entity) override;
+    void OnExit(Entity* entity) override;
     bool IsDebugDisplayed() const override;
 };
 
@@ -72,7 +72,7 @@ EntityDef* CreateAlertTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlElemen
 class CrawlTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
     // tagged there); the deleting variant returns the block to the bucket
     // allocator.
@@ -84,8 +84,8 @@ class CrawlTrigger : public TriggerBase {
 public:
     explicit CrawlTrigger(const TriggerInstanceDesc& desc) : TriggerBase(desc, 0x20, true) {}
     ~CrawlTrigger() override;
-    void OnEnter(ObjEntity* entity) override;
-    void OnExit(ObjEntity* entity) override;
+    void OnEnter(Entity* entity) override;
+    void OnExit(Entity* entity) override;
     bool IsDebugDisplayed() const override;
 };
 
@@ -103,7 +103,7 @@ int PhysicsStateIndex(uint32_t nameHash);
 class FilteredTriggerDef : public TriggerDef {
 public:
     FilteredTriggerDef(const TriggerDefDesc& desc, int state) : TriggerDef(desc), physicsState(state) {}
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
     // tagged there); the deleting variant returns the block to the bucket
     // allocator.
@@ -132,12 +132,12 @@ public:
     explicit FilteredTrigger(const FilteredTriggerInstanceDesc& desc)
         : TriggerBase(desc, 0x20, true), m_physicsState(-1) {}
     ~FilteredTrigger() override;
-    void Update(float dt) override;
-    void OnEnter(ObjEntity* entity) override;
+    bool Update(float dt) override;
+    void OnEnter(Entity* entity) override;
     bool IsDebugDisplayed() const override;
 
 private:
-    bool Accepts(ObjEntity* entity);
+    bool Accepts(Entity* entity);
     int m_physicsState;             // 0x1AC
 };
 
@@ -146,7 +146,7 @@ EntityDef* CreateFilteredTriggerDef(ape::xml::XmlElement* root, ape::xml::XmlEle
 EntityPlacement* ParseFilteredTriggerPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                const char* name);
 // Physics state component word of a character (+0x1A0 bits 28..30).
-int CharacterPhysicsState(ObjEntity* entity);
+int CharacterPhysicsState(Entity* entity);
 
 // ---------------------------------------------------------------------------
 // Job: offers / starts a job (mission) when the player walks in.
@@ -162,7 +162,7 @@ constexpr uint32_t kAttr_Job_Text  = 0xF735351B;   // string: prompt text
 class JobTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
     // tagged there); the deleting variant returns the block to the bucket
     // allocator.
@@ -199,8 +199,8 @@ class JobTrigger : public TriggerBase {
 public:
     explicit JobTrigger(const JobTriggerInstanceDesc& desc);
     ~JobTrigger() override;
-    void Release(bool immediate) override;
-    void OnEnter(ObjEntity* entity) override;
+    bool Release(bool immediate) override;
+    void OnEnter(Entity* entity) override;
     bool IsDebugDisplayed() const override;
     // The job this trigger belongs to (0x00221068) and its field +0x1E8 (0x0022104C).
     void* GetJob() const;
@@ -230,7 +230,7 @@ uint32_t JobField1E8(const void* job);
 class JumpDirTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
     // tagged there); the deleting variant returns the block to the bucket
     // allocator.
@@ -262,7 +262,7 @@ const char* TriggerNameSuffix(const char* name);
 class UpdateEnableTriggerDef : public TriggerDef {
 public:
     using TriggerDef::TriggerDef;
-    ObjEntity* Create(EntityPlacement* placement) override;
+    Entity* Spawn(EntityPlacement* placement) override;
     // The member-wise destruction is TriggerDef::~TriggerDef (its copies are
     // tagged there); the deleting variant returns the block to the bucket
     // allocator.
@@ -274,23 +274,23 @@ class UpdateEnableTrigger : public TriggerBase {
 public:
     explicit UpdateEnableTrigger(const TriggerInstanceDesc& desc);
     ~UpdateEnableTrigger() override;
-    void Update(float dt) override;
-    void OnEnter(ObjEntity* entity) override;
-    void OnExit(ObjEntity* entity) override;
+    bool Update(float dt) override;
+    void OnEnter(Entity* entity) override;
+    void OnExit(Entity* entity) override;
     bool IsDebugDisplayed() const override;
 
 private:
     // Characters and players inside, with whether each was a player when last
     // seen (a character can become the player).
     struct Tracked {
-        ObjEntity* entity = nullptr;
+        Entity* entity = nullptr;
         bool isPlayer = false;
     };
     // Wakes every occupant that sleeps without a player near.
     void WakeOccupants();
     // A player left: when none remain, the sleeping occupants (except `leaving`)
     // are put back to sleep (0x002257B4).
-    void PlayerLeft(ObjEntity* leaving);
+    void PlayerLeft(Entity* leaving);
 
     uint32_t m_playerCount = 0;          // 0x1AC players inside
     std::vector<Tracked> m_tracked;      // 0x1B0 (capacity 2)

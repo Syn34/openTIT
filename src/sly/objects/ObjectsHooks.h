@@ -14,11 +14,13 @@
 namespace sly { namespace audio { struct SoundName; struct SoundZone; struct MixState; } }
 namespace sly { namespace audio { struct SoundName; } class WindSystem; }
 
+namespace sly { namespace entity { class Entity; class EntityDef; } }
+
 namespace sly {
 namespace objects {
 
-class ObjEntity;
-class EntityDef;
+using entity::Entity;
+using entity::EntityDef;
 
 // ---------------------------------------------------------------------------
 // Physics trigger volumes (Havok hkpAabbPhantom / hkpShapePhantom on the console)
@@ -55,8 +57,8 @@ void VolumeRemoveProperty(TriggerVolume* volume, uint32_t key);
 void VolumeAddProperty(TriggerVolume* volume, uint32_t key, uint64_t value);
 // Phantom listeners: drops every installed listener and installs the trigger's own
 // (0x00928828 removePhantomListener, 0x009288D8 addPhantomListener).
-void VolumeInstallListener(TriggerVolume* volume, ObjEntity* trigger);
-void VolumeRemoveListener(TriggerVolume* volume, ObjEntity* trigger);
+void VolumeInstallListener(TriggerVolume* volume, Entity* trigger);
+void VolumeRemoveListener(TriggerVolume* volume, Entity* trigger);
 // World-space bounds of the volume (virtual +0x20 of the phantom).
 ape::Aabb VolumeGetAabb(const TriggerVolume* volume);
 // hkpAabbPhantom::setAabb (0x00924B90).
@@ -89,8 +91,8 @@ NavObstacleHandle NavAddObstacle(const ape::Matrix34& transform, const ape::Vec3
 void NavRemoveObstacle(NavObstacleHandle& handle);
 // Pending-trigger bookkeeping of entities with flags2 bit 3 (0x0012E824 add,
 // 0x0012E8B0 remove): the entity remembers triggers it is queued in.
-void EntityTrackTrigger(ObjEntity* entity, ObjEntity* trigger);
-void EntityUntrackTrigger(ObjEntity* entity, ObjEntity* trigger);
+void EntityTrackTrigger(Entity* entity, Entity* trigger);
+void EntityUntrackTrigger(Entity* entity, Entity* trigger);
 
 // ---------------------------------------------------------------------------
 // Game events (0x0046502C entered, 0x00465124 all-entered, 0x004650A8 left;
@@ -102,7 +104,7 @@ enum TriggerEventKind {
     kTriggerEvent_Left,
     kTriggerEvent_Alert,              // 0x00464F88: a player was spotted by an alert volume
 };
-void PostTriggerEvent(TriggerEventKind kind, ObjEntity* trigger, uint8_t playerIndex);
+void PostTriggerEvent(TriggerEventKind kind, Entity* trigger, uint8_t playerIndex);
 // Number of local players (game world byte +0x1D).
 int GetPlayerCount();
 
@@ -110,7 +112,7 @@ int GetPlayerCount();
 // Characters, jobs, world lookups
 // ---------------------------------------------------------------------------
 // Whether a player character is currently disguised (0x00129894).
-bool IsCharacterDisguised(const ObjEntity* character);
+bool IsCharacterDisguised(const Entity* character);
 // Spline definition by name hash (ApeTDefList<ApeSplineDef>::Find on 0x00F8F158).
 void* FindSplineDef(uint32_t nameHash);
 // Job manager (0x00F64C20): the job named `jobNameHash` (0x002E1220), or null.
@@ -129,7 +131,7 @@ void SetVoice3D(uint32_t voice, const ape::Vec3& position, float volume);
 // Listener position (game world block +0x128260).
 ape::Vec3 GetListenerPosition();
 // The local player entity (game world +0x1078).
-ObjEntity* GetPlayerEntity();
+Entity* GetPlayerEntity();
 
 // Sound zones and mix states (sly/game audio).
 using SoundZone = audio::SoundZone;   // sly/game/SoundZones.h
@@ -153,18 +155,18 @@ void MixStatePop(MixState* mix, float fadeTime);      // 0x0044D614
 // ---------------------------------------------------------------------------
 // Starts `script` on the entity (0x000DCA20 with (0, 1)) and returns the
 // instance; bit 9 of the instance word +0x88 pauses it.
-void* EntityStartScript(ObjEntity* entity, void* script);
+void* EntityStartScript(Entity* entity, void* script);
 void ScriptInstanceSetPaused(void* instance, bool paused);
 
 // Script variables of an entity script instance: the object held by an object
 // variable (0x004A66D0) and its setter (0x004A65F0, the entity's world object).
-ObjEntity* ScriptGetEntityVar(void* instance, uint32_t varName);
-void ScriptSetEntityVar(void* instance, uint32_t varName, ObjEntity* entity);
+Entity* ScriptGetEntityVar(void* instance, uint32_t varName);
+void ScriptSetEntityVar(void* instance, uint32_t varName, Entity* entity);
 // ApeAnimScriptInstance::SetStateAndUpdate by state name (0x004CF988).
 void ScriptSetState(void* instance, uint32_t stateName);
 // The trigger variable (type 15, name 0x70D68D3A) that scripts started by a
 // trigger use to reach it.
-void ScriptSetTriggerVar(void* instance, ObjEntity* trigger);
+void ScriptSetTriggerVar(void* instance, Entity* trigger);
 
 // Volume shape type (phantom virtual slot 7: 0 AABB, 1-2 shape phantoms) and
 // world transform of shape phantoms (+0xA0).
@@ -179,18 +181,18 @@ WindSystem* WindFieldCreate(const ape::Matrix34& transform, const EntityDef* def
 void WindFieldDestroy(WindSystem* field);
 void WindFieldSetTransform(WindSystem* field, const ape::Matrix34& transform);
 void WindFieldUpdate(WindSystem* field, float dt);
-bool WindFieldAddEntity(WindSystem* field, ObjEntity* entity);
-void WindFieldRemoveEntity(WindSystem* field, ObjEntity* entity, bool immediate);
-bool WindFieldHasEntity(const WindSystem* field, const ObjEntity* entity);
+bool WindFieldAddEntity(WindSystem* field, Entity* entity);
+void WindFieldRemoveEntity(WindSystem* field, Entity* entity, bool immediate);
+bool WindFieldHasEntity(const WindSystem* field, const Entity* entity);
 void WindFieldSetEnabled(WindSystem* field, bool enabled);
 // Occupant capacity of wind triggers (global 0x00F64A30).
 uint16_t WindTriggerCapacity();
 
 // Entity::SetVisibilityDeferred (0x000DD02C): visible/awake state, optionally
 // applied later.
-void EntitySetVisibilityDeferred(ObjEntity* entity, bool visible, bool deferred);
+void EntitySetVisibilityDeferred(Entity* entity, bool visible, bool deferred);
 // Health of killable entities (+0x15C).
-float EntityHealth(const ObjEntity* entity);
+float EntityHealth(const Entity* entity);
 
 // Jobs (game state 0x00F64C20): a job's state index (0x002D98A4: 0
 // unavailable, 1 available, 2 complete), whether a job is running (+0x28),
@@ -200,20 +202,20 @@ float EntityHealth(const ObjEntity* entity);
 int JobState(const void* job);
 bool GameStateHasActiveJob();
 bool GameStateJobsBlocked();
-bool GameStateCanStartJob(ObjEntity* entity, void* job);
-void GameStateStartJob(ObjEntity* entity, void* job, uint32_t startGoal);
+bool GameStateCanStartJob(Entity* entity, void* job);
+void GameStateStartJob(Entity* entity, void* job, uint32_t startGoal);
 // Ability byte of a character (+0x290 + index): bit 7 = locked, bit 6 = shown anyway.
-uint8_t CharacterAbilityState(const ObjEntity* character, int ability);
+uint8_t CharacterAbilityState(const Entity* character, int ability);
 // Yes/no prompt of the game world (0x00489A60) whose answer starts the job
 // (callback 0x00F39CA0).
-void ShowJobPrompt(ObjEntity* entity, const char* text, const char* buttons);
+void ShowJobPrompt(Entity* entity, const char* text, const char* buttons);
 
 // Whether the game state's text display reports the message as already
 // seen (0x002D9994 on game state +0x28 with a text field of that id, kind 13).
 bool TextDisplayHasSeen(uint32_t messageId);
 
 // Second class word of an entity (+0xC8).
-uint32_t EntityClass2(const ObjEntity* entity);
+uint32_t EntityClass2(const Entity* entity);
 
 // Game camera (game world +0x1281E0): removes a camera mode with a blend
 // time (0x000FBB88, negative = default), and deletes a mode (virtual slot 1).
@@ -223,7 +225,7 @@ void CameraModeDelete(void* mode);
 // Hit record an entity receives through its virtual slot 86 (record vtable
 // 0x00B0DADC, the same layout as gameplay::HitInfo).
 struct EntityHit {
-    ObjEntity* source = nullptr;     // +0x04
+    Entity* source = nullptr;     // +0x04
     uint32_t reactType = 0;          // +0x08
     uint16_t field_0C = 0;           // +0x0C
     uint8_t kind = 3;                // +0x0E bits 13-15
@@ -235,7 +237,7 @@ struct EntityHit {
     float amount = 0.0f;             // +0x20
     float knockback = 0.0f;          // +0x24
 };
-void EntityTakeHit(ObjEntity* target, EntityHit& hit);
+void EntityTakeHit(Entity* target, EntityHit& hit);
 
 } // namespace objects
 } // namespace sly
