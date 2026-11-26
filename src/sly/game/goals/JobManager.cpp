@@ -31,8 +31,12 @@ Goal* PlayerGoalListAt(uint32_t index) { return index < PlayerGoalCount() ? g_ga
 uint32_t LiveJobId() { return 0; }
 int GameWorldState(int) { return 0; }
 void PlayerResetJobState(int) {}
-// TODO(0x00489A60): the game world message box is not ported.
-void GameWorldShowPlayerMessage(uint32_t, const char*, const char*) {}
+void GameWorldShowPlayerMessage(uint32_t player, const char* message, const char* buttons)
+{
+    if (g_game)
+        g_game->ShowPrompt(g_game->PlayerCharacter(int(player)), message, buttons, nullptr, nullptr, nullptr,
+                           nullptr, false, false);
+}
 int g_debugOpenSafes = 0;
 void GameWorldRestartState()
 {
@@ -85,8 +89,16 @@ uint8_t* ProfileNotifyPair(uint8_t profile)
     return pairs[profile & 7];
 }
 void GameWorldReloadLevel() { sly::RequestLevelRestart(); }
-void GameWorldSetActivePlayer(uint8_t) {}
-void GameWorldPostEvent(uint32_t) {}
+void GameWorldSetActivePlayer(uint8_t player)
+{
+    if (g_game)
+        g_game->SetActivePlayer(player);
+}
+void GameWorldPostEvent(uint32_t event)
+{
+    if (g_game)
+        g_game->OpenMenu(int(event));
+}
 void HudType200Transition(hud::HudObject*) {}
 void GameWorldSetState(int, int) {}
 void GameWorldSetStateData(const char*, uint32_t) {}

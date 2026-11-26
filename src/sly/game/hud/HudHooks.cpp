@@ -3,6 +3,7 @@
 
 #include "sly/game/Upgrades.h"
 #include "sly/game/ObjectHelpers.h"
+#include "sly/game/SlyGame.h"
 #include "sly/game/goals/JobManager.h"
 
 #include "ape/world/ApeObj.h"
@@ -30,8 +31,11 @@ audio::SoundName* FindHudSound(uint32_t) { return nullptr; }
 void PlayHudSound(audio::SoundName*) {}
 // TODO(application pad state)
 bool ConfirmButtonPressed() { return false; }
-// TODO(0x0048970C)
-void GameWorldContinue() {}
+void GameWorldContinue()
+{
+    if (g_game)
+        g_game->ContinueAfterPrompt();
+}
 // TODO(ApeObj slot 14 clone / 0x00590FEC): world objects cannot be cloned
 // yet; the element shares the template.
 ape::world::ApeObj* HudCloneObject(ape::world::ApeObj* object)

@@ -52,13 +52,8 @@ ActorDef::ActorDef(const ActorDefDesc& desc)
         if (!body)
             continue;
         Part part;
-        std::memcpy(part.field_00, partDesc.field_00, sizeof(part.field_00));
+        static_cast<ActorPartFields&>(part) = partDesc;
         part.havokObject = body;
-        std::memcpy(part.field_24, partDesc.field_24, sizeof(part.field_24));
-        part.partFlags = partDesc.partFlags;
-        part.aimOffset = partDesc.aimOffset;
-        part.navMode = partDesc.navMode;
-        std::memcpy(part.field_94, partDesc.field_94, sizeof(part.field_94));
         if (!parts)
             parts = new ape::ApeTArray<Part>();
         parts->Add(part);

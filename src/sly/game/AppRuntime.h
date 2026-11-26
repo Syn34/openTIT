@@ -39,6 +39,9 @@ struct AppPlayer {
     bool IsPadConnected() const;
 
     uint8_t index = 0;                        // +0xB4 (stride 0x2EC0)
+    // +0xB6: low half of the word at +0xB4. Bit 15: the pause menu holds
+    // the pad (set when a menu opens).
+    uint16_t padFlags = 0;
     uint32_t inputFlags = 0;                  // +0xB8
     uint32_t inputMask = 0;                   // +0xBC
     uint32_t analogMask = 0xFFFFFFFFu;        // +0xC4 analog values the player may use

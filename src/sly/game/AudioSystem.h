@@ -270,7 +270,12 @@ struct AudioVolumeSettings {
     float sfxOption = 1.0f;       // 0x010AEDDC
     float musicOption = 1.0f;     // 0x010AEE28
     float masterOption = 1.0f;    // 0x010AECF8
+    // NOTE: the option volume between the master and dialogue ones
+    // (0x010AED44); the game world scales option volume 3 by it.
+    float option44 = 1.0f;
 };
+// The volume scales (0x00F65B40.., option volumes 0x010AECF8..).
+extern AudioVolumeSettings g_volumeSettings;
 // Bus volumes handed to the sound library (it re-reads the dirty ones).
 struct AudioBusVolumes {
     std::mutex lock;              // the library lock (0x006EFD10 / 0x006EFD34)

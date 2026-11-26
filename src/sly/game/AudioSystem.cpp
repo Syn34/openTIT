@@ -486,7 +486,9 @@ float g_mixBlendElapsed = 0.0f;                    // 0x010AFE8C
 // and their writers are not identified: four scale factors (0x00F65B40..
 // 0x00F65B4C) and the option volumes (0x010AED90, 0x010AEDDC, 0x010AEE28,
 // master 0x010AECF8).
+} // namespace
 AudioVolumeSettings g_volumeSettings;
+namespace {
 AudioBusVolumes g_busVolumes;                       // 0x00F8E5F4.. (library side), dirty mask 0x011D86D0
 uint32_t g_busUpdateShift = 0;                      // 0x010B0B20
 uint32_t g_audioFrame = 0;                          // 0x010B00DC
