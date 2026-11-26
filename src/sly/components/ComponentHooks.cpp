@@ -1,6 +1,7 @@
 // openTIT - Component hooks (stubs).
 #include "sly/components/ComponentHooks.h"
 #include "sly/game/GameMessages.h"
+#include "sly/game/ObjectHelpers.h"
 #include "sly/game/SlyGame.h"
 
 #include "ape/anim/ApeAnimClip.h"
@@ -26,8 +27,7 @@ void AnimControllerBuildLayers(anim::AnimController* controller, void* tree)
     controller->BuildLayers(static_cast<const anim::AnimTree*>(tree));
 }
 void* FindAnimBlendMap(uint32_t nameHash) { return anim::FindAnimBlendMap(nameHash); }
-// TODO(0x004A59B4 geometry material lookup)
-agl::AglMaterial* GeomFindMaterial(ape::world::ApeObj*, uint32_t) { return nullptr; }
+agl::AglMaterial* GeomFindMaterial(ape::world::ApeObj* geom, uint32_t name) { return FindGeomMaterial(geom, name); }
 void QueueWorldCallback(int list, void* callback, void* context, entity::Entity* owner)
 {
     if (g_game)

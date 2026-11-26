@@ -91,10 +91,10 @@ public:
     static void Destroy(void* object);
     void Release() override;
 
-    // One drawable piece: geometry and the material slot it uses.
+    // One drawable piece: geometry and the material it is drawn with.
     struct MeshEntry {
         AglSubMesh* mesh;
-        uint32_t material;
+        class AglMaterial* material;
     };
 
     // Names every submesh after the topology.
@@ -173,7 +173,7 @@ public:
     uint32_t field_C = 0;
     AglShaderClass* shaderClass = nullptr;
     AglTexture* textures[kMaxMaterialTextures] = {};
-    uint32_t field_28 = 0;
+    uint32_t nameHash = 0;                 // 0x28 (FindGeomMaterial looks materials up by it)
     uint8_t textureCount = 0;              // texture layers in use
     uint8_t field_2D = 0;
     uint16_t sortKey = 0;                  // draw order key (creation order by default)
