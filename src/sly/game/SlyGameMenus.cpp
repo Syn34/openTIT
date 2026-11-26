@@ -4,6 +4,7 @@
 
 #include "ape/core/ApeString.h"
 #include "ape/level/ApeGui.h"
+#include "ape/level/ApeGuiScript.h"
 #include "ape/world/ApeObj.h"
 #include "sly/components/Components.h"
 #include "sly/entity/Entity.h"
@@ -11,6 +12,9 @@
 #include "sly/game/AppRuntime.h"
 #include "sly/game/GameShellHooks.h"
 #include "sly/game/LevelParams.h"
+#include "sly/game/Subtitles.h"
+#include "sly/gameplay/ReturnTreasure.h"
+#include "sly/entity/GameEntityHooks.h"
 #include "sly/game/SoundZones.h"
 #include "sly/entity/Awards.h"
 #include "sly/game/goals/JobManager.h"
@@ -807,6 +811,130 @@ bool SlyGame::StartSpeakerDialog(const DialogSpeakerEntry* speakers, uint32_t co
     if (dialog.mixState)
         audio::PushMixState(dialog.mixState, g_audioFreezeScreenCrossfadeDuration.Get());
     return true;
+}
+
+} // namespace sly
+
+namespace sly {
+
+// Letterbox visibility saved when a menu opens (0x00F65D8C).
+bool g_letterboxWasVisible = false;
+
+namespace {
+// Class bit of an entity under cutscene control (classBits bit 8).
+constexpr uint64_t kClass_InCutscene = 0x100;
+// Component types touched by the cutscene mode.
+constexpr uint32_t kComp_AnimDriver = 0x17;
+constexpr int kAnimDriver_PlayingScript = 7;
+} // namespace
+
+// @func 0x0048B330 SlyGame::SetCutsceneMode
+void SlyGame::SetCutsceneMode(bool on)
+{
+    entity::Entity* player = players[0].character;
+    if (on) {
+        timeScaleA = 1.0f;
+        timeScaleATarget = -1.0f;
+        field_128590 = 0;
+        timeScaleB = 1.0f;
+        timeScaleBTarget = -1.0f;
+        field_12859C = 0;
+        if (player && player->HasTypeBit(3)) {
+            if (entity::EntityComponent* gadget = entity::EntityGadget(player))
+                GadgetPutAway(gadget, false, true, false);
+        }
+    }
+    if (player) {
+        player->classBits = on ? (player->classBits | kClass_InCutscene) : (player->classBits & ~kClass_InCutscene);
+        if (entity::EntityComponent* targeting = entity::EntityTargeting(player)) {
+            targeting->SetOption(!on);
+            if (on)
+                game::TargetingClearTargets(targeting);
+            else
+                game::TargetingSetEnabled(targeting, false);
+        }
+        if (entity::EntityComponent* component = player->GetComponent(kComp_24))
+            Component24Restart(component, false);
+        if (on) {
+            for (entity::EntityComponent* c = player->GetComponent(kComp_AnimDriver); c;
+                 c = player->GetComponent(kComp_AnimDriver, c)) {
+                if (entity::AnimDriverState(c) == kAnimDriver_PlayingScript)
+                    game::AnimDriverStopScript(c);
+            }
+        }
+    }
+    // NOTE: leaving the cutscene calls an empty AI manager method.
+    if (on) {
+        if (levels::ai::AIManager* manager = levels::ai::GetAIManager())
+            manager->ClearSightings();
+    }
+    const uint32_t count = entity::EntityCount(entity::kList_All);
+    for (uint32_t i = 0; i < count; ++i) {
+        entity::Entity* e = entity::EntityAt(entity::kList_All, i);
+        if (e && e->HasTypeBit(3))
+            e->SetVisibilityDeferred(!on, false);
+    }
+    ClearSubtitle();
+    if (camera) {
+        camera->cameraFlags = on ? (camera->cameraFlags & ~entity::kCamFlag_PostFxDof)
+                                 : (camera->cameraFlags | entity::kCamFlag_PostFxDof);
+    }
+}
+
+// @func 0x0048B674 SlyGame::SetCutsceneHud
+void SlyGame::SetCutsceneHud(bool on)
+{
+    if (cutsceneHudLocked)
+        return;
+    SetCutsceneMode(on);
+    if (returnTreasure && returnTreasure->IsActive())
+        returnTreasure->SetPaused(on);
+    if (!on) {
+        hud::SetAllEnabled(true, false);
+        if (ape::ApeGuiObject* letterbox = ape::FindGuiObject("InGame.Cutscene.Letterbox", nullptr)) {
+            ape::StopGuiScripts("", letterbox);
+            ape::PlayGuiScript("Letterbox_Shutdown", letterbox, true, false);
+        }
+    } else {
+        hud::ResetHudElements(false);
+        entity::Entity* player = players[0].character;
+        if (player && player->HasTypeBit(3)) {
+            if (entity::EntityComponent* gadget = entity::EntityGadget(player))
+                GadgetPutAway(gadget, false, true, false);
+        }
+    }
+}
+
+// @func 0x0048A2F8 SlyGame::ReturnToHideout
+void SlyGame::ReturnToHideout()
+{
+    SlyGame* game = g_game;
+    game::JobManager* jobs = game::GetJobManager();
+    game::Job* episode = jobs ? jobs->CurrentEpisode() : nullptr;
+    if (episode && episode->nameHash != 0) {
+        if (jobs->instance)
+            jobs->FinishJobInstance();
+        g_letterboxWasVisible = false;
+        entity::Entity* player = game->players[0].character;
+        if (player && player->HasTypeBit(3)) {
+            if (entity::EntityComponent* gadget = entity::EntityGadget(player))
+                GadgetPutAway(gadget, false, true, false);
+        }
+        game->pendingLevelName[0] = '\0';
+        episode = jobs->CurrentEpisode();
+        game->RequestLevel(episode ? episode->nameHash : 0, false);
+        return;
+    }
+    // Outside an episode: the level's own hideout (level parameter
+    // 0x10B8A275).
+    const uint32_t hideout = game->levelParams ? game->levelParams->hashes158C[4] : 0;
+    if (hideout != 0) {
+        g_letterboxWasVisible = false;
+        game->pendingLevelName[0] = '\0';
+        if (jobs)
+            jobs->EndJob(true);
+        game->RequestLevel(hideout, false);
+    }
 }
 
 } // namespace sly

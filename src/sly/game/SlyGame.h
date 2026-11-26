@@ -511,6 +511,18 @@ public:
     // stays and an option bit; its mix state is pushed. False while one runs.
     bool StartSpeakerDialog(const DialogSpeakerEntry* speakers, uint32_t count, const char* text,
                             const char* sound, uint32_t value, float duration, bool option);
+    // Cutscene mode of the player and the world: time scales back to 1, the
+    // player's gadget away and targeting off, AI sightings cleared, the
+    // characters hidden, the subtitle cleared and the camera's depth of
+    // field off (all reversed when `on` is false).
+    void SetCutsceneMode(bool on);
+    // Cutscene start/end for the HUD: cutscene mode, the return-treasure
+    // microgame paused, the HUD reset (start) or re-enabled with the
+    // letterbox shut down (end).
+    void SetCutsceneHud(bool on);
+    // Leaves for the hideout of the current episode (ending the running
+    // job), or for the level's default hideout outside episodes.
+    static void ReturnToHideout();
     // Ends the dialog (the frozen screen with a speaker, +0x1283C0) when one
     // is up: sub state 2 (play), or 0x0B with `toFrontEnd`; its mix state
     // fades out and the block is cleared.
@@ -635,6 +647,7 @@ public:
     uint8_t field_12859C = 0;                   // +0x12859C
     uint32_t hudScreenHash = 0;                 // +0x1285A0 HUD screen of the current sub state
     uint8_t field_1285A4 = 0;                   // +0x1285A4
+    bool cutsceneHudLocked = false;             // +0x1285A5 NOTE: cutscene HUD changes are skipped while set
     uint32_t finishedJobName = 0;               // +0x1285A8 name of the job that ended last
     uint32_t field_1285AC[2] = {};              // +0x1285AC
     uint32_t field_1285B0[4] = {};              // +0x1285B0
