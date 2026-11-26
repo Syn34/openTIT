@@ -363,3 +363,46 @@ void SlyGame::RefreshMoviesPage(ape::ApeGuiObject* screen)
 }
 
 } // namespace sly
+
+namespace sly {
+
+// @func 0x00472DF8 SlyGame::OnMoviesPageEvent
+void SlyGame::OnMoviesPageEvent(const ape::GuiEvent& event)
+{
+    constexpr uint32_t kGuiEvent_FocusGained = 1;
+    constexpr uint32_t kGuiEvent_FocusLost = 2;
+    constexpr uint32_t kGuiEvent_Right = 10;
+    constexpr uint32_t kGuiEvent_Left = 11;
+    constexpr uint32_t kGuiEvent_Refresh = 0x10;
+    // NOTE: both directions do the same on the console.
+    if (!event.object || (event.type != kGuiEvent_Right && event.type != kGuiEvent_Left))
+        return;
+    moviesPage = 0;
+    field_1285C9 = 0;
+
+    const uint8_t pad = players[activePlayer % kMaxPlayers].padIndex;
+    if (menuFocus)
+        ape::SendGuiEvent(kGuiEvent_FocusLost, pad, menuFocus, 0);
+    ape::ApeGuiObject* menuGui = nullptr;
+    if (auto* hideout = static_cast<hud::HudHideoutMenu*>(hud::FindActiveType200()))
+        menuGui = hideout->gui;
+    ape::SendGuiEvent(kGuiEvent_Refresh, event.pad, menuGui, 0);
+
+    menuFocus = FindFocusableGuiObject(event.object->parent);
+    if (!menuFocus)
+        return;
+    const ape::Vec3 centre = menuFocus->GetCenter();
+    for (AppPlayer& player : GetAppRuntime().players) {
+        float screen[2];
+        ape::GetGuiScreenSize(screen);
+        const float x = centre.x * 2.0f / screen[0] - 1.0f;
+        const float y = centre.y * 2.0f / screen[1] - 1.0f;
+        std::memcpy(&player.field_D0[0], &x, sizeof x);
+        std::memcpy(&player.field_D0[1], &y, sizeof y);
+        menuFocusPad = pad;
+        ape::SendGuiEvent(kGuiEvent_FocusGained, pad, menuFocus, 0);
+        ape::SetGuiSlot(pad, menuFocus);
+    }
+}
+
+} // namespace sly

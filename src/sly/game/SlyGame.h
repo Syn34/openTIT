@@ -616,6 +616,10 @@ public:
     // front end's extras (and menu 0x0E) list the cinematics, the pause menu
     // the other group (0x0046E438).
     void RefreshMoviesPage(ape::ApeGuiObject* screen);
+    // Left / right on the movies page: back to its first page, the page is
+    // refreshed and the focus moves to the first focusable object of the
+    // event object's parent (0x00472DF8).
+    void OnMoviesPageEvent(const ape::GuiEvent& event);
     void RefreshAudioPage(ape::ApeGuiObject* screen);
     void RefreshDisplayPage(ape::ApeGuiObject* screen);
     // Accept on the controls page: the camera X/Y inversion or vibration
