@@ -83,18 +83,36 @@ public:
     ape::Vec3 field_140{};              // 0x140
 };
 SLY_ACTOR_DEF(ActorB17990Def, ActorDef);        // 0x00B17948, spawns ActorB17990
-// 0x00B18680, spawns TweenActor. NOTE: only the placement defaults.
+// 0x00B18680, spawns TweenActor (0x1B0 bytes). NOTE: field names unknown;
+// several are placement defaults.
 class TweenActorDef : public ActorDef {
 public:
+    explicit TweenActorDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~TweenActorDef() override;
-    uint32_t field_134 = 0;             // 0x134
-    uint32_t field_150 = 0;             // 0x150
-    uint32_t field_154 = 0;             // 0x154
-    uint32_t field_1A0 = 0;             // 0x1A0
-    uint32_t field_1A4 = 0;             // 0x1A4
-    float field_1A8 = 0.0f;             // 0x1A8
+    uint32_t field_130 = 0;             // 0x130 index of the "type" value
+    uint32_t field_134 = 0;             // 0x134 hash 0x161851F3
+    ape::Vec3 field_140{};              // 0x140 attribute 0xB8B33A30
+    uint32_t field_150 = 0;             // 0x150 hash 0xEFE3F2BE
+    uint32_t field_154 = 0;             // 0x154 hash 0x80F96352
+    ape::Vec3 field_160{};              // 0x160 attribute 0x43DAD405
+    ape::Vec3 field_170{};              // 0x170 attribute 0xE7590BDA
+    ape::Vec3 field_180{};              // 0x180 attribute 0x02528C1C
+    ape::Vec3 field_190{};              // 0x190 attribute 0x0252939F (angles; degrees in the file)
+    uint32_t field_1A0 = 0;             // 0x1A0 hash 0x6350BDB4
+    uint32_t field_1A4 = 0;             // 0x1A4 hash 0x04623C7C
+    float field_1A8 = 0.0f;             // 0x1A8 attribute 0x81B5B597
 };
-SLY_ACTOR_DEF(InteractivePropBDef, ActorDef);   // 0x00B188C0, spawns InteractivePropB
+// 0x00B188C0, spawns InteractivePropB (0x170 bytes). NOTE: field names unknown.
+class InteractivePropBDef : public ActorDef {
+public:
+    explicit InteractivePropBDef(const ActorDefDesc& desc) : ActorDef(desc) {}
+    ~InteractivePropBDef() override;
+    uint32_t field_130 = 0;                         // 0x130 hash 0x2899600F
+    ape::Vec3 field_140{};                          // 0x140 attribute 0xEF4DDD13
+    ape::Vec4 rotation{0.0f, 0.0f, 0.0f, 1.0f};     // 0x150 from attribute 0xC7400937 (degrees)
+    float field_160[3] = {};                        // 0x160 attributes 0xDD61F47C, 0x3CC6000D, 0x6AA47C5A
+    uint32_t field_16C = 0;                         // 0x16C hash 0x6AA4B8C7
+};
 
 // Sound actor definitions (base SoundActorDef).
 // 0x00B16630. NOTE: only the placement defaults.
@@ -148,6 +166,7 @@ SLY_ACTOR_DEF(TargetableCLinkedDef, TargetableDefC);
 // Definition of ObjectActor (vtable 0x00B18458): it spawns nothing itself.
 class ObjectActorDef : public ActorDef {
 public:
+    explicit ObjectActorDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~ObjectActorDef() override;
     Entity* Spawn(EntityPlacement* placement) override;   // slot 7
 };

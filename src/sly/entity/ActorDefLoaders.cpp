@@ -7,6 +7,7 @@
 
 #include "sly/entity/ActorDefs.h"
 
+#include "ape/math/ApeMath.h"
 #include "ape/xml/ApeXml.h"
 
 #include <algorithm>
@@ -21,6 +22,12 @@ namespace {
 // the class's type bit set.
 struct ClassDefDesc : ActorDefDesc {
     ClassDefDesc(const EntityDefDesc& loader, uint32_t classType) : ActorDefDesc(loader) { typeBits |= classType; }
+    // Classes whose bit lives in the second type word (EntityDef::registryFlags).
+    struct SecondWord {};
+    ClassDefDesc(const EntityDefDesc& loader, uint32_t classType, SecondWord) : ActorDefDesc(loader)
+    {
+        registryFlags |= classType;
+    }
 };
 
 // Reads boolean attribute `attr` into bit `bit` of `word` (default: the bit of `defaults`).
@@ -36,6 +43,11 @@ template <class Def>
 const Def* SameClassParent(const EntityDef* parent, uint32_t classType)
 {
     return parent && (parent->typeBits & classType) ? static_cast<const Def*>(parent) : nullptr;
+}
+template <class Def>
+const Def* SameClassParent2(const EntityDef* parent, uint32_t classType)
+{
+    return parent && (parent->registryFlags & classType) ? static_cast<const Def*>(parent) : nullptr;
 }
 
 // -- ActorGroup ------------------------------------------------------------------
@@ -175,6 +187,207 @@ void ActorB15E60DefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement*
         field_EC[i] = std::max(field_EC[i], 0.0f);
     if (field_EC[1] < field_EC[0])
         field_EC[0] = field_EC[1];
+}
+
+// -- ObjectActor (the "Teleporter" element) ---------------------------------------
+constexpr uint32_t kType2_ObjectActor = 0x2;
+
+struct ObjectActorDefDesc : ClassDefDesc {
+    explicit ObjectActorDefDesc(const EntityDefDesc& loader)
+        : ClassDefDesc(loader, kType2_ObjectActor, SecondWord{}) {}
+    // Nothing of its own: only the actor attributes (0x001EB118; a parent of
+    // another class earns a warning, stripped).
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent)
+    {
+        ActorDefDesc::Parse(root, elem, loader, parent);
+    }
+};
+
+// -- InteractivePropA ------------------------------------------------------------
+constexpr uint32_t kType2_InteractivePropA = 0x4;
+
+struct InteractivePropAUseDefDesc : ClassDefDesc {
+    explicit InteractivePropAUseDefDesc(const EntityDefDesc& loader)
+        : ClassDefDesc(loader, kType2_InteractivePropA, SecondWord{}) {}
+    uint32_t sharedUse = 0;     // 0xE0 index of the "type" value (only one value is known)
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001DBC28 InteractivePropAUseDefDesc::Parse
+void InteractivePropAUseDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                       const EntityDefDesc& loader, const EntityDef* parent)
+{
+    ActorDefDesc::Parse(root, elem, loader, parent);
+    const auto* prop = SameClassParent2<InteractivePropAUseDef>(parent, kType2_InteractivePropA);
+    sharedUse = prop ? prop->sharedUse : 0;
+    // "type" names one of the known values; anything else earns a warning (stripped).
+    static constexpr uint32_t kTypes[1] = {0x03D3E3B0u};
+    uint32_t type = 0;
+    if (elem->GetHash(0x0027873Au, &type, 0) == ape::xml::kQuery_Ok) {
+        for (uint32_t i = 0; i < 1; ++i) {
+            if (type == kTypes[i]) {
+                sharedUse = i;
+                break;
+            }
+        }
+    }
+}
+
+// Rotation quaternion from Euler angles (radians), as the definition parsers
+// build it with the engine's fast sine and cosine.
+ape::Vec4 QuatFromEuler(const ape::Vec3& angles)
+{
+    const float hx = angles.x * 0.5f, hy = angles.y * 0.5f, hz = angles.z * 0.5f;
+    const float cx = ape::FastCos(hx), cy = ape::FastCos(hy), cz = ape::FastCos(hz);
+    const float sx = ape::FastSin(hx), sy = ape::FastSin(hy), sz = ape::FastSin(hz);
+    ape::Vec4 q;
+    q.x = sy * sz * cx + cy * cz * sx;
+    q.y = cz * sy * cx + cy * sz * sx;
+    q.z = cy * sz * cx - cz * sy * sx;
+    q.w = cy * cz * cx - sy * sz * sx;
+    return q;
+}
+
+// -- Searchlight -----------------------------------------------------------------
+constexpr uint32_t kType_Searchlight = 0x20000000;
+
+struct SearchlightDefDesc : ClassDefDesc {
+    explicit SearchlightDefDesc(const EntityDefDesc& loader) : ClassDefDesc(loader, kType_Searchlight) {}
+    ape::Vec3 cameraOffset{};                       // 0xF0 attribute 0x81785FF8
+    ape::Vec4 rotation{0.0f, 0.0f, 0.0f, 1.0f};     // 0x100 from attribute 0x91B5F872
+    uint32_t field_110[4] = {};                     // 0x110
+    float field_120 = 1.0f;                         // 0x120
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001E9F48 SearchlightDefDesc::Parse
+void SearchlightDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                               const EntityDef* parent)
+{
+    ActorDefDesc::Parse(root, elem, loader, parent);
+    SearchlightDefDesc defaults(loader);
+    if (const auto* light = SameClassParent<SearchlightDef>(parent, kType_Searchlight)) {
+        defaults.cameraOffset = light->cameraOffset;
+        for (int i = 0; i < 4; ++i)
+            defaults.field_110[i] = light->field_160[i];
+        defaults.field_120 = light->field_170;
+    }
+    elem->GetVec3(0x81785FF8u, &cameraOffset.x, &defaults.cameraOffset.x);
+    const ape::Vec3 zero{};
+    ape::Vec3 angles{};
+    elem->GetVec3(0x91B5F872u, &angles.x, &zero.x);
+    static constexpr uint32_t kHashAttrs[4] = {0xC8168A44u, 0x942EEC95u, 0x7D68F822u, 0x4C4DB3D0u};
+    for (int i = 0; i < 4; ++i)
+        elem->GetHash(kHashAttrs[i], &field_110[i], defaults.field_110[i]);
+    elem->GetFloat(0x35F1E76Eu, &field_120, defaults.field_120);
+    rotation = QuatFromEuler(angles);
+}
+
+// -- TweenActor ------------------------------------------------------------------
+constexpr uint32_t kType2_Tween = 0x8;
+
+struct TweenActorDefDesc : ClassDefDesc {
+    explicit TweenActorDefDesc(const EntityDefDesc& loader) : ClassDefDesc(loader, kType2_Tween, SecondWord{})
+    {
+        // NOTE: the console clears these damage scales here; the actor
+        // parser then overwrites them with its own defaults.
+        damage[0] = damage[2] = damage[4] = damage[7] = damage[9] = 0.0f;
+    }
+    uint32_t field_E0 = 0;      // 0xE0
+    uint32_t field_E4 = 0;      // 0xE4
+    ape::Vec3 field_F0{};       // 0xF0
+    uint32_t field_100 = 0;     // 0x100
+    uint32_t field_104 = 0;     // 0x104
+    ape::Vec3 field_110{};      // 0x110
+    ape::Vec3 field_120{};      // 0x120
+    ape::Vec3 field_130{};      // 0x130
+    ape::Vec3 field_140{};      // 0x140
+    uint32_t field_150 = 0;     // 0x150
+    uint32_t field_154 = 0;     // 0x154
+    float field_158 = 0.0f;     // 0x158
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001EC7F8 TweenActorDefDesc::Parse
+// Only the "type" index comes from a parent; the other attributes keep the
+// description's values when missing.
+void TweenActorDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                              const EntityDef* parent)
+{
+    ActorDefDesc::Parse(root, elem, loader, parent);
+    const auto* tween = SameClassParent2<TweenActorDef>(parent, kType2_Tween);
+    field_E0 = tween ? tween->field_130 : 0;
+    static constexpr uint32_t kTypes[1] = {0xFE345D36u};
+    uint32_t type = 0;
+    if (elem->GetHash(0x0027873Au, &type, 0) == ape::xml::kQuery_Ok) {
+        for (uint32_t i = 0; i < 1; ++i) {
+            if (type == kTypes[i]) {
+                field_E0 = i;
+                break;
+            }
+        }
+    }
+    elem->GetHash(0x161851F3u, &field_E4, field_E4);
+    elem->GetVec3(0xB8B33A30u, &field_F0.x, &field_F0.x);
+    elem->GetHash(0xEFE3F2BEu, &field_100, field_100);
+    elem->GetHash(0x80F96352u, &field_104, field_104);
+    elem->GetVec3(0x43DAD405u, &field_110.x, &field_110.x);
+    elem->GetVec3(0xE7590BDAu, &field_120.x, &field_120.x);
+    elem->GetVec3(0x02528C1Cu, &field_130.x, &field_130.x);
+    elem->GetVec3(0x0252939Fu, &field_140.x, &field_140.x);
+    constexpr float kDegToRad = 0.017453292f;
+    field_140.x *= kDegToRad;
+    field_140.y *= kDegToRad;
+    field_140.z *= kDegToRad;
+    elem->GetHash(0x6350BDB4u, &field_150, field_150);
+    elem->GetHash(0x04623C7Cu, &field_154, field_154);
+    elem->GetFloat(0x81B5B597u, &field_158, field_158);
+}
+
+// -- InteractivePropB ------------------------------------------------------------
+constexpr uint32_t kType2_InteractivePropB = 0x10;
+
+struct InteractivePropBDefDesc : ClassDefDesc {
+    explicit InteractivePropBDefDesc(const EntityDefDesc& loader)
+        : ClassDefDesc(loader, kType2_InteractivePropB, SecondWord{})
+    {
+        // NOTE: overwritten by the actor parser (see TweenActorDefDesc).
+        damage[0] = damage[2] = damage[4] = damage[7] = damage[9] = 0.0f;
+    }
+    uint32_t field_E0 = 0;                          // 0xE0
+    ape::Vec3 field_F0{};                           // 0xF0
+    ape::Vec4 rotation{0.0f, 0.0f, 0.0f, 1.0f};     // 0x100
+    float field_110[3] = {};                        // 0x110
+    uint32_t field_11C = 0;                         // 0x11C
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001F5938 InteractivePropBDefDesc::Parse
+// No parent defaults: missing attributes keep the description's values.
+void InteractivePropBDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                    const EntityDefDesc& loader, const EntityDef* parent)
+{
+    ActorDefDesc::Parse(root, elem, loader, parent);
+    elem->GetHash(0x2899600Fu, &field_E0, field_E0);
+    elem->GetVec3(0xEF4DDD13u, &field_F0.x, &field_F0.x);
+    const ape::Vec3 zero{};
+    ape::Vec3 degrees{};
+    elem->GetVec3(0xC7400937u, &degrees.x, &zero.x);
+    constexpr float kDegToRad = 0.017453292f;
+    rotation = QuatFromEuler({degrees.x * kDegToRad, degrees.y * kDegToRad, degrees.z * kDegToRad, 0.0f});
+    elem->GetFloat(0xDD61F47Cu, &field_110[0], field_110[0]);
+    elem->GetFloat(0x3CC6000Du, &field_110[1], field_110[1]);
+    elem->GetFloat(0x6AA47C5Au, &field_110[2], field_110[2]);
+    elem->GetHash(0x6AA4B8C7u, &field_11C, field_11C);
 }
 
 } // namespace
@@ -337,6 +550,85 @@ EntityDef* CreateActorB15E60Def(ape::xml::XmlElement* root, ape::xml::XmlElement
         def->field_130[i] = desc.field_E0[i];
     for (int i = 0; i < 5; ++i)
         def->field_13C[i] = desc.field_EC[i];
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001EB2B8 CreateObjectActorDef
+EntityDef* CreateObjectActorDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                                const EntityDef* parent)
+{
+    ObjectActorDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new ObjectActorDef(desc);
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001DBE80 CreateInteractivePropAUseDef
+EntityDef* CreateInteractivePropAUseDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                        const EntityDefDesc& loader, const EntityDef* parent)
+{
+    InteractivePropAUseDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new InteractivePropAUseDef(desc);
+    def->sharedUse = desc.sharedUse;
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001EA3B8 CreateSearchlightDef
+EntityDef* CreateSearchlightDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                                const EntityDef* parent)
+{
+    SearchlightDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new SearchlightDef(desc);
+    def->cameraOffset = desc.cameraOffset;
+    def->field_150 = desc.rotation;
+    for (int i = 0; i < 4; ++i)
+        def->field_160[i] = desc.field_110[i];
+    def->field_170 = desc.field_120;
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001ECD08 CreateTweenActorDef
+EntityDef* CreateTweenActorDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                               const EntityDef* parent)
+{
+    TweenActorDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new TweenActorDef(desc);
+    def->field_130 = desc.field_E0;
+    def->field_134 = desc.field_E4;
+    def->field_140 = desc.field_F0;
+    def->field_150 = desc.field_100;
+    def->field_154 = desc.field_104;
+    def->field_160 = desc.field_110;
+    def->field_170 = desc.field_120;
+    def->field_180 = desc.field_130;
+    def->field_190 = desc.field_140;
+    def->field_1A0 = desc.field_150;
+    def->field_1A4 = desc.field_154;
+    def->field_1A8 = desc.field_158;
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001F5BA8 CreateInteractivePropBDef
+EntityDef* CreateInteractivePropBDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                     const EntityDefDesc& loader, const EntityDef* parent)
+{
+    InteractivePropBDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new InteractivePropBDef(desc);
+    def->field_130 = desc.field_E0;
+    def->field_140 = desc.field_F0;
+    def->rotation = desc.rotation;
+    for (int i = 0; i < 3; ++i)
+        def->field_160[i] = desc.field_110[i];
+    def->field_16C = desc.field_11C;
     delete desc.parts;
     return def;
 }

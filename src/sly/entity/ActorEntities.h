@@ -158,6 +158,7 @@ public:
 // NOTE: only the flag its overrides read is modelled.
 class InteractivePropAUseDef : public ActorDef {
 public:
+    explicit InteractivePropAUseDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~InteractivePropAUseDef() override;
     uint32_t sharedUse = 0;         // 0x130 non-zero: several users at once
 };
@@ -346,12 +347,17 @@ public:
 // Definition of SearchlightActor (vtable 0x00B18230; stand-in).
 class SearchlightDef : public ActorDef {
 public:
+    explicit SearchlightDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     // @func 0x00757308 SearchlightDef::~SearchlightDef
     // @func 0x00757338 SearchlightDef::~SearchlightDef (deleting)
     ~SearchlightDef() override = default;
     uint8_t interactionNeeds[6] = {};   // 0x12E per interaction kind
     ape::Vec3 cameraOffset{};           // 0x140 camera position relative to the light
-    ape::Vec4 field_150{};              // 0x150 NOTE: read by the spotlight camera constructor
+    // 0x150 rotation (quaternion) from the Euler angles of attribute
+    // 0x91B5F872. NOTE: read by the spotlight camera constructor.
+    ape::Vec4 field_150{0.0f, 0.0f, 0.0f, 1.0f};
+    uint32_t field_160[4] = {};         // 0x160 hashes 0xC8168A44, 0x942EEC95, 0x7D68F822, 0x4C4DB3D0
+    float field_170 = 1.0f;             // 0x170 attribute 0x35F1E76E
 };
 
 // Player-steered searchlight (vtable 0x00B18260, 0x1D0 bytes); the spotlight

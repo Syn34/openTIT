@@ -126,7 +126,7 @@ const DefClass kDefClasses[] = {
     {0xB3748711u, nullptr},                              // 0x001DE610
     {0xDCC028E7u, objects::CreateJumpDirTriggerDef},
     {0xCCFB1F40u, nullptr},                              // 0x0018F8E8
-    {0xC475D118u, nullptr},                              // "Teleporter" 0x001EB2B8
+    {0xC475D118u, CreateObjectActorDef},                 // "Teleporter"
     {0xBC6FA23Bu, nullptr},                              // 0x001C5408
     {0xEE9D8477u, nullptr},                              // "SentryLight" 0x001D0208
     {0xEBE54755u, nullptr},                              // 0x000C77E4
@@ -144,7 +144,7 @@ const DefClass kDefClasses[] = {
     {0x109C1EFAu, nullptr},                              // 0x000C5DC8
     {0x0E5B671Du, nullptr},                              // 0x00203BE4
     {0x04B6FABDu, nullptr},                              // 0x00167080
-    {0x044344C9u, nullptr},                              // 0x001DBE80
+    {0x044344C9u, CreateInteractivePropAUseDef},
     {0x2190D8D7u, nullptr},                              // 0x001C28E8
     {0x201FA54Fu, CreateActorGroupDef},
     {0x1B733030u, nullptr},                              // laser field 0x000C1780
@@ -156,17 +156,17 @@ const DefClass kDefClasses[] = {
     {0x21F55D9Cu, nullptr},                              // 0x000BB4B0
     {0x57CCFDA0u, objects::CreateWindTriggerDef},
     {0x5697EEFBu, objects::CreatePushBlockTriggerDef},
-    {0x55B67D7Cu, nullptr},                              // 0x001ECD08
+    {0x55B67D7Cu, CreateTweenActorDef},
     {0x554FC0D9u, nullptr},                              // 0x001BD668
     {0x6E2FB705u, objects::CreateJobTriggerDef},
-    {0x6927A078u, nullptr},                              // 0x001F5BA8
+    {0x6927A078u, CreateInteractivePropBDef},
     {0x633A7385u, nullptr},                              // 0x001D3E58
     {0x5EFDA0B2u, nullptr},                              // 0x0022F630
     {0x75F206BDu, objects::CreateCameraTriggerDef},
     {0x71FE40F4u, nullptr},                              // 0x0017D640
     {0x707C673Cu, objects::CreateWeatherTriggerDef},
     {0x70542137u, nullptr},                              // 0x001D71D8
-    {0x6F429D34u, nullptr},                              // 0x001EA3B8
+    {0x6F429D34u, CreateSearchlightDef},
     {0x7F6CE46Au, objects::CreateFxTriggerDef},
     {0x7CDC084Cu, nullptr},                              // 0x001AD7F0 (SoundActorDef)
     {0x786E8593u, nullptr},                              // "PushBlock" 0x001B4394
