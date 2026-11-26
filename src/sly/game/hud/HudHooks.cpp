@@ -1,6 +1,7 @@
 // openTIT - HUD module hooks (stubs).
 #include "sly/game/hud/HudHooks.h"
 #include "sly/game/ObjectHelpers.h"
+#include "sly/game/goals/JobManager.h"
 
 #include "ape/world/ApeObj.h"
 
@@ -43,8 +44,7 @@ ape::ApeRefCounted* ObjectScriptRef(ape::world::ApeObj*) { return nullptr; }
 ape::ApeRefCounted* GameCameraScriptRef() { return nullptr; }
 // TODO(game world +0x128214)
 bool HudFrameTimeFrozen() { return false; }
-// TODO(game world virtual slot 8)
-bool GameWorldInLoadingState() { return false; }
+bool GameWorldInLoadingState() { return game::GameWorldState(1) == 12; }
 
 } // namespace hud
 } // namespace sly
