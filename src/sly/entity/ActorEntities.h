@@ -635,11 +635,19 @@ public:
     // @func 0x001D4B84 SoundActorB17728::AdvanceTo6
     bool AdvanceTo6(float, float) override { return true; }
     bool AdvanceWrap(float elapsed, float duration) override;
+    // Slot 5: opens (slot 2) or closes (slot 6) when holdWrap changes, except
+    // in state 5.
+    bool PostUpdate(float dt) override;
+    // Whether the actor stands open: its attached entity's +0x160 is set,
+    // or a player is within range (and, when the definition asks for one,
+    // is the right character) (0x001D48B8).
+    void UpdateOpen(bool& open);
 
     Entity* attached = nullptr;    // 0x22C counted
     uint32_t attachedName = 0;     // 0x230
+    float rangeSq = 0.0f;          // 0x234 squared player distance (<= 0: open without one)
     uint8_t lookupFlags = 0;       // 0x238 bit 7: looked up
-    bool holdWrap = false;         // 0x239
+    bool holdWrap = false;         // 0x239 open
 };
 
 // Gadget turret (vtable 0x00B17270, 0x360 bytes; entity type bit 57).

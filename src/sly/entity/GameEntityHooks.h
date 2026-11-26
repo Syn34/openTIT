@@ -48,6 +48,8 @@ int EntityGetState(const Entity* entity, int layer);
 // off. NOTE: the triggers live in the objects model, which the entity
 // pointers here cannot reach yet.
 void TriggerSetEnabled(Entity* trigger, bool enabled);
+// Number of entities inside a trigger (objects::TriggerBase, +0x160).
+int TriggerOccupantCount(const Entity* trigger);
 // State data of a layer (state machine +0x14), null without any.
 uint8_t* EntityStateData(Entity* entity, int layer);
 
