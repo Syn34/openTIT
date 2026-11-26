@@ -17,6 +17,9 @@ namespace entity {
 class RigidEntityB19198 : public RigidBodyEntity {
 public:
     ~RigidEntityB19198() override;
+    // Slot 10: with `kill` the two linked entities are let go and the body
+    // leaves the world with its constraints.
+    bool Release(bool kill) override;
     // Slots 25/26: collision group of the body (kept in `groupBits` while
     // the body is out of the world).
     uint32_t GetRenderId() override;
@@ -24,12 +27,22 @@ public:
     // Slots 27/28: gravity factor of the body (the attach link's while attached).
     float GetGravityFactor() override;
     void Detached(float gravityFactor) override;
+    // Slot 21: the entity and its body are placed at `m`.
+    void SetTransform(const ape::Matrix34& m) override;
+    // Slot 34: sets the body's linear velocity (bodies in the world that
+    // are neither fixed nor keyframed).
+    void SetVelocity(const ape::Vec3& velocity) override;
     // Slot 35: linear velocity of the body.
     ape::Vec3 GetVelocity() override;
     // Slot 37: the entity's world object answers for its own body.
     ape::world::ApeObj* ObjectForCollidable(const void* collidable, int32_t* bone) override;
     // Slot 36: the rigid body (see NOTES on slot 36).
     ape::world::ApeObj* GetRenderObject() override;
+    // Slot 76: interaction kinds 0 (not with an entity without team bits)
+    // and 4 only, then the base checks.
+    bool CanInteractWith(Entity* other, int kind, float* priority = nullptr) override;
+    // Slot 88: damage only while there is health left; true while some is.
+    bool Damage(float amount, Entity* source, uint32_t type) override;
     // Slot 95: empty. NOTE: no caller known.
     virtual void Slot95();
     // Empty overrides of the +0x17C interface's slots 6/7 (primary slots 97/96).
@@ -38,6 +51,8 @@ public:
     // Primary slot 98 / +0x180 slot 6.
     void Interface180Slot6(void* body) override;
 
+    Entity* linkedA = nullptr;   // +0x188 NOTE: entities held by the object (roles unknown)
+    Entity* linkedB = nullptr;   // +0x18C
     uint32_t groupBits = 0;   // +0x190 bits 0-23: collision group
 };
 

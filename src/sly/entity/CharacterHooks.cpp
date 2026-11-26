@@ -1,4 +1,6 @@
 // openTIT - Stubs for CharacterHooks.h.
+#include "sly/entity/Awards.h"
+#include "sly/entity/EntityHits.h"
 #include "sly/game/Upgrades.h"
 
 #include <algorithm>
@@ -51,7 +53,20 @@ void* HitOtherBody(const EntityHitRecord& hit) { (void)hit; return nullptr; }
 bool RigidBodyIsKeyframed(void* body) { (void)body; return false; }
 uint32_t HitOtherCollisionLayer(const EntityHitRecord& hit) { (void)hit; return 0; }
 float RigidBodyMass(void* body) { (void)body; return 0.0f; }
-void RecordMeleeHit(Entity* victim, const EntityHitRecord& hit) { (void)victim; (void)hit; }
+// @func 0x000B2AE0 RecordMeleeHit
+// Hits a player lands on an entity with a listener (an AI) count towards a
+// trophy: either of the two damage bits awards it. NOTE: the trophy's name
+// (hash 0x67DEAB5E) is not recovered.
+void RecordMeleeHit(Entity* victim, const EntityHitRecord& hit)
+{
+    constexpr uint32_t kTrophy_MeleeHit = 0x67DEAB5Eu;
+    if (!victim->listener || !hit.source || !(hit.source->classBits & 1))
+        return;
+    if (hit.damageBits & 0x0400)
+        AwardTrophyByName(kTrophy_MeleeHit);
+    if (hit.damageBits & 0x0800)
+        AwardTrophyByName(kTrophy_MeleeHit);
+}
 bool ListenerIgnoresDamage(EntityListener* listener) { (void)listener; return false; }
 void GameWorldPlayerDamaged(uint32_t player) { (void)player; }
 void GameWorldNpcDamaged(Entity* entity) { (void)entity; }

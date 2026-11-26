@@ -308,11 +308,21 @@ struct TargetableCLinkedInstanceDesc : TargetableCInstanceDesc {
     using TargetableCInstanceDesc::TargetableCInstanceDesc;
     bool field_FD = false;              // 0xFD (bit 7 of the word at 0xFC)
 };
-// Vtable 0x00B19178. NOTE: its copy (slot 2) is not ported.
+// Instance description of the rigid entity of vtable 0x00B19198.
+struct RigidEntityB19198InstanceDesc : ScriptedInstanceDesc {
+    using ScriptedInstanceDesc::ScriptedInstanceDesc;
+    PhysicalSettings settings;          // 0xD0
+    uint32_t field_F4 = 0;              // 0xF4
+    bool field_F8[3] = {};              // 0xF8..0xFA
+};
+// Vtable 0x00B19178.
 class RigidEntityB19198Placement : public ScriptedEntityPlacement {
 public:
     using ScriptedEntityPlacement::ScriptedEntityPlacement;
     ~RigidEntityB19198Placement() override;
+    // Slot 2 (0x00204AE0): the scripted copy, the physical settings and the
+    // three flags.
+    void FillInstanceDesc(EntityInstanceDesc& desc) const override;
     PhysicalSettings settings;          // +0xF0
     uint32_t field_114 = 0;             // +0x114
     // Attributes 0x926425E9, 0x7F6CE437, 0x918F1125.
@@ -804,9 +814,16 @@ struct RopeInstanceDesc : EntityInstanceDesc {
     bool field_BC = false;             // 0xBC
 };
 
+// Instance description of PlacementB193A8.
+struct InstanceDescB193A8 : EntityInstanceDesc {
+    uint32_t field_90 = 0;             // 0x90
+    bool field_94 = false;             // 0x94
+};
 // Vtable 0x00B193A8; sets bit 7 of the word at +0x0C.
 class PlacementB193A8 : public EntityPlacement {
 public:
+    // Slot 2 (0x0020AB8C): the base copy and the two values.
+    void FillInstanceDesc(EntityInstanceDesc& desc) const override;
     PlacementB193A8(const char* placementName, EntityDef* ownerDef, const ape::Matrix34& placementTransform,
                     bool bit31, uint32_t valueB4, bool flagB8);
     ~PlacementB193A8() override;

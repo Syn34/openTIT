@@ -135,3 +135,12 @@
   (0x0024E6EC/0x0024DF08), SetTransform/SetVelocity/PostUpdate/OnHitReaction (bad instruction
   data), the definition parsers (0x0023E590, 0x00244CF8; HoverVehicleSettings::Parse holds the
   hover attribute part) and the whole WheeledVehicle kind (0x00229CC4-0x0023E0F0).
+
+## agent3, sixth pass
+* `TriggerBase::SetTransform` (0x0020D7E8): phantom type 0 (AABB) gets its box re-centred,
+  types 1/2 (shape phantoms) `VolumeSetTransform` (0x00929E98). WindTrigger now uses it.
+* Camera triggers re-resolve their splines under a new attach parent (0x002167BC);
+  `FindSplineDef` returns the spline instance (the map of 0x00F8F158 is the spline instance
+  list).
+* Placement copies 0x00204AE0 (B19198 rigid entity) and 0x0020AB8C (PlacementB193A8) with
+  their instance descriptions.
