@@ -11,6 +11,9 @@ bool ParseAudioContainerChunk(ape::iff::IffReader* reader);
 bool SkipVersionChunkA(ape::iff::IffReader* reader);
 bool SkipVersionChunkB(ape::iff::IffReader* reader);
 bool SkipVersionChunkC(ape::iff::IffReader* reader);
+bool AudioBankVersionChunk(ape::iff::IffReader* reader);
+// Version of the audio bank being loaded (set by AudioBankVersionChunk).
+uint32_t AudioBankVersion();
 bool ParseNestedChunk(ape::iff::IffReader* reader);
 bool IgnoreChunk(ape::iff::IffReader* reader);
 bool IgnoreChunkCopy(ape::iff::IffReader* reader);

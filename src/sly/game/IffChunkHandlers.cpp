@@ -75,6 +75,25 @@ bool SkipVersionChunkB(IffReader* reader)
     return true;
 }
 
+// Format version of the audio bank being loaded (0x00F65B3C), from its
+// version chunk; banks without one are version 6.
+uint32_t g_audioBankVersion = 0;
+
+uint32_t AudioBankVersion()
+{
+    return g_audioBankVersion;
+}
+
+// @func 0x0044F040 AudioBankVersionChunk
+bool AudioBankVersionChunk(IffReader* reader)
+{
+    static uint8_t s_version = 0;   // 0x010B1690
+    s_version = 6;
+    reader->ReadU8(&s_version);
+    g_audioBankVersion = s_version;
+    return true;
+}
+
 // @func 0x0044F648 SkipVersionChunkC
 bool SkipVersionChunkC(IffReader* reader)
 {
