@@ -137,5 +137,54 @@ void HudType8000::FinishIntro()
     PlayState8000(3, true);
 }
 
+void HudType8000::HideParts()
+{
+    auto hide = [](ape::world::ApeObj* part) {
+        if (part)
+            part->SetVisible(false, true);
+    };
+    for (int i = 0; i < 12; ++i) {
+        hide(rowA[i]);
+        hide(rowB[i]);
+        hide(rowC[i]);
+    }
+    hide(part188);
+    hide(part18C);
+    for (ape::world::ApeObj* part : markers)
+        hide(part);
+    for (ape::world::ApeObj* part : slots)
+        hide(part);
+    hide(part210);
+}
+
+// @func 0x003817E0 HudType8000::SetActive
+void HudType8000::SetActive(bool active)
+{
+    if (object)
+        object->SetVisible(active, true);
+    if (!active)
+        HideParts();
+}
+
+// @func 0x003842D0 HudType8000::Refresh
+void HudType8000::Refresh()
+{
+    SetActive(false);
+    const float origin[3] = {0.0f, 0.0f, 0.0f};
+    SetStackOffset(origin, true);
+    linked8000 = nullptr;
+    holdTime8000 = 0.0f;
+    animState &= 1u;
+    fadeTime8000 = -1.0f;
+    // A persistent element stays shown unless it was asked to leave.
+    const bool keepShown = !(stateWord & kF_LeaveA) && (stateWord & kF_Persistent);
+    stateWord &= ~(kF_Shown | kF_LeaveA | kF_Bit27 | kF_Bit26 | kF_AnimOk | kF_ScriptOk);
+    if (keepShown)
+        stateWord |= kF_Shown;
+    if ((stateWord & kF_LeaveB) && !*Hud().hideList.Find(RegisteredName()))
+        Hud().hideList.Add(RegisteredName(), this);
+    HideParts();
+}
+
 } // namespace hud
 } // namespace sly

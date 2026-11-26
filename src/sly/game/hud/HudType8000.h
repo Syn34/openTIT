@@ -27,11 +27,20 @@ public:
         kF_LeaveB      = 0x10000000,   // bit 28
         kF_LeaveA      = 0x20000000,   // bit 29
         kF_Shown       = 0x40000000,   // bit 30
+        kF_Persistent  = 0x80000000u,  // bit 31: stays shown through Refresh unless leaving
+        kF_Bit26       = 0x04000000,
+        kF_Bit27       = 0x08000000,
     };
 
     HudType8000() = default;
     explicit HudType8000(HudObjectDef* def) : HudObject(0, def) {}
 
+    // Slot 3 (0x003842D0): back to hidden at its stack origin; a pending
+    // "leave B" request queues it for destruction.
+    void Refresh() override;
+    // Slot 5 (0x003817E0): shows or hides its object; hiding also hides
+    // every part.
+    void SetActive(bool active) override;
     // Slot 6 (0x003846E8): shown again (when not already shown) or hidden.
     void SetEnabled(bool enabled, bool flag) override;
     // Slot 7 (0x00384088): slides to its stack offset and counts the hold
@@ -63,7 +72,20 @@ public:
     float fadeTime8000 = 0.0f;       // +0xC4 requested time (< 0: the default)
     float holdTime8000 = 0.0f;       // +0xC8 time left in the update/idle state
     HudObject* linked8000 = nullptr; // +0xCC
+    // Scene objects of the element's parts (filled by the constructor,
+    // 0x00357DC4). NOTE: what each group shows is not known.
+    ape::world::ApeObj* markers[9] = {};     // +0xD4
+    ape::world::ApeObj* rowA[12] = {};       // +0xF8
+    ape::world::ApeObj* rowB[12] = {};       // +0x128
+    ape::world::ApeObj* rowC[12] = {};       // +0x158
+    ape::world::ApeObj* part188 = nullptr;   // +0x188
+    ape::world::ApeObj* part18C = nullptr;   // +0x18C
+    ape::world::ApeObj* slots[32] = {};      // +0x190
+    ape::world::ApeObj* part210 = nullptr;   // +0x210
     uint32_t stateWord = 0;          // +0x214 Flags8000
+
+private:
+    void HideParts();
 };
 
 } // namespace hud
