@@ -125,8 +125,6 @@ void DestroyElement(HudObject*& element)
     element = nullptr;
 }
 
-HudMeter* FindMeterOf(const entity::Entity* owner);
-
 HudObjectDef* FindDef(uint32_t name, uint32_t type)
 {
     HudObjectDef** slot = Hud().defs.Find(name);
@@ -625,6 +623,7 @@ void UpdateMeterB()
     hud.meterB = CreateMeter(hud.pendingScreenName);
 }
 
+namespace {
 HudMeter* FindMeterOf(const entity::Entity* owner)
 {
     for (HudObject* meter : Hud().meters) {
@@ -633,6 +632,7 @@ HudMeter* FindMeterOf(const entity::Entity* owner)
     }
     return nullptr;
 }
+} // namespace
 
 // @func 0x00369910 hud::AddMeterFor
 void AddMeterFor(entity::Entity* owner, uint32_t name)
