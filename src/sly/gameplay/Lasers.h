@@ -308,7 +308,8 @@ void LaserFieldColorMaterials(const ape::ApeTArray<ape::Vec3>& points, const uin
 // past the decompiler).
 void LaserTestCharacter(LaserManager& manager, entity::Entity* character);
 // Set-up of a laser from its setting by kind (0x0039B5A0 fixed, 0x0039AD48
-// anchor, 0x0039A2B8 spline; TODO).
+// anchor, 0x0039A2B8 spline): end points, movement, geometry, scripts,
+// sound.
 void LaserSetupFixed(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point);
 void LaserSetupAnchor(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point);
 void LaserSetupSpline(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point);

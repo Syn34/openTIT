@@ -1307,12 +1307,68 @@ void LaserSetupSpline(Laser& laser, ape::setting::Setting* setting, ape::world::
     FinishSetup(laser, setting, LaserSplineCommon, scripts);
 }
 
-// TODO(0x0039AD48 LaserSetupAnchor)
+// @func 0x0039AD48 LaserSetupAnchor
+// The first end point sits on an anchor object (the "MoveableAnchorObj"
+// geometry instance, else the laser's point); the second runs along a
+// spline as in LaserSetupSpline.
 void LaserSetupAnchor(Laser& laser, ape::setting::Setting* setting, ape::world::ApeObj* point)
 {
-    (void)laser;
-    (void)setting;
-    (void)point;
+    using namespace sai_params;
+    ReadCommon(laser, setting, LaserAnchorCommon);
+    ape::world::ApeObj* moveableSpline = FindSpline(SettingString(setting, AnchorMove.moveableSpline));
+    ape::world::ApeObj* moveableAnchor = FindGeom(SettingString(setting, MoveableAnchorObj));
+    ape::world::ApeObj* anchor = moveableAnchor ? moveableAnchor : point;
+
+    ape::world::ApeObj* spline = moveableSpline;
+    if (!moveableSpline) {
+        for (ape::world::ApeObj* child = point->GetFirstChild(); child; child = child->GetNextSibling()) {
+            if (IsSpline(child)) {
+                spline = child;
+                break;
+            }
+        }
+    }
+    if (anchor && spline) {
+        LaserGroup& group = *laser.group;
+        const float variance = setting->Value(AnchorMove.startOffsetVariance).f;
+        const float start = ape::Clamp(
+            setting->Value(AnchorMove.startOffset).f + ape::RandomRange(-variance, variance, ape::g_gameRandom), 0.0f,
+            1.0f);
+
+        LaserEndpoint& a = laser.points[0];
+        a.transform.translation = anchor->GetWorld().translation;
+        a.object = moveableAnchor;
+        AddPointBounds(group, a.transform.translation);
+
+        LaserEndpoint& b = laser.points[1];
+        auto* path = static_cast<ape::world::ApeSplineInstance*>(spline);
+        b.splineSegment = path->EvaluatePosition(start, b.transform.translation, uint32_t(b.splineSegment), false);
+        b.spline = path;
+        b.flags = moveableSpline ? (b.flags | LaserEndpoint::kMoveable) : (b.flags & ~LaserEndpoint::kMoveable);
+        AddSplineBounds(group, path);
+        b.splinePos = start;
+        const uint32_t moveType = EnumIndex(setting->Value(AnchorMove.moveType).u, kMoveTypeNames);
+        b.flags = (b.flags & ~(3u << LaserEndpoint::kMoveTypeShift)) | (moveType << LaserEndpoint::kMoveTypeShift);
+
+        const float speedVariance = setting->Value(AnchorMove.moveSpeedVariance).f;
+        const float signedSpeed =
+            setting->Value(AnchorMove.moveSpeed).f + ape::RandomRange(-speedVariance, speedVariance, ape::g_gameRandom);
+        b.flags = signedSpeed < 0.0f ? (b.flags | LaserEndpoint::kReverse) : (b.flags & ~LaserEndpoint::kReverse);
+        float speed = std::fabs(signedSpeed);
+        const uint32_t speedType = EnumIndex(setting->Value(AnchorMove.speedType).u, kSpeedTypeNames);
+        if (speed > 0.0f) {
+            const float length = SplineLength(path);
+            if (length > 0.0f) {
+                if (speedType == 1)
+                    speed = speed / length;
+                else if (speedType == 2)
+                    speed = (length / speed) / length;
+            }
+        }
+        b.speed = speed;
+    }
+    const char* const scripts[2] = {setting->Value(PointAnchorDirScript).str, setting->Value(AnchorMove.dirScript).str};
+    FinishSetup(laser, setting, LaserAnchorCommon, scripts);
 }
 
 // TODO(0x0039F3D8 LaserFieldSetup)
