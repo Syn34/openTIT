@@ -447,6 +447,9 @@ public:
     // "Audio.SlowTimeMusicLPFFrequency" (back up to 23999 Hz at normal
     // speed) over "Audio.SlowTimeMusicLPFCrossfadeDuration" (0x00468A38).
     void UpdateSlowTimeAudio(float dt);
+    // Walks the levels `level` includes, recursively. NOTE: nothing is done
+    // with them on the console (the work was compiled out) (0x0047C68C).
+    void VisitIncludedLevels(const ape::ApeLevelDef* level);
     // A player is down: meter B snaps and a running return-treasure
     // microgame loses the treasure if the player carried it.
     void OnPlayerDown(uint32_t player);

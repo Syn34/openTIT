@@ -28,6 +28,7 @@
 #include "sly/save/SaveGame.h"
 #include "sly/game/GameMessages.h"
 #include "ape/level/ApeLevelScene.h"
+#include "ape/level/ApeLevelDef.h"
 #include <cstring>
 #include <cmath>
 #include <algorithm>
@@ -1509,6 +1510,22 @@ void SlyGame::UpdateSlowTimeAudio(float dt)
             musicFilterCutoff = std::max(slowCutoff, musicFilterCutoff + (slowCutoff - kOpenCutoff) / fade * dt);
     }
     audio::SetVoiceLowPass(music, musicFilterCutoff);
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x0047C68C SlyGame::VisitIncludedLevels
+void SlyGame::VisitIncludedLevels(const ape::ApeLevelDef* level)
+{
+    if (!level)
+        return;
+    for (uint32_t name : level->includedLevels) {
+        // NOTE: the console looks the level up twice.
+        if (const ape::ApeLevelDef* included = ape::FindLevelDef(name))
+            VisitIncludedLevels(included);
+    }
 }
 
 } // namespace sly
