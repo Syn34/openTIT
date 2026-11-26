@@ -50,6 +50,8 @@ const Def* SameClassParent2(const EntityDef* parent, uint32_t classType)
     return parent && (parent->registryFlags & classType) ? static_cast<const Def*>(parent) : nullptr;
 }
 
+constexpr uint32_t kType_SoundActor = 0x80000;
+
 // -- ActorGroup ------------------------------------------------------------------
 constexpr uint32_t kType_ActorGroup = 0x2000;
 
@@ -390,7 +392,150 @@ void InteractivePropBDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlEle
     elem->GetHash(0x6AA4B8C7u, &field_11C, field_11C);
 }
 
+
 } // namespace
+
+// -- SoundActor (and the base of the sound actor classes) --------------------------
+
+struct SoundActorDefDesc : ClassDefDesc {
+    explicit SoundActorDefDesc(const EntityDefDesc& loader) : ClassDefDesc(loader, kType_SoundActor) {}
+    SoundActorDef::SlotSound slots[7];  // 0xE0 sound hash and duration per slot
+    ape::Vec3 soundOffset{};            // 0x120 attribute 0x22167A42
+    uint32_t field_130 = 0;             // 0x130 hash 0x3A15BFAB
+    uint32_t field_134 = 0;             // 0x134 hash 0xC03F596F
+    float durationScale = 1.0f;         // 0x138 attribute 0x3E1A4D9C (negative: 1)
+    uint8_t soundFlags = 0;             // 0x13C bit 7: attribute 0xBD75D672
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+    // The class fields of the definition.
+    void CopyTo(SoundActorDef& def) const
+    {
+        for (int i = 0; i < 7; ++i)
+            def.slotSounds[i] = slots[i];
+        def.soundOffset = soundOffset;
+        def.field_180 = field_130;
+        def.field_184 = field_134;
+        def.durationScale = durationScale;
+        def.soundFlags = uint8_t((def.soundFlags & 0x7F) | (soundFlags & 0x80));
+    }
+};
+
+// @func 0x001AD1F8 SoundActorDefDesc::Parse
+// A sound actor parent passes on its slot durations (not its sounds), its
+// sound offset, the two hashes, the duration scale and the flag.
+void SoundActorDefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                              const EntityDef* parent)
+{
+    ActorDefDesc::Parse(root, elem, loader, parent);
+    SoundActorDefDesc defaults(loader);
+    if (const auto* sound = SameClassParent<SoundActorDef>(parent, kType_SoundActor)) {
+        for (int i = 0; i < 7; ++i)
+            defaults.slots[i].duration = sound->slotSounds[i].duration;
+        defaults.soundOffset = sound->soundOffset;
+        defaults.field_130 = sound->field_180;
+        defaults.field_134 = sound->field_184;
+        defaults.durationScale = sound->durationScale;
+        defaults.soundFlags = sound->soundFlags & 0x80;
+    }
+    // The shared fields go back to the loader's.
+    name = loader.name;
+    geomName = loader.geomName;
+    templateName = loader.templateName;
+    loadScope = loader.loadScope;
+
+    elem->GetVec3(0x22167A42u, &soundOffset.x, &defaults.soundOffset.x);
+    elem->GetHash(0x3A15BFABu, &field_130, defaults.field_130);
+    elem->GetHash(0xC03F596Fu, &field_134, defaults.field_134);
+    elem->GetFloat(0x3E1A4D9Cu, &durationScale, defaults.durationScale);
+    if (durationScale < 0.0f)
+        durationScale = 1.0f;
+    static constexpr uint32_t kDurationAttrs[7] = {0xD5F932F0u, 0xEABE8E36u, 0x800ACF3Au, 0xF9217A56u,
+                                                   0x7BA17740u, 0xA9262FCFu, 0xA88C3581u};
+    static constexpr uint32_t kSoundAttrs[7] = {0x099867CCu, 0x20B43DD4u, 0x26F1B3DCu, 0x2F1729F4u,
+                                                0x22885BE2u, 0x095F2EEDu, 0x314C79A3u};
+    for (int i = 0; i < 7; ++i)
+        elem->GetFloat(kDurationAttrs[i], &slots[i].duration, defaults.slots[i].duration);
+    for (int i = 0; i < 7; ++i)
+        elem->GetHash(kSoundAttrs[i], &slots[i].name, defaults.slots[i].name);
+    bool flag = false;
+    elem->GetBool(0xBD75D672u, &flag, (defaults.soundFlags & 0x80) != 0);
+    soundFlags = uint8_t((soundFlags & 0x7F) | (flag ? 0x80 : 0));
+}
+
+// -- SoundActorB17728 ------------------------------------------------------------
+constexpr uint32_t kType_SoundActorB17728 = 0x4000000;
+
+struct SoundActorB17728DefDesc : SoundActorDefDesc {
+    explicit SoundActorB17728DefDesc(const EntityDefDesc& loader) : SoundActorDefDesc(loader)
+    {
+        typeBits |= kType_SoundActorB17728;
+    }
+    uint32_t field_140 = 0;             // 0x140 hash 0x53FFAFC2
+    float field_144 = 0.0f;             // 0x144 attribute 0x667AB4F5
+    uint32_t requiredCharacter = 0;     // 0x148 hash 0xCD839910
+
+    // 0x001D3B80
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001D3B80 SoundActorB17728DefDesc::Parse
+void SoundActorB17728DefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                    const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorDefDesc::Parse(root, elem, loader, parent);
+    uint32_t defaultHash = 0, defaultCharacter = 0;
+    float defaultValue = 0.0f;
+    if (const auto* other = SameClassParent<SoundActorB17728Def>(parent, kType_SoundActorB17728)) {
+        defaultHash = other->field_190;
+        defaultValue = other->field_194;
+        defaultCharacter = other->requiredCharacter;
+    }
+    elem->GetHash(0x53FFAFC2u, &field_140, defaultHash);
+    elem->GetFloat(0x667AB4F5u, &field_144, defaultValue);
+    elem->GetHash(0xCD839910u, &requiredCharacter, defaultCharacter);
+}
+
+// @func 0x001D3A24 SoundActorB17728Def::SoundActorB17728Def
+SoundActorB17728Def::SoundActorB17728Def(const SoundActorB17728DefDesc& desc)
+    : SoundActorDef(desc), field_190(desc.field_140), field_194(desc.field_144),
+      requiredCharacter(desc.requiredCharacter)
+{
+    desc.CopyTo(*this);
+}
+
+// -- SoundActorB174C0 (sentry light) ---------------------------------------------
+constexpr uint32_t kType_SoundActorB174C0 = 0x8000000;
+
+struct SoundActorB174C0DefDesc : SoundActorDefDesc {
+    explicit SoundActorB174C0DefDesc(const EntityDefDesc& loader) : SoundActorDefDesc(loader)
+    {
+        typeBits |= kType_SoundActorB174C0;
+    }
+    uint32_t field_140 = 0;     // 0x140 hash 0x503616D9
+    uint32_t field_144 = 0;     // 0x144 hash 0x5B85769D
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001CFF58 SoundActorB174C0DefDesc::Parse
+void SoundActorB174C0DefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                    const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorDefDesc::Parse(root, elem, loader, parent);
+    const auto* other = SameClassParent<SoundActorB174C0Def>(parent, kType_SoundActorB174C0);
+    elem->GetHash(0x503616D9u, &field_140, other ? other->field_190 : 0);
+    elem->GetHash(0x5B85769Du, &field_144, other ? other->field_194 : 0);
+}
+
+// @func 0x001CFE00 SoundActorB174C0Def::SoundActorB174C0Def
+SoundActorB174C0Def::SoundActorB174C0Def(const SoundActorB174C0DefDesc& desc)
+    : SoundActorDef(desc), field_190(desc.field_140), field_194(desc.field_144)
+{
+    desc.CopyTo(*this);
+}
 
 // -- SignalActor -----------------------------------------------------------------
 constexpr uint32_t kType_Signal = 0x40000;
@@ -629,6 +774,40 @@ EntityDef* CreateInteractivePropBDef(ape::xml::XmlElement* root, ape::xml::XmlEl
     for (int i = 0; i < 3; ++i)
         def->field_160[i] = desc.field_110[i];
     def->field_16C = desc.field_11C;
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001AD7F0 CreateSoundActorDef
+EntityDef* CreateSoundActorDef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+                               const EntityDef* parent)
+{
+    SoundActorDefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new SoundActorDef(desc);
+    desc.CopyTo(*def);
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001D3E58 CreateSoundActorB17728Def
+EntityDef* CreateSoundActorB17728Def(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                     const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorB17728DefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new SoundActorB17728Def(desc);
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001D0208 CreateSoundActorB174C0Def
+EntityDef* CreateSoundActorB174C0Def(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                     const EntityDefDesc& loader, const EntityDef* parent)
+{
+    SoundActorB174C0DefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new SoundActorB174C0Def(desc);
     delete desc.parts;
     return def;
 }

@@ -132,15 +132,24 @@ public:
 // (vtable 0x00B15970; constructor 0x001AD7F0).
 class SoundActorDef : public ActorDef {
 public:
+    explicit SoundActorDef(const ActorDefDesc& desc) : ActorDef(desc) {}
     ~SoundActorDef() override;
-    // Per slot: a sound to play when it starts (non-zero name).
+    // Per slot: a sound to play when it starts (non-zero name) and the
+    // slot's default duration (negative: none).
     struct SlotSound {
         uint32_t name = 0;
-        uint32_t field_04 = 0;
+        float duration = -1.0f;
     };
     SlotSound slotSounds[7];        // 0x130
     ape::Vec3 soundOffset{};        // 0x170 where the sounds play, local to the actor
+    uint32_t field_180 = 0;         // 0x180 hash 0x3A15BFAB
+    uint32_t field_184 = 0;         // 0x184 hash 0xC03F596F
     float durationScale = 1.0f;     // 0x188 applied with SoundActor::kSeq_Scaled
+    uint8_t soundFlags = 0;         // 0x18C bit 7: attribute 0xBD75D672
+
+protected:
+    // NOTE: for subclasses whose console constructors are not ported yet.
+    SoundActorDef() = default;
 };
 
 // Definition of InteractivePropA (vtable 0x00B17DB0, 0x280 bytes).

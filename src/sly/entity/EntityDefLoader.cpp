@@ -128,7 +128,7 @@ const DefClass kDefClasses[] = {
     {0xCCFB1F40u, nullptr},                              // 0x0018F8E8
     {0xC475D118u, CreateObjectActorDef},                 // "Teleporter"
     {0xBC6FA23Bu, nullptr},                              // 0x001C5408
-    {0xEE9D8477u, nullptr},                              // "SentryLight" 0x001D0208
+    {0xEE9D8477u, CreateSoundActorB174C0Def},            // "SentryLight"
     {0xEBE54755u, nullptr},                              // 0x000C77E4
     {0xEB9EE198u, objects::CreateTriggerDef},            // "Trigger"
     {0xE65DDB0Fu, objects::CreateAmbientSoundTriggerDef},
@@ -160,7 +160,7 @@ const DefClass kDefClasses[] = {
     {0x554FC0D9u, nullptr},                              // 0x001BD668
     {0x6E2FB705u, objects::CreateJobTriggerDef},
     {0x6927A078u, CreateInteractivePropBDef},
-    {0x633A7385u, nullptr},                              // 0x001D3E58
+    {0x633A7385u, CreateSoundActorB17728Def},
     {0x5EFDA0B2u, nullptr},                              // 0x0022F630
     {0x75F206BDu, objects::CreateCameraTriggerDef},
     {0x71FE40F4u, nullptr},                              // 0x0017D640
@@ -168,7 +168,7 @@ const DefClass kDefClasses[] = {
     {0x70542137u, nullptr},                              // 0x001D71D8
     {0x6F429D34u, CreateSearchlightDef},
     {0x7F6CE46Au, objects::CreateFxTriggerDef},
-    {0x7CDC084Cu, nullptr},                              // 0x001AD7F0 (SoundActorDef)
+    {0x7CDC084Cu, CreateSoundActorDef},
     {0x786E8593u, nullptr},                              // "PushBlock" 0x001B4394
     {0x77A6CF07u, objects::CreateDamageTriggerDef},
 };

@@ -142,14 +142,24 @@ public:
     bool field_1E4 = true;              // 0x1E4
     bool field_1E5 = true;              // 0x1E5
 };
-SLY_ACTOR_DEF(SoundActorB174C0Def, SoundActorDef);   // 0x00B17490
+// 0x00B17490: the sentry light definition ("SentryLight" element).
+class SoundActorB174C0Def : public SoundActorDef {
+public:
+    // The sound actor fields, then its own (0x001CFE00).
+    explicit SoundActorB174C0Def(const struct SoundActorB174C0DefDesc& desc);
+    ~SoundActorB174C0Def() override;
+    uint32_t field_190 = 0;             // 0x190 hash 0x503616D9
+    uint32_t field_194 = 0;             // 0x194 hash 0x5B85769D
+};
 // 0x00B176E0
 class SoundActorB17728Def : public SoundActorDef {
 public:
+    // The sound actor fields, then its own (0x001D3A24).
+    explicit SoundActorB17728Def(const struct SoundActorB17728DefDesc& desc);
     ~SoundActorB17728Def() override;
-    uint32_t field_190 = 0;             // 0x190 placement default (hash)
-    float field_194 = 0.0f;             // 0x194 placement default
-    // 0x198 character (CharacterDef::characterName) a near player must be to
+    uint32_t field_190 = 0;             // 0x190 placement default (hash 0x53FFAFC2)
+    float field_194 = 0.0f;             // 0x194 placement default (attribute 0x667AB4F5)
+    // 0x198 hash 0xCD839910: character (CharacterDef::characterName) a near player must be to
     // open the actor; 0 for anyone.
     uint32_t requiredCharacter = 0;
 };
