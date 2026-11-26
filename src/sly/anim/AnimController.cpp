@@ -114,6 +114,7 @@ AnimController::AnimController(ape::world::ApeObj* object_) : object(object_)
 }
 
 // @func 0x0034BF9C AnimController::~AnimController
+// @func 0x0034C8CC AnimController::~AnimController (deleting)
 AnimController::~AnimController()
 {
     // Bone objects go back to the default pivot.

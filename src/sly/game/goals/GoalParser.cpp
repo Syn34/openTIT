@@ -140,9 +140,9 @@ constexpr HintElement kHintElements[] = {
     {0xEE3E62C2, kHint_Interaction},    // "Interactive"
     {0xB2E59948, kHint_Spawner},        // "Spawner"
     {0xE89DF217, kHint_SpawnGroup},     // "SpawnerGroup"
-    {0x044DC6AB, kHint_LaserGroup},     // "laser"
-    {0xAB27550F, kHint_Laser},          // "LaserField"
-    {0xAB39AA94, kHint_LaserField},     // "laserGroup"
+    {0x044DC6AB, kHint_Laser},          // "laser"
+    {0xAB27550F, kHint_LaserField},     // "LaserField"
+    {0xAB39AA94, kHint_LaserGroup},     // "laserGroup"
     {0xC475D118, kHint_Interactable},   // "teleporter"
 };
 

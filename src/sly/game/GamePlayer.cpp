@@ -4,6 +4,7 @@
 #include "ape/world/ApeBase.h"
 #include "sly/entity/Character.h"
 #include "sly/entity/Entity.h"
+#include "sly/game/goals/Goal.h"
 #include "sly/tuning/GameTuning.h"
 
 namespace sly {
@@ -56,6 +57,16 @@ void GamePlayer::UpdateMeter(float dt)
         meter = refilled <= meterMax ? refilled : meterMax;
     }
     flags &= ~kFlag_MeterHold;
+}
+
+// @func 0x00465F30 GamePlayer::FindGoal
+goals::Goal* GamePlayer::FindGoal(uint32_t name) const
+{
+    for (uint32_t i = 0; i < goals.Count(); ++i) {
+        if (goals[i]->nameHash == name)
+            return goals[i];
+    }
+    return nullptr;
 }
 
 } // namespace sly

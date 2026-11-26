@@ -952,11 +952,11 @@ void JobManager::OnBottleCollected(uint32_t bottle)
 }
 
 // @func 0x002E1DB0 JobManager::StartJobFromHubByName
-void JobManager::StartJobFromHubByName(uint32_t jobName, uint32_t goalName, bool toHub, bool toHideout,
+bool JobManager::StartJobFromHubByName(uint32_t jobName, uint32_t goalName, bool toHub, bool toHideout,
                                        bool forceReload, bool levelRequestFlag, bool skipBookkeeping)
 {
     Episode* job = jobName ? FindEpisode(jobName) : nullptr;
-    StartJobFromHub(job, goalName, toHub, toHideout, forceReload, levelRequestFlag, skipBookkeeping, true);
+    return StartJobFromHub(job, goalName, toHub, toHideout, forceReload, levelRequestFlag, skipBookkeeping, true);
 }
 
 // @func 0x002E0930 JobManager::StartJobFromHub
