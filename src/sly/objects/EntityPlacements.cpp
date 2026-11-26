@@ -997,5 +997,38 @@ void PlacementB138E8::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
         desc.bindings.PushBack(binding);
 }
 
+// @func 0x001B5438 PlacementB16088::Parse
+void PlacementB16088::Parse(ape::xml::XmlElement* elem)
+{
+    constexpr uint32_t kElem_Point = 0x65AF9A49u;
+    ScriptedEntityPlacement::Parse(elem);
+    elem->GetFloat(0xE6DF8EF6u, &field_100, field_100);
+    for (ape::xml::XmlElement* child = elem->FirstChildElement(); child; child = child->NextSiblingElement()) {
+        if (child->GetNameHash() != kElem_Point || field_EC.Count() >= 4)
+            continue;
+        Entry point = {{0.0f, 0.0f}};
+        if (child->GetVec2(0x01968AD4u, point.xy, point.xy) == ape::xml::kQuery_Ok)
+            field_EC.PushBack(point);
+    }
+}
+
+// @func 0x001B55C8 ParsePushBlockPlacement
+// NOTE: the console copies the definition's points without checking it for null.
+EntityPlacement* ParsePushBlockPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                         const char* name, EntityDef* def)
+{
+    (void)root;
+    auto* placement = new PlacementB16088(name, def);
+    if (def) {
+        const auto* blockDef = static_cast<const entity::PushBlockDef*>(def);
+        placement->field_100 = blockDef->field_E8;
+        for (const entity::PushBlockDef::Point& point : blockDef->points)
+            placement->field_EC.PushBack(point);
+    }
+    placement->typeBits |= 0x20000;
+    placement->Parse(elem);
+    return placement;
+}
+
 } // namespace objects
 } // namespace sly

@@ -335,8 +335,13 @@ public:
     // without one.
     void GetBounds(ape::Aabb& out) const override;
     ~PushBlockDef() override;
-    ape::ApeTArray<void*> field_C0;    // 0xC0
+    // A 2D point of the definition (copied into its placements).
+    struct Point {
+        float xy[2];
+    };
+    ape::ApeTArray<Point> points;      // 0xC0
     void* collisionShape = nullptr;    // 0xE4
+    float field_E8 = 0.0f;             // 0xE8 placement default
 };
 
 // Push block (vtable 0x00B160A8; spawned by PushBlockDef, destructor

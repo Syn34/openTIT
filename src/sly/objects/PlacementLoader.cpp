@@ -33,11 +33,6 @@ EntityPlacement* ParseBreakableChainPlacement(ape::xml::XmlElement*, ape::xml::X
 {
     return nullptr;
 }
-// TODO(0x001B55C8 ParsePlacementB16088)
-EntityPlacement* ParsePlacementB16088(ape::xml::XmlElement*, ape::xml::XmlElement*, const char*, EntityDef*)
-{
-    return nullptr;
-}
 // TODO(0x001D7D98 ParseActorB17990Placement)
 EntityPlacement* ParseActorB17990Placement(ape::xml::XmlElement*, ape::xml::XmlElement*, const char*, EntityDef*)
 {
@@ -120,7 +115,7 @@ const ClassEntry kClassLoaders[] = {
     {0x70542137u, ParseActorB17990Placement, kWord_Registry, 0x1},
     {0x6927A078u, ParseInteractivePropBPlacement, kWord_Registry, 0x10},
     {0x633A7385u, ParseSoundActorB17728Placement, kWord_Type, 0x4000000},
-    {0x786E8593u, ParsePlacementB16088, kWord_Type, 0x20000},
+    {0x786E8593u, ParsePushBlockPlacement, kWord_Type, 0x20000},
     {0x71FE40F4u, ParseTargetableAPlacement, kWord_Class, 0x100},
 };
 

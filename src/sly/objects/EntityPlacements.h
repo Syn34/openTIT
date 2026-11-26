@@ -10,6 +10,7 @@
 #include "sly/objects/ObjectsBase.h"
 #include "ape/memory/ApeTArray.h"
 #include "sly/game/Upgrades.h"
+#include "sly/entity/PropEntities.h"
 #include "ape/world/ApeBase.h"
 
 namespace sly {
@@ -598,28 +599,29 @@ public:
 
 #undef SLY_PLACEMENT
 
-// Scripted entity placement of the definitions with type bit 0x20000
-// (vtable 0x00B16088, 0x110 bytes; parsed for element 0x786E8593, built by
-// 0x001B55C8, outside this range). NOTE: names and meanings unknown.
+// Placement of the push blocks (definitions with type bit 0x20000; vtable
+// 0x00B16088, 0x110 bytes; element 0x786E8593). NOTE: the meaning of the
+// points is unknown.
 class PlacementB16088 : public ScriptedEntityPlacement {
 public:
     using ScriptedEntityPlacement::ScriptedEntityPlacement;
     ~PlacementB16088() override;
+    // The scripted attributes, the word and up to four points (children
+    // 0x65AF9A49, attribute 0x01968AD4) (0x001B5438).
+    void Parse(ape::xml::XmlElement* elem);
 
-    struct Entry {
-        uint32_t words[2];
-    };
+    using Entry = entity::PushBlockDef::Point;
     // Slot 2 (0x001B57A4): the scripted copy, then the entries (appended)
     // and the word.
     void FillInstanceDesc(EntityInstanceDesc& desc) const override;
 
-    ape::ApeTArray<Entry> field_EC;    // +0xEC copied from the definition (+0xC0)
-    uint32_t field_100 = 0;            // +0x100 from the definition (+0xE8)
+    ape::ApeTArray<Entry> field_EC{4, nullptr, true};   // +0xEC copied from the definition (+0xC0)
+    float field_100 = 0.0f;            // +0x100 from the definition (+0xE8); attribute 0xE6DF8EF6
 };
 struct InstanceDescB16088 : ScriptedInstanceDesc {
     using ScriptedInstanceDesc::ScriptedInstanceDesc;
     ape::ApeTArray<PlacementB16088::Entry> field_C8;   // 0xC8
-    uint32_t field_DC = 0;             // 0xDC
+    float field_DC = 0.0f;             // 0xDC
 };
 
 // Placement of the definitions with registry flag 0x40 (vtable 0x00B138E8,
@@ -810,6 +812,9 @@ EntityPlacement* ParseTargetableCPlacement(ape::xml::XmlElement* root, ape::xml:
                                            const char* name, EntityDef* def);
 EntityPlacement* ParseRigidEntityB19198Placement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                  const char* name, EntityDef* def);
+// Push block placement loader (0x001B55C8).
+EntityPlacement* ParsePushBlockPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                         const char* name, EntityDef* def);
 // Placement loaders of the rigid-body scripted classes (0x00167F58,
 // 0x0016CBE0, 0x00177D78, 0x0017F1A0, 0x00190EA0).
 EntityPlacement* ParseRigidPropPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const char* name,
