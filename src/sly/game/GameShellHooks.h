@@ -42,6 +42,8 @@ void CharacterDropTowards(entity::Entity* character, const ape::Vec3& target);
 // Component 0x24 back to its start (0x002549F8) with its flag.
 void Component24Restart(entity::EntityComponent* component, bool flag);
 
+// HUD element 0xB7E98FE4 plays its intro (0x004902B8).
+void ShowCharacterHint();
 // Shows or hides the AI entities (0x0048A068).
 void SetAiEntitiesVisible(bool visible);
 

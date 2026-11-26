@@ -54,8 +54,7 @@ ape::TuningBool g_debugDisplayMemory("Debug.Display.Memory", false);
 ape::TuningBool g_debugDisplayMemoryRsxMain("Debug.Display.Memory (RSX Main)", false);
 ape::TuningBool g_debugMemoryDumpToFile("Debug.Memory.DumpToFile", false);
 
-uint32_t g_economyUnknown1B84[2] = {};    // 0x010C1B84 (0x010C1B88 is used by 0x004A8CD0..0x004A9084)
-uint32_t g_economyUnknown1C08[5] = {};    // 0x010C1C08
+uint32_t g_economyUnknown1B84 = 0;       // 0x010C1B84 (0x010C1B88.. is the subtitle state, Subtitles.cpp)
 
 ape::TuningFloat g_subtitleDisplayRate("UI.Subtitle.DisplayRate", -1.0f);
 ape::TuningFloat g_subtitleDisplayRateFudgeFactor("UI.Subtitle.DisplayRateFudgeFactor", 0.5f);

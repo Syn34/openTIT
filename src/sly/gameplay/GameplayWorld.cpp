@@ -2,6 +2,7 @@
 // (see GameplayWorld.h). They return safe defaults until the world, camera
 // and HUD modules provide the real implementations.
 #include "sly/gameplay/GameplayWorld.h"
+#include "sly/game/Subtitles.h"
 
 #include "sly/game/AppRuntime.h"
 #include "sly/game/AudioSystem.h"
@@ -291,7 +292,10 @@ uint32_t EntityPlaySoundRequest(WorldObject*, audio::SoundRequest*, const audio:
 void EmitterStart(uint32_t) {}
 bool EmitterPlaying(uint32_t) { return false; }
 bool SubtitlesEnabled() { return false; }
-void ShowSubtitle(const char*, uint32_t, audio::SoundRequest*) {}
+void ShowSubtitle(const char* textKey, uint32_t param, audio::SoundRequest* request)
+{
+    sly::ShowSubtitle(textKey, param, nullptr, nullptr, request);
+}
 bool EntityUsesAltSoundBus(const WorldObject*) { return false; }
 
 } // namespace gameplay

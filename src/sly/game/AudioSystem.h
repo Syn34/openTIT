@@ -55,6 +55,8 @@ public:
     virtual bool IsGroupActive(uint32_t group) { (void)group; return false; }
     // A library voice has started playing (its stream is buffered).
     virtual bool SubVoiceStarted(uint32_t subVoice) { (void)subVoice; return true; }
+    // Length of a library voice's sound in seconds.
+    virtual float SubVoiceDuration(uint32_t subVoice) { (void)subVoice; return 0.0f; }
 };
 
 AudioBackend& Backend();
@@ -201,6 +203,9 @@ struct SoundRequest;
 // The request's voice has started (every library voice of it is buffered,
 // or the sound needs no streaming). False without a voice.
 bool IsRequestReady(const SoundRequest* request);
+// Length in seconds of the sound a request plays (the longest of its
+// library voices); 0 while it is not ready or without a voice.
+float RequestDuration(const SoundRequest* request);
 // Debug names of sounds and requests; stripped from the shipping game,
 // which prints "[UNKNOWN]" instead.
 const char* SoundNameDebugString(const SoundName* name);

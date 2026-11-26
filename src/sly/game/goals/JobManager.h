@@ -60,7 +60,7 @@ struct PlayerProgress {
     uint8_t field_000 = 0;           // +0x000 NOTE: from 0x010B1804 at reset
     uint8_t field_001 = 0;           // +0x001 NOTE: from 0x00F65BF4 (1) at reset
     uint16_t field_002 = 0;          // +0x002 NOTE: from 0x00F65BF5 (1) at reset
-    uint32_t field_020 = 0;          // +0x020 NOTE: second value of the save details text
+    uint32_t coins = 0;              // +0x020 money (second value of the save details text)
     uint32_t lastJobId = 0;          // +0x024 id of the 0x35C-byte record last played (save subtitle)
     uint32_t lastEpisodeName = 0;    // +0x02C name hash of the 0x218-byte record last played
     uint32_t bottleBits[kEpisodeSlots] = {};  // +0x034 one bit per clue bottle (Job::bottleSlot)
@@ -108,6 +108,10 @@ struct PlayerProgress {
     };
     UnlockEntry unlocks[kUnlockEntries];  // +0xD60
     uint32_t unlockBits[2] = {};     // +0xF64 40 unlock flags
+    // Upgrade shop state per upgrade record (Upgrades.h UpgradeState bits).
+    // NOTE: on the console the bytes run from +0xF6C into the ability words
+    // at +0xFB0 when the table has more than 0x44 upgrades.
+    uint8_t upgradeStates[0x54] = {};    // +0xF6C
     uint32_t abilityBits[1] = {};    // +0xFB0 two bits per ability (see PlayerAbilities.h)
 };
 // The current profile's record. NOTE: the game world does not model its

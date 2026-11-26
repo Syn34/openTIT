@@ -171,7 +171,7 @@ void BuildSaveDescription(const PlayerProgress* progress)
     // NOTE: the console also evaluates the mask percentage but does not pass
     // it to the format.
     (void)jobs->MaskPercent(progress);
-    ape::StrPrintf(g_details, sizeof(g_details), format, completion, progress->field_020, bottles, treasures,
+    ape::StrPrintf(g_details, sizeof(g_details), format, completion, progress->coins, bottles, treasures,
                    safes);
 }
 

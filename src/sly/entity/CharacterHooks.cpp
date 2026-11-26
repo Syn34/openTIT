@@ -1,4 +1,8 @@
 // openTIT - Stubs for CharacterHooks.h.
+#include "sly/game/Upgrades.h"
+
+#include <algorithm>
+#include <vector>
 #include "sly/entity/CharacterHooks.h"
 
 #include "sly/components/ReceptacleComponent.h"
@@ -134,7 +138,14 @@ uint8_t PlayerProfileIndex(uint32_t player) { (void)player; return 0; }
 bool ProfileAlternateCostume(uint8_t profile, uint32_t costume) { (void)profile; (void)costume; return false; }
 uint32_t ProfileSelection(uint8_t profile, uint32_t offset) { (void)profile; (void)offset; return 0; }
 bool LevelPlayerHasAbility(uint32_t player, int ability) { (void)player; (void)ability; return false; }
-uint32_t PurchasedAbilities(uint32_t character, uint32_t* out, uint32_t max) { (void)character; (void)out; (void)max; return 0; }
+uint32_t PurchasedAbilities(uint32_t character, uint32_t* out, uint32_t max)
+{
+    std::vector<uint32_t> items;
+    CollectBoughtItems(character, items);
+    const uint32_t count = std::min<uint32_t>(uint32_t(items.size()), max);
+    std::copy_n(items.begin(), count, out);
+    return count;
+}
 bool WorldFlag(uint32_t name) { (void)name; return false; }
 bool PhysicsWorldPresent() { return false; }
 

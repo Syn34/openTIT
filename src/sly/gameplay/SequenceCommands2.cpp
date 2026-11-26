@@ -1,5 +1,6 @@
 // openTIT - Sequencer commands, second batch (see SequenceCommands2.h).
 #include "sly/gameplay/SequenceCommands2.h"
+#include "sly/game/Upgrades.h"
 
 #include "ape/anim/ApeAnimScript.h"
 #include "ape/math/ApeMath.h"
@@ -126,11 +127,14 @@ void CopyKey(char* dst, size_t size, const char* src)
 
 } // namespace
 
-// TODO(0x0049FCC0 AnimScriptBindVariables): lives with the anim script glue
-// outside this module; without it the variables keep their defaults.
-void AnimScriptBindVariables(ape::ApeAnimScriptInstance*, const std::vector<AnimScriptBinding>&,
-                             uint32_t, bool, bool)
+// The bindings go through ApplyScriptBindings (0x0049FCC0). NOTE: the
+// console passes the source script instance in `param`; the port's command
+// keeps it as a plain word, so `var` bindings have no source here.
+void AnimScriptBindVariables(ape::ApeAnimScriptInstance* instance, const std::vector<AnimScriptBinding>& bindings,
+                             uint32_t param, bool flag, bool flagB)
 {
+    (void)param;
+    ApplyScriptBindings(instance, bindings.data(), bindings.size(), nullptr, flag, flagB);
 }
 
 // ---------------------------------------------------------------------------

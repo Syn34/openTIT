@@ -716,12 +716,14 @@ const uint32_t kHudStateNames[5] = {
 
 ape::Vec3 g_defaultHudOffset{};
 
-bool HudClipDone(anim::AnimController* controller)
+// @func 0x004A5D40 HudClipDone
+bool HudClipDone(anim::AnimController* controller, bool countLoops)
 {
     anim::AnimLayer* layer = controller ? controller->FindLayer(0) : nullptr;
-    return layer ? layer->IsDone(false) : true;
+    return layer ? layer->IsDone(countLoops) : true;
 }
 
+// @func 0x004A5C90 PlayHudClip
 bool PlayHudClip(anim::AnimController* controller, uint32_t clip, float speed, bool loop)
 {
     if (!controller)
@@ -733,16 +735,25 @@ bool PlayHudClip(anim::AnimController* controller, uint32_t clip, float speed, b
     return true;
 }
 
-namespace {
-
-// Moves the default layer's main control to `t` of its length (0x004A5DA8).
-void SetClipProgress(anim::AnimController* controller, float t)
+// @func 0x004A5DA8 SetHudClipTime
+void SetHudClipTime(anim::AnimController* controller, float time, bool normalized)
 {
     anim::AnimLayer* layer = controller ? controller->FindLayer(0) : nullptr;
     if (!layer || !layer->control)
         return;
-    const float length = layer->Duration();
-    layer->control->localTime = length > 1e-5f ? length * t : 1.0f;
+    if (normalized) {
+        const float length = layer->Duration();
+        time = length > 1e-5f ? length * time : 1.0f;
+    }
+    layer->control->localTime = time;
+}
+
+namespace {
+
+// Moves the default layer's main control to `t` of its length.
+void SetClipProgress(anim::AnimController* controller, float t)
+{
+    SetHudClipTime(controller, t, true);
 }
 
 // Shows the text field objects and starts their script `which` (intro or outro).

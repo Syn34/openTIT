@@ -569,7 +569,10 @@ extern ape::Vec3 g_defaultHudOffset;
 // plays the clip registered as `clip` on the controller; the default
 // layer's clip is done (true without a controller or layer).
 bool PlayHudClip(anim::AnimController* controller, uint32_t clip, float speed, bool loop);
-bool HudClipDone(anim::AnimController* controller);
+bool HudClipDone(anim::AnimController* controller, bool countLoops = false);
+// Puts the default layer's main control at `time` (a fraction of the clip
+// length when `normalized`).
+void SetHudClipTime(anim::AnimController* controller, float time, bool normalized);
 
 // Lookups (null when the name is 0, unknown, or of another type).
 HudObject* Find(uint32_t name);                    // 0x003568E0 kHud_Object

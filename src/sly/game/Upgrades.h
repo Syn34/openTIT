@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace ape::xml { class XmlElement; }
-namespace ape { class ApeAnimScriptVar; }
+namespace ape { class ApeAnimScriptVar; class ApeAnimScriptInstance; }
 
 namespace sly {
 
@@ -71,25 +71,65 @@ ScriptBindingType ScriptBindingTypeFromName(uint32_t nameHash);
 // `binding`; false for unknown elements, a missing name or a missing value.
 bool ParseScriptBinding(ape::xml::XmlElement* element, TextField* binding);
 
-// One upgrade record (0x98 bytes). Only the fields cleared at start-up are
-// known.
+// One upgrade record (0x98 bytes), an <Upgrade> element of the upgrade
+// file. NOTE: the attribute names other than "id", "type" and "cost" are
+// unknown (hashes in Upgrades.cpp).
 struct UpgradeEntry {
-    uint32_t field_00 = 0;
-    uint32_t field_04 = 0;
-    uint32_t field_08 = 0;
-    uint32_t field_0C = 0;
-    char name[0x40] = {};       // +0x10 NOTE: first byte cleared; assumed text
-    char desc[0x40] = {};       // +0x50 NOTE: first byte cleared; assumed text
-    uint32_t field_90 = 0;
-    bool field_94 = false;
+    uint32_t id = 0;            // +0x00 "id"
+    uint32_t item = 0;          // +0x04 what it gives (an ability name for characters)
+    uint32_t type = 0;          // +0x08 "type": the character / kind it belongs to
+    int32_t cost = 0;           // +0x0C "cost" in coins
+    char name[0x40] = {};       // +0x10 display name
+    char desc[0x40] = {};       // +0x50 description
+    uint32_t unlockJob = 0;     // +0x90 job whose completion unlocks it
+    bool notAbility = false;    // +0x94 not listed with the bought abilities
 };
 
 constexpr uint32_t kUpgradeCount = 0x54;
+
+// Bits of PlayerProgress::upgradeStates.
+enum UpgradeState : uint8_t {
+    kUpgrade_Unlocked = 0x01,
+    kUpgrade_Bought   = 0x02,
+    kUpgrade_New      = 0x04,   // unlocked and not looked at yet
+};
+
+// Reads the upgrade table ("Upgrades" root, "Upgrade" elements; at most
+// 0x53) and clears the bought/unlocked bits of each record. False if the
+// file cannot be loaded.
+bool LoadUpgrades(const char* path);
+// The upgrades a completed job unlocks become unlocked and new (the
+// profile's notification bit 7 is raised).
+void UnlockUpgradesOfJob(uint32_t jobId);
+// Buys upgrade `id` with the profile's coins: it must be unlocked (outside
+// episodes any may be bought), affordable and not bought yet. The first and
+// the last purchase award trophies.
+bool BuyUpgrade(uint32_t id);
+// Whether upgrade `id` could be bought now (not counting a repeat buy).
+bool CanBuyUpgrade(uint32_t id);
+// Appends the index of every unlocked upgrade with an id to `out`.
+void CollectUnlockedUpgrades(std::vector<uint32_t>& out);
+// Appends the item of every bought, unlocked ability upgrade of `type`.
+void CollectBoughtItems(uint32_t type, std::vector<uint32_t>& out);
+// Some upgrade is new.
+bool AnyNewUpgrade();
+// Upgrade `item` of `type` is bought and unlocked; outside episodes every
+// upgrade counts.
+bool UpgradeOwned(uint32_t type, uint32_t item);
 
 // Stores the current value of a script variable in a binding record.
 void CopyScriptVarToBinding(TextField& out, const ape::ApeAnimScriptVar* var);
 // qsort comparator of string pointers (case-insensitive).
 int CompareStringPointers(const void* a, const void* b);
+
+// Hands a binding's value to the variable it names in `instance` (types
+// must match): `var` bindings copy from `source`, entity/trigger bindings
+// resolve names among the sequence's entities when `sequenceEntities` is
+// set; `quiet` silences the warning about unresolved names.
+void ApplyScriptBinding(ape::ApeAnimScriptInstance* instance, const TextField& binding,
+                        ape::ApeAnimScriptInstance* source, bool sequenceEntities, bool quiet);
+void ApplyScriptBindings(ape::ApeAnimScriptInstance* instance, const TextField* bindings, size_t count,
+                         ape::ApeAnimScriptInstance* source, bool sequenceEntities, bool quiet);
 
 // Upgrade record by index, null when out of range.
 UpgradeEntry* GetUpgradeEntry(uint32_t index);

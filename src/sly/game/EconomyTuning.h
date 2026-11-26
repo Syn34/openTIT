@@ -49,7 +49,6 @@ extern ape::TuningString g_loadingScreenTextPrefix;
 // Other globals of the unit; NOTE: purpose unknown.
 extern uint32_t g_economyUnknown26B8[3];
 extern float g_economyUnknown1AA0;
-extern uint32_t g_economyUnknown1B84[2];
-extern uint32_t g_economyUnknown1C08[5];
+extern uint32_t g_economyUnknown1B84;
 
 } // namespace sly

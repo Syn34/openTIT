@@ -8,6 +8,8 @@
 // returns for a missing object; each names the function it stands for.
 #pragma once
 
+#include <vector>
+
 #include "ape/math/ApeMath.h"
 
 #include <cstdint>
@@ -197,6 +199,8 @@ void PropertySystemForgetDef(EntityDef* def);
 // name, and under `type` when that is one of the seven registry types),
 // unless it is a trigger or registryFlags bit 1 is set.
 void PropertySystemRegisterDef(EntityDef* def, uint32_t type);
+// The registered definitions: list 0 all, lists 1-6 one property type each.
+const std::vector<EntityDef*>& PropertyRegistry(int index);
 
 // 0x000D8C18: queues a flash/fade draw of every geometry instance under
 // `object` (the instance's parts drawn again with the renderer's two
