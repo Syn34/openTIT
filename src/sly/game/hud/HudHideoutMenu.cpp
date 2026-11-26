@@ -6,6 +6,9 @@
 #include "sly/anim/AnimLayer.h"
 #include "ape/anim/ApeAnimScript.h"
 #include "agl/AglTexture.h"
+#include "agl/AglDrawList.h"
+#include "agl/gpu/GpuTypes.h"
+#include "sly/tuning/HudTuning.h"
 #include "sly/game/ObjectHelpers.h"
 #include "sly/game/SlyGame.h"
 #include "sly/game/hud/HudHooks.h"
@@ -460,6 +463,86 @@ void HudHideoutMenu::DrawPagesCallback(void* unused, void* context)
         static_cast<HudHideoutMenu*>(context)->DrawPages();
 }
 
+namespace {
+
+void SetMapVertex(agl::AglDrawVertex& vertex, const ape::Vec3& position, const uint8_t color[4], float u, float v)
+{
+    vertex.position[0] = position.x;
+    vertex.position[1] = position.y;
+    vertex.position[2] = position.z;
+    for (int i = 0; i < 4; ++i)
+        vertex.color[i] = color[i];
+    vertex.uv[0] = u;
+    vertex.uv[1] = v;
+}
+
+} // namespace
+
+// @func 0x00373C28 HudHideoutMenu::DrawMap
+void HudHideoutMenu::DrawMap()
+{
+    const HudObjectDef::MenuDef& info = def->menu;
+
+    // Where the corner instances are now, and their centre.
+    mapCentre = ape::world::kWorldZero;
+    for (int i = 0; i < 4; ++i) {
+        cornerPos[i] = corners[i] ? corners[i]->GetWorld().translation : ape::world::kWorldZero;
+        mapCentre.x += cornerPos[i].x;
+        mapCentre.y += cornerPos[i].y;
+        mapCentre.z += cornerPos[i].z;
+    }
+    mapCentre.x *= 0.25f;
+    mapCentre.y *= 0.25f;
+    mapCentre.z *= 0.25f;
+
+    // How far the frame has grown against its size at build time.
+    const float spanX = (cornerPos[3].x - cornerPos[0].x) / (mapMax.x - mapMin.x);
+    const float spanY = (cornerPos[3].y - cornerPos[0].y) / (mapMax.y - mapMin.y);
+    cornerPos[0].y += 0.15f;
+    cornerPos[1].y += 0.15f;
+    const float width = (cornerPos[0].x - cornerPos[2].x) / mapSize.x;
+
+    agl::AglDrawList& list = agl::GetDrawList();   // NOTE: the game world's frame list (+0x1285E4)
+    list.SetMaterial(mapMaterial, 0);
+    list.SetWorldMatrix(ape::world::kWorldIdentity, 0);
+
+    const float zoom = g_uIMainMenuUVScaling.Get();
+    const float zoomX = spanX * zoom;
+    const float zoomY = 1.0f - spanY * zoom;
+    const float uLeft = (1.0f - zoomX) * 0.5f;
+    const float uRight = 1.0f - uLeft;
+    const float uInset = zoomX * 0.135f / width;
+    const float vCentre = zoom * 0.02f + 0.5f;
+    const float vTop = zoomY * 0.5f + 0.25f;
+    const float vBottom = (1.0f - zoomY * 0.5f) - 0.25f;
+
+    agl::AglDrawPrimitive primitive;
+    list.AllocPrimitive(&primitive, static_cast<uint8_t>(agl::gpu::PrimitiveType::Triangles), 12, 0);
+    agl::AglDrawVertex* v = primitive.vertices;
+    // Left, top, right and bottom triangles fanning out from the centre.
+    SetMapVertex(v[0], mapCentre, info.mapColor, 0.5f, vCentre);
+    SetMapVertex(v[1], cornerPos[0], info.cornerColors[0], uLeft, vTop);
+    SetMapVertex(v[2], cornerPos[2], info.cornerColors[2], uLeft + uInset, vBottom);
+    SetMapVertex(v[3], mapCentre, info.mapColor, 0.5f, vCentre);
+    SetMapVertex(v[4], cornerPos[0], info.cornerColors[0], uLeft, vTop);
+    SetMapVertex(v[5], cornerPos[1], info.cornerColors[1], uRight, vTop);
+    SetMapVertex(v[6], mapCentre, info.mapColor, 0.5f, vCentre);
+    SetMapVertex(v[7], cornerPos[3], info.cornerColors[3], uRight - uInset, vBottom);
+    SetMapVertex(v[8], cornerPos[2], info.cornerColors[2], uLeft + uInset, vBottom);
+    SetMapVertex(v[9], mapCentre, info.mapColor, 0.5f, vCentre);
+    SetMapVertex(v[10], cornerPos[3], info.cornerColors[3], uRight - uInset, vBottom);
+    SetMapVertex(v[11], cornerPos[1], info.cornerColors[1], uRight, vTop);
+    list.EndPrimitive();
+}
+
+// @func 0x003742AC HudHideoutMenu::DrawMapCallback
+void HudHideoutMenu::DrawMapCallback(void* unused, void* context)
+{
+    (void)unused;
+    if (context)
+        static_cast<HudHideoutMenu*>(context)->DrawMap();
+}
+
 bool HudHideoutMenu::ScriptRunning() const
 {
     return shutdownScript && (shutdownScript->actions || shutdownScript->currentStep);
@@ -490,9 +573,10 @@ void HudHideoutMenu::Update(float dt)
         return;
     if (!object || !object->IsVisible())
         return;
-    if (g_game)
+    if (g_game) {
+        g_game->AddCallback(kCallbackList_6, reinterpret_cast<void*>(&DrawMapCallback), this, nullptr);
         g_game->AddCallback(kCallbackList_Draw, reinterpret_cast<void*>(&DrawPagesCallback), this, nullptr);
-    // TODO(0x003742AC / 0x00373C28): the list 6 callback is not ported.
+    }
 
     // Requests made since the last update.
     if (menuFlags & kM_OpenReq) {

@@ -80,6 +80,11 @@ public:
     // during a switch). World callback 0x003746D8.
     void DrawPages();
     static void DrawPagesCallback(void* unused, void* context);
+    // 0x00373C28: draws the map sprite as four triangles from the centre of
+    // the corner instances to their edges, zoomed by the UV scaling tuning.
+    // World callback 0x003742AC (list 6).
+    void DrawMap();
+    static void DrawMapCallback(void* unused, void* context);
     // 0x003739D0 (world callback): turns the child object (else the
     // element's object) about Y by `childAngle` degrees.
     static void TurnChildCallback(void* unused, void* context);
@@ -89,11 +94,8 @@ public:
     agl::AglMaterial* mapMaterial = nullptr;   // +0xAC
     ape::world::ApeObj* corners[4] = {};  // +0xB0
     ape::world::ApeObj* child = nullptr;  // +0xC0
-    ape::Vec3 field_D0{};                 // +0xD0
-    ape::Vec3 field_E0{};                 // +0xE0
-    ape::Vec3 field_F0{};                 // +0xF0
-    ape::Vec3 field_100{};                // +0x100
-    ape::Vec3 field_110{};                // +0x110
+    ape::Vec3 cornerPos[4]{};             // +0xD0 corner positions of the last map draw
+    ape::Vec3 mapCentre{};                // +0x110 their average
     ape::Vec3 mapMin{};                   // +0x120 corner 0
     ape::Vec3 mapMax{};                   // +0x130 corner 3
     ape::Vec3 mapSize{};                  // +0x140 corner 0 - corner 2
