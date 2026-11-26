@@ -446,3 +446,38 @@ void ShowCharacterHint()
 }
 
 } // namespace sly
+
+namespace sly {
+
+// NOTE: a word the menus of pages 0x0E/0x0F set (0x010BBF58); its writer is
+// not ported, so it stays 0.
+uint32_t g_menuBackdropReady = 0;
+
+// @func 0x00457654 SlyGame::HoldsFrame
+// Whether the screen shows a held picture instead of the running game: the
+// modal sub state (0x0C), the play states 2/3, the front end sub states 6,
+// 0x18 and 0x19 (with a deeper state) hold it while their state data's
+// first word is set; menu pages 0x0E/0x0F while their backdrop is ready.
+// NOTE: name and reading from use.
+bool SlyGame::HoldsFrame()
+{
+    auto firstWord = [this](uint32_t layer) {
+        uint32_t word = 0;
+        if (const uint8_t* data = StateData(layer))
+            std::memcpy(&word, data, sizeof word);
+        return word;
+    };
+    if (GetState(1) == 0x0C)
+        return firstWord(1) != 0;
+    if (GetState(0) == 2 || GetState(0) == 3)
+        return firstWord(0) != 0;
+    if (GetState(0) == 0 && GetState(1) == 6)
+        return firstWord(1) != 0;
+    if (GetState(0) == 0 && (GetState(1) == 0x19 || GetState(1) == 0x18) && GetState(2) > 0)
+        return firstWord(1) != 0;
+    if (menu != 0x0F && menu != 0x0E)
+        return false;
+    return field_20 != 0 && g_menuBackdropReady != 0;
+}
+
+} // namespace sly
