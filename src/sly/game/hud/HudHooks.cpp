@@ -49,6 +49,14 @@ bool HudFrameTimeFrozen() { return false; }
 bool GameWorldInLoadingState() { return game::GameWorldState(1) == 12; }
 
 int ProfileCoinCount(uint8_t profile) { (void)profile; return 0; }
+// TODO(game world +0x70)
+int GameWorldCoins() { return 0; }
+// TODO(0x0049E0DC)
+bool UpgradeBuy(uint32_t id) { (void)id; return false; }
+// TODO(0x0049E268)
+bool UpgradeAffordable(uint32_t id) { (void)id; return false; }
+// TODO(game world +0x1AC bit 1)
+void GameWorldMarkAbilitiesChanged() {}
 
 } // namespace hud
 } // namespace sly

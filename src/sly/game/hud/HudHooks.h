@@ -34,6 +34,15 @@ audio::SoundName* FindHudSound(uint32_t sound);
 void PlayHudSound(audio::SoundName* sound);
 // Coins of a profile (profile record +0x70, read by 0x00465D5C).
 int ProfileCoinCount(uint8_t profile);
+// Coins of the running game (game world +0x70).
+int GameWorldCoins();
+// Buys upgrade `id` when it is affordable (0x0049E0DC) / it is affordable
+// (0x0049E268).
+bool UpgradeBuy(uint32_t id);
+bool UpgradeAffordable(uint32_t id);
+// Bit 1 of the game world word +0x1AC: an upgrade bought from the list
+// changes the player's abilities. NOTE: meaning guessed.
+void GameWorldMarkAbilitiesChanged();
 // The active player's confirm button (pad bit 0x80) went down this frame
 // (application player block 0x010B1A98 + player * 0x2EC0, world byte +0x1071).
 bool ConfirmButtonPressed();
