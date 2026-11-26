@@ -111,6 +111,20 @@ void FlushDeferredHits()
     DeferredHits().clear();
 }
 
+// @func 0x000C2E8C ScriptedEntityDef::ScriptedEntityDef
+// @func 0x000C3078 ScriptedEntityDef::ScriptedEntityDef (thunk)
+ScriptedEntityDef::ScriptedEntityDef(const ScriptedEntityDefDesc& desc)
+    : EntityDef(desc), field_8C(desc.field_4C), lifetimeScriptName(desc.lifetimeScript), field_98(desc.field_54),
+      invulnerableTime(desc.invulnerableTime), field_B4(desc.field_70), field_B8(desc.field_74),
+      damageFlags(uint16_t(desc.damageFlags & 0xFFF0u)), hitMask(desc.hitMask)
+{
+    for (int i = 0; i < 5; ++i)
+        stageHealth[i] = desc.stageHealth[i];
+    // A missing script, or one without commands, only earns a warning
+    // (stripped from the release build).
+    lifetimeScript = ape::ApeAnimScriptLibrary::FindScriptAnywhere(desc.lifetimeScript, 0, true);
+}
+
 // @func 0x000E0BCC ScriptedEntity::ReceiveHit
 bool ScriptedEntity::ReceiveHit(EntityHitRecord& hit)
 {
