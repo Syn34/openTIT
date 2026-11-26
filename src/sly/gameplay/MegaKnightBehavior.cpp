@@ -204,11 +204,11 @@ void MegaKnightStampSet::Parse(XmlElement* element)
 // @func 0x00303CEC MegaKnightDef::~MegaKnightDef (deleting)
 MegaKnightDef::~MegaKnightDef()
 {
-    for (char*& text : strings) {
-        ape::MemFree(text);
-        text = nullptr;
+    for (MegaKnightCameraDef*& camera : cameras) {
+        ape::MemFree(camera);
+        camera = nullptr;
     }
-    strings.Clear();
+    cameras.Clear();
     for (MegaKnightBehavior*& behavior : behaviors) {
         if (!behavior)
             continue;
