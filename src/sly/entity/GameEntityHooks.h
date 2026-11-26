@@ -119,5 +119,10 @@ void EntityModuleLevelStartHooks();
 void InstanceRenderPassDone(void* renderContext);
 void ListDPassBegin();
 
+// Queues a render data refresh of a geometry instance (or kind 10 object)
+// on the render call buffer, optionally for its child objects too
+// (0x004A6DF0).
+void QueueObjectRenderRefresh(ape::world::ApeObj* object, bool recurse);
+
 } // namespace entity
 } // namespace sly

@@ -5,6 +5,8 @@
 #include "sly/entity/Entity.h"
 #include "sly/entity/GameEntityHooks.h"
 
+#include "ape/core/ApeString.h"
+#include "ape/world/ApeBase.h"
 #include "ape/world/ApeObj.h"
 #include "sly/objects/SimpleWheeledVehicle.h"
 
@@ -87,6 +89,40 @@ void ClearInstanceRenderLists()
     }
     ClearEntityList(kList_C);
     ClearEntityList(kList_D);
+}
+
+// @func 0x000D6770 AddToComponentSyncList
+// Components whose list D slot runs each frame ("s_compSyncList"); a second
+// add is refused with a warning.
+void AddToComponentSyncList(EntityComponent* component)
+{
+    Entity* entry = reinterpret_cast<Entity*>(component);
+    for (uint32_t i = 0; i < EntityCount(kList_D); ++i) {
+        if (EntityAt(kList_D, i) == entry) {
+            ape::TempFormat("entity '%s' component '%s' already on s_compSyncList",
+                            component && component->owner ? component->owner->GetDebugName() : "NULL",
+                            component ? ape::TempHexString(component->id) : "NULL");
+            return;
+        }
+    }
+    RegisterEntity(kList_D, entry);
+}
+
+// @func 0x000D8FC4 RefreshEntityRender
+// A geometry instance object is shown, has its render data refreshed and is
+// hidden again; with `children` the attached entities follow.
+void RefreshEntityRender(Entity* entity, bool children)
+{
+    ape::world::ApeObj* object = entity->object;
+    if (object && object->GetType() == ape::world::kObjType_GeomInstance) {
+        object->SetVisible(true, false);
+        QueueObjectRenderRefresh(object, true);
+        object->SetVisible(false, false);
+    }
+    if (!children || !entity->children)
+        return;
+    for (EntityChildLink& link : *entity->children)
+        RefreshEntityRender(link.child, true);
 }
 
 } // namespace entity

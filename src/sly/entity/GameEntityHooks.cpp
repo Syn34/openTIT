@@ -83,5 +83,8 @@ void InstanceRenderPassDone(void* renderContext) { (void)renderContext; }
 // TODO(0x0028E320)
 void ListDPassBegin() {}
 
+// TODO(0x004A6DF0)
+void QueueObjectRenderRefresh(ape::world::ApeObj* object, bool recurse) { (void)object; (void)recurse; }
+
 } // namespace entity
 } // namespace sly
