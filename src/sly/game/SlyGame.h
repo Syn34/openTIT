@@ -554,6 +554,10 @@ public:
     // option of the chosen object toggles, the toggle sound plays and the
     // page is asked to refresh (GUI event 0x10).
     void OnControlsPageAccept(const ape::GuiEvent& event);
+    // Moves page: left/right (GUI events 11/10) switch the move category
+    // (wrapping over four), the page refreshes and the focus moves to the
+    // first focusable object near the chosen one, the pointers with it.
+    void OnMovesPageEvent(const ape::GuiEvent& event);
     // Shows the running level's headline (see SlyGameMenus.cpp).
     void ShowLevelHeadline(bool force);
     // Marks the running level visited for the all-levels trophy.
@@ -674,10 +678,14 @@ public:
     uint8_t field_1285A4 = 0;                   // +0x1285A4
     bool cutsceneHudLocked = false;             // +0x1285A5 NOTE: cutscene HUD changes are skipped while set
     uint32_t finishedJobName = 0;               // +0x1285A8 name of the job that ended last
-    uint32_t field_1285AC[2] = {};              // +0x1285AC
+    ape::ApeGuiObject* menuFocus = nullptr;     // +0x1285AC GUI object with the menu focus
     uint32_t field_1285B0[4] = {};              // +0x1285B0
-    int32_t field_1285C0 = -1;                  // +0x1285C0
-    uint8_t field_1285C4[6] = {};               // +0x1285C4
+    int32_t menuFocusPad = -1;                  // +0x1285C0 pad that has the menu focus
+    uint8_t field_1285C4 = 0;                   // +0x1285C4
+    uint8_t movesCategory = 0;                  // +0x1285C5 moves page: category (0..3)
+    uint8_t movesPage = 0;                      // +0x1285C6 moves page: page of five moves
+    uint8_t field_1285C7 = 0;                   // +0x1285C7
+    uint8_t field_1285C8[2] = {};               // +0x1285C8
     uint32_t field_1285CC[6] = {};              // +0x1285CC
     void* field_1285E4 = nullptr;               // +0x1285E4
     uint32_t field_1285EC = 0;                  // +0x1285EC
