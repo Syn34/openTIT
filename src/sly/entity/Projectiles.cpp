@@ -180,5 +180,25 @@ void ProjectileB::UpdateFromBody(float dt)
     SetTransform(frame);
 }
 
+// @func 0x000F2D88 Projectile::AimAt
+void Projectile::AimAt(Entity* aimTarget)
+{
+    ape::Matrix34 aim;
+    if (!aimTarget) {
+        aim.xAxis = {1.0f, 0.0f, 0.0f, 0.0f};
+        aim.yAxis = {0.0f, 1.0f, 0.0f, 0.0f};
+        aim.zAxis = {0.0f, 0.0f, 1.0f, 0.0f};
+        const ape::Vec3& ahead = transform.zAxis;
+        const ape::Vec3& from = transform.translation;
+        aim.translation = {ahead.x * 150.0f + from.x, ahead.y * 150.0f + from.y, ahead.z * 150.0f + from.z, 0.0f};
+    } else {
+        aim.xAxis = aimTarget->transform.xAxis;
+        aim.yAxis = aimTarget->transform.yAxis;
+        aim.zAxis = aimTarget->transform.zAxis;
+        aim.translation = aimTarget->GetAimPoint();
+    }
+    SetCarriedTransform(aim);
+}
+
 } // namespace entity
 } // namespace sly

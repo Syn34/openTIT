@@ -67,6 +67,10 @@ public:
     // Slot 95: lobs the projectile (an upward share of the launch speed and
     // the matching arc value) before the base launch.
     void OnLaunched() override;
+    // Slot 94: the aim frame takes the target's orientation at its aim
+    // point; without a target it is level, 150 units ahead of the
+    // projectile.
+    void AimAt(Entity* target) override;
     const ProjectileDef* Def() const { return static_cast<const ProjectileDef*>(def); }
 
     ape::Vec3 launchVelocity{};   // 0x2D0
