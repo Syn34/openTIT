@@ -622,6 +622,29 @@ struct InstanceDescB16088 : ScriptedInstanceDesc {
     uint32_t field_DC = 0;             // 0xDC
 };
 
+// Placement of the definitions with registry flag 0x40 (vtable 0x00B138E8,
+// 0xD0 bytes; element 0xEBE54755): a binding list and a script name.
+// NOTE: the entity class is not identified.
+class PlacementB138E8 : public EntityPlacement {
+public:
+    // 0x000CBB40: the base placement, the script name from the (scripted)
+    // definition's field_B4.
+    PlacementB138E8(const char* placementName, EntityDef* ownerDef, ape::world::ApeObj* source,
+                    const ape::Matrix34& placementTransform, const ape::Vec3& scale, bool bit31, bool bit30,
+                    uint32_t field74 = 0);
+    ~PlacementB138E8() override;
+    // Slot 2 (0x000DE454): the base copy, the word and the bindings (appended).
+    void FillInstanceDesc(EntityInstanceDesc& desc) const override;
+
+    ape::ApeTArray<ScriptPropertyOverride> bindings{16, nullptr, true};   // +0xB4 (child element 0xC3B709C0)
+    uint32_t field_C8 = 0;             // +0xC8 attribute 0xF89FDD94 (hash)
+};
+struct InstanceDescB138E8 : EntityInstanceDesc {
+    using EntityInstanceDesc::EntityInstanceDesc;
+    ape::ApeTArray<ScriptPropertyOverride> bindings;   // 0x90
+    uint32_t field_A4 = 0;             // 0xA4
+};
+
 // Placements built straight on the base placement. NOTE: the meanings of
 // their own fields are not known; their parsers are not ported.
 
@@ -718,6 +741,13 @@ public:
 
 namespace sly {
 namespace objects {
+// The placement loader (0x000CC920): builds the placement of a level file's
+// entity element by its element name (with the "name" attribute and the
+// definition named by "associatedDef" when it is of the right class), reads
+// the common attributes and attachment records and registers it by name.
+// Null for unnamed or already registered placements and unknown elements.
+EntityPlacement* LoadEntityPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem);
+
 // Placement loaders of the plain scripted / actor / physical entity elements
 // (0x000CC728, 0x000CC510, and inline in 0x000CC920).
 EntityPlacement* ParseScriptedEntityPlacement(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,

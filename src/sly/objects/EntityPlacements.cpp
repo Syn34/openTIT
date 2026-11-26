@@ -968,3 +968,34 @@ EntityPlacement* ParseRigidEntityB19198Placement(ape::xml::XmlElement* root, ape
 
 } // namespace objects
 } // namespace sly
+
+namespace sly {
+namespace objects {
+
+// @func 0x000CBB40 PlacementB138E8::PlacementB138E8
+PlacementB138E8::PlacementB138E8(const char* placementName, EntityDef* ownerDef, ape::world::ApeObj* source,
+                                 const ape::Matrix34& placementTransform, const ape::Vec3& scale, bool bit31,
+                                 bool bit30, uint32_t field74)
+    : EntityPlacement(placementName, ownerDef, source, placementTransform, scale, bit31, bit30, field74)
+{
+    // NOTE: the definition is taken to be a scripted one, as on the console.
+    field_C8 = ownerDef ? static_cast<const entity::ScriptedEntityDef*>(ownerDef)->field_B4 : 0;
+    field_0C |= 0x40;
+}
+
+// @func 0x007468F8 PlacementB138E8::~PlacementB138E8
+// @func 0x007470CC PlacementB138E8::~PlacementB138E8 (deleting)
+PlacementB138E8::~PlacementB138E8() = default;
+
+// @func 0x000DE454 PlacementB138E8::FillInstanceDesc
+void PlacementB138E8::FillInstanceDesc(EntityInstanceDesc& baseDesc) const
+{
+    EntityPlacement::FillInstanceDesc(baseDesc);
+    auto& desc = static_cast<InstanceDescB138E8&>(baseDesc);
+    desc.field_A4 = field_C8;
+    for (const ScriptPropertyOverride& binding : bindings)
+        desc.bindings.PushBack(binding);
+}
+
+} // namespace objects
+} // namespace sly
