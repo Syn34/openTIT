@@ -166,6 +166,13 @@ public:
     const Matrix34& GetLocal() const { return m_local; }
     // Replaces the local transform (callers mark the object dirty).
     void SetLocal(const Matrix34& local) { m_local = local; }
+    // Replaces the local transform and marks the object dirty.
+    // @func 0x00735C58 ApeObj::SetLocalTransform
+    void SetLocalTransform(const Matrix34& local)
+    {
+        m_local = local;
+        MarkDirty();
+    }
     const Matrix34& GetWorld() const { return m_world; }
     const Vec3& GetScale() const { return m_scale; }
     ApeDef* GetDef() const { return m_def; }

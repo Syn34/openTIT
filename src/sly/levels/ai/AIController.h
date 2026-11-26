@@ -322,6 +322,8 @@ public:
     bool TestLineOfSight(const ape::Vec3& from, const ape::Vec3& to, Entity* other);
 
     Entity* GetEntity() const { return entity; }
+    // @func 0x00734A80 AIController::Position
+    ape::Vec3& Position() { return transform.translation; }
     int GetState() const { return state; }
 
     // -- data -------------------------------------------------------------------------

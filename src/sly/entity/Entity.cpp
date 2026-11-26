@@ -1460,5 +1460,13 @@ void ClearRenderRefs(ape::world::ApeObj* object, bool recurse)
         ClearRenderRefs(child, true);
 }
 
+// @func 0x00734EC8 Entity::SetPosition
+void Entity::SetPosition(const ape::Vec3& position)
+{
+    ape::Matrix34 m;
+    ape::Matrix34FromRotationTranslation(m, transform, position);
+    SetTransform(m);
+}
+
 } // namespace entity
 } // namespace sly

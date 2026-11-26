@@ -45,7 +45,13 @@ enum QueryResult : int {
     kQuery_NotInList   = 3,  // GetEnum: value is not one of the allowed names
 };
 
-struct Color8 { uint8_t r, g, b, a; };
+struct Color8 {
+    Color8() = default;
+    // @func 0x00735F7C Color8::Color8
+    constexpr Color8(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha)
+        : r(red), g(green), b(blue), a(alpha) {}
+    uint8_t r, g, b, a;
+};
 
 // Common base of everything in a document tree.
 class XmlNode {

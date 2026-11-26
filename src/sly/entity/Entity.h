@@ -364,6 +364,8 @@ public:
         transform.zAxis = {m.zAxis.x, m.zAxis.y, m.zAxis.z, transform.zAxis.pad};
         transform.translation = {m.translation.x, m.translation.y, m.translation.z, transform.translation.pad};
     }
+    // Moves the entity, keeping its orientation (through SetTransform).
+    void SetPosition(const ape::Vec3& position);
     // Slot 24 (+0x60): flags bit 3; turning it on also wakes a suspended
     // entity (scripted entities mirror it in their state flags).
     // @func 0x00737350 Entity::SetBusyFlag
@@ -497,6 +499,7 @@ public:
     // Slot 59 (+0xEC): animation event `name` from `source`'s controller.
     // "hkAttach<part>" moves the entity to another attach part of its parent.
     virtual void OnAnimEvent(const char* name, uint32_t argument, Entity* source);
+    // @func 0x00735000 Entity::HasTypeBit
     bool HasTypeBit(uint32_t bit) const { return (typeBits[bit >> 5] & (1u << (bit & 31))) != 0; }
     void SetName(const char* name);
     // Switches the entity's anim script (slot 68) to a state.
@@ -545,6 +548,7 @@ public:
     // over; put back on destruction when kEnt_RestoreObject is set.
     ape::Matrix34 objectRestoreTransform{};
     ape::Matrix34 transform;                       // 0x60 world transform (translation = position)
+    // @func 0x00734E60 Entity::Position
     ape::Vec3& Position() { return transform.translation; }   // 0x90
     const ape::Vec3& Position() const { return transform.translation; }
     ape::world::ApeObj* object = nullptr;          // 0xA0 world object

@@ -392,7 +392,7 @@ void ReleaseAnimScript(ape::ApeAnimScriptInstance* instance);
 
 // -- game ---------------------------------------------------------------------------
 // The local player's character (game world +0x1078) if it is a player
-// character (type bit 1 of +0xC0), else null.
+// character (type bit 1 of +0xC0), else null (AIController.cpp).
 Entity* PlayerCharacter();
 // Game world +0x128168: a render target zoom applies (split screen); its
 // zoom factor (0x005206F8).

@@ -7,6 +7,7 @@
 #include "ape/math/ApeMatrixOps.h"
 #include "ape/sys/ApeGeometry.h"
 #include "ape/world/ApeObj.h"
+#include "sly/entity/EntityHooks.h"
 #include "sly/game/WorldInterface.h"
 #include "sly/levels/ai/AIHooks.h"
 #include "sly/levels/ai/AIProxyPoints.h"
@@ -1102,6 +1103,13 @@ void AIManager::ResolveJumpLinks()
 void AIManager::ClearSightings()
 {
     sightingCount = 0;
+}
+
+// @func 0x00734470 PlayerCharacter
+Entity* PlayerCharacter()
+{
+    Entity* player = entity::PlayerEntity(0);
+    return player && player->HasTypeBit(1) ? player : nullptr;
 }
 
 } // namespace ai

@@ -108,7 +108,6 @@ bool HudObjectPausesAI(const hud::HudObject*) { return false; }
 ape::ApeRefCounted* EntityScriptObject(const Entity*) { return nullptr; }
 void ReleaseAnimScript(ape::ApeAnimScriptInstance*) {}
 
-Entity* PlayerCharacter() { return nullptr; }
 bool RenderZoomActive() { return false; }
 float RenderZoom() { return 1.0f; }
 bool AITargetingSuppressed() { return false; }
