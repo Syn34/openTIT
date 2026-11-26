@@ -406,9 +406,7 @@ void JobManager::ReloadJobScripts()
     }
 }
 
-// TODO(0x00465F30 / 0x004674C4): the players block and the level request
-// live in the game world.
-Goal* PlayerFindGoal(uint32_t) { return nullptr; }
+Goal* PlayerFindGoal(uint32_t id) { return g_game ? g_game->Player(0).FindGoal(id) : nullptr; }
 void GameWorldRequestLevel(uint32_t level)
 {
     if (g_game)

@@ -62,7 +62,9 @@ struct PlayerProgress {
     uint16_t field_002 = 0;          // +0x002 NOTE: from 0x00F65BF5 (1) at reset
     uint32_t coins = 0;              // +0x020 money (second value of the save details text)
     uint32_t lastJobId = 0;          // +0x024 id of the 0x35C-byte record last played (save subtitle)
+    uint32_t lastLevel = 0;          // +0x028 NOTE: level of the last save point (asked for on load)
     uint32_t lastEpisodeName = 0;    // +0x02C name hash of the 0x218-byte record last played
+    uint32_t lastGoalName = 0;       // +0x030 NOTE: goal it was started at
     uint32_t bottleBits[kEpisodeSlots] = {};  // +0x034 one bit per clue bottle (Job::bottleSlot)
     uint16_t maskBits[kEpisodeSlots] = {};    // +0x064 one bit per mask (Job::maskSlot)
     uint32_t field_70 = 0;           // +0x070 NOTE: read by 0x00465D5C, meaning unknown
@@ -113,6 +115,9 @@ struct PlayerProgress {
     // at +0xFB0 when the table has more than 0x44 upgrades.
     uint8_t upgradeStates[0x54] = {};    // +0xF6C
     uint32_t abilityBits[1] = {};    // +0xFB0 two bits per ability (see PlayerAbilities.h)
+    // Extras (bonus items of the extras table, SlyGame.h kExtraCount): bit 1
+    // is cleared again on load for an extra not earned yet.
+    uint8_t extraStates[8] = {};     // +0xFC0
 };
 // The current profile's record. NOTE: the game world does not model its
 // profile records yet; a stand-in record is used (see JobManager.cpp).
@@ -569,8 +574,8 @@ public:
     // console callback receives (context, bottle index, job manager).
     void OnBottleCollected(uint32_t bottle);
     // StartJobFromHub for the job named `jobName` (none for 0 or an unknown
-    // name), always tracked (0x002E1DB0).
-    void StartJobFromHubByName(uint32_t jobName, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
+    // name), always tracked (0x002E1DB0). Returns StartJobFromHub's result.
+    bool StartJobFromHubByName(uint32_t jobName, uint32_t goalName, bool toHub, bool toHideout, bool forceReload,
                                bool levelRequestFlag, bool skipBookkeeping);
     // Ends the running job instance, first updating its episode's flag 0x20
     // (0x002E5060).

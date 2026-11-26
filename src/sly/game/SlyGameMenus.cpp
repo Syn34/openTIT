@@ -1195,3 +1195,84 @@ void SlyGame::QueueCutscene(uint32_t script, uint32_t library, bool flag, const 
 }
 
 } // namespace sly
+
+namespace sly {
+
+bool g_preorderUnlocked = false;
+
+const ExtraDef kExtras[kExtraCount] = {
+    {5, "$EXTRA_PARAGLIDER_MONKEY", "$EXTRA_PARAGLIDER_MONKEY_DESC"},
+    {10, "$EXTRA_PARAGLIDER_CAMO", "$EXTRA_PARAGLIDER_CAMO_DESC"},
+    {15, "$EXTRA_UL_SLY", "$EXTRA_UL_SLY_DESC"},
+    {20, "$EXTRA_UL_BENTLEY", "$EXTRA_UL_BENTLEY_DESC"},
+    {30, "$EXTRA_UL_MURRAY", "$EXTRA_UL_MURRAY_DESC"},
+    {40, "$EXTRA_UL_CARMELITA", "$EXTRA_UL_CARMELITA_DESC"},
+    {50, "$EXTRA_RATCHET_WRENCH", "$EXTRA_RATCHET_WRENCH_DESC"},
+    {60, "$EXTRA_COLE_AMP", "$EXTRA_COLE_AMP_DESC"},
+};
+
+namespace {
+bool IsPreorderExtra(int index) { return index == 0 || index == 1 || index == 4; }
+// NOTE: the first job of a new game (name not recovered).
+constexpr uint32_t kFirstJob = 0x3D264A9Bu;
+constexpr uint32_t kResumeAllGroupsButMenu = 0xFFBFFFFFu;
+} // namespace
+
+// @func 0x0046C7E0 ExtraEarned
+bool ExtraEarned(int index, uint32_t masks, uint32_t needed)
+{
+    if (IsPreorderExtra(index) && g_preorderUnlocked)
+        return true;
+    return masks >= needed;
+}
+
+// @func 0x00472234 SlyGame::ResumeSavedGame
+void SlyGame::ResumeSavedGame()
+{
+    flags2D |= 0x90;
+    game::JobManager* jobs = game::GetJobManager();
+    const uint32_t masks = jobs ? static_cast<uint32_t>(jobs->CountCollectedMasks()) : 0;
+    for (int i = 0; i < kExtraCount; ++i) {
+        if (!ExtraEarned(i, masks, kExtras[i].masksNeeded))
+            progress.extraStates[i] &= ~0x02;
+    }
+    if (menu != 0)
+        audio::ResumeGroups(kResumeAllGroupsButMenu);
+
+    if (jobs) {
+        bool started = false;
+        if (progress.lastEpisodeName != 0) {
+            started = jobs->StartJobFromHubByName(progress.lastEpisodeName, progress.lastGoalName, false, false,
+                                                  true, false, true);
+        }
+        if (!started) {
+            if (progress.lastLevel != 0 && jobs->HasJob(progress.lastLevel)) {
+                jobs->SelectJobByValue(progress.lastJobId);
+                RequestLevel(progress.lastLevel, false);
+            } else {
+                jobs->StartJobFromHubByName(kFirstJob, 0, true, false, true, false, false);
+            }
+        }
+    }
+
+    audio::SoundName* music = audio::CreateSoundName(g_audioPostSaveDataLoadMusic.Get(), 0);
+    if (audio::SoundNameHasDef(music))
+        audio::SetPendingMusic(music, false, false);
+    else
+        audio::StopMusic(true);
+    audio::SoundNameRelease(music);
+}
+
+} // namespace sly
+
+namespace sly {
+
+// @func 0x0046E760 ActiveHideoutMenuGui
+ape::ApeGuiObject* ActiveHideoutMenuGui()
+{
+    // The active type-0x200 element is always a hideout menu.
+    auto* menu = static_cast<hud::HudHideoutMenu*>(hud::FindActiveType200());
+    return menu ? menu->gui : nullptr;
+}
+
+} // namespace sly

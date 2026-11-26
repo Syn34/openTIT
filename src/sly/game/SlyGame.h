@@ -416,6 +416,11 @@ public:
     // After skipping a cinematic: the "Audio.PostCinematicSkipMusic" track
     // (or silence) and the state flags of a skipped cutscene.
     void OnCinematicSkipped();
+    // After the save data loaded: extras not earned are locked again, the
+    // job the save was made in is started again (or the level of its save
+    // point asked for, or the first job), and the "Audio.PostSaveDataLoadMusic"
+    // track starts.
+    void ResumeSavedGame();
     // A player is down: meter B snaps and a running return-treasure
     // microgame loses the treasure if the player carried it.
     void OnPlayerDown(uint32_t player);
@@ -723,6 +728,24 @@ public:
 
 // The single game world (0x00F65CA0).
 extern SlyGame* g_game;
+// Set at start-up when the pre-order unlock key file is present (0x010BB849;
+// 0x00467E68 reads "/Preorder/UnlockKey.txt.edat").
+extern bool g_preorderUnlocked;
+
+// The extras ("$EXTRA_PARAGLIDER_MONKEY" ... "$EXTRA_COLE_AMP", table
+// 0x00AE6A60): each is earned with a number of masks (5, 10, ... 60); the
+// pre-order ones (0, 1 and 4) come with the unlock key too.
+constexpr int kExtraCount = 8;
+struct ExtraDef {
+    uint32_t masksNeeded;
+    const char* name;
+    const char* desc;
+};
+extern const ExtraDef kExtras[kExtraCount];
+// Extra `index` is earned with `masks` masks of `needed` (0x0046C7E0).
+bool ExtraEarned(int index, uint32_t masks, uint32_t needed);
+// GUI of the active hideout menu (its +0x154), or null (0x0046E760).
+ape::ApeGuiObject* ActiveHideoutMenuGui();
 // The "Common.Fade" GUI object the screen fade drives (0x00F65C88).
 extern ape::ApeGuiObject* g_fadeObject;
 
