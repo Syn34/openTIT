@@ -61,6 +61,21 @@ SLY_PLACEMENT(InteractivePropBPlacement, ActorPlacement);           // 0x00B188F
 
 #undef SLY_PLACEMENT
 
+// Scripted entity placement of the definitions with type bit 0x20000
+// (vtable 0x00B16088, 0x110 bytes; parsed for element 0x786E8593, built by
+// 0x001B55C8, outside this range). NOTE: names and meanings unknown.
+class PlacementB16088 : public ScriptedEntityPlacement {
+public:
+    using ScriptedEntityPlacement::ScriptedEntityPlacement;
+    ~PlacementB16088() override;
+
+    struct Entry {
+        uint32_t words[2];
+    };
+    ape::ApeTArray<Entry> field_EC;    // +0xEC copied from the definition (+0xC0)
+    uint32_t field_100 = 0;            // +0x100 from the definition (+0xE8)
+};
+
 // Placements built straight on the base placement. NOTE: the meanings of
 // their own fields are not known; their parsers are not ported.
 

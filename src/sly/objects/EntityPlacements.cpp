@@ -109,6 +109,10 @@ TweenActorPlacement::~TweenActorPlacement() = default;
 // @func 0x00757604 InteractivePropBPlacement::~InteractivePropBPlacement (deleting)
 InteractivePropBPlacement::~InteractivePropBPlacement() = default;
 
+// @func 0x00750408 PlacementB16088::~PlacementB16088
+// @func 0x00753158 PlacementB16088::~PlacementB16088 (deleting)
+PlacementB16088::~PlacementB16088() = default;
+
 // NOTE: the console reads the definition's pieces without a null check.
 // @func 0x0074F680 BreakableChainPlacement::BreakableChainPlacement
 BreakableChainPlacement::BreakableChainPlacement(const char* placementName, BreakableChainDef* ownerDef,
