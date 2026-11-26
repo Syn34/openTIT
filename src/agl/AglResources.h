@@ -122,7 +122,35 @@ public:
 };
 
 class AglShaderClass;
-struct AglMaterialAnim;
+// UV animation of a material (0x98 bytes): scroll in U, scroll in V and a
+// rotation, each a channel whose value either advances on its own or is set
+// by game code (the HUD meters drive their fill this way).
+struct AglMaterialAnim {
+    struct Channel {                       // 0x30 bytes
+        float speed = 0.0f;                // +0x00 NOTE: cleared before a channel is driven by hand
+        float step = 0.0f;                 // +0x04 value is quantised to 1/step when non-zero
+        uint8_t field_08[0x18] = {};
+        uint32_t flags = 0;                // +0x20 bits 20-27: mode (2: driven by game code). NOTE: other modes not decoded
+        float value = 0.0f;                // +0x24 current offset (turns for the rotation)
+        uint8_t field_28[8] = {};
+        static constexpr uint32_t kModeShift = 20;
+        static constexpr uint32_t kModeMask = 0xFFu << kModeShift;
+        static constexpr uint32_t kMode_Manual = 2;
+        // Stops the channel's own motion; game code sets `value` from now on.
+        void SetManual()
+        {
+            speed = 0.0f;
+            flags = (flags & ~kModeMask) | (kMode_Manual << kModeShift);
+        }
+    };
+    uint8_t field_00[4] = {};
+    uint8_t wrapU = 0;                     // +0x04 NOTE: U follows the fractional part of V when set
+    uint8_t field_05[3] = {};
+    Channel u;                             // +0x08
+    Channel v;                             // +0x38
+    Channel rotation;                      // +0x68
+};
+static_assert(sizeof(AglMaterialAnim) == 0x98, "AglMaterialAnim is 0x98 bytes");
 
 constexpr int kMaxMaterialTextures = 5;
 

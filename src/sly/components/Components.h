@@ -115,6 +115,9 @@ class AnimMapComponent : public EntityComponent {
 public:
     explicit AnimMapComponent(const AnimMapComponentDesc* desc);
     ~AnimMapComponent() override;
+    // Slot 4: nothing to reset.
+    // @func 0x00288970 AnimMapComponent::ResetState
+    void ResetState() override {}
 
     void* map = nullptr;             // 0x18 anim map registered under the description's map name
     uint32_t animSet = 0;            // 0x1C
@@ -133,6 +136,9 @@ class IKComponent : public EntityComponent {
 public:
     explicit IKComponent(const IKComponentDesc* desc);
     ~IKComponent() override;
+    // Slot 4: nothing to reset.
+    // @func 0x00293934 IKComponent::ResetState
+    void ResetState() override {}
     void Update(float dt) override;
 
     JointTwoSolverDef* jointTwo[8] = {};       // 0x18
