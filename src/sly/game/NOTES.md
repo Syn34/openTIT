@@ -138,3 +138,23 @@
   0x00366710 (HUD per-frame update), 0x00367C20, 0x00368360.. (the 0x214-state element family).
 * Hooks: `hud/HudHooks.*` (world callback lists, placement query, anchor stack refresh, object
   cloning, LOD, sounds, confirm button, continue, player HUD colour).
+
+## agent2: game messages, callback lists, audio controls
+* `GameMessages.*`: game message queue (128 records, 0x010BA138) and listener registry (256
+  nodes 0x010BAB38, key map 0x010BB738): Register/Unregister (0x0048FA54/0x0048F298),
+  HasListeners 0x0048FC68, Post 0x004705F8, PostToListeners 0x00470660, in range 0x0048F90C,
+  Dispatch 0x0048F800, `GameEventListener` (vtable 0x00B21A30, 0x0048F27C/0x0048F3F8/
+  0x0048F6B0/0x0048F548). `entity::EntityMessage` is the queue record (sender, receiver, id,
+  argument, toEntity). Hooks in EntityHooks/AIHooks/KnowledgeHooks/GameServices/
+  ComponentHooks now post through it; SystemCracker's listener derives from GameEventListener.
+  Goals and MinigameListener still use their own stubs (not converted). Nothing calls
+  `DispatchGameMessages` yet (the game update 0x00491710 is not ported).
+* `SlyGame` callback lists (+0x128480, 13 lists, 5..11 cleared per frame): AddCallback
+  0x0046B5F8, RemoveCallback 0x0046B7A4, ForgetEntity 0x0046B6CC, RunCallbacks 0x0045900C.
+  NOTE: the console calls the callback with the context in r4 and dt in f1 (r3 is not set up);
+  the port calls fn(nullptr, context).
+* `ObjectHelpers.*`: geometry material lookup 0x004A59B4/0x004A5A48, depth-always 0x004A5B80,
+  hierarchy LOD 0x004A5C20 (+visitor 0x004B00EC), name search 0x004A5AE8 (+visitor 0x004AFCB4).
+* `AudioControls.cpp`: voice registers/position/level, pause groups, output channel count, bus
+  fades, category/tracked voice queries, audio heap (0x0044D880). New AudioBackend virtuals for
+  the library calls; Voice gained the volume/position fields 0x5C..0xD0.
