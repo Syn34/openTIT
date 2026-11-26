@@ -100,3 +100,17 @@ hashing the executable's strings and word pairs. Hashes with no match keep a
   world callback 0x002908EC. The six anim script state hashes it sets while turning are unnamed.
   The forward default 0x01164B70 is assumed (0,0,1). When the stepped facing degenerates the
   console fills all three components with the old z (kept).
+
+## agent3, fifth pass
+* `ReceptacleComponent.*` (type 0x1C, the "carry" component): constructor, destructors,
+  CanAccept, FreeSlot, NextSlotPosition, Holds. Insert 0x002B9454, Remove 0x002B99C0 and the
+  glide Update 0x002B8A80 are TODO (rigid body mass helpers 0x001FB178/0x001FB1C8, body calls
+  0x007EE08C, vector code). The slot "rot" is handed to AttachTransform as a quaternion with an
+  undefined w (console bug, w = 0 here).
+* `CombatDefs.*`: <Combat> reactions (0x00273E90/0x002741F4, dtors 0x00274144/0x0027418C),
+  LoadCombatDefs 0x00274CDC (the <Attack> parser 0x00273088 is TODO), shooting attacks
+  (0x002C0EA4, dtors 0x002C0DB8/0x002C0E14) and LoadShootingDefs 0x002C9D0C.
+* `DeferredReleases.*`: the one-frame-late release table 0x010573A8 (flush 0x0026F798, reset
+  0x0026F8D4). The code that queues into it is not identified.
+* The loaders of entity file elements 0xE452FC60 / 0x1F7B9E20 (0x002AD4F4 / 0x002AF5F0) read
+  nothing.
