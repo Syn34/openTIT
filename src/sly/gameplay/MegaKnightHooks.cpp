@@ -30,6 +30,7 @@ void MKQueueSequence(uint32_t) {}
 namespace sly {
 namespace gameplay {
 void MKPlayerBeginFinishingMove(entity::Entity*) {}
+void MKQueueSequenceBound(uint32_t, const MKSequenceBinding*, size_t) {}
 bool MKFrameFrozen() { return false; }
 bool MKSequenceQueued(uint32_t) { return false; }
 entity::GameCamera* MKGameCamera() { return nullptr; }

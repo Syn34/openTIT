@@ -624,7 +624,7 @@ public:
     bool UpdatePhase(float dt) override;
 
     uint32_t field_40 = 0;        // +0x40
-    uint32_t igcAnim = 0;         // +0x44 NOTE: played in the "IGC" state (assumed)
+    uint32_t igcSequence = 0;     // +0x44 cut scene of the "IGC" state
     uint32_t field_48 = 0;        // +0x48
     uint32_t startAnim = 0;       // +0x4C
     uint32_t field_50 = 0;        // +0x50

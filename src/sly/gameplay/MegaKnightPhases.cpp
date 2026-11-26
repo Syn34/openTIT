@@ -1008,11 +1008,11 @@ void MKPhaseTowerShake::OnEnter()
     b->stampManager->Reset();
     b->currentAnim = 0;
     if (b->tracking.onArm[0].Get()) {
-        startAnim = 0x96F8E23Bu; endAnim = 0x99104CF4u; igcAnim = 0x60E4DF46u;
+        startAnim = 0x96F8E23Bu; endAnim = 0x99104CF4u; igcSequence = 0x60E4DF46u;
     } else if (b->tracking.onArm[1].Get()) {
-        startAnim = 0x1AEB962Eu; endAnim = 0xC1F561A7u; igcAnim = 0xBC0D6A9Du;
+        startAnim = 0x1AEB962Eu; endAnim = 0xC1F561A7u; igcSequence = 0xBC0D6A9Du;
     } else {
-        startAnim = 0x6B54CFC9u; endAnim = 0x13064602u; igcAnim = 0xABD233D4u;
+        startAnim = 0x6B54CFC9u; endAnim = 0x13064602u; igcSequence = 0xABD233D4u;
     }
     b->BlendGlowTo(0.0f);
     b->SetCamera(0.0f, kCamera_Default, false);
@@ -1039,11 +1039,74 @@ bool MKPhaseTowerShake::Query17() const { return GetState(0) == 1; }
 // @func 0x0031AEA4 MKPhaseTowerShake::IsDone
 bool MKPhaseTowerShake::IsDone() { return GetState(0) == 4; }
 
-// TODO(0x0031AF50 MKPhaseTowerShake::UpdatePhase)
+// @func 0x0031AF50 MKPhaseTowerShake::UpdatePhase
+// State 1: the start clip (a player leaving the fight area cancels to the
+// idle phase); 2: the shake cut scene, then idle; 3: the end clip.
 bool MKPhaseTowerShake::UpdatePhase(float dt)
 {
     (void)dt;
-    return true;
+    MegaKnight* b = boss;
+    const bool playerInFight = DelayedStateGet(b->tracking.fightActive) != 0;
+    auto toIdle = [&]() {
+        if (MegaKnightPhase* idle = b->phases[kMKPhase_Idle]) {
+            b->SwitchPhase(kMKPhase_Idle);
+            static_cast<MKPhaseIdle*>(idle)->duration = 0.5f;
+            b->SetCamera(1.0f, 0, false);
+        }
+        SetState(0, 4);
+        return false;
+    };
+    switch (GetState(0)) {
+    case 1:
+        if (!MKClipDone(b)) {
+            if (playerInFight)
+                return true;
+            return toIdle();
+        }
+        SetState(0, 2);
+        return false;
+    case 2:
+        if (TimeInState(0) == 0.0f) {
+            // The cut scene casts the player's character variant.
+            const entity::Entity* player = MKPlayerCharacter();
+            const bool variant = (player->classBits & entity::kClass_20) != 0;
+            const MKSequenceBinding bindings[2] = {
+                {0x91FAB2C5u, variant ? 0xFEE2E46Au : 0x00014120u},
+                {0xAA90B7DDu, variant ? 0x7411A023u : 0u},
+            };
+            const uint32_t sequence = igcSequence;
+            b->ClearArmMarkers();
+            b->ResetRopes();
+            for (entity::Entity* r : b->ropes)
+                if (r)
+                    MKRopeRelease(r);
+            MKQueueSequenceBound(sequence, bindings, 2);
+            return true;
+        }
+        if (MKFrameFrozen() || MKSequenceQueued(igcSequence))
+            return true;
+        b->ResetRopes();
+        b->SetCamera(0.0f, 0x001EFED1u, true);
+        {
+            MegaKnightTracking& t = b->tracking;
+            t.state220.Force(1);
+            t.fightActive.Force(0);
+            t.state250.Force(0);
+            t.onArm[0].Force(0);
+            t.onArm[1].Force(0);
+            t.onArm[2].Force(0);
+        }
+        return toIdle();
+    case 3:
+        if (TimeInState(0) == 0.0f)
+            b->PlayAnim(endAnim, 1.0f, false);
+        if (!MKClipDone(b))
+            return true;
+        SetState(0, 4);
+        return false;
+    default:
+        return true;
+    }
 }
 
 } // namespace gameplay

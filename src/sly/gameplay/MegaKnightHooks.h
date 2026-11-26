@@ -5,6 +5,7 @@
 
 #include "ape/math/ApeMath.h"
 
+#include <cstddef>
 #include <cstdint>
 
 namespace ape { class ApeRefCounted; }
@@ -53,6 +54,12 @@ namespace gameplay {
 void* MKFindSplineDef(uint32_t nameHash);
 // 0x0046C3B8 on the game world: queues the cut-scene sequence `name`.
 void MKQueueSequence(uint32_t name);
+// Same with variable bindings (built through 0x0049FE90).
+struct MKSequenceBinding {
+    uint32_t variable;
+    uint32_t value;
+};
+void MKQueueSequenceBound(uint32_t name, const MKSequenceBinding* bindings, size_t count);
 } // namespace gameplay
 } // namespace sly
 
