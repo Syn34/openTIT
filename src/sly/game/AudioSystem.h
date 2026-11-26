@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include <mutex>
 #include <map>
 #include <vector>
 
@@ -257,6 +258,26 @@ struct MixParam {
 struct MixState {
     uint32_t nameHash = 0;      // +0x00
     MixParam params[kMixParamCount];
+};
+
+// Volume scales applied on top of the mix by bus group.
+struct AudioVolumeSettings {
+    float masterScale = 1.0f;     // 0x00F65B40 (dialogue only)
+    float sfxScale = 1.0f;        // 0x00F65B44
+    float musicScale = 1.0f;      // 0x00F65B48
+    float dialogScale = 1.0f;     // 0x00F65B4C
+    float dialogOption = 1.0f;    // 0x010AED90
+    float sfxOption = 1.0f;       // 0x010AEDDC
+    float musicOption = 1.0f;     // 0x010AEE28
+    float masterOption = 1.0f;    // 0x010AECF8
+};
+// Bus volumes handed to the sound library (it re-reads the dirty ones).
+struct AudioBusVolumes {
+    std::mutex lock;              // the library lock (0x006EFD10 / 0x006EFD34)
+    float bus[kMixParamCount] = {};
+    float master = 1.0f;
+    float lastMaster = 1.0f;      // 0x00F65B8C
+    uint32_t dirtyMask = 0;
 };
 
 void SetBaseMix(const MixState* base);

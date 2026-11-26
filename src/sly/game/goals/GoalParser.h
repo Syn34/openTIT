@@ -39,7 +39,6 @@ Goal* ParseGoal(SlyGame* game, Job* job, ape::xml::XmlElement* xml, int32_t inde
 void ReleaseGoalDesc(GoalDesc& desc);
 
 // Factories of goal classes that are not ported yet (TODO stubs).
-Goal* CreateGoal9E69AF49(ape::xml::XmlElement* xml, const GoalDesc* desc);   // 0x003373E8
 Goal* CreateQteGoal(ape::xml::XmlElement* xml, const GoalDesc* desc);        // 0x0033A520
 // "GoalSet": a group whose children are the goal elements below it (0x00321EC8).
 Goal* CreateGoalSet(ape::xml::XmlElement* xml, const GoalDesc* desc);

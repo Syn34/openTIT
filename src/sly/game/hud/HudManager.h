@@ -52,6 +52,18 @@ enum HudAnchor : int32_t {
     kAnchor_None        = 5,
 };
 
+// One line of the list (0x28 bytes, definition +0xA4).
+struct HudTimedLine {
+    uint32_t field = 0;          // +0x00 text field it goes to
+    float time = 0.0f;           // +0x04 seconds after the delay
+    char text[0x20] = {};        // +0x08
+};
+struct HudTimedLines {
+    HudTimedLine* lines = nullptr;   // definition +0xA4
+    int32_t count = 0;               // definition +0xA8
+    float delay = 0.0f;              // definition +0xAC
+};
+
 // Definition of an element (shared by its instances).
 struct HudObjectDef {
     char defName[0x20] = {};         // +0x04
@@ -106,6 +118,116 @@ struct HudObjectDef {
     };
     TrackerFieldDef* trackerFields = nullptr;
     uint32_t trackerMarkerName = 0;
+    // Job list definitions (type bits 0x1000 / 0x2000, +0x94..+0xC0) overlay
+    // the members above. NOTE: the 0x1000 kind is assumed to share it.
+    struct ListFieldDef {            // 0x1C bytes
+        uint32_t name = 0;           // +0x00 field name ("SlotAName", "DESC", ...)
+        uint8_t color[4] = {};       // +0x04 label colour (used when its alpha is not zero)
+        uint32_t objectName = 0;     // +0x08 scene object the field follows
+        ape::ApeGuiObject* object = nullptr;     // +0x0C shown with the element
+        ape::ApeGuiObject* object3d = nullptr;   // +0x10 drawn at its scene object (world callback)
+        ape::ApeGuiObject* label = nullptr;      // +0x14 the label holding the text
+        uint32_t flags = 0;          // +0x18 bit 31: the label takes the player's HUD colour
+    };
+    struct ListDef {
+        uint32_t rowCount = 0;       // +0x94 rows whose geometry is placed (at most 6)
+        uint32_t cursorRow = 0;      // +0x98 row the selection starts on
+        uint32_t knobName = 0;       // +0x9C scroll bar knob
+        uint32_t barTopName = 0;     // +0xA0 knob position of the first entry
+        uint32_t barBottomName = 0;  // +0xA4 knob position of the last entry
+        uint32_t field_A8 = 0;
+        uint32_t rowGeometry = 0;    // +0xAC geometry instance copied for every row
+        const uint32_t* rowLocators = nullptr;   // +0xB0 per row: object placing the row's copy
+        ListFieldDef* fields = nullptr;          // +0xB4
+        uint32_t fieldCount = 0;     // +0xB8
+        float defaultFade = 0.0f;    // +0xBC
+        uint8_t flags = 0;           // +0xC0 bit 0: persistent (starts shown)
+    } list;
+    // Costume / upgrade wheel definitions (type bit 0x400, +0x94..+0xD8).
+    struct WheelPageDef {            // 0x38 bytes
+        uint32_t spokeName = 0;      // +0x00 scene object of the page's spoke
+        uint32_t availableName = 0;  // +0x04 shown when the page's item can be chosen
+        uint32_t lockedName = 0;     // +0x08 shown when it cannot
+        uint32_t pointerName = 0;    // +0x0C object the pointer follows on this page
+        uint32_t item = 0;           // +0x10 costume / upgrade the page stands for
+        uint32_t field_14 = 0;
+        char text[0x20] = {};        // +0x18 shown in the "Info" field
+    };
+    struct WheelFieldDef {           // 0x1C bytes
+        uint8_t color[4] = {};       // +0x00
+        uint32_t objectName = 0;     // +0x04
+        uint32_t name = 0;           // +0x08 field name ("Info", ...)
+        ape::ApeGuiObject* object = nullptr;     // +0x0C
+        ape::ApeGuiObject* object3d = nullptr;   // +0x10
+        ape::ApeGuiObject* label = nullptr;      // +0x14
+        uint32_t flags = 0;          // +0x18 bit 31: player colour
+    };
+    struct WheelDef {
+        WheelPageDef* pages = nullptr;   // +0x94
+        int32_t pageCount = 0;       // +0x98
+        uint32_t pointerInstance = 0;    // +0x9C level instance of the pointer
+        uint32_t pointerName = 0;    // +0xA0 object the pointer starts on
+        ape::Vec3 axis{};            // +0xB0 axis the pointer turns about
+        float pageAngle = 0.0f;      // +0xC0 degrees between two pages
+        WheelFieldDef* fields = nullptr;     // +0xC4
+        uint32_t fieldCount = 0;     // +0xC8
+        float pulsePeriod = 1.0f;    // +0xCC
+        float pulseAmplitude = 0.0f; // +0xD0
+        uint32_t glowName = 0;       // +0xD4
+        uint32_t kind = 0;           // +0xD8 "Costume", "Bentley", "Murray" or 0xDF0611F9
+    } wheel;
+    // Hideout menu definitions (type bit 0x200, +0x94..+0xD4).
+    struct MenuFieldDef {            // 0x10 bytes
+        uint32_t objectName = 0;     // +0x00 scene object the field follows
+        ape::ApeGuiObject* object = nullptr;     // +0x04
+        ape::ApeGuiObject* object3d = nullptr;   // +0x08 drawn at the scene object
+        uint32_t field_0C = 0;
+    };
+    struct MenuPageDef {             // 0x10 bytes
+        uint32_t name = 0;           // +0x00
+        MenuFieldDef* fields = nullptr;   // +0x04
+        uint32_t fieldCount = 0;     // +0x08
+        uint8_t animA = 0;           // +0x0C transition clip set (0..2)
+        uint8_t animB = 0;           // +0x0D
+    };
+    struct MenuDef {
+        MenuPageDef* pages = nullptr;    // +0x94
+        uint32_t pageCount = 0;      // +0x98
+        uint32_t backButton = 0;     // +0x9C element showing the "back" prompt
+        uint32_t selectButton = 0;   // +0xA0 element showing the "select" prompt
+        uint32_t texture = 0;        // +0xA4 sprite texture of the map
+        uint32_t corners[4] = {};    // +0xAC (stride 8) level instances framing the map
+        uint32_t childName = 0;      // +0xD4 child of the element's object
+    } menu;
+    // Radar definitions (type bit 0x8000, +0x94..+0xBC): level instances
+    // the radar copies for its blips.
+    struct RadarDef {
+        float defaultFade = 0.0f;    // +0x94
+        uint8_t flags = 0;           // +0x98 bit 0: persistent
+        uint32_t playerBlip = 0;     // +0x9C (9 copies)
+        uint32_t background = 0;     // +0xA0 used as is
+        uint32_t enemyBlip = 0;      // +0xA4 (12 copies)
+        uint32_t goalBlip = 0;       // +0xA8 (12 copies)
+        uint32_t goalEdgeBlip = 0;   // +0xAC (12 copies)
+        uint32_t hideoutBlip = 0;    // +0xB0
+        uint32_t followBlip = 0;     // +0xB4
+        uint32_t bottleBlip = 0;     // +0xB8 (32 copies)
+        uint32_t safeBlip = 0;       // +0xBC
+    } radar;
+    // Type bit 0x800 definitions (+0x98..+0xC4): like the job list's, with
+    // one more object name and everything after it four bytes further on.
+    struct List800Def {
+        uint32_t cursorRow = 0;      // +0x98
+        uint32_t objectNames[5] = {};    // +0x9C..+0xAC
+        uint32_t rowGeometry = 0;    // +0xB0
+        const uint32_t* rowLocators = nullptr;   // +0xB4
+        ListFieldDef* fields = nullptr;          // +0xB8
+        uint32_t fieldCount = 0;     // +0xBC
+        float defaultFade = 0.0f;    // +0xC0
+        uint8_t flags = 0;           // +0xC4 bit 0: persistent
+    } list800;
+    // Timed text definitions (type bit 0x4000): the lines (+0xA4..+0xAC).
+    HudTimedLines timedLines;
     // Meter definitions (type bit 8, +0x94..+0xC0) overlay the members above.
     struct MeterDef {
         int32_t player = 0;          // +0x94 local player whose character the meter follows
@@ -303,6 +425,9 @@ struct HudManagerState {
     bool allEnabled = false;                     // 0x00F64CC4
     ape::ApeTArray<HudObject*> suspended;        // 0x0106C2C0 elements SuspendHud hid (a refresh drops them)
     bool hudSuspended = false;                   // 0x0106C3C0
+    HudObject* element394 = nullptr;             // 0x0106C394 element 0xBC38D74A (0x00F64D28; NOTE: name unknown)
+    HudObject* coinCounter = nullptr;            // 0x0106C398 "CoinCounter" (0x00F64CDC)
+    bool flagF64CC8 = false;                     // 0x00F64CC8 NOTE: cleared when the elements are built
     ape::ApeTSortedMap<HudObjectDef*> defs;      // 0x0106C210 element definitions by name
     entity::Entity* contextEntity = nullptr;     // 0x00F64CB4 owner the next meter A follows
     uint32_t contextName = 0;                    // 0x0106C270
@@ -442,6 +567,9 @@ HudObject* CloneElement(HudObject* source, uint32_t name);
 HudObject* CloneElementByName(uint32_t sourceName, uint32_t name);
 // 0x0035B668: level unload: every element and definition is destroyed.
 void UnloadHud();
+// 0x0035AC7C: builds one element per definition (the element class is
+// chosen by the definition's type bits) and registers it by name.
+void BuildHudElements();
 // 0x00363B78: animates the text override (TODO).
 void UpdateTextOverride(float dt, HudTextOverride& state);
 void ResetUpdateFlags();                                             // 0x00369500

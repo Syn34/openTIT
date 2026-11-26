@@ -1,6 +1,8 @@
 // openTIT - Stubs of the services used by the third batch of level script code.
 #include "sly/levels/LevelServices.h"
 
+#include "agl/AglResources.h"
+
 namespace sly {
 namespace levels {
 
@@ -89,7 +91,7 @@ void LightSetColor(ape::ApeRefCounted* light, const ape::xml::Color8& color) { (
 void GeometrySetAlpha(ape::ApeRefCounted* geometry, uint8_t alpha, bool flag) { (void)geometry; (void)alpha; (void)flag; }
 void* GeometryFindMaterial(ape::ApeRefCounted* geometry, uint32_t materialName) { (void)geometry; (void)materialName; return nullptr; }
 void GeometrySetTint(ape::ApeRefCounted* geometry, const ape::xml::Color8& color) { (void)geometry; (void)color; }
-void* FindLiveMaterial(uint32_t nameHash) { (void)nameHash; return nullptr; }
+void* FindLiveMaterial(uint32_t nameHash) { return agl::FindLiveMaterial(nameHash); }
 void MaterialSetColor(void* material, const ape::xml::Color8& color) { (void)material; (void)color; }
 void GuiNodeSetColor(void* node, const ape::xml::Color8& color) { (void)node; (void)color; }
 void CharacterSetOverrideColor(WorldObject* character, bool active, const ape::xml::Color8& color) { (void)character; (void)active; (void)color; }

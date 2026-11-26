@@ -12,7 +12,9 @@
 #include "ape/file/ApeFile.h"
 #include "ape/memory/ApeMem.h"
 #include "ape/sys/ApeIff.h"
+#include "ape/sys/ApeUtil.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <vector>
@@ -328,11 +330,24 @@ bool AglTexture::LoadExternal(const char* path)
     return false;
 }
 
-// TODO(0x00525E40 MeshChunkHandler): creates a topology and parses its
-// header, submesh and include children. Skipped until the topology mesh
-// list allocation (0x00508B94) is ported.
-int MeshChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+// @func 0x00525E40 MeshChunkHandler
+// A mesh record: a new topology filled by the header and submesh children.
+// Parts without a material of their own use their submesh's material; the
+// finished topology enters the dictionary.
+int MeshChunkHandler(ape::iff::IffReader* reader, void* /*arg*/)
 {
+    AglTopology* topology = AglTopology::Create();
+    reader->ParseChunks(topology);
+    for (uint16_t i = 0; i < topology->meshCount; ++i) {
+        AglTopology::MeshEntry& entry = topology->meshes[i];
+        if (!entry.material) {
+            auto* material = static_cast<AglMaterial*>(entry.mesh->owner);
+            entry.material = material;
+            if (material)
+                material->AddRef();
+        }
+    }
+    RegisterTopology(topology);
     return 1;
 }
 
@@ -498,18 +513,211 @@ int VertexDataChunkHandler(ape::iff::IffReader* reader, void* arg)
     return 1;
 }
 
-// TODO(0x00524500 SubMeshChunkHandler): takes a submesh from the pool, adds it
-// to the topology passed in 'arg' (0x00508B94) and parses its children with
-// the submesh as their argument. Skipped for now.
-int SubMeshChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+// @func 0x00524500 SubMeshChunkHandler
+// A submesh record of the topology being loaded: the new submesh joins the
+// topology (which keeps the only reference) and its children fill it.
+int SubMeshChunkHandler(ape::iff::IffReader* reader, void* arg)
 {
+    auto* topology = static_cast<AglTopology*>(arg);
+    AglSubMesh* mesh = AglSubMesh::Create();
+    topology->AddMesh(mesh, static_cast<AglMaterial*>(mesh->owner));
+    mesh->Release();
+    reader->ParseChunks(mesh);
     return 1;
 }
 
-// TODO(0x00524B68 SubMeshHeaderChunkHandler): submesh header (material,
-// primitive, vertex/index counts, vertex declaration). Skipped for now.
-int SubMeshHeaderChunkHandler(ape::iff::IffReader* /*reader*/, void* /*arg*/)
+namespace {
+
+// A vertex element as stored in a submesh header (12 bytes).
+struct AglFileVertexElement {
+    uint8_t usage = 0;          // position, normal, colour, texture coordinate...
+    uint8_t usageIndex = 0;     // n-th element of that usage (added to the attribute)
+    uint8_t type = 0;           // 0 float, 2 ubyte, 3 normalised ubyte, 7 normalised short
+    uint8_t size = 0;           // components
+    uint8_t stream = 0;         // vertex buffer the element is read from
+    uint8_t stride = 0;         // vertex size of that buffer
+    uint32_t offset = 0;        // byte offset inside a vertex
+};
+
+// Attribute register of each element usage (0x00F67A04, 8-byte rows).
+constexpr uint8_t kUsageAttribute[] = { 0, 1, 7, 2, 0, 8, 14, 15, 0, 3 };
+
+// Vertex attribute format by element type and component count (0x00F67A50,
+// 0x14-byte rows); type 0 is a hole for unsupported combinations.
+uint8_t ElementAttribType(uint8_t type, uint8_t size)
 {
+    switch (type) {
+    case 0: return (size >= 1 && size <= 4) ? uint8_t(gpu::VertexAttribType::Float) : 0;
+    case 2: return size == 4 ? uint8_t(gpu::VertexAttribType::UByte) : 0;
+    case 3: return size == 4 ? uint8_t(gpu::VertexAttribType::UByteNorm) : 0;
+    case 7: return (size >= 2 && size <= 4) ? uint8_t(gpu::VertexAttribType::ShortNorm) : 0;
+    default: return 0;
+    }
+}
+
+// Cached declarations by the hash of their element list (pool 0x010E061C,
+// "AglVtxDecl" objects of 0x90 bytes).
+struct AglVertexDeclEntry {
+    uint32_t hash = 0;
+    AglVertexDecl decl;
+    uint16_t streamStrides[AglVertexDecl::kMaxStreams] = {};
+};
+std::vector<AglVertexDeclEntry*>& VertexDeclCache()
+{
+    static std::vector<AglVertexDeclEntry*> cache;
+    return cache;
+}
+
+} // namespace
+
+// @func 0x0054A930 ConvertVertexElement
+// Turns a stored element into a declaration stream entry. Always succeeds.
+bool ConvertVertexElement(AglVertexStream* out, const AglFileVertexElement& element)
+{
+    out->offset = static_cast<uint8_t>(element.offset);
+    out->type = ElementAttribType(element.type, element.size);
+    out->size = out->type ? element.size : 0;
+    out->attribute = element.usage < sizeof(kUsageAttribute) ? kUsageAttribute[element.usage] : 0;
+    out->attributeOffset = element.usageIndex;
+    // NOTE: the console keeps the stream index in the entry's last byte,
+    // where the PC declaration has its 'skip' flag; it is only used for the
+    // stride table here.
+    out->skip = false;
+    return true;
+}
+
+// @func 0x005246A8 FindOrCreateVertexDecl
+// The shared declaration for an element list, built on first use. Each
+// stream's stride comes from its elements; the declaration's own stride is
+// that of stream 0.
+const AglVertexDecl* FindOrCreateVertexDecl(const AglFileVertexElement* elements, uint32_t count)
+{
+    const uint32_t hash = ape::HashBytes31(elements, count * sizeof(AglFileVertexElement));
+    for (const AglVertexDeclEntry* entry : VertexDeclCache())
+        if (entry->hash == hash)
+            return &entry->decl;
+
+    auto* entry = new AglVertexDeclEntry();
+    entry->hash = hash;
+    std::vector<AglVertexStream> streams;
+    uint32_t streamCount = 0;
+    for (uint32_t i = 0; i < count; ++i) {
+        AglVertexStream stream;
+        if (ConvertVertexElement(&stream, elements[i]))
+            streams.push_back(stream);
+        if (elements[i].stream < AglVertexDecl::kMaxStreams)
+            entry->streamStrides[elements[i].stream] = elements[i].stride;
+        streamCount = std::max<uint32_t>(streamCount, elements[i].stream + 1u);
+    }
+    streams.push_back(AglVertexStream{});   // terminator
+    VertexDeclInit(&entry->decl, streams.data(), entry->streamStrides[0]);
+    VertexDeclCache().push_back(entry);
+    (void)streamCount;
+    return &entry->decl;
+}
+
+// @func 0x00538950 AglSubMesh::AttachPackedBuffers
+// Points the submesh at its vertex and index data inside the packed memory
+// block ("MBLK", loaded object slot 1) instead of buffers of its own.
+void AttachPackedBuffers(AglSubMesh* mesh, uint32_t vertexOffset, uint32_t vertexSize, uint32_t indexOffset,
+                         uint32_t indexSize, uint32_t stream1Size)
+{
+    auto* block = static_cast<AglMemoryBlock*>(ape::iff::GetLoadedObjectSlot(1));
+    if (!block || vertexSize == 0)
+        return;
+    auto* base = static_cast<uint8_t*>(block->data);
+    mesh->AddVertexStream();
+    mesh->vertices.data = base + vertexOffset;
+    mesh->vertices.size = vertexSize;
+    mesh->vertices.location = gpu::MemoryLocation::Local;
+    mesh->vertices.borrowed = true;
+    if (stream1Size != 0) {
+        // NOTE: the console adds a second stream at the vertex data offset
+        // (not the stream 1 offset) with the stream 1 size; the PC submesh
+        // has a single vertex buffer, so only the stream count changes.
+        mesh->AddVertexStream();
+    }
+    if (indexSize != 0) {
+        mesh->indices.data = base + indexOffset;
+        mesh->indices.size = indexSize;
+        mesh->indices.location = gpu::MemoryLocation::Local;
+        mesh->indices.borrowed = true;
+    }
+}
+
+// @func 0x00524B68 SubMeshHeaderChunkHandler
+// Counts, primitive, material, vertex declaration, bounds and (version 3+)
+// the location of the data in the packed memory block.
+int SubMeshHeaderChunkHandler(ape::iff::IffReader* reader, void* arg)
+{
+    AglSubMesh* mesh = static_cast<AglSubMesh*>(arg);
+    uint8_t version = 4;
+    uint16_t vertexCount = 0, indexCount = 0;
+    uint8_t primitiveType = 0, visGroup = 0;
+    uint32_t materialHash = 0, vertexDefHash = 0;
+    float vertexScale = 1.0f;
+    uint32_t vertexPackOffset = 0, vertexPackSize = 0;
+    float boundSphere[4] = {};
+    uint32_t indexPackOffset = 0, indexPackSize = 0, stream1PackOffset = 0, stream1PackSize = 0;
+
+    reader->ReadU8(&version);
+    reader->ReadU16(&vertexCount);
+    reader->ReadU16(&indexCount);
+    reader->ReadU8(&primitiveType);
+    reader->ReadU32(&materialHash);
+    reader->ReadU32(&vertexDefHash);
+    if (version >= 1)
+        reader->ReadFloat(&vertexScale);
+    if (version >= 2)
+        reader->ReadU8(&visGroup);
+    if (version >= 3) {
+        reader->ReadU32(&vertexPackOffset);
+        reader->ReadU32(&vertexPackSize);
+    }
+    if (version >= 4) {
+        reader->ReadVec4(boundSphere);
+        reader->ReadU32(&indexPackOffset);
+        reader->ReadU32(&indexPackSize);
+        reader->ReadU32(&stream1PackOffset);
+        reader->ReadU32(&stream1PackSize);
+    }
+    (void)vertexDefHash;
+    (void)stream1PackOffset;
+
+    // The rest of the chunk is the element list (10 bytes per element).
+    std::vector<AglFileVertexElement> elements(reader->GetChunkRemaining() / 10);
+    for (AglFileVertexElement& element : elements) {
+        reader->ReadU8(&element.usage);
+        reader->ReadU8(&element.usageIndex);
+        reader->ReadU8(&element.type);
+        reader->ReadU8(&element.size);
+        reader->ReadU8(&element.stream);
+        reader->ReadU8(&element.stride);
+        reader->ReadU32(&element.offset);
+    }
+    const AglVertexDecl* decl = elements.empty()
+        ? nullptr : FindOrCreateVertexDecl(elements.data(), uint32_t(elements.size()));
+
+    AglMaterial* material = materialHash ? FindLiveMaterial(materialHash) : nullptr;
+    if (!material)
+        material = GetBuiltinMaterial(0);
+    mesh->vertexDecl = decl;
+    if (mesh->owner != material) {
+        AglResource* previous = mesh->owner;
+        mesh->owner = material;
+        if (material)
+            material->AddRef();
+        if (previous)
+            previous->Release();
+    }
+    mesh->vertexCount = vertexCount;
+    mesh->indexCount = indexCount;
+    mesh->primitive = primitiveType ? 6 : 5;   // triangle strip or triangle list
+    mesh->field_58 = vertexScale;
+    mesh->field_6C = visGroup;
+    std::memcpy(mesh->boundCenter, boundSphere, sizeof(mesh->boundCenter));
+    mesh->boundRadius = boundSphere[3];
+    AttachPackedBuffers(mesh, vertexPackOffset, vertexPackSize, indexPackOffset, indexPackSize, stream1PackSize);
     return 1;
 }
 
