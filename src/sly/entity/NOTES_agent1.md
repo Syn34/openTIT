@@ -171,3 +171,35 @@ requests, anim script/driver bits, Havok frees, minigame flag, game camera looku
   constructor 0x001E5CD8 (combination from the game RNG 0x01164888), InteractivePropA definition
   0x001DD3F8 + constructor 0x001DCBA0, the input mover definition 0x001D62A8 and placement
   0x001D7D98, InteractivePropB::SpawnAttached 0x001F50E4 (needs Entity::Attach 0x000D15C0).
+
+## Sixth pass (agent1)
+* `Safe.cpp`: the combination safe is complete except its per-frame callback 0x001E9228 (camera /
+  tilt sensor, vector code): definition constructor, spawn, constructor, part lookup, reset,
+  scramble, prompt, update (timer with the countdown beep, dial input per control, solving,
+  opening and reward spawn), input reader and InteractionBegin (fixed camera behind the safe).
+  The safe's random draws use the game RNG exactly as the console (three fresh samples; the
+  first dial's seed test in Reset can never hold). SafeDef/SafePlacement fields are named.
+* `SoundActors.cpp`: SoundActor constructor and slot-state lookup; spawns of SoundActor and the
+  switch (B16678), B168E0, light (B16B48), B17728 and the gadget turret (B17270, with its
+  constructor, aim parts/frames and weapon shot callback). `SoundActor::kSlotNames` is public;
+  `slotTimer` is the script's float variable. Still missing: B16DB0 (0x001C5A80) and B17008
+  (0x001C8DB8) constructors, sentry light constructor 0x001D1170.
+* Turret definition (B17270) parse/constructor/factory and input mover (ActorB17990)
+  definition parse/constructor/factory, entity constructor and spawn are registered in the
+  definition table. `InputMoverControl` (InputMoverControl.h) is the 0x44-byte control block
+  shared by definition, placement and instance description (a union per control mode).
+  Not done: the input mover placement loader 0x001D7D98 and its parse 0x001D7470 (the mode-3
+  branch differs from the definition's).
+* `ActorHooks.h/.cpp`: new TODO hooks (interaction stop 0x002B7704, safe callback queue,
+  motion sensor samples, skin owner group / shot callback).
+* AI: Ms Decibel (counter attack check, damage, glass blocks), Paradox (attach, detach, strafe
+  camera, phase one), Bismarque (retreat point, fight visuals, QTE button restart, attack
+  clean-up, barrier throw), pattern boss steps, El Jefe arena triggers. AIDamageInfo gained
+  the hit source (+0x4C); Bismarque's records are `QteButton`s (+0x134).
+* `0x000496CC`, `0x001882F8` and other static helpers are free functions; Character gained
+  LeaveInteractState (0x0012D290), CountStealthTakedown (0x0013D530), IdleStateValue
+  (0x001293C0).
+* Next candidates: the remaining sound actor constructors, InteractivePropC (turret prop)
+  constructor 0x001DCBA0 (two Havok phantoms) and definition parse 0x001DD3F8, the
+  TargetableC family factory chain (0x001F85F0/0x001F9078/0x001F9BA0), breakable chain
+  definition (its parse loses the piece loop in the reference).
