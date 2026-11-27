@@ -1,4 +1,5 @@
 // openTIT - Stubs of the services used by the third batch of level script code.
+#include "sly/entity/Entity.h"
 #include "sly/gameplay/Lasers.h"
 #include "sly/levels/LevelServices.h"
 
@@ -32,11 +33,25 @@ void LaserSetEnabled(Laser* laser, bool enable) { laser->SetEnabled(enable, fals
 void LaserFieldSetEnabled(LaserField* field, bool enable, bool immediate) { field->SetEnabled(enable, true, immediate); }
 
 // TODO(0x000D951C EntityInteraction) interaction components live in the entity module.
-void* EntityInteractionComponent(WorldObject* entity) { (void)entity; return nullptr; }
-uint32_t InteractionComponentId(const void* interaction) { (void)interaction; return 0; }
-void InteractionActivate(void* interaction, WorldObject* player) { (void)interaction; (void)player; }
-void InteractionDeactivate(void* interaction) { (void)interaction; }
-void InteractionSetCancelAllowed(void* interaction, bool allowed) { (void)interaction; (void)allowed; }
+void* EntityInteractionComponent(WorldObject* entity)
+{
+    auto* e = reinterpret_cast<entity::Entity*>(entity);
+    return e ? e->GetComponent(entity::kComp_Interaction) : nullptr;
+}
+uint32_t InteractionComponentId(const void* interaction)
+{
+    return static_cast<const entity::InteractionComponent*>(interaction)->id;
+}
+void InteractionActivate(void* interaction, WorldObject* player)
+{
+    static_cast<entity::InteractionComponent*>(interaction)->Offer(reinterpret_cast<entity::Entity*>(player));
+}
+void InteractionDeactivate(void* interaction) { static_cast<entity::InteractionComponent*>(interaction)->Withdraw(); }
+void InteractionSetCancelAllowed(void* interaction, bool allowed)
+{
+    auto* comp = static_cast<entity::InteractionComponent*>(interaction);
+    comp->interactFlags = allowed ? (comp->interactFlags | (1u << 28)) : (comp->interactFlags & ~(1u << 28));
+}
 void CharacterBeginInteraction(WorldObject* character, uint32_t interactionId) { (void)character; (void)interactionId; }
 
 ape::ApeRefCounted* ObjectFindDescendant(ape::ApeRefCounted* object, uint32_t nameHash) { (void)object; (void)nameHash; return nullptr; }

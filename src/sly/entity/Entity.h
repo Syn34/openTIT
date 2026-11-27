@@ -22,6 +22,7 @@
 
 namespace ape::world { class ApeObj; struct ApeSkeletonBone; }
 namespace ape { class ApeAnimScript; class ApeAnimScriptInstance; }
+namespace sly::components { struct InteractComponentDesc; }
 
 namespace sly {
 namespace entity {
@@ -127,17 +128,104 @@ public:
     uint32_t field_14 = 0;    // 0x14 NOTE: cleared by the base constructor, role unknown
 };
 
-// Interaction component (type kComp_Interaction).
+// Interaction component (type kComp_Interaction, <Interact>, console vtable
+// 0x00B1CE20, 0x90 bytes; sly/components/InteractionComponent.cpp): makes the
+// owner something a character can use. It keeps a small fixed sphere body in
+// the physics world for the proximity queries, an optional lifetime script
+// whose state follows the interaction state, a contextual marker object and
+// the entity using the owner.
 class InteractionComponent : public EntityComponent {
 public:
+    // Interaction states (+0x44); the state names are the lifetime script
+    // states of table 0x00AD4CB4.
+    enum State : int32_t {
+        kState_Available = 0,   // "available": can be offered
+        kState_InRange   = 1,   // state 0x9F632718 (name unknown): a player is in range
+        kState_Active    = 2,   // "active": being used
+        kState_Disabled  = 3,   // "disabled": used up
+        kState_Inactive  = 4,   // "inactive" (NOTE: hash 0xA5E5BC74 assumed): not offered
+    };
+    // Flag word +0x7C. Bits 24-31 come from the description's flag word
+    // (shifted up by one); the rest is run-time state.
+    enum Flags : uint32_t {
+        kFlag_MarkerHidden    = 1u << 19,   // the contextual marker stays hidden
+        kFlag_ReleaseOnEnd    = 1u << 20,   // End() also lets the user go (set by the constructor)
+        kFlag_Withdrawn       = 1u << 21,   // the interaction was withdrawn at least once
+        kFlag_Started         = 1u << 22,   // the interaction was started at least once
+        kFlag_StateApplied    = 1u << 23,   // the first update re-applied the state
+        kFlag_ActiveNoCull    = 1u << 24,   // the owner is kept busy (not culled) while active (desc bit 23)
+        kFlag_FrontOnly       = 1u << 25,   // users behind the frame are refused (desc flag)
+        kFlag_NoMarker        = 1u << 26,   // no contextual marker is made (desc flag)
+        kFlag_EndImmediately  = 1u << 30,   // a started interaction ends at once (desc flag)
+        kFlag_DisableAfterUse = 1u << 31,   // withdrawn interactions become disabled (desc flag)
+    };
+    // Callbacks set by the owner: may an interaction start, and the
+    // interaction was withdrawn while active.
+    using CanStartFn = bool (*)(InteractionComponent* self, void* context);
+    using EndedFn = void (*)(InteractionComponent* self, void* context);
+
+    // 0x002587C0
+    explicit InteractionComponent(const components::InteractComponentDesc* desc);
+    ~InteractionComponent() override;
+    // Slot 6: re-applies the state once, follows players coming in and out
+    // of range and keeps a hidden marker hidden.
+    void Update(float dt) override;
+
+    // Changes the state: the owner's lifetime script and the component's own
+    // script switch to the state's name; with kFlag_SetsBusy the owner is
+    // busy while active (0x00266E6C).
+    void SetState(int32_t newState);
+    // `user` starts using the owner, when the owner's callback and the owner
+    // (slot 62) agree; one-shot interactions end at once (0x002B72DC).
+    bool Offer(Entity* user);
+    // The same without asking (0x002B7560).
+    void Start(Entity* user);
+    // Takes the interaction back: an active one is cancelled (owner slot 63,
+    // the user is let go, the end callback runs); an available one only
+    // changes state. False in the other states (0x002B719C).
+    bool Withdraw();
     // 0x002B7704: ends the current use: the owner is told (slot 63), a
     // character user leaves its interaction state and is let go, and nothing
     // is offered any more. Always true.
     bool Stop();
+    // An active interaction finishes normally (owner slot 64 with
+    // `completed`); the user is let go when kFlag_ReleaseOnEnd is set
+    // (0x002B77E0).
+    bool End(bool completed);
+    // Can a user whose frame is `userFrame` (and whose physics component,
+    // when given, is `userPhysics`) use the owner now: the state, the
+    // user's movement mode, the distance to the interaction frame and
+    // the angles (0x002B79F8).
+    bool CanInteract(const ape::Matrix34& userFrame, const EntityComponent* userPhysics) const;
+    // Runs a script of that name as the component's own script (0x002B78F0).
+    void SetScript(uint32_t scriptName);
+    // Makes the contextual marker object from `templateObject` and hands it
+    // to the owner's script (0x002B7EA0).
+    void SetContextualMarker(ape::world::ApeObj* templateObject);
+    // Shows or hides the owner's script marker object (0x002B81FC).
+    void SetMarkerVisible(bool visible);
+    // Lets the user go without telling anyone (0x002B82C0).
+    void ClearUser();
 
-    Entity* user = nullptr;     // 0x40 the entity using the owner (holds a reference)
-    int32_t users = 0;          // 0x44 NOTE: interactions in progress
-    uint32_t playerMask = 0;    // 0x58 bit per player slot currently interacting
+    ape::Vec3 offset{};                 // 0x20 interaction frame position in the owner's frame
+    ape::Vec3 rotation{};               // 0x30 interaction frame rotation (Euler, radians)
+    Entity* user = nullptr;             // 0x40 the entity using the owner (holds a reference)
+    int32_t state = kState_Inactive;    // 0x44 State
+    CanStartFn canStart = nullptr;      // 0x48
+    void* canStartContext = nullptr;    // 0x4C
+    EndedFn onEnded = nullptr;          // 0x50
+    void* onEndedContext = nullptr;     // 0x54
+    uint32_t playerMask = 0;            // 0x58 bit per player slot currently interacting
+    void* body = nullptr;               // 0x5C proximity body (InteractCompRB)
+    float maxDistSq = -1.0f;            // 0x60 squared reach, <= 0: any distance
+    float halfAngle = -1.0f;            // 0x64 half the approach cone, < 0: any direction
+    float userHalfAngle = -1.0f;        // 0x68 half the cone the user must face into, <= 0: any
+    ape::ApeAnimScriptInstance* script = nullptr;   // 0x6C own lifetime script
+    ape::world::ApeObj* marker = nullptr;           // 0x70 contextual marker object
+    float value74 = 0.0f;               // 0x74 from the description (+0x50). NOTE: role unknown
+    uint32_t physicsStates = 0;         // 0x78 user physics states allowed (bit per state)
+    uint32_t interactFlags = 0;         // 0x7C Flags
+    char* text = nullptr;               // 0x80 copy of the description's text
 };
 
 // Interaction kinds passed to CanInteractWith / OnInteractStart / OnInteractEnd.

@@ -1,5 +1,6 @@
 // openTIT - TODO stubs for the game services used by the script commands #83-#269.
 // Each returns what the original returns for a missing object.
+#include "sly/entity/Entity.h"
 #include "sly/levels/ScriptServices.h"
 #include "sly/game/SlyGame.h"
 #include "sly/game/AudioSystem.h"
@@ -69,7 +70,10 @@ void CharacterEnableController(WorldObject* character, bool enable) { (void)char
 
 void* EntityFindComponent(WorldObject* entity, uint32_t componentId) { (void)entity; (void)componentId; return nullptr; }
 int ComponentKind(const void* component) { (void)component; return 0; }
-void ScriptComponentSetScript(void* component, uint32_t script) { (void)component; (void)script; }
+void ScriptComponentSetScript(void* component, uint32_t script)
+{
+    static_cast<entity::InteractionComponent*>(component)->SetScript(script);
+}
 void ComponentSetVisible(void* component, bool visible, bool flag) { (void)component; (void)visible; (void)flag; }
 const char* EntityDefNameString(WorldObject* entity) { (void)entity; return nullptr; }
 const char* EntityNameString(WorldObject* entity) { (void)entity; return nullptr; }

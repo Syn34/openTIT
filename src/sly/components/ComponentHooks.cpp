@@ -105,5 +105,14 @@ const ape::Matrix34& PointInstanceTransform(void*)
 void TurretAimAt(entity::Entity*, const ape::Vec3&) {}
 bool TurretIsAimed(entity::Entity*) { return true; }
 
+// TODO(0x0089FE70 / 0x0091E100 / 0x0093FE00 / 0x0092F2A8): Havok bodies are
+// not ported; the interaction component works without its proximity body.
+void* CreateInteractionBody(const char*, const ape::Vec3&, entity::Entity*) { return nullptr; }
+// TODO(0x0092FFC8 / 0x0093FED8 / 0x007D4EA8)
+void ReleaseInteractionBody(void*) {}
+// TODO(ScriptVarObject): object variables cannot hold world objects yet.
+ape::world::ApeObj* ScriptObjectVarSceneObject(void*) { return nullptr; }
+void ScriptObjectVarSetSceneObject(void*, ape::world::ApeObj*) {}
+
 } // namespace components
 } // namespace sly

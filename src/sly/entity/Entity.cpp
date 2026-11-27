@@ -1386,7 +1386,7 @@ bool Entity::CanInteractWith(Entity* other, int kind, float* priority)
 {
     if (kind == kInteract_Player) {
         auto* comp = static_cast<InteractionComponent*>(GetComponent(kComp_Interaction));
-        if (!comp || !comp->enabled || comp->users > 1)
+        if (!comp || !comp->enabled || comp->state > InteractionComponent::kState_InRange)
             return false;
     }
     if (listener && !listener->AllowsInteraction())

@@ -95,7 +95,10 @@ void AddPlayerScore(uint32_t player, int points) { (void)player; (void)points; }
 void MinigameFigureRemoved(uint32_t model) { (void)model; }
 float EntityStateTime(Entity* entity, uint32_t layer) { (void)entity; (void)layer; return 0.0f; }
 void EntitySetStateTime(Entity* entity, uint32_t layer, float time) { (void)entity; (void)layer; (void)time; }
-void InteractionSetOffer(EntityComponent* interaction, uint32_t kinds) { (void)interaction; (void)kinds; }
+void InteractionSetOffer(EntityComponent* interaction, uint32_t kinds)
+{
+    static_cast<InteractionComponent*>(interaction)->SetState(static_cast<int32_t>(kinds));
+}
 Entity* InteractionUser(EntityComponent* interaction) { (void)interaction; return nullptr; }
 int32_t InteractionUsers(EntityComponent* interaction) { (void)interaction; return 0; }
 Entity* CharacterCarried(Entity* character) { (void)character; return nullptr; }
@@ -106,7 +109,7 @@ int CarryCompFreeSlot(EntityComponent* carry)
 }
 void GroupVarSetValue(void* var, float value) { (void)var; (void)value; }
 void PlayerBlockSetValue10D8(uint32_t player, uint32_t value) { (void)player; (void)value; }
-void InteractionWithdraw(EntityComponent*) {}
+void InteractionWithdraw(EntityComponent* interaction) { static_cast<InteractionComponent*>(interaction)->Withdraw(); }
 bool CharacterWantsToLeave(Entity*) { return false; }
 bool CharacterCompHasController(EntityComponent* component) { (void)component; return false; }
 void CharacterCompSetPoseHook(EntityComponent* component, void (*hook)(void*), void* arg)
@@ -117,7 +120,10 @@ float PlayerBlockBusyTime(uint32_t player) { (void)player; return 0.0f; }
 void GameWorldDequeueSafeCallback(Entity* safe) { (void)safe; }
 void GameWorldSetHudHidden(bool hidden) { (void)hidden; }
 void GameWorldSetPlayerControl(bool enabled) { (void)enabled; }
-void InteractionClearFlag20(EntityComponent* interaction) { (void)interaction; }
+void InteractionClearFlag20(EntityComponent* interaction)
+{
+    static_cast<InteractionComponent*>(interaction)->interactFlags &= ~InteractionComponent::kFlag_ReleaseOnEnd;
+}
 void PlayCharacterFx(EntityComponent* component, uint32_t fx, float length, float fade) { (void)component; (void)fx; (void)length; (void)fade; }
 float SkinRate(EntityComponent* skin) { (void)skin; return 0.0f; }
 void SkinSetRate(EntityComponent* skin, float rate) { (void)skin; (void)rate; }

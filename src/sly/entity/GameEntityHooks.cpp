@@ -91,8 +91,16 @@ void QueueObjectRenderRefresh(ape::world::ApeObj* object, bool recurse) { (void)
 
 uint32_t GameWorldCurrentLevel() { return 0; }
 void GameWorldRequestTravel(const TravelRequest& request) { (void)request; }
-void InteractionSetActive(EntityComponent* interaction, bool active) { (void)interaction; (void)active; }
-void InteractionSetAlwaysHideContextual(EntityComponent* interaction, bool hide) { (void)interaction; (void)hide; }
+void InteractionSetActive(EntityComponent* interaction, bool active)
+{
+    static_cast<InteractionComponent*>(interaction)->SetMarkerVisible(active);
+}
+void InteractionSetAlwaysHideContextual(EntityComponent* interaction, bool hide)
+{
+    auto* comp = static_cast<InteractionComponent*>(interaction);
+    comp->interactFlags = hide ? (comp->interactFlags | InteractionComponent::kFlag_MarkerHidden)
+                               : (comp->interactFlags & ~InteractionComponent::kFlag_MarkerHidden);
+}
 
 } // namespace entity
 } // namespace sly

@@ -144,6 +144,9 @@ struct InventoryComponentDesc : ComponentDesc {
 ape::ApeTSortedMap<InventoryGroupDesc*>& InventoryGroupDescs();   // 0x0105BE18
 ape::ApeTSortedMap<InventoryItemDesc*>& InventoryItemDescs();     // 0x0105BE30
 ape::ApeTArray<InventorySlotDesc*>& InventorySlotDescs();         // 0x0105BE04
+// Deletes every slot, item and group description and empties the
+// registries (level unload, 0x00266CEC).
+void ClearInventoryDescs();
 
 InventoryGroupDesc* ParseInventoryGroupDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem);
 InventoryItemDesc* ParseInventoryItemDesc(ape::xml::XmlElement* root, ape::xml::XmlElement* elem);

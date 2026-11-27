@@ -1,5 +1,6 @@
 // openTIT - Default bodies of the game shell's calls into unported modules
 // (see GameShellHooks.h).
+#include "sly/entity/Entity.h"
 #include "sly/game/GameShellHooks.h"
 
 namespace sly {
@@ -7,7 +8,10 @@ namespace sly {
 bool GadgetsAllowPause() { return true; }
 void SetGadgetsPaused(bool) {}
 void TravelTargetDeclined(entity::Entity*) {}
-void AiSetContextualMarker(entity::EntityComponent*, ape::world::ApeObj*) {}
+void AiSetContextualMarker(entity::EntityComponent* controller, ape::world::ApeObj* marker)
+{
+    static_cast<entity::InteractionComponent*>(controller)->SetContextualMarker(marker);
+}
 void GadgetPutAway(entity::EntityComponent*, bool, bool, bool) {}
 void GadgetSetMeterVariant(entity::EntityComponent*, bool) {}
 bool AiDebugMeterSwitch() { return false; }
