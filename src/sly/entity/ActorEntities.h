@@ -168,6 +168,7 @@ protected:
 class InteractivePropADef : public ActorDef {
 public:
     ~InteractivePropADef() override;
+    ape::Vec3 field_140{};              // 0x140 attribute 0x81785FF8
     ape::Vec3 aimOffset{};              // 0x160 (12 bytes used) aim point, local to the prop's frame
     uint8_t interactionFlags[6] = {};   // 0x170 per interaction kind (InteractivePropC)
     uint32_t bufferSize = 0;        // 0x254
@@ -528,6 +529,9 @@ public:
     ape::world::ApeObj* frameObject = nullptr; // 0x1AC
     Entity* keyObject = nullptr;              // 0x1B0
     uint8_t propFlags = 0;                    // 0x1B4 bit 7: anyone may interact
+    // The definition's vector 0x81785FF8 of `prop` (zero without a
+    // definition) (0x001E1EE4).
+    static ape::Vec3 DefField140(const Entity* prop);
     // The aim frame: the base frame turned by the yaw about the world's y
     // axis (translation included), then pitched about its own x axis, with
     // normalised axes (0x001DC988).
@@ -1073,12 +1077,30 @@ public:
     void ReleaseEntities334();                        // 0x001EDC2C
     // Hides and kills the user's descendant 0x366FD481 (0x001EDCD4).
     void ReleaseUserProp();
+    // Sends time scale 0x7B2728A1 to the user's descendant 0x366FD481
+    // (its children too) (0x001F01A8). NOTE: slot 32 with that value.
+    void ScaleUserPropTime();
     // Takes the actor's camera mode off its game camera (at once with
     // tweenFlags bit 20, else over Entity.TgtRange.CamPopTime) and deletes
     // it (0x001EE4D8).
     void ReleaseCamera();
 
-    FloatTween tween_220;                     // 0x220
+    // Restarts the aim acceleration ramp (tween_220) when aiming starts
+    // (tweenFlags bit 22 rises) or `immediate` asks: at once the aim and
+    // its speed stop, otherwise the speed stops and the ramp runs from 0 to
+    // 1 over Entity.TgtRange.AimRot.AccelRampTime (0x001EF878).
+    void SetAiming(bool aiming, bool immediate);
+    // True while the user (a character with entity flag bit 18) idles on
+    // layer 0 in layer-1 state 6, unless it was just hurt, which is
+    // acknowledged instead (0x001EF728). NOTE: names from use.
+    bool UserReady();
+    // The aim pitch: asin of field_304 plus Entity.TgtRange.AimOffsetVisual
+    // degrees (0x001F0218).
+    float AimPitch() const;
+    float aimSpeed[2] = {};                   // 0x200
+    float aimAngles[2] = {};                  // 0x208
+    FloatTween tween_220;                     // 0x220 the aim acceleration ramp
+    float field_304 = 0.0f;                   // 0x304 NOTE: sine of the aim pitch
     ape::ApeTArray<OwnedPair> field_280;      // 0x280
     Entity* field_32C = nullptr;              // 0x32C an owned entity (also listed in field_280)
     Entity* field_330 = nullptr;              // 0x330
