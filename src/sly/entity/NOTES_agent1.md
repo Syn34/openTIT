@@ -199,7 +199,10 @@ requests, anim script/driver bits, Havok frees, minigame flag, game camera looku
 * `0x000496CC`, `0x001882F8` and other static helpers are free functions; Character gained
   LeaveInteractState (0x0012D290), CountStealthTakedown (0x0013D530), IdleStateValue
   (0x001293C0).
+* The player turret prop's definition (C++ name InteractivePropADef, class bit 0x40000000):
+  parse 0x001DD3F8, constructor 0x001DC5F8, factory 0x001DE610 (registered), and the prop's
+  aim frame 0x001DC988 / camera release 0x001DEC60.
 * Next candidates: the remaining sound actor constructors, InteractivePropC (turret prop)
-  constructor 0x001DCBA0 (two Havok phantoms) and definition parse 0x001DD3F8, the
+  constructor 0x001DCBA0 (two Havok phantoms) and spawn 0x001DD20C, the
   TargetableC family factory chain (0x001F85F0/0x001F9078/0x001F9BA0), breakable chain
   definition (its parse loses the piece loop in the reference).
