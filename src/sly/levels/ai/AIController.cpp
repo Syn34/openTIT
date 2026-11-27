@@ -41,7 +41,16 @@ KnowledgeSystemToken* g_knowledgeToken = nullptr;
 struct KnowledgeSystemToken {
     KnowledgeSystemToken() { g_knowledgeToken = this; }
 };
-ape::anim::AnimClipManager* g_aiAnimClips = nullptr;   // 0x00F557F8 (+4)
+// The object holding the AI anim clip manager (console 0x00F557F8, vtable
+// 0x00B0EF30, the manager at +4); it is the current one while it lives.
+class AIAnimClipHolder {
+public:
+    AIAnimClipHolder();
+    virtual ~AIAnimClipHolder();
+    ape::anim::AnimClipManager clips;   // +0x04
+};
+AIAnimClipHolder* g_aiAnimClips = nullptr;   // 0x00F557F8
+
 
 // Control types of the AI anim sets (0x00AC000C) and their sync type (0x00AC0080).
 const ape::anim::AnimNamedType kAIControlTypes[] = {
@@ -1194,19 +1203,30 @@ void AIController::UpdateMovement(float dt)
 
 // -- AIManager ---------------------------------------------------------------------------
 
+// Anim sets of the AI: 256 slots, the AI control types and one sync type,
+// with the anim event knowledge callbacks. NOTE: the console also installs
+// an empty callback (field 0x11C, 0x0006528C).
+AIAnimClipHolder::AIAnimClipHolder()
+    : clips(0x100, kAIControlTypes, kAIControlTypeCount, kAISyncTypes, 1, AnimEventKnowledgeUserData, nullptr,
+            AnimEventKnowledgeAcquireSlot, AnimEventKnowledgeReleaseSlot)
+{
+    g_aiAnimClips = this;
+}
+
+// @func 0x00064FFC AIAnimClipHolder::~AIAnimClipHolder
+// @func 0x00065044 AIAnimClipHolder::~AIAnimClipHolder (deleting)
+AIAnimClipHolder::~AIAnimClipHolder()
+{
+    g_aiAnimClips = nullptr;
+}
+
 // @func 0x000186CC AIManager::AIManager
 AIManager::AIManager()
 {
     SetAIManager(this);
     // The knowledge system is a token object; the knowledge module keeps it.
     knowledge::CreateKnowledgeSystem(new KnowledgeSystemToken());
-    // Anim sets of the AI: 256 slots, the AI control types and one sync type,
-    // with the anim event knowledge callbacks.
-    // NOTE: the console also installs an empty callback (field 0x11C) and the
-    // slot release 0x000653CC (not ported).
-    g_aiAnimClips = new ape::anim::AnimClipManager(0x100, kAIControlTypes, kAIControlTypeCount, kAISyncTypes, 1,
-                                                   AnimEventKnowledgeUserData, nullptr,
-                                                   AnimEventKnowledgeAcquireSlot, nullptr);
+    new AIAnimClipHolder();
     SetAIProxyPointTable(new AIProxyPointTable(0x200));
     CreateNavManager();
     SetAIPriorityTargets(&priorityTargets);
@@ -1222,7 +1242,6 @@ void ShutdownAISystems()
         delete table;
     }
     delete g_aiAnimClips;
-    g_aiAnimClips = nullptr;
     if (g_knowledgeToken) {
         knowledge::DestroyKnowledgeSystem();
         delete g_knowledgeToken;
@@ -1230,7 +1249,7 @@ void ShutdownAISystems()
     }
 }
 
-ape::anim::AnimClipManager* AIAnimClips() { return g_aiAnimClips; }
+ape::anim::AnimClipManager* AIAnimClips() { return g_aiAnimClips ? &g_aiAnimClips->clips : nullptr; }
 
 
 // @func 0x00018DD0 AIManager::Init
@@ -1238,7 +1257,7 @@ void AIManager::Init()
 {
     knowledge::KnowledgeInit();
     if (g_aiAnimClips)
-        g_aiAnimClips->LoadAnimSetFiles();
+        g_aiAnimClips->clips.LoadAnimSetFiles();
     controllerCount = 0;
     activeCount = 0;
     thinkCursor = 0;

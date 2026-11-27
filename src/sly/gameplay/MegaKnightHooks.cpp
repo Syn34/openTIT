@@ -1,4 +1,5 @@
 // openTIT - Mega knight hooks (TODO stubs, see MegaKnightHooks.h).
+#include "sly/entity/Entity.h"
 #include "sly/gameplay/MegaKnightHooks.h"
 
 namespace sly {
@@ -9,7 +10,12 @@ bool MKClipDone(entity::Entity*) { return true; }
 bool MKRopeHeld(entity::Entity*) { return false; }
 void MKRopeReset(entity::Entity*) {}
 void MKRopeRelease(entity::Entity*) {}
-void MKSetInteractionState(entity::Entity*, int) {}
+void MKSetInteractionState(entity::Entity* entity, int state)
+{
+    auto* comp = static_cast<entity::InteractionComponent*>(entity->GetComponent(entity::kComp_Interaction));
+    if (comp)
+        comp->SetState(state);
+}
 entity::Entity* MKPlayerCharacter() { return nullptr; }
 void MKAddTargetMarker(entity::Entity*, entity::Entity*, const ape::Vec3&) {}
 void MKRemoveTargetMarker(entity::Entity*, entity::Entity*) {}

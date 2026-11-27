@@ -149,6 +149,25 @@ ape::ApeTArray<InventorySlotDesc*>& InventorySlotDescs()
     return s_slots;
 }
 
+// @func 0x00266CEC ClearInventoryDescs
+void ClearInventoryDescs()
+{
+    ape::ApeTArray<InventorySlotDesc*>& slots = InventorySlotDescs();
+    for (uint32_t i = 0; i < slots.Count(); ++i)
+        delete slots[i];
+    slots.Clear();
+
+    ape::ApeTSortedMap<InventoryItemDesc*>& items = InventoryItemDescs();
+    for (uint32_t i = 0; i < items.Count(); ++i)
+        delete items.Data()[i].value;
+    items.Clear();
+
+    ape::ApeTSortedMap<InventoryGroupDesc*>& groups = InventoryGroupDescs();
+    for (uint32_t i = 0; i < groups.Count(); ++i)
+        delete groups.Data()[i].value;
+    groups.Clear();
+}
+
 // @func 0x00264D70 InventoryLootSlotDesc::GetEntityDefName
 uint32_t InventoryLootSlotDesc::GetEntityDefName(int entry) const
 {

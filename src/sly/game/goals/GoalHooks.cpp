@@ -1,4 +1,5 @@
 // openTIT - TODO stubs for the goal module's outside calls (see GoalHooks.h).
+#include "sly/entity/Entity.h"
 #include "sly/gameplay/Lasers.h"
 #include "sly/game/goals/GoalHooks.h"
 
@@ -79,8 +80,14 @@ void* HintFindLaser(uint32_t name) { return GetLaserManager() ? GetLaserManager(
 void* HintFindLaserField(uint32_t name) { return GetLaserManager() ? GetLaserManager()->FindField(name) : nullptr; }
 void HintEntitySetEnabled(void*, bool) {}
 void HintInteractableSetEnabled(void*, bool) {}
-int HintInteractionState(const void*) { return 0; }
-void HintInteractionSetState(void*, int) {}
+int HintInteractionState(const void* interaction)
+{
+    return static_cast<const entity::InteractionComponent*>(interaction)->state;
+}
+void HintInteractionSetState(void* interaction, int state)
+{
+    static_cast<entity::InteractionComponent*>(interaction)->SetState(state);
+}
 void HintLaserGroupEnable(void* group, bool enable) { static_cast<LaserGroup*>(group)->SetEnabled(enable, false, false); }
 void HintLaserEnable(void* laser, bool enable) { static_cast<Laser*>(laser)->SetEnabled(enable, false, false); }
 void HintLaserFieldEnable(void* field, bool enable) { static_cast<LaserField*>(field)->SetEnabled(enable, false, false); }
@@ -139,8 +146,15 @@ bool GameWorldToScreen(const float*, float screen[2])
     screen[0] = screen[1] = 0.0f;
     return false;
 }
-bool InteractionFlag22(const void*) { return false; }
-void* InteractionOwner(const void*) { return nullptr; }
+bool InteractionFlag22(const void* interaction)
+{
+    return (static_cast<const entity::InteractionComponent*>(interaction)->interactFlags &
+            entity::InteractionComponent::kFlag_Started) != 0;
+}
+void* InteractionOwner(const void* interaction)
+{
+    return static_cast<const entity::InteractionComponent*>(interaction)->owner;
+}
 void InteractionTouch(void*) {}
 
 // HUD

@@ -11,10 +11,12 @@ namespace levels {
 namespace ai {
 
 // The anim clip manager callbacks the AI manager installs (0x000650B0,
-// 0x00065290; the slot release 0x000653CC is not ported).
+// 0x00065290, 0x000653CC).
 int32_t AnimEventKnowledgeUserData(ape::xml::XmlElement* element, ape::anim::AnimSet* set,
                                    ape::anim::AnimClipDef* clip);
 void AnimEventKnowledgeAcquireSlot(uint32_t* outUserData, uint32_t setData, uint32_t user);
+// The slot's copy of the list goes back to the knowledge library.
+void AnimEventKnowledgeReleaseSlot(uint32_t userData);
 
 } // namespace ai
 } // namespace levels

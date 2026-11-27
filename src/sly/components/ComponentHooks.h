@@ -124,5 +124,24 @@ bool TurretIsAimed(entity::Entity* turret);
 entity::ComponentDesc* ParseBossGrizzComponentDescHook(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
                                                        uint8_t scope);
 
+// -- interaction bodies -------------------------------------------------------------
+// The interaction component's proximity body (0x002587C0): a fixed rigid body
+// with a sphere shape of radius 0.5 (hkpSphereShape 0x0089FE70, collision
+// layer 0x19) at `position`, named `name` (0x007CE950), marked as belonging to
+// `owner` (the "OwnerType" 0xA734004D / "OwnerPtr" 0x91C7CF5B properties,
+// 0x0093FE00) and added to the level's physics world (0x0092F2A8).
+void* CreateInteractionBody(const char* name, const ape::Vec3& position, entity::Entity* owner);
+// Takes it out of the world (0x0092FFC8), clears the two properties
+// (0x0093FED8) and drops the reference (0x007D4EA8).
+void ReleaseInteractionBody(void* body);
+// Object variable of an anim script holding a world object (the contextual
+// marker). NOTE: the port's object variables hold ApeRefCounted references
+// while world objects are ApeBase; until the two meet, these keep the
+// object beside the variable. Get returns the object the variable holds
+// (null when none), Set replaces it (adding a reference to the new object;
+// the old one is not released, the caller does that).
+ape::world::ApeObj* ScriptObjectVarSceneObject(void* var);
+void ScriptObjectVarSetSceneObject(void* var, ape::world::ApeObj* object);
+
 } // namespace components
 } // namespace sly
