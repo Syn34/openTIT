@@ -7,17 +7,76 @@
 
 #include "sly/game/Tween.h"
 #include "sly/gameplay/Sequencer.h"
+#include "ape/math/ApeMatrixOps.h"
 #include "ape/memory/ApeTArray.h"
+
+namespace ape::world { class ApePointInstance; }
 
 namespace sly {
 namespace gameplay {
 
-// Camera orbit (vtable 0x00B20F98, 0x80 bytes, constructor 0x00430A64).
-class SeqCameraOrbitCommand : public SequenceCommand {
+// Scripted camera that turns from a start point towards a target
+// ("LookAt", vtable 0x00B20F68, 0x70 bytes). The camera starts at a point
+// instance or sequence entity and keeps its position; every frame it turns
+// towards the target (a point instance or sequence entity) at `turnRate`
+// full turns per second (snapping at once when the rate is 0) and pushes
+// the view to the camera manager. Blocks for `duration` seconds when the
+// target is a sequence entity.
+class SeqLookAtCommand : public SequenceCommand {
 public:
-    using SequenceCommand::SequenceCommand;
-    ~SeqCameraOrbitCommand() override;
-    // TODO(0x00430BE8 SeqCameraOrbitCommand::Execute, 0x00431030 Update)
+    SeqLookAtCommand(float duration, float turnRate, float fov, uint32_t entityHash,
+                     uint32_t targetHash, uint32_t entityPointHash, uint32_t targetPointHash);
+    ~SeqLookAtCommand() override;
+    void Execute() override;
+    bool Update(float dt) override;
+
+private:
+    WorldObject* m_entity = nullptr;                    // +0x0C
+    uint32_t m_entityHash = 0;                          // +0x10
+    WorldObject* m_target = nullptr;                    // +0x14
+    uint32_t m_targetHash = 0;                          // +0x18
+    ape::world::ApePointInstance* m_entityPoint = nullptr;   // +0x1C
+    uint32_t m_entityPointHash = 0;                     // +0x20
+    ape::world::ApePointInstance* m_targetPoint = nullptr;   // +0x24
+    uint32_t m_targetPointHash = 0;                     // +0x28
+    float m_elapsed = 0.0f;                             // +0x2C
+    float m_duration = 0.0f;                            // +0x30
+    float m_turnRate = 0.0f;                            // +0x34
+    ape::Quat m_rotation{0.0f, 0.0f, 0.0f, 1.0f};       // +0x40
+    ape::Vec3 m_position{};                             // +0x50
+    float m_fov = 0.0f;                                 // +0x60
+    bool m_aligned = false;                             // +0x64 bit 31
+};
+
+// Scripted camera move ("MoveCamera", vtable 0x00B20F98, 0x80 bytes): from
+// a start point (or where the camera is) the camera blends its field of
+// view, moves to an end point after a delay and turns to face a look point,
+// each over its own time.
+class SeqMoveCameraCommand : public SequenceCommand {
+public:
+    SeqMoveCameraCommand(float fov, float fovTime, float moveDelay, float moveTime, float turnTime,
+                         uint32_t startPoint, uint32_t endPoint, uint32_t lookPoint);
+    ~SeqMoveCameraCommand() override;
+    void Execute() override;
+    bool Update(float dt) override;
+
+private:
+    ape::world::ApePointInstance* m_startPoint = nullptr;   // +0x0C
+    ape::Vec3 m_startPosition{};                        // +0x10
+    ape::world::ApePointInstance* m_endPoint = nullptr;     // +0x20
+    float m_startFov = 0.0f;                            // +0x24 camera's when started
+    float m_targetFov = 0.0f;                           // +0x28 (0: keep the camera's)
+    float m_fovElapsed = 0.0f;                          // +0x2C
+    float m_fovTime = 0.0f;                             // +0x30
+    float m_delayElapsed = 0.0f;                        // +0x34
+    float m_moveDelay = 0.0f;                           // +0x38
+    float m_moveElapsed = 0.0f;                         // +0x3C
+    float m_moveTime = 0.0f;                            // +0x40
+    ape::Quat m_startRotation{0.0f, 0.0f, 0.0f, 1.0f};  // +0x50
+    ape::Quat m_lookRotation{0.0f, 0.0f, 0.0f, 1.0f};   // +0x60
+    ape::world::ApePointInstance* m_lookPoint = nullptr;    // +0x70
+    float m_turnElapsed = 0.0f;                         // +0x74
+    float m_turnTime = 0.0f;                            // +0x78
 };
 
 // Arc QTE (vtable 0x00B21148, constructor 0x00434E0C).

@@ -98,6 +98,8 @@ bool EntityControllerIsScripted(WorldObject* entity);
 void EntitySetEmitterParam(WorldObject* entity, uint32_t value);
 // World position (+0x90).
 ape::Vec3 EntityPosition(const WorldObject* entity);
+// World transform: axes from +0x60, translation +0x90.
+ape::Matrix34 EntityTransform(const WorldObject* entity);
 
 // Looks up a named world entity (0x000D6A28).
 WorldObject* FindWorldEntity(uint32_t nameHash);
@@ -407,6 +409,11 @@ constexpr int kCameraTypeScripted = 11;
 void PopCameraBlended(float blendTime);          // manager slot 53 with blend +0x250
 void KillCamera(GameCamera* camera);             // 0x000FEACC + camera slot 7
 void ResetCameraManager();                       // 0x000FCD1C
+// The camera manager exists, its current transform (axes +0x60,
+// translation +0x90) and field of view (+0x164).
+bool HasCameraManager();
+ape::Matrix34 CameraManagerTransform();
+float CameraManagerFov();
 struct CameraView {
     ape::Matrix34 transform;                     // axes as stored by camera objects
     float fov = 53.5f;

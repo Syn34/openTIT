@@ -374,7 +374,9 @@ void* FindLevelSpline(uint32_t splineName);
 // SeqCharacterAction2Command (0x004306F4): follow a spline.
 void SequenceAddMoveAlong(uint32_t entity, void* spline, uint32_t anim, float startOffset, float speed, bool forward, bool sprint, bool wait);
 // Sequence camera move (0x00430A64).
-void SequenceAddMoveCamera(float fov, float value18, float value1C, float moveTime, float value28, uint32_t startPoint, uint32_t endPoint);
+// value18: field of view blend time, value1C: delay before moving, value28:
+// turn time; lookPoint: point instance the camera turns to face.
+void SequenceAddMoveCamera(float fov, float value18, float value1C, float moveTime, float value28, uint32_t startPoint, uint32_t endPoint, uint32_t lookPoint);
 
 // Sequence switches with one flag: SeqHudCounterCommand (0x00432134),
 // SeqHideHudCommand (0x00431FA8, used by "PauseEntities"), SeqShowHudCommand

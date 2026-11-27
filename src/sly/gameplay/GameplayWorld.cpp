@@ -50,6 +50,13 @@ bool EntityMoverDone(WorldObject*) { return true; }
 bool EntityControllerIsScripted(WorldObject*) { return false; }
 void EntitySetEmitterParam(WorldObject*, uint32_t) {}
 ape::Vec3 EntityPosition(const WorldObject* entity) { return CharacterPosition(entity); }
+ape::Matrix34 EntityTransform(const WorldObject* entity)
+{
+    ape::Matrix34 m{};
+    m.xAxis.x = m.yAxis.y = m.zAxis.z = 1.0f;
+    m.translation = EntityPosition(entity);
+    return m;
+}
 WorldObject* FindWorldEntity(uint32_t nameHash) { return FindLevelInstance(nameHash); }
 int WorldEntityCount() { return 0; }
 WorldObject* WorldEntityAt(int) { return nullptr; }
@@ -244,6 +251,14 @@ int CameraType(GameCamera*) { return 0; }
 void PopCameraBlended(float) {}
 void KillCamera(GameCamera*) {}
 void ResetCameraManager() {}
+bool HasCameraManager() { return false; }
+ape::Matrix34 CameraManagerTransform()
+{
+    ape::Matrix34 m{};
+    m.xAxis.x = m.yAxis.y = m.zAxis.z = 1.0f;
+    return m;
+}
+float CameraManagerFov() { return 53.5f; }
 void SetCameraView(const CameraView&) {}
 const ape::Matrix34* CameraObjectMatrix(const WorldObject*, float*) { return nullptr; }
 const ape::Matrix34* LocatorMatrix(const WorldObject*) { return nullptr; }

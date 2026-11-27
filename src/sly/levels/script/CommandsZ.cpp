@@ -597,8 +597,7 @@ ApeAnimScriptCommand* SeqMoveCameraCommand::Create(XmlElement* element) const
 // @func 0x0009F360 SeqMoveCameraCommand::Execute
 void SeqMoveCameraCommand::Execute(ApeAnimScriptInstance*, ApeAnimScriptState*)
 {
-    // NOTE: the hash +0x24 is not passed on by the console.
-    SequenceAddMoveCamera(m_fov, m_value18, m_value1C, m_moveTime, m_value28, m_startPoint, m_endPoint);
+    SequenceAddMoveCamera(m_fov, m_value18, m_value1C, m_moveTime, m_value28, m_startPoint, m_endPoint, m_hash24);
 }
 
 // ---------------------------------------------------------------------------
