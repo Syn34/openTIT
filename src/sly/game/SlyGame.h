@@ -646,6 +646,8 @@ public:
     void RecordLevelVisit();
     // Full screen vertical colour gradient behind everything.
     void DrawScreenGradient(agl::AglRenderTarget* view, const uint8_t top[4], const uint8_t bottom[4]);
+    // Lays the split screen views out for 2-4 players (1 switches it off).
+    void SetSplitScreen(uint32_t views);
 
     // -- data ------------------------------------------------------------------
     uint8_t flags1C = 0;                        // +0x1C bit 5: autosave allowed
@@ -699,7 +701,7 @@ public:
     uint32_t field_128178[2] = {};              // +0x128178
     agl::AglRenderTarget* splitViews[kSplitViews] = {}; // +0x128184 "SplitRender%d"
     uint32_t field_128194[3] = {};              // +0x128194
-    uint32_t field_1281A4 = 0;                  // +0x1281A4
+    uint32_t splitScreenCount = 0;              // +0x1281A4 views of the split screen (0: off)
     ape::Vec3 hudCameraPos = {0.0f, 0.0f, 0.0f, 0.0f}; // +0x1281B0 UI.3D.CameraPos
     ape::ApeLevelDef* levelDef = nullptr;       // +0x1281C0 the running level
     ape::ApeLevelWorld* levelWorld = nullptr;   // +0x1281C4 the level's scene and cameras

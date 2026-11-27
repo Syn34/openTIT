@@ -99,12 +99,30 @@ public:
     ape::ApeTArray<void*> field_50;     // +0x50
 };
 
-// HUD type switch (vtable 0x00B211F0, constructor 0x00437F24).
+// Shows or hides the conversation screen of a character's binocucom with
+// the given left/right portraits ("HudType", vtable 0x00B211F0, 0x20 bytes).
+// A blocking command waits until the screen has finished moving.
 class SeqHudTypeCommand : public SequenceCommand {
 public:
-    using SequenceCommand::SequenceCommand;
+    SeqHudTypeCommand(uint32_t type, bool visible, bool force, uint32_t leftPortrait,
+                      uint32_t rightPortrait, bool blocking, bool flag12, bool flag0,
+                      uint32_t entityHash);
     ~SeqHudTypeCommand() override;
-    // TODO(0x0043807C SeqHudTypeCommand::Execute, 0x004382D8 Update)
+    void Execute() override;
+    bool Update(float dt) override;
+
+private:
+    // +0x0C flag word: bit 0 m_flag0, 1 m_flag12, 2 m_force, 3 m_visible,
+    // bits 4-5 m_style.
+    bool m_flag0 = false;
+    bool m_flag12 = false;
+    bool m_force = false;
+    bool m_visible = false;
+    uint32_t m_style = 0;
+    uint32_t m_leftPortrait = 0;          // +0x10
+    uint32_t m_rightPortrait = 0;         // +0x14
+    uint32_t m_entityHash = 0;            // +0x18
+    WorldObject* m_entity = nullptr;      // +0x1C
 };
 
 // Entity placement (vtable 0x00B21328, constructor 0x00439224): done as

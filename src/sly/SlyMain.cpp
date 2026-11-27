@@ -132,7 +132,8 @@ void ConfigureEngine(ape::EngineConfig& c)
 
 // Pumps system events and folds the resulting flags into g_appState.
 // Returns false when the application must stop. Inline after every boot
-// step in the original.
+// step in the original; the loading screen calls the out-of-line copy.
+// @func 0x0045C6AC PollSystemState
 bool PollSystemState()
 {
     ape::SysUtilCheckCallbacks();

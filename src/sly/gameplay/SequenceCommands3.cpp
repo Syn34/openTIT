@@ -285,6 +285,77 @@ SeqArcQteCommand::~SeqArcQteCommand() = default;
 // @func 0x00780BD0 SeqActorQteCommand::~SeqActorQteCommand (deleting)
 SeqActorQteCommand::~SeqActorQteCommand() = default;
 
+// ---------------------------------------------------------------------------
+// SeqHudTypeCommand
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Screen styles selected by the "Type" attribute.
+constexpr uint32_t kHudTypeStyle20 = 0x3A2B1B5E;
+constexpr uint32_t kHudTypeStyle10 = 0x055F2BDD;
+constexpr uint32_t kHudTypeStyle0 = 0x80FE3297;
+
+} // namespace
+
+// @func 0x00437F24 SeqHudTypeCommand::SeqHudTypeCommand
+SeqHudTypeCommand::SeqHudTypeCommand(uint32_t type, bool visible, bool force, uint32_t leftPortrait,
+                                     uint32_t rightPortrait, bool blocking, bool flag12, bool flag0,
+                                     uint32_t entityHash)
+    : SequenceCommand(blocking), m_flag0(flag0), m_flag12(flag12), m_force(force),
+      m_visible(visible), m_style(1), m_leftPortrait(leftPortrait), m_rightPortrait(rightPortrait),
+      m_entityHash(entityHash)
+{
+    if (type == kHudTypeStyle20)
+        m_style = 2;
+    else if (type == kHudTypeStyle10)
+        m_style = 1;
+    else if (type == kHudTypeStyle0)
+        m_style = 0;
+}
+
+// @func 0x0043807C SeqHudTypeCommand::Execute
+void SeqHudTypeCommand::Execute()
+{
+    if (m_entityHash != 0)
+        m_entity = FindWorldEntity(m_entityHash);
+    if (m_entity == nullptr)
+        m_entity = PlayerCharacter();
+
+    Binocucom* gadget = m_entity != nullptr ? CharacterBinocucom(m_entity) : nullptr;
+    if (gadget != nullptr) {
+        RegisterSequenceEntity(GetSequence(), BinocucomOwner(gadget), SequenceEntityOptions{});
+        if (m_visible) {
+            const uint32_t portraits[2] = {m_leftPortrait, m_rightPortrait};
+            for (int side = 0; side < 2; ++side)
+                BinocucomSetPortrait(gadget, side, portraits[side]);
+            // The portraits can be addressed by name in the sequence.
+            for (int side = 0; side < 2; ++side) {
+                if (WorldObject* portrait = BinocucomPortrait(gadget, side)) {
+                    SequenceEntityOptions options;
+                    options.alias = portraits[side];
+                    RegisterSequenceEntity(GetSequence(), portrait, options);
+                }
+            }
+        }
+        if (m_force || BinocucomIsVisible(gadget) != m_visible) {
+            BinocucomSetVisible(gadget, m_visible, m_style, m_flag0);
+            BinocucomSetFlag12(gadget, m_flag12);
+        }
+    }
+    MarkStarted();
+}
+
+// @func 0x004382D8 SeqHudTypeCommand::Update
+bool SeqHudTypeCommand::Update(float /*dt*/)
+{
+    Binocucom* gadget = m_entity != nullptr ? CharacterBinocucom(m_entity) : nullptr;
+    if (gadget == nullptr)
+        return true;
+    // Done once the screen is fully up (state 3) or put away (state 0).
+    return BinocucomState(gadget) == (m_visible ? 3 : 0);
+}
+
 // @func 0x00780DF8 SeqHudTypeCommand::~SeqHudTypeCommand
 // @func 0x00780E28 SeqHudTypeCommand::~SeqHudTypeCommand (deleting)
 SeqHudTypeCommand::~SeqHudTypeCommand() = default;

@@ -251,7 +251,13 @@ void SequenceAddActorQte(int32_t player, uint32_t button, float value28, float v
 }
 void SequenceAddEnableScriptedEntities(bool enabled) { (void)enabled; }
 void SequenceAddMinigameControl(const bool flags[6]) { (void)flags; }
-void SequenceAddHudType(uint32_t type, bool visible, bool force, uint32_t left, uint32_t right, bool wait, bool flag) { (void)type; (void)visible; (void)force; (void)left; (void)right; (void)wait; (void)flag; }
+void SequenceAddHudType(uint32_t type, bool visible, bool force, uint32_t left, uint32_t right, bool wait, bool flag)
+{
+    // NOTE: the script command's +0x20 flag and +0x18 entity hash are never
+    // read from the XML, so they are always clear.
+    gameplay::AddSequenceCommand(
+        new gameplay::SeqHudTypeCommand(type, visible, force, left, right, wait, flag, false, 0));
+}
 
 void SequenceAddTimeLimit(float limit) { (void)limit; }
 void SequenceAddCutsceneFlag(bool skippable) { (void)skippable; }

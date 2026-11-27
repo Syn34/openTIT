@@ -9,6 +9,8 @@
 
 #include <cstdint>
 
+#include "ape/math/ApeMath.h"
+
 namespace ape { class ApeMemStack; class ApeGuiObject; struct GuiPadInput; }
 namespace ape::input { class ApePadDevice; }
 
@@ -17,6 +19,23 @@ namespace sly {
 struct SlyApp;
 
 constexpr int kLocalPlayerCount = 2;
+
+// Recent motion sensor samples of a pad (one per frame, 360 kept). Each
+// sample is written twice, 360 entries apart, so the newest `n` samples can
+// be read back without wrapping.
+struct PadMotionHistory {
+    static constexpr uint32_t kSamples = 360;
+
+    void Record(const ape::Vec3& sample);
+    // Copies the samples of the last `seconds` (at least one frame, at most
+    // the whole history), newest first, into `out` and reports how many were
+    // written. False when fewer samples than asked for exist yet.
+    bool Collect(float seconds, ape::Vec3* out, uint32_t* count) const;
+
+    ape::Vec3 samples[kSamples * 2] = {};     // +0x00 (app player +0x50)
+    uint32_t oldest = 0;                      // +0x2D00
+    uint32_t next = 0;                        // +0x2D04 slot of the next sample
+};
 
 // A local player's input block (vtable 0x00B219C0, app +0xB0, stride
 // 0x2EC0). Offsets below are relative to the app object.
@@ -32,25 +51,35 @@ struct AppPlayer {
     void SetRumblePaused(bool paused);
     // NOTE: stores two words at +0xD0/+0xD4 (meaning unknown; the app
     // constructor initialises them from a global pair).
-    void SetField_D0(const uint32_t value[2]);
+    void SetField_D0(const float value[2]);
     // Analog value `index` of the pad (0 without a pad, for an index the
     // player may not use, or past the last analog).
     float GetAnalog(uint32_t index) const;
     bool IsPadConnected() const;
+    // Per-frame input update: copies the pad's buttons, maps the left stick
+    // to the d-pad in menus (with key repeat), records the motion sensors
+    // and moves the GUI pointer (from the pad's pointer, else the stick).
+    void UpdateInput(float dt);
 
     uint8_t index = 0;                        // +0xB4 (stride 0x2EC0)
     // +0xB5 bit 7 (bit 23 of the word at +0xB4): the pointer position
     // (+0xD0) is valid for the GUI. NOTE: meaning inferred from the GUI pad
     // filter.
     uint8_t field_B5 = 0;
+    // +0xB5 bits 0-6: key repeat stage of the stick d-pad (0..6).
+    uint8_t repeatStage = 0;
     // +0xB6: low half of the word at +0xB4. Bit 15: the pause menu holds
-    // the pad (set when a menu opens).
+    // the pad (set when a menu opens); the left stick then works as the
+    // d-pad. Bit 14 selects the second delay of each key repeat stage.
     uint16_t padFlags = 0;
-    uint32_t inputFlags = 0;                  // +0xB8
-    uint32_t inputMask = 0;                   // +0xBC
-    uint32_t analogMask = 0xFFFFFFFFu;        // +0xC4 analog values the player may use
+    uint32_t inputFlags = 0;                  // +0xB8 held buttons
+    uint32_t inputMask = 0;                   // +0xBC buttons changed this frame
+    uint32_t released = 0;                    // +0xC0
+    uint32_t analogMask = 0xFFFFFFFFu;        // +0xC4 the pad's valid analog values
+    float repeatTimer = 0.0f;                 // +0xC8
     ape::input::ApePadDevice* pad = nullptr;  // +0xCC
-    uint32_t field_D0[2] = {};                // +0xD0 NOTE: the GUI reads them as the pointer position
+    float field_D0[2] = {};                   // +0xD0 GUI pointer position (-1..1)
+    PadMotionHistory motion;                  // +0x100
 };
 
 struct AppRuntime {

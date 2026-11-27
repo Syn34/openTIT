@@ -252,6 +252,14 @@ void PopCameraBlended(float) {}
 void KillCamera(GameCamera*) {}
 void ResetCameraManager() {}
 bool HasCameraManager() { return false; }
+Binocucom* CharacterBinocucom(WorldObject*) { return nullptr; }
+WorldObject* BinocucomOwner(Binocucom*) { return nullptr; }
+void BinocucomSetPortrait(Binocucom*, int, uint32_t) {}
+WorldObject* BinocucomPortrait(Binocucom*, int) { return nullptr; }
+bool BinocucomIsVisible(const Binocucom*) { return false; }
+void BinocucomSetVisible(Binocucom*, bool, uint32_t, bool) {}
+void BinocucomSetFlag12(Binocucom*, bool) {}
+int BinocucomState(const Binocucom*) { return 0; }
 ape::Matrix34 CameraManagerTransform()
 {
     ape::Matrix34 m{};
