@@ -87,6 +87,12 @@ void AnimEventKnowledgeAcquireSlot(uint32_t* outUserData, uint32_t setData, uint
     *outUserData = handle;
 }
 
+// @func 0x000653CC AnimEventKnowledgeReleaseSlot
+void AnimEventKnowledgeReleaseSlot(uint32_t userData)
+{
+    knowledge::Library()->Remove(userData);
+}
+
 } // namespace ai
 } // namespace levels
 } // namespace sly
