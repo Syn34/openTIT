@@ -9,6 +9,7 @@
 #include "agl/gpu/GpuTypes.h"
 #include "ape/world/ApeBase.h"
 #include "agl/AglRenderTarget.h"
+#include "agl/AglDisplay.h"
 #include "ape/level/ApeGui.h"
 #include "ape/level/ApeLevelDef.h"
 #include "sly/entity/Entity.h"
@@ -16,6 +17,7 @@
 #include "sly/tuning/GameTuning.h"
 
 #include <cmath>
+#include <cstring>
 
 namespace sly {
 
@@ -446,6 +448,41 @@ void SlyGame::DrawScreenGradient(agl::AglRenderTarget* view, const uint8_t top[4
             v.color[c] = corners[i].color[c];
     }
     list.EndPrimitive();
+}
+
+// @func 0x00457328 SlyGame::SetSplitScreen
+void SlyGame::SetSplitScreen(uint32_t views)
+{
+    splitScreenCount = views;
+    if (views < 2 || views > 4) {
+        if (views == 1)
+            splitScreenCount = 0;
+        return;
+    }
+    const agl::AglDisplaySettings& display = agl::GetDisplaySettings();
+    const uint16_t w = display.width;
+    const uint16_t h = display.height;
+    const uint16_t halfW = w / 2;
+    const uint16_t halfH = h / 2;
+    // Rectangles (x, y, width, height): two players share the screen top and
+    // bottom, three get two quarters and the bottom half, four the quarters.
+    uint16_t rects[kSplitViews][4] = {};
+    if (views == 2) {
+        const uint16_t layout[2][4] = {{0, 0, w, halfH}, {0, halfH, w, halfH}};
+        std::memcpy(rects, layout, sizeof(layout));
+    } else if (views == 3) {
+        const uint16_t layout[3][4] = {{0, 0, halfW, halfH}, {halfW, 0, halfW, halfH}, {0, halfH, w, halfH}};
+        std::memcpy(rects, layout, sizeof(layout));
+    } else {
+        const uint16_t layout[4][4] = {
+            {0, 0, halfW, halfH}, {halfW, 0, halfW, halfH}, {0, halfH, halfW, halfH}, {halfW, halfH, halfW, halfH}};
+        std::memcpy(rects, layout, sizeof(layout));
+    }
+    constexpr float kSplitViewFar = 100.0f;
+    for (uint32_t i = 0; i < views; ++i) {
+        splitViews[i]->SetViewport(rects[i]);
+        splitViews[i]->SetFar(kSplitViewFar);
+    }
 }
 
 } // namespace sly

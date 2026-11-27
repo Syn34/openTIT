@@ -98,6 +98,8 @@ bool EntityControllerIsScripted(WorldObject* entity);
 void EntitySetEmitterParam(WorldObject* entity, uint32_t value);
 // World position (+0x90).
 ape::Vec3 EntityPosition(const WorldObject* entity);
+// World transform: axes from +0x60, translation +0x90.
+ape::Matrix34 EntityTransform(const WorldObject* entity);
 
 // Looks up a named world entity (0x000D6A28).
 WorldObject* FindWorldEntity(uint32_t nameHash);
@@ -407,6 +409,26 @@ constexpr int kCameraTypeScripted = 11;
 void PopCameraBlended(float blendTime);          // manager slot 53 with blend +0x250
 void KillCamera(GameCamera* camera);             // 0x000FEACC + camera slot 7
 void ResetCameraManager();                       // 0x000FCD1C
+// The binocucom gadget of a character (0x000D94CC), also the screen that
+// shows the speaker portraits of scripted conversations.
+struct Binocucom;
+Binocucom* CharacterBinocucom(WorldObject* character);
+WorldObject* BinocucomOwner(Binocucom* gadget);                          // +0x08
+// Portrait models shown on the left (0) and right (1) (0x002AB920 / 0x002AB9B0).
+void BinocucomSetPortrait(Binocucom* gadget, int side, uint32_t modelHash);
+WorldObject* BinocucomPortrait(Binocucom* gadget, int side);
+bool BinocucomIsVisible(const Binocucom* gadget);                        // 0x002A6044
+// Brings the screen up or puts it away (0x002A8AE0). NOTE: the meaning of
+// `style` (bits 4-5 of the HUD type command) and `flag` is not known.
+void BinocucomSetVisible(Binocucom* gadget, bool visible, uint32_t style, bool flag);
+void BinocucomSetFlag12(Binocucom* gadget, bool value);                  // +0xF4 bit 12
+// Animation state (+0xF4 bits 20-27): 0 put away, 3 fully up.
+int BinocucomState(const Binocucom* gadget);
+// The camera manager exists, its current transform (axes +0x60,
+// translation +0x90) and field of view (+0x164).
+bool HasCameraManager();
+ape::Matrix34 CameraManagerTransform();
+float CameraManagerFov();
 struct CameraView {
     ape::Matrix34 transform;                     // axes as stored by camera objects
     float fov = 53.5f;

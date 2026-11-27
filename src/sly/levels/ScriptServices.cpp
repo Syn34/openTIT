@@ -1,6 +1,7 @@
 // openTIT - TODO stubs for the game services used by the script commands #83-#269.
 // Each returns what the original returns for a missing object.
 #include "sly/levels/ScriptServices.h"
+#include "sly/gameplay/SequenceCommands3.h"
 #include "sly/game/SlyGame.h"
 #include "sly/game/AudioSystem.h"
 #include "sly/game/goals/JobManager.h"
@@ -215,10 +216,17 @@ void SequenceAddShoot(uint32_t shooter, uint32_t target, uint32_t hash, int32_t 
 void SequenceAddCameraWeight(float weight, float duration, float exponent) { (void)weight; (void)duration; (void)exponent; }
 void SequenceAddJumpTo(uint32_t entity, WorldObject* point, uint32_t anim, bool flag, bool wait) { (void)entity; (void)point; (void)anim; (void)flag; (void)wait; }
 void SequenceAddRemoveEntity(uint32_t entity, bool flag) { (void)entity; (void)flag; }
-void SequenceAddLookAt(float duration, float value, float fov, uint32_t entity, uint32_t target, uint32_t entity2, uint32_t target2) { (void)duration; (void)value; (void)fov; (void)entity; (void)target; (void)entity2; (void)target2; }
+void SequenceAddLookAt(float duration, float value, float fov, uint32_t entity, uint32_t target, uint32_t entity2, uint32_t target2)
+{
+    gameplay::AddSequenceCommand(new gameplay::SeqLookAtCommand(duration, value, fov, entity, target, entity2, target2));
+}
 void* FindLevelSpline(uint32_t splineName) { (void)splineName; return nullptr; }
 void SequenceAddMoveAlong(uint32_t entity, void* spline, uint32_t anim, float startOffset, float speed, bool forward, bool sprint, bool wait) { (void)entity; (void)spline; (void)anim; (void)startOffset; (void)speed; (void)forward; (void)sprint; (void)wait; }
-void SequenceAddMoveCamera(float fov, float value18, float value1C, float moveTime, float value28, uint32_t startPoint, uint32_t endPoint) { (void)fov; (void)value18; (void)value1C; (void)moveTime; (void)value28; (void)startPoint; (void)endPoint; }
+void SequenceAddMoveCamera(float fov, float value18, float value1C, float moveTime, float value28, uint32_t startPoint, uint32_t endPoint, uint32_t lookPoint)
+{
+    gameplay::AddSequenceCommand(new gameplay::SeqMoveCameraCommand(fov, value18, value1C, moveTime, value28,
+                                                                    startPoint, endPoint, lookPoint));
+}
 
 void SequenceAddHudCounter(bool pause) { (void)pause; }
 void SequenceAddPauseEntities(bool pause) { (void)pause; }
@@ -243,7 +251,13 @@ void SequenceAddActorQte(int32_t player, uint32_t button, float value28, float v
 }
 void SequenceAddEnableScriptedEntities(bool enabled) { (void)enabled; }
 void SequenceAddMinigameControl(const bool flags[6]) { (void)flags; }
-void SequenceAddHudType(uint32_t type, bool visible, bool force, uint32_t left, uint32_t right, bool wait, bool flag) { (void)type; (void)visible; (void)force; (void)left; (void)right; (void)wait; (void)flag; }
+void SequenceAddHudType(uint32_t type, bool visible, bool force, uint32_t left, uint32_t right, bool wait, bool flag)
+{
+    // NOTE: the script command's +0x20 flag and +0x18 entity hash are never
+    // read from the XML, so they are always clear.
+    gameplay::AddSequenceCommand(
+        new gameplay::SeqHudTypeCommand(type, visible, force, left, right, wait, flag, false, 0));
+}
 
 void SequenceAddTimeLimit(float limit) { (void)limit; }
 void SequenceAddCutsceneFlag(bool skippable) { (void)skippable; }

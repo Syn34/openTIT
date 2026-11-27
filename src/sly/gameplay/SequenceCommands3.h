@@ -7,17 +7,76 @@
 
 #include "sly/game/Tween.h"
 #include "sly/gameplay/Sequencer.h"
+#include "ape/math/ApeMatrixOps.h"
 #include "ape/memory/ApeTArray.h"
+
+namespace ape::world { class ApePointInstance; }
 
 namespace sly {
 namespace gameplay {
 
-// Camera orbit (vtable 0x00B20F98, 0x80 bytes, constructor 0x00430A64).
-class SeqCameraOrbitCommand : public SequenceCommand {
+// Scripted camera that turns from a start point towards a target
+// ("LookAt", vtable 0x00B20F68, 0x70 bytes). The camera starts at a point
+// instance or sequence entity and keeps its position; every frame it turns
+// towards the target (a point instance or sequence entity) at `turnRate`
+// full turns per second (snapping at once when the rate is 0) and pushes
+// the view to the camera manager. Blocks for `duration` seconds when the
+// target is a sequence entity.
+class SeqLookAtCommand : public SequenceCommand {
 public:
-    using SequenceCommand::SequenceCommand;
-    ~SeqCameraOrbitCommand() override;
-    // TODO(0x00430BE8 SeqCameraOrbitCommand::Execute, 0x00431030 Update)
+    SeqLookAtCommand(float duration, float turnRate, float fov, uint32_t entityHash,
+                     uint32_t targetHash, uint32_t entityPointHash, uint32_t targetPointHash);
+    ~SeqLookAtCommand() override;
+    void Execute() override;
+    bool Update(float dt) override;
+
+private:
+    WorldObject* m_entity = nullptr;                    // +0x0C
+    uint32_t m_entityHash = 0;                          // +0x10
+    WorldObject* m_target = nullptr;                    // +0x14
+    uint32_t m_targetHash = 0;                          // +0x18
+    ape::world::ApePointInstance* m_entityPoint = nullptr;   // +0x1C
+    uint32_t m_entityPointHash = 0;                     // +0x20
+    ape::world::ApePointInstance* m_targetPoint = nullptr;   // +0x24
+    uint32_t m_targetPointHash = 0;                     // +0x28
+    float m_elapsed = 0.0f;                             // +0x2C
+    float m_duration = 0.0f;                            // +0x30
+    float m_turnRate = 0.0f;                            // +0x34
+    ape::Quat m_rotation{0.0f, 0.0f, 0.0f, 1.0f};       // +0x40
+    ape::Vec3 m_position{};                             // +0x50
+    float m_fov = 0.0f;                                 // +0x60
+    bool m_aligned = false;                             // +0x64 bit 31
+};
+
+// Scripted camera move ("MoveCamera", vtable 0x00B20F98, 0x80 bytes): from
+// a start point (or where the camera is) the camera blends its field of
+// view, moves to an end point after a delay and turns to face a look point,
+// each over its own time.
+class SeqMoveCameraCommand : public SequenceCommand {
+public:
+    SeqMoveCameraCommand(float fov, float fovTime, float moveDelay, float moveTime, float turnTime,
+                         uint32_t startPoint, uint32_t endPoint, uint32_t lookPoint);
+    ~SeqMoveCameraCommand() override;
+    void Execute() override;
+    bool Update(float dt) override;
+
+private:
+    ape::world::ApePointInstance* m_startPoint = nullptr;   // +0x0C
+    ape::Vec3 m_startPosition{};                        // +0x10
+    ape::world::ApePointInstance* m_endPoint = nullptr;     // +0x20
+    float m_startFov = 0.0f;                            // +0x24 camera's when started
+    float m_targetFov = 0.0f;                           // +0x28 (0: keep the camera's)
+    float m_fovElapsed = 0.0f;                          // +0x2C
+    float m_fovTime = 0.0f;                             // +0x30
+    float m_delayElapsed = 0.0f;                        // +0x34
+    float m_moveDelay = 0.0f;                           // +0x38
+    float m_moveElapsed = 0.0f;                         // +0x3C
+    float m_moveTime = 0.0f;                            // +0x40
+    ape::Quat m_startRotation{0.0f, 0.0f, 0.0f, 1.0f};  // +0x50
+    ape::Quat m_lookRotation{0.0f, 0.0f, 0.0f, 1.0f};   // +0x60
+    ape::world::ApePointInstance* m_lookPoint = nullptr;    // +0x70
+    float m_turnElapsed = 0.0f;                         // +0x74
+    float m_turnTime = 0.0f;                            // +0x78
 };
 
 // Arc QTE (vtable 0x00B21148, constructor 0x00434E0C).
@@ -40,12 +99,30 @@ public:
     ape::ApeTArray<void*> field_50;     // +0x50
 };
 
-// HUD type switch (vtable 0x00B211F0, constructor 0x00437F24).
+// Shows or hides the conversation screen of a character's binocucom with
+// the given left/right portraits ("HudType", vtable 0x00B211F0, 0x20 bytes).
+// A blocking command waits until the screen has finished moving.
 class SeqHudTypeCommand : public SequenceCommand {
 public:
-    using SequenceCommand::SequenceCommand;
+    SeqHudTypeCommand(uint32_t type, bool visible, bool force, uint32_t leftPortrait,
+                      uint32_t rightPortrait, bool blocking, bool flag12, bool flag0,
+                      uint32_t entityHash);
     ~SeqHudTypeCommand() override;
-    // TODO(0x0043807C SeqHudTypeCommand::Execute, 0x004382D8 Update)
+    void Execute() override;
+    bool Update(float dt) override;
+
+private:
+    // +0x0C flag word: bit 0 m_flag0, 1 m_flag12, 2 m_force, 3 m_visible,
+    // bits 4-5 m_style.
+    bool m_flag0 = false;
+    bool m_flag12 = false;
+    bool m_force = false;
+    bool m_visible = false;
+    uint32_t m_style = 0;
+    uint32_t m_leftPortrait = 0;          // +0x10
+    uint32_t m_rightPortrait = 0;         // +0x14
+    uint32_t m_entityHash = 0;            // +0x18
+    WorldObject* m_entity = nullptr;      // +0x1C
 };
 
 // Entity placement (vtable 0x00B21328, constructor 0x00439224): done as
