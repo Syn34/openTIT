@@ -125,7 +125,7 @@ const DefClass kDefClasses[] = {
     {0xBC13B5BCu, CreateProjectileMineDef},
     {0xB9F78EFDu, CreateProjectileDef},
     {0xB47D3A95u, CreateWatchActorDef},
-    {0xB3748711u, nullptr},                              // 0x001DE610
+    {0xB3748711u, CreateInteractivePropADef},            // the player turret prop
     {0xDCC028E7u, objects::CreateJumpDirTriggerDef},
     {0xCCFB1F40u, nullptr},                              // 0x0018F8E8
     {0xC475D118u, CreateObjectActorDef},                 // "Teleporter"

@@ -164,16 +164,41 @@ protected:
     SoundActorDef() = default;
 };
 
-// Definition of InteractivePropA (vtable 0x00B17DB0, 0x280 bytes).
+// Definition of InteractivePropC, the player turret prop (vtable 0x00B17DB0,
+// 0x280 bytes). NOTE: the C++ name is historical. The attribute hash of each
+// field is given; the meanings are mostly unknown.
 class InteractivePropADef : public ActorDef {
 public:
+    // The actor fields, then its own (0x001DC5F8).
+    explicit InteractivePropADef(const struct InteractivePropADefDesc& desc);
     ~InteractivePropADef() override;
+    uint32_t frameObjectName = 0;       // 0x130 hash 0x0A2E921E: object giving the turret's base frame
     ape::Vec3 field_140{};              // 0x140 attribute 0x81785FF8
-    ape::Vec3 aimOffset{};              // 0x160 (12 bytes used) aim point, local to the prop's frame
+    uint32_t field_150 = 0;             // 0x150 hash 0x7242FC8F (an object)
+    ape::Vec3 aimOffset{};              // 0x160 (12 bytes used) aim point, local to the prop's frame (0xCC0D6864)
     uint8_t interactionFlags[6] = {};   // 0x170 per interaction kind (InteractivePropC)
-    uint32_t bufferSize = 0;        // 0x254
-    void* buffer = nullptr;         // 0x258 owned
-    float field_278[2] = {};        // 0x278 placement default (radians)
+    uint32_t field_178 = 0;             // 0x178 hash 0xFC8AFCD5
+    uint32_t field_17C = 0;             // 0x17C hash 0xA7E293B8 (a bone or object)
+    ape::Vec3 field_180{};              // 0x180 attribute 0x3818B318
+    ape::Vec4 rotation190{0.0f, 0.0f, 0.0f, 1.0f};   // 0x190 from Euler degrees 0x898B7952
+    bool field_1A0 = false;             // 0x1A0 attribute 0x2A654FC3
+    bool field_1A1 = false;             // 0x1A1 attribute 0xDA165A53
+    uint32_t field_1A4 = 0;             // 0x1A4 hash 0x753EE781
+    ape::Vec3 field_1B0{};              // 0x1B0 attribute 0x1FAF38A1
+    ape::Vec4 rotation1C0{0.0f, 0.0f, 0.0f, 1.0f};   // 0x1C0 from Euler degrees 0x66E10869
+    float floats1D0[4] = {};            // 0x1D0 (see InteractivePropADefDesc)
+    uint32_t field_1E0 = 0;             // 0x1E0 hash 0x4205E7F3
+    float floats1E4[7] = {};            // 0x1E4
+    bool field_200 = true;              // 0x200 attribute 0xEC4A7369
+    bool field_201 = false;             // 0x201 attribute 0x6661DA37
+    float floats204[19] = {};           // 0x204..0x24C (yaw/pitch limits and rates among them)
+    uint32_t mode = 0;                  // 0x250 index of hash 0x79545A55 in {"None", 0xE01ED3CB}
+    uint32_t bufferSize = 0;            // 0x254 "playerName" (with its terminator)
+    char* buffer = nullptr;             // 0x258 owned
+    uint32_t hudNames[3] = {};          // 0x25C hashes 0x6350BDB4, 0xA2E0E877, 0x6A024DD2 (HUD elements)
+    bool bools268[3] = {};              // 0x268 attributes 0x8F16DBE7, 0x3FF0E768, 0xF29E7002
+    float floats26C[3] = {-1.0f, -1.0f, -1.0f};   // 0x26C phantom sizes (attributes 0x1F8A5F77, 0x17C27FD0, 0x81A11BFE)
+    float field_278[2] = {};            // 0x278 placement default (radians)
 };
 
 // The definition InteractivePropA actually uses (vtable 0x00B17B88).

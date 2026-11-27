@@ -32,6 +32,7 @@ SLY_DECLARE_DEF_FACTORY(CreateSoundActorB168E0Def);  // 0x24A57117
 SLY_DECLARE_DEF_FACTORY(CreateSoundActorB17008Def);  // 0x4F590DD4
 SLY_DECLARE_DEF_FACTORY(CreateSoundActorB16B48Def);  // 0x2190D8D7
 SLY_DECLARE_DEF_FACTORY(CreateSoundActorB16DB0Def);  // 0xBC6FA23B
+SLY_DECLARE_DEF_FACTORY(CreateInteractivePropADef);  // 0xB3748711 (the player turret prop)
 SLY_DECLARE_DEF_FACTORY(CreateActorB17990Def);       // 0x70542137 (the input mover)
 SLY_DECLARE_DEF_FACTORY(CreateSoundActorB17270Def);  // 0x942B64F0 (the gadget turret)
 SLY_DECLARE_DEF_FACTORY(CreateSafeDef);              // 0x0026B78D

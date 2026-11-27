@@ -506,6 +506,187 @@ SafeDef::SafeDef(const SafeDefDesc& desc) : ActorDef(desc)
     turnSpeed = desc.field_18C;
 }
 
+// -- InteractivePropC (the player turret prop; definition "InteractivePropADef") ----
+namespace {
+constexpr uint32_t kType_TurretProp = 0x40000000;
+} // namespace
+
+struct InteractivePropADefDesc : ClassDefDesc {
+    explicit InteractivePropADefDesc(const EntityDefDesc& loader) : ClassDefDesc(loader, kType_TurretProp) {}
+    ~InteractivePropADefDesc() { ape::FreeIfNotNull(buffer); }
+    InteractivePropADefDesc(const InteractivePropADefDesc&) = delete;
+    InteractivePropADefDesc& operator=(const InteractivePropADefDesc&) = delete;
+    uint32_t field_E0 = 0;                          // 0xE0
+    ape::Vec3 field_F0{};                           // 0xF0
+    uint32_t field_100 = 0;                         // 0x100
+    ape::Vec3 aimOffset{};                          // 0x110
+    uint32_t field_128 = 0;                         // 0x128
+    uint32_t field_12C = 0;                         // 0x12C
+    ape::Vec3 field_130{};                          // 0x130
+    ape::Vec4 rotation140{0.0f, 0.0f, 0.0f, 1.0f};  // 0x140
+    bool field_150 = false;                         // 0x150
+    bool field_151 = false;                         // 0x151
+    uint32_t field_154 = 0;                         // 0x154
+    ape::Vec3 field_160{};                          // 0x160
+    ape::Vec4 rotation170{0.0f, 0.0f, 0.0f, 1.0f};  // 0x170
+    float floats180[4] = {};                        // 0x180
+    uint32_t field_190 = 0;                         // 0x190
+    float floats194[7] = {};                        // 0x194
+    bool field_1B0 = true;                          // 0x1B0
+    bool field_1B1 = false;                         // 0x1B1
+    // 0x1B4..0x1FC; the last four are angles kept in radians (0.25 and 2
+    // degrees by default).
+    float floats1B4[19] = {0.0f, -90.0f, 90.0f, -180.0f, 180.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+                           0.0f, 0.0f, -1.0f, -1.0f, -1.0f, 0.004363323f, 0.034906585f, 0.004363323f,
+                           0.034906585f};
+    uint32_t mode = 0;                              // 0x200
+    uint32_t bufferSize = 0;                        // 0x204
+    char* buffer = nullptr;                         // 0x208
+    uint32_t hudNames[3] = {};                      // 0x20C
+    bool bools218[3] = {};                          // 0x218
+    float floats21C[3] = {-1.0f, -1.0f, -1.0f};     // 0x21C
+    float field_228[2] = {};                        // 0x228 radians
+
+    void Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem, const EntityDefDesc& loader,
+               const EntityDef* parent);
+};
+
+// @func 0x001DD3F8 InteractivePropADefDesc::Parse
+// A turret prop parent passes on everything but the vectors, rotations,
+// mode and placement angles (its player name is not inherited either).
+// Seven of the floats are kept in [0, 1].
+void InteractivePropADefDesc::Parse(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                    const EntityDefDesc& loader, const EntityDef* parent)
+{
+    ActorDefDesc::Parse(root, elem, loader, parent);
+    InteractivePropADefDesc defaults(loader);
+    if (const auto* prop = SameClassParent<InteractivePropADef>(parent, kType_TurretProp)) {
+        defaults.field_E0 = prop->frameObjectName;
+        defaults.field_100 = prop->field_150;
+        defaults.field_128 = prop->field_178;
+        defaults.field_12C = prop->field_17C;
+        defaults.field_150 = prop->field_1A0;
+        defaults.field_151 = prop->field_1A1;
+        defaults.field_154 = prop->field_1A4;
+        for (int i = 0; i < 4; ++i)
+            defaults.floats180[i] = prop->floats1D0[i];
+        defaults.field_190 = prop->field_1E0;
+        for (int i = 0; i < 7; ++i)
+            defaults.floats194[i] = prop->floats1E4[i];
+        defaults.field_1B0 = prop->field_200;
+        defaults.field_1B1 = prop->field_201;
+        for (int i = 0; i < 19; ++i)
+            defaults.floats1B4[i] = prop->floats204[i];
+        for (int i = 0; i < 3; ++i) {
+            defaults.hudNames[i] = prop->hudNames[i];
+            defaults.bools218[i] = prop->bools268[i];
+            defaults.floats21C[i] = prop->floats26C[i];
+        }
+    }
+    constexpr float kDegToRad = 0.017453292f;
+    const ape::Vec3 zero{};
+    elem->GetHash(0x0A2E921Eu, &field_E0, defaults.field_E0);
+    elem->GetVec3(0x81785FF8u, &field_F0.x, &defaults.field_F0.x);
+    elem->GetHash(0x7242FC8Fu, &field_100, defaults.field_100);
+    elem->GetVec3(0xCC0D6864u, &aimOffset.x, &defaults.aimOffset.x);
+    elem->GetHash(0xFC8AFCD5u, &field_128, defaults.field_128);
+    elem->GetHash(0xA7E293B8u, &field_12C, defaults.field_12C);
+    elem->GetVec3(0x3818B318u, &field_130.x, &defaults.field_130.x);
+    ape::Vec3 degrees{};
+    elem->GetVec3(0x898B7952u, &degrees.x, &zero.x);
+    rotation140 = QuatFromEuler({degrees.x * kDegToRad, degrees.y * kDegToRad, degrees.z * kDegToRad, 0.0f});
+    elem->GetBool(0x2A654FC3u, &field_150, defaults.field_150);
+    elem->GetBool(0xDA165A53u, &field_151, defaults.field_151);
+    elem->GetHash(0x753EE781u, &field_154, defaults.field_154);
+    elem->GetVec3(0x1FAF38A1u, &field_160.x, &defaults.field_160.x);
+    degrees = {};
+    elem->GetVec3(0x66E10869u, &degrees.x, &zero.x);
+    rotation170 = QuatFromEuler({degrees.x * kDegToRad, degrees.y * kDegToRad, degrees.z * kDegToRad, 0.0f});
+    elem->GetFloat(0x2C50D8F5u, &floats180[0], defaults.floats180[0]);
+    floats180[0] = std::max(floats180[0], 0.0f);
+    elem->GetFloat(0xA35DB66Eu, &floats180[1], defaults.floats180[1]);
+    floats180[1] = std::max(floats180[1], floats180[0]);
+    elem->GetFloat(0xA21AA8A9u, &floats180[2], defaults.floats180[2]);
+    floats180[2] = std::max(floats180[2], 0.0f);
+    elem->GetFloat(0x295E99EEu, &floats180[3], defaults.floats180[3]);
+    floats180[3] = std::max(floats180[3], 0.0f);
+    elem->GetHash(0x4205E7F3u, &field_190, defaults.field_190);
+    static constexpr uint32_t kAttrs194[7] = {0xA771B991u, 0xD12B2C33u, 0xA5972CE6u, 0xB09C9890u,
+                                              0x4314A942u, 0x4CEF43B4u, 0x471C7A06u};
+    for (int i = 0; i < 7; ++i)
+        elem->GetFloat(kAttrs194[i], &floats194[i], defaults.floats194[i]);
+    elem->GetBool(0xEC4A7369u, &field_1B0, defaults.field_1B0);
+    elem->GetBool(0x6661DA37u, &field_1B1, defaults.field_1B1);
+    static constexpr uint32_t kAttrs1B4[19] = {
+        0xEADC4688u, 0xDE05302Eu, 0x47E3CC5Cu, 0x878EA6DDu, 0x8722768Bu, 0x4CB13E10u, 0x824119DCu,
+        0x2CA6B8AFu, 0x92AC6682u, 0x24EC3F49u, 0x093E0E77u, 0x183B44B4u, 0x99479EADu, 0x172CC986u,
+        0x810B65B4u, 0x64AB749Eu, 0xD617D519u, 0xC209726Fu, 0x99F8C3AAu};
+    for (int i = 0; i < 19; ++i) {
+        const bool read = elem->GetFloat(kAttrs1B4[i], &floats1B4[i], defaults.floats1B4[i]) == ape::xml::kQuery_Ok;
+        if (read && i >= 15)
+            floats1B4[i] *= kDegToRad;
+    }
+    uint32_t modeName = 0;
+    if (elem->GetHash(0x79545A55u, &modeName, 0) == ape::xml::kQuery_Ok) {
+        static constexpr uint32_t kModes[2] = {0x0024A738u, 0xE01ED3CBu};   // "None", ?
+        for (uint32_t i = 0; i < 2; ++i) {
+            if (kModes[i] == modeName) {
+                mode = i;
+                break;
+            }
+        }
+    }
+    if (const char* playerName = elem->GetString("playerName")) {
+        ape::FreeIfNotNull(buffer);
+        bufferSize = uint32_t(std::strlen(playerName)) + 1;
+        buffer = static_cast<char*>(ape::Malloc(bufferSize));
+        ape::StrCopyBounded(buffer, playerName, bufferSize);
+    }
+    static constexpr uint32_t kHudAttrs[3] = {0x6350BDB4u, 0xA2E0E877u, 0x6A024DD2u};
+    static constexpr uint32_t kBoolAttrs[3] = {0x8F16DBE7u, 0x3FF0E768u, 0xF29E7002u};
+    static constexpr uint32_t kSizeAttrs[3] = {0x1F8A5F77u, 0x17C27FD0u, 0x81A11BFEu};
+    for (int i = 0; i < 3; ++i)
+        elem->GetHash(kHudAttrs[i], &hudNames[i], defaults.hudNames[i]);
+    for (int i = 0; i < 3; ++i)
+        elem->GetBool(kBoolAttrs[i], &bools218[i], defaults.bools218[i]);
+    for (int i = 0; i < 3; ++i)
+        elem->GetFloat(kSizeAttrs[i], &floats21C[i], defaults.floats21C[i]);
+    if (elem->GetVec2(0xBF3F0DB1u, field_228, defaults.field_228) == ape::xml::kQuery_Ok) {
+        field_228[0] *= kDegToRad;
+        field_228[1] *= kDegToRad;
+    }
+    for (int i = 5; i <= 11; ++i)
+        floats1B4[i] = std::clamp(floats1B4[i], 0.0f, 1.0f);
+}
+
+// @func 0x001DC5F8 InteractivePropADef::InteractivePropADef
+InteractivePropADef::InteractivePropADef(const InteractivePropADefDesc& desc)
+    : ActorDef(desc), frameObjectName(desc.field_E0), field_140(desc.field_F0), field_150(desc.field_100),
+      aimOffset(desc.aimOffset), field_178(desc.field_128), field_17C(desc.field_12C), field_180(desc.field_130),
+      rotation190(desc.rotation140), field_1A0(desc.field_150), field_1A1(desc.field_151),
+      field_1A4(desc.field_154), field_1B0(desc.field_160), rotation1C0(desc.rotation170),
+      field_1E0(desc.field_190), field_200(desc.field_1B0), field_201(desc.field_1B1), mode(desc.mode),
+      bufferSize(desc.bufferSize)
+{
+    for (int i = 0; i < 4; ++i)
+        floats1D0[i] = desc.floats180[i];
+    for (int i = 0; i < 7; ++i)
+        floats1E4[i] = desc.floats194[i];
+    for (int i = 0; i < 19; ++i)
+        floats204[i] = desc.floats1B4[i];
+    for (int i = 0; i < 3; ++i) {
+        hudNames[i] = desc.hudNames[i];
+        bools268[i] = desc.bools218[i];
+        floats26C[i] = desc.floats21C[i];
+    }
+    field_278[0] = desc.field_228[0];
+    field_278[1] = desc.field_228[1];
+    if (bufferSize) {
+        buffer = static_cast<char*>(ape::Malloc(bufferSize));
+        ape::StrCopyBounded(buffer, desc.buffer, bufferSize);
+    }
+}
+
 // -- ActorB17990 (the input mover) -------------------------------------------------
 namespace {
 constexpr uint32_t kType2_InputMover = 0x1;
@@ -1670,6 +1851,17 @@ EntityDef* CreateSoundActorB16DB0Def(ape::xml::XmlElement* root, ape::xml::XmlEl
     SoundActorB16DB0DefDesc desc(loader);
     desc.Parse(root, elem, loader, parent);
     auto* def = new SoundActorB16DB0Def(desc);
+    delete desc.parts;
+    return def;
+}
+
+// @func 0x001DE610 CreateInteractivePropADef
+EntityDef* CreateInteractivePropADef(ape::xml::XmlElement* root, ape::xml::XmlElement* elem,
+                                     const EntityDefDesc& loader, const EntityDef* parent)
+{
+    InteractivePropADefDesc desc(loader);
+    desc.Parse(root, elem, loader, parent);
+    auto* def = new InteractivePropADef(desc);
     delete desc.parts;
     return def;
 }
