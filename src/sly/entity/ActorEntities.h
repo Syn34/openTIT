@@ -1101,6 +1101,11 @@ public:
     float aimAngles[2] = {};                  // 0x208
     FloatTween tween_220;                     // 0x220 the aim acceleration ramp
     float field_304 = 0.0f;                   // 0x304 NOTE: sine of the aim pitch
+    // Shows the HUD element (timed or not, `flag` handed on) or hides it
+    // (its outro; `hideObject` also hides its scene object at once), unless
+    // tweenFlags bit 26 keeps it away (0x001EF980).
+    void ShowHud(bool show, bool timedOrHideObject, bool flag);
+    hud::HudObject* hudElement = nullptr;     // 0x350
     ape::ApeTArray<OwnedPair> field_280;      // 0x280
     Entity* field_32C = nullptr;              // 0x32C an owned entity (also listed in field_280)
     Entity* field_330 = nullptr;              // 0x330

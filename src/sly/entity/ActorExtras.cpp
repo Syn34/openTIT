@@ -9,6 +9,7 @@
 #include "sly/entity/ActorDefs.h"
 #include "sly/entity/GameCamera.h"
 #include "sly/entity/GameEntityHooks.h"
+#include "sly/game/hud/HudManager.h"
 #include "sly/tuning/TargetRangeTuning.h"
 
 #include <cmath>
@@ -125,6 +126,20 @@ bool TweenActor::UserReady()
 float TweenActor::AimPitch() const
 {
     return std::asin(field_304) + float(g_tgtRangeAimOffsetVisual) * 0.01745329238474369f;
+}
+
+// @func 0x001EF980 TweenActor::ShowHud
+void TweenActor::ShowHud(bool show, bool timedOrHideObject, bool flag)
+{
+    if ((tweenFlags & 0x04000000u) || !hudElement)
+        return;
+    if (show) {
+        hudElement->ShowText(-1.0f, nullptr, timedOrHideObject, flag);
+        return;
+    }
+    hudElement->Show(true, timedOrHideObject, false);
+    if (timedOrHideObject)
+        hudElement->object->SetVisible(false, true);
 }
 
 } // namespace entity
